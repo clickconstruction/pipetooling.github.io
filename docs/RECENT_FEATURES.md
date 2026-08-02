@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1243)
+last_updated: 2026-08-01 (v2.1245)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1245)
+
+### People → Review — loaders fail loudly: error surface, stuck-spinner fix, stale-response guard (2026-08-01)
+Reliability pass on the Review tab's two big loaders, which previously unwrapped every Supabase result as `(res.data ?? [])` — a failed query (RLS, timeout, network) silently became an empty array, reading as **$0 parts / $0 labor / inflated allocation ratios** with no error UI. New module-scope `throwIfQueryError()` in [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) now checks every wave in both `loadReviewData` (13-query `Promise.all` + three follow-up waves) and `loadTeamReviewUnion` (whose existing `.catch` → `teamSummaryError` banner finally fires for query failures, not just thrown JS). The per-person panel loader also gains what the Team Summary path has had since extraction: **(1)** a request-id guard (`reviewReqIdRef`) so a fast person/period switch can't land person A's jobs under person B's header — stale responses are dropped wholesale; **(2)** a wrapper `try/catch/finally` so a rejected query no longer strands the panel on "Loading…" (`reviewLoading` always clears) and the failure renders as a red `reviewError` banner (same idiom as the Team Summary error box) with a **Retry** button. The legacy `forTeamSummary` pass-through path is unchanged. No visual or numeric change on the happy path. Verified: `tsc -b` clean, zero new lints, full vitest suite green (3,327). Files: modified [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) only. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1243)
 
