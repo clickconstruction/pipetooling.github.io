@@ -23,6 +23,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1290',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials Assembly Book tab restructured',
+    kind: 'infra',
+    highlights: [
+      'The Assembly Book tab on the Materials page moved into its own component on top of the shared assembly engine.',
+      'No visible changes; assemblies, the detail panel, and the Add Item flow work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1289',
     date: '2026-08-02',
     title: 'Team leads: names instead of IDs',
