@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1297)
+last_updated: 2026-08-02 (v2.1298)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1298)
+
+### Takeoff decomposition T4: TakeoffBookAdminSection extracted (2026-08-02)
+The map's momentum extraction (the tab's `po-generator` equivalent): the collapsible Takeoff-book admin section — version chips with select/edit/delete, entries table, "Add entry" — plus its two inline modals (version form, entry form) and all 11 owned states + the full CRUD handler set move verbatim to [`components/bids/TakeoffBookAdminSection.tsx`](../src/components/bids/TakeoffBookAdminSection.tsx) (~510 lines). Engine values arrive as props; the **delete-cascade quirk** is preserved exactly (deleting the bid's applied version clears the browsed entries, nulls `selectedTakeoffBookVersionId`, persists via `saveBidSelectedTakeoffBookVersion(bid.id, null)`, and reloads bids). `applyTakeoffBookTemplates` + the Apply button stay in the tab's header region per the map. Behavior-preserving only. BidsTakeoffTab.tsx 5,034 → 4,603 lines (5,765 at train start). 391 files / 3,506 tests green.
 
 ## Latest Updates (v2.1297)
 
