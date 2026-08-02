@@ -39,6 +39,8 @@ export type TeamReviewUnion = {
   partsCostByJobId: Map<string, number>
   invoiceAmountByJob: Record<string, number>
   billedMaterialsByJobId: Map<string, number>
+  /** Mercury debit-card purchases allocated to jobs (abs amounts) — canonical parts composition includes this bucket. */
+  cardChargesByJobId: Map<string, number>
   hoursMap: Record<string, number>
   crewByDatePerson: Record<string, CrewJobRow>
   overheadHoursByPerson: Record<string, { office: number; bid: number }>

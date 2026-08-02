@@ -20,6 +20,7 @@ function makeUnion(partial: Partial<TeamReviewUnion>): TeamReviewUnion {
     partsCostByJobId: new Map(),
     invoiceAmountByJob: {},
     billedMaterialsByJobId: new Map(),
+    cardChargesByJobId: new Map(),
     hoursMap: {},
     crewByDatePerson: {},
     overheadHoursByPerson: {},

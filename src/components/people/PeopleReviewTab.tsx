@@ -768,7 +768,24 @@ export default function PeopleReviewTab({
       setReviewLaborBreakdownContext(null)
     }
 
-    const userId = users.find((u) => u.name === personName)?.id ?? null
+    // Trimmed comparison: payConfig keys carry whitespace variance and a
+    // trailing space here used to silently blank Tasks/Reports for the person.
+    const personNameTrimmed = personName.trim()
+    const userId = users.find((u) => (u.name ?? '').trim() === personNameTrimmed)?.id ?? null
+
+    // Same exclusion as derivePersonTeamSummary: the configured Office job is
+    // overhead, not field revenue — without it the panel lists "Office" as a
+    // Jobs Worked row with a large negative allocation the Team Summary row
+    // above deliberately does not have.
+    const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+
+    // Id-first pay-config resolution (matches utils/teamLabor.ts): crew rows
+    // carry person_id post-Phase-B, so a renamed pay-config row still finds
+    // its wage/salary flag instead of silently dropping to $0 / hourly.
+    const payConfigById: Record<string, PayConfigRow> = {}
+    for (const row of Object.values(payConfig)) {
+      if (row.person_id) payConfigById[row.person_id] = row
+    }
 
     const twoYearsAgo = new Date()
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
@@ -782,8 +799,8 @@ export default function PeopleReviewTab({
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
       paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart).order('id').range(f, t), 'load review lifetime labor jobs'),
       forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart).order('id').range(f, t), 'load review person lifetime labor jobs'),
-      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load review period crew days'),
-      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load review lifetime crew days'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load review period crew days'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load review lifetime crew days'),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
       // list_reports_with_job_info has a deterministic ORDER BY (created_at), so .range() pages are stable.
       forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.rpc('list_reports_with_job_info').range(f, t), 'load review reports'),
@@ -818,8 +835,8 @@ export default function PeopleReviewTab({
     const laborRows = (laborRes.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
     const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }>
     const personLaborRowsAllTime = (personLaborResAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
-    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
-    const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
+    const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>
     const allReports = (reportsRes.data ?? []) as Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }>
     const taskInstances = (tasksRes.data ?? []) as Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string; links?: string[] | null } | null }>
@@ -898,6 +915,9 @@ export default function PeopleReviewTab({
       const row = crewByDatePerson[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
       for (const a of assignments) {
+        // Skip the configured office job — overhead, not crew revenue
+        // (mirrors derivePersonTeamSummary).
+        if (officeJobLedgerId && a.job_id === officeJobLedgerId) continue
         crewJobIds.add(a.job_id)
         crewJobsWithLead.push({ work_date: r.work_date, job_id: a.job_id, pct: a.pct })
       }
@@ -907,7 +927,7 @@ export default function PeopleReviewTab({
     for (const r of allCrewRowsForCostAllTime) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = payConfig[r.person_name]
+      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
@@ -969,15 +989,24 @@ export default function PeopleReviewTab({
     }>
     const jobsById = new Map<string, (typeof crewJobsLedger)[0]>()
     const jobIdByHcp = new Map<string, string>()
+    // Click-only jobs: get_jobs_ledger_by_hcp_numbers deliberately resolves a
+    // job whose hcp is empty when its click_number matches (migration
+    // 20260619140000) — mapping only hcp_number here used to throw those rows
+    // away, rendering the job as "—"/$0. Guarded sets so the first (crew)
+    // resolution of a duplicate number wins consistently.
+    const mapLedgerNumbers = (j: { id: string; hcp_number?: string | null; click_number?: string | null }) => {
+      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
+      if (hcp && !jobIdByHcp.has(hcp)) jobIdByHcp.set(hcp, j.id)
+      const click = (j.click_number ?? '').trim().toLowerCase()
+      if (click && !jobIdByHcp.has(click)) jobIdByHcp.set(click, j.id)
+    }
     for (const j of crewJobsLedger) {
       jobsById.set(j.id, j)
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp) jobIdByHcp.set(hcp, j.id)
+      mapLedgerNumbers(j)
     }
     for (const j of laborJobsLedger) {
       if (!jobsById.has(j.id)) jobsById.set(j.id, j)
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp) jobIdByHcp.set(hcp, j.id)
+      mapLedgerNumbers(j)
     }
 
     const laborByJobAndPerson = new Map<string, Map<string, { hours: number; subLaborCost: number; crewLaborCost: number }>>()
@@ -1010,7 +1039,7 @@ export default function PeopleReviewTab({
     for (const r of allCrewRowsForCostAllTime) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = payConfig[r.person_name]
+      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
@@ -1024,17 +1053,22 @@ export default function PeopleReviewTab({
     const personLaborCostByJobId = new Map<string, number>()
     const personCrewLaborByJobId = new Map<string, number>()
     const personDriveCostByJobId = new Map<string, number>()
+    // Person's own lifetime sub-labor per hcp — subtracted from laborCostByHcp
+    // so "Subs:" consistently means sub-labor by OTHERS on the job (the labor
+    // and crew rows used to disagree: per-row vs whole-book subtraction).
+    const personSubLaborCostByHcp = new Map<string, number>()
     for (const r of personLaborRowsAllTime) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
-      const jobId = jobIdByHcp.get(hcp)
-      if (!jobId) continue
       const items = itemsByJob.get(r.id) ?? []
       const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
       const rate = r.labor_rate ?? 0
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
       const laborCost = totalHrs * rate + driveCost
+      personSubLaborCostByHcp.set(hcp, (personSubLaborCostByHcp.get(hcp) ?? 0) + laborCost)
+      const jobId = jobIdByHcp.get(hcp)
+      if (!jobId) continue
       personLaborCostByJobId.set(jobId, (personLaborCostByJobId.get(jobId) ?? 0) + laborCost)
       if (driveCost > 0) personDriveCostByJobId.set(jobId, (personDriveCostByJobId.get(jobId) ?? 0) + driveCost)
     }
@@ -1042,7 +1076,7 @@ export default function PeopleReviewTab({
       if (r.person_name !== personName) continue
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = payConfig[r.person_name]
+      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
@@ -1068,7 +1102,7 @@ export default function PeopleReviewTab({
       if (r.person_name !== personName) continue
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = payConfig[r.person_name]
+      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       for (const a of assignments) {
@@ -1081,13 +1115,22 @@ export default function PeopleReviewTab({
     // get_invoice_amounts_for_jobs aggregates one row per job (bounded by the
     // period's job count, no ORDER BY) so it stays single-shot; materials is
     // chunked+paged.
-    const [invoiceRes, materialsRes] = await Promise.all([
+    const [invoiceRes, materialsRes, cardChargeRows] = await Promise.all([
       jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
       fetchAllRowsChunkedIn(
         jobIds,
         (chunk, f, t) => supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
         'load review billed materials',
       ).then((rows) => ({ data: rows, error: null })),
+      // Mercury debit-card purchases allocated to jobs — the canonical parts
+      // composition (Jobs page / Job Summary) is tally + supply invoices +
+      // billed materials + card charges; this loader used to omit the card
+      // bucket, overstating profit on card-heavy jobs.
+      fetchAllRowsChunkedIn(
+        jobIds,
+        (chunk, f, t) => supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
+        'load review card charges',
+      ),
     ])
     throwIfQueryError([invoiceRes, materialsRes], 'load review job invoices/materials')
     const invoiceAmountByJob: Record<string, number> = {}
@@ -1098,13 +1141,26 @@ export default function PeopleReviewTab({
     for (const row of (materialsRes.data ?? []) as Array<{ job_id: string; amount: number }>) {
       billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
     }
+    const cardChargesByJobId = new Map<string, number>()
+    for (const row of cardChargeRows as Array<{ job_id: string; amount: number }>) {
+      cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
+    }
 
-    const laborRowsFiltered = usePaidOnly
+    const laborRowsOfficeFiltered = officeJobLedgerId
       ? laborRows.filter((r) => {
+          // Mirror derivePersonTeamSummary: sub-labor rows pointing at the
+          // configured office job are overhead, not field revenue.
+          const hcp = (r.job_number ?? '').trim().toLowerCase()
+          if (!hcp) return true
+          return jobIdByHcp.get(hcp) !== officeJobLedgerId
+        })
+      : laborRows
+    const laborRowsFiltered = usePaidOnly
+      ? laborRowsOfficeFiltered.filter((r) => {
           const hcp = (r.job_number ?? '').trim().toLowerCase()
           return hcp && jobIdByHcp.has(hcp)
         })
-      : laborRows
+      : laborRowsOfficeFiltered
     const laborJobs: ReviewLaborJob[] = laborRowsFiltered.map((r) => {
       const items = itemsByJob.get(r.id) ?? []
       const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
@@ -1116,7 +1172,7 @@ export default function PeopleReviewTab({
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
       const laborCost = totalHrs * rate + driveCost
-      const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) : 0
+      const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) + (cardChargesByJobId.get(jobId) ?? 0) : 0
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
       const pctComplete = job?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -1144,7 +1200,7 @@ export default function PeopleReviewTab({
         allocatedTotalBill: 0,
         allocatedRevenueBeforeOverhead: 0,
         allocatedPartsCost: 0,
-        subLaborCost: Math.max(0, (hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0) - laborCost),
+        subLaborCost: hcp ? Math.max(0, (laborCostByHcp.get(hcp) ?? 0) - (personSubLaborCostByHcp.get(hcp) ?? 0)) : 0,
         totalLaborOnJob: totalJobLabor,
         totalDriveCostOnJob: hcp ? (driveCostByHcp.get(hcp) ?? 0) : 0,
         totalJobHours: 0,
@@ -1170,7 +1226,7 @@ export default function PeopleReviewTab({
       const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${personName}:${c.work_date}`] ?? 0)
       const hours = dayHours * (c.pct / 100)
       const laborCost = hours * (cfg?.hourly_wage ?? 0)
-      const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0) + (billedMaterialsByJobId.get(c.job_id) ?? 0)
+      const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0) + (billedMaterialsByJobId.get(c.job_id) ?? 0) + (cardChargesByJobId.get(c.job_id) ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
       const pctComplete = j?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -1197,7 +1253,7 @@ export default function PeopleReviewTab({
         allocatedTotalBill: 0,
         allocatedRevenueBeforeOverhead: 0,
         allocatedPartsCost: 0,
-        subLaborCost: hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0,
+        subLaborCost: hcp ? Math.max(0, (laborCostByHcp.get(hcp) ?? 0) - (personSubLaborCostByHcp.get(hcp) ?? 0)) : 0,
         totalLaborOnJob: totalJobLabor,
         totalDriveCostOnJob: hcp ? (driveCostByHcp.get(hcp) ?? 0) : 0,
         totalJobHours: 0,
@@ -1211,7 +1267,7 @@ export default function PeopleReviewTab({
 
     const startDate = new Date(start + 'T00:00:00').getTime()
     const endDate = new Date(end + 'T23:59:59').getTime()
-    const reports = allReports.filter((r) => r.created_by_name === personName && new Date(r.created_at).getTime() >= startDate && new Date(r.created_at).getTime() <= endDate)
+    const reports = allReports.filter((r) => (r.created_by_name ?? '').trim() === personNameTrimmed && new Date(r.created_at).getTime() >= startDate && new Date(r.created_at).getTime() <= endDate)
 
     const tasks: ReviewTask[] = taskInstances.map((t) => ({
       id: t.id,
@@ -1266,12 +1322,12 @@ export default function PeopleReviewTab({
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
       forTeamSummary || !(laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
-      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed crew days'),
+      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed crew days'),
       forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed hours'),
     ])
     throwIfQueryError([allLaborRes, allCrewRes, allHoursRes2], 'load review lifetime hours')
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_date: string | null }>
-    const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const allHoursRows2 = (allHoursRes2.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
     const hoursMapAll: Record<string, number> = {}
     for (const h of allHoursRows2) {
@@ -1323,7 +1379,7 @@ export default function PeopleReviewTab({
     for (const r of allCrewRows) {
       const row = allCrewByDatePerson[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = payConfig[r.person_name]
+      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAll[`${r.person_name}:${r.work_date}`] ?? 0)
       for (const a of assignments) {
@@ -1495,6 +1551,13 @@ export default function PeopleReviewTab({
 
     const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
 
+    // Id-first pay-config resolution — see the identical index in
+    // loadReviewDataCore.
+    const payConfigSnapshotById: Record<string, PayConfigRow> = {}
+    for (const row of Object.values(payConfigSnapshot)) {
+      if (row.person_id) payConfigSnapshotById[row.person_id] = row
+    }
+
     const overheadSessionsAllTimeFetchPromise = (async () => {
       // Period-bounded (was an unbounded 2-year fetch): the consumer below
       // discards everything outside [start, end], so the wider window only
@@ -1537,8 +1600,8 @@ export default function PeopleReviewTab({
     ] = await Promise.all([
       paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', start).lte('job_date', end).order('id').range(f, t), 'load team summary period labor jobs'),
       paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart).order('id').range(f, t), 'load team summary lifetime labor jobs'),
-      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period crew days'),
-      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load team summary lifetime crew days'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period crew days'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load team summary lifetime crew days'),
       // Period-only bid crew rows -- modal display only, no all-time fetch needed.
       paged((f, t) => supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period crew bids'),
       paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period hours'),
@@ -1598,8 +1661,8 @@ export default function PeopleReviewTab({
 
     const periodLaborRows = (periodLaborRes.data ?? []) as TeamPeriodLaborRow[]
     const allTimeLaborRows = (allTimeLaborRes.data ?? []) as TeamPeriodLaborRow[]
-    const periodCrewRows = (periodCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
-    const allTimeCrewRows = (allTimeCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const periodCrewRows = (periodCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
+    const allTimeCrewRows = (allTimeCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const periodCrewBidRowsRaw = (periodCrewBidsRes.data ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] | null }>
     const periodCrewBidRows = periodCrewBidRowsRaw.map((r) => ({
       work_date: r.work_date,
@@ -1686,7 +1749,7 @@ export default function PeopleReviewTab({
     for (const r of allTimeCrewRows) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = payConfigSnapshot[r.person_name]
+      const cfg = (r.person_id ? payConfigSnapshotById[r.person_id] : undefined) ?? payConfigSnapshot[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const dayHoursRaw = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
@@ -1749,15 +1812,21 @@ export default function PeopleReviewTab({
     const laborJobsLedger = (laborJobsRes.data ?? []) as TeamLedgerRow[]
     const jobsById = new Map<string, TeamLedgerRow>()
     const jobIdByHcp = new Map<string, string>()
+    // Click-only jobs resolved + duplicate numbers guarded — see the
+    // identical mapLedgerNumbers in loadReviewDataCore.
+    const mapUnionLedgerNumbers = (j: TeamLedgerRow) => {
+      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
+      if (hcp && !jobIdByHcp.has(hcp)) jobIdByHcp.set(hcp, j.id)
+      const click = (j.click_number ?? '').trim().toLowerCase()
+      if (click && !jobIdByHcp.has(click)) jobIdByHcp.set(click, j.id)
+    }
     for (const j of crewJobsLedger) {
       jobsById.set(j.id, j)
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp) jobIdByHcp.set(hcp, j.id)
+      mapUnionLedgerNumbers(j)
     }
     for (const j of laborJobsLedger) {
       if (!jobsById.has(j.id)) jobsById.set(j.id, j)
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp) jobIdByHcp.set(hcp, j.id)
+      mapUnionLedgerNumbers(j)
     }
     const bidRows = (crewBidsRes.data ?? []) as Array<{ id: string; bid_number: string | null; project_name: string | null; address: string | null }>
     const bidsById = new Map<string, { bid_number: string; project_name: string; address: string }>()
@@ -1772,13 +1841,19 @@ export default function PeopleReviewTab({
     const jobIds = Array.from(jobsById.keys())
     // get_invoice_amounts_for_jobs aggregates one row per job (bounded, no
     // ORDER BY) so it stays single-shot; materials is chunked+paged.
-    const [invoiceRes, materialsRes] = await Promise.all([
+    const [invoiceRes, materialsRes, cardChargeRows] = await Promise.all([
       jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
       fetchAllRowsChunkedIn(
         jobIds,
         (chunk, f, t) => supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
         'load team summary billed materials',
       ).then((rows) => ({ data: rows, error: null })),
+      // Mercury card charges — canonical parts composition, see loadReviewDataCore.
+      fetchAllRowsChunkedIn(
+        jobIds,
+        (chunk, f, t) => supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
+        'load team summary card charges',
+      ),
     ])
     throwIfQueryError([invoiceRes, materialsRes], 'load team summary job invoices/materials')
     const invoiceAmountByJob: Record<string, number> = {}
@@ -1788,6 +1863,10 @@ export default function PeopleReviewTab({
     const billedMaterialsByJobId = new Map<string, number>()
     for (const row of (materialsRes.data ?? []) as Array<{ job_id: string; amount: number }>) {
       billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
+    }
+    const cardChargesByJobId = new Map<string, number>()
+    for (const row of cardChargeRows as Array<{ job_id: string; amount: number }>) {
+      cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
     }
 
     return {
@@ -1806,6 +1885,7 @@ export default function PeopleReviewTab({
       partsCostByJobId,
       invoiceAmountByJob,
       billedMaterialsByJobId,
+      cardChargesByJobId,
       hoursMap,
       crewByDatePerson,
       overheadHoursByPerson,

@@ -17,6 +17,24 @@ import type {
 } from '../../components/people/teamSummary/types'
 import type { TeamReviewUnion } from './teamReviewTypes'
 
+/**
+ * Exact-key lookup with a case-insensitive fallback. The overhead maps are
+ * keyed by trimmed `users.name` while `personName` is a `people_pay_config`
+ * key — there is no DB constraint tying the two, so a casing/spacing
+ * difference ("Bob Mcgee" vs "Bob McGee") used to silently zero a person's
+ * office/bid hours here while the Overhead tab (which normalizes) showed
+ * them fine.
+ */
+function lookupByPersonName<T>(record: Record<string, T>, personName: string): T | undefined {
+  const exact = record[personName]
+  if (exact !== undefined) return exact
+  const want = personName.trim().toLowerCase()
+  for (const key of Object.keys(record)) {
+    if (key.trim().toLowerCase() === want) return record[key]
+  }
+  return undefined
+}
+
 export function derivePersonTeamSummary(
   union: TeamReviewUnion,
   personName: string,
@@ -98,7 +116,7 @@ export function derivePersonTeamSummary(
     const subLaborCost = hcp ? (union.laborCostByHcp.get(hcp) ?? 0) : 0
     const teamLaborCost = union.teamLaborCostByJobId.get(jobId) ?? 0
     const totalLaborOnJob = subLaborCost + teamLaborCost
-    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0)
+    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
     const totalBill = job?.revenue != null ? Number(job.revenue) : 0
     const pctComplete = job?.pct_complete ?? null
     const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -111,7 +129,7 @@ export function derivePersonTeamSummary(
     const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
     const subLaborCost = hcp ? (union.laborCostByHcp.get(hcp) ?? 0) : 0
     const totalLaborOnJob = subLaborCost + (union.teamLaborCostByJobId.get(jobId) ?? 0)
-    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0)
+    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
     const totalBill = j?.revenue != null ? Number(j.revenue) : 0
     const pctComplete = j?.pct_complete ?? null
     const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -144,7 +162,7 @@ export function derivePersonTeamSummary(
     const jobName = job?.job_name ?? ''
     const totalBill = job?.revenue != null ? Number(job.revenue) : 0
     const pctRaw = job?.pct_complete
-    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0)
+    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
     grossBreakdownJobs.push({
       jobId,
       hcp,
@@ -197,7 +215,7 @@ export function derivePersonTeamSummary(
     ? totalHoursPaidJobs
     : days.reduce((s, d) => s + getHoursForDay(d), 0)
 
-  const overheadBuckets = union.overheadHoursByPerson[personName] ?? { office: 0, bid: 0 }
+  const overheadBuckets = lookupByPersonName(union.overheadHoursByPerson, personName) ?? { office: 0, bid: 0 }
   const officeHours = overheadBuckets.office
   const bidHours = overheadBuckets.bid
   const overheadHours = officeHours + bidHours
@@ -328,7 +346,7 @@ export function derivePersonTeamSummary(
     minute: '2-digit',
     hour12: true,
   })
-  const overheadRawSessions = union.overheadSessionsByPerson[personName] ?? []
+  const overheadRawSessions = lookupByPersonName(union.overheadSessionsByPerson, personName) ?? []
   const overheadSessions: OverheadSessionLine[] = overheadRawSessions
     .map((s) => {
       const inDate = new Date(s.clockedInIso)
