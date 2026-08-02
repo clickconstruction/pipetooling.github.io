@@ -3723,7 +3723,7 @@ export function BidsTakeoffTab({
                   if (preview === null) return <p style={{ margin: 0, color: 'var(--text-red-700)' }}>Error loading parts.</p>
                   if (!preview || preview.length === 0) return (
                     <div>
-                      <p style={{ margin: 0, marginBottom: '1rem', color: 'var(--text-muted)' }}>No parts in this template.</p>
+                      <p style={{ margin: 0, marginBottom: '1rem', color: 'var(--text-muted)' }}>No parts in this assembly.</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -4581,7 +4581,7 @@ export function BidsTakeoffTab({
                   <tbody>
                     {editTemplateItems.length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates below.</td>
+                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies below.</td>
                       </tr>
                     ) : (
                       editTemplateItems.map((item) => {
@@ -4633,7 +4633,7 @@ export function BidsTakeoffTab({
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                 >
                   <option value="part">Part</option>
-                  <option value="template">Nested Template</option>
+                  <option value="template">Nested Assembly</option>
                 </select>
                 {editTemplateNewItemType === 'part' ? (
                   <div style={{ position: 'relative', marginBottom: '0.5rem' }}>

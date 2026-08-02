@@ -885,6 +885,13 @@ Trade category (Plumbing, Electrical, HVAC) used to organize materials and bids 
 
 **UI**: Filter buttons above tabs in Materials and Bids sections show only items of selected type
 
+### Assembly
+A named, nestable kit of material parts (e.g. "Toilet rough-in") — the canonical word app-wide since the 2026-08-01 naming audit (N12). Assemblies are built in **Materials → Assembly Book**, combined with POs on **Materials → Assemblies & Purchase Orders**, mapped to fixtures during **Bids → Takeoffs**, and stamp PO items with a "From assembly" tag.
+
+**Database**: `material_templates` + `material_template_items` (self-nesting). The table and code identifiers deliberately keep the original *template* naming — the DB is append-only and identifiers match it on purpose; only user-visible words say Assembly. Do not confuse with the app's other template families (workflow, contract, email, report, salary-schedule templates), which are unrelated.
+
+**URL slug**: `assemblies-po` (renamed from `templates-po` in v2.1258; the old slug rewrites itself for saved pins).
+
 ### Assembly Type
 Category for organizing material assemblies/templates (Bathroom, Kitchen, Utility, Commercial, Residential, etc.). Service-type-specific categorization for grouping and filtering assemblies.
 
