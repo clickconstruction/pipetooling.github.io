@@ -10,7 +10,7 @@ You run the work on the ground: who's on which step, when it's scheduled, and wh
 ## Your day
 
 1. **Check the Projects board.** Rows sort with the ones needing a decision first — a red or amber pill tells you what's stuck. See [project status at a glance](?g=see-project-status-at-a-glance).
-2. **Assign and schedule.** Open a project's Workflow to assign a person to a step and set its expected dates, or use [Schedule Dispatch](?g=schedule-dispatch) for the day-by-day board.
+2. **Assign and schedule.** Open a project's Workflow to assign a person to a step and set its expected dates, or use [Schedule](?g=schedule-dispatch) for the day-by-day board.
 3. **Approve or send back.** When a tech marks a step complete, you can approve it or send it back with a reason — the previous step reopens for rework automatically.
 4. **Watch the sub board.** Projects → Forecast → **Subs** shows every sub's committed work on a timeline, with overlapping bookings outlined in red.
 

@@ -3,6 +3,7 @@ title: see what I still owe each sub contractor
 category: Billing & Money
 roles: dev, master_technician, assistant, superintendent
 keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge, payment, due
+order: 31
 ---
 **Jobs → Sub Labor** (the Sub Sheet Ledger) lists one row per contractor per job, with what each job costs and how much is still **due**. The toolbar shows one grand total — {{chip:gray|Sub Labor Due: $20,551.52}} — but that doesn't tell you *who* the money is owed to. The summary at the top of the tab breaks it down by person.
 

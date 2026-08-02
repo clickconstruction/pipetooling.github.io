@@ -3,6 +3,7 @@ title: set when a bid is due, including the time of day
 category: Office
 roles: dev, master_technician, assistant, estimator
 keywords: bid due date, due time, deadline, bid board order, new bid, edit bid
+order: 69
 ---
 Every bid can carry a due date, and optionally the time of day it's due — useful when a GC wants numbers "by 2 PM Thursday."
 

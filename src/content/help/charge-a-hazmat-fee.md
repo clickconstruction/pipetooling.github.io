@@ -3,6 +3,7 @@ title: charge a hazmat fee
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: hazmat, biohazard, exposure, fee, rider invoice, sewage, incident, terms of service
+order: 13
 ---
 When a technician is exposed to biohazardous material on a job (sewage, waste discharged down an open pipe, and similar), you can bill the customer a **biohazard remediation fee** — documented well enough to survive a dispute.
 

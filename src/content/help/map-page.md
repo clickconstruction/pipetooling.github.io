@@ -3,6 +3,7 @@ title: see jobs, bids, and estimates on the map
 category: Office
 roles: dev, master_technician, assistant, estimator
 keywords: map, pins, geocode, bid stages, lost bids, filter map, draw area, legend
+order: 30
 ---
 The Map page plots every job, bid, and estimate that has an address. Pin colors tell you what kind of record you're looking at — the key in the map's top-right corner is always in sync: blue is a job, orange is a bid, green is an estimate.
 

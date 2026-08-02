@@ -17,7 +17,7 @@ You have a client-side view: your jobs, their money, and the estimates and bids 
 
 ## Billing
 
-**Ready to Bill** is the queue of work finished and waiting to be invoiced — see [the ready-to-bill pipeline](?g=ready-to-bill-pipeline). From a job you can [bill a customer and get paid](?g=bill-a-customer-and-get-paid), and split a large job so you bill it in pieces.
+**Ready to Bill** is the queue of work finished and waiting to be invoiced — see [the ready-to-bill pipeline](?g=ready-to-bill-pipeline). From a job you can [bill a customer and get paid](?g=ready-to-bill-pipeline), and split a large job so you bill it in pieces.
 
 ## Reports
 

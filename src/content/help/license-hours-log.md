@@ -3,6 +3,7 @@ title: export a license hours log for the plumbing or electrical board
 category: Office
 roles: dev, master_technician, assistant, controller
 keywords: license, hours log, apprentice, journeyman, tradesman, board, TSBPE, TDLR, CSV, export, experience
+order: 58
 ---
 When a helper is working toward a more advanced license, the plumbing or electrical board wants proof of the hours they've worked — in Texas that's the employer certification of experience the supervising licensee signs. The **Hours log** gives you the detail behind that certification: every job the person worked, with approved clock hours, ready to download as a CSV.
 

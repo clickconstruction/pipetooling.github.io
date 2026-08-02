@@ -3,6 +3,7 @@ title: jump between dashboard sections
 category: Getting Started
 roles: all
 keywords: dashboard navigation, section bar, dock, jump to section, scroll, bottom bar
+order: 11
 ---
 On desktop, a floating bar sits at the bottom of the Dashboard (and the Quickfill page) with one chip per major section:
 

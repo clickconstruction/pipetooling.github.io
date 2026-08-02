@@ -3,6 +3,7 @@ title: work my inbox on the dashboard
 category: Getting Started
 roles: all
 keywords: my inbox, checklist, due today, overdue, outstanding, recently completed, tasks, dashboard
+order: 12
 ---
 The **My Inbox** card on the Dashboard is your personal task inbox — everything in it is waiting on you. Treat it like email: work it down to empty.
 
