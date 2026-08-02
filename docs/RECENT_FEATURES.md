@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1267)
+last_updated: 2026-08-02 (v2.1268)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1268)
+
+### Docs audit: Jobs/Estimates/Banking/Materials/Settings architecture docs match the code (2026-08-02)
+Naming-sweep wave A of the 2026-08-02 documentation audit, across nine `docs/*` files (SETTINGS/ESTIMATES/JOBS/JOBS_STAGES/JOBS_MODALS/JOB_FORM_MODAL/BANKING/MATERIALS architecture docs + BILLING_FLOWS). Label-only renames propagated with keys/slugs/DOM ids/RPCs untouched: Jobs & Estimates "Stages" → **Pipeline**, "See in Stages" → **"See in Pipeline"**, Banking "User Review" → **Card Review** (+ "User Sort" naming normalized), Materials "Assemblies & Purchase Orders" → **PO Builder** (type-union block fixed — a rename annotation had been pasted inside the code block), Quickfill "Billing Awaiting Payments" → **Billed Awaiting Payment**. Structural fixes: SETTINGS doc no longer documents `SettingsSharingAdoptionSection`/`useMasterAdoptions` (deleted v2.922; adoption grants auto-sync via `sync_company_access_grants`), its DONE-vs-pending hook contradictions resolved, and its pre-decomposition file-layout map replaced with the current 1,725-line reality; BILLING_FLOWS attributions moved from `Jobs.tsx` to `JobsStagesTab.tsx`/`useJobsStagesMutations.ts` where the code actually lives; drifted line counts re-measured (JobsStagesTab 3,664; jobsStagesRowShared 1,204; JobFormModal 4,096; Stages surface total 6,934). Docs only.
 
 ## Latest Updates (v2.1267)
 

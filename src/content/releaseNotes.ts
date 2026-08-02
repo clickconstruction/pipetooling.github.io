@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1268',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Jobs, Banking, and Materials developer docs match the new names',
+    kind: 'infra',
+    highlights: [
+      'Internal architecture docs for Jobs, Estimates, Banking, Materials, and Settings now use the current surface names (Pipeline, Card Review, PO Builder) and accurate file references.',
+      'A section describing a Settings component removed back in v2.922 is gone, so nobody goes looking for code that no longer exists.',
+    ],
+  },
+  {
     version: 'v2.1267',
     date: '2026-08-02',
     title: 'Behind the scenes: developer docs refreshed after a full audit',
