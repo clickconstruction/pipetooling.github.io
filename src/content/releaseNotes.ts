@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1245',
+    date: '2026-08-01',
+    title: 'People Review: load failures now show an error instead of wrong numbers',
+    kind: 'fix',
+    highlights: [
+      'If part of the Review data fails to load, the tab now shows a red error message with a Retry button instead of silently rendering $0 costs and inflated profits.',
+      'Switching people quickly no longer risks showing one person’s jobs and hours under another person’s name.',
+      'A failed load no longer leaves the panel stuck on "Loading…".',
+    ],
+  },
+  {
     version: 'v2.1243',
     date: '2026-08-01',
     title: 'Dispatch schedule: one ⋯ menu for Visible hours, settings, and Share',

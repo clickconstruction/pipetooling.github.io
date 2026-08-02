@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -45,6 +45,23 @@ import type {
   TeamPeriodLaborRow,
   TeamReviewUnion,
 } from '../../lib/people/teamReviewTypes'
+
+/**
+ * Throws on the first failed result in a wave of Supabase queries. Both big
+ * Review loaders (`loadReviewData`, `loadTeamReviewUnion`) used to unwrap
+ * every result as `(res.data ?? [])`, so a failed query silently became an
+ * empty array — $0 parts, $0 labor, inflated allocation ratios — with no
+ * error surface. Stub waves (`Promise.resolve({ data: [] })`) have no
+ * `error` key, which this tolerates.
+ */
+function throwIfQueryError(
+  results: Array<{ data?: unknown; error?: { message: string; code?: string; details?: string } | null }>,
+  label: string,
+): void {
+  for (const r of results) {
+    if (r.error) throw new DatabaseError(`Failed to ${label}: ${r.error.message}`, r.error.code, r.error.details)
+  }
+}
 
 export type PeopleReviewTabProps = {
   payConfig: Record<string, PayConfigRow>
@@ -121,6 +138,12 @@ export default function PeopleReviewTab({
   const [reviewCustomRangeStart, setReviewCustomRangeStart] = useState<string>('')
   const [reviewCustomRangeEnd, setReviewCustomRangeEnd] = useState<string>('')
   const [reviewLoading, setReviewLoading] = useState(false)
+  // Per-person panel failure surface + stale-response guard. The Team Summary
+  // path has had `teamSummaryReqIdRef` for this since extraction; the panel
+  // loader never did — a fast person switch could resolve out of order and
+  // leave person A's jobs under person B's header.
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const reviewReqIdRef = useRef(0)
   type ReviewLaborJob = {
     source: 'labor'
     id: string
@@ -656,10 +679,35 @@ export default function PeopleReviewTab({
     return hrs * wage
   }
 
+  /**
+   * Panel-mode entry point: owns the request-id guard (out-of-order responses
+   * are dropped), error surfacing (`reviewError`), and the loading flag's
+   * `finally` (a rejected query no longer strands the panel on "Loading…").
+   * The legacy `forTeamSummary` path passes straight through — its caller
+   * handles its own errors and it touches no panel state.
+   */
   async function loadReviewData(
     personName: string,
     forTeamSummary?: boolean,
     onlyPaidJobs?: boolean
+  ): Promise<{ allocatedRevenue: number; allocatedProfit: number; hoursRows: Array<{ work_date: string; hours: number }>; totalHoursPaidJobs?: number } | void> {
+    if (forTeamSummary) return loadReviewDataCore(personName, forTeamSummary, onlyPaidJobs)
+    const reqId = ++reviewReqIdRef.current
+    setReviewError(null)
+    try {
+      return await loadReviewDataCore(personName, false, onlyPaidJobs, reqId)
+    } catch (e) {
+      if (reviewReqIdRef.current === reqId) setReviewError(formatErrorMessage(e))
+    } finally {
+      if (reviewReqIdRef.current === reqId) setReviewLoading(false)
+    }
+  }
+
+  async function loadReviewDataCore(
+    personName: string,
+    forTeamSummary?: boolean,
+    onlyPaidJobs?: boolean,
+    reqId?: number
   ): Promise<{ allocatedRevenue: number; allocatedProfit: number; hoursRows: Array<{ work_date: string; hours: number }>; totalHoursPaidJobs?: number } | void> {
     const [start, end] = getReviewDateRange()
     if (!forTeamSummary) {
@@ -713,6 +761,10 @@ export default function PeopleReviewTab({
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart),
     ])
 
+    throwIfQueryError(
+      [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime],
+      'load review data',
+    )
     const laborRows = (laborRes.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
     const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }>
     const personLaborRowsAllTime = (personLaborResAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
@@ -751,6 +803,7 @@ export default function PeopleReviewTab({
       allLaborJobIdsForCost.length > 0
         ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allLaborJobIdsForCost)
         : { data: [] }
+    throwIfQueryError([laborItemsRes], 'load review labor items')
     const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
     const itemsByJob = new Map<string, typeof laborItems>()
     for (const i of laborItems) {
@@ -830,6 +883,7 @@ export default function PeopleReviewTab({
           : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: allLaborHcps })
         : { data: [] },
     ])
+    throwIfQueryError([crewJobsRes, laborJobsRes], 'load review ledger jobs')
     const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{
       id: string
       hcp_number: string
@@ -965,6 +1019,7 @@ export default function PeopleReviewTab({
       jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
       jobIds.length > 0 ? supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', jobIds) : Promise.resolve({ data: [] }),
     ])
+    throwIfQueryError([invoiceRes, materialsRes], 'load review job invoices/materials')
     const invoiceAmountByJob: Record<string, number> = {}
     for (const row of (invoiceRes.data ?? []) as Array<{ job_id: string; invoice_amount: number | null }>) {
       invoiceAmountByJob[row.job_id] = Number(row.invoice_amount ?? 0)
@@ -1144,6 +1199,7 @@ export default function PeopleReviewTab({
       forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
       forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
     ])
+    throwIfQueryError([allLaborRes, allCrewRes, allHoursRes2], 'load review lifetime hours')
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_date: string | null }>
     const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
     const allHoursRows2 = (allHoursRes2.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
@@ -1157,6 +1213,7 @@ export default function PeopleReviewTab({
       allLaborJobIds.length > 0
         ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allLaborJobIds)
         : { data: [] }
+    throwIfQueryError([allLaborItemsRes], 'load review lifetime labor items')
     const allLaborItems = (allLaborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
     const itemsByLaborJobId = new Map<string, typeof allLaborItems>()
     for (const i of allLaborItems) {
@@ -1297,6 +1354,10 @@ export default function PeopleReviewTab({
       j.allocatedPartsCost = j.partsCost * costRatio
     }
 
+    // Drop stale responses: if a newer load started (person/period switch)
+    // while this one was in flight, its writes must not land.
+    if (reqId !== undefined && reviewReqIdRef.current !== reqId) return
+
     setReviewLaborJobs(laborJobs)
     setReviewCrewJobs(crewJobs)
     setReviewAllocatedRevenue(allocatedRevenue)
@@ -1321,7 +1382,7 @@ export default function PeopleReviewTab({
       breakdownByJob[jobId] = rows
     }
     setReviewLaborByJobAndPerson(breakdownByJob)
-    setReviewLoading(false)
+    // reviewLoading is cleared by the wrapper's `finally` (guarded by reqId).
   }
 
   useEffect(() => {
@@ -1373,6 +1434,7 @@ export default function PeopleReviewTab({
         q = q.not('bid_id', 'is', null)
       }
       const res = await q
+      throwIfQueryError([res], 'load team summary overhead sessions')
       return (res.data ?? []) as unknown as OverheadClockSessionRow[]
     })()
 
@@ -1400,6 +1462,10 @@ export default function PeopleReviewTab({
       supabase.rpc('list_tally_parts_with_po'),
       overheadSessionsAllTimeFetchPromise,
     ])
+    throwIfQueryError(
+      [periodLaborRes, allTimeLaborRes, periodCrewRes, allTimeCrewRes, periodCrewBidsRes, periodHoursRes, allTimeHoursRes, settingsRes, tallyRes],
+      'load team summary data',
+    )
 
     // Derive the period buckets (for per-person totals shown in the Team
     // Summary) and the period per-day map (for `derivePersonTeamSummary`'s
@@ -1484,6 +1550,7 @@ export default function PeopleReviewTab({
     const laborItemsRes = allTimeLaborJobIds.length > 0
       ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allTimeLaborJobIds)
       : { data: [] }
+    throwIfQueryError([laborItemsRes], 'load team summary labor items')
     const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
     const laborItemsByJobId = new Map<string, TeamLaborItem[]>()
     for (const i of laborItems) {
@@ -1577,6 +1644,7 @@ export default function PeopleReviewTab({
         ? supabase.rpc('get_bids_by_ids', { p_bid_ids: allBidIds })
         : { data: [] },
     ])
+    throwIfQueryError([crewJobsRes, laborJobsRes, crewBidsRes], 'load team summary ledger jobs')
     const crewJobsLedger = (crewJobsRes.data ?? []) as TeamLedgerRow[]
     const laborJobsLedger = (laborJobsRes.data ?? []) as TeamLedgerRow[]
     const jobsById = new Map<string, TeamLedgerRow>()
@@ -1606,6 +1674,7 @@ export default function PeopleReviewTab({
       jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
       jobIds.length > 0 ? supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', jobIds) : Promise.resolve({ data: [] }),
     ])
+    throwIfQueryError([invoiceRes, materialsRes], 'load team summary job invoices/materials')
     const invoiceAmountByJob: Record<string, number> = {}
     for (const row of (invoiceRes.data ?? []) as Array<{ job_id: string; invoice_amount: number | null }>) {
       invoiceAmountByJob[row.job_id] = Number(row.invoice_amount ?? 0)
@@ -3659,6 +3728,29 @@ export default function PeopleReviewTab({
             // No one expanded yet — the Team Summary above acts as the
             // picker. Click a name to expand that person's panel here.
             null
+          ) : reviewError ? (
+            <div style={{ padding: '1rem' }}>
+              <p style={{ color: 'var(--text-red-700)', padding: '0.75rem 1rem', margin: '0 0 0.5rem', border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--bg-red-tint)', whiteSpace: 'pre-wrap' }}>
+                Failed to load review data: {reviewError}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const p = showPeopleForReview[selectedReviewPersonIndex]
+                  if (p) void loadReviewData(p, false, reviewOnlyPaidInFull)
+                }}
+                style={{
+                  padding: '0.35rem 0.9rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
+            </div>
           ) : reviewLoading ? (
             <p style={{ color: 'var(--text-muted)', padding: '1rem', margin: 0 }}>Loading…</p>
           ) : (
