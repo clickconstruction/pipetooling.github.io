@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubsHqRows } from './subsHqRows'
-import type { SubsHqPersonInput, SubsHqSheetInput } from './subsHqRows'
+import { buildSubsHqRows, groupUnattributedSheets } from './subsHqRows'
+import type { SubsHqPersonInput, SubsHqSheetInput, UnattributedSheet } from './subsHqRows'
 
 const TODAY = '2026-08-01'
 
@@ -45,8 +45,8 @@ describe('buildSubsHqRows', () => {
       people: [BEHAR, KYLE],
       users: [],
       sheets: [
-        sheet({ id: 'ghost', label: 'MIke Rodriguez sheet', items: [{ fixture: 'x', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 500 }] }),
-        sheet({ id: 'both', label: 'shared', items: [{ fixture: 'x', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 900 }] }),
+        sheet({ id: 'ghost', label: 'MIke Rodriguez sheet', assignedToName: ' MIke Rodriguez ', jobNumber: '892', items: [{ fixture: 'x', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 500 }] }),
+        sheet({ id: 'both', label: 'shared', assignedToName: 'Behar Kraja | Kyle', items: [{ fixture: 'x', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 900 }] }),
       ],
       assignees: [
         { labor_job_id: 'both', person_id: 'p-behar' },
@@ -58,8 +58,8 @@ describe('buildSubsHqRows', () => {
     })
     expect(result.rows.every((r) => r.sheetCount === 0)).toBe(true)
     expect(result.unattributed).toEqual([
-      { sheetId: 'ghost', label: 'MIke Rodriguez sheet', balance: 500, reason: 'unmatched' },
-      { sheetId: 'both', label: 'shared', balance: 900, reason: 'shared' },
+      { sheetId: 'ghost', label: 'MIke Rodriguez sheet', jobNumber: '892', balance: 500, reason: 'unmatched', rawAssignedTo: 'MIke Rodriguez' },
+      { sheetId: 'both', label: 'shared', jobNumber: null, balance: 900, reason: 'shared', rawAssignedTo: 'Behar Kraja | Kyle' },
     ])
   })
 
@@ -100,5 +100,52 @@ describe('buildSubsHqRows', () => {
     })
     expect(result.rows.map((r) => r.name)).toEqual(['Kyle'])
     expect(result.rows[0]?.badges.map((b) => b.state)).toEqual(['missing', 'missing', 'missing'])
+  })
+})
+
+describe('groupUnattributedSheets', () => {
+  const entry = (overrides: Partial<UnattributedSheet> & { sheetId: string }): UnattributedSheet => ({
+    label: 'x',
+    jobNumber: null,
+    balance: 0,
+    reason: 'unmatched',
+    rawAssignedTo: '',
+    ...overrides,
+  })
+
+  it('groups by (label, raw name, reason) with dedupe count and summed balance', () => {
+    const groups = groupUnattributedSheets([
+      entry({ sheetId: 's1', label: '892 · 582 Curvatura', jobNumber: '892', rawAssignedTo: 'MIke Rodriguez', balance: 200 }),
+      entry({ sheetId: 's2', label: '892 · 582 Curvatura', jobNumber: '892', rawAssignedTo: 'mike rodriguez', balance: 700 }),
+      entry({ sheetId: 's3', label: '901 · 12 Oak', jobNumber: '901', rawAssignedTo: 'Behar | Kyle', reason: 'shared', balance: 500 }),
+    ])
+    expect(groups).toHaveLength(2)
+    // Sorted by total open balance desc.
+    expect(groups[0]).toMatchObject({
+      label: '892 · 582 Curvatura',
+      jobNumber: '892',
+      reason: 'unmatched',
+      sheetCount: 2,
+      totalBalance: 900,
+    })
+    // Sheet ids ordered highest balance first (Open → targets the big one).
+    expect(groups[0]?.sheetIds).toEqual(['s2', 's1'])
+    expect(groups[1]).toMatchObject({ label: '901 · 12 Oak', reason: 'shared', sheetCount: 1, totalBalance: 500 })
+  })
+
+  it('same label with different raw names or reasons stays separate; ties sort by label', () => {
+    const groups = groupUnattributedSheets([
+      entry({ sheetId: 'a', label: 'same', rawAssignedTo: 'Ann', balance: 100 }),
+      entry({ sheetId: 'b', label: 'same', rawAssignedTo: 'Bob', balance: 100 }),
+      entry({ sheetId: 'c', label: 'same', rawAssignedTo: 'Ann', reason: 'shared', balance: 100 }),
+    ])
+    expect(groups).toHaveLength(3)
+    expect(groups.map((g) => g.totalBalance)).toEqual([100, 100, 100])
+  })
+
+  it('returns [] for no entries and keeps $0 groups', () => {
+    expect(groupUnattributedSheets([])).toEqual([])
+    const groups = groupUnattributedSheets([entry({ sheetId: 'z', label: 'zero', balance: 0 })])
+    expect(groups[0]?.totalBalance).toBe(0)
   })
 })

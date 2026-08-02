@@ -51,6 +51,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1296',
+    date: '2026-08-02',
+    title: 'Subs: unlinked sheets are now fixable on the spot',
+    kind: 'feature',
+    highlights: [
+      'The wall of text about unattributed sub sheets is now a proper panel at the top of People → Subs — one row per sheet showing the name that failed to match, why, and the open balance, sorted money-first.',
+      'Each row has an Assign picker and an Open button that jumps straight to the sheet in Jobs → Sub Labor; when the name is close to one roster person, a one-tap "Link to …" suggestion appears.',
+      'The panel disappears entirely once every sheet is linked.',
+    ],
+  },
+  {
     version: 'v2.1295',
     date: '2026-08-02',
     title: 'Behind the scenes: Bids Takeoff groundwork, part 2',

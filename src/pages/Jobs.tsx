@@ -1006,7 +1006,11 @@ export default function Jobs() {
     // the first completed load (map handle-race rule, v2.834).
     if (!editLaborHcp || !laborJobsLoadedOnce || laborJobsLoading) return
     const hcpLower = editLaborHcp.trim().toLowerCase()
-    const laborJob = laborJobs.find((j) => (j.job_number ?? '').trim().toLowerCase() === hcpLower)
+    // Sheet id wins over HCP: People → Subs' unattributed panel links by id
+    // because job numbers repeat across sheets (and can be blank).
+    const laborJob =
+      laborJobs.find((j) => j.id === editLaborHcp.trim()) ??
+      laborJobs.find((j) => (j.job_number ?? '').trim().toLowerCase() === hcpLower)
     if (laborJob) {
       subLaborFormRef.current?.openEdit(laborJob)
     } else {

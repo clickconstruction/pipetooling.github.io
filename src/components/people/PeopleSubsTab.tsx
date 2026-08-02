@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { buildSubsHqRows, type SubsHqResult } from '../../lib/people/subsHqRows'
+import { buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type UnattributedGroup } from '../../lib/people/subsHqRows'
+import { suggestSubSheetAssignee } from '../../lib/people/subSheetNameSuggestion'
 import type { ComplianceBadge } from '../../lib/people/subCompliance'
 
 /**
@@ -14,6 +16,11 @@ import type { ComplianceBadge } from '../../lib/people/subCompliance'
  * The per-sub Documents expander is the compliance micro-editor: set a
  * document's type and expiry here (writes person_contract_documents
  * directly); sending/signing stays on the Contracts tab.
+ *
+ * The "Unattributed sheets" panel at the top surfaces sheets the junction
+ * resolves to no one or to several people, grouped per (job, raw name), with
+ * Open → (deep link to Jobs → Sub Labor by sheet id), an Assign… roster
+ * picker, and a conservative one-tap suggestion (subSheetNameSuggestion).
  */
 
 type DocRow = {
@@ -38,11 +45,17 @@ const BADGE_STYLE: Record<ComplianceBadge['state'], { background: string; color:
 const DOC_TYPES = ['agreement', 'coi', 'w9', 'license', 'other'] as const
 
 export default function PeopleSubsTab() {
+  const navigate = useNavigate()
   const [result, setResult] = useState<SubsHqResult | null>(null)
   const [docsByPerson, setDocsByPerson] = useState<Record<string, DocRow[]>>({})
   const [expandedPersonId, setExpandedPersonId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savingDocId, setSavingDocId] = useState<string | null>(null)
+  /** Active sub roster — exactly the population buildSubsHqRows attributes against. */
+  const [roster, setRoster] = useState<Array<{ id: string; name: string }>>([])
+  const [assignPickerKey, setAssignPickerKey] = useState<string | null>(null)
+  const [assignSavingKey, setAssignSavingKey] = useState<string | null>(null)
+  const [showAllUnattributed, setShowAllUnattributed] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -102,6 +115,12 @@ export default function PeopleSubsTab() {
     const docRows = docsRes.error ? [] : ((docsRes.data ?? []) as DocRow[])
     const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
 
+    const activeRoster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null }>)
+      .filter((p) => !p.archived_at)
+      .map((p) => ({ id: p.id, name: p.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    setRoster(activeRoster)
+
     setResult(
       buildSubsHqRows({
         people: ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null; account_user_id: string | null }>).map((p) => ({
@@ -114,6 +133,8 @@ export default function PeopleSubsTab() {
         sheets: sheetRows.map((s) => ({
           id: s.id,
           label: [s.job_number, s.address].filter(Boolean).join(' · ') || s.assigned_to_name,
+          assignedToName: s.assigned_to_name,
+          jobNumber: s.job_number,
           labor_rate: s.labor_rate,
           items: itemsByJob.get(s.id) ?? [],
           payments: paymentsByJob.get(s.id) ?? [],
@@ -147,6 +168,56 @@ export default function PeopleSubsTab() {
     void load()
   }, [load])
 
+  const unattributedGroups = useMemo(
+    () => (result ? groupUnattributedSheets(result.unattributed) : []),
+    [result],
+  )
+
+  /** Conservative one-tap suggestion per unmatched group (null = no safe guess). */
+  const suggestionByGroup = useMemo(() => {
+    const candidates = roster.map((r) => ({ personId: r.id, name: r.name }))
+    const map = new Map<string, { id: string; name: string } | null>()
+    for (const g of unattributedGroups) {
+      if (g.reason !== 'unmatched') {
+        map.set(g.key, null)
+        continue
+      }
+      const hit = suggestSubSheetAssignee(g.rawAssignedTo, candidates)
+      map.set(g.key, hit ? { id: hit.personId, name: hit.name } : null)
+    }
+    return map
+  }, [unattributedGroups, roster])
+
+  /**
+   * Attribute every sheet in an unattributed group to one roster person.
+   * The junction (people_labor_job_assignees) is a trigger-maintained shadow
+   * of assigned_to_name (sync_people_labor_job_assignees DELETEs + rebuilds it
+   * on every name write), so a bare junction insert would be wiped by the next
+   * name edit. The durable write is the name itself: set assigned_to_name to
+   * the person's canonical roster name and the trigger mints the junction row
+   * buildSubsHqRows counts. A direct junction upsert follows as belt-and-braces
+   * for names resolve_pay_person_id can't map (e.g. duplicate roster names).
+   */
+  async function assignGroup(group: UnattributedGroup, person: { id: string; name: string }) {
+    setAssignSavingKey(group.key)
+    const upd = await supabase.from('people_labor_jobs').update({ assigned_to_name: person.name }).in('id', group.sheetIds)
+    if (upd.error) {
+      setAssignSavingKey(null)
+      setError(`Failed to assign sheets: ${upd.error.message}`)
+      return
+    }
+    const ins = await supabase
+      .from('people_labor_job_assignees')
+      .upsert(
+        group.sheetIds.map((labor_job_id) => ({ labor_job_id, person_id: person.id })),
+        { onConflict: 'labor_job_id,person_id', ignoreDuplicates: true },
+      )
+    if (ins.error) setError(`Sheets renamed but the roster link failed: ${ins.error.message}`)
+    setAssignSavingKey(null)
+    setAssignPickerKey(null)
+    await load()
+  }
+
   async function updateDoc(docId: string, patch: { doc_type?: string; expires_at?: string | null }) {
     setSavingDocId(docId)
     const { error: err } = await supabase.from('person_contract_documents').update(patch).eq('id', docId)
@@ -160,10 +231,167 @@ export default function PeopleSubsTab() {
 
   if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   if (!result) return <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-  if (result.rows.length === 0) return <p style={{ color: 'var(--text-muted)' }}>No subcontractors on the roster yet.</p>
+  if (result.rows.length === 0 && unattributedGroups.length === 0)
+    return <p style={{ color: 'var(--text-muted)' }}>No subcontractors on the roster yet.</p>
+
+  const visibleGroups = showAllUnattributed ? unattributedGroups : unattributedGroups.slice(0, 3)
 
   return (
     <div>
+      {unattributedGroups.length > 0 && (
+        <div
+          style={{
+            marginBottom: '1rem',
+            border: '1px solid var(--border-amber)',
+            background: 'var(--bg-amber-tint)',
+            borderRadius: 8,
+            padding: '0.7rem 0.9rem',
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
+            ⚠ {result.unattributed.length} sub {result.unattributed.length === 1 ? "sheet isn't" : "sheets aren't"} linked to anyone on the roster
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', margin: '0.15rem 0 0.5rem' }}>
+            Their balances are missing from every sub's Owed column until they're fixed.
+          </div>
+          {visibleGroups.map((g) => {
+            const suggestion = suggestionByGroup.get(g.key)
+            const saving = assignSavingKey === g.key
+            const addressLabel =
+              g.jobNumber && g.label.startsWith(g.jobNumber) ? g.label.slice(g.jobNumber.length).replace(/^ · /, '') : g.label
+            return (
+              <div
+                key={g.key}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.4rem 0',
+                  borderTop: '1px solid var(--border-amber-soft)',
+                  fontSize: '0.8125rem',
+                }}
+              >
+                {g.jobNumber ? (
+                  <span
+                    style={{
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      background: 'var(--bg-amber-100)',
+                      color: 'var(--text-amber-900)',
+                      borderRadius: 5,
+                      padding: '0.05rem 0.35rem',
+                    }}
+                  >
+                    #{g.jobNumber}
+                  </span>
+                ) : null}
+                <span style={{ fontWeight: 600 }}>{addressLabel}</span>
+                {g.sheetCount > 1 && (
+                  <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>· {g.sheetCount} sheets</span>
+                )}
+                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  Assigned to:{' '}
+                  {g.rawAssignedTo ? (
+                    <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-strong)' }}>"{g.rawAssignedTo}"</span>
+                  ) : (
+                    '— (blank)'
+                  )}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 650,
+                    borderRadius: 999,
+                    padding: '0.08rem 0.5rem',
+                    whiteSpace: 'nowrap',
+                    background: g.reason === 'shared' ? 'var(--bg-blue-tint)' : 'var(--bg-red-tint)',
+                    color: g.reason === 'shared' ? 'var(--text-blue-700)' : 'var(--text-red-700)',
+                  }}
+                >
+                  {g.reason === 'shared' ? 'Multiple subs' : 'No roster match'}
+                </span>
+                <span
+                  style={{
+                    fontVariantNumeric: 'tabular-nums',
+                    fontWeight: g.totalBalance > 0 ? 700 : 400,
+                    color: g.totalBalance > 0 ? 'var(--text-strong)' : 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ${Math.round(g.totalBalance).toLocaleString('en-US')} open
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: 'auto' }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/jobs?tab=sub_sheet_ledger&editLabor=${encodeURIComponent(g.sheetIds[0] ?? '')}`)}
+                    style={{ padding: '0.15rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}
+                  >
+                    Open →
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setAssignPickerKey((prev) => (prev === g.key ? null : g.key))}
+                    style={{ padding: '0.15rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}
+                  >
+                    Assign…
+                  </button>
+                  {suggestion && (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void assignGroup(g, suggestion)}
+                      style={{ padding: '0.15rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-900)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 650, fontFamily: 'inherit' }}
+                    >
+                      ✨ Link to {suggestion.name}
+                    </button>
+                  )}
+                  {saving && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Saving…</span>}
+                </span>
+                {assignPickerKey === g.key && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', width: '100%', paddingLeft: '0.1rem' }}>
+                    <select
+                      autoFocus
+                      defaultValue=""
+                      disabled={saving}
+                      onChange={(e) => {
+                        const person = roster.find((r) => r.id === e.target.value)
+                        if (person) void assignGroup(g, person)
+                      }}
+                      style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
+                    >
+                      <option value="" disabled>
+                        {g.reason === 'shared' ? 'Reassign to one sub…' : 'Link these sheets to…'}
+                      </option>
+                      {roster.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                    {g.reason === 'shared' && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Picking one sub replaces the current multi-name assignment.
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+          {unattributedGroups.length > 3 && !showAllUnattributed && (
+            <button
+              type="button"
+              onClick={() => setShowAllUnattributed(true)}
+              style={{ marginTop: '0.4rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-link)', fontFamily: 'inherit' }}
+            >
+              Show all {result.unattributed.length} sheets
+            </button>
+          )}
+        </div>
+      )}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
@@ -281,13 +509,6 @@ export default function PeopleSubsTab() {
         </div>
       )}
 
-      {result.unattributed.length > 0 && (
-        <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <strong style={{ color: 'var(--text-strong)' }}>Unattributed sheets ({result.unattributed.length}):</strong>{' '}
-          {result.unattributed.map((u) => `${u.label} (${u.reason === 'shared' ? 'multiple subs' : 'no roster match'}${u.balance > 0 ? ` · ${money(u.balance)} open` : ''})`).join(' · ')}
-          <span> — fix names or assignments in Jobs → Sub Labor.</span>
-        </div>
-      )}
     </div>
   )
 }
