@@ -7,10 +7,25 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1300)
+last_updated: 2026-08-02 (v2.1303)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1303)
+
+### Workflow decomposition: StepFormModal extracted (2026-08-02)
+First component move of the Workflow page decomposition (per [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md)): the ~505-line Add/Edit step modal moves verbatim from the bottom of [`Workflow.tsx`](../src/pages/Workflow.tsx) to [`components/workflow/StepFormModal.tsx`](../src/components/workflow/StepFormModal.tsx), and the small `PersonDisplayWithContact` component (+ its `PersonContactInfo` type) co-moves to [`components/workflow/PersonDisplayWithContact.tsx`](../src/components/workflow/PersonDisplayWithContact.tsx) per the map's same-wave pairing. Parent wiring (`stepForm` state, `saveStep`/`copyStep`/`closeStepForm`, the page-level contact modal, the `#step-<id>` hash-scroll receiver) unchanged; quirks preserved verbatim (non-interactive first "change order:" chip, whole-table `checkDuplicateName`, noon-anchored date formatting, sequential `sequence_order` semantics, 200ms dropdown blur). Also corrects the map's stale "nothing is extracted / no src/components/workflow/ directory" claims (StepCommitmentPanel + `lib/workflow/*` already existed) and notes the 556-line `StepCommitmentPanel` in the stage-cards dossier. Workflow.tsx 4,851 → 4,288 lines. Typecheck/lint/tests green.
+
+## Latest Updates (v2.1302)
+
+### Subs panel: archived-person sheets go quiet (2026-08-02)
+Follow-up to v2.1296. The unattributed panel treated "assigned to someone who was archived" as a problem to fix, but there is no fix — the Assign picker only offers ACTIVE roster people (matching `buildSubsHqRows`, which attributes against active people only), so those rows nagged forever with no valid action. New kernel reason **`archived`** in [`subsHqRows.ts`](../src/lib/people/subsHqRows.ts): a sheet whose junction owner is archived, or whose raw `assigned_to_name` uniquely matches an archived person (ambiguous archived names deliberately stay `unmatched`). Panel behavior: archived sheets **with nothing owed** leave the amber panel for one muted line ("N sheets belong to archived person (Edgar) — nothing owed"); archived sheets **with an open balance** stay in the panel with an amber **Archived person** badge + tooltip naming them, since owed money still deserves attention. `UnattributedGroup` carries `archivedPersonName`; +2 kernel tests (name match, junction match, ambiguity/multi-owner negatives). Live-verified: 5 Edgar sheets went quiet, the 4 genuinely-broken "MIke Rodriguez" sheets remain actionable.
+
+## Latest Updates (v2.1301)
+
+### Edit Job create-customer link no longer vanishes (2026-08-02)
+Creating a customer from Edit Job's "Link to customer" wrote the row and linked it (`customer_id` UPDATE) — then the **identity autosave nulled the link right back**. Root cause: the locally-appended customer object in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) (~line 2626) omitted `master_user_id` (hidden by an `as CustomerRow` cast), so `resolveCustomerIdForJobPayload`'s cross-master guard saw `undefined !== jobMaster`, fell through to name re-resolution (which also filters on master), and resolved `null` — the next autosave persisted it. Deterministically reproduced via the kernel: `{withoutMasterField: null, withMasterField: 'new-cust'}`. Fix: append the row with `master_user_id: customerMasterId` (+ a comment pinning the constraint); the modal's normal customer fetches already selected the column, only the local append missed it. Typecheck clean; jobLedgerCustomer + jobFormAutosaveSlices kernels 27 tests green.
 
 ## Latest Updates (v2.1300)
 

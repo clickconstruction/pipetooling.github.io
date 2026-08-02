@@ -234,11 +234,27 @@ export default function PeopleSubsTab() {
   if (result.rows.length === 0 && unattributedGroups.length === 0)
     return <p style={{ color: 'var(--text-muted)' }}>No subcontractors on the roster yet.</p>
 
-  const visibleGroups = showAllUnattributed ? unattributedGroups : unattributedGroups.slice(0, 3)
+  // Archived-and-settled sheets are history, not problems — they get a quiet
+  // summary line instead of amber rows. Archived with money open stays amber.
+  const actionableGroups = unattributedGroups.filter((g) => g.reason !== 'archived' || g.totalBalance > 0)
+  const archivedSettledGroups = unattributedGroups.filter((g) => g.reason === 'archived' && g.totalBalance <= 0)
+  const actionableSheetCount = actionableGroups.reduce((n, g) => n + g.sheetCount, 0)
+  const archivedSettledSheetCount = archivedSettledGroups.reduce((n, g) => n + g.sheetCount, 0)
+  const archivedNames = [...new Set(archivedSettledGroups.map((g) => g.archivedPersonName).filter(Boolean))] as string[]
+
+  const visibleGroups = showAllUnattributed ? actionableGroups : actionableGroups.slice(0, 3)
+
+  const archivedSummaryLine = archivedSettledSheetCount > 0 && (
+    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+      {archivedSettledSheetCount} sheet{archivedSettledSheetCount === 1 ? ' belongs' : 's belong'} to archived{' '}
+      {archivedNames.length === 1 ? 'person' : 'people'}
+      {archivedNames.length > 0 ? ` (${archivedNames.join(', ')})` : ''} — nothing owed.
+    </p>
+  )
 
   return (
     <div>
-      {unattributedGroups.length > 0 && (
+      {actionableGroups.length > 0 && (
         <div
           style={{
             marginBottom: '1rem',
@@ -249,7 +265,7 @@ export default function PeopleSubsTab() {
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
-            ⚠ {result.unattributed.length} sub {result.unattributed.length === 1 ? "sheet isn't" : "sheets aren't"} linked to anyone on the roster
+            ⚠ {actionableSheetCount} sub {actionableSheetCount === 1 ? "sheet isn't" : "sheets aren't"} linked to anyone on the roster
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', margin: '0.15rem 0 0.5rem' }}>
             Their balances are missing from every sub's Owed column until they're fixed.
@@ -300,17 +316,20 @@ export default function PeopleSubsTab() {
                   )}
                 </span>
                 <span
+                  title={g.reason === 'archived' && g.archivedPersonName ? `Matches archived roster person "${g.archivedPersonName}" — shown because money is still open` : undefined}
                   style={{
                     fontSize: '0.7rem',
                     fontWeight: 650,
                     borderRadius: 999,
                     padding: '0.08rem 0.5rem',
                     whiteSpace: 'nowrap',
-                    background: g.reason === 'shared' ? 'var(--bg-blue-tint)' : 'var(--bg-red-tint)',
-                    color: g.reason === 'shared' ? 'var(--text-blue-700)' : 'var(--text-red-700)',
+                    background:
+                      g.reason === 'shared' ? 'var(--bg-blue-tint)' : g.reason === 'archived' ? 'var(--bg-amber-100)' : 'var(--bg-red-tint)',
+                    color:
+                      g.reason === 'shared' ? 'var(--text-blue-700)' : g.reason === 'archived' ? 'var(--text-amber-900)' : 'var(--text-red-700)',
                   }}
                 >
-                  {g.reason === 'shared' ? 'Multiple subs' : 'No roster match'}
+                  {g.reason === 'shared' ? 'Multiple subs' : g.reason === 'archived' ? 'Archived person' : 'No roster match'}
                 </span>
                 <span
                   style={{
@@ -381,17 +400,18 @@ export default function PeopleSubsTab() {
               </div>
             )
           })}
-          {unattributedGroups.length > 3 && !showAllUnattributed && (
+          {actionableGroups.length > 3 && !showAllUnattributed && (
             <button
               type="button"
               onClick={() => setShowAllUnattributed(true)}
               style={{ marginTop: '0.4rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-link)', fontFamily: 'inherit' }}
             >
-              Show all {result.unattributed.length} sheets
+              Show all {actionableSheetCount} sheets
             </button>
           )}
         </div>
       )}
+      {archivedSummaryLine}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>

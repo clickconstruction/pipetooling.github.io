@@ -60,9 +60,12 @@ export type UnattributedSheet = {
   label: string
   jobNumber: string | null
   balance: number
-  reason: 'unmatched' | 'shared'
+  /** 'archived' = the sheet's person exists on the roster but is archived — historical, not broken. */
+  reason: 'unmatched' | 'shared' | 'archived'
   /** Raw `assigned_to_name` as written on the sheet ('' when blank). */
   rawAssignedTo: string
+  /** Set when reason === 'archived': the archived person's roster name. */
+  archivedPersonName: string | null
 }
 
 export type SubsHqResult = {
@@ -119,10 +122,21 @@ export function buildSubsHqRows(input: {
   // Every active sub gets a row even with no history (so compliance gaps show).
   for (const p of activePeople) ensureRow(p.id)
 
+  // Archived-person detection: junction owner who is archived, or a raw name
+  // that uniquely matches an archived person. Historical sheets, not errors.
+  const allPeopleById = new Map(input.people.map((p) => [p.id, p]))
+  const archivedByNormName = new Map<string, SubsHqPersonInput | null>()
+  for (const p of input.people) {
+    if (!p.archived) continue
+    const k = p.name.trim().toLowerCase()
+    archivedByNormName.set(k, archivedByNormName.has(k) ? null : p) // null = ambiguous
+  }
+
   const unattributed: SubsHqResult['unattributed'] = []
   for (const sheet of input.sheets) {
     const balance = subLaborJobBalance(sheet)
-    const owners = (assigneesBySheet.get(sheet.id) ?? []).filter((pid) => peopleById.has(pid))
+    const junctionOwners = assigneesBySheet.get(sheet.id) ?? []
+    const owners = junctionOwners.filter((pid) => peopleById.has(pid))
     if (owners.length === 1) {
       const row = ensureRow(owners[0]!)
       if (row) {
@@ -133,13 +147,27 @@ export function buildSubsHqRows(input: {
       }
     }
     if (balance.balance > 0 || owners.length !== 1) {
+      const rawAssignedTo = (sheet.assignedToName ?? '').trim()
+      let reason: UnattributedSheet['reason'] = owners.length > 1 ? 'shared' : 'unmatched'
+      let archivedPersonName: string | null = null
+      if (reason === 'unmatched') {
+        const junctionArchived =
+          junctionOwners.length === 1 ? allPeopleById.get(junctionOwners[0]!) : undefined
+        const nameArchived = rawAssignedTo ? archivedByNormName.get(rawAssignedTo.toLowerCase()) : undefined
+        const archivedMatch = junctionArchived?.archived ? junctionArchived : nameArchived || null
+        if (archivedMatch) {
+          reason = 'archived'
+          archivedPersonName = archivedMatch.name
+        }
+      }
       unattributed.push({
         sheetId: sheet.id,
         label: sheet.label,
         jobNumber: sheet.jobNumber ?? null,
         balance: Math.max(0, balance.balance),
-        reason: owners.length > 1 ? 'shared' : 'unmatched',
-        rawAssignedTo: (sheet.assignedToName ?? '').trim(),
+        reason,
+        rawAssignedTo,
+        archivedPersonName,
       })
     }
   }
@@ -178,7 +206,8 @@ export type UnattributedGroup = {
   label: string
   jobNumber: string | null
   rawAssignedTo: string
-  reason: 'unmatched' | 'shared'
+  reason: 'unmatched' | 'shared' | 'archived'
+  archivedPersonName: string | null
   /** Sheet ids in the group, highest open balance first. */
   sheetIds: string[]
   sheetCount: number
@@ -202,6 +231,7 @@ export function groupUnattributedSheets(entries: UnattributedSheet[]): Unattribu
         jobNumber: e.jobNumber,
         rawAssignedTo: e.rawAssignedTo,
         reason: e.reason,
+        archivedPersonName: e.archivedPersonName,
         sheetIds: [],
         sheetCount: 0,
         totalBalance: 0,

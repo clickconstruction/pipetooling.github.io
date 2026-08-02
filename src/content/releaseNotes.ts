@@ -11,6 +11,35 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1303',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Workflow step form restructured',
+    kind: 'infra',
+    highlights: [
+      'The Add/Edit step popup on the project Workflow page (including its Add Person form) moved into its own component.',
+      'No visible changes; adding, editing, and assigning steps works exactly as before.',
+    ],
+  },
+  {
+    version: 'v2.1302',
+    date: '2026-08-02',
+    title: 'Subs: sheets from archived people stop nagging',
+    kind: 'fix',
+    highlights: [
+      'Sub sheets belonging to someone you archived are history, not a problem — when nothing is owed they now collapse into one quiet line instead of filling the warning panel.',
+      'If money is still open on an archived person’s sheet, it stays in the panel with an "Archived person" badge so it does not get lost.',
+    ],
+  },
+  {
+    version: 'v2.1301',
+    date: '2026-08-02',
+    title: 'Edit Job: creating a customer now keeps it linked',
+    kind: 'fix',
+    highlights: [
+      'Creating a customer from Edit Job’s "Link to customer" saved the customer but the link quietly vanished moments later — the background autosave was second-guessing the brand-new customer and clearing the field. The link now sticks.',
+    ],
+  },
+  {
     version: 'v2.1300',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff price popups restructured',
