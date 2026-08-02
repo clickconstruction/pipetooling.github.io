@@ -57,7 +57,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 | Understanding roles/permissions | [ACCESS_CONTROL.md](./docs/ACCESS_CONTROL.md) - Complete permissions matrix |
 | Adding a new role | [ADDING_A_NEW_ROLE.md](./docs/ADDING_A_NEW_ROLE.md) - Step-by-step guide |
 | Working with database/schema | [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) - "Database Schema" section |
-| Bids system features | [BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md) - All 10 tabs documented |
+| Bids system features | [BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md) - All 14 tabs documented |
 | Decomposing a large page | [docs/PAGE_DECOMPOSITION_PLAYBOOK.md](./docs/PAGE_DECOMPOSITION_PLAYBOOK.md) - the method + inventory; per-surface `docs/*_ARCHITECTURE.md` maps (Bids, People, Dashboard, Jobs, JobFormModal, Materials, Settings — indexed in [docs/README.md](./docs/README.md)) |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md) - Complete API reference |
 | Recent changes/features | [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) - Chronological updates |
@@ -76,9 +76,9 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 **Key Constraints to Remember**:
 - Never edit existing migrations (append-only)
 - Every new table needs RLS policies for all 9 roles
-- Update TypeScript types after schema changes: `supabase gen types typescript --local > src/types/database.ts`
+- Update TypeScript types after schema changes: `npm run gen-types:linked` (regenerates `src/types/database.ts` from the linked project — the `--local` form silently blanks the file when no local stack is running)
 - TypeScript strict mode: No `any` types, handle null/undefined
-- Test RLS for all roles: dev, master, assistant, controller, subcontractor, helpers, estimator, primary, superintendent
+- Test RLS for all roles: dev, master_technician, assistant, controller, subcontractor, helpers, estimator, primary, superintendent
 
 ---
 
@@ -91,7 +91,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 - **[WORKFLOW_FEATURES.md](./docs/WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
 
 📋 **System-Specific Documentation**:
-- **[BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md)** - Complete Bids system documentation (10 tabs, book systems, workflows)
+- **[BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md)** - Complete Bids system documentation (14 tabs, book systems, workflows)
 - **[EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, notifications)
 - **[ACCESS_CONTROL.md](./docs/ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
 - **[MIGRATIONS.md](./docs/MIGRATIONS.md)** - Database migration history and tracking
@@ -105,13 +105,9 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 
 📝 **Feature-Specific Documentation**:
 - **[PRIVATE_NOTES_SETUP.md](./docs/PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup
-- **EMAIL_TEMPLATES_SETUP.md** - Email templates database setup
-- **EMAIL_TESTING.md** - Email testing and integration status
 
 🔧 **Database & Technical Documentation**:
 - **[SALARY_CLOCK_SESSIONS.md](./docs/SALARY_CLOCK_SESSIONS.md)** - Salaried **`salary_schedule`** clock sessions (sync, split RPCs, overlap guards, migrations)
-- **DATABASE_IMPROVEMENTS_SUMMARY.md** - Database layer improvements (triggers, constraints, transactions)
-- **DATABASE_FIXES_TEST_PLAN.md** - Comprehensive testing plan for database improvements
 
 The main documentation includes:
 - Project overview and architecture
@@ -133,56 +129,26 @@ The main documentation includes:
 
 The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase table and RPC types are maintained in **`src/types/database.ts`**; update them when the database schema or RPCs change so `npm run build` stays clean. See [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) for type-update patterns and known issues.
 
-## Features
+## Features (high level)
 
-- Customer and project management
-- Custom workflow steps (plain text)
-- People roster (with or without user accounts)
-- Workflow templates
-- **Calendar view** (Central Time, two-line display)
-- **Role-based access control** (Dev, Master, Assistant, Controller, Subcontractor, Helpers, Estimator, Primary, Superintendent)
-  - Assistants/subcontractors only see assigned stages
-  - Estimators: Materials and Bids only; can see and add customers from Bids (no access to /customers or /projects)
-  - Primaries: Materials and Jobs (Reports + Billing); can add materials to jobs
-- **Private notes and line items** (owners/masters only)
-- **Projections and Ledger** (financial tracking)
-- **Action Ledger** (complete stage history)
-- **Set Start** with date/time picker
-- Notification subscriptions
-- **Email templates** (customizable notification content)
-- User impersonation (devs)
-- **Add new customer from Bids**: GC/Builder dropdown includes "+ Add new customer"; opens modal (same form as /customers/new without Quick Fill); new customer can be assigned to a master and is then selected as the bid's GC/Builder
-- **New customer Quick Fill**: On /customers/new, Quick Fill is expandable (collapsed by default) with button next to the title
-- **Bids Counts**: Fixture or Tie-in quick-select, number pad for count, Save / Save & Add; **Import** button for bulk paste (tab- or comma-separated: Fixture, Count, Plan Page per line); Project Name required; "Save and start Counts" in New Bid modal; Edit Bid button on Counts tab. Updating Counts refreshes Takeoff and Cost Estimate for the same bid; switching to Takeoff or Cost Estimate refetches so data stays current without a page refresh.
-- **Bids Takeoff**: Map fixture or tie-in counts to material templates; multiple templates per fixture; template search; Create PO / Add to PO; "View purchase order" opens Materials with that PO
-- **Bids Cost Estimate**: Combine material and labor by bid; link up to three POs (Rough In, Top Out, Trim Set) per stage; editable labor hours per fixture and labor rate; **automated driving cost calculation** (based on total hours, distance, and configurable rates); one-click "Apply matching Labor Hours" from labor book templates; fixture labor matrix synced with Counts; total materials, labor, driving, and grand total (numbers over 999 with commas); Save and Print
-- **Bids Submission & Followup**: When a bid is selected, shows **Cost estimate:** amount (or "Not yet created") and **View cost estimate** / **Create cost estimate** button that switches to the Cost Estimate tab with that bid preselected
-- **Bids Pricing**: **Pricing** tab (between Cost Estimate and Cover Letter): named price book versions with fixture/tie-in entries per stage (Rough In, Top Out, Trim Set, Total); **searchable price book entries** with inline "Add to Price Book" when no matches found; **searchable assignment dropdowns** for quickly assigning fixtures to price book entries; compare our cost (labor + allocated materials) to price book revenue; margin % and flags (red &lt; 20%, yellow &lt; 40%, green ≥ 40%)
-- **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId). PO items can have notes and a "From template" tag when added via a template
-- **Materials Price Book**: 
-  - **Service type abbreviations** at top: Plumbing → PLUM, Electrical → ELEC (hover for full name)
-  - Per-part best price with expandable rows showing notes and all prices
-  - **Search all parts**: Server-side search across entire database (name, manufacturer, fixture type, notes)
-  - **Infinite scroll**: Automatically loads more parts as you scroll
-  - **Server-side sorting**: Click "#" column to sort all parts by price count
-  - **"Load All" mode** (opt-in): Loads all parts with instant client-side search and sorting - perfect for bulk price editing; default is paginated to reduce database load
-  - **Supply house statistics**: Global price coverage stats in Supply Houses modal (total items, % priced, per-supply-house counts sorted by coverage)
-  - Inline **Edit prices** action in expanded rows
-  - Auto-refreshing stats when modal opens
-- **Materials Templates & Purchase Orders**: Summary at bottom (# templates, % with unpriced parts, % with no missing prices). Template items use Remove / Edit / Price icon buttons; price icon colored by part price count (red / yellow / gray)
-- **Job Tally**: Add parts to jobs by fixture; quantity stepper (1→2→3, whole numbers only); down arrow hidden when quantity is 1; create PO from tally for review
-- **Dashboard Recent Reports** (8 shown): Click to view in modal; envelope icon on unread; read reports grayed with hide (X) button; realtime updates when reports added
-- **Jobs Reports**: Devs can delete reports; others have full CRUD except delete
-- **Jobs Stages – Billed Awaiting Payment**: Stage shows jobs and invoices awaiting payment; **Edit** is inline immediately after **Open …** (relative age) on the primary actions row; Total by Name modal breaks down by job; Dashboard pin opens modal and navigates to Stages
-- **Quickfill – Billed Awaiting Payment**: Summary section with HCP, Job, Assigned, Remaining table; link to Jobs Stages
-- **Quickfill – Banking sorting**: Paginated Mercury snapshot (person/job gaps); summary **Without person**, **Not split to jobs**, **Total available**; parallel enrich load ([`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx)); see `RECENT_FEATURES.md` v2.222
-- **Quickfill – Prospects**: Active lead warmth counts (0–3 and 4+), **Team** line chart (last 30 days, **Marked + Updated** per person per day, **recharts**) for dev / master / assistant, **Open Prospects** link — [`QuickfillProspectsSection.tsx`](src/components/quickfill/QuickfillProspectsSection.tsx), [`ProspectTeamActivityLineChart.tsx`](src/components/quickfill/ProspectTeamActivityLineChart.tsx); see `RECENT_FEATURES.md` v2.381 / v2.382
+The major systems, one line each. Feature history lives in [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) (grep for `v2.NNN` or a feature name); architecture and schema detail lives in [docs/PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md).
+
+- **Customers & Projects** — customer records, project workflows with custom stages, templates, superintendent assignment
+- **Workflows / stages** — assignment, lifecycle actions (start/complete/approve/send-back/skip), sub work orders (step commitments), notifications, action ledger, projections and line items (see [docs/WORKFLOW_FEATURES.md](./docs/WORKFLOW_FEATURES.md))
+- **Jobs** — job tracking with the Pipeline board, reports, billing/invoicing (Stripe), payments, recurring dispatch
+- **Bids** — 14-tab bid pipeline: counts, takeoff, labor, pricing, cover letters, submission tracking (see [docs/BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md))
+- **Materials** — Parts Book (price book), assemblies, PO Builder, purchase orders, supply houses, job tally
+- **People & Payroll** — roster, hours, clock sessions, pay reports, sub labor ledger, Subs HQ, contracts
+- **Schedule / Dispatch** — dispatch grid, schedule blocks, day emails, Dispatch Mode
+- **Banking** — Mercury account sync, transaction sorting and job splits, card review
+- **Estimates, Prospects (incl. Hiring), Checklist, Documents, Map** — supporting systems
+- **Role-based access control** — 9 roles (dev, master_technician, assistant, controller, subcontractor, helpers, estimator, primary, superintendent); [docs/ACCESS_CONTROL.md](./docs/ACCESS_CONTROL.md) is the authority on who sees what
 
 ## Deployment
 
 The project automatically deploys to GitHub Pages when changes land on the `main` branch. Because `main` is branch-protected, changes reach it via a merged PR. CI runs `typecheck` + `lint` + `test` on every PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)); the deploy workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) re-runs the same `checks` job as a gate before building, so a broken `main` never ships.
 
-> **⚠️ The client and the database deploy on separate tracks.** Merging to `main` deploys only the **client** (GitHub Pages) — CI does **not** run `supabase db push`. Database migrations are applied **manually** (`supabase db push` against the linked prod project `yewfzhbofbbyvkvtaatw`). When a change couples the two (a migration the new client must understand, or vice-versa), **sequence them** — usually deploy the client first, then apply the migration. See [docs/MIGRATIONS.md](./docs/MIGRATIONS.md) and the [drift runbook](./AGENTS.md#migration-history-drift-linked-project).
+> **⚠️ Three separate deploy tracks.** Merging to `main` deploys only the **client** (GitHub Pages) — CI does **not** touch the database or edge functions. **Database migrations** are applied **manually** (`supabase db push` against the linked prod project `yewfzhbofbbyvkvtaatw`); when a change couples client and DB (a migration the new client must understand, or vice-versa), **sequence them** — usually deploy the client first, then apply the migration. **Edge functions** also deploy **manually** (`supabase functions deploy <name>`) — editing `supabase/functions/*` does nothing until deployed; check alignment with `npm run check:edge-drift`. See [docs/MIGRATIONS.md](./docs/MIGRATIONS.md) and the [drift runbook](./AGENTS.md#migration-history-drift-linked-project).
 
 **Required GitHub Secrets**:
 - `VITE_SUPABASE_URL`
@@ -190,7 +156,7 @@ The project automatically deploys to GitHub Pages when changes land on the `main
 
 See [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
 
-**SPA / 404**: Deep links may show **404** on the document request in DevTools; see TROUBLESHOOT_404.md. In-app **Hard Reload** uses [`/?nocache=…`](src/lib/hardReload.ts) plus `history.replaceState` to reduce noisy 404s on cache-bust reloads.
+**SPA / 404**: Deep links may show **404** on the document request in DevTools; see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md). In-app **Hard Reload** uses [`/?nocache=…`](src/lib/hardReload.ts) plus `history.replaceState` to reduce noisy 404s on cache-bust reloads.
 
 ### Sync to Testing Site
 

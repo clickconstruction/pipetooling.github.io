@@ -5,7 +5,7 @@ file: docs/FRAGILITY_REMEDIATION_PLAN.md
 type: Engineering / Migration plan
 purpose: Staged, tested plan to fix three fragility clusters — (A) Stripe test/live mode being per-request and unrecorded (webhook ignores livemode; cross-mode void orphans invoices; cross-mode create wipes the other mode's customer id), (B) jobs_ledger.payments_made having many writers and no DB invariant, (C) finishing the person-identity migration (docs/PERSON_IDENTITY_PLAN.md phases D–E) plus five tooling bugs found in review. Written 2026-07-30 from a code-level audit of main @ 0dc004d6.
 audience: Developers, AI Agents
-last_updated: 2026-07-30
+last_updated: 2026-08-01
 ---
 
 ## Ground rules (apply to every step)
@@ -28,50 +28,51 @@ last_updated: 2026-07-30
 
 Principle: **the invoice row is the authority on its own mode**. Findings this fixes (file:line refs from the 2026-07-30 audit): webhook never reads `event.livemode` and inits its key test-first (`stripe-webhook/index.ts:181`); `void-stripe-invoice-for-revert` deletes the DB row on "No such invoice" (`:275–284`); `create-stripe-invoice` clears + replaces the opposite mode's `customers.stripe_customer_id` (`:336–357`); two ungated client pref reads (`AgreedWriteDownModal.tsx:132`, `JobFormModal.tsx:286`); `mark_invoice_paid_from_stripe` EXECUTE granted to anon/authenticated (baseline L44627).
 
-| Step | Change | Test/verify |
-|---|---|---|
-| **A0** | Migration: REVOKE EXECUTE on `mark_invoice_paid_from_stripe` (and audit `complete_job_collect_payment_flow_for_invoice`) from anon/authenticated; service_role keeps. | Grep confirms webhook-only callers; post-push `has_function_privilege()` query for authenticated = false; webhook test-mode paid event still applies (service role). |
-| **A1** | Migration: `jobs_ledger_invoices.stripe_mode` text CHECK ('live','test') + `stripe_webhook_events.livemode` boolean; backfill live where `stripe_invoice_id IS NOT NULL`. Edge: `create-stripe-invoice` stamps mode. | Post-push: count NULL-mode rows with stripe ids = 0; create a test-mode invoice (dev) → row has `stripe_mode='test'`. |
-| **A2** | Webhook: `stripeWebhookSecretsOrdered()` → (secret, mode) pairs; verified secret's mode = event mode, cross-checked vs `event.livemode`; invoice events require row-mode match (mismatch → 200 `applied:false, reason:'mode_mismatch'`); NULL-mode rows self-heal from the verified mode; `stripeInitKey` + credit-note retrieval use the event's mode. | Test-mode E2E: create → send → pay in Stripe test dashboard → webhook applies to the test row; manually fire a test event at a live row id → `mode_mismatch` in edge logs, row untouched. |
-| **A3** | Row-bound functions (`void-stripe-invoice-for-revert`, `send-stripe-invoice`, `get-stripe-invoice-details`, both OOB, `stripe-invoice-agreed-write-down`) resolve mode from the row; body `stripe_mode` validated (mismatch → 409, no side effects), fallback only for NULL-mode rows. Void's `noop_missing` delete becomes safe (mode now guaranteed right). | Test-mode E2E void path: draft delete, open void, and a deliberately wrong body mode → 409 with row intact. |
-| **A4** | Migration: `customers.stripe_customer_id_test`; `create`/`preview` use mode-appropriate column, never clear the other. Backfill: existing values are live. | Dev test-mode create for a customer with a live id → live id unchanged, test id populated. |
-| **A5** | Client: gate the two ungated pref reads via `stripeModeForBillingFromRole`; flip `defaultStripeBillingMode()` omitted-param default to 'live'; unit tests for `billingStripeModePref` + mode resolution. | New vitest files; grep proves zero ungated `getBillingStripeModePref()` call sites outside the role gate. |
+| Step | Status | Change | Test/verify |
+|---|---|---|---|
+| **A0** | ✅ DONE v2.1110 | Migration: REVOKE EXECUTE on `mark_invoice_paid_from_stripe` (and audit `complete_job_collect_payment_flow_for_invoice`) from anon/authenticated; service_role keeps. | Grep confirms webhook-only callers; post-push `has_function_privilege()` query for authenticated = false; webhook test-mode paid event still applies (service role). |
+| **A1** | ✅ DONE v2.1114 | Migration: `jobs_ledger_invoices.stripe_mode` text CHECK ('live','test') + `stripe_webhook_events.livemode` boolean; backfill live where `stripe_invoice_id IS NOT NULL`. Edge: `create-stripe-invoice` stamps mode. | Post-push: count NULL-mode rows with stripe ids = 0; create a test-mode invoice (dev) → row has `stripe_mode='test'`. |
+| **A2** | ✅ DONE v2.1115 | Webhook: `stripeWebhookSecretsOrdered()` → (secret, mode) pairs; verified secret's mode = event mode, cross-checked vs `event.livemode`; invoice events require row-mode match (mismatch → 200 `applied:false, reason:'mode_mismatch'`); NULL-mode rows self-heal from the verified mode; `stripeInitKey` + credit-note retrieval use the event's mode. | Test-mode E2E: create → send → pay in Stripe test dashboard → webhook applies to the test row; manually fire a test event at a live row id → `mode_mismatch` in edge logs, row untouched. |
+| **A3** | ✅ DONE v2.1116 | Row-bound functions (`void-stripe-invoice-for-revert`, `send-stripe-invoice`, `get-stripe-invoice-details`, both OOB, `stripe-invoice-agreed-write-down`) resolve mode from the row; body `stripe_mode` validated (mismatch → 409, no side effects), fallback only for NULL-mode rows. Void's `noop_missing` delete becomes safe (mode now guaranteed right). | Test-mode E2E void path: draft delete, open void, and a deliberately wrong body mode → 409 with row intact. |
+| **A4** | ✅ DONE v2.1117 | Migration: `customers.stripe_customer_id_test`; `create`/`preview` use mode-appropriate column, never clear the other. Backfill: existing values are live. | Dev test-mode create for a customer with a live id → live id unchanged, test id populated. |
+| **A5** | ✅ DONE v2.1118 | Client: gate the two ungated pref reads via `stripeModeForBillingFromRole`; flip `defaultStripeBillingMode()` omitted-param default to 'live'; unit tests for `billingStripeModePref` + mode resolution. | New vitest files; grep proves zero ungated `getBillingStripeModePref()` call sites outside the role gate. |
 
 ## Workstream B — payments_made invariant
 
 Principle: **rows are the truth; the column becomes a trigger-maintained cache**. Landmine: `jobs_ledger_payments` (2026-03) had no backfill — jobs paid earlier legitimately have `payments_made > 0` with zero rows; blanket recompute would zero real money. Writers today: 6 incrementing RPCs (internally consistent), 2 recompute RPCs, JobFormModal overwrite (`persistBillingSlice`, the only diverging writer, non-transactional delete-all+reinsert).
 
-| Step | Change | Test/verify |
-|---|---|---|
-| **B1** | `scripts/audit-payments-made-drift.sql`: classify jobs — consistent / drift (rows≠column) / historical (no rows, column>0). Read-only; run and record counts here. | Script reviewed; results recorded in status log; gates B2/B3. |
-| **B2** | ~~Migration: synthesize tagged historical rows~~ **SKIPPED — unnecessary.** The 2026-07-30 B1 run found all 771 jobs consistent (zero drift, zero historical no-row jobs); the feared 2026-03 backfill gap never materialized in practice. | B1 audit output recorded in the status log. |
-| **B3** | One migration, atomically: `recompute_jobs_ledger_payments_made(p_job_id)` + AFTER I/U/D trigger on `jobs_ledger_payments`, **and** `CREATE OR REPLACE` of all incrementing RPCs to stop writing the column (trigger + increment would double-count; must ship together). Status-promotion logic unchanged (reads post-trigger value in-tx). | New SQL exercised via test-mode payment paths (Mark Paid modal, AR allocation, webhook-paid); B1 audit stays clean; unit tests for any client mirror kernels touched. |
-| **B4** | Client: `persistBillingSlice`/`createJob` stop writing `payments_made`; fix the sum-vs-`amount>0`-filter asymmetry. Safe either order vs B3 (client's stale write precedes row rewrite; trigger converges). | Vitest on `jobFormAutosaveSlices` payload builders; manual edit-job payment add/remove; audit clean. |
-| **B5** | Client: billing slice goes diff-based (delete only hydrated-then-removed ids, update in place, insert new, leave unknown rows) — fixes the webhook-mid-edit deletion race and stops the new-UUID `payment_added` activity noise. | Vitest diff kernel (new `lib/jobs/paymentRowsDiff.ts` + tests); manual: pay a test invoice via webhook while the form is open, autosave, row survives. |
-| **B6** | Migration (after B4 confirmed deployed): BEFORE UPDATE guard on `jobs_ledger.payments_made` rejecting non-recompute writers (GUC set by the recompute fn — same pattern as read-only stmt triggers). | Post-push: direct UPDATE as dev → rejected; payment paths still work; audit clean after a week of real use. |
+| Step | Status | Change | Test/verify |
+|---|---|---|---|
+| **B1** | ✅ DONE 2026-07-30 (script committed 2026-08-01) | `scripts/audit-payments-made-drift.sql`: classify jobs — consistent / drift (rows≠column) / historical (no rows, column>0). Read-only; run and record counts here. | Script reviewed; results recorded in status log; gates B2/B3. |
+| **B2** | ⏭️ SKIPPED | ~~Migration: synthesize tagged historical rows~~ **SKIPPED — unnecessary.** The 2026-07-30 B1 run found all 771 jobs consistent (zero drift, zero historical no-row jobs); the feared 2026-03 backfill gap never materialized in practice. | B1 audit output recorded in the status log. |
+| **B3** | ✅ DONE v2.1119 | One migration, atomically: `recompute_jobs_ledger_payments_made(p_job_id)` + AFTER I/U/D trigger on `jobs_ledger_payments`, **and** `CREATE OR REPLACE` of all incrementing RPCs to stop writing the column (trigger + increment would double-count; must ship together). Status-promotion logic unchanged (reads post-trigger value in-tx). | New SQL exercised via test-mode payment paths (Mark Paid modal, AR allocation, webhook-paid); B1 audit stays clean; unit tests for any client mirror kernels touched. |
+| **B4** | ✅ DONE v2.1120 | Client: `persistBillingSlice`/`createJob` stop writing `payments_made`; fix the sum-vs-`amount>0`-filter asymmetry. Safe either order vs B3 (client's stale write precedes row rewrite; trigger converges). | Vitest on `jobFormAutosaveSlices` payload builders; manual edit-job payment add/remove; audit clean. |
+| **B5** | ✅ DONE v2.1121 | Client: billing slice goes diff-based (delete only hydrated-then-removed ids, update in place, insert new, leave unknown rows) — fixes the webhook-mid-edit deletion race and stops the new-UUID `payment_added` activity noise. | Vitest diff kernel (new `lib/jobs/paymentRowsDiff.ts` + tests); manual: pay a test invoice via webhook while the form is open, autosave, row survives. |
+| **B6** | 🔲 OPEN (gated — fresh audit after B4/B5 bake in real billing use, due ~2026-08-06; no guard migration exists yet) | Migration (after B4 confirmed deployed): BEFORE UPDATE guard on `jobs_ledger.payments_made` rejecting non-recompute writers (GUC set by the recompute fn — same pattern as read-only stmt triggers). | Post-push: direct UPDATE as dev → rejected; payment paths still work; audit clean after a week of real use. |
 
 ## Workstream C — person identity: C-tail, D, E
 
 DB substrate is done (resolver `resolve_pay_person_id`, INSERT triggers on 10 tables, `people_labor_job_assignees` junction, `list_people_pay_flags` already returns person_id). Remaining: reader flips, writer flips, enforcement — plus five tooling bugs that bite **today**.
 
-| Step | Change | Test/verify |
-|---|---|---|
-| **C0.1** | `combinePeople.ts` `PERSON_ID_TABLES` stale post-B2 — add the five B2 tables. | Extend `combinePeople` tests; grep table list vs migration inventory. |
-| **C0.2** | `cascadePersonName.ts` add `person_offsets`, `hours_reviewed`. | Extend tests. |
-| **C0.3** | `PersonOffsetFormModal` edit path re-resolves person_id when person_name changes. | Kernel test where extractable; manual offsets edit. |
-| **C0.4** | Migration: triggers become `BEFORE INSERT OR UPDATE OF person_name`, re-resolving via `COALESCE(resolve_pay_person_id(NEW.person_name), NEW.person_id)` when the name changed and the client didn't explicitly set an id. Renames/combines self-heal at the DB. | Post-push: rename a test roster person → person_id stable across pay tables (read-only check). |
-| **C0.5** | Extend `scripts/audit-pay-person-id-phase0.sql` with junction coverage; re-run; record fill rates in PERSON_IDENTITY_PLAN.md. | Audit output recorded; gates C2/C3. |
-| **C1** | Reader flips, one surface per PR, name-fallback retained: the seven `list_people_pay_flags` consumers → person_id keys; `salaryUiActive`/`salaryPayConfigGate` via `people.account_user_id`; `teamLabor` `people_hours` joins; `useDashboardMyTeamSectionState` name-IN; `PeopleReviewTab` delimited-string read → junction. | **Every flip PR includes a before/after totals check on its surface** (pure re-keying must not shift a dollar or hour) + existing kernel tests extended. |
-| **C2** | Writers: D0 migration (partial unique indexes on person_id keys, preceded by duplicate audit + Combine cleanup); then per-surface `onConflict` flips (`usePayConfig`, hours writes, crew writes, pay-stub generation, `hours_reviewed`, display order); sub-labor picker selects people (string stays as display; junction authoritative). Contracts tables get a B-style migration (decision 4). | D0 preceded by a zero-duplicates audit; per-surface manual smoke + totals checks; audit fill rates → ~100%. |
-| **C3** | Enforce (weeks later, audit-gated): per-table NOT NULL + FK migrations; id-based unique constraints replace name-based; retire `cascadePersonNameInPayTables`; strip reader fallbacks. Point of no return — gated on clean audits across ≥2 real payroll cycles. | Orphan audit = 0 before each table's migration; payroll totals unchanged across the flip week. |
+| Step | Status | Change | Test/verify |
+|---|---|---|---|
+| **C0.1** | ✅ DONE v2.1111 | `combinePeople.ts` `PERSON_ID_TABLES` stale post-B2 — add the five B2 tables. | Extend `combinePeople` tests; grep table list vs migration inventory. |
+| **C0.2** | ✅ DONE v2.1112 | `cascadePersonName.ts` add `person_offsets`, `hours_reviewed`. | Extend tests. |
+| **C0.3** | ✅ DONE v2.1113 | `PersonOffsetFormModal` edit path re-resolves person_id when person_name changes. | Kernel test where extractable; manual offsets edit. |
+| **C0.4** | ✅ DONE v2.1113 (migration `20260730164728`) | Migration: triggers become `BEFORE INSERT OR UPDATE OF person_name`, re-resolving via `COALESCE(resolve_pay_person_id(NEW.person_name), NEW.person_id)` when the name changed and the client didn't explicitly set an id. Renames/combines self-heal at the DB. | Post-push: rename a test roster person → person_id stable across pay tables (read-only check). |
+| **C0.5** | ✅ DONE 2026-07-30 (audit rerun recorded) | Extend `scripts/audit-pay-person-id-phase0.sql` with junction coverage; re-run; record fill rates in PERSON_IDENTITY_PLAN.md. | Audit output recorded; gates C2/C3. |
+| **C1** | 🔶 MOSTLY DONE — C1-1…C1-3 shipped v2.1122–v2.1127; C1-5 deliberately skipped; **open: C1-6** (`teamLabor` + `useDashboardMyTeamSectionState` name-keyed `people_hours` reads); **C1-7** (PeopleReviewTab `assigned_to_name` read) was closed in **v2.1266** (junction-first via `people_labor_job_assignees`, name-split fallback, kernel `laborJobPersonMatch.ts`) | Reader flips, one surface per PR, name-fallback retained: the seven `list_people_pay_flags` consumers → person_id keys; `salaryUiActive`/`salaryPayConfigGate` via `people.account_user_id`; `teamLabor` `people_hours` joins; `useDashboardMyTeamSectionState` name-IN; `PeopleReviewTab` delimited-string read → junction. | **Every flip PR includes a before/after totals check on its surface** (pure re-keying must not shift a dollar or hour) + existing kernel tests extended. |
+| **C2** | 🔲 OPEN (D0 unblocked by the zero-duplicates audit; remaining roster decisions: "MIke Rodriguez"/"Edgar") | Writers: D0 migration (partial unique indexes on person_id keys, preceded by duplicate audit + Combine cleanup); then per-surface `onConflict` flips (`usePayConfig`, hours writes, crew writes, pay-stub generation, `hours_reviewed`, display order); sub-labor picker selects people (string stays as display; junction authoritative). Contracts tables get a B-style migration (decision 4). | D0 preceded by a zero-duplicates audit; per-surface manual smoke + totals checks; audit fill rates → ~100%. |
+| **C3** | 🔲 OPEN (audit-gated, after C2) | Enforce (weeks later, audit-gated): per-table NOT NULL + FK migrations; id-based unique constraints replace name-based; retire `cascadePersonNameInPayTables`; strip reader fallbacks. Point of no return — gated on clean audits across ≥2 real payroll cycles. | Orphan audit = 0 before each table's migration; payroll totals unchanged across the flip week. |
 
 ## Sequencing
 
 ```
-Now:      A0 + C0.1–C0.5                       (independent, small, current-bug fixes)
-Next:     A1 → A2 → A3 → A4 → A5              (Stripe integrity; unlocks safe test-mode E2E)
-Then:     B1 → B2 → B3 → B4 → B5 → B6         (uses A's safe test mode for verification)
-Parallel: C1 reader flips (different files than B) → C2 → C3 (audit-gated)
+Done:      A0–A5 · B1–B5 (B2 skipped) · C0.1–C0.5 · C1-1…C1-3 (C1-5 skipped)
+Done since: C1-7 (PeopleReviewTab junction read) — shipped v2.1266
+Next:      B6 (payments_made hard guard — gated on a fresh audit after B4/B5 bake, due ~2026-08-06)
+           C1-6 (teamLabor + useDashboardMyTeamSectionState people_hours name joins)
+Then:      C2 writer flips (D0 unblocked; pending owner roster decisions) → C3 enforcement (audit-gated)
 ```
 
 ## Status log
