@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1256',
+    date: '2026-08-01',
+    title: 'Paste Fill is back on the Add customer form',
+    kind: 'feature',
+    highlights: [
+      'The Add customer modal has a Paste Fill toggle again \u2014 paste a tab-separated Name, Address, Email, Phone, Date line and hit Fill Fields.',
+      'Works everywhere the modal opens: the Customers page and both add-customer flows on Bids.',
+    ],
+  },
+  {
     version: 'v2.1255',
     date: '2026-08-01',
     title: 'Pipeline rename: last few stragglers',
