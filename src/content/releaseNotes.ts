@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1259',
+    date: '2026-08-01',
+    title: 'Draft Purchase Orders show when they were created',
+    kind: 'feature',
+    highlights: [
+      'Each draft PO card on Assemblies & Purchase Orders now shows its created date at the right end of the bottom line \u2014 hover it for the exact time.',
+    ],
+  },
+  {
     version: 'v2.1258',
     date: '2026-08-01',
     title: 'Assemblies everywhere \u2014 the last "template" leftovers are gone',
