@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1286',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials Parts Book tab restructured',
+    kind: 'infra',
+    highlights: [
+      'The Parts Book tab on the Materials page moved into its own component on top of the shared parts catalog.',
+      'No visible changes; searching, filtering, Load All mode, and price expansion work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1284',
     date: '2026-08-02',
     title: 'Team leads moved next to the people roster',

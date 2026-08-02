@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1284)
+last_updated: 2026-08-02 (v2.1286)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1286)
+
+### Materials decomposition: Parts Book tab extracted (2026-08-02)
+The Parts Book (Price Book) JSX block (~260 lines) moves to [`components/materials/MaterialsPartsBookTab.tsx`](../src/components/materials/MaterialsPartsBookTab.tsx), consuming the v2.1282 `useMaterialsCatalog` seam via props, with the `displayParts` / `manufacturers` derivations computed inside from the same inputs. Always-mounted contract. **Stays page-level**: the shared modals (Part Form, Part Prices, legacy Supply House Management — quirk #16), the modal openers (`openAddPart`/`openEditPart`/`openSupplyHousesModal`, also reached from other tabs and `?addPart=true`), and `expandedPartId` (shared with Assembly Book's expandable rows) — all passed as props. Behavior-preserving only. Materials.tsx 4,153 → 3,915 lines (7,033 at train start). 380 files / 3,429 tests green.
 
 ## Latest Updates (v2.1284)
 
