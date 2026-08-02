@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1263)
+last_updated: 2026-08-01 (v2.1264)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1264)
+
+### Dispatch Mode Schedule — day dots become job counts (2026-08-01)
+On **Dispatch Mode → Schedule**, the two-week header's activity dots under each date are replaced with the **number of jobs scheduled that day** — small tabular numerals under the day number (blue on the selected day, muted otherwise; blank when nothing is scheduled). Counting is a new pure kernel `countDispatchModeJobsByDay` in [`dispatchModeSchedule.ts`](../src/lib/dispatchModeSchedule.ts) (+3 tests): **distinct jobs** per day — multiple blocks on one job count once; a job-less block counts as its own unit so a scheduled day never reads empty. `fetchDispatchModeBusyDays` (returned a busy-day `Set`) becomes `fetchDispatchModeDayJobCounts` (adds `job_id` to the select, returns a per-day `Map`). The day button's aria-label now announces the count ("Show schedule for 2026-08-01 — 3 jobs"); the visible numeral stays `aria-hidden` like the dot was. Verified live with the dev test account against real data: counts render across both weeks (7/12/6/7/11/3…) and today's count matches its agenda exactly. `tsc -b` clean, vitest 3,339 green. Files: [`DispatchModeSchedule.tsx`](../src/components/dispatchMode/DispatchModeSchedule.tsx), [`dispatchModeSchedule.ts`](../src/lib/dispatchModeSchedule.ts) (+test). No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1263)
 

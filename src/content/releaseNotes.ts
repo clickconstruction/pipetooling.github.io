@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1264',
+    date: '2026-08-01',
+    title: 'Dispatch Mode: the schedule shows how many jobs each day has',
+    kind: 'feature',
+    highlights: [
+      'The two-week strip at the top of Dispatch Mode \u2192 Schedule now shows the number of jobs under each date instead of a dot \u2014 same job counted once even with multiple visits.',
+    ],
+  },
+  {
     version: 'v2.1263',
     date: '2026-08-01',
     title: 'Behind the scenes: nightly checks follow the Pipeline rename',

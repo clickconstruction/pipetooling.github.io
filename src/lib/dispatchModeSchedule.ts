@@ -185,30 +185,56 @@ export async function fetchDispatchModeDayBlocks(
 }
 
 /** Set of days (ymd) in [startYmd, endYmd] that have at least one schedule block — the calendar dots. */
-export async function fetchDispatchModeBusyDays(
+/**
+ * Distinct jobs per day from schedule-block rows. Multiple blocks on the same
+ * job/day count once; a block with no job link counts as its own unit so a
+ * scheduled non-job day is never rendered as empty.
+ */
+export function countDispatchModeJobsByDay(
+  rows: Array<{ work_date: string; job_id: string | null }>,
+): Map<string, number> {
+  const jobsByDay = new Map<string, Set<string>>()
+  const nullBlocksByDay = new Map<string, number>()
+  for (const r of rows) {
+    if (!r?.work_date) continue
+    if (r.job_id) {
+      let set = jobsByDay.get(r.work_date)
+      if (!set) {
+        set = new Set()
+        jobsByDay.set(r.work_date, set)
+      }
+      set.add(r.job_id)
+    } else {
+      nullBlocksByDay.set(r.work_date, (nullBlocksByDay.get(r.work_date) ?? 0) + 1)
+    }
+  }
+  const counts = new Map<string, number>()
+  for (const [ymd, set] of jobsByDay) counts.set(ymd, set.size)
+  for (const [ymd, n] of nullBlocksByDay) counts.set(ymd, (counts.get(ymd) ?? 0) + n)
+  return counts
+}
+
+/** Two-week header: distinct job count per day (was a busy-day dot until v2.1264). */
+export async function fetchDispatchModeDayJobCounts(
   startYmd: string,
   endYmd: string,
   assigneeUserId?: string,
-): Promise<{ data: Set<string>; error: string | null }> {
+): Promise<{ data: Map<string, number>; error: string | null }> {
   try {
     const rows = await withSupabaseRetry(
       async () => {
         let q = supabase
           .from('job_schedule_blocks')
-          .select('work_date')
+          .select('work_date, job_id')
           .gte('work_date', startYmd)
           .lte('work_date', endYmd)
         if (assigneeUserId) q = q.eq('assignee_user_id', assigneeUserId)
         return q
       },
-      'dispatch mode busy days',
+      'dispatch mode day job counts',
     )
-    const set = new Set<string>()
-    for (const r of (rows ?? []) as Array<{ work_date: string }>) {
-      if (r?.work_date) set.add(r.work_date)
-    }
-    return { data: set, error: null }
+    return { data: countDispatchModeJobsByDay((rows ?? []) as Array<{ work_date: string; job_id: string | null }>), error: null }
   } catch (e) {
-    return { data: new Set(), error: formatErrorMessage(e) }
+    return { data: new Map(), error: formatErrorMessage(e) }
   }
 }
