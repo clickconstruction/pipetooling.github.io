@@ -41,6 +41,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1278',
+    date: '2026-08-02',
+    title: 'Behind the scenes: bids can now be linked to projects',
+    kind: 'infra',
+    highlights: [
+      'Groundwork for showing bids and estimates on project cards — the visible controls arrive in the next update.',
+    ],
+  },
+  {
     version: 'v2.1277',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials page groundwork, part 3',

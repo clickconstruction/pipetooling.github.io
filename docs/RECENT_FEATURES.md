@@ -27,6 +27,11 @@ The two in-file module components at the bottom of Materials.tsx move verbatim t
 ### Materials decomposition Stage B begins: PO Generator tab extracted (2026-08-02)
 First component move of the Materials.tsx decomposition — the map's designated momentum-builder. The entire `po-generator` surface (the 14-state `poGen*` cluster, the supply-house picker memo, `loadPoGeneratorLedger`, the four tab-gated effects, `handlePoGeneratorGenerate`, the `PoGenerator*` types, and the ~410-line JSX block) moves verbatim to [`components/materials/MaterialsPoGeneratorTab.tsx`](../src/components/materials/MaterialsPoGeneratorTab.tsx) (682 lines). Props: `active`, `myRole`, `supplyHouses`, `selectedServiceTypeId`, `onError`; toasts come from `useToastContext` inside. **Always-mounted contract** (the JobsStagesTab pattern): the parent renders it unconditionally and the component returns null when inactive, so in-progress form state (selected job/user, notes) survives tab switches exactly as it did when the state lived in the page; the effects' `activeTab === 'po-generator'` gates became `active` gates. The page shed its last `useMemo` and its only `useToastContext`/`withSupabaseRetry`/`effectiveJobLedgerNumber` uses. Behavior-preserving only. Materials.tsx 6,615 → 5,983 lines (7,033 at train start). 379 files / 3,417 tests green — the render smokes now exercise the extracted component through the page.
 
+## Latest Updates (v2.1278)
+
+### Migration: bids.project_id (2026-08-02)
+Schema groundwork for the Projects-card commercial rail: [`20260802150000_add_bids_project_id.sql`](../supabase/migrations/20260802150000_add_bids_project_id.sql) adds `bids.project_id` (FK → `projects`, ON DELETE SET NULL) mirroring `jobs_ledger.project_id`, plus partial indexes on `bids.project_id` and the dormant baseline `estimates.project_id` (that column has existed since the baseline but nothing reads it yet). No RLS changes; no owner-match trigger (bids have no `master_user_id` — company-scoped via bids RLS). Free-text `bids.project_name` unchanged. UI (always-visible Bids + Estimates pills under the Jobs pill on Projects cards) ships next. Apply: `supabase db push` after merge, then `npm run gen-types:linked`.
+
 ## Latest Updates (v2.1277)
 
 ### Materials decomposition Stage A complete: poPrint builders + remaining pure helpers (2026-08-02)
