@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1264)
+last_updated: 2026-08-02 (v2.1265)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1265)
+
+### Help guides tidy-up — category unify, ordering, current names (2026-08-02)
+Docs-audit follow-up on `src/content/help/`: **(1)** `dispatch-mode.md` moves from the one-off `Scheduling & Dispatch` category to **`Scheduling`**, so the Help sidebar shows one Scheduling section instead of two adjacent one-guide sections (grouping is exact-string equality in `helpGuides.ts`). **(2)** Eleven guides that omitted `order:` (and so sank to 999 per `helpGuides.ts`) get explicit positions — notably `fix-the-app-when-it-wont-load.md` now ranks 3rd in Getting Started instead of last; also `global-search`, `dashboard-section-bar`, `dashboard-my-inbox`, `map-page`, `license-hours-log`, `align-unmarked-hours`, `bid-due-date-time`, `bill-part-of-a-job-to-someone-else`, `charge-a-hazmat-fee`, `sub-labor-outstanding`. No existing guides renumbered. **(3)** `start-here-in-the-office.md` / `start-here-as-a-superintendent.md` say **Schedule** (nav label since v2.1253) instead of "Schedule Dispatch"; `?g=schedule-dispatch` slugs untouched. **(4)** Bonus: fixed dead deep link `?g=bill-a-customer-and-get-paid` → `?g=ready-to-bill-pipeline` in `start-here-in-the-office.md` and `start-here-as-a-primary.md` (no alias map in `GuideBrowser.tsx`, so the old slug silently no-opped). 15 help-content files changed; no code, DB, or RLS changes. Vitest 3,339 green incl. `helpGuideContent.test.ts`.
 
 ## Latest Updates (v2.1264)
 
