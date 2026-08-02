@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1260',
+    date: '2026-08-01',
+    title: 'Materials: the PO workbench tab is now "PO Builder"',
+    kind: 'feature',
+    highlights: [
+      'The tab where you pick assemblies and compose draft purchase orders is now called PO Builder \u2014 no more three tabs with "Purchase Orders" in the name.',
+      'All links and pins keep working; only the tab label changed.',
+    ],
+  },
+  {
     version: 'v2.1259',
     date: '2026-08-01',
     title: 'Draft Purchase Orders show when they were created',
