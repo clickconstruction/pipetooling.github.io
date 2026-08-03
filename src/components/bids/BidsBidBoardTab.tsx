@@ -343,7 +343,6 @@ export function BidsBidBoardTab({
           <th style={th}>Last<br />Contact</th>
           <th style={th} title="Project folder, job plans, Count Tool, and bid submission links" aria-label="Artifact links">Links</th>
           <th style={th} title="Account manager and estimator" aria-label="Account manager and estimator">Account Man<br />Estimator</th>
-          <th style={th} title="Distance to office — click a row's value to open the address in Google Maps" aria-label="Distance to office">Dist</th>
         </tr>
       </thead>
     )
@@ -583,8 +582,6 @@ export function BidsBidBoardTab({
   function renderBidBoardExpandedContent(bid: BidWithBuilder) {
     const due = bidBoardDueCellParts(bid.bid_due_date)
     const dueTime = formatBidDueTime(bid.bid_due_time)
-    const amRaw = bid.account_manager
-    const amNorm = amRaw == null ? null : Array.isArray(amRaw) ? amRaw[0] ?? null : amRaw
     const estRaw = bid.estimator
     const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
     const labelStyle: React.CSSProperties = {
@@ -625,7 +622,7 @@ export function BidsBidBoardTab({
                 rel="noopener noreferrer"
                 style={{ color: 'var(--text-blue-500)', textDecoration: 'none' }}
               >
-                {formatAddressWithoutZip(bid.address)} · open in Maps
+                {formatAddressWithoutZip(bid.address)}
               </a>
             ) : (
               <span style={{ color: 'var(--text-muted)' }}>—</span>
@@ -644,12 +641,16 @@ export function BidsBidBoardTab({
             )}
           </div>
           <div>
-            <span style={labelStyle}>Account manager</span>
-            {amNorm ? amNorm.name || amNorm.email : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-          </div>
-          <div>
             <span style={labelStyle}>Estimator</span>
             {estNorm ? estNorm.name || estNorm.email : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+          <div>
+            <span style={labelStyle}>Distance</span>
+            {bid.distance_from_office != null && bid.distance_from_office !== '' ? (
+              `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))} mi`
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>—</span>
+            )}
           </div>
         </div>
         <BidBoardNotesPanel
@@ -667,7 +668,7 @@ export function BidsBidBoardTab({
 
   function renderBidBoardTableRow(bid: BidWithBuilder, hideBidColumn: boolean) {
     const expanded = expandedBidBoardBidId === bid.id
-    const colCount = hideBidColumn ? 7 : 8
+    const colCount = hideBidColumn ? 6 : 7
     const lcParts = bidBoardLastContactParts(bid.last_contact)
     return (
       <Fragment key={bid.id}>
@@ -702,8 +703,8 @@ export function BidsBidBoardTab({
               padding: '0.0625rem 0.0625rem 0.0625rem 0.4rem',
               maxWidth: 200,
               textAlign: 'left',
-              fontSize: '0.75rem',
-              lineHeight: 1.35,
+              fontSize: '0.8125rem',
+              lineHeight: 1.4,
               verticalAlign: 'middle',
             }}
           >
@@ -737,7 +738,7 @@ export function BidsBidBoardTab({
               )}
               <span
                 title={bid.project_name ?? undefined}
-                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9375rem', fontWeight: 600 }}
               >
                 {bid.project_name ?? '-'}
               </span>
@@ -796,29 +797,6 @@ export function BidsBidBoardTab({
                   </span>
                 </div>
               )
-            })()}
-          </td>
-          <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35, whiteSpace: 'nowrap' }}>
-            {(() => {
-              const dist =
-                bid.distance_from_office != null && bid.distance_from_office !== ''
-                  ? `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))}mi`
-                  : '—'
-              if (bid.address && dist !== '—') {
-                return (
-                  <a
-                    href={bidAddressMapsUrl(bid.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Open address in Google Maps"
-                    aria-label="Open address in Google Maps"
-                    style={{ color: 'var(--text-blue-500)', textDecoration: 'none' }}
-                  >
-                    {dist}
-                  </a>
-                )
-              }
-              return dist
             })()}
           </td>
         </tr>
@@ -902,9 +880,9 @@ export function BidsBidBoardTab({
         </div>
         <div
           style={{
-            fontSize: '0.875rem',
+            fontSize: '1.0625rem',
             fontWeight: 600,
-            margin: '0.15rem 0 0.1rem',
+            margin: '0.2rem 0 0.15rem',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -936,7 +914,7 @@ export function BidsBidBoardTab({
             · {renderBidBoardBidValue(bid)}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-            · LC{' '}
+            · Last contact{' '}
             <button
               type="button"
               onClick={() => onLastContactClick(bid)}
@@ -1241,7 +1219,7 @@ export function BidsBidBoardTab({
                       <tbody>
                         {sectionBids.length === 0 ? (
                           <tr>
-                            <td colSpan={key === 'unsent' ? 7 : 8} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={key === 'unsent' ? 6 : 7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                               No bids in this group
                             </td>
                           </tr>
@@ -1251,7 +1229,7 @@ export function BidsBidBoardTab({
                         {capApplies ? (
                           <tr>
                             {/* capped sections are pending/lost, which always show the Bid column */}
-                            <td colSpan={8} style={{ padding: 0, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
+                            <td colSpan={7} style={{ padding: 0, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
                               <button
                                 type="button"
                                 onClick={() =>

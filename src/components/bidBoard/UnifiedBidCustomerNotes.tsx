@@ -856,6 +856,8 @@ export type UnifiedBidCustomerNotesProps = {
   onAddingKindChange?: (v: UnifiedNotesAddingKind) => void
   /** Hide the + bid note row (parent renders it, e.g. beside tabs on desktop preview). */
   hideActionButtons?: boolean
+  /** Where the "+ bid note / + customer note" buttons sit relative to the list. */
+  actionButtonsPosition?: 'top' | 'bottom'
 }
 
 export function UnifiedBidCustomerNotes({
@@ -868,6 +870,7 @@ export function UnifiedBidCustomerNotes({
   addingKind: addingKindProp,
   onAddingKindChange,
   hideActionButtons = false,
+  actionButtonsPosition = 'top',
 }: UnifiedBidCustomerNotesProps) {
   const [merged, setMerged] = useState<UnifiedNoteRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -936,7 +939,7 @@ export function UnifiedBidCustomerNotes({
       {headingLabel ? (
         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{headingLabel}</div>
       ) : null}
-      {!hideActionButtons ? (
+      {!hideActionButtons && actionButtonsPosition === 'top' ? (
         <div
           style={{
             display: 'flex',
@@ -990,6 +993,24 @@ export function UnifiedBidCustomerNotes({
           />
         ) : null}
       </div>
+      {!hideActionButtons && actionButtonsPosition === 'bottom' ? (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+            marginTop: '0.75rem',
+            justifyContent: 'flex-start',
+          }}
+        >
+          <UnifiedBidCustomerNotesActionButtons
+            addingKind={addingKind}
+            onAddingKindChange={setAddingKind}
+            customerId={customerId}
+            customerName={customerName}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

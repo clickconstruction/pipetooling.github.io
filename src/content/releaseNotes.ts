@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1359',
+    date: '2026-08-03',
+    title: 'Bid Board: easier to read at a glance',
+    kind: 'feature',
+    highlights: [
+      'Project names are noticeably bigger on both the table and phone cards.',
+      'Distance moved out of its own column and into the row dropdown, giving the names more room; the address there still opens Google Maps.',
+      'The dropdown drops the account manager (the estimator stays) and the note tabs now sit on the left, with "+ bid note" and "+ customer note" at the bottom of the list where you finish reading.',
+      'On phones the "LC" shorthand is now spelled out as "Last contact".',
+    ],
+  },
+  {
     version: 'v2.1357',
     date: '2026-08-03',
     title: 'Tablet header: no more sideways scroll',

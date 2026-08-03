@@ -163,7 +163,7 @@ export function BidBoardNotesPanel({
         <div
           style={{
             display: 'flex',
-            justifyContent: previewDesktopSplit ? 'flex-end' : 'center',
+            justifyContent: previewDesktopSplit ? 'flex-end' : 'flex-start',
             flex: previewDesktopSplit ? '1 1 auto' : undefined,
             width: previewDesktopSplit ? undefined : '100%',
             minWidth: 0,
@@ -211,6 +211,7 @@ export function BidBoardNotesPanel({
             customerId={bid.customers?.id ?? null}
             customerName={bid.customers?.name ?? 'Customer'}
             title=""
+            actionButtonsPosition={previewDesktopSplit ? 'top' : 'bottom'}
             onLoadError={onLoadError}
             onMutated={mutCustomer}
             {...(previewDesktopSplit

@@ -26,13 +26,14 @@ Each row leads with the bid number: the **Counts** button sits on its left, the 
 - **Due Date** — a colored chip: the weekday + date on top, and a signed day count under it. **(+4)** means four days past due (red chip); **(-2)** means due in two days (amber when it's within three days). Not sure what a color means? Tap the little red/yellow/grey key beside the **Due Date** header for the legend. 
 - **Last Contact** — same two-line pattern: the date on top, **(+6)** = six days since you last touched the bid. Tap it to log a contact.
 - **Links** — icons for only the artifacts the bid actually has: project folder, job plans, CountTooling plans, bid submission.
-- **Dist** — miles from the office. Tap it to open the bid's address in Google Maps.
+
+Distance to the office lives in the row dropdown, along with the address — tap the address there to open Google Maps.
 
 ## Click a row for the full story
 
 Click anywhere on a row (not a link or button) and it expands in place:
 
-- the full **address** (tap to open Google Maps), **due date + time**, **bid value**, and the **account manager and estimator**,
+- the GC/builder and project name in full, the **address** (tap to open Google Maps), **due date + time**, **bid value**, **estimator**, and **distance** from the office,
 - and below that, the same **notes panel** as always — All / Bid / Customer / Reports tabs with {{button:outline-blue|+ bid note}} and {{button:outline-blue|+ customer note}}.
 
 Opening a row marks its notes read, so the red badge clears. Press **Escape** or click the row again to close it.
@@ -47,4 +48,4 @@ The go/no-go evaluation checklist (location, payment terms, bid documents, compe
 
 ## On a phone
 
-Below tablet width each row becomes a card — bid number and due chip on top, project name, then GC · estimator · bid value · last contact, and the artifact links. Nothing scrolls sideways. Tap a card to expand the same details and notes panel.
+Below tablet width each row becomes a card — bid number and due chip on top, project name, then GC · estimator · bid value · last contact date, and the artifact links. Nothing scrolls sideways. Tap a card to expand the same details and notes panel.
