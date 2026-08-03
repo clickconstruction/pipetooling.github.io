@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1355)
+last_updated: 2026-08-03 (v2.1356)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1356)
+
+### Schedule Day view: compact two-row phone header (2026-08-03)
+Owner-approved "Option A" follow-up to the v2.1352 agenda: at ≤640px the Day header's four control rows (Previous/Next Day + date + Dispatch, search input, hide-staff toggle) collapse into **one nav row** in [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx): `‹ | Mon, Aug 3 | ›` (year dropped; **tapping the date jumps to Today** — it renders blue when not on today, replacing the conditional Today button), a magnifier toggle that expands the full search input below the row (blue while open or filtering; × clears and closes), and a people icon-toggle for hide-assistants-and-estimators (blue when hidden, `aria-pressed`). **Dispatch relocation is host-aware**: in the Dispatch hub the link moves into the existing ⋯ menu as "Open in Dispatch week…" (the `daySettingsApi` seam gains `dispatchHref`); in Quickfill (no ⋯ menu) it stays a visible chip on the row. ≥640px keeps the full-text header unchanged. Verified live at 375×812 on both hosts (search expand/collapse, filter hide, ⋯ menu item; document width stays 375) and at 1280px (unchanged). Client-only — no migration.
 
 ## Latest Updates (v2.1355)
 

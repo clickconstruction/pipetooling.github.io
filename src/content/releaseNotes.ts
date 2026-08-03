@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1356',
+    date: '2026-08-03',
+    title: 'Schedule Day view: slimmer phone header',
+    kind: 'feature',
+    highlights: [
+      'The Day view header on phones shrinks from six rows to two — arrows flank the date, and tapping the date jumps back to Today.',
+      'Search tucks behind a magnifier icon (tap to expand), and hiding assistants and estimators is now a one-tap people icon that lights up blue when active.',
+      'In Schedule Dispatch, the Dispatch week link lives in the ⋯ menu; on Quickfill it stays right on the row.',
+    ],
+  },
+  {
     version: 'v2.1355',
     date: '2026-08-03',
     title: 'Bid Board: one tidy tools row',
