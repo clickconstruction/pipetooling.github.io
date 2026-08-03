@@ -4,6 +4,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { denverWorkDateToday } from '../../lib/salaryScheduleSync'
 import {
   buildMyEmailWeekGrid,
+  normalizeMyEmailSubscriptions,
   type MyEmailSchedulePayload,
   type PlacedOneOff,
   type WeekGridEntry,
@@ -176,21 +177,54 @@ export default function SettingsMyEmailScheduleSection() {
                 ))}
               </div>
 
-              <h3 style={{ margin: '16px 0 4px', fontSize: '0.9rem', color: 'var(--text-700)' }}>Also, when it happens</h3>
-              {payload.events.paid_in_full || payload.events.payment_received ? (
-                <>
-                  {payload.events.paid_in_full && (
-                    <EventRow dot="#16a34a" text="Paid in Full — when any job reaches Paid in Full" />
-                  )}
-                  {payload.events.payment_received && (
-                    <EventRow dot="#d97706" text="Payment received — whenever a payment lands on any job" />
-                  )}
-                </>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '4px 0 0' }}>
-                  You're not on any event-driven email streams.
-                </p>
-              )}
+              <h3 style={{ margin: '16px 0 4px', fontSize: '0.9rem', color: 'var(--text-700)' }}>
+                My email subscriptions
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0 0 6px' }}>
+                Every event-driven email stream in the app, and whether you're on it.
+              </p>
+              {(() => {
+                const subs = normalizeMyEmailSubscriptions(payload)
+                return (
+                  <>
+                    <SubscriptionRow
+                      dot="#16a34a"
+                      subscribed={subs.paidInFull}
+                      name="Paid in Full"
+                      trigger="when any job reaches Paid in Full"
+                      managedFrom="Jobs → Pipeline"
+                    />
+                    <SubscriptionRow
+                      dot="#d97706"
+                      subscribed={subs.paymentReceived}
+                      name="Payment received"
+                      trigger="whenever a payment lands on any job"
+                      managedFrom="Jobs → Pipeline"
+                    />
+                    <SubscriptionRow
+                      dot="#7c3aed"
+                      subscribed={subs.estimateAcceptedAlways}
+                      name="Estimate accepted"
+                      trigger="every customer acceptance"
+                      managedFrom="Estimates → ⚙ notify settings"
+                    />
+                    {subs.estimateSpecificTotal > 0 && (
+                      <SubscriptionRow
+                        dot="#7c3aed"
+                        subscribed
+                        name={`Estimate accepted — ${subs.estimateSpecificTotal} specific estimate${subs.estimateSpecificTotal === 1 ? '' : 's'}`}
+                        trigger={
+                          subs.estimateSpecificTitles.join(', ') +
+                          (subs.estimateSpecificTotal > subs.estimateSpecificTitles.length
+                            ? ` and ${subs.estimateSpecificTotal - subs.estimateSpecificTitles.length} more`
+                            : '')
+                        }
+                        managedFrom="each estimate's Notify list"
+                      />
+                    )}
+                  </>
+                )
+              })()}
               <p style={{ color: 'var(--text-faint)', fontSize: '0.72rem', margin: '12px 0 0' }}>
                 One-off sends addressed to you appear on the week above. Ad-hoc emails someone sends on the spot can't
                 be predicted — this shows everything that's configured. Recipient lists are managed by devs and
@@ -204,11 +238,45 @@ export default function SettingsMyEmailScheduleSection() {
   )
 }
 
-function EventRow({ dot, text }: { dot: string; text: string }) {
+/**
+ * One standing email stream: colored dot + name + trigger when subscribed,
+ * grayed hollow dot + "Not subscribed" otherwise, with a managed-from hint.
+ */
+function SubscriptionRow({
+  dot,
+  subscribed,
+  name,
+  trigger,
+  managedFrom,
+}: {
+  dot: string
+  subscribed: boolean
+  name: string
+  trigger: string
+  managedFrom: string
+}) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: '0.85rem' }}>
-      <span aria-hidden style={{ width: 9, height: 9, borderRadius: 9999, flexShrink: 0, background: dot }} />
-      <span>{text}</span>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '5px 0', fontSize: '0.85rem' }}>
+      <span
+        aria-hidden
+        style={{
+          width: 9,
+          height: 9,
+          borderRadius: 9999,
+          flexShrink: 0,
+          alignSelf: 'center',
+          background: subscribed ? dot : 'transparent',
+          border: subscribed ? 'none' : '1.5px solid var(--border-strong)',
+          boxSizing: 'border-box',
+        }}
+      />
+      <span style={{ minWidth: 0, color: subscribed ? undefined : 'var(--text-muted)' }}>
+        <strong style={{ fontWeight: 600 }}>{name}</strong>
+        {subscribed ? ` — ${trigger}` : ' — not subscribed'}
+        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+          Managed from {managedFrom}
+        </span>
+      </span>
     </div>
   )
 }

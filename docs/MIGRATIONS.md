@@ -5,11 +5,11 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "162 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "164 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -102,6 +102,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 3, 2026
+
+**`20260803170642_my_email_subscriptions_estimate_stream.sql`** _(apply via `supabase db push` after merge; additive JSON keys — either deploy order of client vs migration degrades gracefully)_
+- **Purpose**: "My email subscriptions" (v2.1330) — `get_my_email_schedule()` learns the third standing event stream, Estimate accepted: `events.estimate_accepted_always` (membership in the `estimate_accepted_notify_recipients_v1` app_settings list) and a new `estimate_specific` object (count + newest-first titles capped at 5 of not-yet-accepted estimates — status `draft`/`sent` — whose `accept_notify_user_ids` names the caller). Settings → Your account renders all streams with subscribed/not-subscribed state and managed-from hints.
+- **Security**: No grant/policy changes — CREATE OR REPLACE of the self-scoped SECURITY DEFINER RPC; still returns only auth.uid()'s own memberships.
+- **Category**: Feature schema
 
 #### August 2, 2026
 

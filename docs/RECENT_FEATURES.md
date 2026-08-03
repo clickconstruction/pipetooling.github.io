@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1329)
+last_updated: 2026-08-03 (v2.1330)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1330)
+
+### Settings: My email subscriptions — every event stream, subscribed or not (2026-08-03)
+The "Also, when it happens" tail of Settings → Your account → My email schedule grows into a proper **My email subscriptions** block ([`SettingsMyEmailScheduleSection.tsx`](../src/components/settings/SettingsMyEmailScheduleSection.tsx)): every standing event-driven email stream in the app is listed with an explicit subscribed (colored dot + trigger) or not-subscribed (hollow dot, grayed) state and a "Managed from …" hint — Paid in Full and Payment received (Jobs → Pipeline lists), plus the previously-missing **Estimate accepted** stream in both its forms: the org-wide "always notify" list (Estimates → ⚙) and **per-estimate subscriptions** (a row with the count + newest titles of not-yet-accepted estimates whose Notify list names you). Backed by migration `20260803170642` — `get_my_email_schedule()` gains additive keys `events.estimate_accepted_always` + `estimate_specific` (total + titles capped 5, status `draft`/`sent` only); the new pure normalizer [`normalizeMyEmailSubscriptions`](../src/lib/emailSchedule/emailScheduleWeek.ts) (+3 tests) defaults missing keys, so client and migration can deploy in either order. Checklist notifications are web-push and workflow notifications are per-assignment transactional — neither is a standing subscription, so the three streams above are the complete set. Help guide `see-your-email-schedule` updated. See `docs/MIGRATIONS.md`.
 
 ## Latest Updates (v2.1329)
 
 ### Takeoffs Qty: click clears for fresh entry, leaving restores the old number (2026-08-03)
 Fast-entry behavior for the rough ("Combined") sheet's Qty column in [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) + [`SortableRoughPartLineRow.tsx`](../src/components/bids/SortableRoughPartLineRow.tsx). Clicking (or tabbing into) a Qty cell now **starts the draft BLANK** — the old quantity shows as a gray placeholder — so numpad or keyboard digits type a fresh number instead of appending to the existing one. Leaving without entering anything (blur, Escape, scroll-close, drag-start, or focusing another Qty) **restores the pre-focus quantity untouched** — previously the close paths ran `clampRoughQtyFromDraft('')` which would have stamped the 0.0001 floor. Mechanics: new `roughQtyNumpadOriginalRef` captures the pre-focus quantity; all five close paths route through the new pure kernel [`resolveRoughQtyOnClose(draft, original)`](../src/lib/bids/bidTakeoffHelpers.ts) (+5 tests) — empty draft → original (floored), anything typed → the usual clamp; the per-keystroke live commits (line-total updates as you type) are unchanged except an empty draft no longer commits. The line-switch commit in `onRoughQtyFocus` moved out of the setState updater so the previous line's draft/original refs are read before being overwritten. Verified live via dev-login (click → blank + placeholder + numpad; click away → 1 restored, no write). Client-only — no migration.
+
 
 ## Latest Updates (v2.1328)
 

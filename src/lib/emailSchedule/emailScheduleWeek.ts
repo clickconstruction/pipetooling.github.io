@@ -29,7 +29,43 @@ export type MyEmailSchedulePayload = {
     repeat_weekly?: boolean
     detail: string
   }>
-  events: { paid_in_full: boolean; payment_received: boolean }
+  events: {
+    paid_in_full: boolean
+    payment_received: boolean
+    /** Org-wide "always notify on estimate acceptance" list (v2.1330; absent from pre-v2.1330 RPC payloads). */
+    estimate_accepted_always?: boolean
+  }
+  /** Per-estimate acceptance subscriptions (v2.1330; absent from pre-v2.1330 RPC payloads). */
+  estimate_specific?: { total: number; titles: string[] }
+}
+
+/**
+ * Normalized subscription view of the payload's event streams — tolerant of a
+ * not-yet-migrated RPC (missing v2.1330 keys default to "not subscribed").
+ */
+export type MyEmailSubscriptions = {
+  paidInFull: boolean
+  paymentReceived: boolean
+  estimateAcceptedAlways: boolean
+  estimateSpecificTotal: number
+  estimateSpecificTitles: string[]
+}
+
+export function normalizeMyEmailSubscriptions(
+  payload: Pick<MyEmailSchedulePayload, 'events' | 'estimate_specific'> | null | undefined,
+): MyEmailSubscriptions {
+  const events = payload?.events
+  const specific = payload?.estimate_specific
+  const total = Number(specific?.total)
+  return {
+    paidInFull: events?.paid_in_full === true,
+    paymentReceived: events?.payment_received === true,
+    estimateAcceptedAlways: events?.estimate_accepted_always === true,
+    estimateSpecificTotal: Number.isFinite(total) && total > 0 ? Math.floor(total) : 0,
+    estimateSpecificTitles: Array.isArray(specific?.titles)
+      ? specific.titles.filter((t): t is string => typeof t === 'string' && t.trim() !== '')
+      : [],
+  }
 }
 
 export type WeekGridEntry = {
