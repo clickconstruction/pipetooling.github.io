@@ -20,6 +20,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1339',
+    date: '2026-08-03',
+    title: 'Dispatch Inbox: one tap to Gmail',
+    kind: 'feature',
+    highlights: [
+      'The Dispatch Mode Inbox now has an "Open Gmail" link at the top, so checking the email inbox is one tap from the app inbox.',
+    ],
+  },
+  {
     version: 'v2.1338',
     date: '2026-08-03',
     title: 'Settings: Notifications tab now shows emails the app sent',
