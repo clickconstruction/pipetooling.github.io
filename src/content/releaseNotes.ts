@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1322',
+    date: '2026-08-03',
+    title: 'Click a customer on the Pipeline board to see their full profile',
+    kind: 'feature',
+    highlights: [
+      'The contact-card icon (or the customer\u2019s name) on any Jobs \u2192 Pipeline row opens their profile: contact info you can tap to call or email, open balance with aging, lifetime collected, and how fast they typically pay.',
+      'Their jobs, projects, bids, and estimates are right there as clickable pills \u2014 each opens the real thing.',
+      'Jobs with an unlinked customer name open the link-or-create flow instead, so you can fix the link on the spot.',
+    ],
+  },
+  {
     version: 'v2.1321',
     date: '2026-08-03',
     title: 'See every email the app sends you',

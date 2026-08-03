@@ -67,6 +67,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
+import { CustomerProfileModalProvider } from './contexts/CustomerProfileModalContext'
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
 import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalContext'
@@ -237,11 +238,13 @@ function AppContent() {
                                         <JobsListCacheProvider>
                                           <UpdateFocusOpenerBridgeProvider>
                                             <JobDetailModalProvider>
+                                              <CustomerProfileModalProvider>
                                               <UserReviewModalProvider>
                                                 <ActiveAccountsModalProvider>
                                                   <Layout />
                                                 </ActiveAccountsModalProvider>
                                               </UserReviewModalProvider>
+                                              </CustomerProfileModalProvider>
                                             </JobDetailModalProvider>
                                           </UpdateFocusOpenerBridgeProvider>
                                         </JobsListCacheProvider>
