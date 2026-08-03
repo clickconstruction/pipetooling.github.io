@@ -41,9 +41,9 @@ describe('computeReorderedSort', () => {
     const all = rows([['/a', null, 0], ['/b', null, 1], ['/c', null, 2]])
     const result = computeReorderedSort([{ path: '/c' }, { path: '/a' }, { path: '/b' }], all)
     expect(result).toEqual([
-      { path: '/c', tab: null, sort_order: 0 },
-      { path: '/a', tab: null, sort_order: 1 },
-      { path: '/b', tab: null, sort_order: 2 },
+      { path: '/c', tab: null, sort_order: 0, bid_id: null },
+      { path: '/a', tab: null, sort_order: 1, bid_id: null },
+      { path: '/b', tab: null, sort_order: 2, bid_id: null },
     ])
   })
 
@@ -52,9 +52,9 @@ describe('computeReorderedSort', () => {
     const all = rows([['/a', null, 0], ['/hidden', null, 0], ['/b', null, 0]])
     const result = computeReorderedSort([{ path: '/b' }, { path: '/a' }], all)
     expect(result).toEqual([
-      { path: '/b', tab: null, sort_order: 0 },
-      { path: '/a', tab: null, sort_order: 1 },
-      { path: '/hidden', tab: null, sort_order: 2 },
+      { path: '/b', tab: null, sort_order: 0, bid_id: null },
+      { path: '/a', tab: null, sort_order: 1, bid_id: null },
+      { path: '/hidden', tab: null, sort_order: 2, bid_id: null },
     ])
     // all sort_orders distinct
     expect(new Set(result.map((r) => r.sort_order)).size).toBe(result.length)
@@ -70,8 +70,8 @@ describe('computeReorderedSort', () => {
     const all = rows([['/bids', null, 0], ['/bids', 'counts', 1]])
     const result = computeReorderedSort([{ path: '/bids', tab: 'counts' }, { path: '/bids', tab: null }], all)
     expect(result).toEqual([
-      { path: '/bids', tab: 'counts', sort_order: 0 },
-      { path: '/bids', tab: null, sort_order: 1 },
+      { path: '/bids', tab: 'counts', sort_order: 0, bid_id: null },
+      { path: '/bids', tab: null, sort_order: 1, bid_id: null },
     ])
   })
 })
@@ -80,5 +80,48 @@ describe('pinKey', () => {
   it('distinguishes tab vs no-tab and treats undefined/null tab the same', () => {
     expect(pinKey({ path: '/bids' })).toBe(pinKey({ path: '/bids', tab: null }))
     expect(pinKey({ path: '/bids', tab: 'counts' })).not.toBe(pinKey({ path: '/bids' }))
+  })
+})
+
+describe('bid-aware pins (v2.1335)', () => {
+  const bidPin = { path: '/bids', label: 'BP352', tab: 'pricing', bidId: 'bid-1' }
+  const tabPin = { path: '/bids', label: 'Bids', tab: 'pricing' }
+
+  it('isPinnedIn distinguishes a bid pin from the plain tab pin', () => {
+    expect(isPinnedIn([bidPin], '/bids', 'pricing', 'bid-1')).toBe(true)
+    expect(isPinnedIn([bidPin], '/bids', 'pricing')).toBe(false)
+    expect(isPinnedIn([tabPin], '/bids', 'pricing', 'bid-1')).toBe(false)
+    expect(isPinnedIn([tabPin, bidPin], '/bids', 'pricing')).toBe(true)
+  })
+
+  it('isPinnedIn separates two bids pinned on the same tab', () => {
+    const other = { ...bidPin, bidId: 'bid-2', label: 'BP343' }
+    expect(isPinnedIn([bidPin, other], '/bids', 'pricing', 'bid-2')).toBe(true)
+    expect(isPinnedIn([bidPin], '/bids', 'pricing', 'bid-2')).toBe(false)
+  })
+
+  it('pinKey includes the bid (both bidId and bid_id row shapes)', () => {
+    expect(pinKey(bidPin)).not.toBe(pinKey(tabPin))
+    expect(pinKey({ path: '/bids', tab: 'pricing', bid_id: 'bid-1' })).toBe(pinKey(bidPin))
+  })
+
+  it('computeReorderedSort keeps two same-tab bid pins distinct', () => {
+    const rows = [
+      { path: '/bids', tab: 'pricing', bid_id: 'bid-1', sort_order: 0 },
+      { path: '/bids', tab: 'pricing', bid_id: 'bid-2', sort_order: 1 },
+      { path: '/jobs', tab: null, bid_id: null, sort_order: 2 },
+    ]
+    const out = computeReorderedSort(
+      [
+        { path: '/bids', tab: 'pricing', bidId: 'bid-2' },
+        { path: '/jobs', tab: null },
+      ],
+      rows,
+    )
+    expect(out).toEqual([
+      { path: '/bids', tab: 'pricing', bid_id: 'bid-2', sort_order: 0 },
+      { path: '/jobs', tab: null, bid_id: null, sort_order: 1 },
+      { path: '/bids', tab: 'pricing', bid_id: 'bid-1', sort_order: 2 },
+    ])
   })
 })

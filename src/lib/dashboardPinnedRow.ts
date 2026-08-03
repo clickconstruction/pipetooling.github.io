@@ -67,6 +67,16 @@ export function getPinnedChipDisplay(
   const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
   const isBilled = item.path === '/jobs' && item.tab === 'billed'
   const isSubLaborDue = item.path === '/jobs' && item.tab === 'sub_sheet_ledger'
+  // Bid-scoped pin (v2.1335): deep-link straight to the bid on its tab.
+  if (item.path === '/bids' && item.bidId) {
+    const params = new URLSearchParams()
+    if (item.tab) params.set('tab', item.tab)
+    params.set('bidId', item.bidId)
+    return {
+      to: `/bids?${params.toString()}`,
+      label: item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label,
+    }
+  }
   const to = item.tab
     ? isSubLaborDue
       ? '/jobs?tab=sub_sheet_ledger'
