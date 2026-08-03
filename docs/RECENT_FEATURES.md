@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1324)
+last_updated: 2026-08-03 (v2.1325)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1325)
+
+### Add Part modal refresh: searchable pickers + keyboard-first price entry (2026-08-03)
+Refresh of the shared [`PartFormModal`](../src/components/PartFormModal.tsx) (Bids → Takeoffs part pickers, assembly authoring modals, Materials → Parts Book). **Searchable pickers:** Part Type and each price row's supply house swap from native `<select>` to the existing [`SearchableSelect`](../src/components/SearchableSelect.tsx) (type-to-filter, arrow/Enter keyboard support; `portalZIndex` 1400 since this modal is the leaf dialog at z 1300). **Fast entry:** price rows collapse from stacked cards to one-line grids (supply house | price | effective date | ×); the "×" remove buttons leave the tab order (`tabIndex={-1}`) so Tab flows row → row; and the list **always ends with one blank row** — filling anything in the last row appends a fresh blank below it, replacing the "+ Add another price" button (pure kernel [`lib/partPriceRows.ts`](../src/lib/partPriceRows.ts), +7 tests; blank rows were already dropped on save, filter unchanged). **Layout:** two-column field grid (Name+Manufacturer / Part Type+Link; stacks under 640px via `useNarrowViewport640`), Name autofocuses, service type becomes a header chip. **New optional `onSaveAndAddAnother` prop** — both render sites wire it: saves the part, refreshes the caller's parts caches WITHOUT closing, resets the form blank with focus back on Name, and shows "Saved "name"" (in Takeoffs the intermediate saves skip the picker routing; the final plain Save still routes into whichever picker opened the form). Edit mode keeps its shape (no prices section, prices managed in the Part Prices modal) but gains the two-column grid + searchable Part Type. Render tests in [`PartFormModal.render.test.tsx`](../src/components/PartFormModal.render.test.tsx) (+6) pin the combobox swap, trailing-blank contract, tab-order exclusion, and button gating. New help guide `add-a-part-and-its-prices-fast`. Client-only — no migration.
 
 ## Latest Updates (v2.1324)
 

@@ -672,6 +672,15 @@ export default function Materials() {
     }
   }
 
+  // "Save & add another": refresh the lists but keep the modal open for the next part.
+  async function handlePartSavedAndAddAnother(_part: MaterialPart) {
+    await reloadPartsFirstPage()
+    if (loadAllMode) {
+      await loadAllParts()
+    }
+    setPartFormInitialName('')
+  }
+
 
   // Supply House Management Functions
   function openSupplyHousesModal() {
@@ -1619,6 +1628,7 @@ export default function Materials() {
         isOpen={partFormOpen}
         onClose={() => setPartFormOpen(false)}
         onSave={handlePartSaved}
+        onSaveAndAddAnother={handlePartSavedAndAddAnother}
         editingPart={editingPart}
         initialName={partFormInitialName}
         selectedServiceTypeId={selectedServiceTypeId}
