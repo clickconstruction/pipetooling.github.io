@@ -10,18 +10,17 @@ import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCou
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
-import { addressLines } from '../../lib/bidDocuments/htmlDoc'
-import { formatBidValueShort, formatShortDate, formatDateYYMMDDParts } from '../../lib/bids/bidFormatting'
+import { formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
+import { bidBoardDueCellParts, bidBoardLastContactParts, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
+import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { computeBidBoardStaffOutcomeStatsByRole } from '../../lib/bids/bidBoardStaffOutcomes'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
-import { BidBoardNotesExpandIcon } from '../icons/BidBoardNotesExpandIcon'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
-import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
 
 type BidBoardSectionOpenState = {
@@ -78,6 +77,34 @@ function isCappedSectionKey(key: SubmissionSectionKey): key is CappedSectionKey 
   return (BID_BOARD_CAPPED_SECTIONS as readonly string[]).includes(key)
 }
 
+/** Font Awesome 640-viewbox paths reused across the table and phone cards. */
+const BID_BOARD_ICON_PATHS = {
+  folder: 'M129.5 464L179.5 304L558.9 304L508.9 464L129.5 464zM320.2 512L509 512C530 512 548.6 498.4 554.8 478.3L604.8 318.3C614.5 287.4 591.4 256 559 256L179.6 256C158.6 256 140 269.6 133.8 289.7L112.2 358.4L112.2 160C112.2 151.2 119.4 144 128.2 144L266.9 144C270.4 144 273.7 145.1 276.5 147.2L314.9 176C328.7 186.4 345.6 192 362.9 192L480.2 192C489 192 496.2 199.2 496.2 208L544.2 208C544.2 172.7 515.5 144 480.2 144L362.9 144C356 144 349.2 141.8 343.7 137.6L305.3 108.8C294.2 100.5 280.8 96 266.9 96L128.2 96C92.9 96 64.2 124.7 64.2 160L64.2 448C64.2 483.3 92.9 512 128.2 512L320.2 512z',
+  plans: 'M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM387.4 496L252.6 496C236.8 496 224 483.2 224 467.4C224 461 226.1 454.9 230 449.8L297.6 362.9C303 356 311.3 352 320 352C328.7 352 337 356 342.4 362.9L410 449.9C413.9 454.9 416 461.1 416 467.5C416 483.3 403.2 496.1 387.4 496.1zM240 288C257.7 288 272 302.3 272 320C272 337.7 257.7 352 240 352C222.3 352 208 337.7 208 320C208 302.3 222.3 288 240 288z',
+  countTool: 'M320 48C337.7 48 352 62.3 352 80L352 98.3C450.1 112.3 527.7 189.9 541.7 288L560 288C577.7 288 592 302.3 592 320C592 337.7 577.7 352 560 352L541.7 352C527.7 450.1 450.1 527.7 352 541.7L352 560C352 577.7 337.7 592 320 592C302.3 592 288 577.7 288 560L288 541.7C189.9 527.7 112.3 450.1 98.3 352L80 352C62.3 352 48 337.7 48 320C48 302.3 62.3 288 80 288L98.3 288C112.3 189.9 189.9 112.3 288 98.3L288 80C288 62.3 302.3 48 320 48zM163.2 352C175.9 414.7 225.3 464.1 288 476.8L288 464C288 446.3 302.3 432 320 432C337.7 432 352 446.3 352 464L352 476.8C414.7 464.1 464.1 414.7 476.8 352L464 352C446.3 352 432 337.7 432 320C432 302.3 446.3 288 464 288L476.8 288C464.1 225.3 414.7 175.9 352 163.2L352 176C352 193.7 337.7 208 320 208C302.3 208 288 193.7 288 176L288 163.2C225.3 175.9 175.9 225.3 163.2 288L176 288C193.7 288 208 302.3 208 320C208 337.7 193.7 352 176 352L163.2 352zM320 272C346.5 272 368 293.5 368 320C368 346.5 346.5 368 320 368C293.5 368 272 346.5 272 320C272 293.5 293.5 272 320 272z',
+  bidSend: 'M240 112L128 112C119.2 112 112 119.2 112 128L112 512C112 520.8 119.2 528 128 528L208 528L208 576L128 576C92.7 576 64 547.3 64 512L64 128C64 92.7 92.7 64 128 64L261.5 64C278.5 64 294.8 70.7 306.8 82.7L429.3 205.3C441.3 217.3 448 233.6 448 250.6L448 400.1L400 400.1L400 272.1L312 272.1C272.2 272.1 240 239.9 240 200.1L240 112.1zM380.1 224L288 131.9L288 200C288 213.3 298.7 224 312 224L380.1 224zM272 444L304 444C337.1 444 364 470.9 364 504C364 537.1 337.1 564 304 564L292 564L292 592C292 603 283 612 272 612C261 612 252 603 252 592L252 464C252 453 261 444 272 444zM304 524C315 524 324 515 324 504C324 493 315 484 304 484L292 484L292 524L304 524zM400 444L432 444C460.7 444 484 467.3 484 496L484 560C484 588.7 460.7 612 432 612L400 612C389 612 380 603 380 592L380 464C380 453 389 444 400 444zM432 572C438.6 572 444 566.6 444 560L444 496C444 489.4 438.6 484 432 484L420 484L420 572L432 572zM508 464C508 453 517 444 528 444L576 444C587 444 596 453 596 464C596 475 587 484 576 484L548 484L548 508L576 508C587 508 596 517 596 528C596 539 587 548 576 548L548 548L548 592C548 603 539 612 528 612C517 612 508 603 508 592L508 464z',
+  counts: 'M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z',
+  gear: 'M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z',
+} as const
+
+function BidBoardIcon({ d, size = 20 }: { d: string; size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={size} height={size} fill="currentColor" aria-hidden>
+      <path d={d} />
+    </svg>
+  )
+}
+
+function bidAddressMapsUrl(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+}
+
+const BID_BOARD_DUE_CHIP_COLORS = {
+  overdue: { background: 'var(--bg-red-100)', color: 'var(--text-red-700)', border: '#fecaca' },
+  soon: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: 'var(--border-amber-soft)' },
+  normal: { background: 'var(--bg-muted)', color: 'var(--text-700)', border: 'var(--border)' },
+} as const
+
 export function BidsBidBoardTab({
   bids,
   authUser,
@@ -110,6 +137,7 @@ export function BidsBidBoardTab({
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
   const [customerReviewOpen, setCustomerReviewOpen] = useState(false)
+  const narrowViewport = useNarrowViewport660()
   const [sectionShowAll, setSectionShowAll] = useState<Record<CappedSectionKey, boolean>>({
     pending: false,
     lost: false,
@@ -265,62 +293,356 @@ export function BidsBidBoardTab({
     }
   }, [expandedBidBoardBidId, authUser?.id])
 
-  const bidBoardTableHead = (
-    <thead style={{ background: 'var(--bg-subtle)' }}>
-      <tr>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', width: '2rem' }} title="Notes" aria-label="Notes" />
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Bid #</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Project<br />Folder</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Job<br />Plans</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Count<br />Tool</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid<br />Send</th>
-        <th
-          style={{
-            padding: '0.0625rem',
-            textAlign: 'center',
-            borderBottom: '1px solid var(--border)',
-            fontSize: '0.6875rem',
-            lineHeight: 1.25,
-          }}
-          title="GC or builder and project name"
-          aria-label="GC or builder and project name"
-        >
-          GC/Builder<br />Project Name
-        </th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Address</th>
-        <th
-          style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}
-          title="Account manager and estimator"
-          aria-label="Account manager and estimator"
-        >
-          Account Man<br />Estimator
-        </th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Due<br />Date</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Distance<br />to Office</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', lineHeight: 1.25 }}>Last<br />Contact</th>
-        <th
-          style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}
-          title="Open counts, edit bid"
-          aria-label="Open counts, edit bid"
-        />
-      </tr>
-    </thead>
-  )
+  function bidBoardTableHead(hideBidColumn: boolean) {
+    const th: React.CSSProperties = {
+      padding: '0.0625rem 0.3rem',
+      textAlign: 'center',
+      borderBottom: '1px solid var(--border)',
+      fontSize: '0.6875rem',
+      lineHeight: 1.25,
+    }
+    return (
+      <thead style={{ background: 'var(--bg-subtle)' }}>
+        <tr>
+          <th style={{ ...th, whiteSpace: 'nowrap' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">Bid #</th>
+          <th style={th} title="GC or builder and project name" aria-label="GC or builder and project name">GC/Builder<br />Project Name</th>
+          {!hideBidColumn ? <th style={th}>Bid</th> : null}
+          <th style={th}>Due<br />Date</th>
+          <th style={th}>Last<br />Contact</th>
+          <th style={th} title="Project folder, job plans, Count Tool, and bid submission links" aria-label="Artifact links">Links</th>
+          <th style={th} title="Account manager and estimator" aria-label="Account manager and estimator">Account Man<br />Estimator</th>
+          <th style={th} title="Distance to office — click a row's value to open the address in Google Maps" aria-label="Distance to office">Dist</th>
+        </tr>
+      </thead>
+    )
+  }
 
-  function renderBidBoardTableRow(bid: BidWithBuilder) {
-    const notesExpanded = expandedBidBoardBidId === bid.id
+  function toggleBidBoardRowExpanded(bidId: string) {
+    setExpandedBidBoardBidId((cur) => (cur === bidId ? null : bidId))
+  }
+
+  /** Row/card click-to-expand; ignores clicks on interactive descendants. */
+  function handleBidBoardRowClick(e: React.MouseEvent, bidId: string) {
+    if ((e.target as HTMLElement).closest('a, button, input, textarea, select, label')) return
+    toggleBidBoardRowExpanded(bidId)
+  }
+
+  /** Counts button · bid number (+ unread-notes badge) · Edit gear. */
+  function renderBidBoardBidNumberCluster(bid: BidWithBuilder) {
     const notesUnreadRaw = bidBoardNotesUnreadByBidId[bid.id] ?? 0
-    const notesUnreadBadgeText = notesUnreadRaw > 9 ? '9+' : notesUnreadRaw > 0 ? String(notesUnreadRaw) : null
-    const notesUnreadTitleSuffix = notesUnreadRaw > 0 ? ` (${notesUnreadRaw} unread)` : ''
-    const notesUnreadAriaSuffix = notesUnreadRaw > 0 ? `, ${notesUnreadRaw} unread` : ''
+    const badgeText = notesUnreadRaw > 9 ? '9+' : notesUnreadRaw > 0 ? String(notesUnreadRaw) : null
+    const actionStyle: React.CSSProperties = {
+      padding: 0,
+      width: '1.75rem',
+      height: '1.75rem',
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'var(--text-muted)',
+      borderRadius: 6,
+    }
+    const num = (bid as { bid_number?: string | null }).bid_number?.trim()
+    const pref = resolveBidLedgerPrefix((bid as Bid).service_type_id, ledgerPrefixMap)
+    const label = num ? formatBidLedgerNumberLabel(pref, num) : null
+    let numberNode: React.ReactNode = '-'
+    if (num) {
+      // Bare number on the board — the page context already defines the bid
+      // type; the prefixed label survives in the tooltip/aria text.
+      numberNode = !bidPreview ? (
+        <span title={label ?? undefined}>{num}</span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => bidPreview.openBidPreviewFromBid(bid)}
+          title={`Preview bid ${label}`}
+          aria-label={`Preview bid ${label}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            color: 'var(--text-blue-500)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            font: 'inherit',
+          }}
+        >
+          {num}
+        </button>
+      )
+    }
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', whiteSpace: 'nowrap' }}>
+        <button
+          type="button"
+          onClick={() => onOpenCounts(bid)}
+          title="Open in Counts"
+          aria-label="Open in Counts"
+          style={actionStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          <BidBoardIcon d={BID_BOARD_ICON_PATHS.counts} />
+        </button>
+        {numberNode}
+        {badgeText != null ? (
+          <span
+            title={`${notesUnreadRaw} unread note${notesUnreadRaw === 1 ? '' : 's'}`}
+            aria-label={`${notesUnreadRaw} unread note${notesUnreadRaw === 1 ? '' : 's'}`}
+            style={{
+              minWidth: '0.9375rem',
+              height: '0.9375rem',
+              padding: notesUnreadRaw > 9 ? '0 3px' : 0,
+              borderRadius: 999,
+              background: '#ef4444',
+              color: '#fff',
+              fontSize: '0.5625rem',
+              fontWeight: 700,
+              lineHeight: '0.9375rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'content-box',
+            }}
+          >
+            {badgeText}
+          </span>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => onEditBid(bid)}
+          title="Edit bid"
+          aria-label="Edit bid"
+          style={actionStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          <BidBoardIcon d={BID_BOARD_ICON_PATHS.gear} />
+        </button>
+      </span>
+    )
+  }
+
+  /** Only the artifact links that exist, as an icon cluster ('—' when none). */
+  function renderBidBoardLinksCluster(bid: BidWithBuilder) {
+    const links: Array<{ href: string; title: string; d: string }> = []
+    if (bid.drive_link) links.push({ href: bid.drive_link, title: 'Project folder', d: BID_BOARD_ICON_PATHS.folder })
+    if (bid.plans_link) links.push({ href: bid.plans_link, title: 'Job plans', d: BID_BOARD_ICON_PATHS.plans })
+    if (bid.count_tooling_plans_link) links.push({ href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
+    if (bid.bid_submission_link) links.push({ href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
+    if (links.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    return (
+      <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center' }}>
+        {links.map((l) => (
+          <a
+            key={l.title}
+            href={l.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={l.title}
+            aria-label={l.title}
+            onClick={(e) => { e.preventDefault(); openInExternalBrowser(l.href) }}
+            style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <BidBoardIcon d={l.d} />
+          </a>
+        ))}
+      </span>
+    )
+  }
+
+  /** Weekday+date on top, signed day count below — (+4) days after, (-2) until. */
+  function renderBidBoardDueChip(bid: BidWithBuilder, inline = false) {
+    const parts = bidBoardDueCellParts(bid.bid_due_date)
+    if (!parts) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    const colors = BID_BOARD_DUE_CHIP_COLORS[parts.urgency]
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          flexDirection: inline ? 'row' : 'column',
+          alignItems: 'center',
+          gap: inline ? '0.3rem' : 0,
+          padding: '0.15rem 0.55rem',
+          borderRadius: inline ? 999 : 10,
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          lineHeight: 1.2,
+          fontVariantNumeric: 'tabular-nums',
+          background: colors.background,
+          color: colors.color,
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        <span>{parts.dateLabel}</span>
+        <span style={{ fontSize: '0.625rem', fontWeight: 600, opacity: 0.85 }}>{parts.deltaLabel}</span>
+      </span>
+    )
+  }
+
+  function renderBidBoardLastContact(bid: BidWithBuilder, parts: BidBoardDateCellParts | null) {
+    return (
+      <button
+        type="button"
+        onClick={() => onLastContactClick(bid)}
+        title={parts ? 'Update last contact' : 'Log a contact'}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-blue-500)',
+          cursor: 'pointer',
+          padding: 0,
+          textDecoration: 'none',
+          font: 'inherit',
+          lineHeight: 1.2,
+        }}
+      >
+        {parts ? (
+          <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span>{parts.dateLabel}</span>
+            <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)' }}>{parts.deltaLabel}</span>
+          </span>
+        ) : (
+          '+'
+        )}
+      </button>
+    )
+  }
+
+  function renderBidBoardBidValue(bid: BidWithBuilder) {
+    return shouldShowEmptyBidValueAlert(bid) ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onEditBid(bid, { focus: 'bidValue' })
+        }}
+        title="Bid sent without a value. Click to edit and add a bid value."
+        aria-label="Bid sent without a value. Click to edit and add a bid value."
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 18,
+          height: 18,
+          padding: 0,
+          border: 'none',
+          background: '#dc2626',
+          color: '#fff',
+          borderRadius: 999,
+          cursor: 'pointer',
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          lineHeight: 1,
+        }}
+      >
+        <span aria-hidden>$</span>
+      </button>
+    ) : (
+      formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)
+    )
+  }
+
+  /** Detail strip (address / due + time / bid / team) + the notes panel below it. */
+  function renderBidBoardExpandedContent(bid: BidWithBuilder) {
+    const due = bidBoardDueCellParts(bid.bid_due_date)
+    const dueTime = formatBidDueTime(bid.bid_due_time)
+    const amRaw = bid.account_manager
+    const amNorm = amRaw == null ? null : Array.isArray(amRaw) ? amRaw[0] ?? null : amRaw
+    const estRaw = bid.estimator
+    const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
+    const labelStyle: React.CSSProperties = {
+      display: 'block',
+      fontSize: '0.625rem',
+      fontWeight: 700,
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      color: 'var(--text-muted)',
+      marginBottom: '0.1rem',
+    }
+    return (
+      <>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.5rem 1.75rem',
+            fontSize: '0.8125rem',
+            textAlign: 'left',
+            marginBottom: '0.85rem',
+          }}
+        >
+          <div>
+            <span style={labelStyle}>Address</span>
+            {bid.address ? (
+              <a
+                href={bidAddressMapsUrl(bid.address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--text-blue-500)', textDecoration: 'none' }}
+              >
+                {formatAddressWithoutZip(bid.address)} · open in Maps
+              </a>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>—</span>
+            )}
+          </div>
+          <div>
+            <span style={labelStyle}>Due</span>
+            {due ? `${due.dateLabel}${dueTime ? ` · ${dueTime}` : ''}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+          <div>
+            <span style={labelStyle}>Bid</span>
+            {bid.bid_value != null && Number(bid.bid_value) > 0 ? (
+              formatCompactCurrency(Number(bid.bid_value))
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>not set yet</span>
+            )}
+          </div>
+          <div>
+            <span style={labelStyle}>Account manager</span>
+            {amNorm ? amNorm.name || amNorm.email : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+          <div>
+            <span style={labelStyle}>Estimator</span>
+            {estNorm ? estNorm.name || estNorm.email : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+        </div>
+        <BidBoardNotesPanel
+          bid={bid}
+          notesTab={bidBoardNotesTab}
+          onNotesTabChange={setBidBoardNotesTab}
+          onLoadError={(m) => onError(m)}
+          onMutated={() => { onReloadBids() }}
+          onMutatedCustomer={() => { onReloadCustomerContacts(); onReloadBids() }}
+          idPrefix="bid-board"
+        />
+      </>
+    )
+  }
+
+  function renderBidBoardTableRow(bid: BidWithBuilder, hideBidColumn: boolean) {
+    const expanded = expandedBidBoardBidId === bid.id
+    const colCount = hideBidColumn ? 7 : 8
+    const lcParts = bidBoardLastContactParts(bid.last_contact)
     return (
       <Fragment key={bid.id}>
         <tr
           id={`bid-board-row-${bid.id}`}
           data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
+          onClick={(e) => handleBidBoardRowClick(e, bid.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
+          }}
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-controls={`bid-board-notes-${bid.id}`}
           style={{
             borderBottom: '1px solid var(--border)',
+            cursor: 'pointer',
             ...(bid.id === deepLinkHighlightId
               ? {
                   backgroundColor: 'var(--bg-amber-tint)',
@@ -331,355 +653,126 @@ export function BidsBidBoardTab({
               : {}),
           }}
         >
-          <td style={{ padding: '0.0625rem', textAlign: 'center', verticalAlign: 'middle' }}>
-            <span style={{ position: 'relative', display: 'inline-flex' }}>
-              <button
-                type="button"
-                onClick={() => setExpandedBidBoardBidId((cur) => (cur === bid.id ? null : bid.id))}
-                aria-expanded={notesExpanded}
-                aria-controls={`bid-board-notes-${bid.id}`}
-                title={
-                  notesExpanded
-                    ? 'Hide bid and customer notes'
-                    : `Show bid and customer notes${notesUnreadTitleSuffix}`
-                }
-                aria-label={
-                  notesExpanded
-                    ? 'Hide bid and customer notes'
-                    : `Show bid and customer notes${notesUnreadAriaSuffix}`
-                }
-                style={{
-                  padding: '0.125rem 0.25rem',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-muted)',
-                  lineHeight: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <BidBoardNotesExpandIcon expanded={notesExpanded} />
-              </button>
-              {notesUnreadBadgeText != null ? (
-                <span
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -4,
-                    minWidth: '0.875rem',
-                    height: '0.875rem',
-                    padding: notesUnreadRaw > 9 ? '0 3px' : 0,
-                    borderRadius: 999,
-                    background: '#ef4444',
-                    color: '#fff',
-                    fontSize: '0.5625rem',
-                    fontWeight: 700,
-                    lineHeight: '0.875rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none',
-                    boxSizing: 'content-box',
-                  }}
-                >
-                  {notesUnreadBadgeText}
-                </span>
-              ) : null}
-            </span>
+          <td style={{ padding: '0.0625rem 0.15rem', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+            {renderBidBoardBidNumberCluster(bid)}
           </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-          {(() => {
-            const num = (bid as { bid_number?: string | null }).bid_number?.trim()
-            if (!num) return '-'
-            const pref = resolveBidLedgerPrefix((bid as Bid).service_type_id, ledgerPrefixMap)
-            const label = formatBidLedgerNumberLabel(pref, num)
-            if (!bidPreview) return <BidBoardBidNumberMark bidPrefix={pref} bidNumber={num} />
-            const a11y = `Preview bid ${label}`
-            return (
-              <button
-                type="button"
-                onClick={() => bidPreview.openBidPreviewFromBid(bid)}
-                title={a11y}
-                aria-label={a11y}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  color: 'var(--text-blue-500)',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  font: 'inherit',
-                }}
-              >
-                <BidBoardBidNumberMark bidPrefix={pref} bidNumber={num} />
-              </button>
-            )
-          })()}
-        </td>
-        <td style={{ padding: 0, textAlign: 'center' }}>
-          {bid.drive_link ? (
-            <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.drive_link!) }} style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
-                <path d="M129.5 464L179.5 304L558.9 304L508.9 464L129.5 464zM320.2 512L509 512C530 512 548.6 498.4 554.8 478.3L604.8 318.3C614.5 287.4 591.4 256 559 256L179.6 256C158.6 256 140 269.6 133.8 289.7L112.2 358.4L112.2 160C112.2 151.2 119.4 144 128.2 144L266.9 144C270.4 144 273.7 145.1 276.5 147.2L314.9 176C328.7 186.4 345.6 192 362.9 192L480.2 192C489 192 496.2 199.2 496.2 208L544.2 208C544.2 172.7 515.5 144 480.2 144L362.9 144C356 144 349.2 141.8 343.7 137.6L305.3 108.8C294.2 100.5 280.8 96 266.9 96L128.2 96C92.9 96 64.2 124.7 64.2 160L64.2 448C64.2 483.3 92.9 512 128.2 512L320.2 512z"/>
-              </svg>
-            </a>
-          ) : (
-            '-'
-          )}
-        </td>
-        <td style={{ padding: 0, textAlign: 'center' }}>
-          {bid.plans_link ? (
-            <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.plans_link!) }} style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
-                <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM387.4 496L252.6 496C236.8 496 224 483.2 224 467.4C224 461 226.1 454.9 230 449.8L297.6 362.9C303 356 311.3 352 320 352C328.7 352 337 356 342.4 362.9L410 449.9C413.9 454.9 416 461.1 416 467.5C416 483.3 403.2 496.1 387.4 496.1zM240 288C257.7 288 272 302.3 272 320C272 337.7 257.7 352 240 352C222.3 352 208 337.7 208 320C208 302.3 222.3 288 240 288z"/>
-              </svg>
-            </a>
-          ) : (
-            '-'
-          )}
-        </td>
-        <td style={{ padding: 0, textAlign: 'center' }} title="CountTooling Plans">
-          {bid.count_tooling_plans_link ? (
-            <a href={bid.count_tooling_plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.count_tooling_plans_link!) }} style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
-                <path d="M320 48C337.7 48 352 62.3 352 80L352 98.3C450.1 112.3 527.7 189.9 541.7 288L560 288C577.7 288 592 302.3 592 320C592 337.7 577.7 352 560 352L541.7 352C527.7 450.1 450.1 527.7 352 541.7L352 560C352 577.7 337.7 592 320 592C302.3 592 288 577.7 288 560L288 541.7C189.9 527.7 112.3 450.1 98.3 352L80 352C62.3 352 48 337.7 48 320C48 302.3 62.3 288 80 288L98.3 288C112.3 189.9 189.9 112.3 288 98.3L288 80C288 62.3 302.3 48 320 48zM163.2 352C175.9 414.7 225.3 464.1 288 476.8L288 464C288 446.3 302.3 432 320 432C337.7 432 352 446.3 352 464L352 476.8C414.7 464.1 464.1 414.7 476.8 352L464 352C446.3 352 432 337.7 432 320C432 302.3 446.3 288 464 288L476.8 288C464.1 225.3 414.7 175.9 352 163.2L352 176C352 193.7 337.7 208 320 208C302.3 208 288 193.7 288 176L288 163.2C225.3 175.9 175.9 225.3 163.2 288L176 288C193.7 288 208 302.3 208 320C208 337.7 193.7 352 176 352L163.2 352zM320 272C346.5 272 368 293.5 368 320C368 346.5 346.5 368 320 368C293.5 368 272 346.5 272 320C272 293.5 293.5 272 320 272z"/>
-              </svg>
-            </a>
-          ) : (
-            '-'
-          )}
-        </td>
-        <td style={{ padding: 0, textAlign: 'center' }} title="Bid Submission">
-          {bid.bid_submission_link ? (
-            <a href={bid.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.bid_submission_link!) }} style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
-                <path d="M240 112L128 112C119.2 112 112 119.2 112 128L112 512C112 520.8 119.2 528 128 528L208 528L208 576L128 576C92.7 576 64 547.3 64 512L64 128C64 92.7 92.7 64 128 64L261.5 64C278.5 64 294.8 70.7 306.8 82.7L429.3 205.3C441.3 217.3 448 233.6 448 250.6L448 400.1L400 400.1L400 272.1L312 272.1C272.2 272.1 240 239.9 240 200.1L240 112.1zM380.1 224L288 131.9L288 200C288 213.3 298.7 224 312 224L380.1 224zM272 444L304 444C337.1 444 364 470.9 364 504C364 537.1 337.1 564 304 564L292 564L292 592C292 603 283 612 272 612C261 612 252 603 252 592L252 464C252 453 261 444 272 444zM304 524C315 524 324 515 324 504C324 493 315 484 304 484L292 484L292 524L304 524zM400 444L432 444C460.7 444 484 467.3 484 496L484 560C484 588.7 460.7 612 432 612L400 612C389 612 380 603 380 592L380 464C380 453 389 444 400 444zM432 572C438.6 572 444 566.6 444 560L444 496C444 489.4 438.6 484 432 484L420 484L420 572L432 572zM508 464C508 453 517 444 528 444L576 444C587 444 596 453 596 464C596 475 587 484 576 484L548 484L548 508L576 508C587 508 596 517 596 528C596 539 587 548 576 548L548 548L548 592C548 603 539 612 528 612C517 612 508 603 508 592L508 464z"/>
-              </svg>
-            </a>
-          ) : (
-            '-'
-          )}
-        </td>
-        <td
-          style={{
-            padding: '0.0625rem',
-            maxWidth: 200,
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            lineHeight: 1.35,
-            verticalAlign: 'middle',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-            {(bid.customers || bid.bids_gc_builders) ? (
-              <button
-                type="button"
-                onClick={() => onOpenGcBuilderOrCustomer(bid)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'none', font: 'inherit' }}
-              >
-                {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-              </button>
-            ) : (
-              '-'
-            )}
-            <span>{bid.project_name ?? '-'}</span>
-          </div>
-        </td>
-        <td
-          style={{
-            padding: '0.0625rem',
-            maxWidth: 200,
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            lineHeight: 1.35,
-          }}
-          title={bid.address ?? ''}
-        >
-          {bid.address ? (
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--text-blue-500)' }}
-            >
-              {(() => {
-                const formatted = formatAddressWithoutZip(bid.address)
-                const lines = addressLines(formatted)
-                if (lines.length <= 1) return formatted
-                return <>{lines[0]}<br />{lines[1]}</>
-              })()}
-            </a>
-          ) : (
-            '-'
-          )}
-        </td>
-        <td
-          style={{
-            padding: '0.0625rem',
-            textAlign: 'center',
-            fontSize: '0.6875rem',
-            lineHeight: 1.35,
-            wordBreak: 'break-word',
-            verticalAlign: 'middle',
-          }}
-        >
-          {(() => {
-            const amRaw = bid.account_manager
-            const amNorm = amRaw == null ? null : Array.isArray(amRaw) ? amRaw[0] ?? null : amRaw
-            const estRaw = bid.estimator
-            const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
-            const amLine = amNorm ? (amNorm.name || amNorm.email) : '—'
-            const estLine = estNorm ? (estNorm.name || estNorm.email) : '—'
-            const isSelfAm = Boolean(authUser?.id && amNorm?.id === authUser.id)
-            const isSelfEst = Boolean(authUser?.id && estNorm?.id === authUser.id)
-            const selfLineStyle = {
-              backgroundColor: '#111827',
-              color: '#ffffff',
-              padding: '0.125rem 0.35rem',
-              borderRadius: 4,
-              display: 'inline-block' as const,
-              maxWidth: '100%',
-              textAlign: 'center' as const,
-              boxSizing: 'border-box' as const,
-            }
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                <span title={isSelfAm ? 'You' : undefined} style={isSelfAm ? selfLineStyle : undefined}>
-                  {amLine}
-                </span>
-                <span title={isSelfEst ? 'You' : undefined} style={isSelfEst ? selfLineStyle : undefined}>
-                  {estLine}
-                </span>
-              </div>
-            )
-          })()}
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
-          {shouldShowEmptyBidValueAlert(bid) ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditBid(bid, { focus: 'bidValue' })
-              }}
-              title="Bid sent without a value. Click to edit and add a bid value."
-              aria-label="Bid sent without a value. Click to edit and add a bid value."
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 18,
-                height: 18,
-                padding: 0,
-                border: 'none',
-                background: '#dc2626',
-                color: '#fff',
-                borderRadius: 999,
-                cursor: 'pointer',
-                fontSize: '0.6875rem',
-                fontWeight: 700,
-                lineHeight: 1,
-              }}
-            >
-              <span aria-hidden>$</span>
-            </button>
-          ) : (
-            formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)
-          )}
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
-          {(() => {
-            const parts = formatDateYYMMDDParts(bid.bid_due_date)
-            const dueTime = formatBidDueTime(bid.bid_due_time)
-            return parts ? (
-              <div style={{ lineHeight: 1.25 }}>
-                <div>{parts.date}</div>
-                <div>{parts.bracket}</div>
-                {dueTime ? <div style={{ color: 'var(--text-muted)' }}>{dueTime}</div> : null}
-              </div>
-            ) : '—'
-          })()}
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
-          {bid.distance_from_office != null && bid.distance_from_office !== ''
-            ? `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))}mi`
-            : '—'}
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
-          <button
-            type="button"
-            onClick={() => onLastContactClick(bid)}
+          <td
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-blue-500)',
-              cursor: 'pointer',
-              padding: 0,
-              textDecoration: 'none',
-              font: 'inherit',
+              padding: '0.0625rem',
+              maxWidth: 220,
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              textAlign: 'center',
+              fontSize: '0.75rem',
+              lineHeight: 1.35,
+              verticalAlign: 'middle',
             }}
           >
-            {bid.last_contact ? (() => {
-              const s = formatShortDate(bid.last_contact)
-              const spaceIdx = s.indexOf(' ')
-              if (spaceIdx < 0) return s
-              return <>{s.slice(0, spaceIdx)}<br />{s.slice(spaceIdx + 1)}</>
-            })() : '+'}
-          </button>
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', verticalAlign: 'middle' }}>
-          <div
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+              {(bid.customers || bid.bids_gc_builders) ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenGcBuilderOrCustomer(bid)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'none', font: 'inherit' }}
+                >
+                  {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                </button>
+              ) : (
+                '-'
+              )}
+              <span>{bid.project_name ?? '-'}</span>
+            </div>
+          </td>
+          {!hideBidColumn ? (
+            <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
+              {renderBidBoardBidValue(bid)}
+            </td>
+          ) : null}
+          <td style={{ padding: '0.0625rem 0.2rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
+            {renderBidBoardDueChip(bid)}
+          </td>
+          <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
+            {renderBidBoardLastContact(bid, lcParts)}
+          </td>
+          <td style={{ padding: '0.0625rem 0.2rem', textAlign: 'center' }}>
+            {renderBidBoardLinksCluster(bid)}
+          </td>
+          <td
             style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.25rem',
+              padding: '0.0625rem',
+              textAlign: 'center',
+              fontSize: '0.6875rem',
+              lineHeight: 1.35,
+              wordBreak: 'break-word',
+              verticalAlign: 'middle',
             }}
           >
-            <button
-              type="button"
-              onClick={() => onOpenCounts(bid)}
-              title="Open in Counts"
-              style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
-                <path d="M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z"/>
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => onEditBid(bid)}
-              title="Edit bid"
-              style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-              </svg>
-            </button>
-          </div>
-        </td>
-      </tr>
+            {(() => {
+              const amRaw = bid.account_manager
+              const amNorm = amRaw == null ? null : Array.isArray(amRaw) ? amRaw[0] ?? null : amRaw
+              const estRaw = bid.estimator
+              const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
+              const amLine = amNorm ? (amNorm.name || amNorm.email) : '—'
+              const estLine = estNorm ? (estNorm.name || estNorm.email) : '—'
+              const isSelfAm = Boolean(authUser?.id && amNorm?.id === authUser.id)
+              const isSelfEst = Boolean(authUser?.id && estNorm?.id === authUser.id)
+              const selfLineStyle = {
+                backgroundColor: '#111827',
+                color: '#ffffff',
+                padding: '0.125rem 0.35rem',
+                borderRadius: 4,
+                display: 'inline-block' as const,
+                maxWidth: '100%',
+                textAlign: 'center' as const,
+                boxSizing: 'border-box' as const,
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                  <span title={isSelfAm ? 'You' : undefined} style={isSelfAm ? selfLineStyle : undefined}>
+                    {amLine}
+                  </span>
+                  <span title={isSelfEst ? 'You' : undefined} style={isSelfEst ? selfLineStyle : undefined}>
+                    {estLine}
+                  </span>
+                </div>
+              )
+            })()}
+          </td>
+          <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35, whiteSpace: 'nowrap' }}>
+            {(() => {
+              const dist =
+                bid.distance_from_office != null && bid.distance_from_office !== ''
+                  ? `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))}mi`
+                  : '—'
+              if (bid.address && dist !== '—') {
+                return (
+                  <a
+                    href={bidAddressMapsUrl(bid.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open address in Google Maps"
+                    aria-label="Open address in Google Maps"
+                    style={{ color: 'var(--text-blue-500)', textDecoration: 'none' }}
+                  >
+                    {dist}
+                  </a>
+                )
+              }
+              return dist
+            })()}
+          </td>
+        </tr>
         {bid.outcome === 'lost' ? (
           <tr
             aria-label={`Loss reason: ${(bid as { loss_reason?: string | null }).loss_reason?.trim() || 'not recorded'}`}
             style={{ background: 'var(--bg-subtle)' }}
           >
             <td
-              colSpan={14}
+              colSpan={colCount}
               style={{
                 padding: '0.5rem 1rem 0.5rem 2rem',
                 borderTop: '1px solid var(--border)',
-                borderBottom: notesExpanded ? undefined : '1px solid #e5e7eb',
+                borderBottom: expanded ? undefined : '1px solid #e5e7eb',
                 verticalAlign: 'top',
                 fontSize: '0.8125rem',
                 lineHeight: 1.45,
@@ -695,22 +788,121 @@ export function BidsBidBoardTab({
             </td>
           </tr>
         ) : null}
-        {notesExpanded ? (
+        {expanded ? (
           <tr id={`bid-board-notes-${bid.id}`} style={{ background: 'var(--bg-subtle)' }}>
-            <td colSpan={14} style={{ padding: '1rem', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-              <BidBoardNotesPanel
-                bid={bid}
-                notesTab={bidBoardNotesTab}
-                onNotesTabChange={setBidBoardNotesTab}
-                onLoadError={(m) => onError(m)}
-                onMutated={() => { onReloadBids() }}
-                onMutatedCustomer={() => { onReloadCustomerContacts(); onReloadBids() }}
-                idPrefix="bid-board"
-              />
+            <td colSpan={colCount} style={{ padding: '1rem', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
+              {renderBidBoardExpandedContent(bid)}
             </td>
           </tr>
         ) : null}
       </Fragment>
+    )
+  }
+
+  /** Phone (<660px) card row — same data, no horizontal scrolling. */
+  function renderBidBoardCard(bid: BidWithBuilder) {
+    const expanded = expandedBidBoardBidId === bid.id
+    const lcParts = bidBoardLastContactParts(bid.last_contact)
+    const lossReason = (bid as { loss_reason?: string | null }).loss_reason?.trim()
+    const estRaw = bid.estimator
+    const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
+    const hasLinks = Boolean(bid.drive_link || bid.plans_link || bid.count_tooling_plans_link || bid.bid_submission_link)
+    return (
+      <div
+        key={bid.id}
+        id={`bid-board-row-${bid.id}`}
+        data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
+        onClick={(e) => handleBidBoardRowClick(e, bid.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
+        }}
+        tabIndex={0}
+        role="button"
+        aria-expanded={expanded}
+        aria-controls={`bid-board-notes-${bid.id}`}
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: '0.5rem 0.6rem',
+          background: 'var(--surface)',
+          cursor: 'pointer',
+          ...(bid.id === deepLinkHighlightId
+            ? {
+                backgroundColor: 'var(--bg-amber-tint)',
+                outline: '2px solid #d97706',
+                outlineOffset: -2,
+                transition: 'background-color 0.25s ease, outline-color 0.25s ease',
+              }
+            : {}),
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {renderBidBoardBidNumberCluster(bid)}
+          <span style={{ marginLeft: 'auto' }}>{renderBidBoardDueChip(bid, true)}</span>
+        </div>
+        <div
+          style={{
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            margin: '0.15rem 0 0.1rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {bid.project_name ?? '-'}
+        </div>
+        <div
+          style={{
+            fontSize: '0.75rem',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.15rem 0.35rem',
+          }}
+        >
+          {(bid.customers || bid.bids_gc_builders) ? (
+            <button
+              type="button"
+              onClick={() => onOpenGcBuilderOrCustomer(bid)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, font: 'inherit' }}
+            >
+              {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+            </button>
+          ) : null}
+          {estNorm ? <span>· {estNorm.name || estNorm.email}</span> : null}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+            · {renderBidBoardBidValue(bid)}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+            · LC{' '}
+            <button
+              type="button"
+              onClick={() => onLastContactClick(bid)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, font: 'inherit' }}
+            >
+              {lcParts ? `${lcParts.dateLabel} ${lcParts.deltaLabel}` : '+'}
+            </button>
+          </span>
+        </div>
+        {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
+        {bid.outcome === 'lost' ? (
+          <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>
+            <span style={{ color: lossReason ? 'var(--text-700)' : 'var(--text-faint)' }}>{lossReason || '—'}</span>
+          </div>
+        ) : null}
+        {expanded ? (
+          <div
+            id={`bid-board-notes-${bid.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ borderTop: '1px dashed var(--border)', marginTop: '0.5rem', paddingTop: '0.5rem', cursor: 'default' }}
+          >
+            {renderBidBoardExpandedContent(bid)}
+          </div>
+        ) : null}
+      </div>
     )
   }
 
@@ -941,23 +1133,60 @@ export function BidsBidBoardTab({
                     {label} ({sectionBids.length})
                   </button>
                 )}
-                {isOpen && (
+                {isOpen && narrowViewport && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    {sectionBids.length === 0 ? (
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No bids in this group
+                      </div>
+                    ) : (
+                      visibleSectionBids.map((bid) => renderBidBoardCard(bid))
+                    )}
+                    {capApplies ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSectionShowAll((prev) =>
+                            isCappedSectionKey(key) ? { ...prev, [key]: !prev[key] } : prev
+                          )
+                        }
+                        aria-expanded={capExpanded}
+                        style={{
+                          padding: '0.5rem',
+                          background: 'none',
+                          border: '1px dashed var(--border-strong)',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          color: 'var(--text-blue-500)',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {capExpanded
+                          ? `Show first ${BID_BOARD_SECTION_ROW_CAP} ▴`
+                          : `Show all ${sectionBids.length} ▾`}
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+                {isOpen && !narrowViewport && (
                   <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', marginTop: '0.25rem' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
-                      {bidBoardTableHead}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                      {bidBoardTableHead(key === 'unsent')}
                       <tbody>
                         {sectionBids.length === 0 ? (
                           <tr>
-                            <td colSpan={14} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={key === 'unsent' ? 7 : 8} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                               No bids in this group
                             </td>
                           </tr>
                         ) : (
-                          visibleSectionBids.map((bid) => renderBidBoardTableRow(bid))
+                          visibleSectionBids.map((bid) => renderBidBoardTableRow(bid, key === 'unsent'))
                         )}
                         {capApplies ? (
                           <tr>
-                            <td colSpan={14} style={{ padding: 0, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
+                            {/* capped sections are pending/lost, which always show the Bid column */}
+                            <td colSpan={8} style={{ padding: 0, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
                               <button
                                 type="button"
                                 onClick={() =>

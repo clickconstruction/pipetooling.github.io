@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1347',
+    date: '2026-08-03',
+    title: 'Bid Board rows: click for details, built for phones',
+    kind: 'feature',
+    highlights: [
+      'Click anywhere on a bid row to expand it — GC and project in full, address (opens Google Maps), due date + time, bid value, team, and the notes panel, all in one place.',
+      'Due Date and Last Contact now show the weekday + date with a day count: (+4) means 4 days past, (-2) means 2 days away.',
+      'The four link columns became one Links cluster showing only what exists; the unread-notes badge, Counts, and Edit now flank the bid number.',
+      'On phones, rows become cards — no more sideways scrolling to read a bid.',
+    ],
+  },
+  {
     version: 'v2.1346',
     date: '2026-08-03',
     title: 'Bid Board: jump straight to any section',
