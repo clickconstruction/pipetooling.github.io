@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1353',
+    date: '2026-08-03',
+    title: 'Bid Board: what do the due-date colors mean?',
+    kind: 'feature',
+    highlights: [
+      'A small red/yellow/grey key now sits beside the Due Date header on the Bid Board — tap it for a plain-English legend: red = past due, yellow = due within 3 days, grey = further out.',
+    ],
+  },
+  {
     version: 'v2.1352',
     date: '2026-08-03',
     title: 'Schedule Day view: readable on phones',
