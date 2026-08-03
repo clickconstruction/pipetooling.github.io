@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1325',
+    date: '2026-08-03',
+    title: 'Add Part is now keyboard-fast with searchable pickers',
+    kind: 'feature',
+    highlights: [
+      'Part Type and supply house pickers in the Add Part form are searchable — open, type a few letters, Enter to pick.',
+      'Prices are one line each and a blank row is always ready — tab straight through supply house, price, and date to keep adding prices without clicking.',
+      'New "Save & add another" button keeps the form open for entering several parts back-to-back — in Takeoffs, Materials, and the assembly modals.',
+    ],
+  },
+  {
     version: 'v2.1324',
     date: '2026-08-03',
     title: 'Bid margin breakdown now shows per-unit prices',

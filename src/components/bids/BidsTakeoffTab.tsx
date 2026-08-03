@@ -498,6 +498,19 @@ export function BidsTakeoffTab({
     setBidsPartFormEditingPart(null)
   }
 
+  // "Save & add another": refresh the parts caches but keep the modal open and
+  // skip the picker routing above — intermediate parts just land in the catalog;
+  // the final plain Save still routes into whichever picker opened the form.
+  async function handleBidsPartFormSaveAndAddAnother(_part: MaterialPart) {
+    const { data } = await supabase
+      .from('material_parts')
+      .select('*, part_types(*)')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('name', { ascending: true })
+    if (data) setTakeoffAddTemplateParts(data as MaterialPartWithType[])
+    setBidsPartFormInitialName('')
+  }
+
 
 
   async function applyTakeoffBookTemplates() {
@@ -2767,6 +2780,7 @@ export function BidsTakeoffTab({
         isOpen={bidsPartFormOpen}
         onClose={closeBidsPartForm}
         onSave={handleBidsPartFormSave}
+        onSaveAndAddAnother={handleBidsPartFormSaveAndAddAnother}
         editingPart={bidsPartFormEditingPart}
         initialName={bidsPartFormInitialName}
         selectedServiceTypeId={selectedServiceTypeId}
