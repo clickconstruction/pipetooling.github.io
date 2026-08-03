@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1319)
+last_updated: 2026-08-03 (v2.1320)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1320)
+
+### Overhead hygiene strip: pending approvals, unpriced hours, unassigned salary time (2026-08-03)
+Last piece of the 2026-08-02 labor-audit batch: every labor hour/dollar in the 90-day overhead pool and the Method A/C denominators requires an approved, closed, wage-priced clock session, and three classes of maintenance debt silently corrupted the numbers with no indicator near them. New amber maintenance strip on People → Overhead (adjacent to the three-lenses strip, hidden entirely when clean), one card per dirty indicator with count + hours, a `title` tooltip stating the exact rule and 90-day window, and a where-to-fix hint. **(1) Pending approvals** — sessions with no `approved_at`/`rejected_at`/`revoked_at`, computed from the SAME two session arrays the 90-day KPI/lenses effect already fetches (zero new fetches), split closed (count + hours) vs still-open (count only); unapproved time is excluded from pool AND denominators. **(2) Unpriced hours** — per-person aggregation of the daily-labor builders' existing `missingWage` detail lines (no builder changes needed): hours count, dollars price $0, deflating pool + Method C while Method A's denominator stays full; distinct names capped at 3 + "and N more". **(3) Unassigned salary time** — ONE new paged fetch in the same effect (same `fetchAllRows`/retry pattern, same Chicago window): `clock_sessions` with `origin = 'salary_schedule'` AND `job_ledger_id IS NULL` AND `bid_id IS NULL`; this time is invisible to the pool regardless of approval. That fetch fails soft per-source (`reportOverheadLoadError('unassigned salary time')` + indicator hides) without nulling the KPIs. Classification math lives in the new pure kernel [`overheadHygiene.ts`](../src/lib/overheadHygiene.ts) (+14 colocated tests: pending split/dedupe across the two arrays for field-job-with-bid overlap, missingWage aggregation deduped by sessionId, rejected/revoked salary rows dropped, `anyAttention` gating, name capping). Help guide `understand-overhead-numbers.md` ships with it.
 
 ## Latest Updates (v2.1319)
 
