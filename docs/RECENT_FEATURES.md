@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1336)
+last_updated: 2026-08-03 (v2.1339)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1339)
+
+### Dispatch Mode Inbox: "Open Gmail" link at the top (2026-08-03)
+Dispatcher ask: jump from the app inbox to the email inbox without hunting for a tab. The Dispatch Mode → Inbox tab ([`DispatchModeInbox.tsx`](../src/components/dispatchMode/DispatchModeInbox.tsx)) gets a compact **Open Gmail** button-style link (envelope icon) centered under the Inbox heading, above the notification banners — plain `https://mail.google.com/` in a new tab (`rel="noopener noreferrer"`), so Google lands the user in whichever account they're signed into. All Dispatch Mode roles. Help guide `dispatch-mode` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1336)
 
