@@ -8,7 +8,7 @@ type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
 <<<<<<< HEAD
-last_updated: 2026-08-03 (v2.1338)
+last_updated: 2026-08-03 (v2.1340)
 =======
 last_updated: 2026-08-03 (v2.1337)
 >>>>>>> origin/main
@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ---
 
 <<<<<<< HEAD
+## Latest Updates (v2.1340)
+
+### sync-resend-emails: use a full-access read key (RESEND_READ_API_KEY) (2026-08-03)
+First live pull of the v2.1338 email log failed with Resend 401 `restricted_api_key`: the org's `RESEND_API_KEY` is (correctly) a **sending-only** restricted key, and Resend's list-emails endpoint requires full access. [`sync-resend-emails`](../supabase/functions/sync-resend-emails/index.ts) now reads **`RESEND_READ_API_KEY`** first (falling back to `RESEND_API_KEY` when unset) so the 13 sender functions keep their least-privilege key. Ops: create a full-access key in the Resend dashboard and `supabase secrets set RESEND_READ_API_KEY=re_…`, then redeploy the function. `docs/EDGE_FUNCTIONS.md` secrets section updated. No migration.
+
 ## Latest Updates (v2.1338)
 
 ### Settings → Notifications: org-wide "Most recent emails sent" (dev) above your push list (2026-08-03)
