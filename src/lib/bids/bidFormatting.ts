@@ -18,10 +18,13 @@ export function formatCompactCurrency(n: number | null): string {
   return `$${k.toFixed(1)}k`
 }
 
+/** Bid value in thousands with a `k` suffix — `153000` → `153k`. The suffix
+ *  matters on the Bid Board phone cards, where the value has no column header
+ *  to identify it. */
 export function formatBidValueShort(n: number | null): string {
   if (n == null) return '—'
   const valueInThousands = n / 1000
-  return valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)
+  return `${valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)}k`
 }
 
 export function formatTimeSinceLastContact(iso: string | null): string {
