@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1330',
+    date: '2026-08-03',
+    title: 'See every email subscription you have',
+    kind: 'feature',
+    highlights: [
+      'Settings → Your account → My email schedule now lists every event-driven email stream in the app — Paid in Full, Payment received, and Estimate accepted — with a clear subscribed or not-subscribed state and where each list is managed.',
+      'Estimate-accepted subscriptions on specific estimates show up too, with the estimate names.',
+    ],
+  },
+  {
     version: 'v2.1329',
     date: '2026-08-03',
     title: 'Takeoff quantities: click and type fresh',

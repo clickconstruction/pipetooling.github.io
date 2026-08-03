@@ -6,6 +6,7 @@ import {
   currentWeekDays,
   dowForYmd,
   formatMinutes,
+  normalizeMyEmailSubscriptions,
   parseHhMm,
 } from './emailScheduleWeek'
 
@@ -101,5 +102,47 @@ describe('buildMyEmailWeekGrid', () => {
     const wed = grid[2]?.entries[0]
     expect(wed?.sent).toBe(false)
     expect(wed?.weekly).toBe(true)
+  })
+})
+
+describe('normalizeMyEmailSubscriptions', () => {
+  it('maps a full v2.1330 payload', () => {
+    const subs = normalizeMyEmailSubscriptions({
+      events: { paid_in_full: true, payment_received: false, estimate_accepted_always: true },
+      estimate_specific: { total: 7, titles: ['Askey remodel', 'Garza bath'] },
+    })
+    expect(subs).toEqual({
+      paidInFull: true,
+      paymentReceived: false,
+      estimateAcceptedAlways: true,
+      estimateSpecificTotal: 7,
+      estimateSpecificTitles: ['Askey remodel', 'Garza bath'],
+    })
+  })
+
+  it('defaults the v2.1330 keys when the RPC has not been migrated yet', () => {
+    const subs = normalizeMyEmailSubscriptions({
+      events: { paid_in_full: true, payment_received: true },
+    })
+    expect(subs.estimateAcceptedAlways).toBe(false)
+    expect(subs.estimateSpecificTotal).toBe(0)
+    expect(subs.estimateSpecificTitles).toEqual([])
+    expect(subs.paidInFull).toBe(true)
+  })
+
+  it('survives a null payload and garbage fields', () => {
+    expect(normalizeMyEmailSubscriptions(null)).toEqual({
+      paidInFull: false,
+      paymentReceived: false,
+      estimateAcceptedAlways: false,
+      estimateSpecificTotal: 0,
+      estimateSpecificTitles: [],
+    })
+    const subs = normalizeMyEmailSubscriptions({
+      events: { paid_in_full: false, payment_received: false },
+      estimate_specific: { total: Number.NaN, titles: ['', '  ', 'Real title'] as string[] },
+    })
+    expect(subs.estimateSpecificTotal).toBe(0)
+    expect(subs.estimateSpecificTitles).toEqual(['Real title'])
   })
 })

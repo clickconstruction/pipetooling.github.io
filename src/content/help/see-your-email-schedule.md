@@ -22,9 +22,15 @@ The grid shows the current week, Monday through Sunday, in Central time. Each co
 
 Blue blocks are recurring report digests (they repeat every week on those days). Yellow and purple blocks are one-time sends someone scheduled for you — they appear on their exact day. A dimmed block means that schedule is currently paused.
 
-## "Also, when it happens"
+## My email subscriptions
 
-Below the week, this list shows email streams that don't run on a clock — like **Paid in Full** (sent when any job is fully paid) and **Payment received** (sent whenever a payment lands). If a stream is listed, you're on its recipient list.
+Below the week, this list shows **every** email stream that doesn't run on a clock, each with a clear subscribed or not-subscribed state:
+
+- **Paid in Full** — sent when any job is fully paid (list managed on the Jobs Pipeline board).
+- **Payment received** — sent whenever a payment lands on any job (same place).
+- **Estimate accepted** — sent on every customer acceptance if you're on the always-notify list ({{icon:gear}} on Estimates), and separately for any **specific estimates** whose Notify list names you — those show up with the estimate names.
+
+A colored dot means you're subscribed; a hollow gray dot means you're not.
 
 ## Changing what you receive
 
