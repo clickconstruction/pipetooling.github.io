@@ -106,7 +106,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### August 2, 2026
 
 **`20260803120000_my_email_schedule_rpc.sql`** _(apply via `supabase db push` after merge; client fail-soft until pushed — the Settings section shows the RPC error)_
-- **Purpose**: "My email schedule" (v2.1317) — `get_my_email_schedule()`, one self-scoped read for everything configured to email the CALLER: recurring job-report digests naming them, pending one-off sends addressed to them (billed-report requests, schedule-day emails), and event-stream memberships (paid/payment app_settings uuid lists, guarded cast). SECURITY DEFINER because the sources have mismatched RLS the recipient can't cross (billed-report requests are sender-readable); returns only auth.uid()'s own entries; EXECUTE granted to authenticated (the get_dashboard_payroll_totals aggregate-read precedent).
+- **Purpose**: "My email schedule" (v2.1320) — `get_my_email_schedule()`, one self-scoped read for everything configured to email the CALLER: recurring job-report digests naming them, pending one-off sends addressed to them (billed-report requests, schedule-day emails), and event-stream memberships (paid/payment app_settings uuid lists, guarded cast). SECURITY DEFINER because the sources have mismatched RLS the recipient can't cross (billed-report requests are sender-readable); returns only auth.uid()'s own entries; EXECUTE granted to authenticated (the get_dashboard_payroll_totals precedent).
 - **Category**: Feature schema
 
 **`20260803110000_billed_report_payload_fidelity.sql`** _(apply via `supabase db push` after merge — CREATE OR REPLACE only)_

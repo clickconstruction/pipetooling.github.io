@@ -10,7 +10,7 @@ import {
 } from '../../lib/emailSchedule/emailScheduleWeek'
 
 /**
- * Settings → Your account → "My email schedule" (v2.1317): everything the app
+ * Settings → Your account → "My email schedule" (v2.1320): everything the app
  * is configured to email YOU — weekly report digests on their weekday/time
  * slots, pending one-off sends addressed to you, and the event-driven streams
  * you're on. Read-only; each stream links to where it's managed. Data comes

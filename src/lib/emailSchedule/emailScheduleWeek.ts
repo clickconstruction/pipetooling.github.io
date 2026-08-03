@@ -1,5 +1,5 @@
 /**
- * "My email schedule" week-grid kernel (v2.1317).
+ * "My email schedule" week-grid kernel (v2.1320).
  *
  * Pure assembly for the Settings → Your account section: turns the
  * get_my_email_schedule() RPC payload into a Monday-first 7-day grid.
