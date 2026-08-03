@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1322)
+last_updated: 2026-08-03 (v2.1323)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1323)
+
+### Billed report: repeat weekly + the week view tells the truth (2026-08-03)
+Two fixes from the first real Monday. **(1) "Repeat weekly"** checkbox on the Share modal's Schedule flow: implemented as SELF-PERPETUATING rows — when the dispatcher sends a `repeat_weekly` request it enqueues next week's row (+7 days, duplicate-guarded) in the same breath (migration `20260803140000` + `billed-report-email` redeploy). No new scheduling engine; a pending row always exists, so "My email schedule" always shows next week's send, and cancelling the pending row (Share modal or the dev Email & notifications panel, chips now tagged **· weekly**) ends the chain. **(2)** The personal week grid was pending-only, so a 7 AM send vanished from view by 7:05 and Monday afternoon read as "no emails" — `get_my_email_schedule()` now also returns rows already sent during the current Chicago Mon–Sun week, rendered dimmed with **✓ 7:00 AM · sent**. Kernel + grid carry `sent`/`weekly` flags (+1 test). See `docs/MIGRATIONS.md` + `docs/EDGE_FUNCTIONS.md`.
 
 ## Latest Updates (v2.1322)
 

@@ -53,6 +53,7 @@ export default function BilledReportShareModal({
   const [when, setWhen] = useState<'now' | 'schedule'>('now')
   const [sendDate, setSendDate] = useState('')
   const [sendTime, setSendTime] = useState('07:00')
+  const [repeatWeekly, setRepeatWeekly] = useState(false)
 
   const [busy, setBusy] = useState<'send' | 'preview' | 'test' | null>(null)
   const [pending, setPending] = useState<ScheduledBilledReportSend[]>([])
@@ -136,8 +137,13 @@ export default function BilledReportShareModal({
           return
         }
         if (!authUser?.id) return
-        await scheduleBilledReportSend({ requestedBy: authUser.id, recipientUserId: selected.id, sendAtIso: iso })
-        showToast(`Scheduled for ${formatSendAt(iso)} — sent within ~5 minutes of that time.`, 'success')
+        await scheduleBilledReportSend({ requestedBy: authUser.id, recipientUserId: selected.id, sendAtIso: iso, repeatWeekly })
+        showToast(
+          repeatWeekly
+            ? `Scheduled for ${formatSendAt(iso)}, repeating weekly — cancel the pending send to stop the chain.`
+            : `Scheduled for ${formatSendAt(iso)} — sent within ~5 minutes of that time.`,
+          'success',
+        )
         await loadPending()
       }
     } catch (e) {
@@ -328,6 +334,10 @@ export default function BilledReportShareModal({
               style={{ height: 32, padding: '0 8px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'inherit' }}
             />
             <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Central time · sent within ~5 min</span>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={repeatWeekly} onChange={(e) => setRepeatWeekly(e.target.checked)} />
+              Repeat weekly
+            </label>
           </div>
         )}
 
@@ -380,6 +390,7 @@ export default function BilledReportShareModal({
                 >
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     → <strong>{userNameById.get(r.recipient_user_id) ?? 'Teammate'}</strong> · {formatSendAt(r.send_at)}
+                    {r.repeat_weekly ? <span style={{ color: 'var(--text-blue-800)', fontWeight: 600 }}> · weekly</span> : null}
                     {r.error ? <span style={{ color: 'var(--text-red-600)' }}> · retrying ({r.error.slice(0, 60)})</span> : null}
                   </span>
                   <button

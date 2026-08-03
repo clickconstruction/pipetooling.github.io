@@ -133,7 +133,7 @@ async function sendReport(
 async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response> {
   const { data: pending, error: qErr } = await admin
     .from('billed_report_email_requests')
-    .select('id, requested_by, recipient_user_id, attempts')
+    .select('id, requested_by, recipient_user_id, attempts, send_at, repeat_weekly')
     .is('sent_at', null)
     .lte('send_at', new Date().toISOString())
     .lt('attempts', MAX_ATTEMPTS)
@@ -146,6 +146,8 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
     requested_by: string
     recipient_user_id: string
     attempts: number
+    send_at: string
+    repeat_weekly: boolean
   }>
   if (rows.length === 0) return jsonResponse({ ok: true, processed: 0, sent: 0, errors: [] })
 
@@ -179,6 +181,27 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
           .update({ sent_at: new Date().toISOString(), error: null })
           .eq('id', row.id)
         sent += 1
+        // Weekly chains are self-perpetuating (v2.1323): a successful send of a
+        // repeat_weekly row enqueues next week's row. Guarded against a retry
+        // double-inserting: skip when an identical pending link already exists.
+        if (row.repeat_weekly) {
+          const nextSendAt = new Date(new Date(row.send_at).getTime() + 7 * 86_400_000).toISOString()
+          const { data: existing } = await admin
+            .from('billed_report_email_requests')
+            .select('id')
+            .eq('recipient_user_id', row.recipient_user_id)
+            .eq('send_at', nextSendAt)
+            .is('sent_at', null)
+            .limit(1)
+          if (!existing || existing.length === 0) {
+            await admin.from('billed_report_email_requests').insert({
+              requested_by: row.requested_by,
+              recipient_user_id: row.recipient_user_id,
+              send_at: nextSendAt,
+              repeat_weekly: true,
+            })
+          }
+        }
       } else {
         await admin
           .from('billed_report_email_requests')

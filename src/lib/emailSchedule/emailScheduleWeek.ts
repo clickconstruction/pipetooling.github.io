@@ -21,7 +21,14 @@ export type MyEmailSchedulePayload = {
     include_costs: boolean
     activity_scope: string
   }>
-  one_offs: Array<{ stream: 'billed_report' | 'schedule_day'; send_at: string; detail: string }>
+  one_offs: Array<{
+    stream: 'billed_report' | 'schedule_day'
+    send_at: string
+    /** Set when the send already went out (current-week history rows, v2.1323). */
+    sent_at?: string | null
+    repeat_weekly?: boolean
+    detail: string
+  }>
   events: { paid_in_full: boolean; payment_received: boolean }
 }
 
@@ -34,6 +41,10 @@ export type WeekGridEntry = {
   detail: string | null
   /** True for a disabled recurring schedule (rendered dimmed, not hidden). */
   muted: boolean
+  /** Already went out this week (rendered dimmed with a checkmark). */
+  sent: boolean
+  /** Weekly self-perpetuating chain. */
+  weekly: boolean
 }
 
 export type WeekGridDay = { dow: number; ymd: string; label: string; isToday: boolean; entries: WeekGridEntry[] }
@@ -88,6 +99,8 @@ export type PlacedOneOff = {
   /** Chicago calendar day of the send instant. */
   ymd: string
   minutes: number
+  sent?: boolean
+  weekly?: boolean
 }
 
 /**
@@ -112,6 +125,8 @@ export function buildMyEmailWeekGrid(
         minutes,
         detail: `${w.name}${w.enabled ? '' : ' (paused)'}`,
         muted: !w.enabled,
+        sent: false,
+        weekly: true,
       })
     }
     for (const o of placedOneOffs) {
@@ -122,7 +137,9 @@ export function buildMyEmailWeekGrid(
         timeLabel: formatMinutes(o.minutes),
         minutes: o.minutes,
         detail: o.detail,
-        muted: false,
+        muted: o.sent === true,
+        sent: o.sent === true,
+        weekly: o.weekly === true,
       })
     }
     entries.sort((a, b) => a.minutes - b.minutes || a.label.localeCompare(b.label))

@@ -1329,6 +1329,7 @@ export type Database = {
       billed_report_email_requests: {
         Row: {
           attempts: number
+          repeat_weekly: boolean
           created_at: string
           error: string | null
           id: string
@@ -1339,6 +1340,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          repeat_weekly?: boolean
           created_at?: string
           error?: string | null
           id?: string
@@ -1349,6 +1351,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          repeat_weekly?: boolean
           created_at?: string
           error?: string | null
           id?: string
