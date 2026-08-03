@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1335)
+last_updated: 2026-08-03 (v2.1336)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1336)
+
+### Bid Board: Count Tool icon becomes a crosshair (2026-08-03)
+The Count Tool link column on the Bid Board (and the same CountTooling Plans link on Submission & Followup, for consistency) swaps its file-with-code glyph for the Font Awesome crosshair/target icon — a truer read for "counting tool". Same size/color/behavior; icon path only, in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx) + [`BidSubmissionFollowupTab.tsx`](../src/components/bids/BidSubmissionFollowupTab.tsx). The identical glyph used for unrelated affordances (Jobs Billing "Add Labor", worked-today report icon) is untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1335)
 
 ### Bid-aware pins: one click back to a specific bid's tab (2026-08-03)
 Estimator ask: return to ONE bid's page constantly (e.g. BP352 → Pricing). Pins previously stored only `{path, tab}` — pinning while on a bid reopened the tab without the bid. Now `user_pinned_tabs` gains `bid_id` (migration `20260803184515`: column + FK ON DELETE CASCADE so deleting a bid cleans its pins; the unique expression index widens to `(user_id, path, COALESCE(tab,''), COALESCE(bid_id::text,''))` so several bids can pin the same tab). **On /bids with a bid selected (`?bidId=`), the Pin button becomes "Pin bid"** — the pin stores the bid and a fetched `BP352`-style label (service-type ledger prefix + bid number via `LedgerDisplayPrefixContext`), and the Dashboard chip reads **"BP352 · pricing"**, deep-linking to `/bids?tab=pricing&bidId=…`. Without a bid selected, pinning is unchanged. Everything downstream is bid-aware: [`pinnedTabs.ts`](../src/lib/pinnedTabs.ts) identity/toggle/delete/reorder (`pinKey` + `computeReorderedSort` include the bid — two same-tab bid pins reorder without colliding; +4 tests), the Dashboard quick-row chip/link, Settings pin management rows, and dev **"Pin for someone"** (drop a teammate straight onto a bid's tab). Known accepted edge: `merge_user_accounts` dedupes pins on path+tab only, so a merge could drop one of two same-tab bid pins (cosmetic; re-pin). Help guide `settings-basics` updated. See `docs/MIGRATIONS.md`.
+
 
 ## Latest Updates (v2.1334)
 

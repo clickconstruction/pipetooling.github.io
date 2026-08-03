@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1336',
+    date: '2026-08-03',
+    title: 'Count Tool gets a crosshair icon',
+    kind: 'fix',
+    highlights: [
+      'The Count Tool link on the Bid Board (and Submission & Followup) now shows a crosshair target instead of a generic file icon.',
+    ],
+  },
+  {
     version: 'v2.1335',
     date: '2026-08-03',
     title: 'Pin a specific bid, not just the Bids page',
