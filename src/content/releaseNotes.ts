@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1348',
+    date: '2026-08-03',
+    title: 'Bid Board: compact Archived button',
+    kind: 'fix',
+    highlights: [
+      'The Archived button on the Bid Board is now an archive-box icon with the count — same button, less space. Hover shows "Archived bids".',
+    ],
+  },
+  {
     version: 'v2.1345',
     date: '2026-08-03',
     title: 'Clock buttons look right on phones',

@@ -704,9 +704,14 @@ export function BidsBidBoardTab({
           <button
             type="button"
             onClick={() => setWorkingBoardArchivedModalOpen(true)}
-            style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+            title="Archived bids"
+            aria-label={`Archived bids${workingBoardArchivedBids.length > 0 ? ` (${workingBoardArchivedBids.length})` : ''}`}
+            style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            Archived{workingBoardArchivedBids.length > 0 ? ` (${workingBoardArchivedBids.length})` : ''}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+              <path d="M64 128C64 110.3 78.3 96 96 96L544 96C561.7 96 576 110.3 576 128L576 160C576 177.7 561.7 192 544 192L96 192C78.3 192 64 177.7 64 160L64 128zM96 240L544 240L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 240zM248 304C234.7 304 224 314.7 224 328C224 341.3 234.7 352 248 352L392 352C405.3 352 416 341.3 416 328C416 314.7 405.3 304 392 304L248 304z" />
+            </svg>
+            {workingBoardArchivedBids.length > 0 ? `(${workingBoardArchivedBids.length})` : ''}
           </button>
         </div>
       </div>

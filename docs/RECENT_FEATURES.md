@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1345)
+last_updated: 2026-08-03 (v2.1348)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1348)
+
+### Bid Board: Archived button becomes an icon (2026-08-03)
+Owner ask: the search-row "Archived (22)" button on `/bids?tab=bid-board` shrinks to the Font Awesome **box-archive icon + count** — "🗃 (22)"-style — in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx). Same button, same modal (`BidWorkingBoardArchivedModal`); `aria-label` "Archived bids (n)" + `title` tooltip keep it discoverable; the count hides at zero as before. Also buys back row width for the v2.1332 phone search-row fit. Client-only — no migration.
 
 ## Latest Updates (v2.1345)
 
