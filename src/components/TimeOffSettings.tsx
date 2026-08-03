@@ -67,7 +67,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
           }),
         'time off insert',
       )
-      showToast('Unpaid time off saved', 'success')
+      showToast('Personal time off saved', 'success')
       setNote('')
       await load()
       const today = denverWorkDateToday()
@@ -85,7 +85,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
   async function handleNotComingInToday() {
     if (
       !window.confirm(
-        'Mark yourself as not coming in today? This adds unpaid time off on the calendar. You can still clock in if plans change.',
+        'Mark yourself as not coming in today? This adds personal (unpaid) time off on the calendar. You can still clock in if plans change.',
       )
     )
       return
@@ -94,7 +94,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
       const ymd = denverWorkDateToday()
       const result = await recordNotComingInSelf({ userId, workDateYmd: ymd })
       if (result.ok && result.alreadyMarked) {
-        showToast('You already have unpaid time off on that date.', 'warning')
+        showToast('You already have personal time off on that date.', 'warning')
         return
       }
       if (!result.ok) {
@@ -111,7 +111,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm('Remove this unpaid time off entry?')) return
+    if (!window.confirm('Remove this personal time off entry?')) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('user_time_off').delete().eq('id', id).eq('user_id', userId),
@@ -134,7 +134,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
   return (
     <div style={{ marginBottom: '1rem' }}>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
-        Add planned <strong>unpaid</strong> time off using <strong>company calendar dates</strong> (Central). Salary
+        Add planned <strong>Personal Time Off</strong> (unpaid) using <strong>company calendar dates</strong> (Central). Salary
         auto-sessions are skipped on these days after sync.
       </p>
       <div style={{ marginBottom: '0.75rem' }}>
@@ -209,7 +209,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
           disabled={saving}
           style={{ padding: '0.5rem 1rem', fontWeight: 600, background: '#ea580c', color: 'white', border: 'none', borderRadius: 6 }}
         >
-          {saving ? 'Saving…' : 'Add unpaid time off'}
+          {saving ? 'Saving…' : 'Add Personal Time Off'}
         </button>
       </form>
     </div>

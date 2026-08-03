@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1313',
+    date: '2026-08-03',
+    title: 'Settings: "Unpaid time off" is now "Personal Time Off"',
+    kind: 'fix',
+    highlights: [
+      'The time-off section under Settings \u2192 Your account is now called Personal Time Off.',
+      'Nothing else changes \u2014 these days are still unpaid for salaried folks, and the fine print still says so.',
+    ],
+  },
+  {
     version: 'v2.1312',
     date: '2026-08-02',
     title: 'Behind the scenes: Company Scoreboard preview (dev-only)',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1312)
+last_updated: 2026-08-03 (v2.1313)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1313)
+
+### Settings: "Unpaid time off" renamed to "Personal Time Off" (2026-08-03)
+Label-only rename on Settings → Your account → scheduling: the collapsible section header, the description line, the submit button, and the section's toasts/confirms now say **Personal Time Off**. The pay semantics are unchanged and deliberately still stated — the description reads "Add planned Personal Time Off (unpaid)…" and entry rows keep the shared calendar kind label ("Unpaid"), so salaried users still see these days pay $0 (`user_time_off.kind` untouched; the pay-staff-granted paid kind is a separate flow). Other surfaces that say "unpaid time off" (Dashboard day editor, dispatch/user-review not-coming-in confirms, Draft Payroll breakdown, bulk modal) intentionally unchanged — this rename is scoped to the self-service Settings section. The `#settings-time-off` deep-link anchor id is unchanged (Calendar links to it).
 
 ## Latest Updates (v2.1312)
 
