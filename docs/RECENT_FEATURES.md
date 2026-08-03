@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1356)
+last_updated: 2026-08-03 (v2.1357)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1357)
+
+### Header fit-collapse no longer waits for a ResizeObserver callback (2026-08-03)
+Reported as "the nav overflows the page by ~164px at tablet widths": at 760px the desktop header needs ~925px (nav links + the right-hand icon strip) against a 760px viewport, and nothing clips it, so `document.documentElement.scrollWidth - clientWidth` sat at 164 on every page. The header already has the right answer for this — [`useNavFitCollapse`](../src/hooks/useNavFitCollapse.ts) measures the real row and folds it into the hamburger when it doesn't fit (that is why there is no second breakpoint) — but it never ran. **Root cause**: the row fits at mount, because `role` is still null and the extra links, the search button and the Job Mode buttons arrive with it ~0.5s later. The only trigger for re-measuring that growth was the `ResizeObserver`, and RO callbacks are delivered on a *rendering opportunity* — a tab that never renders (opened in the background, an occluded preview pane, a headless capture) receives none, so the desktop row stayed overflowing indefinitely. Confirmed live: in that state the hook's own signal (`nav.scrollWidth - nav.clientWidth`) already read 164, and dispatching a single `resize` event collapsed the header and took the document overflow to 0 — the state machine and its hysteresis were never the problem, only what re-triggered them. Fix: the hook now also re-measures on a short **settle schedule** (0/400/1200ms, timers fire in tabs that never render) and whenever a new **`contentKey`** changes — [`Layout.tsx`](../src/components/Layout.tsx) passes `role | impersonating | jobModeFooterActive`, i.e. everything that changes the row's width without resizing the window (nothing derived from `isMobile`, which is this hook's own output). Each extra pass is a no-op once the row fits. +4 render tests in [`useNavFitCollapse.render.test.tsx`](../src/hooks/useNavFitCollapse.render.test.tsx) — jsdom has no `ResizeObserver`, which makes it exactly the environment that failed; two of them fail against the old hook. **Also in this PR**: [`e2e/viewport-smoke.spec.ts`](../e2e/viewport-smoke.spec.ts) extends the no-sideways-overflow invariant past phone widths to the tablet band (760px and 900px on `/dashboard` and `/jobs?tab=stages` — the header is global), asserted with `expect.poll` so the contract is the settled page, not a boot frame. Client-only — no migration.
 
 ## Latest Updates (v2.1356)
 

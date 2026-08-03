@@ -223,7 +223,12 @@ export default function Layout() {
   // sub), so above the 640px floor we collapse based on whether the row
   // actually fits rather than a second fixed breakpoint.
   const navRef = useRef<HTMLElement | null>(null)
-  const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow)
+  // Content key: everything that changes how wide the desktop row is without
+  // resizing the window. `role` is the big one — it is null on cold load and
+  // flips ~0.5s later, bringing the rest of the links with it. Nothing here may
+  // depend on `isMobile`, which is derived from this hook's own answer.
+  const navContentKey = `${role ?? ''}|${impersonating ? 1 : 0}|${jobModeFooterActive ? 1 : 0}`
+  const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow, navContentKey)
   const isMobile = viewportNarrow || navOverflowCollapsed
   const jobModeContactRowFits = jobModeFooterActive && !isMobile
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
