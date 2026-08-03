@@ -41,9 +41,13 @@ const corsHeaders = {
 }
 
 const RECIPIENTS_SETTING_KEY = 'paid_job_email_recipients_v1'
+/** Payment-made stream (v2.1310): fires on every payment row; separate list. */
+const PAYMENT_RECIPIENTS_SETTING_KEY = 'payment_made_email_recipients_v1'
 const DETAILED_ROLES = new Set(['dev', 'master_technician'])
 const MAX_QUEUE_BATCH = 20
 const MAX_ATTEMPTS = 5
+
+type QueueKind = 'paid_in_full' | 'payment'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -101,11 +105,11 @@ async function requireDevOrMaster(
 type RecipientRow = { id: string; email: string | null; name: string | null; role: string | null }
 
 /** app_settings recipient ids joined to active users. */
-async function loadRecipients(admin: Admin): Promise<RecipientRow[]> {
+async function loadRecipients(admin: Admin, settingKey = RECIPIENTS_SETTING_KEY): Promise<RecipientRow[]> {
   const { data: setting } = await admin
     .from('app_settings')
     .select('value_text')
-    .eq('key', RECIPIENTS_SETTING_KEY)
+    .eq('key', settingKey)
     .maybeSingle()
   let ids: string[] = []
   try {
@@ -125,27 +129,79 @@ async function loadRecipients(admin: Admin): Promise<RecipientRow[]> {
   )
 }
 
-/** Cron path: drain the queue — one payload fetch per job, one send per recipient. */
+/**
+ * Cron path: drain the queue — one payload fetch per job, one send per recipient.
+ *
+ * Two kinds since v2.1310 (`kind` column; pre-migration rows read as
+ * paid_in_full via the column default): paid_in_full keeps its list; payment
+ * rows go to the payment_made list. Before sending, same-job rows collapse:
+ * a pending paid_in_full row supersedes that job's payment rows (the final
+ * payment fires both triggers in one transaction — one email, not two), and
+ * multiple payment rows for one job (e.g. a Mercury deposit split across
+ * invoices) coalesce into the newest row.
+ */
 async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response> {
   const { data: pending, error: qErr } = await admin
     .from('paid_job_email_queue')
-    .select('id, job_ledger_id, attempts')
+    .select('id, job_ledger_id, attempts, kind')
     .is('sent_at', null)
     .lt('attempts', MAX_ATTEMPTS)
     .order('queued_at', { ascending: true })
     .limit(MAX_QUEUE_BATCH)
   if (qErr) return jsonResponse({ error: qErr.message }, 500)
 
-  const rows = (pending ?? []) as Array<{ id: string; job_ledger_id: string; attempts: number }>
-  if (rows.length === 0) return jsonResponse({ ok: true, processed: 0, sent: 0, errors: [] })
+  const allRows = (pending ?? []) as Array<{
+    id: string
+    job_ledger_id: string
+    attempts: number
+    kind?: QueueKind | null
+  }>
+  if (allRows.length === 0) return jsonResponse({ ok: true, processed: 0, sent: 0, errors: [] })
 
-  const recipients = await loadRecipients(admin)
+  const kindOf = (r: { kind?: QueueKind | null }): QueueKind =>
+    r.kind === 'payment' ? 'payment' : 'paid_in_full'
+
+  // Collapse same-job rows: paid_in_full wins; else keep the newest payment row.
+  const jobsWithPaidInFull = new Set(
+    allRows.filter((r) => kindOf(r) === 'paid_in_full').map((r) => r.job_ledger_id),
+  )
+  const newestPaymentRowByJob = new Map<string, string>()
+  for (const r of allRows) {
+    if (kindOf(r) === 'payment') newestPaymentRowByJob.set(r.job_ledger_id, r.id) // queued_at asc ⇒ last wins
+  }
+  const superseded: string[] = []
+  const rows: typeof allRows = []
+  for (const r of allRows) {
+    if (kindOf(r) === 'payment') {
+      if (jobsWithPaidInFull.has(r.job_ledger_id)) {
+        superseded.push(r.id)
+        continue
+      }
+      if (newestPaymentRowByJob.get(r.job_ledger_id) !== r.id) {
+        superseded.push(r.id)
+        continue
+      }
+    }
+    rows.push(r)
+  }
+  if (superseded.length > 0) {
+    await admin
+      .from('paid_job_email_queue')
+      .update({ sent_at: new Date().toISOString(), error: 'superseded (coalesced with a same-job row)' })
+      .in('id', superseded)
+  }
+
+  const recipientsByKind: Record<QueueKind, RecipientRow[]> = {
+    paid_in_full: await loadRecipients(admin),
+    payment: await loadRecipients(admin, PAYMENT_RECIPIENTS_SETTING_KEY),
+  }
 
   let sent = 0
   const errors: string[] = []
 
   for (const row of rows) {
     try {
+      const recipients = recipientsByKind[kindOf(row)]
       if (recipients.length === 0) {
         // Don't retry forever when nobody is configured.
         await admin

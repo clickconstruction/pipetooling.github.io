@@ -21,6 +21,7 @@ import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementR
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import {
+  billedStageRowAgingBucket,
   buildBilledAgingBuckets,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
@@ -220,6 +221,25 @@ export type JobsStagesTabProps = {
 /** Active-filter chip in the search bar (v2.1232): the GC/development selects
     live in the ⋯ tools menu now, so an applied filter must announce itself —
     a filtered board with no visible cause reads as missing jobs. Tap clears. */
+/** Billed-header quiet action tier (v2.1311): uniform 28px, one visual step below the title. */
+const billedHeaderActionStyle = (disabled: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 5,
+  flexShrink: 0,
+  height: 28,
+  padding: '0 0.6rem',
+  border: '1px solid var(--border)',
+  borderRadius: 4,
+  background: disabled ? 'var(--bg-muted)' : 'var(--surface)',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  color: 'var(--text-muted)',
+  fontSize: '0.75rem',
+  fontWeight: 500,
+  whiteSpace: 'nowrap',
+})
+
 const stagesActiveFilterChipStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -457,6 +477,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
+  const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
+  // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
+  // narrows the section list to rows the matching chip counts.
+  const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | null>(null)
   const { count: arBankTxUnallocatedCount } = useArBankUnallocatedCount({
     enabled: active,
     authUserId: authUser?.id,
@@ -1903,6 +1927,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const capableToBillTotal = capableToBillTotalFromWorking(working)
             const readyToBillTotal = readyToBillRowsExposureTotal(readyToBillRows)
             const billedTotal = billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
+            // and the chips themselves always describe the whole section.
+            const billedListRows = billedAgingFilter
+              ? billedActiveRows.filter((r) => billedStageRowAgingBucket(r) === billedAgingFilter)
+              : billedActiveRows
             const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
             const canManageCollections =
@@ -2217,47 +2246,68 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.25rem' : '0.75rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                     <button
                       type="button"
                       onClick={() => toggleStages('billed')}
                       aria-expanded={stagesSectionOpen.billed}
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
-                      <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
+                      <span aria-hidden>{stagesSectionOpen.billed ? '▼' : '▶'}</span>
                       Billed Awaiting Payment ({billedActiveRows.length}) - ${formatCurrencyAbbrevTruncated(billedTotal)}
                     </button>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                      {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum90)} · est. bill date`}
-                    </span>
+                    {([
+                      { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by est. bill date) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
+                      { key: '90' as const, label: `90+ · ${billedAgingBuckets.count90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum90)}`, title: 'Billed over 90 days ago (by est. bill date) with money still owed — click to show only these rows', bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)', count: billedAgingBuckets.count90 },
+                    ]).map((chip) => {
+                      const active = billedAgingFilter === chip.key
+                      const empty = chip.count === 0
+                      return (
+                        <button
+                          key={chip.key}
+                          type="button"
+                          disabled={empty && !active}
+                          aria-pressed={active}
+                          title={chip.title}
+                          onClick={() => {
+                            if (active) {
+                              setBilledAgingFilter(null)
+                              return
+                            }
+                            setBilledAgingFilter(chip.key)
+                            if (!stagesSectionOpen.billed) toggleStages('billed')
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            height: 22,
+                            padding: '0 9px',
+                            borderRadius: 9999,
+                            border: active ? `1px solid ${'var(--border-400)'}` : '1px solid transparent',
+                            background: chip.bg,
+                            color: chip.fg,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            cursor: empty && !active ? 'default' : 'pointer',
+                            opacity: empty && !active ? 0.55 : 1,
+                          }}
+                        >
+                          {chip.label}
+                        </button>
+                      )
+                    })}
                   </div>
-                  {/* AR + Print stay together as the third row on mobile — the wrapper keeps them side by side instead of stacking each on its own row. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                  {/* Quiet action tier (v2.1311): one visual step below the title, uniform 28px. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => setGcReviewModalOpen(true)}
                     disabled={billedActiveRows.length === 0 && collectionsRows.length === 0}
                     title="Billed Awaiting Payment grouped by GC/Builder with bill-out dates"
                     aria-label="GC Review: Billed Awaiting Payment grouped by General Contractor"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      flexShrink: 0,
-                      height: 36,
-                      padding: '0 0.75rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background:
-                        billedActiveRows.length === 0 && collectionsRows.length === 0 ? 'var(--bg-muted)' : 'var(--surface)',
-                      cursor:
-                        billedActiveRows.length === 0 && collectionsRows.length === 0 ? 'not-allowed' : 'pointer',
-                      color: 'var(--text-700)',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                    }}
+                    style={billedHeaderActionStyle(billedActiveRows.length === 0 && collectionsRows.length === 0)}
                   >
                     <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
                     GC Review
@@ -2277,35 +2327,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       title={accountsReceivableButtonAccessibleName}
                       aria-label={accountsReceivableButtonAccessibleName}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        height: 36,
-                        padding: '0 0.75rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background:
+                        ...billedHeaderActionStyle(
                           !(
                             authRole === 'dev' ||
                             authRole === 'master_technician' ||
                             isAssistantLike(authRole) ||
                             authRole === 'primary'
-                          )
-                            ? 'var(--bg-muted)'
-                            : 'var(--surface)',
-                        cursor:
-                          !(
-                            authRole === 'dev' ||
-                            authRole === 'master_technician' ||
-                            isAssistantLike(authRole) ||
-                            authRole === 'primary'
-                          )
-                            ? 'not-allowed'
-                            : 'pointer',
+                          ),
+                        ),
+                        // AR is the primary action here (live queue behind the badge) — one shade stronger.
                         color: 'var(--text-700)',
-                        fontSize: '0.8125rem',
-                        fontWeight: 500,
+                        borderColor: 'var(--border-strong)',
                       }}
                     >
                       Accounts Receivable
@@ -2344,24 +2376,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     disabled={billedActiveRows.length === 0}
                     title="Print customers, contacts, and amounts due"
                     aria-label="Print billed awaiting payment report"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      flexShrink: 0,
-                      height: 36,
-                      padding: '0 0.75rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: billedActiveRows.length === 0 ? 'var(--bg-muted)' : 'var(--surface)',
-                      cursor: billedActiveRows.length === 0 ? 'not-allowed' : 'pointer',
-                      color: 'var(--text-700)',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                    }}
+                    style={billedHeaderActionStyle(billedActiveRows.length === 0)}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} aria-hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={14} height={14} aria-hidden>
                       <path
                         fill="currentColor"
                         d="M128 192L128 96C128 78.3 142.3 64 160 64L480 64C497.7 64 512 78.3 512 96L512 192L552 192C569.7 192 584 206.3 584 224L584 384C584 401.7 569.7 416 552 416L512 416L512 520C512 537.7 497.7 552 480 552L160 552C142.3 552 128 537.7 128 520L128 416L88 416C70.3 416 56 401.7 56 384L56 224C56 206.3 70.3 192 88 192L128 192zM176 416L176 496L464 496L464 416L176 416zM512 352L512 256L88 256L88 352L128 352L128 192L512 192L512 352zM464 144L464 120C464 111.2 456.8 104 448 104L192 104C183.2 104 176 111.2 176 120L176 144L464 144z"
@@ -2369,11 +2386,35 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     </svg>
                     Print
                   </button>
+                  {(authRole === 'dev' || authRole === 'master_technician') && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentEmailSettingsOpen(true)}
+                      title="Payment email settings"
+                      aria-label="Payment email settings"
+                      style={billedHeaderActionStyle(false)}
+                    >
+                      <span aria-hidden>⚙</span>
+                      Paid notifications
+                    </button>
+                  )}
                   </div>
                 </div>
-                {stagesSectionOpen.billed && (
+                {billedAgingFilter && (
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status">
+                    Showing only {billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows ({billedListRows.length} of {billedActiveRows.length}) ·{' '}
+                    <button
+                      type="button"
+                      onClick={() => setBilledAgingFilter(null)}
+                      style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: 'inherit' }}
+                    >
+                      Show all
+                    </button>
+                  </p>
+                )}
+                                {stagesSectionOpen.billed && (
                   <StagesUnifiedSectionList
-                    rows={billedActiveRows}
+                    rows={billedListRows}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
                     onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
@@ -2630,7 +2671,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     }}
                   >
                     <span aria-hidden>⚙</span>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Paid notifications</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Paid In Full notifications</span>
                   </button>
                 )}
                 </div>
@@ -3133,6 +3174,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {paidEmailSettingsOpen && (
         <PaidInFullEmailSettingsModal onClose={() => setPaidEmailSettingsOpen(false)} />
+      )}
+      {paymentEmailSettingsOpen && (
+        <PaidInFullEmailSettingsModal variant="payment" onClose={() => setPaymentEmailSettingsOpen(false)} />
       )}
       <BankPaymentsModal
         open={bankPaymentsModalOpen}

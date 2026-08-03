@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
+import { resolveCreateCustomerName } from '../../lib/jobs/jobFormCreateCustomerName'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
   customerListImpliesLinkedRow,
@@ -111,6 +112,20 @@ export function JobFormCustomerSection({
   const [gcSearch, setGcSearch] = useState('')
   const [gcDropdownOpen, setGcDropdownOpen] = useState(false)
   const selectedGc = gcCustomerId ? customers.find((c) => c.id === gcCustomerId) ?? null : null
+
+  // The name the create flow will actually use — search text wins while nothing
+  // is linked, so a name typed into the picker reaches the create handler
+  // instead of dying against the separate Customer Name field.
+  const createCustomerName = resolveCreateCustomerName({ customerName, customerSearch, customerId })
+
+  function openCreateCustomerWithTypedName() {
+    if (!createCustomerName) return
+    // Sync the shell field first: the modal's header, its similar-match lookup,
+    // and handleCreateCustomerFromJob all read customerName.
+    if (createCustomerName !== customerName.trim()) setCustomerName(createCustomerName)
+    setCustomerDropdownOpen(false)
+    onOpenCreateCustomerModal()
+  }
 
   return (
     <>
@@ -315,6 +330,19 @@ export function JobFormCustomerSection({
                         {filtered.length === 0 && (
                           <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No customers found</div>
                         )}
+                        {filtered.length === 0 && createCustomerName && (
+                          <div
+                            // onMouseDown-preventDefault so the input's 200ms blur
+                            // close doesn't race the click.
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={openCreateCustomerWithTypedName}
+                            style={{ padding: '0.5rem', cursor: 'pointer', borderTop: '1px solid var(--border)', fontWeight: 500, color: '#2563eb' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
+                          >
+                            + Create “{createCustomerName}”
+                          </div>
+                        )}
                       </>
                     )
                   })()
@@ -325,15 +353,15 @@ export function JobFormCustomerSection({
               {!customerId && (
                 <button
                   type="button"
-                  disabled={!customerName.trim()}
-                  onClick={onOpenCreateCustomerModal}
+                  disabled={!createCustomerName}
+                  onClick={openCreateCustomerWithTypedName}
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.875rem',
                     border: '1px solid var(--border-strong)',
-                    background: !customerName.trim() ? 'var(--bg-muted)' : 'var(--bg-subtle)',
+                    background: !createCustomerName ? 'var(--bg-muted)' : 'var(--bg-subtle)',
                     borderRadius: 4,
-                    cursor: !customerName.trim() ? 'not-allowed' : 'pointer',
+                    cursor: !createCustomerName ? 'not-allowed' : 'pointer',
                   }}
                 >
                   Create customer from job
@@ -466,7 +494,7 @@ export function JobFormCustomerSection({
           </div>
           <div style={{ marginBottom: '0.75rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Name</label>
-            <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+            <input type="text" aria-label="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
           </div>
           <div style={{ marginBottom: '0.75rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Phone</label>

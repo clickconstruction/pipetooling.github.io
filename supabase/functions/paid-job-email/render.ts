@@ -32,6 +32,28 @@ export type PaidJobEmailPayload = {
     /** 'paid' | 'billed' | 'ready_to_bill' | null (null = not on any invoice). */
     invoice_status: string | null
   }>
+  /**
+   * Edit Job's "Invoices" table, mirrored (payload v5): the job's drafts
+   * (ready_to_bill) and sent bills (billed/paid), drafts first — same order and
+   * columns the office sees in the modal. Absent pre-v5 ⇒ block not rendered.
+   */
+  invoices?: Array<{
+    status: string
+    amount: number
+    /** Σ jobs_ledger_payments.amount for this invoice. */
+    paid: number
+    /** sent_to_customer_at (YYYY-MM-DD); null on drafts. */
+    sent_at: string | null
+    /** Calendar days from created_at to sent_at — the modal's "(+N)". */
+    sent_day_offset?: number | null
+    /** external_send_channel: stripe | housecallpro | physical | null. */
+    channel: string | null
+    /** stripe_invoice_memo / external_send_note — the modal's detail line. */
+    detail: string | null
+    /** Bill-to override label when the invoice bills someone other than the job customer. */
+    bill_to: string | null
+    is_hazmat?: boolean
+  }>
   /** The Edit Job Cost Timeline's six streams, dated (payload v4, v2.1106). Absent pre-v4. */
   charge_events?: Array<{
     source: string
@@ -244,6 +266,93 @@ function renderLineItems(p: PaidJobEmailPayload, withAmounts: boolean): string {
     <p style="margin:0 0 6px;font-size:13px;font-weight:bold;color:#1c1917;">Line items</p>
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border:1px solid #e7e5e4;margin-bottom:16px;">
       ${rows}
+    </table>`
+}
+
+/** Status chip for one invoice row — the Edit Job Draft/Billed pill, plus Paid. */
+function invoiceStatusChip(status: string, amount: number, paid: number): string {
+  const chip = (bg: string, fg: string, border: string, label: string) =>
+    `<span style="display:inline-block;background:${bg};color:${fg};border:1px solid ${border};border-radius:9999px;padding:1px 8px;font-size:11px;font-weight:bold;">${label}</span>`
+  if (status === 'ready_to_bill') return chip('#fef3c7', '#92400e', '#fcd34d', 'Draft')
+  if (paid >= amount - 0.005 && amount > 0) return chip('#dcfce7', '#166534', '#86efac', 'Paid')
+  return chip('#dbeafe', '#1e40af', '#93c5fd', 'Billed')
+}
+
+const CHANNEL_LABEL: Record<string, string> = {
+  stripe: 'Stripe',
+  housecallpro: 'HouseCall Pro',
+  physical: 'Physical invoice',
+  stripe_manual: 'Stripe',
+}
+
+/**
+ * The Edit Job "Invoices" table, rendered for email (payload v5): the same
+ * Status / Date / Amount columns the office reads in the modal, with the
+ * Actions column replaced by Paid-vs-open (an email can't act). Detailed shows
+ * dollars; summary shows status + date only, matching the line-items redaction
+ * rule (v2.1103). Renders nothing on a pre-v5 payload or a job with no invoices.
+ */
+function renderInvoices(p: PaidJobEmailPayload, withAmounts: boolean): string {
+  const rows = p.invoices ?? []
+  if (rows.length === 0) return ''
+  const body = rows
+    .map((inv) => {
+      const isDraft = inv.status === 'ready_to_bill'
+      const dateText = isDraft
+        ? 'not sent'
+        : inv.sent_at
+          ? `${weekdayDate(inv.sent_at)}${
+              inv.sent_day_offset != null && inv.sent_day_offset > 0 ? ` (+${inv.sent_day_offset})` : ''
+            }`
+          : '&mdash;'
+      const open = inv.amount - inv.paid
+      const paidCell = isDraft
+        ? '<span style="color:#a8a29e;">&mdash;</span>'
+        : open <= 0.005
+          ? `<span style="color:#166534;">${money(inv.paid)}</span>`
+          : `${money(inv.paid)}<div style="font-size:11px;color:#b91c1c;">${money(open)} open</div>`
+      const chips = [
+        inv.is_hazmat
+          ? '<span style="display:inline-block;margin-left:4px;background:#fef2f2;color:#b91c1c;border:1px solid #dc2626;border-radius:9999px;padding:1px 8px;font-size:11px;font-weight:bold;">&#9763; Hazmat</span>'
+          : '',
+        inv.bill_to
+          ? `<div style="margin-top:3px;"><span style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #d6d3d1;border-radius:9999px;padding:1px 8px;font-size:11px;font-weight:bold;">&rarr; ${esc(inv.bill_to)}</span></div>`
+          : '',
+      ].join('')
+      const channel = !isDraft && inv.channel ? CHANNEL_LABEL[inv.channel] ?? inv.channel : ''
+      const detail = [channel, inv.detail ?? ''].filter(Boolean).map(esc).join(' &middot; ')
+      return `
+    <tr>
+      <td style="padding:6px 10px;vertical-align:top;border-top:1px solid #e7e5e4;">${invoiceStatusChip(inv.status, inv.amount, inv.paid)}${chips}</td>
+      <td style="padding:6px 10px;font-size:13px;color:${isDraft ? '#a8a29e' : '#44403c'};vertical-align:top;border-top:1px solid #e7e5e4;">${dateText}${
+        detail ? `<div style="font-size:11px;color:#78716c;margin-top:2px;">${detail}</div>` : ''
+      }</td>
+      ${withAmounts ? `<td style="${NUM_TD}border-top:1px solid #e7e5e4;vertical-align:top;">${money(inv.amount)}</td>` : ''}
+      ${withAmounts ? `<td style="${NUM_TD}border-top:1px solid #e7e5e4;vertical-align:top;">${paidCell}</td>` : ''}
+    </tr>`
+    })
+    .join('')
+  const totalInvoiced = rows.reduce((s, r) => s + r.amount, 0)
+  const totalPaid = rows.reduce((s, r) => s + r.paid, 0)
+  const totalsRow = withAmounts
+    ? `
+    <tr>
+      <td colspan="2" style="${SECTION_TD}">Total invoiced</td>
+      <td style="${SECTION_TD}text-align:right;">${money(totalInvoiced)}</td>
+      <td style="${SECTION_TD}text-align:right;">${money(totalPaid)}</td>
+    </tr>`
+    : ''
+  return `
+    <p style="margin:0 0 6px;font-size:13px;font-weight:bold;color:#1c1917;">Invoices</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border:1px solid #e7e5e4;margin-bottom:16px;">
+      <tr>
+        <th style="${TH}">Status</th>
+        <th style="${TH}">Date</th>
+        ${withAmounts ? `<th style="${TH}text-align:right;">Amount</th>` : ''}
+        ${withAmounts ? `<th style="${TH}text-align:right;">Paid</th>` : ''}
+      </tr>
+      ${body}
+      ${totalsRow}
     </table>`
 }
 
@@ -570,6 +679,7 @@ export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload, manualNote?: 
     <div style="${WRAP_STYLE}">
       ${renderHeader(p)}
       ${renderPaidLine(p)}
+      ${renderInvoices(p, true)}
       ${renderLineItems(p, true)}
       ${renderDatesBlock(p)}
       ${renderScoreboard(p)}
@@ -587,6 +697,7 @@ export function renderPaidJobEmailSummary(p: PaidJobEmailPayload, manualNote?: s
     <div style="${WRAP_STYLE}">
       ${renderHeader(p)}
       ${renderPaidLine(p)}
+      ${renderInvoices(p, false)}
       ${renderLineItems(p, false)}
       ${renderDatesBlock(p)}
       ${

@@ -11,6 +11,38 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1311',
+    date: '2026-08-02',
+    title: 'Cleaner Billed Awaiting Payment header with clickable aging chips',
+    kind: 'feature',
+    highlights: [
+      'The Billed Awaiting Payment header on Jobs \u2192 Pipeline now matches the other sections: a clean one-line title instead of wrapping text.',
+      'The 30+/90+ day aging numbers became colored chips \u2014 click one to see only those overdue rows, click again (or "Show all") to clear.',
+      'The GC Review, Accounts Receivable, Print, and Paid notifications buttons are now a uniform, quieter row.',
+    ],
+  },
+  {
+    version: 'v2.1310',
+    date: '2026-08-02',
+    title: 'Payment emails: get notified when any payment comes in',
+    kind: 'feature',
+    highlights: [
+      'A new "Paid notifications" gear next to the Billed Awaiting Payment header on Jobs \u2192 Pipeline: pick who gets an email whenever a payment lands on a job \u2014 marked by the office, allocated from a bank deposit, or paid through Stripe.',
+      'The email shows payment progress plus the job\u2019s invoices exactly as Edit Job lists them \u2014 each bill\u2019s status, sent date, amount, and what\u2019s still open \u2014 and the line items.',
+      'The existing gear across from Paid in Full is now labeled "Paid In Full notifications"; the two lists are separate. When a payment finishes the job, only the Paid in Full email goes out.',
+    ],
+  },
+  {
+    version: 'v2.1309',
+    date: '2026-08-02',
+    title: 'Edit Job: creating a customer from the search box works',
+    kind: 'fix',
+    highlights: [
+      'Typing a new customer\u2019s name into "Link to customer" and finding no match now offers a one-click "+ Create" right in the dropdown, and the Create customer from job button uses the name you typed.',
+      'Previously the button stayed grayed out (or used a stale name) because the create flow never saw the search box\u2019s text.',
+    ],
+  },
+  {
     version: 'v2.1308',
     date: '2026-08-02',
     title: 'Behind the scenes: groundwork for bank transfer labeling',

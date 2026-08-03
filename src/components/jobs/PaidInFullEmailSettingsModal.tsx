@@ -9,7 +9,10 @@ import {
   parsePaidJobEmailRecipients,
   serializePaidJobEmailRecipients,
 } from '../../lib/paidJobEmail'
-import { APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS } from '../../lib/appSettingsKeys'
+import {
+  APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
+  APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
+} from '../../lib/appSettingsKeys'
 import { fetchPaidJobEmailPreview, openHtmlInNewTab, sendPaidJobEmailTest } from '../../lib/paidJobEmailClient'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -46,10 +49,43 @@ function isOfficeCapableRole(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
+/**
+ * Which notification stream this modal configures (v2.1310). Both streams ride
+ * the same edge function, templates, and variant split; only the trigger and
+ * the recipient list differ.
+ */
+export type PaidEmailSettingsVariant = 'paid_in_full' | 'payment'
 
-export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () => void }) {
+const VARIANT_COPY: Record<
+  PaidEmailSettingsVariant,
+  { settingKey: string; ariaLabel: string; heading: string; description: string }
+> = {
+  paid_in_full: {
+    settingKey: APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
+    ariaLabel: 'Paid in Full email settings',
+    heading: 'Paid in Full emails',
+    description:
+      'When a job reaches Paid in Full, the people below get an email. Devs and masters receive the detailed financial review; everyone else receives a summary with no dollar amounts.',
+  },
+  payment: {
+    settingKey: APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
+    ariaLabel: 'Payment email settings',
+    heading: 'Payment emails',
+    description:
+      'Whenever any payment is recorded on a job — Mark Paid, a bank-deposit allocation, or a Stripe payment — the people below get an email showing the job’s invoices and payment progress. Devs and masters receive the detailed financial review; everyone else receives a summary with no dollar amounts. When the payment completes the job, only the Paid in Full email is sent.',
+  },
+}
+
+export default function PaidInFullEmailSettingsModal({
+  onClose,
+  variant = 'paid_in_full',
+}: {
+  onClose: () => void
+  variant?: PaidEmailSettingsVariant
+}) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
+  const copy = VARIANT_COPY[variant]
   const canEditRecipients = authRole === 'dev'
 
   const [loading, setLoading] = useState(true)
@@ -82,7 +118,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
               supabase
                 .from('app_settings')
                 .select('value_text')
-                .eq('key', APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS)
+                .eq('key', copy.settingKey)
                 .maybeSingle(),
             'paid email recipients setting',
           ),
@@ -102,7 +138,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
     return () => {
       cancelled = true
     }
-  }, [showToast])
+  }, [showToast, copy.settingKey])
 
   // Job search (debounced) via the same RPC the Dispatch Mode PO picker uses.
   useEffect(() => {
@@ -155,11 +191,11 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
       const { error } = await supabase
         .from('app_settings')
         .upsert(
-          { key: APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS, value_text: serializePaidJobEmailRecipients(ids) },
+          { key: copy.settingKey, value_text: serializePaidJobEmailRecipients(ids) },
           { onConflict: 'key' },
         )
       if (error) throw error
-      showToast('Paid-email recipients saved.', 'success')
+      showToast(variant === 'payment' ? 'Payment-email recipients saved.' : 'Paid-email recipients saved.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save recipients'), 'error')
     } finally {
@@ -230,7 +266,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Paid in Full email settings"
+      aria-label={copy.ariaLabel}
       style={{
         position: 'fixed',
         inset: 0,
@@ -254,7 +290,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Paid in Full emails</h2>
+          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{copy.heading}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -265,8 +301,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
           </button>
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          When a job reaches Paid in Full, the people below get an email. Devs and masters receive the detailed
-          financial review; everyone else receives a summary with no dollar amounts.
+          {copy.description}
         </p>
 
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
