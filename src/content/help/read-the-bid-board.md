@@ -9,6 +9,8 @@ The Bid Board (Bids → Bid Board) shows every bid in five sections — **Unsent
 
 ## Jump between sections
 
+Above the sections sits one tools row — the search box, {{button:outline|Archived}} (the box icon, with a count of archived bids), and {{button:outline|Customer review}}.
+
 A pill row stays pinned at the top of the board:
 
 {{chip:gray|Unsent 17}} {{chip:yellow|Pending 102}} {{chip:gray|Won 26}} {{chip:gray|Started 10}} {{chip:gray|Lost 99}} {{chip:gray|Health}}
