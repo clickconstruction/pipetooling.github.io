@@ -20,6 +20,7 @@ import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/Quickf
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
 import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection'
 import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSortingSnapshotSection'
+import { QuickfillNoncardAttributionSection } from '../components/quickfill/QuickfillNoncardAttributionSection'
 import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
@@ -47,6 +48,7 @@ import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { useQuickfillCantReachProspects } from '../hooks/useQuickfillCantReachProspects'
+import { useQuickfillNoncardAttribution } from '../hooks/useQuickfillNoncardAttribution'
 import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoBillJobs'
 import { matchesQuickfillSectionSearch } from '../lib/quickfillSectionSearch'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
@@ -75,6 +77,11 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   },
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
+  {
+    id: 'quickfill-noncard-attribution',
+    sectionId: 'noncard-attribution',
+    label: 'Bank transfers needing attribution',
+  },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
@@ -473,6 +480,14 @@ function QuickfillPage() {
     quickfillCantReach.fetchEnabled ? (quickfillCantReach.loading ? null : quickfillCantReach.prospects.length) : null,
     quickfillCantReach.fetchEnabled && quickfillCantReach.loading,
   )
+  // Reported from the page (not the section body): the section only renders once
+  // the count RPC probe succeeds, and metrics clear on unmount.
+  const quickfillNoncard = useQuickfillNoncardAttribution()
+  useReportQuickfillSectionMetric(
+    'noncard-attribution',
+    quickfillNoncard.eligible ? quickfillNoncard.count : null,
+    quickfillNoncard.eligible && quickfillNoncard.loading,
+  )
   const [markHistoryModal, setMarkHistoryModal] = useState<{ sectionId: string; label: string } | null>(null)
   const [sectionOrderIds, setSectionOrderIds] = useState<string[]>(() => [...DEFAULT_SECTION_ORDER_IDS])
   const [sectionBanners, setSectionBanners] = useState<Record<string, string>>({})
@@ -654,6 +669,11 @@ function QuickfillPage() {
       if (sectionId === 'cant-reach') {
         return quickfillCantReach.fetchEnabled && !quickfillCantReach.loading && quickfillCantReach.prospects.length > 0
       }
+      if (sectionId === 'noncard-attribution') {
+        // Capability-probed, not role-derived: eligible only once the count RPC
+        // succeeded (dev or banking_attributors); 42501 hides the section entirely.
+        return quickfillNoncard.eligible
+      }
       if (sectionId === 'warnings') return warningsSectionEligible
       if (sectionId === 'unpriced-fixtures') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
@@ -685,6 +705,7 @@ function QuickfillPage() {
       quickfillCantReach.fetchEnabled,
       quickfillCantReach.loading,
       quickfillCantReach.prospects,
+      quickfillNoncard.eligible,
     ],
   )
 
@@ -1050,6 +1071,35 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'banking-sorting', label: 'Banking sorting' })}
           >
             <BankingSortingSnapshotSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'noncard-attribution':
+        // Mark-less section (my-inbox pattern): the queue empties by resolving
+        // transactions, so the org-wide mark/collapse machinery must not apply.
+        // Outstanding count still shows in the header (metric reported at page
+        // level — the section render is gated on the RPC-permission probe).
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(null)}
+            collapsed={false}
+            mark={undefined}
+            omitDefaultMarkButton
+            showMarkHistoryButton={false}
+            showLastMarked={false}
+            onMarkUpToDate={() => {}}
+            onOpenNow={() => {}}
+            onOpenHistory={() => {}}
+          >
+            <QuickfillNoncardAttributionSection
+              rows={quickfillNoncard.rows}
+              loading={quickfillNoncard.loading}
+              refetch={quickfillNoncard.refetch}
+            />
           </QuickfillSectionWrapper>
         )
       case 'crew-jobs':
@@ -1484,14 +1534,18 @@ function QuickfillPage() {
           const color = getButtonColor(mark?.marked_at ?? null)
           const byName = mark?.marked_by_name?.trim() ?? ''
           const markRelative = mark ? formatRelativeTime(mark.marked_at) : ''
-          // Per-user sections are never marked — neutral chip instead of the
-          // freshness palette (permanently red would misread as neglected).
-          const isPersonalSection = sectionId === 'my-inbox'
-          const lastMarkedTitle = isPersonalSection
-            ? 'Personal section — items are completed individually'
-            : mark
-              ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}`
-              : 'Never marked'
+          // Mark-less sections (per-user my-inbox, resolution-driven queues) are
+          // never marked — neutral chip instead of the freshness palette
+          // (permanently red would misread as neglected).
+          const isPersonalSection = sectionId === 'my-inbox' || sectionId === 'noncard-attribution'
+          const lastMarkedTitle =
+            sectionId === 'my-inbox'
+              ? 'Personal section — items are completed individually'
+              : sectionId === 'noncard-attribution'
+                ? 'Queue section — empties as transfers are labeled'
+                : mark
+                  ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}`
+                  : 'Never marked'
           return (
             <div key={id} style={{ position: 'relative' }}>
               <button
