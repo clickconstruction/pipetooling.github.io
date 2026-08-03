@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1331)
+last_updated: 2026-08-03 (v2.1332)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1332)
+
+### Bid Board search row fits a phone: no more sideways page scroll at 375px (2026-08-03)
+Phone-viewport fix for `/bids?tab=bid-board` per the `docs/E2E_SMOKE.md` viewport invariant (no document-level sideways overflow; wide tables scroll inside their own wrappers) — the follow-up the v2.1331 header rebuild flagged. The spill source at 375×812 was **the search row** in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx): the input + Checklist/Archived button group (`flexShrink: 0`) couldn't fit one line and pushed the document to ~442px. The row now `flexWrap: wrap`s with the input at `flex: 1 1 200px` + `minWidth: 0`, so on phones the input takes the full first line and the buttons wrap below (desktop unchanged: one line, input stretches). The board section tables were already contained (their `overflow: auto` wrappers work; verified all 10 tables clip inside phone-width containers with every section + row expander open, `documentElement.scrollWidth` = clientWidth at 375×812 on top of the v2.1331 header). Client-only — no migration.
 
 ## Latest Updates (v2.1331)
 

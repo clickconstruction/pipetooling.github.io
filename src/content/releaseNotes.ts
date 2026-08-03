@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1332',
+    date: '2026-08-03',
+    title: 'Bid Board search fits your phone screen',
+    kind: 'fix',
+    highlights: [
+      'The Bid Board search row no longer pushes the page sideways on a phone — the search box takes the full width with Checklist and Archived wrapping below it.',
+      'Bid tables still scroll side-to-side inside their own box, not the page.',
+    ],
+  },
+  {
     version: 'v2.1331',
     date: '2026-08-03',
     title: 'The Bids header works at every screen size',

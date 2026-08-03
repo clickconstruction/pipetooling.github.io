@@ -685,13 +685,13 @@ export function BidsBidBoardTab({
           Customer review
         </button>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
           placeholder="Search (project name or GC/Builder)..."
           value={bidBoardSearchQuery}
           onChange={(e) => setBidBoardSearchQuery(e.target.value)}
-          style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+          style={{ flex: '1 1 200px', minWidth: 0, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
           <button
