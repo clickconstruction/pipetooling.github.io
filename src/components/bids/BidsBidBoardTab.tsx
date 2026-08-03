@@ -12,7 +12,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import { formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
-import { bidBoardDueCellParts, bidBoardLastContactParts, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
+import { bidBoardDueCellParts, bidBoardLastContactParts, DUE_SOON_WINDOW_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { computeBidBoardStaffOutcomeStatsByRole } from '../../lib/bids/bidBoardStaffOutcomes'
@@ -142,6 +142,7 @@ export function BidsBidBoardTab({
     pending: false,
     lost: false,
   })
+  const [dueLegendOpen, setDueLegendOpen] = useState(false)
   const bidBoardUnreadFetchSeqRef = useRef(0)
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
@@ -307,7 +308,40 @@ export function BidsBidBoardTab({
           <th style={{ ...th, whiteSpace: 'nowrap', textAlign: 'right', paddingRight: '0.4rem' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">Bid #</th>
           <th style={{ ...th, textAlign: 'left', paddingLeft: '0.4rem' }} title="GC or builder and project name" aria-label="GC or builder and project name">GC/Builder<br />Project Name</th>
           {!hideBidColumn ? <th style={th}>Bid</th> : null}
-          <th style={th}>Due<br />Date</th>
+          <th style={th}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <span>Due<br />Date</span>
+              <button
+                type="button"
+                onClick={() => setDueLegendOpen(true)}
+                title="What do the due-date colors mean?"
+                aria-label="What do the due-date colors mean?"
+                style={{
+                  padding: '0.15rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                }}
+              >
+                {(['overdue', 'soon', 'normal'] as const).map((k) => (
+                  <span
+                    key={k}
+                    aria-hidden
+                    style={{
+                      width: 14,
+                      height: 5,
+                      borderRadius: 2,
+                      background: BID_BOARD_DUE_CHIP_COLORS[k].background,
+                      border: `1px solid ${BID_BOARD_DUE_CHIP_COLORS[k].border}`,
+                    }}
+                  />
+                ))}
+              </button>
+            </span>
+          </th>
           <th style={th}>Last<br />Contact</th>
           <th style={th} title="Project folder, job plans, Count Tool, and bid submission links" aria-label="Artifact links">Links</th>
           <th style={th} title="Account manager and estimator" aria-label="Account manager and estimator">Account Man<br />Estimator</th>
@@ -1295,6 +1329,72 @@ export function BidsBidBoardTab({
         </div>
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
+      {dueLegendOpen ? (
+        <div
+          role="dialog"
+          aria-modal
+          aria-label="Due date colors"
+          onClick={() => setDueLegendOpen(false)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setDueLegendOpen(false) }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.5rem', maxWidth: 440, width: '90%' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Due date colors</h2>
+              <button
+                type="button"
+                onClick={() => setDueLegendOpen(false)}
+                aria-label="Close"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, color: 'inherit' }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.875rem' }}>
+              {(
+                [
+                  { key: 'overdue' as const, sample: '(+4)', text: 'Past the due date — the bottom line counts days late.' },
+                  { key: 'soon' as const, sample: '(-2)', text: `Due today or within the next ${DUE_SOON_WINDOW_DAYS} days.` },
+                  { key: 'normal' as const, sample: '(-12)', text: `Due more than ${DUE_SOON_WINDOW_DAYS} days out.` },
+                ]
+              ).map(({ key, sample, text }) => (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span
+                    style={{
+                      flex: '0 0 auto',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      padding: '0.15rem 0.55rem',
+                      borderRadius: 10,
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      background: BID_BOARD_DUE_CHIP_COLORS[key].background,
+                      color: BID_BOARD_DUE_CHIP_COLORS[key].color,
+                      border: `1px solid ${BID_BOARD_DUE_CHIP_COLORS[key].border}`,
+                    }}
+                  >
+                    {sample}
+                  </span>
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

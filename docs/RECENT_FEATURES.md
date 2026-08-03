@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1352)
+last_updated: 2026-08-03 (v2.1353)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1353)
+
+### Bid Board: due-date color key (2026-08-03)
+Owner follow-up to the v2.1347 row rework: the **Due Date** header gains a narrow red/yellow/grey swatch stack on its right. Clicking it opens a small **"Due date colors"** legend modal showing a sample chip per tier: red = past the due date (bottom line counts days late, e.g. (+4)), yellow = due today or within the next `DUE_SOON_WINDOW_DAYS` (3) days, grey = further out — sourced from the same `BID_BOARD_DUE_CHIP_COLORS` + [`bidBoardDateCells.ts`](../src/lib/bids/bidBoardDateCells.ts) constants the chips render with, so the legend can't drift from the behavior. Escape / click-away / × close it. Guide `read-the-bid-board` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1352)
 
