@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1349)
+last_updated: 2026-08-03 (v2.1350)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1350)
+
+### Add job to schedule: top-anchored + keyboard-aware on phones, newest jobs first (2026-08-03)
+Dispatcher ask: on Dispatch Mode → Schedule the **Add job to schedule** picker (opened from Assign work) floated mid-screen, so the auto-focused search summoned the keyboard over half the modal. On mobile (`useIsMobile`) the shared [`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx) now pins to the **top of the screen** and sizes itself to the **visual viewport** via new hook [`useVisualViewportHeight`](../src/hooks/useVisualViewportHeight.ts) (+2 tests; `100dvh` fallback where the API is missing): the picker fills everything above the software keyboard and expands/contracts live as the keyboard opens and closes — search stays at the top, the results list flexes, Cancel stays reachable. Full-width with a `safe-area-inset-top` pad; desktop rendering unchanged (centered, 80vh). Because the modal is shared, Schedule Dispatch cell-add and Quickfill schedule rows get the same phone behavior. Verified top-anchored at 390×844 (dialog box 0,0,390,844). **Also in this PR — newest jobs first**: the picker's default (and searched) order was the shared hub fetch's `hcp_number` DESC **as text** ("97" > "926"), interleaving 400-day-old jobs with this week's. New pure comparator [`compareJobsByCreatedAtDesc`](../src/lib/assignJobPickerOrder.ts) (+4 tests; `created_at` desc, missing dates last, numeric-aware job-number tiebreak) now sorts the picker rows in Dispatch Mode's Assign work ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx), sorted before the 60-row cap so the cap keeps the newest matches) and the Schedule Dispatch hub picker ([`ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx)). The two Quickfill pickers keep their deliberate clocked-today-first order (their tail is already numeric-newest). The hub Jobs panel's own list order is untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1349)
 

@@ -77,6 +77,7 @@ import {
 } from '../../utils/dateUtils'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
+import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
 import {
   RemoveScheduleBlockConfirmModal,
   validateScheduleDispatchBlockTimeRange,
@@ -1318,7 +1319,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           (r.customer_name ?? '').toLowerCase().includes(q),
       )
     }
-    return list
+    return [...list].sort(compareJobsByCreatedAtDesc)
   }, [hubMergedRows, hubAssignJobPickerSearch])
 
   const hubEmptyCellChoiceSubtitle = useMemo(() => {

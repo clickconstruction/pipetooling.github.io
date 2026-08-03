@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
 
 export type ScheduleDispatchAssignJobPickerRow = {
   id: string
@@ -50,6 +52,10 @@ export function ScheduleDispatchAssignJobPickerModal({
   }
 }) {
   const searchRef = useRef<HTMLInputElement>(null)
+  /** Phones: pin to the top and size to the visual viewport so the picker fills
+   * the space above the software keyboard and resizes as it opens/closes. */
+  const isMobile = useIsMobile()
+  const visualViewportHeight = useVisualViewportHeight()
   const [notComingInConfirming, setNotComingInConfirming] = useState(false)
   /** Keyboard-highlighted result (-1 = none); ↓/↑ move it, Enter picks it, typing resets it. */
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -95,7 +101,7 @@ export function ScheduleDispatchAssignJobPickerModal({
         inset: 0,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: isMobile ? 'flex-start' : 'center',
         justifyContent: 'center',
         zIndex: 1003,
       }}
@@ -107,11 +113,12 @@ export function ScheduleDispatchAssignJobPickerModal({
         aria-labelledby="hub-assign-job-picker-title"
         style={{
           background: 'var(--surface)',
-          borderRadius: 8,
-          padding: '1.25rem',
+          borderRadius: isMobile ? '0 0 12px 12px' : 8,
+          padding: isMobile ? 'calc(0.85rem + env(safe-area-inset-top)) 0.85rem 0.85rem' : '1.25rem',
           maxWidth: 480,
-          width: '92%',
-          maxHeight: '80vh',
+          width: isMobile ? '100%' : '92%',
+          height: isMobile ? (visualViewportHeight ?? '100dvh') : undefined,
+          maxHeight: isMobile ? undefined : '80vh',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
