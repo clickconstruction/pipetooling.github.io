@@ -115,6 +115,7 @@ when_to_read:
    - [schedule-day-email-dispatch](#schedule-day-email-dispatch)
    - [schedule-share-dispatch](#schedule-share-dispatch)
    - [paid-job-email](#paid-job-email)
+   - [billed-report-email](#billed-report-email)
    - [sync-salary-sessions](#sync-salary-sessions)
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
@@ -1605,6 +1606,30 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 **Cron**: archived migration `20270605160000_schedule_share.sql` registers pg_cron job **`schedule-share-dispatch`** (`*/15 * * * *`) posting with the vault `CRON_SECRET` as `X-Cron-Secret`. Shared kernels: [`_shared/scheduleShareCore.ts`](../supabase/functions/_shared/scheduleShareCore.ts) (dates + email build), [`_shared/recurringJobReportTimezone.ts`](../supabase/functions/_shared/recurringJobReportTimezone.ts) (wall-quarter matching).
 
 **Used by**: Schedule → [`ScheduleShareModal.tsx`](../src/components/schedule/ScheduleShareModal.tsx) (instant sends + managing recurring subscriptions).
+
+---
+
+### billed-report-email
+
+**Purpose**: Share the Stages **Billed Awaiting Payment** report by email (v2.1315) — the print report re-rendered email-safe: customer groups A→Z with **tel:/mailto: contact links**, HCP / Job·Address / Detail / Days past / Amount due columns, subtotals + grand total, the board's 30–90/90+ aging chips, and **every job cell deep-links to `https://pipetooling.com/jobs?jobDetail=<id>`** (opens Job Detail in the app). Numbers come from the service-role RPC **`get_billed_report_email_payload()`** (migration `20260803100000`), rebuilt **at send time** — a scheduled send shows send-time numbers, never a stale snapshot. Renderers in [`billed-report-email/render.ts`](../supabase/functions/billed-report-email/render.ts).
+
+**Endpoint**: `POST /functions/v1/billed-report-email`
+
+**Modes** (JSON body; sender gate = dev / master_technician / assistant / controller, non-archived):
+- `{ "mode": "preview" }` — Bearer JWT + sender gate; returns `{ "html": "..." }`. No writes, no send.
+- `{ "mode": "test_send" }` — sender gate; emails the report to the **caller's own address**, subject prefixed **`[TEST]`**. No request row.
+- `{ "mode": "send_now", "recipient_user_id": "<uuid>" }` — sender gate; recipient must be active, office-capable (dev/master_technician/assistant/controller/**primary** — the report carries AR dollars), with an email. Inserts an audit row in `billed_report_email_requests`, sends via Resend with a *"Sent by {caller}"* footer, stamps `sent_at`.
+- cron (no `mode` or `{ "mode": "dispatch" }`) — **`X-Cron-Secret`** must equal **`CRON_SECRET`**. Drains due rows (`send_at <= now()`, unsent, `attempts < 5`, limit 10); payload rebuilt **once per batch**; unavailable recipients (archived / no email) are stamped sent with an explanatory error so rows never retry forever.
+
+**Success (cron)**: `{ "ok": true, "processed": n, "sent": k, "errors": [] }`
+
+**Verify JWT**: `false` in `supabase/config.toml` (in-function JWT/role or cron-secret validation).
+
+**Cron**: [`20260803100000_billed_report_email.sql`](../supabase/migrations/20260803100000_billed_report_email.sql) registers pg_cron **`billed-report-email`** (`*/5 * * * *`) with vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`
+
+**Used by**: Jobs → Pipeline → Billed Awaiting Payment header → **⇪ Share / Print** → `BilledReportShareModal` (v2.1316: recipient picker, Send now / Schedule, Preview / Email me a test / Print instead, scheduled-sends list with cancel).
 
 ---
 
