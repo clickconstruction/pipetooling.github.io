@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1357)
+last_updated: 2026-08-03 (v2.1359)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1359)
+
+### Bid Board polish: bigger project names, Distance into the dropdown, notes chrome reordered (2026-08-03)
+Owner review pass over the v2.1347 row rework. **Table**: the **Dist** column is gone — distance now lives in the row dropdown as a plain `208 mi` line (the address there is still the Google Maps link, so the map route survives); project names render larger (0.9375rem semibold, up from 0.75rem inherited) and the GC/Project cell steps up to 0.8125rem. Column count drops to 7 (6 on Unsent, which hides Bid $) — all `colSpan`s updated. **Dropdown**: **Account manager** removed (Estimator stays — the table's Account Man/Estimator column still shows both), the address link loses its "· open in Maps" suffix (the link itself is unchanged), and **Distance** joins the strip. **Notes chrome** ([`BidBoardNotesPanel.tsx`](../src/components/bids/BidBoardNotesPanel.tsx) + [`UnifiedBidCustomerNotes.tsx`](../src/components/bidBoard/UnifiedBidCustomerNotes.tsx)): the **All / Bid / Customer / Reports** tablist left-aligns instead of centering, and **+ bid note / + customer note** move *below* the note list via a new `actionButtonsPosition` prop (`'top' | 'bottom'`, default `'top'` — the bid-preview desktop split keeps its existing top placement, so only the board dropdown changes). **Phone cards**: project name up to 1.0625rem, and the cryptic `LC` prefix is spelled out as **Last contact** (an owner asked what LC meant — it wasn't self-evident). Client-only — no migration.
 
 ## Latest Updates (v2.1357)
 
