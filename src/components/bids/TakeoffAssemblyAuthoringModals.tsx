@@ -72,11 +72,7 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   setAddPartsToTemplateName: Dispatch<SetStateAction<string | null>>
   addPartsSelectedPartId: string
   setAddPartsSelectedPartId: Dispatch<SetStateAction<string>>
-  addPartsSearchQuery: string
-  setAddPartsSearchQuery: Dispatch<SetStateAction<string>>
-  addPartsDropdownOpen: boolean
-  setAddPartsDropdownOpen: Dispatch<SetStateAction<boolean>>
-  // Edit Template modal (open pointer + part picker states parent-owned)
+  // Edit Template modal (open pointer + PartFormModal-routed part id parent-owned)
   editTemplateModalOpen: boolean
   setEditTemplateModalOpen: Dispatch<SetStateAction<boolean>>
   editTemplateModalId: string | null
@@ -85,10 +81,6 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   setEditTemplateModalName: Dispatch<SetStateAction<string | null>>
   editTemplateNewItemPartId: string
   setEditTemplateNewItemPartId: Dispatch<SetStateAction<string>>
-  editTemplateNewItemPartSearchQuery: string
-  setEditTemplateNewItemPartSearchQuery: Dispatch<SetStateAction<string>>
-  editTemplateNewItemPartDropdownOpen: boolean
-  setEditTemplateNewItemPartDropdownOpen: Dispatch<SetStateAction<boolean>>
 }
 
 /**
@@ -145,10 +137,6 @@ export function TakeoffAssemblyAuthoringModals({
   setAddPartsToTemplateName,
   addPartsSelectedPartId,
   setAddPartsSelectedPartId,
-  addPartsSearchQuery,
-  setAddPartsSearchQuery,
-  addPartsDropdownOpen,
-  setAddPartsDropdownOpen,
   editTemplateModalOpen,
   setEditTemplateModalOpen,
   editTemplateModalId,
@@ -157,10 +145,6 @@ export function TakeoffAssemblyAuthoringModals({
   setEditTemplateModalName,
   editTemplateNewItemPartId,
   setEditTemplateNewItemPartId,
-  editTemplateNewItemPartSearchQuery,
-  setEditTemplateNewItemPartSearchQuery,
-  editTemplateNewItemPartDropdownOpen,
-  setEditTemplateNewItemPartDropdownOpen,
 }: TakeoffAssemblyAuthoringModalsProps) {
   const { showToast } = useToastContext()
 
@@ -180,11 +164,6 @@ export function TakeoffAssemblyAuthoringModals({
 
   // Edit Template modal internals
   const [editTemplateItems, setEditTemplateItems] = useState<Array<{ id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number }>>([])
-  const [editTemplateNewItemType, setEditTemplateNewItemType] = useState<'part' | 'template'>('part')
-  const [editTemplateNewItemTemplateId, setEditTemplateNewItemTemplateId] = useState('')
-  const [editTemplateNewItemQuantity, setEditTemplateNewItemQuantity] = useState('1')
-  const [editTemplateNewItemTemplateSearchQuery, setEditTemplateNewItemTemplateSearchQuery] = useState('')
-  const [editTemplateNewItemTemplateDropdownOpen, setEditTemplateNewItemTemplateDropdownOpen] = useState(false)
   const [editTemplateAddingItem, setEditTemplateAddingItem] = useState(false)
   // Bundle supply-house prices (material_template_prices) edited inline in the Edit Assembly modal.
   const [editTemplatePrices, setEditTemplatePrices] = useState<Array<{ id: string; supply_house_id: string; supply_house_name: string; price: number }>>([])
@@ -344,8 +323,6 @@ export function TakeoffAssemblyAuthoringModals({
     setAddPartsToTemplateName(null)
     setAddPartsSelectedPartId('')
     setAddPartsQuantity('1')
-    setAddPartsSearchQuery('')
-    setAddPartsDropdownOpen(false)
   }
 
   async function savePartsToTemplate() {
@@ -422,11 +399,6 @@ export function TakeoffAssemblyAuthoringModals({
   useEffect(() => {
     if (!editTemplateModalOpen || !editTemplateModalId) return
     setEditTemplateNameDraft(editTemplateModalName ?? '')
-    setEditTemplateNewItemType('part')
-    setEditTemplateNewItemTemplateId('')
-    setEditTemplateNewItemQuantity('1')
-    setEditTemplateNewItemTemplateSearchQuery('')
-    setEditTemplateNewItemTemplateDropdownOpen(false)
     setEditTemplateNewPriceSupplyHouseId('')
     setEditTemplateNewPriceValue('')
     setEditTemplatePriceEditing({})
@@ -444,10 +416,6 @@ export function TakeoffAssemblyAuthoringModals({
     setEditTemplateNameDraft('')
     setEditTemplateItems([])
     setEditTemplateNewItemPartId('')
-    setEditTemplateNewItemTemplateId('')
-    setEditTemplateNewItemQuantity('1')
-    setEditTemplateNewItemPartSearchQuery('')
-    setEditTemplateNewItemTemplateSearchQuery('')
     setEditTemplatePrices([])
     setEditTemplateNewPriceSupplyHouseId('')
     setEditTemplateNewPriceValue('')
@@ -559,49 +527,37 @@ export function TakeoffAssemblyAuthoringModals({
     setEditTemplateItems((data as Array<{ id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number }>) ?? [])
   }
 
-  async function addEditTemplateItem() {
+  /** Shared post-mutation refresh: item list, bundle-parts cache, template preview. */
+  async function refreshEditTemplateAfterItemMutation() {
     if (!editTemplateModalId) return
-    if (editTemplateNewItemType === 'part' && !editTemplateNewItemPartId) {
-      setError('Please select a part')
-      return
-    }
-    if (editTemplateNewItemType === 'template' && !editTemplateNewItemTemplateId) {
-      setError('Please select an assembly')
-      return
-    }
-    const quantity = Math.max(1, parseInt(editTemplateNewItemQuantity, 10) || 1)
-    if (editTemplateNewItemType === 'template' && editTemplateNewItemTemplateId === editTemplateModalId) {
+    await loadEditTemplateItems(editTemplateModalId)
+    invalidateBundleParts(editTemplateModalId)
+    setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
+    getTemplatePartsPreview(supabase, editTemplateModalId)
+      .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
+      .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
+  }
+
+  /** Unified-search pick → DB write at qty 1 (existing parts merge +1; adjust
+   * quantities inline in the items table). Mirrors Add Assembly's direct-add. */
+  async function addEditTemplateItemDirect(kind: 'part' | 'template', id: string) {
+    if (!editTemplateModalId || editTemplateAddingItem) return
+    if (kind === 'template' && id === editTemplateModalId) {
       setError('Cannot add an assembly to itself')
       return
     }
     setEditTemplateAddingItem(true)
     setError(null)
 
-    // For parts: if part already exists in template, add to quantity instead of inserting duplicate
-    if (editTemplateNewItemType === 'part' && editTemplateNewItemPartId) {
-      const existing = editTemplateItems.find(
-        (i) => i.item_type === 'part' && i.part_id === editTemplateNewItemPartId
-      )
+    if (kind === 'part') {
+      const existing = editTemplateItems.find((i) => i.item_type === 'part' && i.part_id === id)
       if (existing) {
         const { error: updateErr } = await supabase
           .from('material_template_items')
-          .update({ quantity: mergedPartQuantity(existing.quantity, quantity) })
+          .update({ quantity: mergedPartQuantity(existing.quantity, 1) })
           .eq('id', existing.id)
-        if (updateErr) {
-          setError(updateErr.message)
-        } else {
-          await loadEditTemplateItems(editTemplateModalId)
-          invalidateBundleParts(editTemplateModalId)
-          setEditTemplateNewItemPartId('')
-          setEditTemplateNewItemTemplateId('')
-          setEditTemplateNewItemQuantity('1')
-          setEditTemplateNewItemPartSearchQuery('')
-          setEditTemplateNewItemTemplateSearchQuery('')
-          setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
-          getTemplatePartsPreview(supabase, editTemplateModalId)
-            .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
-            .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
-        }
+        if (updateErr) setError(updateErr.message)
+        else await refreshEditTemplateAfterItemMutation()
         setEditTemplateAddingItem(false)
         return
       }
@@ -610,30 +566,42 @@ export function TakeoffAssemblyAuthoringModals({
     const maxOrder = editTemplateItems.length === 0 ? 0 : Math.max(...editTemplateItems.map((i) => i.sequence_order))
     const { error: insertError } = await supabase.from('material_template_items').insert({
       template_id: editTemplateModalId,
-      item_type: editTemplateNewItemType,
-      part_id: editTemplateNewItemType === 'part' ? editTemplateNewItemPartId : null,
-      nested_template_id: editTemplateNewItemType === 'template' ? editTemplateNewItemTemplateId : null,
-      quantity,
+      item_type: kind,
+      part_id: kind === 'part' ? id : null,
+      nested_template_id: kind === 'template' ? id : null,
+      quantity: 1,
       sequence_order: maxOrder + 1,
       notes: null,
     })
-    if (insertError) {
-      setError(insertError.message)
-    } else {
-      await loadEditTemplateItems(editTemplateModalId)
-      invalidateBundleParts(editTemplateModalId)
-      setEditTemplateNewItemPartId('')
-      setEditTemplateNewItemTemplateId('')
-      setEditTemplateNewItemQuantity('1')
-      setEditTemplateNewItemPartSearchQuery('')
-      setEditTemplateNewItemTemplateSearchQuery('')
-      setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
-      getTemplatePartsPreview(supabase, editTemplateModalId)
-        .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
-        .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
-    }
+    if (insertError) setError(insertError.message)
+    else await refreshEditTemplateAfterItemMutation()
     setEditTemplateAddingItem(false)
   }
+
+  /** Inline qty edit in the Existing-items table (commit on blur/Enter). */
+  async function updateEditTemplateItemQuantity(itemId: string, newQuantity: number) {
+    if (!editTemplateModalId) return
+    const qty = Math.max(1, Math.floor(newQuantity) || 1)
+    const current = editTemplateItems.find((i) => i.id === itemId)
+    if (!current || current.quantity === qty) return
+    setError(null)
+    const { error: updateErr } = await supabase
+      .from('material_template_items')
+      .update({ quantity: qty })
+      .eq('id', itemId)
+    if (updateErr) setError(updateErr.message)
+    else await refreshEditTemplateAfterItemMutation()
+  }
+
+  // PartFormModal routing for the Edit Assembly modal: the parent stages the
+  // newly created part id into editTemplateNewItemPartId (pre-v2.1327 picker
+  // contract); consume it by adding the part straight to the assembly.
+  useEffect(() => {
+    if (!editTemplateModalOpen || !editTemplateNewItemPartId) return
+    void addEditTemplateItemDirect('part', editTemplateNewItemPartId)
+    setEditTemplateNewItemPartId('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTemplateModalOpen, editTemplateNewItemPartId])
 
   async function removeEditTemplateItem(itemId: string) {
     if (!confirm('Remove this item from the assembly?')) return
@@ -889,74 +857,32 @@ export function TakeoffAssemblyAuthoringModals({
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Part *</label>
-              <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={addPartsSelectedPartId ? (takeoffAddTemplateParts.find((p) => p.id === addPartsSelectedPartId)?.name ?? '') : addPartsSearchQuery}
-                    onChange={(e) => setAddPartsSearchQuery(e.target.value)}
-                    onFocus={() => setAddPartsDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setAddPartsDropdownOpen(false), 150)}
-                    onKeyDown={(e) => { if (e.key === 'Escape') setAddPartsDropdownOpen(false) }}
-                    readOnly={!!addPartsSelectedPartId}
-                    placeholder="Search parts by name, manufacturer, type, or notes…"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: addPartsSelectedPartId ? 'var(--bg-muted)' : undefined }}
-                  />
-                  {addPartsSelectedPartId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddPartsSelectedPartId('')
-                        setAddPartsSearchQuery('')
-                        setAddPartsDropdownOpen(true)
-                      }}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {addPartsDropdownOpen && (
-                  <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                    {takeoffAddTemplateParts.length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li>
-                    ) : filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                        No parts match.{' '}
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            openBidsPartFormForCreate(addPartsSearchQuery.trim())
-                            setAddPartsDropdownOpen(false)
-                          }}
-                          style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                        >
-                          Add Part
-                        </button>
-                      </li>
-                    ) : (
-                      filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).map((p) => (
-                        <li
-                          key={p.id}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setAddPartsSelectedPartId(p.id)
-                            setAddPartsSearchQuery('')
-                            setAddPartsDropdownOpen(false)
-                          }}
-                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                          onMouseEnter={(e) => ((e.target as HTMLElement).style.background = 'var(--bg-subtle)')}
-                          onMouseLeave={(e) => ((e.target as HTMLElement).style.background = 'transparent')}
-                        >
-                          <div style={{ fontWeight: 500 }}>{p.name}</div>
-                          {p.manufacturer && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.manufacturer}</div>}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                )}
-              </div>
+              <SearchableSelect
+                value={addPartsSelectedPartId}
+                onChange={setAddPartsSelectedPartId}
+                options={takeoffAddTemplateParts.map((p) => ({
+                  value: p.id,
+                  label: [p.name, p.manufacturer, p.part_types?.name, p.notes].filter(Boolean).join(' '),
+                  labelContent: (
+                    <span style={{ display: 'block' }}>
+                      <span style={{ display: 'block', fontWeight: 500 }}>{p.name}</span>
+                      {(p.manufacturer || p.part_types?.name) && (
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </span>
+                  ),
+                }))}
+                placeholder={takeoffAddTemplateParts.length === 0 ? 'Loading parts…' : 'Search parts…'}
+                listAriaLabel="Parts"
+                listMaxHeightPx={200}
+                portalZIndex={1200}
+                noMatchesAction={{
+                  label: (q) => `+ Add “${q}” as a new part…`,
+                  onSelect: (q) => openBidsPartFormForCreate(q),
+                }}
+              />
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
@@ -966,7 +892,14 @@ export function TakeoffAssemblyAuthoringModals({
                 min="1"
                 value={addPartsQuantity}
                 onChange={(e) => setAddPartsQuantity(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                onKeyDown={(e) => {
+                  // Enter = Add to Assembly (there is no form here; buttons are type=button)
+                  if (e.key === 'Enter' && addPartsSelectedPartId && !savingTemplateParts) {
+                    e.preventDefault()
+                    void savePartsToTemplate()
+                  }
+                }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
 
@@ -1087,7 +1020,23 @@ export function TakeoffAssemblyAuthoringModals({
                           <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <input
+                                key={`${item.id}-${item.quantity}`}
+                                type="number"
+                                min={1}
+                                defaultValue={item.quantity}
+                                aria-label={`Quantity for ${name}`}
+                                onBlur={(e) => void updateEditTemplateItemQuantity(item.id, parseInt(e.target.value, 10))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    ;(e.target as HTMLInputElement).blur()
+                                  }
+                                }}
+                                style={{ width: 64, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                              />
+                            </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               {item.item_type === 'part' && item.part_id ? (
                                 <button
@@ -1118,70 +1067,21 @@ export function TakeoffAssemblyAuthoringModals({
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Add item</div>
-              <div style={{ padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
-                <select
-                  value={editTemplateNewItemType}
-                  onChange={(e) => setEditTemplateNewItemType(e.target.value as 'part' | 'template')}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
-                >
-                  <option value="part">Part</option>
-                  <option value="template">Nested Assembly</option>
-                </select>
-                {editTemplateNewItemType === 'part' ? (
-                  <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={editTemplateNewItemPartId ? (takeoffAddTemplateParts.find((p) => p.id === editTemplateNewItemPartId)?.name ?? '') : editTemplateNewItemPartSearchQuery}
-                        onChange={(e) => setEditTemplateNewItemPartSearchQuery(e.target.value)}
-                        onFocus={() => setEditTemplateNewItemPartDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setEditTemplateNewItemPartDropdownOpen(false), 150)}
-                        onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemPartDropdownOpen(false) }}
-                        readOnly={!!editTemplateNewItemPartId}
-                        placeholder="Search parts by name, manufacturer, type, or notes…"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editTemplateNewItemPartId ? 'var(--bg-muted)' : undefined }}
-                      />
-                      {editTemplateNewItemPartId && (
-                        <button type="button" onClick={() => { setEditTemplateNewItemPartId(''); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
-                      )}
-                    </div>
-                    {editTemplateNewItemPartDropdownOpen && (
-                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
-                      </ul>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={editTemplateNewItemTemplateId ? (materialTemplates.find((t) => t.id === editTemplateNewItemTemplateId)?.name ?? '') : editTemplateNewItemTemplateSearchQuery}
-                        onChange={(e) => setEditTemplateNewItemTemplateSearchQuery(e.target.value)}
-                        onFocus={() => setEditTemplateNewItemTemplateDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setEditTemplateNewItemTemplateDropdownOpen(false), 150)}
-                        onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemTemplateDropdownOpen(false) }}
-                        readOnly={!!editTemplateNewItemTemplateId}
-                        placeholder="Search assemblies by name or description…"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editTemplateNewItemTemplateId ? 'var(--bg-muted)' : undefined }}
-                      />
-                      {editTemplateNewItemTemplateId && (
-                        <button type="button" onClick={() => { setEditTemplateNewItemTemplateId(''); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
-                      )}
-                    </div>
-                    {editTemplateNewItemTemplateDropdownOpen && (
-                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input type="number" min={1} value={editTemplateNewItemQuantity} onChange={(e) => setEditTemplateNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                  <button type="button" onClick={addEditTemplateItem} disabled={editTemplateAddingItem || (editTemplateNewItemType === 'part' && !editTemplateNewItemPartId) || (editTemplateNewItemType === 'template' && !editTemplateNewItemTemplateId)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{editTemplateAddingItem ? 'Adding…' : 'Add item'}</button>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 500 }}>Add item</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {editTemplateAddingItem ? 'Adding…' : 'Picking a result adds it at qty 1 — adjust above'}
+                </span>
               </div>
+              <TakeoffItemSearchCombobox
+                parts={takeoffAddTemplateParts}
+                templates={materialTemplates.filter((t) => t.id !== editTemplateModalId)}
+                filterPartsByQuery={filterPartsByQuery}
+                filterTemplatesByQuery={filterTemplatesByQuery}
+                partsLoading={takeoffAddTemplateParts.length === 0}
+                onPick={(pick) => void addEditTemplateItemDirect(pick.kind, pick.id)}
+                onCreateNew={(q) => openBidsPartFormForCreate(q)}
+              />
             </div>
 
             <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
@@ -1268,12 +1168,32 @@ export function TakeoffAssemblyAuthoringModals({
                 const priceNum = parseFloat(editTemplateNewPriceValue)
                 const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
                 return (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
-                    <select value={editTemplateNewPriceSupplyHouseId} onChange={(e) => setEditTemplateNewPriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}>
-                      <option value="">Select supply house</option>
-                      {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
-                    </select>
-                    <input type="number" min={0} step="0.01" value={editTemplateNewPriceValue} onChange={(e) => setEditTemplateNewPriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem auto', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
+                    <SearchableSelect
+                      value={editTemplateNewPriceSupplyHouseId}
+                      onChange={setEditTemplateNewPriceSupplyHouseId}
+                      options={available.map((sh) => ({ value: sh.id, label: sh.name }))}
+                      placeholder="Supply house…"
+                      listAriaLabel="Supply houses"
+                      portalZIndex={1200}
+                      triggerMinHeightPx={0}
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={editTemplateNewPriceValue}
+                      onChange={(e) => setEditTemplateNewPriceValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && canAdd) {
+                          e.preventDefault()
+                          void addEditTemplatePrice()
+                        }
+                      }}
+                      placeholder="0.00"
+                      aria-label="Bundle price"
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                    />
                     <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
                   </div>
                 )

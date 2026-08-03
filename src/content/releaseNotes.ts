@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1327',
+    date: '2026-08-03',
+    title: 'Edit Assembly and Add Parts catch up to the new search',
+    kind: 'feature',
+    highlights: [
+      'Edit Assembly now uses the same unified parts-and-assemblies search — picking a result adds it to the assembly instantly, and quantities are edited right in the items list.',
+      'Add Parts to an assembly gets a searchable part picker with a create-on-the-spot option when nothing matches; Enter in the quantity field adds the part.',
+      'Searchable dropdowns across the app can now offer "add it as new" when your search comes up empty.',
+    ],
+  },
+  {
     version: 'v2.1326',
     date: '2026-08-03',
     title: 'Add Assembly is one search away',
