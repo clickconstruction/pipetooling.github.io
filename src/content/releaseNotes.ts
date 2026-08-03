@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1308',
+    date: '2026-08-02',
+    title: 'Behind the scenes: groundwork for bank transfer labeling',
+    kind: 'infra',
+    highlights: [
+      'Database groundwork so specific users can soon be granted the ability to label ACH, wire, and check payments — assigning each to the office, a job, payroll, or "card bill payment".',
+      'This will let overhead paid by bank transfer (rent, insurance) finally count in the overhead numbers. No visible changes yet — the queue screens ship next.',
+    ],
+  },
+  {
     version: 'v2.1307',
     date: '2026-08-02',
     title: 'Review tab overhead rates no longer count Internal Transfers',

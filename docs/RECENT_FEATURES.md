@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1307)
+last_updated: 2026-08-02 (v2.1308)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1308)
+
+### Non-card attribution substrate: banking_attributors + queue RPCs (2026-08-02)
+Phase 1 of the ACH/wire/check attribution plan (DB only — no UI yet). A 2026-08-02 prod measurement found **103 non-card money-out Mercury transactions / $200,158.86 in the trailing 90 days with zero attribution of any kind** (~$106k contract-labor ACHs, ~$38k credit-card bill payments, ~$38.6k supply-house ACHs, ~$16.8k true office overhead — rent/insurance/studio), so office overhead paid by ACH never reaches the 90-day overhead pool (People → Overhead / Review, [`overheadRateMethods.ts`](../src/lib/overheadRateMethods.ts)). Migration `20260802220000_banking_attributors_substrate.sql` adds: **`banking_attributors`** (dev-granted capability — specific users can work the attribution queue with NO other Banking access), **`mercury_transaction_attribution_resolutions`** (`card_bill_payment` / `not_an_expense_other` — resolves e.g. AMEX bill payments out of the queue without a bogus job attribution), queue RPCs **`list/count_unattributed_noncard_mercury_transactions`** (minimal fields: date/amount/kind/counterparty/memo; unresolved = the linked-card tally queue's semantics — no job splits, no supply-house invoice link, no `is_payroll` — extended with no Internal Transfers label and no resolution row), and capability-gated writes **`resolve/unresolve_noncard_transaction_attribution`**, **`attributor_allocate_transaction_to_job`** (one-tap 100%-to-one-job, splits-sum invariant preserved), **`attributor_flag_transaction_payroll`** (the `set_tally_payroll_flag` invariant + `source='manual'` semantics, scoped to non-card). Mutual exclusions enforced RPC-side: job splits ⟂ payroll flag ⟂ resolution. Next: the Banking staff panel + Quickfill queue section (Phase 2), the scoped attributor modal (Phase 3), rule-driven auto-attribution (Phase 4). See `docs/MIGRATIONS.md` + `docs/ACCESS_CONTROL.md`.
 
 ## Latest Updates (v2.1307)
 
