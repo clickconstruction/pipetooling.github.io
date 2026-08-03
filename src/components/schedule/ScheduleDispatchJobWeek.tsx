@@ -7,7 +7,6 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import {
   deleteJobScheduleBlock,
   fetchJobScheduleBlocksForJobDateRange,
-  fetchScheduleBlocksForAssigneesOnDay,
   fetchScheduleJobContext,
   updateJobScheduleBlock,
   updateJobScheduleBlockGroup,
@@ -15,11 +14,7 @@ import {
   type ScheduleTeamMember,
 } from '../../lib/jobScheduleBlocks'
 import { dispatchMinutesToHHmm, timeInputToPg } from '../../lib/dispatchAddBlockTime'
-import {
-  scheduleBlockToRange,
-  scheduleOverlapsAny,
-  scheduleTimeToMinutesFromMidnight,
-} from '../../lib/jobScheduleOverlap'
+import { scheduleTimeToMinutesFromMidnight } from '../../lib/jobScheduleOverlap'
 import {
   defaultNewBlockRangeInFirstGap,
   type AddBlockTimelineSegment,
@@ -53,11 +48,8 @@ import {
   ymdAddDays,
 } from '../../utils/dateUtils'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
-import { saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
-import {
-  RemoveScheduleBlockConfirmModal,
-  validateScheduleDispatchBlockTimeRange,
-} from './scheduleDispatchRemoveBlockModal'
+import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
+import { RemoveScheduleBlockConfirmModal } from './scheduleDispatchRemoveBlockModal'
 import {
   buildUserTimeOffByCell,
   fetchUserTimeOffForUsersInRange,
@@ -677,16 +669,6 @@ export function ScheduleDispatchJobWeek() {
     if (!blockModalState) return
     if (blockModalState.kind === 'add' && !authUser?.id) return
 
-    const v = validateScheduleDispatchBlockTimeRange(addTimeStart, addTimeEnd)
-    if (v) {
-      setAddError(v)
-      return
-    }
-    const ts = timeInputToPg(addTimeStart)
-    const te = timeInputToPg(addTimeEnd)
-    const candidate = scheduleBlockToRange(ts, te)
-    const noteVal = addNote.trim() || null
-
     if (blockModalState.kind === 'add') {
       const createdBy = authUser?.id
       if (!createdBy) return
@@ -719,62 +701,24 @@ export function ScheduleDispatchJobWeek() {
       closeAdd()
       return
     }
-    const groupId = b.shared_block_group_id
-    if (groupId) {
-      const legs = blocks.filter((x) => x.job_id === jobId && x.shared_block_group_id === groupId)
-      const assigneeIds = [...new Set(legs.map((l) => l.assignee_user_id))]
-      for (const uid of assigneeIds) {
-        const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay([uid], b.work_date)
-        if (dayErr) {
-          setAddError(dayErr)
-          return
-        }
-        const excludeIds = legs.filter((l) => l.assignee_user_id === uid).map((l) => l.id)
-        if (scheduleOverlapsAny(candidate, dayBlocks, excludeIds)) {
-          setAddError('That time overlaps another block for this person on this day.')
-          return
-        }
-      }
-    } else {
-      const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay([b.assignee_user_id], b.work_date)
-      if (dayErr) {
-        setAddError(dayErr)
-        return
-      }
-      if (scheduleOverlapsAny(candidate, dayBlocks, [blockModalState.blockId])) {
-        setAddError('That time overlaps another block for this person on this day.')
-        return
-      }
-    }
-
     setAddSaving(true)
     setAddError(null)
-    if (groupId) {
-      const { error: upErr } = await updateJobScheduleBlockGroup(jobId, groupId, {
-        time_start: ts,
-        time_end: te,
-        note: noteVal,
-      })
-      setAddSaving(false)
-      if (upErr) {
-        setAddError(upErr)
-        return
-      }
-      showToast('Block updated.', 'success')
-    } else {
-      const { error: upErr } = await updateJobScheduleBlock(blockModalState.blockId, {
-        time_start: ts,
-        time_end: te,
-        note: noteVal,
-      })
-      setAddSaving(false)
-      if (upErr) {
-        setAddError(upErr)
-        return
-      }
-      showToast('Block updated.', 'success')
+    const res = await saveEditedScheduleBlockTimes({
+      blockId: blockModalState.blockId,
+      jobId,
+      assigneeUserId: b.assignee_user_id,
+      workDate: b.work_date,
+      sharedBlockGroupId: b.shared_block_group_id,
+      timeStart: addTimeStart,
+      timeEnd: addTimeEnd,
+      note: addNote,
+    })
+    setAddSaving(false)
+    if (!res.ok) {
+      setAddError(res.error)
+      return
     }
-
+    showToast('Block updated.', 'success')
     closeAdd()
     await load()
   }, [
@@ -786,7 +730,6 @@ export function ScheduleDispatchJobWeek() {
     addNote,
     addBlockDraftByBlockId,
     blockById,
-    blocks,
     closeAdd,
     load,
     showToast,

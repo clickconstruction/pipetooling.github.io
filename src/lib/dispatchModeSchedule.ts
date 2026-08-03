@@ -102,6 +102,8 @@ export type DispatchModeAgendaBlock = {
   assigneeName: string
   timeStart: string
   timeEnd: string
+  note: string | null
+  sharedBlockGroupId: string | null
   jobId: string
   hcpNumber: string | null
   clickNumber: string | null
@@ -128,6 +130,8 @@ type BlockRowRaw = {
   assignee_user_id: string
   time_start: string
   time_end: string
+  note: string | null
+  shared_block_group_id: string | null
   job_id: string
   users: { name: string | null } | null
   jobs_ledger: {
@@ -151,7 +155,7 @@ export async function fetchDispatchModeDayBlocks(
         let q = supabase
           .from('job_schedule_blocks')
           .select(
-            'id, assignee_user_id, time_start, time_end, job_id, users!job_schedule_blocks_assignee_user_id_fkey(name), jobs_ledger(hcp_number, click_number, job_name, job_address, customer_name, service_type:service_types(name))',
+            'id, assignee_user_id, time_start, time_end, note, shared_block_group_id, job_id, users!job_schedule_blocks_assignee_user_id_fkey(name), jobs_ledger(hcp_number, click_number, job_name, job_address, customer_name, service_type:service_types(name))',
           )
           .eq('work_date', ymd)
         if (assigneeUserId) q = q.eq('assignee_user_id', assigneeUserId)
@@ -169,6 +173,8 @@ export async function fetchDispatchModeDayBlocks(
         assigneeName: (r.users?.name ?? '').trim() || 'Unknown',
         timeStart: r.time_start,
         timeEnd: r.time_end,
+        note: r.note,
+        sharedBlockGroupId: r.shared_block_group_id,
         jobId: r.job_id,
         hcpNumber: jl?.hcp_number ?? null,
         clickNumber: jl?.click_number ?? null,

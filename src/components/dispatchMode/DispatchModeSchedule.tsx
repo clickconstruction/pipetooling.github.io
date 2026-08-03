@@ -10,7 +10,10 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
+import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
+import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
 import {
   dispatchModeAddDays,
@@ -23,6 +26,14 @@ import {
 } from '../../lib/dispatchModeSchedule'
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+/** Draft for the time-column tap target: edit one block's start/end/note. */
+type EditBlockState = {
+  block: DispatchModeAgendaBlock
+  timeStart: string
+  timeEnd: string
+  note: string
+}
 
 const headerBtn: CSSProperties = {
   padding: '0.35rem 0.6rem',
@@ -39,8 +50,14 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const jobDetailModal = useJobDetailModal()
 
   const { role } = useAuth()
+  const { showToast } = useToastContext()
   const canQuickAssign = !selfUserId && role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
+  /** Same gate as Quick Assign: tapping a row's time column edits that block's times. */
+  const canEditBlocks = canQuickAssign
   const [quickAssignOpen, setQuickAssignOpen] = useState(false)
+  const [editBlock, setEditBlock] = useState<EditBlockState | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
   const todayYmd = denverCalendarDayKey(Date.now())
   const [selectedYmd, setSelectedYmd] = useState<string>(todayYmd)
   /** Anchor for the visible two-week window; ‹ › shift it ±14 days across months. */
@@ -134,6 +151,45 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
       else next.add(id)
       return next
     })
+  }
+
+  const openEditBlock = (b: DispatchModeAgendaBlock) => {
+    setEditBlock({
+      block: b,
+      timeStart: b.timeStart.slice(0, 5),
+      timeEnd: b.timeEnd.slice(0, 5),
+      note: b.note ?? '',
+    })
+    setEditError(null)
+  }
+
+  const closeEditBlock = () => {
+    setEditBlock(null)
+    setEditError(null)
+  }
+
+  const saveEditBlock = async () => {
+    if (!editBlock) return
+    setEditSaving(true)
+    setEditError(null)
+    const res = await saveEditedScheduleBlockTimes({
+      blockId: editBlock.block.id,
+      jobId: editBlock.block.jobId,
+      assigneeUserId: editBlock.block.assigneeUserId,
+      workDate: selectedYmd,
+      sharedBlockGroupId: editBlock.block.sharedBlockGroupId,
+      timeStart: editBlock.timeStart,
+      timeEnd: editBlock.timeEnd,
+      note: editBlock.note,
+    })
+    setEditSaving(false)
+    if (!res.ok) {
+      setEditError(res.error)
+      return
+    }
+    showToast('Block updated.', 'success')
+    closeEditBlock()
+    void loadDay(selectedYmd)
   }
 
   return (
@@ -369,93 +425,142 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
             )
             const num = effectiveJobLedgerNumber(b.hcpNumber, b.clickNumber) || '—'
             const pill = buildServiceTypeTradePill(b.serviceTypeName)
-            return (
-              <li key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <button
-                  type="button"
-                  onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
-                  aria-label={`Open job detail for ${num} · ${b.jobName}`}
-                  style={{
-                    display: 'flex',
-                    width: '100%',
-                    alignItems: 'flex-start',
-                    gap: '0.75rem',
-                    padding: '0.7rem 0.75rem',
-                    border: 'none',
-                    background: 'var(--surface)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    minWidth: 0,
-                  }}
-                >
-                  <span style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, width: 74 }}>
-                    <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>
-                      {formatDispatchQuickTimeLabel(b.timeStart)}
-                    </span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
-                      {formatBlockDurationMinutes(durationMin)}
-                    </span>
-                  </span>
-                  <span
-                    style={{
-                      minWidth: 0,
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                      borderLeft: '2px solid var(--border-strong)',
-                      paddingLeft: '0.65rem',
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                      {pill ? (
-                        <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
-                          {pill.label}
-                        </span>
-                      ) : null}
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          fontSize: '0.9375rem',
-                          color: 'var(--text-strong)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {num} · {b.jobName}
-                      </span>
-                    </span>
-                    {b.customerName ? (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{b.customerName}</span>
-                    ) : null}
-                    {b.jobAddress ? (
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
-                    ) : null}
-                    {isMobile ? (
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
-                        {b.assigneeName}
-                      </span>
-                    ) : null}
-                  </span>
-                  {!isMobile ? (
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        alignSelf: 'center',
-                        fontSize: '0.875rem',
-                        color: 'var(--text-blue-700)',
-                        fontWeight: 600,
-                        maxWidth: '10rem',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {b.assigneeName}
+            const timeColumn = (
+              <span style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, width: 74 }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                  {formatDispatchQuickTimeLabel(b.timeStart)}
+                </span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
+                  {formatBlockDurationMinutes(durationMin)}
+                </span>
+              </span>
+            )
+            const detailsColumn = (
+              <span
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  borderLeft: '2px solid var(--border-strong)',
+                  paddingLeft: '0.65rem',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  {pill ? (
+                    <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
+                      {pill.label}
                     </span>
                   ) : null}
-                </button>
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      fontSize: '0.9375rem',
+                      color: 'var(--text-strong)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {num} · {b.jobName}
+                  </span>
+                </span>
+                {b.customerName ? (
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{b.customerName}</span>
+                ) : null}
+                {b.jobAddress ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
+                ) : null}
+                {isMobile ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                    {b.assigneeName}
+                  </span>
+                ) : null}
+              </span>
+            )
+            const assigneeColumn = !isMobile ? (
+              <span
+                style={{
+                  flexShrink: 0,
+                  alignSelf: 'center',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-blue-700)',
+                  fontWeight: 600,
+                  maxWidth: '10rem',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {b.assigneeName}
+              </span>
+            ) : null
+            return (
+              <li key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                {canEditBlocks ? (
+                  <div style={{ display: 'flex', width: '100%', alignItems: 'stretch', background: 'var(--surface)' }}>
+                    <button
+                      type="button"
+                      onClick={() => openEditBlock(b)}
+                      aria-label={`Edit time for ${num} · ${b.jobName}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        flexShrink: 0,
+                        padding: '0.7rem 0.75rem',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {timeColumn}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
+                      aria-label={`Open job detail for ${num} · ${b.jobName}`}
+                      style={{
+                        display: 'flex',
+                        flex: 1,
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        padding: '0.7rem 0.75rem 0.7rem 0',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        minWidth: 0,
+                      }}
+                    >
+                      {detailsColumn}
+                      {assigneeColumn}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
+                    aria-label={`Open job detail for ${num} · ${b.jobName}`}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '0.7rem 0.75rem',
+                      border: 'none',
+                      background: 'var(--surface)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      minWidth: 0,
+                    }}
+                  >
+                    {timeColumn}
+                    {detailsColumn}
+                    {assigneeColumn}
+                  </button>
+                )}
               </li>
             )
           })}
@@ -492,6 +597,25 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           open={quickAssignOpen}
           onClose={() => setQuickAssignOpen(false)}
           onScheduled={() => void loadDay(selectedYmd)}
+        />
+      ) : null}
+      {editBlock ? (
+        <ScheduleDispatchAddBlockModal
+          open
+          mode="edit"
+          jobTitle={`${effectiveJobLedgerNumber(editBlock.block.hcpNumber, editBlock.block.clickNumber) || '—'} · ${editBlock.block.jobName}`}
+          personLabel={editBlock.block.assigneeName}
+          workDate={selectedYmd}
+          timeStart={editBlock.timeStart}
+          timeEnd={editBlock.timeEnd}
+          note={editBlock.note}
+          saving={editSaving}
+          error={editError}
+          onClose={closeEditBlock}
+          onChangeStart={(v) => setEditBlock((p) => (p ? { ...p, timeStart: v } : p))}
+          onChangeEnd={(v) => setEditBlock((p) => (p ? { ...p, timeEnd: v } : p))}
+          onChangeNote={(v) => setEditBlock((p) => (p ? { ...p, note: v } : p))}
+          onSave={() => void saveEditBlock()}
         />
       ) : null}
     </div>
