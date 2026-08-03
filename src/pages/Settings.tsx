@@ -17,6 +17,7 @@ import MyReportsModal from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import SettingsRecentPushNotifications from '../components/settings/SettingsRecentPushNotifications'
+import SettingsRecentEmailsSent from '../components/settings/SettingsRecentEmailsSent'
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
@@ -159,7 +160,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (myRole == null) return []
   const r = myRole
   const groups: { id: string; label: string }[] = []
-  groups.push({ id: 'settings-recent-push', label: 'Recent push' })
+  groups.push({ id: 'settings-recent-push', label: 'Notifications' })
   groups.push({ id: 'settings-account', label: 'Your account' })
   groups.push({ id: 'settings-dashboard', label: 'Dashboard & alerts' })
   if (r === 'dev' || r === 'master_technician') {
@@ -1104,6 +1105,7 @@ export default function Settings() {
       <SettingsTabBar groups={settingsJumpGroups} activeId={activeSettingsTab} onSelect={setActiveSettingsTab} />
 
       <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
+        <SettingsRecentEmailsSent isDev={myRole === 'dev'} />
         <SettingsRecentPushNotifications userId={authUser?.id} />
       </div>
 

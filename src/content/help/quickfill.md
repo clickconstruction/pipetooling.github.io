@@ -7,6 +7,8 @@ order: 10
 ---
 Quickfill is the office's daily runway: one page of review sections, each with a button that says "I've looked at this." Working top to bottom keeps the whole operation reviewed on a rhythm without anyone keeping a mental checklist.
 
+On a desktop it's the heart icon in the header; on a phone, open the ☰ menu on the left — **Quickfill** is the first entry.
+
 ## How marking works
 
 Every section is a card with a **"Mark [Section] up to date!"** button. The button's color tells you how fresh the last review is:

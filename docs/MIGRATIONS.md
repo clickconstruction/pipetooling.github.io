@@ -105,6 +105,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 3, 2026
 
+**`20260803193428_resend_email_send_log.sql`** _(apply via `supabase db push` after merge; client-first order is safe — the Settings section shows an error state until the table exists)_
+- **Purpose**: `email_send_log` (v2.1338) — org-wide outbound email log behind Settings → Notifications → "Most recent emails sent". One row per Resend email (`resend_email_id` UNIQUE): recipients, subject, `last_event` (delivered/bounced/…), `source` `'sync' | 'webhook'`. Written only by service-role edge functions (`resend-webhook` keeps it fresh; dev-triggered `sync-resend-emails` backfills from Resend's list API).
+- **Security**: RLS enabled; SELECT `is_dev()` only; **no client write policies** (service role bypasses RLS). Ends with both read-only training-mode helpers.
+- **Category**: Feature schema
+
 **`20260803184515_bid_aware_pins.sql`** _(apply via `supabase db push` after merge — push promptly: a NEW client's bid-pin insert needs the column; old clients are unaffected either way)_
 - **Purpose**: Bid-aware pins (v2.1335). `user_pinned_tabs` gains nullable `bid_id uuid REFERENCES bids ON DELETE CASCADE` so a pin can deep-link to one bid's tab ("BP352 · Pricing"). The unique EXPRESSION index `user_pinned_tabs_user_path_tab_key` is replaced by `user_pinned_tabs_user_path_tab_bid_key` `(user_id, path, COALESCE(tab,''), COALESCE(bid_id::text,''))` so several bids can pin the same tab; partial index on `bid_id`. Known accepted edge (documented in-file): `merge_user_accounts` dedupes pins on path+tab only — a user merge could drop one of two same-tab bid pins.
 - **Security**: No grant/policy changes — column-additive on an own-rows RLS table.

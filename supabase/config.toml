@@ -434,6 +434,14 @@ verify_jwt = false
 [functions.mercury-webhook]
 verify_jwt = false
 
+# Dev-only: validates JWT + users.role = dev, pulls Resend's recent-emails list into email_send_log.
+[functions.sync-resend-emails]
+verify_jwt = false
+
+# Resend → HTTPS POST with Svix signature headers; verify_jwt false (no Bearer).
+[functions.resend-webhook]
+verify_jwt = false
+
 [functions.get-estimate-for-customer]
 verify_jwt = false
 

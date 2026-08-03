@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 61 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -134,6 +134,8 @@ when_to_read:
    - [stripe-webhook](#stripe-webhook)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
+   - [sync-resend-emails](#sync-resend-emails)
+   - [resend-webhook](#resend-webhook)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
    - [import-manual-transactions](#import-manual-transactions)
@@ -145,7 +147,7 @@ when_to_read:
 
 ## Overview
 
-PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. Nearly all functions validate the caller inside the handler — a user JWT (`auth.getUser` + role check), a webhook signature (`stripe-webhook`, `mercury-webhook`), or a cron secret (`X-Cron-Secret`) — with gateway verification disabled via a `[functions.<name>] verify_jwt = false` block in [`supabase/config.toml`](../supabase/config.toml). **Two exceptions**: `merge-users` and `schedule-share-dispatch` have no `[functions.*]` block, so the gateway default (`verify_jwt = true`) applies to them per repo config.
+PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. Nearly all functions validate the caller inside the handler — a user JWT (`auth.getUser` + role check), a webhook signature (`stripe-webhook`, `mercury-webhook`, `resend-webhook`), or a cron secret (`X-Cron-Secret`) — with gateway verification disabled via a `[functions.<name>] verify_jwt = false` block in [`supabase/config.toml`](../supabase/config.toml). **Two exceptions**: `merge-users` and `schedule-share-dispatch` have no `[functions.*]` block, so the gateway default (`verify_jwt = true`) applies to them per repo config.
 
 **Field collect payment (Stripe):** The app uses **hosted Stripe invoices** and **`stripe-webhook`** (**`invoice.paid`**) with **`complete_job_collect_payment_flow_for_invoice`** — not physical Stripe Terminal readers. **`update-collect-payment-stripe-customer-email`** lets subcontractors correct payer email before **`send-stripe-invoice`**. Older **`terminal-connection-token`** / **`create-terminal-collect-payment-intent`** functions are **not** in the repo (see **`RECENT_FEATURES.md`** v2.344).
 
@@ -165,7 +167,7 @@ PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-si
 Not every function takes an `Authorization` header — each function authenticates in one of three ways (see the Overview note on `verify_jwt`):
 
 1. **In-handler user JWT** (the majority): the client sends `Authorization: Bearer <jwt_token>`; the handler calls `auth.getUser` and checks the caller's role from `public.users` before doing anything privileged.
-2. **Webhook signature**: `stripe-webhook` and `mercury-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
+2. **Webhook signature**: `stripe-webhook`, `mercury-webhook`, and `resend-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
 3. **Cron secret / public token**: scheduled functions (`send-scheduled-reminders`, `sync-salary-sessions`, `recurring-job-report-dispatch`, `schedule-day-email-dispatch`, …) require the `X-Cron-Secret` header; public-token functions (`accept-estimate`, `get-estimate-for-customer`, `get-contract-for-signer`, `dev-login`, …) authenticate by an exact token/code in the request rather than a session.
 
 ### Role-Based Access Control
@@ -2590,6 +2592,41 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 2. **Secrets** (Dashboard → Edge Functions → Secrets, or `supabase secrets set`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCURY_API_KEY`, `MERCURY_WEBHOOK_SECRET` (must match Mercury’s webhook signing secret).
 3. **Mercury dashboard**: Create webhook → URL `https://<project-ref>.supabase.co/functions/v1/mercury-webhook` → subscribe to **transaction** events so POST JSON includes `resourceType: "transaction"` and `resourceId`.
 4. **Verify**: Edge logs show `200` with `received: true`; new rows appear in `mercury_transactions`. **UI**: After migration adding `mercury_transactions` to `supabase_realtime`, Banking Sorting and Quickfill Banking sorting **debounced-refetch** on `postgres_changes` (no manual Refresh required for DB-driven updates).
+
+---
+
+### sync-resend-emails
+
+**Purpose**: Pull Resend's recent-emails list (`GET https://api.resend.com/emails`) and upsert rows into **`email_send_log`** (keyed on `resend_email_id`). Powers the **Refresh from Resend** button on Settings → Notifications → "Most recent emails sent" — backfill and gap repair; `resend-webhook` keeps the table fresh between refreshes. A sync never downgrades a row's `last_event` to null.
+
+**Endpoint**: `POST /functions/v1/sync-resend-emails` (empty JSON body)
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + **dev-only** role gate (the list is org-wide and includes customer-facing recipients/subjects).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+**Response**: `{ ok: true, synced, listed }`
+
+**Deploy**: `supabase functions deploy sync-resend-emails --no-verify-jwt`
+
+---
+
+### resend-webhook
+
+**Purpose**: Receive Resend **email.\*** events (sent, delivered, delivery_delayed, bounced, complained, opened, clicked), verify the **Svix** signature, and upsert **`email_send_log`** rows — `last_event`/`last_event_at` update per event; identity fields (from/to/subject) fill in from whichever event carries them. Non-`email.*` event types return `200 { ignored }`.
+
+**Endpoint**: `POST /functions/v1/resend-webhook`
+
+**Authentication**: **Svix** headers (`svix-id`, `svix-timestamp`, `svix-signature`) + raw body HMAC-SHA256 against `RESEND_WEBHOOK_SECRET` (`whsec_…` base64 secret; 5-minute timestamp tolerance; multiple `v1,` candidates supported). No Bearer JWT; **`verify_jwt = false`**.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_WEBHOOK_SECRET`
+
+**Enable checklist (production)**:
+
+1. **Deploy**: `supabase functions deploy resend-webhook --no-verify-jwt`
+2. **Resend dashboard** → Webhooks → Add endpoint: URL `https://<project-ref>.supabase.co/functions/v1/resend-webhook`, subscribe to the **email.** events; copy the endpoint's **signing secret**.
+3. **Secret**: `supabase secrets set RESEND_WEBHOOK_SECRET=whsec_…`
+4. **Verify**: send any app email; Edge logs show `200 { ok: true }` and a row appears in `email_send_log` (visible on Settings → Notifications as dev).
 
 ---
 
