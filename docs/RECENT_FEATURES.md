@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1315)
+last_updated: 2026-08-03 (v2.1316)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1316)
+
+### Share the Billed Awaiting Payment report by email (2026-08-03)
+The UI half of v2.1315: the Billed header's Print button becomes **⇪ Share / Print** (dev/master/assistant-like), opening [`BilledReportShareModal`](../src/components/jobs/BilledReportShareModal.tsx) — recipient picker (office-capable roles only, role badges), **Send now / Schedule…** (Chicago date+time via `salaryZonedWallClockToUtcMs`; scheduled sends are `billed_report_email_requests` rows the */5 cron dispatches, report rebuilt fresh at send time), **Preview** (rendered HTML in a new tab), **Email me a test** ([TEST] to your own address), **Print instead** (the exact old print path, moved one click deeper), and a **Scheduled sends** list with per-row Cancel (fail-soft when the table isn't reachable). Client lib [`billedReportEmailClient.ts`](../src/lib/billedReportEmailClient.ts) (edge invokes + table CRUD; recipient-role predicate kept in sync with the server's RECIPIENT_ROLES). Types hand-added to `database.ts`. Also ships migration `20260803110000_billed_report_payload_fidelity.sql` — the payload RPC now matches the board exactly (billed invoices from any non-paid status, Collections + paid excluded; **verified against prod to the penny**: the first pass was off by one $487.50 leftover billed row on a paid job). Help guide `ready-to-bill-pipeline` gains "Sharing the Billed report". Deploy: `supabase db push` after merge (edge function already deployed in v2.1315).
 
 ## Latest Updates (v2.1315)
 
