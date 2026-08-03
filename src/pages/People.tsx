@@ -13,6 +13,7 @@ import PeopleContractsTab from '../components/people/PeopleContractsTab'
 import PeopleSubsTab from '../components/people/PeopleSubsTab'
 import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
+import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import { PeopleUsersTab } from '../components/people/PeopleUsersTab'
 import {
@@ -197,6 +198,7 @@ const tabStyle = pageTabStyle
 type PersonActiveProject = { id: string; name: string }
 
 type PeopleTab =
+  | 'scoreboard'
   | 'review'
   | 'users'
   | 'subs'
@@ -732,9 +734,13 @@ export default function People() {
       tab === 'contracts' ||
       tab === 'writeups' ||
       tab === 'review' ||
+      tab === 'scoreboard' ||
       tab === 'feedback' ||
       tab === 'activity'
     ) {
+      // 'scoreboard' has no URL gate deliberately — isDev resolves async and a
+      // gate here bounces dev cold deep links to Users (the activity-tab race).
+      // The render site is isDev-gated, matching Review's long-standing pattern.
       if (tab === 'overhead' && !canAccessOverheadTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -2859,6 +2865,22 @@ export default function People() {
           <button
             type="button"
             onClick={() => {
+              setActiveTab('scoreboard')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'scoreboard')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'scoreboard')}
+          >
+            Scoreboard
+          </button>
+        )}
+        {isDev && (
+          <button
+            type="button"
+            onClick={() => {
               setActiveTab('review')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
@@ -3883,6 +3905,7 @@ export default function People() {
         />
       ) : null}
 
+      {activeTab === 'scoreboard' && isDev && <PeopleScoreboardTab />}
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}
