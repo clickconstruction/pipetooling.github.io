@@ -36,4 +36,4 @@ When you arrived via **Save as Assembly**, each bundle price also offers a **Use
 
 ## Editing an assembly later
 
-The **Edit Assembly** form (from a bundle line's breakdown or a By Stage mapping) works the same way: one search over parts and assemblies, and picking a result adds it to the assembly immediately at quantity 1 — adjust quantities right in the items list (changes save when you leave the field). The quick **Add Parts** dialog on a mapped assembly uses a searchable part picker too, with the same create-a-part-on-the-spot option when nothing matches.
+The **Edit Assembly** form (from a bundle line's breakdown or a By Stage mapping) works the same way: one search over parts and assemblies at the top, and picking a result adds it to the assembly immediately at quantity 1 — adjust quantities right in the items list (changes save when you leave the field). To change a bundle price, **click the price itself**, type the new number, and press Enter — Escape backs out without saving. The quick **Add Parts** dialog on a mapped assembly uses a searchable part picker too, with the same create-a-part-on-the-spot option when nothing matches.

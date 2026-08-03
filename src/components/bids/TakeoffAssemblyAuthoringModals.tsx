@@ -958,7 +958,7 @@ export function TakeoffAssemblyAuthoringModals({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Edit Assembly</label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -991,213 +991,209 @@ export function TakeoffAssemblyAuthoringModals({
               </div>
             )}
 
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Existing items</div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: 'var(--bg-subtle)' }}>
-                    <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Prices</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editTemplateItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies below.</td>
-                      </tr>
-                    ) : (
-                      editTemplateItems.map((item) => {
-                        const name = item.item_type === 'part' && item.part_id
-                          ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—')
-                          : item.item_type === 'template' && item.nested_template_id
-                            ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—')
-                            : '—'
-                        return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <input
-                                key={`${item.id}-${item.quantity}`}
-                                type="number"
-                                min={1}
-                                defaultValue={item.quantity}
-                                aria-label={`Quantity for ${name}`}
-                                onBlur={(e) => void updateEditTemplateItemQuantity(item.id, parseInt(e.target.value, 10))}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    ;(e.target as HTMLInputElement).blur()
-                                  }
-                                }}
-                                style={{ width: 64, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {item.item_type === 'part' && item.part_id ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
-                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                  Prices
-                                </button>
-                              ) : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => removeEditTemplateItem(item.id)}
-                                style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 500 }}>Add item</span>
+            {/* Items (v2.1333 restyle): search first, then compact chip rows — the
+                Add Assembly modal's layout; all writes are immediate as before. */}
+            <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4 }}>
+              <div style={{ padding: '0.6rem 0.9rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Items</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {editTemplateAddingItem ? 'Adding…' : 'Picking a result adds it at qty 1 — adjust above'}
+                  {editTemplateAddingItem ? 'Adding…' : 'Picking a result adds it at qty 1 — adjust inline'}
                 </span>
               </div>
-              <TakeoffItemSearchCombobox
-                parts={takeoffAddTemplateParts}
-                templates={materialTemplates.filter((t) => t.id !== editTemplateModalId)}
-                filterPartsByQuery={filterPartsByQuery}
-                filterTemplatesByQuery={filterTemplatesByQuery}
-                partsLoading={takeoffAddTemplateParts.length === 0}
-                onPick={(pick) => void addEditTemplateItemDirect(pick.kind, pick.id)}
-                onCreateNew={(q) => openBidsPartFormForCreate(q)}
-              />
+              <div style={{ padding: '0.75rem 0.9rem' }}>
+                <TakeoffItemSearchCombobox
+                  parts={takeoffAddTemplateParts}
+                  templates={materialTemplates.filter((t) => t.id !== editTemplateModalId)}
+                  filterPartsByQuery={filterPartsByQuery}
+                  filterTemplatesByQuery={filterTemplatesByQuery}
+                  partsLoading={takeoffAddTemplateParts.length === 0}
+                  onPick={(pick) => void addEditTemplateItemDirect(pick.kind, pick.id)}
+                  onCreateNew={(q) => openBidsPartFormForCreate(q)}
+                />
+                {editTemplateItems.length === 0 ? (
+                  <p style={{ margin: '0.75rem 0 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    No items yet — search above to add parts or nested assemblies.
+                  </p>
+                ) : (
+                  <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
+                    {editTemplateItems.map((item) => {
+                      const isPart = item.item_type === 'part'
+                      const name = isPart && item.part_id
+                        ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—')
+                        : !isPart && item.nested_template_id
+                          ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—')
+                          : '—'
+                      return (
+                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr) 72px 56px 26px', gap: '0.5rem', alignItems: 'center' }}>
+                          <span
+                            title={isPart ? 'Part' : 'Assembly'}
+                            style={{ width: 20, height: 20, borderRadius: 4, background: isPart ? 'var(--bg-blue-tint)' : 'var(--bg-violet-100)', color: isPart ? 'var(--text-blue-700)' : 'var(--text-violet-700)', fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            {isPart ? 'P' : 'A'}
+                          </span>
+                          <span title={name} style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                          <input
+                            key={`${item.id}-${item.quantity}`}
+                            type="number"
+                            min={1}
+                            defaultValue={item.quantity}
+                            aria-label={`Quantity for ${name}`}
+                            onBlur={(e) => void updateEditTemplateItemQuantity(item.id, parseInt(e.target.value, 10))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                ;(e.target as HTMLInputElement).blur()
+                              }
+                            }}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                          />
+                          {isPart && item.part_id ? (
+                            <button
+                              type="button"
+                              onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
+                              style={{ padding: '0.25rem 0', background: 'none', color: 'var(--text-blue-700)', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', textAlign: 'center' }}
+                            >
+                              Prices
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', textAlign: 'center' }}>—</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeEditTemplateItem(item.id)}
+                            tabIndex={-1}
+                            aria-label={`Remove ${name}`}
+                            title="Remove item"
+                            style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Bundle prices a supply house quotes for this whole assembly. Used when adding this assembly as a bundle and shown in the bundle breakdown.
-              </p>
-              {editTemplatePrices.length > 0 && (
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
-                  <tbody>
+            {/* Bundle prices (v2.1333 restyle): one-line rows; the price itself is the
+                edit control (click → input, Enter/blur commits, Escape cancels). */}
+            <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4 }}>
+              <div style={{ padding: '0.6rem 0.9rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                  Bundle prices <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click a price to change it</span>
+              </div>
+              <div style={{ padding: '0.75rem 0.9rem' }}>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Bundle prices a supply house quotes for this whole assembly. Used when adding this assembly as a bundle and shown in the bundle breakdown.
+                </p>
+                {editTemplatePrices.length > 0 && (
+                  <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.75rem' }}>
                     {editTemplatePrices.map((p) => {
                       const editingVal = editTemplatePriceEditing[p.id]
                       const isEditing = editingVal !== undefined
+                      const cancelEdit = () =>
+                        setEditTemplatePriceEditing((prev) => {
+                          const next = { ...prev }
+                          delete next[p.id]
+                          return next
+                        })
+                      const commitEdit = () => {
+                        const n = parseFloat(editingVal ?? '')
+                        if (!Number.isNaN(n) && n >= 0 && n !== p.price) void updateEditTemplatePrice(p.id, n)
+                        else cancelEdit()
+                      }
                       return (
-                        <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.4rem 0.5rem' }}>{p.supply_house_name}</td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={editingVal}
-                                autoFocus
-                                onChange={(e) => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                                style={{ width: '7rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
-                              />
-                            ) : (
-                              `$${p.price.toFixed(2)}`
-                            )}
-                          </td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {isEditing ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const n = parseFloat(editingVal)
-                                    if (!Number.isNaN(n) && n >= 0) void updateEditTemplatePrice(p.id, n)
-                                  }}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer', marginRight: '0.5rem' }}
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditTemplatePriceEditing((prev) => { const next = { ...prev }; delete next[p.id]; return next })}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: String(p.price) }))}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer', marginRight: '0.5rem' }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void removeEditTemplatePrice(p.id)}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}
-                                >
-                                  Remove
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
+                        <div key={p.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem 26px', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.supply_house_name}</span>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={editingVal}
+                              autoFocus
+                              onChange={(e) => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                              onBlur={commitEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  ;(e.target as HTMLInputElement).blur()
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault()
+                                  cancelEdit()
+                                }
+                              }}
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: String(p.price) }))}
+                              title="Click to change this bundle price"
+                              aria-label={`Change ${p.supply_house_name} bundle price, currently $${p.price.toFixed(2)}`}
+                              style={{ justifySelf: 'end', padding: '0.15rem 0', background: 'none', border: 'none', borderBottom: '1px dashed var(--border-400)', borderRadius: 0, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.875rem' }}
+                            >
+                              ${p.price.toFixed(2)}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void removeEditTemplatePrice(p.id)}
+                            tabIndex={-1}
+                            aria-label={`Remove ${p.supply_house_name} bundle price`}
+                            title="Remove bundle price"
+                            style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            ×
+                          </button>
+                        </div>
                       )
                     })}
-                  </tbody>
-                </table>
-              )}
-              {(() => {
-                const used = new Set(editTemplatePrices.map((p) => p.supply_house_id))
-                const available = supplyHouses.filter((sh) => !used.has(sh.id))
-                if (available.length === 0) {
-                  return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
-                }
-                const priceNum = parseFloat(editTemplateNewPriceValue)
-                const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem auto', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
-                    <SearchableSelect
-                      value={editTemplateNewPriceSupplyHouseId}
-                      onChange={setEditTemplateNewPriceSupplyHouseId}
-                      options={available.map((sh) => ({ value: sh.id, label: sh.name }))}
-                      placeholder="Supply house…"
-                      listAriaLabel="Supply houses"
-                      portalZIndex={1200}
-                      triggerMinHeightPx={0}
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={editTemplateNewPriceValue}
-                      onChange={(e) => setEditTemplateNewPriceValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && canAdd) {
-                          e.preventDefault()
-                          void addEditTemplatePrice()
-                        }
-                      }}
-                      placeholder="0.00"
-                      aria-label="Bundle price"
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    />
-                    <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
                   </div>
-                )
-              })()}
+                )}
+                {(() => {
+                  const used = new Set(editTemplatePrices.map((p) => p.supply_house_id))
+                  const available = supplyHouses.filter((sh) => !used.has(sh.id))
+                  if (available.length === 0) {
+                    return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
+                  }
+                  const priceNum = parseFloat(editTemplateNewPriceValue)
+                  const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem auto', gap: '0.5rem', alignItems: 'center' }}>
+                      <SearchableSelect
+                        value={editTemplateNewPriceSupplyHouseId}
+                        onChange={setEditTemplateNewPriceSupplyHouseId}
+                        options={available.map((sh) => ({ value: sh.id, label: sh.name }))}
+                        placeholder="Supply house…"
+                        listAriaLabel="Supply houses"
+                        portalZIndex={1200}
+                        triggerMinHeightPx={0}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={editTemplateNewPriceValue}
+                        onChange={(e) => setEditTemplateNewPriceValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && canAdd) {
+                            e.preventDefault()
+                            void addEditTemplatePrice()
+                          }
+                        }}
+                        placeholder="0.00"
+                        aria-label="Bundle price"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      />
+                      <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
