@@ -11,7 +11,7 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1320',
+    version: 'v2.1321',
     date: '2026-08-03',
     title: 'See every email the app sends you',
     kind: 'feature',
@@ -19,6 +19,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'Settings \u2192 Your account has a new "My email schedule" section: a week view of every email you\u2019re set to receive \u2014 report digests, scheduled reports, dispatch-day emails \u2014 plus event-driven ones like Paid in Full.',
       'Read-only: it shows what\u2019s configured; changing lists still happens where each email is managed.',
       'Devs get a new Settings \u2192 Email & notifications panel: every recurring email stream in one place \u2014 pause digests, remove recipients, cancel scheduled sends.',
+    ],
+  },
+  {
+    version: 'v2.1320',
+    date: '2026-08-03',
+    title: 'Overhead: maintenance indicators for pending, unpriced, and unassigned time',
+    kind: 'feature',
+    highlights: [
+      'People → Overhead now shows an amber maintenance strip under the three lenses whenever upkeep is skewing the 90-day numbers — it disappears entirely when everything is clean.',
+      'Three indicators: sessions still awaiting approval (excluded from the numbers until approved), hours priced at $0 because the person has no wage in Pay config, and salary-schedule time with no job or bid assigned (invisible to overhead).',
+      'Each indicator shows counts, hours, and who is affected, explains its exact rule on hover, and says where to fix it. New help guide: "keep the overhead numbers accurate".',
     ],
   },
   {

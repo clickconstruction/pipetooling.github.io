@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- "My email schedule" (v2.1320): one self-scoped read for everything the app
+-- "My email schedule" (v2.1321): one self-scoped read for everything the app
 -- is configured to email the CALLER — Settings → Your account renders it as a
 -- weekly grid + event list. SECURITY DEFINER because the sources have
 -- mismatched RLS the recipient can't otherwise cross (billed_report_email_
@@ -73,7 +73,7 @@ SELECT jsonb_build_object(
 $$;
 
 COMMENT ON FUNCTION public.get_my_email_schedule() IS
-  'Everything the app is configured to email the calling user (v2.1320): weekly report digests, pending one-off sends addressed to them, and event-stream memberships. Self-scoped — only auth.uid()''s own entries; EXECUTE for authenticated.';
+  'Everything the app is configured to email the calling user (v2.1321): weekly report digests, pending one-off sends addressed to them, and event-stream memberships. Self-scoped — only auth.uid()''s own entries; EXECUTE for authenticated.';
 
 REVOKE EXECUTE ON FUNCTION public.get_my_email_schedule() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.get_my_email_schedule() FROM anon;

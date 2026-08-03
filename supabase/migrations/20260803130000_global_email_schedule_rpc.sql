@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Global email-stream management read (v2.1320, dev-only): one aggregate for
+-- Global email-stream management read (v2.1321, dev-only): one aggregate for
 -- the Settings → Email & notifications panel — every recurring/scheduled
 -- email stream with its cadence and recipients. Devs could assemble this from
 -- direct reads; the RPC gives one uniform, auditable fetch (and app_settings
@@ -85,7 +85,7 @@ SELECT CASE WHEN NOT (SELECT ok FROM gate) THEN NULL ELSE jsonb_build_object(
 $$;
 
 COMMENT ON FUNCTION public.get_global_email_schedule() IS
-  'Dev-only aggregate of every recurring/scheduled email stream + recipients for Settings → Email & notifications (v2.1320). Returns NULL for non-devs; writes go through each stream''s existing path.';
+  'Dev-only aggregate of every recurring/scheduled email stream + recipients for Settings → Email & notifications (v2.1321). Returns NULL for non-devs; writes go through each stream''s existing path.';
 
 REVOKE EXECUTE ON FUNCTION public.get_global_email_schedule() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.get_global_email_schedule() FROM anon;

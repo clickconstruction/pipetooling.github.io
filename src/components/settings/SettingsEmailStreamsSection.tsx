@@ -12,7 +12,7 @@ import { cancelBilledReportSend } from '../../lib/billedReportEmailClient'
 import { formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 
 /**
- * Settings → Email & notifications (v2.1320, dev-only): every recurring and
+ * Settings → Email & notifications (v2.1321, dev-only): every recurring and
  * scheduled email stream in one panel — cadence, recipients, pending one-off
  * sends. Editing philosophy: REMOVE and PAUSE here (each chip's × runs the
  * same one-line write that stream's own manager does); CREATE lives on each

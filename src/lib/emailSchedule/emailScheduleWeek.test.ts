@@ -1,3 +1,4 @@
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { describe, expect, it } from 'vitest'
 import {
   addDaysYmd,
@@ -52,7 +53,7 @@ describe('buildMyEmailWeekGrid', () => {
       enabled: true,
       time_local: '06:30',
       days_of_week: [1, 2, 3, 4, 5], // Mon–Fri (0=Sun convention)
-      timezone: 'America/Chicago',
+      timezone: APP_CALENDAR_TZ,
       include_costs: false,
       activity_scope: 'calendar_yesterday',
     },

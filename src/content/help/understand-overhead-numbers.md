@@ -1,0 +1,43 @@
+---
+title: keep the overhead numbers accurate
+category: Billing & Money
+roles: dev, master_technician
+keywords: overhead, overhead rate, pool, method a, method b, method c, pending approvals, unpriced hours, wage, pay config, salary, unassigned, maintenance, hygiene, 90 day
+order: 61
+---
+**People → Overhead** turns the last 90 days of office time, bid time, and office spending into the overhead rates you price with — the daily-cost averages and the three lens rates (per field hour, per revenue dollar, per labor dollar).
+
+Every labor hour and dollar in those numbers comes from clock sessions that are **approved**, **clocked out**, and **priced with a wage**. When any of that upkeep falls behind, the numbers quietly drift low — so the tab watches for it and shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
+
+## The three indicators
+
+:::example What the strip looks like
+⚠ Maintenance — these are skewing the 90-day numbers above
+**Pending approvals (90d)** · 14 closed sessions · 52.5h + 2 still open — Approve in {{button:blue|People → Hours}}
+**Unpriced hours (90d)** · Sam R, Tony V · 31.0h at $0 — Set wages in {{button:blue|People → Pay config}}
+**Unassigned salary time (90d)** · 12 sessions · 96.0h · 1 person — Assign in My Time
+:::
+
+Hover any indicator for the exact rule it checks and the exact 90-day window it covers.
+
+### Pending approvals
+
+Sessions nobody has approved (or rejected) yet don't count **anywhere** — not in the overhead pool, and not in the field-hour or field-labor denominators. Field time usually gets approved because payroll depends on it, but office and bid time has no such pressure, so it's the most likely to sit unapproved and undercount overhead.
+
+Fix it on the **Hours** tab: review and approve the pending sessions. Sessions that are still open (no clock-out yet) are listed by count only — they get hours once they're clocked out.
+
+### Unpriced hours
+
+If a person clocks time but has no wage in **Pay config**, their sessions count hours at **$0**: the hours still land in the denominators, but no dollars reach the pool. That deflates the daily-cost KPIs and Methods B and C while Method A's denominator stays full — the worst combination, because every rate reads lower than reality.
+
+The indicator names who's unpriced. Fix it by setting an hourly wage (and an office rate, if they use one) for those people in {{button:blue|People → Pay config}}.
+
+### Unassigned salary time
+
+Salaried people get automatic clock sessions from their workday schedule. Those sessions start with **no job and no bid**, and unassigned time is invisible to the overhead pool entirely — a salaried office person's whole week can be missing from overhead without anything looking wrong.
+
+Fix it by assigning those sessions to the office job (or a bid, for bid work) — the person can do it themselves in **My Time**, or an approver can set the job/bid on the session.
+
+## Why this matters
+
+Underreported overhead makes every job look more profitable than it is, and makes the lens rates too cheap to price with. A quick weekly pass — approve, price, assign — keeps the strip empty and the rates trustworthy.
