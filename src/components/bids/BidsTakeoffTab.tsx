@@ -282,8 +282,6 @@ export function BidsTakeoffTab({
   const [addPartsToTemplateId, setAddPartsToTemplateId] = useState<string | null>(null)
   const [addPartsToTemplateName, setAddPartsToTemplateName] = useState<string | null>(null)
   const [addPartsSelectedPartId, setAddPartsSelectedPartId] = useState('')
-  const [addPartsSearchQuery, setAddPartsSearchQuery] = useState('')
-  const [addPartsDropdownOpen, setAddPartsDropdownOpen] = useState(false)
 
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
@@ -301,8 +299,6 @@ export function BidsTakeoffTab({
   const [editTemplateModalId, setEditTemplateModalId] = useState<string | null>(null)
   const [editTemplateModalName, setEditTemplateModalName] = useState<string | null>(null)
   const [editTemplateNewItemPartId, setEditTemplateNewItemPartId] = useState('')
-  const [editTemplateNewItemPartSearchQuery, setEditTemplateNewItemPartSearchQuery] = useState('')
-  const [editTemplateNewItemPartDropdownOpen, setEditTemplateNewItemPartDropdownOpen] = useState(false)
 
 
   async function loadPartTypes() {
@@ -440,8 +436,6 @@ export function BidsTakeoffTab({
     setAddPartsToTemplateId(templateId)
     setAddPartsToTemplateName(templateName)
     setAddPartsSelectedPartId('')
-    setAddPartsSearchQuery('')
-    setAddPartsDropdownOpen(false)
     setAddPartsToTemplateModalOpen(true)
   }
 
@@ -451,8 +445,6 @@ export function BidsTakeoffTab({
     setEditTemplateModalId(templateId)
     setEditTemplateModalName(templateName)
     setEditTemplateNewItemPartId('')
-    setEditTemplateNewItemPartSearchQuery('')
-    setEditTemplateNewItemPartDropdownOpen(false)
     setEditTemplateModalOpen(true)
   }
 
@@ -472,12 +464,10 @@ export function BidsTakeoffTab({
       if (!wasEdit) {
         if (addPartsToTemplateModalOpen) {
           setAddPartsSelectedPartId(part.id)
-          setAddPartsSearchQuery('')
-          setAddPartsDropdownOpen(false)
         } else if (editTemplateModalOpen) {
+          // Edit Assembly's create-new flow: the cluster consumes this id and
+          // adds the part straight to the assembly (v2.1327).
           setEditTemplateNewItemPartId(part.id)
-          setEditTemplateNewItemPartSearchQuery('')
-          setEditTemplateNewItemPartDropdownOpen(false)
         } else if (takeoffRoughPartPickerLineId) {
           const lineId = takeoffRoughPartPickerLineId
           setTakeoffRoughPartPickerLineId(null)
@@ -2830,10 +2820,6 @@ export function BidsTakeoffTab({
         setAddPartsToTemplateName={setAddPartsToTemplateName}
         addPartsSelectedPartId={addPartsSelectedPartId}
         setAddPartsSelectedPartId={setAddPartsSelectedPartId}
-        addPartsSearchQuery={addPartsSearchQuery}
-        setAddPartsSearchQuery={setAddPartsSearchQuery}
-        addPartsDropdownOpen={addPartsDropdownOpen}
-        setAddPartsDropdownOpen={setAddPartsDropdownOpen}
         editTemplateModalOpen={editTemplateModalOpen}
         setEditTemplateModalOpen={setEditTemplateModalOpen}
         editTemplateModalId={editTemplateModalId}
@@ -2842,10 +2828,6 @@ export function BidsTakeoffTab({
         setEditTemplateModalName={setEditTemplateModalName}
         editTemplateNewItemPartId={editTemplateNewItemPartId}
         setEditTemplateNewItemPartId={setEditTemplateNewItemPartId}
-        editTemplateNewItemPartSearchQuery={editTemplateNewItemPartSearchQuery}
-        setEditTemplateNewItemPartSearchQuery={setEditTemplateNewItemPartSearchQuery}
-        editTemplateNewItemPartDropdownOpen={editTemplateNewItemPartDropdownOpen}
-        setEditTemplateNewItemPartDropdownOpen={setEditTemplateNewItemPartDropdownOpen}
       />
 
       {/* Bundle breakdown modal (parts-vs-bundle comparison for a rough Assembly line) */}

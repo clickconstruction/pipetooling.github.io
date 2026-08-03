@@ -132,6 +132,13 @@ export type SearchableSelectProps = {
    * in a shared form row (v2.1234, Edit Job identity fields).
    */
   triggerMinHeightPx?: number
+  /**
+   * Optional create-new affordance shown in the no-matches panel (v2.1327):
+   * a button labeled `label(query)`; clicking it (or pressing Enter while the
+   * filtered list is empty) calls `onSelect(query)` and closes the panel.
+   * Use for pickers that can mint a missing option (e.g. Add Part).
+   */
+  noMatchesAction?: { label: (query: string) => string; onSelect: (query: string) => void }
 }
 
 /** List rows for the open panel; may hide empty option while selection is still empty. */
@@ -260,6 +267,7 @@ export function SearchableSelect({
   listMinWidthPx,
   minSearchChars = 0,
   triggerMinHeightPx = 44,
+  noMatchesAction,
 }: SearchableSelectProps) {
   const searchReplacesTrigger = searchReplacesTriggerProp && searchable
   const resolvedListMaxHeightPx = listMaxHeightPx ?? LIST_MAX_HEIGHT_PX
@@ -482,10 +490,28 @@ export function SearchableSelect({
     }
   }
 
+  const showNoMatchesAction =
+    noMatchesAction !== undefined &&
+    filteredForRender.length === 0 &&
+    !needsMoreChars &&
+    query.trim().length > 0
+
+  const runNoMatchesAction = () => {
+    if (!noMatchesAction) return
+    const q = query.trim()
+    close()
+    noMatchesAction.onSelect(q)
+  }
+
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault()
       close()
+      return
+    }
+    if (e.key === 'Enter' && showNoMatchesAction) {
+      e.preventDefault()
+      runNoMatchesAction()
       return
     }
     if (e.key === 'ArrowDown') {
@@ -580,6 +606,29 @@ export function SearchableSelect({
             {needsMoreChars
               ? `Type ${minSearchChars} character${minSearchChars === 1 ? '' : 's'} to search…`
               : 'No matches'}
+            {showNoMatchesAction && noMatchesAction && (
+              <button
+                type="button"
+                onMouseDown={(ev) => ev.preventDefault()}
+                onClick={runNoMatchesAction}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  marginTop: '0.5rem',
+                  padding: '0.4rem 0.5rem',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 4,
+                  color: 'var(--text-blue-700)',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                }}
+              >
+                {noMatchesAction.label(query.trim())}
+              </button>
+            )}
           </div>
         ) : (
           <ul id={listId} role="listbox" aria-label={listAriaLabel} style={listboxStyle}>

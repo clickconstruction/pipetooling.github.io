@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1326)
+last_updated: 2026-08-03 (v2.1327)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1327)
+
+### Takeoffs sibling modals: unified search + a reusable create-new-part affordance (2026-08-03)
+Follow-up to v2.1326 covering the other two assembly-authoring modals in [`TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx) — the last hand-rolled focus/blur-timer dropdowns in the cluster are gone. **Edit Assembly**: the staged Add-item box (Type select + picker + qty + button) is replaced by the same [`TakeoffItemSearchCombobox`](../src/components/bids/TakeoffItemSearchCombobox.tsx) — picking a part or nested assembly (self excluded) **writes it to the assembly immediately at qty 1** (`addEditTemplateItemDirect`; existing parts merge +1; concurrent picks guarded by `editTemplateAddingItem`), and the Existing-items table's **Qty column is now editable** (commit on blur/Enter via `updateEditTemplateItemQuantity`, `key`ed remount on reload) since qty 1 needs adjusting somewhere. The bundle-price add row swaps its native select for `SearchableSelect` with Enter-commits. **Add Parts to [assembly]** (single-add-then-close, so a staged select is correct there): the hand-rolled dropdown becomes a `SearchableSelect` with two-line option rows (name + manufacturer · type; the searchable label also covers notes) and Enter in the Quantity field triggers Add to Assembly. **New reusable `SearchableSelect` prop `noMatchesAction`** — `{ label(query), onSelect(query) }` renders a create-new button in the no-matches panel (Enter triggers it while the list is empty); this preserves the "No parts match → Add Part" affordance and is available to every picker in the app. PartFormModal create-new routing for both modals now lands the saved part **directly** (Add Parts: staged selection as before; Edit Assembly: a consume-effect adds it to the assembly), and the dead staged search-query/dropdown states were deleted from both files (props pruned). Render tests: +4 for `noMatchesAction` in [`SearchableSelect.render.test.tsx`](../src/components/SearchableSelect.render.test.tsx). Help guide `create-an-assembly-while-doing-a-takeoff` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1326)
 
