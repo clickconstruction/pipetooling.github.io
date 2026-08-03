@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1317)
+last_updated: 2026-08-03 (v2.1318)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1318)
+
+### Quickfill: bank-transfer attribution queue section (2026-08-03)
+Phase 2 of the ACH/wire/check attribution plan (client-only — the v2.1308 substrate is live in prod; baseline 103 tx / $200,158.86 unattributed in 90 days, 1,121 all-time). New Quickfill section **"Bank transfers needing attribution"** works the unattributed non-card money-out queue. Data: [`hooks/useQuickfillNoncardAttribution.ts`](../src/hooks/useQuickfillNoncardAttribution.ts) calls `count/list_unattributed_noncard_mercury_transactions` via the `(supabase as any).rpc` cast precedent (RPCs not in generated types yet), with a typed pure kernel [`lib/banking/noncardAttributionQueue.ts`](../src/lib/banking/noncardAttributionQueue.ts) (+11 tests) owning row parsing, the client-side 90-day `posted_at` window (list caps at 500 newest-first; older rows behind a "Show older (N more)" toggle), outflow/kind/date formatting, and the `mercuryTxRowFromTallyRpc`-style adapter feeding the splits modal. **Gating is capability-probed, not role-derived**: the count RPC is attempted on mount and a 42501 hides the section entirely — works for dev today, `banking_attributors` holders automatically (Phase 3). Registered in `SECTIONS` on the **`my-inbox` mark-less pattern** (no mark button/collapse/history — the queue empties by resolution; neutral jump chip; metric reported page-level under `noncard-attribution`). Per-row actions in [`components/quickfill/QuickfillNoncardAttributionSection.tsx`](../src/components/quickfill/QuickfillNoncardAttributionSection.tsx), each disabling the row while in flight and surfacing RPC error messages verbatim: **→ Office** (`attributor_allocate_transaction_to_job` to the People → Overhead office job via `fetchOverheadOfficeJobLedgerIdFromAppSettings`; hidden with a hint when unset), **Payroll** (`attributor_flag_transaction_payroll`), **Card bill** / **Not an expense** (`resolve_noncard_transaction_attribution`), **Split across jobs…** (existing `MercuryTransactionAllocationsModal`, staff-RPC mode with the `usersOptions={[]}` / `recentPersonPicksStorageKey={null}` contract — NOT `tallySelfService`, whose save RPC requires a linked debit card and hard-fails on non-card tx; capability-only users will 42501 here until Phase 3's scoped modal), and per-session **Undo** (unresolve / payroll-flag-false; office/split undo routes to Banking). Help guide `label-bank-transfers.md` ships with it. See `docs/QUICKFILL_ARCHITECTURE.md`.
 
 ## Latest Updates (v2.1317)
 

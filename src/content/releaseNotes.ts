@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1318',
+    date: '2026-08-03',
+    title: 'Quickfill: label bank transfers and wires',
+    kind: 'feature',
+    highlights: [
+      'New Quickfill section "Bank transfers needing attribution" lists ACH, wire, and check payments that have no label yet — one tap sends each to the office job, payroll, a card bill payment, "not an expense", or a split across jobs.',
+      'Shows the last 90 days by default, with a "Show older" button for the backlog, and an Undo for labels applied this session.',
+      'Only visible to people granted the labeling capability (and devs). See the new help guide: "label bank transfers and wires".',
+    ],
+  },
+  {
     version: 'v2.1317',
     date: '2026-08-03',
     title: 'Overhead: duplicate-marked bank transactions no longer count as office parts',
