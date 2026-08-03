@@ -33,6 +33,8 @@ import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
 import SettingsCatalogsProspectsTab from '../components/settings/SettingsCatalogsProspectsTab'
 import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import SettingsAccountSchedulingTab from '../components/settings/SettingsAccountSchedulingTab'
+import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEmailScheduleSection'
+import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
 import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
@@ -165,6 +167,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
     groups.push({ id: 'settings-people', label: 'People & accounts' })
   }
   if (r === 'dev') {
+    groups.push({ id: 'settings-emails', label: 'Email & notifications' })
     groups.push({ id: 'settings-data', label: 'Data & migration' })
     groups.push({ id: 'settings-jobs', label: 'Jobs & dispatch' })
   }
@@ -1106,6 +1109,11 @@ export default function Settings() {
         <SettingsRecentPushNotifications userId={authUser?.id} />
       </div>
 
+      {myRole === 'dev' && (
+        <SettingsGroup id="settings-emails" hidden={activeSettingsTab !== 'settings-emails'} title="Email & notifications">
+          {activeSettingsTab === 'settings-emails' && <SettingsEmailStreamsSection />}
+        </SettingsGroup>
+      )}
       <SettingsGroup
         id="settings-account"
         hidden={activeSettingsTab !== 'settings-account'}
@@ -1179,6 +1187,7 @@ export default function Settings() {
           timeOffSectionOpen={timeOffSectionOpen}
         />
       )}
+      {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}
 
       <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title="Dashboard & alerts">
         <SettingsDashboardTab

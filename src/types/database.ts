@@ -12148,6 +12148,8 @@ export type Database = {
         Returns: Json
       }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
+      get_my_email_schedule: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_global_email_schedule: { Args: Record<PropertyKey, never>; Returns: Json }
       get_hazmat_notice_by_token: { Args: { p_token: string }; Returns: Json }
       get_invoice_allocation_lines_for_jobs: {
         Args: { p_job_ids: string[] }

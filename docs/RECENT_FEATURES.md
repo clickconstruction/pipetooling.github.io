@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1320)
+last_updated: 2026-08-03 (v2.1321)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1321)
+
+### Settings: "My email schedule" + dev "Email & notifications" panel (2026-08-03)
+Two surfaces, one feature. **Personal** (Settings → Your account, all roles): a Monday-first week grid of everything configured to email YOU, Central time — recurring job-report digests on their weekday/time slots (paused schedules dimmed with "(paused)"), one-off sends addressed to you (billed-report shares, dispatch-day emails) on their exact day, and an "Also, when it happens" list for event streams (Paid in Full, Payment received). Backed by self-scoped SECURITY DEFINER RPC **`get_my_email_schedule()`** (migration `20260803120000`) — the sources have mismatched RLS the recipient can't cross (billed-report requests are SENDER-readable; a recipient couldn't see a report scheduled for their own inbox). Pure kernel [`lib/emailSchedule/emailScheduleWeek.ts`](../src/lib/emailSchedule/emailScheduleWeek.ts) (+7 tests). Read-only by design. New help guide `see-your-email-schedule`. **Global** (new dev-only Settings jump group **Email & notifications**, [`SettingsEmailStreamsSection`](../src/components/settings/SettingsEmailStreamsSection.tsx)): one card per stream — report digests with cadence + pause/resume toggle, both payment event streams, pending billed-report sends, queued dispatch-day emails — recipient chips with ×-remove running each stream's EXISTING write path; creation stays on each stream's home surface; schedule-day rows read-only (no dev mutation policy). Backed by dev-gated `get_global_email_schedule()` (migration `20260803130000`, NULL for non-devs). (Renumbered twice — v2.1317 → v2.1320 → v2.1321 — amid the 2026-08-03 multi-session version race.)
 
 ## Latest Updates (v2.1320)
 

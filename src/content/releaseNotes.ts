@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1321',
+    date: '2026-08-03',
+    title: 'See every email the app sends you',
+    kind: 'feature',
+    highlights: [
+      'Settings \u2192 Your account has a new "My email schedule" section: a week view of every email you\u2019re set to receive \u2014 report digests, scheduled reports, dispatch-day emails \u2014 plus event-driven ones like Paid in Full.',
+      'Read-only: it shows what\u2019s configured; changing lists still happens where each email is managed.',
+      'Devs get a new Settings \u2192 Email & notifications panel: every recurring email stream in one place \u2014 pause digests, remove recipients, cancel scheduled sends.',
+    ],
+  },
+  {
     version: 'v2.1320',
     date: '2026-08-03',
     title: 'Overhead: maintenance indicators for pending, unpriced, and unassigned time',
