@@ -336,7 +336,7 @@ export function JobFormCustomerSection({
                             // close doesn't race the click.
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={openCreateCustomerWithTypedName}
-                            style={{ padding: '0.5rem', cursor: 'pointer', borderTop: '1px solid var(--border)', fontWeight: 500, color: '#2563eb' }}
+                            style={{ padding: '0.5rem', cursor: 'pointer', borderTop: '1px solid var(--border)', fontWeight: 500, color: 'var(--text-link)' }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                           >
