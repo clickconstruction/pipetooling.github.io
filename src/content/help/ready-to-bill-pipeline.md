@@ -130,6 +130,18 @@ There's a second stream for jobs that aren't finished yet: whenever **any** paym
 
 Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header (same rules: devs and masters open it, devs edit it). When a payment finishes the job, only the paid-in-full email goes out — you never get both for the same payment.
 
+## Sharing the Billed report
+
+The **Share / Print** button in the same header (devs, masters, controllers, and assistants) emails the Billed Awaiting Payment report to an office teammate — the same customer-grouped report the old Print button made, upgraded for email: phone numbers and emails are tap-to-call / tap-to-write, and **clicking any job opens its Job Detail right in the app**.
+
+:::example Share Billed Awaiting Payment
+Send to: **Taunya** · When: {{button:primary|Send now}} or **Schedule…** a date and time (Central)
+
+{{button:primary|Send email}} &nbsp; {{button:outline|Preview}} &nbsp; {{button:outline|Email me a test}} &nbsp; {{button:outline|🖨 Print instead}}
+:::
+
+Scheduled sends build the report **fresh at send time** — a Monday 7 AM email shows Monday's numbers, not Friday's — and arrive within about five minutes of the chosen time. Your pending sends are listed in the window with a **Cancel** next to each. **Preview** opens the exact email in a new tab; **Email me a test** sends it to your own address with a `[TEST]` subject; **Print instead** is the old print path, unchanged. Recipients can only be office roles — the report carries amounts due.
+
 There's also a per-job version: on **Job Detail**, the envelope icon in the header (devs and masters only) opens the same email with the preview showing right in the window — a **Detailed | Summary** toggle to flip between the two versions, and the send actions at the top:
 
 :::example Paid-in-full email window

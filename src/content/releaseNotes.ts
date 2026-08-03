@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1316',
+    date: '2026-08-03',
+    title: 'Email the Billed Awaiting Payment report to a teammate',
+    kind: 'feature',
+    highlights: [
+      'The Print button on the Billed Awaiting Payment header is now Share / Print: email the report to an office teammate \u2014 right away or scheduled for a time you pick (Central).',
+      'In the email, phone numbers and emails are clickable, and clicking any job opens its detail right in PipeTooling. Numbers are built fresh at send time.',
+      'Preview it, send yourself a test, or use Print instead \u2014 the old print report is unchanged, one click deeper.',
+    ],
+  },
+  {
     version: 'v2.1315',
     date: '2026-08-03',
     title: 'Behind the scenes: groundwork for emailing the Billed report',

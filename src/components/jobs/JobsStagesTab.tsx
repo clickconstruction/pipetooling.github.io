@@ -50,6 +50,7 @@ import JobsStagesCardList, { JobsStagesUnifiedCardList } from './JobsStagesCardL
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
+import BilledReportShareModal from './BilledReportShareModal'
 import JobBookModal from './JobBookModal'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
@@ -478,6 +479,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
+  const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
   // narrows the section list to rows the matching chip counts.
   const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | null>(null)
@@ -2370,22 +2372,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       </span>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => printBilledAwaitingPaymentReport(billedActiveRows, { searchFilter: stagesSearchQuery })}
-                    disabled={billedActiveRows.length === 0}
-                    title="Print customers, contacts, and amounts due"
-                    aria-label="Print billed awaiting payment report"
-                    style={billedHeaderActionStyle(billedActiveRows.length === 0)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={14} height={14} aria-hidden>
-                      <path
-                        fill="currentColor"
-                        d="M128 192L128 96C128 78.3 142.3 64 160 64L480 64C497.7 64 512 78.3 512 96L512 192L552 192C569.7 192 584 206.3 584 224L584 384C584 401.7 569.7 416 552 416L512 416L512 520C512 537.7 497.7 552 480 552L160 552C142.3 552 128 537.7 128 520L128 416L88 416C70.3 416 56 401.7 56 384L56 224C56 206.3 70.3 192 88 192L128 192zM176 416L176 496L464 496L464 416L176 416zM512 352L512 256L88 256L88 352L128 352L128 192L512 192L512 352zM464 144L464 120C464 111.2 456.8 104 448 104L192 104C183.2 104 176 111.2 176 120L176 144L464 144z"
-                      />
-                    </svg>
-                    Print
-                  </button>
+                  {(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)) && (
+                    <button
+                      type="button"
+                      onClick={() => setBilledShareModalOpen(true)}
+                      title="Email this report to a teammate — now or scheduled — or print it"
+                      aria-label="Share or print billed awaiting payment report"
+                      style={billedHeaderActionStyle(false)}
+                    >
+                      <span aria-hidden>⇪</span>
+                      Share / Print
+                    </button>
+                  )}
                   {(authRole === 'dev' || authRole === 'master_technician') && (
                     <button
                       type="button"
@@ -3177,6 +3175,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {paymentEmailSettingsOpen && (
         <PaidInFullEmailSettingsModal variant="payment" onClose={() => setPaymentEmailSettingsOpen(false)} />
+      )}
+      {billedShareModalOpen && (
+        <BilledReportShareModal
+          onClose={() => setBilledShareModalOpen(false)}
+          onPrint={() => printBilledAwaitingPaymentReport(stagesBoardLists.billedActiveRows, { searchFilter: stagesSearchQuery })}
+          printDisabled={stagesBoardLists.billedActiveRows.length === 0}
+        />
       )}
       <BankPaymentsModal
         open={bankPaymentsModalOpen}

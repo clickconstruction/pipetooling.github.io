@@ -9,7 +9,7 @@ last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "158 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "159 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 2, 2026
+
+**`20260803110000_billed_report_payload_fidelity.sql`** _(apply via `supabase db push` after merge — CREATE OR REPLACE only)_
+- **Purpose**: Fidelity fix for `get_billed_report_email_payload()` (v2.1316). The v2.1315 body restricted invoice rows to jobs with status='billed'; the board takes billed-status invoice rows from jobs of any non-paid status (working jobs with billed break-offs show in Billed Awaiting Payment), and its shared jobs list omits Paid in Full. Corrected + verified against prod to the penny (59→58 rows, $188,606.38→$188,118.88, 90+ chip 4→3/$42.9k — the delta was one $487.50 leftover billed row on a paid job).
+- **Security**: No grant changes — same service-role-only posture as 20260803100000.
+- **Category**: Bug fix
 
 **`20260803100000_billed_report_email.sql`** _(apply via `supabase db push` after merge; pair with `supabase functions deploy billed-report-email` — order-safe: the table/RPC are dormant until the edge function and Share UI ship)_
 - **Purpose**: Share the Billed Awaiting Payment report by email (v2.1315). Adds `billed_report_email_requests` (one row per requested send: requested_by, recipient_user_id, send_at; sent_at/error/attempts stamped by the edge function — rows carry NO snapshot, the report is rebuilt at send time), service-role RPC `get_billed_report_email_payload()` (server-side rebuild of the billed board mirroring the client kernels — buildBilledStageRows row selection incl. merged single-invoice rows, printBilledRowReferenceDate billed_at-first dates, billedStageRowAgingBucket 30/90 chips, Collections excluded), and pg_cron `billed-report-email` (*/5, Vault PROJECT_URL + CRON_SECRET — the paid-job-email pattern).
