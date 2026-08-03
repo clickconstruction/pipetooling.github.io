@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1330)
+last_updated: 2026-08-03 (v2.1331)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1331)
+
+### Bids header: responsive rebuild — segmented trades, scrollable tab strips (2026-08-03)
+The Bids header broke at every width under ~1200px (trade chips colliding with "Bid Board" at ~760, chips stacking three-tall at ~1000, a ~700px-tall stacked header on phones). Rebuilt in [`Bids.tsx`](../src/pages/Bids.tsx): **(1) trades become a compact segmented control** (joined Plumbing | Electrical | HVAC, Builder-Review gray-out preserved); **(2) New Bid pins top-right at every width**; **(3) tab strips never wrap — they scroll**: new reusable [`ScrollableTabStrip`](../src/components/ScrollableTabStrip.tsx) centers its tabs while they fit (inner `margin-inline: auto` so the left edge stays reachable) and becomes a single scrollable row with edge fades when they don't, auto-scrolling the active tab into view on `?tab=` deep links (hidden scrollbar via the new `.tab-strip-scroll` class). Both the five board tabs and the nine bid-detail tabs (safety-orange highlights + `|` separators unchanged, Unsent/Working badge kept) use it. Layout: ≥1151px one row (`auto minmax(0,1fr) auto` grid) via new `wideBidsHeader` `useMatchMedia`; below that trades + New Bid share a row and the board tabs get their own strip — the `narrowViewport640` special-casing and the **four copy-pasted board-tab JSX blocks** are deleted (new `selectBidsTab` helper dedupes all 14 tab onClicks). Verified live at 375/760/1280 incl. deep-link auto-scroll. Pre-existing Bid Board table/search-row phone overflow flagged as a follow-up (not header-caused). Client-only — no migration.
 
 ## Latest Updates (v2.1330)
 

@@ -5,7 +5,7 @@ file: docs/BIDS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/Bids.tsx touches (state, memos, handlers, sub-components, supabase tables, cross-tab coupling) to track the decomposition of the former ~18.8k-line God component (now ~3.8k lines, all tabs extracted).
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 ---
 
 ## Overview
@@ -19,6 +19,10 @@ The tabs are switched on a single `activeTab` state ([`Bids.tsx`](../src/pages/B
 | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup'
 | 'rfi' | 'change-order' | 'lien-release'
 ```
+
+### Header / tab navigation (v2.1331)
+
+The header was rebuilt responsively: trades render as a compact segmented control (`bidsTradeSegments`), New Bid pins top-right at every width, and both tab rows render through the reusable [`ScrollableTabStrip`](../src/components/ScrollableTabStrip.tsx) (centers while it fits, single-row scroll with edge fades + active-tab scroll-into-view when it doesn't). One row ≥1151px (`wideBidsHeader` via `useMatchMedia`); below, trades + New Bid share a row and the board tabs get their own strip. The former four copy-pasted board-tab blocks and the `bidsPrimaryTabs*` narrow-mode styles are gone; every tab click routes through `selectBidsTab` (state + `?tab=` param).
 
 ### How to read a dossier
 Each per-tab section lists: render location, **owned local state** (used only by that tab), **cross-tab/shared state** (read/write), **derived memos**, **handlers/functions**, **data dependencies**, **supabase tables**, **sub-components** (extracted vs inline), **external coupling**, and an **extraction status + risk + suggested approach**.

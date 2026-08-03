@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1331',
+    date: '2026-08-03',
+    title: 'The Bids header works at every screen size',
+    kind: 'feature',
+    highlights: [
+      'Plumbing / Electrical / HVAC are now one compact switch, New Bid stays top-right, and the tab rows scroll sideways instead of wrapping into a mess on smaller screens.',
+      'On phones the Bids header is a fraction of its old height, and opening a link to any tab scrolls that tab into view automatically.',
+    ],
+  },
+  {
     version: 'v2.1330',
     date: '2026-08-03',
     title: 'See every email subscription you have',
