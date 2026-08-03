@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Dashboard: Recent Reports header matches its card neighbors (2026-08-03)
 User report (screenshot): **Recent Reports** and **Assigned Jobs** sit adjacent on the Dashboard but their collapse headers didn't match — Recent Reports hand-rolled its caret inside the `h2` (full 1.125rem, text-colored ▶) while Assigned Jobs goes through `DashboardGroupCard` (0.8rem, `var(--text-muted)`, baseline-aligned, 0.45rem gap). [`DashboardRecentReportsSection.tsx`](../src/components/dashboard/DashboardRecentReportsSection.tsx) now renders the identical caret treatment and drops the extra bottom padding while collapsed (GroupCard parity). The envelope header control and all behavior (session-scoped expand state, unread count, filters) unchanged. Verified live — computed styles now identical between the two headers. Client-only — no migration.
 
+## Latest Updates (v2.1348)
+
+### Bid Board: Archived button becomes an icon (2026-08-03)
+Owner ask: the search-row "Archived (22)" button on `/bids?tab=bid-board` shrinks to the Font Awesome **box-archive icon + count** — "🗃 (22)"-style — in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx). Same button, same modal (`BidWorkingBoardArchivedModal`); `aria-label` "Archived bids (n)" + `title` tooltip keep it discoverable; the count hides at zero as before. Also buys back row width for the v2.1332 phone search-row fit. Client-only — no migration.
+
 ## Latest Updates (v2.1347)
 
 ### Bid Board row rework: combined row dropdown, Links cluster, phone cards (2026-08-03)
