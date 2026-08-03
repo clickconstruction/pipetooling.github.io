@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1357',
+    date: '2026-08-03',
+    title: 'Tablet header: no more sideways scroll',
+    kind: 'fix',
+    highlights: [
+      'On tablet-width screens the top menu could run past the edge of the screen, letting every page slide sideways. The menu now folds into the ☰ button as soon as it stops fitting.',
+      'It used to fold correctly only after you rotated or resized the window — now it sorts itself out on its own, including when the app is opened in a background tab.',
+    ],
+  },
+  {
     version: 'v2.1356',
     date: '2026-08-03',
     title: 'Schedule Day view: slimmer phone header',
