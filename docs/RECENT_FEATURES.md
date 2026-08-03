@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1323)
+last_updated: 2026-08-03 (v2.1324)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1324)
+
+### Bids Pricing: margin breakdown modal shows per-unit and extended prices (2026-08-03)
+Redesign of the "How this margin was computed" modal opened from the **Margin/Total** column (or the Revenue cell) on Bids → Pricing. Previously only the Sale Price line showed a unit figure — materials, tax, labor, cost, and profit were extended-only. Now every money line renders in a two-column table: **Per unit** (`total ÷ count`, derived in-render from the existing self-contained `PricingBreakdownRow` snapshot — no data/schema changes) and **Total (× N)**. The "× Count" row is gone; the count moved to a header chip ("N units") and the Total column header. Margin is promoted from a table row to a footer band tinted by the grid's existing `marginFlag` thresholds (green ≥40%, yellow <40%, red <20%) using the theme tint tokens (`--bg-green-tint`/`--bg-amber-tint`/`--bg-red-tint` + matching border/text tokens), and Profit shows in both columns colored by sign. Edge cases: fixed-price rows show "—" per unit with the existing not-multiplied note and a plain "Total" header; the Per-unit column hides entirely at count ≤ 1; the amber no-Takeoffs-cost warning is unchanged. All inline in [`BidsPricingTab.tsx`](../src/components/bids/BidsPricingTab.tsx) (region P3 of `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md` — still the lowest-risk extraction candidate). New help guide `read-a-bid-lines-margin-breakdown`. Client-only — no migration.
 
 ## Latest Updates (v2.1323)
 

@@ -5,7 +5,7 @@ file: docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted Bids workflow tabs — src/components/bids/BidsPricingTab.tsx (~2,610 lines) and src/components/bids/BidsLaborTab.tsx (~2,365 lines) — which stay coupled through the shared useBidPricingEngine hook. Inventories every logical region's state, handlers, supabase tables/RPCs, and coupling so the next extraction can start without re-reading either file.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-03
 sections:
   - What this surface is
   - The shared substrate
@@ -100,8 +100,9 @@ The parent also renders **`BidVersionPicker` above this tab** (not inside it) wh
 
 ### Region P3 — Margin-breakdown modal
 
-- **Render location:** `pricingBreakdownRow && (...)` ~1930–2069.
+- **Render location:** `pricingBreakdownRow && (...)` ~1938–2150.
 - **Owned local state:** `pricingBreakdownRow: PricingBreakdownRow | null` (a **self-contained snapshot payload** — fixture, count, unitPrice, isFixedPrice, revenue, materialsBeforeTax, taxAmount, taxPercent, laborCost, cost, margin, materialsFromTakeoff — deliberately decoupled from live state).
+- **Layout (v2.1324):** two-column money table — every line (Sale Price, Materials, Tax, Labor, Our cost, Profit) shows **Per unit** (`total ÷ count`, derived in-render) and **Total**; the Per-unit column hides when `count ≤ 1`, fixed-price rows show "—" per unit with a not-multiplied note, and Margin renders as a footer band tinted by `marginFlag` (green/yellow/red theme tint tokens).
 - **Supabase:** none. **Coupling:** none beyond the payload.
 - **Extraction:** **lowest-risk component move in either file.** New `PricingMarginBreakdownModal({ row, onClose })`; the `PricingBreakdownRow` type moves with it. Pure cut/paste.
 
