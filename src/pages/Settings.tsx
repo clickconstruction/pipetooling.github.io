@@ -17,7 +17,6 @@ import MyReportsModal from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import SettingsRecentPushNotifications from '../components/settings/SettingsRecentPushNotifications'
-import SettingsHowItWorksTab from '../components/settings/SettingsHowItWorksTab'
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
@@ -176,7 +175,6 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
   groups.push({ id: 'settings-guides', label: 'Guides' })
   groups.push({ id: 'settings-release-notes', label: 'Release notes' })
-  groups.push({ id: 'settings-how-it-works', label: 'How it works' })
   return groups
 }
 
@@ -1676,8 +1674,6 @@ export default function Settings() {
       >
         <SettingsReleaseNotesSection />
       </SettingsGroup>
-
-      <SettingsHowItWorksTab active={activeSettingsTab === 'settings-how-it-works'} />
     </div>
   )
 }

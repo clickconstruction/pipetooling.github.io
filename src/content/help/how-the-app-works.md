@@ -5,7 +5,9 @@ roles: all
 keywords: overview, masters, assistants, subs, projects, stages, sharing, mission
 order: 1
 ---
-PipeTooling helps Masters better manage Projects with Subs. There are three main types of People: **Masters**, **Assistants**, and **Subs**.
+PipeTooling is one system for the whole shop: win work (**Bids**, **Estimates**), run it (**Projects** with workflow steps, the **Jobs** pipeline, **Schedule & Dispatch**), and settle it (billing, payments, payroll, banking).
+
+**People** come in nine roles. **Masters** own customers and projects. Office staff — **Assistants** and **Controllers** — work across the company's customers; controllers also handle payroll. Field roles — **Subs** and **Helpers** — see only work assigned to them. **Estimators** live in Bids and Materials, **Primaries** are customer-side principals with billing visibility, **Superintendents** supervise their assigned projects, and **Devs** administer everything.
 
 ## The basic model
 
@@ -26,14 +28,14 @@ A job collects everything about the work in one place — schedule blocks, clock
 
 ## Sharing
 
-- Office staff (assistants, controllers) automatically have access to the company's customers and projects — assistants can manage workflow steps and see private notes, but not financial totals.
-- Masters can choose to **share with other Masters** — shared masters have the same permissions as assistants.
+- Office staff (assistants, controllers) automatically have access to the company's customers and projects — assistants can manage workflow steps, see **Notes for Office**, and see job and project money, but never wages or payroll (controllers see those too).
+- Masters can choose to **share with other Masters** — shared masters get assistant-level **view** access to the sharing master's data.
 
 ## Subcontractors
 
 - Only see a workflow step when it is assigned to them
-- Can only Start and Complete their steps
-- Cannot see private notes or financials
+- Can Start and Complete their steps, and **accept or decline work orders** offered on a step
+- See **their own pay** — their sub sheets and a money view on the Dashboard — but never Notes for Office or anyone else's financials
 - Cannot add, edit, delete, or assign steps
 
 When a Master or Assistant selects **Notify** on a step, that step shows up in their Subscribed Steps on the Dashboard.

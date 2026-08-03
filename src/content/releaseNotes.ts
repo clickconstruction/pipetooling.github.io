@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1334',
+    date: '2026-08-03',
+    title: 'One accurate "how it works", not two stale ones',
+    kind: 'fix',
+    highlights: [
+      'The Settings → How it works tab is gone — it had drifted badly from reality (three roles instead of nine, old names, outdated sub permissions).',
+      'The "understand how PipeTooling works" guide is now the single, corrected orientation: nine roles, whole-shop framing, Notes for Office, and what subs can actually do today.',
+    ],
+  },
+  {
     version: 'v2.1333',
     date: '2026-08-03',
     title: 'Edit Assembly looks like the rest of the family',

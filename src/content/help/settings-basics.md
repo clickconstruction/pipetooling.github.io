@@ -53,6 +53,6 @@ Under **Dashboard & alerts → Report notifications** (office roles), pick which
 
 Pages you pin appear in a quick bar for fast navigation, and pins sync across your devices. Manage (remove/clear) your pins from Settings.
 
-## How it works
+## How the app works
 
-The **How it works** tab (always the last tab) is a plain-language explainer of the Masters / Assistants / Subs model — the same content as the "How do I understand how PipeTooling works?" guide here in Help.
+Looking for the plain-language explainer of roles, projects, and sharing? That's the "How do I understand how PipeTooling works?" guide here in Help (also under Settings → Guides).
