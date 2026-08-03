@@ -304,6 +304,29 @@ describe('fetchOtherJobsPartsByDay', () => {
     expect(r.partsUsdByDay.get('2026-06-05')).toBe(100)
   })
 
+  it('excludes allocations whose transaction is duplicate-marked (splits survive the marking)', async () => {
+    handlers.set('mercury_transaction_job_allocations', () => ({
+      data: [
+        mercuryRow({ id: 'm1', amount: 80, postedAt: '2026-06-04T18:00:00Z', counterparty: 'Lowes' }),
+        // Marked duplicate of another tx AFTER being split to a field job —
+        // the allocation row still exists but must not count into materials.
+        mercuryRow({
+          id: 'm2',
+          amount: 80,
+          postedAt: '2026-06-04T18:05:00Z',
+          counterparty: 'Lowes',
+          duplicateOfTxId: 'tx-original',
+        }),
+      ],
+      error: null,
+    }))
+    const r = await fetchOtherJobsPartsByDay({ officeJobLedgerId: OFFICE, startYmd: '2026-06-01', endYmd: '2026-06-10' })
+    expect(r.partsUsdByDay.get('2026-06-04')).toBe(80)
+    const lines = r.partsDetailByDay.get('2026-06-04') ?? []
+    expect(lines).toHaveLength(1)
+    expect(lines[0]?.mercuryTransactionId).toBe('tx-m1')
+  })
+
   it('propagates supply-source failures', async () => {
     handlers.set('supply_house_invoice_job_allocations', () => ({ data: null, error: { message: 'nope' } }))
     await expect(

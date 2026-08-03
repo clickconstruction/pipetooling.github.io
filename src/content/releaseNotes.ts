@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1319',
+    date: '2026-08-03',
+    title: 'Other jobs: duplicate-marked bank transactions no longer count as materials',
+    kind: 'fix',
+    highlights: [
+      'Same fix as v2.1317, applied to the other side of the ledger: duplicate-marked Mercury transactions that were split to regular jobs no longer count into the "other jobs" materials totals.',
+    ],
+  },
+  {
     version: 'v2.1318',
     date: '2026-08-03',
     title: 'Quickfill: label bank transfers and wires',
