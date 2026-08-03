@@ -91,6 +91,15 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Banking attributors — scoped non-card attribution capability (v2.1308, `20260802220000_banking_attributors_substrate.sql`)
+
+`banking_attributors` (dev-granted, dev-managed; self-readable so the client can gate UI) lets specific users work the **unattributed non-card queue** (ACH/wire/check money-out Mercury transactions) with **no other Banking access**. What a holder can do — all via SECURITY DEFINER RPCs gated `is_dev() OR is_banking_attributor()`, EXECUTE revoked from `anon`:
+
+- **See**: `list_unattributed_noncard_mercury_transactions` / `count_…` — minimal fields only (posted date, amount, kind, counterparty, memo). No account ids, balances, card data, or resolved transactions.
+- **Do**: `attributor_allocate_transaction_to_job` (100% to one job — the one-tap office-overhead path; preserves the splits-sum-to-amount invariant), `attributor_flag_transaction_payroll` (contract-labor ACHs; same invariant + `source='manual'` semantics as the dev-only `set_tally_payroll_flag`), `resolve_noncard_transaction_attribution` / `unresolve_…` (`card_bill_payment` / `not_an_expense_other` marks in `mercury_transaction_attribution_resolutions`).
+
+Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolution. Both new tables are RLS-enabled and carry the read-only (training mode) blocks.
+
 ### Subcontractors can read their OWN sub sheets — first sub money access (v2.1211, `20260801190000_sub_own_row_labor_reads.sql`; hotfix v2.1225, `20260802010000_fix_labor_rls_recursion.sql`)
 - **What changed — call this out**: `people_labor_jobs`, `people_labor_job_items`, and `people_labor_job_payments` previously had **no subcontractor policies at all** — a sub could not see their own balance or payment history. v2.1211 adds **SELECT-only, additive** sub policies: this is the first time the subcontractor role can read any sub-labor money data.
 - **Scope**: own rows only. On `people_labor_jobs`: the caller is an account-linked assignee of the sheet, OR (legacy fallback) the caller's trimmed `users.name` matches a segment of `assigned_to_name` (`' | '`-separated). Items/payments follow the parent via an EXISTS on the readable `people_labor_jobs` row. Office policies untouched; subs still cannot write anything.
