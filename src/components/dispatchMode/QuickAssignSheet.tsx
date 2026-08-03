@@ -18,6 +18,7 @@ import {
   type DispatchSwimLanesData,
 } from '../../lib/dispatchSwimLanes'
 import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
+import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
 import {
   dispatchModeTwoWeekGrid,
   fetchDispatchModeDayBlocks,
@@ -328,6 +329,7 @@ export default function QuickAssignSheet({
           (r.job_address ?? '').toLowerCase().includes(q) ||
           (r.customer_name ?? '').toLowerCase().includes(q),
       )
+      .sort(compareJobsByCreatedAtDesc)
       .slice(0, 60)
       .map((r) => ({
         id: r.id,
