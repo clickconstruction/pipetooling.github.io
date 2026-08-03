@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1361',
+    date: '2026-08-03',
+    title: 'Schedule Jobs tab: slimmer phone header',
+    kind: 'feature',
+    highlights: [
+      'The Jobs tab matches the Day and People tabs on phones — search tucks behind the magnifier, and the two filter checkboxes live in a View menu.',
+    ],
+  },
+  {
     version: 'v2.1360',
     date: '2026-08-03',
     title: 'Schedule week view: slimmer phone header',
