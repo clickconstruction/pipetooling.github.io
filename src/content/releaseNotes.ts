@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1320',
+    date: '2026-08-03',
+    title: 'Overhead: maintenance indicators for pending, unpriced, and unassigned time',
+    kind: 'feature',
+    highlights: [
+      'People → Overhead now shows an amber maintenance strip under the three lenses whenever upkeep is skewing the 90-day numbers — it disappears entirely when everything is clean.',
+      'Three indicators: sessions still awaiting approval (excluded from the numbers until approved), hours priced at $0 because the person has no wage in Pay config, and salary-schedule time with no job or bid assigned (invisible to overhead).',
+      'Each indicator shows counts, hours, and who is affected, explains its exact rule on hover, and says where to fix it. New help guide: "keep the overhead numbers accurate".',
+    ],
+  },
+  {
     version: 'v2.1319',
     date: '2026-08-03',
     title: 'More accurate 90-day overhead rates',
