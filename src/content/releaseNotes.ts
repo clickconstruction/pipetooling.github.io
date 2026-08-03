@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1323',
+    date: '2026-08-03',
+    title: 'Weekly billed-report emails, and a truthful email-schedule week',
+    kind: 'feature',
+    highlights: [
+      'Scheduling a Billed Awaiting Payment report can now Repeat weekly \u2014 it re-books itself every week until you cancel the pending send.',
+      'My email schedule now also shows emails that already went out this week, dimmed with a checkmark \u2014 Monday afternoon no longer looks like "no emails".',
+    ],
+  },
+  {
     version: 'v2.1322',
     date: '2026-08-03',
     title: 'Click a customer on the Pipeline board to see their full profile',

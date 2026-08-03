@@ -35,7 +35,7 @@ type GlobalEmailSchedule = {
   }>
   paid_recipients: Array<{ user_id: string; name: string }>
   payment_recipients: Array<{ user_id: string; name: string }>
-  billed_requests: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string }>
+  billed_requests: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   schedule_day_requests: Array<{ id: string; recipient_name: string; send_at: string; work_date: string }>
 }
 
@@ -267,7 +267,7 @@ export default function SettingsEmailStreamsSection() {
           : data.billed_requests.map((r) => (
               <RecipientChip
                 key={r.id}
-                label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}`}
+                label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
                 onRemove={() => void cancelBilled(r.id, r.recipient_name)}
                 removeLabel={`Cancel the scheduled send to ${r.recipient_name}`}
               />

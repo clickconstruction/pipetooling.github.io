@@ -1619,7 +1619,7 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 - `{ "mode": "preview" }` — Bearer JWT + sender gate; returns `{ "html": "..." }`. No writes, no send.
 - `{ "mode": "test_send" }` — sender gate; emails the report to the **caller's own address**, subject prefixed **`[TEST]`**. No request row.
 - `{ "mode": "send_now", "recipient_user_id": "<uuid>" }` — sender gate; recipient must be active, office-capable (dev/master_technician/assistant/controller/**primary** — the report carries AR dollars), with an email. Inserts an audit row in `billed_report_email_requests`, sends via Resend with a *"Sent by {caller}"* footer, stamps `sent_at`.
-- cron (no `mode` or `{ "mode": "dispatch" }`) — **`X-Cron-Secret`** must equal **`CRON_SECRET`**. Drains due rows (`send_at <= now()`, unsent, `attempts < 5`, limit 10); payload rebuilt **once per batch**; unavailable recipients (archived / no email) are stamped sent with an explanatory error so rows never retry forever.
+- cron (no `mode` or `{ "mode": "dispatch" }`) — **`X-Cron-Secret`** must equal **`CRON_SECRET`**. Drains due rows (`send_at <= now()`, unsent, `attempts < 5`, limit 10); payload rebuilt **once per batch**; unavailable recipients (archived / no email) are stamped sent with an explanatory error so rows never retry forever. **Weekly chains (v2.1323)**: a successfully-sent row with `repeat_weekly = true` enqueues next week's row (+7 days, same recipient/requester/flag) in the same dispatch — duplicate-guarded against retries; cancelling the pending row ends the chain.
 
 **Success (cron)**: `{ "ok": true, "processed": n, "sent": k, "errors": [] }`
 

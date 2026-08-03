@@ -70,7 +70,7 @@ export default function SettingsMyEmailScheduleSection() {
     const placed: PlacedOneOff[] = []
     for (const o of payload.one_offs) {
       const p = chicagoPlacement(o.send_at)
-      if (p) placed.push({ stream: o.stream, detail: o.detail, ymd: p.ymd, minutes: p.minutes })
+      if (p) placed.push({ stream: o.stream, detail: o.detail, ymd: p.ymd, minutes: p.minutes, sent: o.sent_at != null, weekly: o.repeat_weekly === true })
     }
     return buildMyEmailWeekGrid(payload, placed, todayYmd)
   }, [payload, todayYmd])
@@ -160,7 +160,12 @@ export default function SettingsMyEmailScheduleSection() {
                           opacity: e.muted ? 0.5 : 1,
                         }}
                       >
-                        <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 700, opacity: 0.85 }}>{e.timeLabel}</span>
+                        <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 700, opacity: 0.85 }}>
+                          {e.sent ? '✓ ' : ''}
+                          {e.timeLabel}
+                          {e.sent ? ' · sent' : ''}
+                          {!e.sent && e.weekly && e.stream !== 'report_digest' ? ' · weekly' : ''}
+                        </span>
                         {e.label}
                         {e.detail ? (
                           <span style={{ display: 'block', fontWeight: 400, opacity: 0.8 }}>{e.detail}</span>

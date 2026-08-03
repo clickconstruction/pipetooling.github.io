@@ -89,4 +89,17 @@ describe('buildMyEmailWeekGrid', () => {
     expect(grid[0]?.entries[0]?.muted).toBe(true)
     expect(grid[0]?.entries[0]?.detail).toContain('(paused)')
   })
+
+  it('sent one-offs render muted with sent flag; weekly chains carry the flag', () => {
+    const grid = buildMyEmailWeekGrid({ weekly: [] }, [
+      { stream: 'billed_report', detail: 'from test', ymd: MONDAY, minutes: 7 * 60, sent: true, weekly: true },
+      { stream: 'billed_report', detail: 'from test', ymd: '2026-08-05', minutes: 7 * 60, weekly: true },
+    ], MONDAY)
+    const monday = grid[0]?.entries[0]
+    expect(monday?.sent).toBe(true)
+    expect(monday?.muted).toBe(true)
+    const wed = grid[2]?.entries[0]
+    expect(wed?.sent).toBe(false)
+    expect(wed?.weekly).toBe(true)
+  })
 })

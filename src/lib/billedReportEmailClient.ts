@@ -65,11 +65,14 @@ export async function scheduleBilledReportSend(input: {
   requestedBy: string
   recipientUserId: string
   sendAtIso: string
+  /** Weekly chain (v2.1323): dispatch re-enqueues +7d on each successful send. */
+  repeatWeekly?: boolean
 }): Promise<void> {
   const { error } = await supabase.from('billed_report_email_requests').insert({
     requested_by: input.requestedBy,
     recipient_user_id: input.recipientUserId,
     send_at: input.sendAtIso,
+    repeat_weekly: input.repeatWeekly ?? false,
   })
   if (error) throw new Error(error.message)
 }
@@ -80,13 +83,14 @@ export type ScheduledBilledReportSend = {
   send_at: string
   sent_at: string | null
   error: string | null
+  repeat_weekly: boolean
 }
 
 /** The caller's pending (unsent) scheduled sends, soonest first. */
 export async function listMyPendingBilledReportSends(): Promise<ScheduledBilledReportSend[]> {
   const { data, error } = await supabase
     .from('billed_report_email_requests')
-    .select('id, recipient_user_id, send_at, sent_at, error')
+    .select('id, recipient_user_id, send_at, sent_at, error, repeat_weekly')
     .is('sent_at', null)
     .order('send_at', { ascending: true })
   if (error) throw new Error(error.message)
