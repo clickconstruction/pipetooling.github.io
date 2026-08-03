@@ -1,4 +1,4 @@
-import { memo, useMemo, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, memo, useMemo, type CSSProperties, type ReactNode } from 'react'
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
@@ -134,6 +134,7 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   onBoundaryDotDrag,
   onBoundaryDotDragEnd,
   onSharedDotSeparate,
+  agendaVariant = false,
 }: {
   userId: string
   displayName: string
@@ -190,6 +191,10 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
     severity: 'ok' | 'tight'
   }>
   sharedDotWarnings?: ReadonlyMap<string, string>
+  /** Phone agenda rendering (v2.1350): text-first time-chip rows instead of the
+      proportional track. Boundary-dot dragging is not rendered in this mode —
+      block edits go through the band tap / add / reorder affordances. */
+  agendaVariant?: boolean
 }) {
   const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
 
@@ -206,6 +211,26 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
       endSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('16:00')),
     }
   }, [segments])
+
+  if (agendaVariant) {
+    return (
+      <QuickfillScheduleUserAgendaRow
+        userId={userId}
+        displayName={displayName}
+        scheduleDayYmd={scheduleDayYmd}
+        segments={segments}
+        occupiedBands={occupiedBands}
+        secondaryBands={secondaryBands}
+        travelGapChips={travelGapChips}
+        onScheduleAddClick={onScheduleAddClick}
+        onReorderClick={onReorderClick}
+        onOpenMyTimeForSessionStrip={onOpenMyTimeForSessionStrip}
+        onOpenPersonMyTime={onOpenPersonMyTime}
+        onOccupiedBandClick={onOccupiedBandClick}
+        nameColumnIndent={nameColumnIndent}
+      />
+    )
+  }
 
   return (
     <div
@@ -384,3 +409,205 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
     </div>
   )
 })
+
+/** "8:00 AM" → "8a" · "12:30 PM" → "12:30p" — compact chip times for the agenda rows. */
+function agendaShortTime(hhmm: string): string {
+  const full = formatDispatchQuickTimeLabel(hhmm)
+  return full.replace(':00', '').replace(' AM', 'a').replace(' PM', 'p')
+}
+
+const AGENDA_SMALL_BUTTON: CSSProperties = {
+  width: '1.75rem',
+  height: '1.75rem',
+  padding: 0,
+  margin: 0,
+  border: 'none',
+  borderRadius: 6,
+  background: 'var(--bg-muted)',
+  color: 'var(--text-faint)',
+  fontWeight: 600,
+  lineHeight: 1,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+
+/**
+ * Phone agenda rendering of one person's day (v2.1350): name + "8a–4p · N stops"
+ * summary line with the +/⇅ actions, then one text row per scheduled block
+ * (orange time chip → same onOccupiedBandClick as the track band), travel-gap
+ * chips interleaved by time, and a teal "Clocked" row per clock-session strip
+ * (→ My Time, same as tapping the strip). No proportional track, no drag dots.
+ */
+function QuickfillScheduleUserAgendaRow({
+  userId,
+  displayName,
+  scheduleDayYmd,
+  segments,
+  occupiedBands,
+  secondaryBands,
+  travelGapChips,
+  onScheduleAddClick,
+  onReorderClick,
+  onOpenMyTimeForSessionStrip,
+  onOpenPersonMyTime,
+  onOccupiedBandClick,
+  nameColumnIndent,
+}: {
+  userId: string
+  displayName: string
+  scheduleDayYmd: string
+  segments: AddBlockTimelineSegment[]
+  occupiedBands: DispatchOccupiedBand[]
+  secondaryBands?: DispatchSecondaryBand[]
+  travelGapChips?: Array<{ id: string; gapStartMin: number; gapEndMin: number; label: string; title: string; severity: 'ok' | 'tight' }>
+  onScheduleAddClick?: () => void
+  onReorderClick?: () => void
+  onOpenMyTimeForSessionStrip?: (uid: string, name: string) => void
+  onOpenPersonMyTime?: (uid: string, name: string) => void
+  onOccupiedBandClick?: (band: DispatchOccupiedBand) => void
+  nameColumnIndent?: boolean
+}) {
+  const sorted = useMemo(
+    () => [...segments].sort((a, b) => timeInputToMinutesSafe(a.time_start) - timeInputToMinutesSafe(b.time_start)),
+    [segments],
+  )
+  const summary = useMemo(() => {
+    if (sorted.length === 0) return null
+    const first = sorted[0]
+    const last = sorted[sorted.length - 1]
+    if (!first || !last) return null
+    const stops = sorted.length
+    return `${agendaShortTime(first.time_start)}–${agendaShortTime(last.time_end)} · ${stops} ${stops === 1 ? 'stop' : 'stops'}`
+  }, [sorted])
+  const bandByBlockId = useMemo(() => {
+    const m = new Map<string, DispatchOccupiedBand>()
+    for (const b of occupiedBands) m.set(b.blockId, b)
+    return m
+  }, [occupiedBands])
+  const chipsAfterBlockId = useMemo(() => {
+    const m = new Map<string, Array<{ id: string; label: string; title: string; severity: 'ok' | 'tight' }>>()
+    for (const chip of travelGapChips ?? []) {
+      // Attach each travel chip to the block whose end matches the gap start.
+      const before = sorted.find((s) => timeInputToMinutesSafe(s.time_end) === chip.gapStartMin)
+      if (!before) continue
+      const list = m.get(before.blockId) ?? []
+      list.push({ id: chip.id, label: chip.label, title: chip.title, severity: chip.severity })
+      m.set(before.blockId, list)
+    }
+    return m
+  }, [travelGapChips, sorted])
+  const clockedStrips = secondaryBands ?? []
+  const isFree = sorted.length === 0 && clockedStrips.length === 0
+
+  return (
+    <div
+      style={{
+        padding: '0.45rem 0',
+        paddingLeft: nameColumnIndent ? '1rem' : 0,
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {onOpenPersonMyTime ? (
+          <button
+            type="button"
+            onClick={() => onOpenPersonMyTime(userId, displayName)}
+            title={`Time and attendance for ${displayName} (${scheduleDayYmd})`}
+            aria-label={`Time and attendance for ${displayName} on ${scheduleDayYmd}`}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', font: 'inherit', fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-strong)', cursor: 'pointer', textAlign: 'left' }}
+          >
+            {displayName}
+          </button>
+        ) : (
+          <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-strong)' }}>{displayName}</span>
+        )}
+        <span style={{ flex: 1, minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {isFree ? 'Free' : summary}
+        </span>
+        {onScheduleAddClick ? (
+          <button type="button" onClick={onScheduleAddClick} title={`Add job to schedule for ${displayName}`} aria-label={`Add schedule block for ${displayName} on this day`} style={{ ...AGENDA_SMALL_BUTTON, fontSize: '1rem' }}>
+            +
+          </button>
+        ) : null}
+        {onReorderClick ? (
+          <button type="button" onClick={onReorderClick} title={`Reorder ${displayName}'s jobs for this day`} aria-label={`Reorder ${displayName}'s jobs on this day`} style={{ ...AGENDA_SMALL_BUTTON, fontSize: '0.875rem' }}>
+            ⇅
+          </button>
+        ) : null}
+      </div>
+      {sorted.map((seg) => {
+        const band = bandByBlockId.get(seg.blockId)
+        const chips = chipsAfterBlockId.get(seg.blockId) ?? []
+        const timeChip = `${agendaShortTime(seg.time_start)}–${agendaShortTime(seg.time_end)}`
+        const rowInner = (
+          <>
+            <span style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: '#fed7aa', color: 'var(--text-orange-800)', borderRadius: 6, padding: '0.15rem 0.5rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              {timeChip}
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+              {seg.label}
+            </span>
+            {seg.shared_block_group_id ? (
+              <span aria-hidden title="Linked crew block — legs move together" style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-orange-800)' }}>
+                ⛓
+              </span>
+            ) : null}
+          </>
+        )
+        return (
+          <Fragment key={seg.blockId}>
+            {band && onOccupiedBandClick ? (
+              <button
+                type="button"
+                onClick={() => onOccupiedBandClick(band)}
+                title={`${seg.label} — open in Schedule Dispatch`}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', margin: 0, marginTop: '0.35rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit' }}
+              >
+                {rowInner}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>{rowInner}</div>
+            )}
+            {chips.map((chip) => (
+              <div key={chip.id} title={chip.title} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem', paddingLeft: '0.35rem', fontSize: '0.7rem', color: chip.severity === 'tight' ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
+                <span aria-hidden>⇢</span>
+                {chip.label}
+                {chip.severity === 'tight' ? ' — tight' : ''}
+              </div>
+            ))}
+          </Fragment>
+        )
+      })}
+      {clockedStrips.map((strip) => {
+        const stripLabel = strip.displayLabel ?? strip.label ?? 'Clock session'
+        const inner = (
+          <>
+            <span style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', borderRadius: 6, padding: '0.15rem 0.5rem', whiteSpace: 'nowrap' }}>
+              Clocked
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+              {stripLabel}
+            </span>
+          </>
+        )
+        return onOpenMyTimeForSessionStrip ? (
+          <button
+            key={strip.id}
+            type="button"
+            onClick={() => onOpenMyTimeForSessionStrip(userId, displayName)}
+            title={`Open My Time for ${displayName}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', margin: 0, marginTop: '0.35rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit' }}
+          >
+            {inner}
+          </button>
+        ) : (
+          <div key={strip.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
+            {inner}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
