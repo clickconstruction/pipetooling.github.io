@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Email log: the app now records its own sends (2026-08-03)
 Owner ask on the v2.1338 email log: "instead of querying Resend, use what we know the app sends." New shared [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts): a best-effort, never-throws service-role insert into `email_send_log` with `source: 'app'` and `last_event: 'sent'` (PostgREST `on_conflict=resend_email_id` + ignore-duplicates, so a webhook row that raced first — possibly already `delivered` — wins). Wired into **all 13 senders**: the shared [`resendSendEmail.ts`](../supabase/functions/_shared/resendSendEmail.ts) helper (covers its 7 callers with zero caller changes, now also captures the Resend response id) and inline calls in the 6 direct-Resend functions (`send-workflow-notification`, `send-estimate-to-customer`, `send-contract-for-signature`, `send-physical-invoice-email`, `send-hazmat-notice-email`, `test-email`). Migration `20260803200236` widens the `source` CHECK to include `'app'` — **push it before deploying the functions**. The Settings section needs no code change (it reads the table); its empty-state copy now says sends appear automatically. The Resend pull + webhook stay as enrichment (delivery status, backfill). **Ops after merge**: `supabase db push`, then redeploy all 13 sender functions (`--no-verify-jwt`). See `docs/MIGRATIONS.md`, `docs/EDGE_FUNCTIONS.md`.
 
+## Latest Updates (v2.1340)
+
+### sync-resend-emails: use a full-access read key (RESEND_READ_API_KEY) (2026-08-03)
+First live pull of the v2.1338 email log failed with Resend 401 `restricted_api_key`: the org's `RESEND_API_KEY` is (correctly) a **sending-only** restricted key, and Resend's list-emails endpoint requires full access. [`sync-resend-emails`](../supabase/functions/sync-resend-emails/index.ts) now reads **`RESEND_READ_API_KEY`** first (falling back to `RESEND_API_KEY` when unset) so the 13 sender functions keep their least-privilege key. Ops: create a full-access key in the Resend dashboard and `supabase secrets set RESEND_READ_API_KEY=re_…`, then redeploy the function. `docs/EDGE_FUNCTIONS.md` secrets section updated. No migration.
+
 ## Latest Updates (v2.1339)
 
 ### Dispatch Mode Inbox: "Open Gmail" link at the top (2026-08-03)

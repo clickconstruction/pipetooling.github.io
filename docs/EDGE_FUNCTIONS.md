@@ -2605,7 +2605,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Authentication**: `verify_jwt = false`; in-handler JWT + **dev-only** role gate (the list is org-wide and includes customer-facing recipients/subjects).
 
-**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_READ_API_KEY` — a **full-access** Resend key; the shared `RESEND_API_KEY` is a sending-only restricted key that the list endpoint rejects with 401 `restricted_api_key` (the function falls back to it only if no read key is set). Set with `supabase secrets set RESEND_READ_API_KEY=re_…`.
 
 **Response**: `{ ok: true, synced, listed }`
 
