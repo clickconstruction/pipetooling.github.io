@@ -9,10 +9,36 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 type MockResult = { data: unknown; error: { message: string } | null }
 const handlers = new Map<string, () => MockResult>()
 
+/**
+ * PostgREST-style `.is('<embed>.<col>', null)` against an `!inner` join:
+ * drops parent rows whose embedded row has a non-null value in `<col>`.
+ * (Un-dotted columns filter the parent row itself.)
+ */
+function applyIsNullFilters(r: MockResult, cols: string[]): MockResult {
+  if (cols.length === 0 || !Array.isArray(r.data)) return r
+  const data = (r.data as Record<string, unknown>[]).filter((row) =>
+    cols.every((col) => {
+      const dot = col.indexOf('.')
+      if (dot < 0) return row[col] == null
+      const head = col.slice(0, dot)
+      const field = col.slice(dot + 1)
+      const nested = row[head]
+      const embed = Array.isArray(nested) ? nested[0] : nested
+      return embed == null || (embed as Record<string, unknown>)[field] == null
+    }),
+  )
+  return { ...r, data }
+}
+
 function makeBuilder(key: string) {
   const b: Record<string, unknown> = {}
   for (const m of ['select', 'eq', 'neq', 'gte', 'lte', 'lt', 'gt', 'in', 'or', 'not', 'order', 'range', 'limit']) {
     b[m] = () => b
+  }
+  const isNullCols: string[] = []
+  b.is = (col: string, val: unknown) => {
+    if (val === null) isNullCols.push(col)
+    return b
   }
   b.then = (
     resolve: (r: MockResult) => unknown,
@@ -20,7 +46,7 @@ function makeBuilder(key: string) {
   ) => {
     const h = handlers.get(key)
     return Promise.resolve()
-      .then(() => (h ? h() : { data: [], error: null }))
+      .then(() => (h ? applyIsNullFilters(h(), isNullCols) : { data: [], error: null }))
       .then(resolve, reject)
   }
   return b
@@ -45,8 +71,14 @@ function mercuryRow(p: {
   note?: string | null
   txId?: string | null
   asArrayEmbed?: boolean
+  duplicateOfTxId?: string | null
 }) {
-  const embed = { posted_at: p.postedAt, counterparty_name: p.counterparty ?? null, raw: null }
+  const embed = {
+    posted_at: p.postedAt,
+    counterparty_name: p.counterparty ?? null,
+    raw: null,
+    duplicate_of_transaction_id: p.duplicateOfTxId ?? null,
+  }
   return {
     id: p.id,
     amount: p.amount,
@@ -78,6 +110,29 @@ describe('fetchOverheadOfficePartsByDay', () => {
     expect(r.partsUsdByDay.size).toBe(2)
     const lines = r.partsDetailByDay.get('2026-06-02') ?? []
     expect(lines[0]?.label).toBe('Lowes')
+    expect(lines[0]?.mercuryTransactionId).toBe('tx-m1')
+  })
+
+  it('excludes allocations whose transaction is duplicate-marked (splits survive the marking)', async () => {
+    handlers.set('mercury_transaction_job_allocations', () => ({
+      data: [
+        mercuryRow({ id: 'm1', amount: 60, postedAt: '2026-06-04T18:00:00Z', counterparty: 'Lowes' }),
+        // Marked duplicate of another tx AFTER being split to the office job —
+        // the allocation row still exists but must not count into the pool.
+        mercuryRow({
+          id: 'm2',
+          amount: 60,
+          postedAt: '2026-06-04T18:05:00Z',
+          counterparty: 'Lowes',
+          duplicateOfTxId: 'tx-original',
+        }),
+      ],
+      error: null,
+    }))
+    const r = await fetchOverheadOfficePartsByDay({ officeJobLedgerId: OFFICE, startYmd: '2026-06-01', endYmd: '2026-06-10' })
+    expect(r.partsUsdByDay.get('2026-06-04')).toBe(60)
+    const lines = r.partsDetailByDay.get('2026-06-04') ?? []
+    expect(lines).toHaveLength(1)
     expect(lines[0]?.mercuryTransactionId).toBe('tx-m1')
   })
 
