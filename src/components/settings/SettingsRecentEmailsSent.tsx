@@ -132,7 +132,18 @@ export default function SettingsRecentEmailsSent({ isDev }: Props) {
                       <td style={{ padding: '0.375rem 0.5rem', whiteSpace: 'nowrap' }} title={row.toEmails.join(', ')}>
                         {formatEmailLogRecipients(row.toEmails)}
                       </td>
-                      <td style={{ padding: '0.375rem 0.5rem' }}>{row.subject ?? '—'}</td>
+                      <td
+                        style={{
+                          padding: '0.375rem 0.5rem',
+                          maxWidth: 320,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                        title={row.subject ?? undefined}
+                      >
+                        {row.subject ?? '—'}
+                      </td>
                       <td style={{ padding: '0.375rem 0.5rem' }}>
                         <span style={chipStyle(chip.tone)}>{chip.label}</span>
                       </td>

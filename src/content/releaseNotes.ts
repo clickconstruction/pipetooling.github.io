@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1342',
+    date: '2026-08-03',
+    title: 'Emails-sent list: tidy rows on phones',
+    kind: 'fix',
+    highlights: [
+      'Long subjects no longer stretch the Settings → Notifications email rows — they trim with an ellipsis (hover for the full subject) and the table scrolls sideways within its own box.',
+    ],
+  },
+  {
     version: 'v2.1341',
     date: '2026-08-03',
     title: 'Emails-sent list fills itself in',
