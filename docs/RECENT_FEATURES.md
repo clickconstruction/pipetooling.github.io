@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1342)
+last_updated: 2026-08-03 (v2.1343)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1343)
+
+### Emails-sent table: compact rows on phones (2026-08-03)
+First real-data render of the v2.1338 list at 375px showed long subjects wrapping into ~275px-tall rows. The Subject cell in [`SettingsRecentEmailsSent.tsx`](../src/components/settings/SettingsRecentEmailsSent.tsx) is now single-line ellipsized (`maxWidth` 320, `title` tooltip carries the full subject); the table keeps scrolling inside its own `overflow-x: auto` wrapper per the `docs/E2E_SMOKE.md` viewport invariant (verified `documentElement.scrollWidth` = 375 at 375×812 with live rows). Client-only — no migration.
 
 ## Latest Updates (v2.1342)
 
