@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1326',
+    date: '2026-08-03',
+    title: 'Add Assembly is one search away',
+    kind: 'feature',
+    highlights: [
+      'The Add Assembly form (Takeoffs → Save as Assembly or Add assembly) now has a single search across parts AND assemblies — picking a result adds it instantly, no type dropdown or Add button.',
+      'No match? The last row offers to create the part on the spot, and it drops straight into your item list.',
+      'Bundle prices got one-line rows with a searchable supply-house picker — Enter adds the price.',
+    ],
+  },
+  {
     version: 'v2.1325',
     date: '2026-08-03',
     title: 'Add Part is now keyboard-fast with searchable pickers',

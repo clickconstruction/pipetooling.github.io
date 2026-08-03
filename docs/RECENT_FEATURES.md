@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1325)
+last_updated: 2026-08-03 (v2.1326)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1326)
+
+### Add Assembly modal refresh: one unified search, items added on pick (2026-08-03)
+Refresh of the Add Assembly modal in [`TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx) (opened from Takeoffs via "Save as Assembly" on a rough fixture or "Add assembly" in a By-Stage mapping picker's no-match row). **The staged item picker is gone** — the Type select (Part / Nested Assembly), separate qty field, and "Add item" button are replaced by one new component, [`TakeoffItemSearchCombobox`](../src/components/bids/TakeoffItemSearchCombobox.tsx): a pick-and-stay-open search over parts AND assemblies together (grouped result list, part rows subtitle manufacturer · part type, capped 30 parts / 20 assemblies). **Picking a result adds the item immediately at qty 1** (parts merge by `part_id` via the existing `mergeItemIntoDrafts`, so re-picking bumps quantity), the query clears, and focus stays put for the next search. Keyboard: arrows skip group headers, Enter picks the active row or a lone match, Enter never submits the form; the "+ Add "query" as a new part…" footer row routes into the refreshed Add Part modal, and the saved part now lands **directly in the item list** — an effect consumes the parent's staged `takeoffNewItemPartId` (the pre-existing `handleBidsPartFormSave` routing contract; the now-dead search-query/dropdown staged states were deleted from both files). **Items table → compact rows**: P/A chip (blue/violet tints), ellipsized name, inline qty, per-part Prices link, mouse-only × (`tabIndex={-1}`). **"Supply house prices" → "Bundle prices"** boxed section: one-line rows, native select → `SearchableSelect` (portal above the z-1100 ModalShell), Enter in the price field commits the row; the Save-as-Assembly "Use for takeoff" radio behavior is unchanged. Name + Description share a row (stacks under 640px), Name autofocuses, footer button reads "Save assembly". Render tests (+7) in [`TakeoffItemSearchCombobox.render.test.tsx`](../src/components/bids/TakeoffItemSearchCombobox.render.test.tsx). Verified live via dev-login. New help guide `create-an-assembly-while-doing-a-takeoff`. Client-only — no migration.
 
 ## Latest Updates (v2.1325)
 
