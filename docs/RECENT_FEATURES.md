@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1359)
+last_updated: 2026-08-03 (v2.1360)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1360)
+
+### Schedule week view: compact two-row phone header (2026-08-03)
+Owner-approved follow-up to the v2.1356 Day-header compaction — same treatment for the People/Jobs week header. **(1) Week nav**: [`ScheduleDispatchWeekNav`](../src/components/schedule/ScheduleDispatchWeekNav.tsx) gains `compact` (passed as `newModeHeaderActive`, i.e. phones): `‹ | Week 32 · 08/03–08/07 | ›` on one line — the stacked two-line label flattens and **tapping the label jumps to this week** (blue while viewing another week), replacing the This-week button; the Hide-weekend checkbox stays in the View menu. **(2) Toolbar**: the People-panel row keeps the four mode buttons untouched (+ add, ++ multi-cell, linked-copy, ⚡ Quick Assign — colors and toggle states preserved) and the search input collapses behind a magnifier toggle (blue while open or filtering; expands a full-width input below the row with × clear-and-close, `autoFocus`), mirroring the Day header pattern; View ▾ unchanged. ≥640px keeps the classic header (verified: ← → arrows + inline search at 1280px). Verified live at 375×812: two-row header, search expand/collapse, off-week label turns blue and taps back, View menu opens, document width stays 375. Client-only — no migration.
 
 ## Latest Updates (v2.1359)
 

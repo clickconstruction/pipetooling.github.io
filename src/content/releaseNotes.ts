@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1360',
+    date: '2026-08-03',
+    title: 'Schedule week view: slimmer phone header',
+    kind: 'feature',
+    highlights: [
+      'The week header on phones shrinks to two rows — arrows flank "Week 32 · 08/03–08/07", and tapping the label jumps back to this week.',
+      'The four assign tools keep their spots; search now tucks behind a magnifier icon that expands a full-width box, just like the Day view.',
+    ],
+  },
+  {
     version: 'v2.1359',
     date: '2026-08-03',
     title: 'Bid Board: easier to read at a glance',

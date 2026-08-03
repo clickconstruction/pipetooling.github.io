@@ -1317,6 +1317,8 @@ function HubPeoplePanel({
 }: HubPeoplePanelProps) {
   /** "View" dropdown consolidating Hide Inactive / Hide weekend / Highlight linked. */
   const [viewMenuOpen, setViewMenuOpen] = useState(false)
+  // Phone (v2.1357): search collapses behind a magnifier toggle in the toolbar row.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const viewMenuRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!viewMenuOpen) return
@@ -1677,6 +1679,26 @@ function HubPeoplePanel({
             ) : null}
           </div>
         ) : null}
+        {isMobile ? (
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((o) => !o)}
+            title="Search person or job"
+            aria-label="Search person or job"
+            aria-expanded={mobileSearchOpen}
+            style={{
+              ...hubPeopleToolbarIconBtn,
+              marginLeft: 'auto',
+              ...(mobileSearchOpen || search.trim() !== ''
+                ? { borderColor: '#2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+                : { borderColor: 'var(--border-strong)', color: 'var(--text-700)' }),
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="14" height="14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+              <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4 457.4 502.6 330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+            </svg>
+          </button>
+        ) : (
         <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
             type="search"
@@ -1687,6 +1709,7 @@ function HubPeoplePanel({
             style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', minWidth: 200 }}
           />
         </label>
+        )}
         <div ref={viewMenuRef} style={{ position: 'relative' }}>
           <button
             type="button"
@@ -1760,6 +1783,31 @@ function HubPeoplePanel({
           ) : null}
         </div>
       </div>
+      {isMobile && mobileSearchOpen ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+          <input
+            type="search"
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search Person or Job"
+            aria-label="Search person or job"
+            style={{ flex: 1, minWidth: 0, padding: '0.4rem 0.5rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setMobileSearchOpen(false)
+            }}
+            title="Clear search and close"
+            aria-label="Clear search and close"
+            style={{ ...hubPeopleToolbarIconBtn, borderColor: 'var(--border-strong)', color: 'var(--text-700)' }}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
       {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : null}
 
@@ -3128,6 +3176,7 @@ export function ScheduleDispatchHub({
           onThisWeek={onThisWeek}
           dateRangeOverride={weekNavDateRangeOverride}
           rightSlot={showHubViewTabs ? undefined : weekNavRightSlot}
+          compact={newModeHeaderActive}
         />
       ) : null}
 
