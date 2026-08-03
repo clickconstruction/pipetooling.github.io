@@ -18,6 +18,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       'Settings \u2192 Your account has a new "My email schedule" section: a week view of every email you\u2019re set to receive \u2014 report digests, scheduled reports, dispatch-day emails \u2014 plus event-driven ones like Paid in Full.',
       'Read-only: it shows what\u2019s configured; changing lists still happens where each email is managed.',
+      'Devs get a new Settings \u2192 Email & notifications panel: every recurring email stream in one place \u2014 pause digests, remove recipients, cancel scheduled sends.',
     ],
   },
   {

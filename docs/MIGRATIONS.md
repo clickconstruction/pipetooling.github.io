@@ -9,7 +9,7 @@ last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "160 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "161 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 2, 2026
+
+**`20260803130000_global_email_schedule_rpc.sql`** _(apply via `supabase db push` after merge, same window as `20260803120000`)_
+- **Purpose**: Dev-only `get_global_email_schedule()` (v2.1320) — one aggregate of every recurring/scheduled email stream for Settings → Email & notifications: report schedules with cadence + recipients (row ids for chip-removal), the paid/payment app_settings recipient lists resolved to users, pending billed-report sends, pending schedule-day emails. Returns NULL for non-devs. No new write surface — the panel reuses each stream's existing write path; schedule-day rows are read-only (no dev UPDATE/DELETE policy exists).
+- **Category**: Feature schema
 
 **`20260803120000_my_email_schedule_rpc.sql`** _(apply via `supabase db push` after merge; client fail-soft until pushed — the Settings section shows the RPC error)_
 - **Purpose**: "My email schedule" (v2.1320) — `get_my_email_schedule()`, one self-scoped read for everything configured to email the CALLER: recurring job-report digests naming them, pending one-off sends addressed to them (billed-report requests, schedule-day emails), and event-stream memberships (paid/payment app_settings uuid lists, guarded cast). SECURITY DEFINER because the sources have mismatched RLS the recipient can't cross (billed-report requests are sender-readable); returns only auth.uid()'s own entries; EXECUTE granted to authenticated (the get_dashboard_payroll_totals precedent).
