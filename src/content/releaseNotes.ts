@@ -22,6 +22,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1350',
+    date: '2026-08-03',
+    title: 'Add job to schedule: room to work on phones',
+    kind: 'feature',
+    highlights: [
+      'The Add job to schedule picker now starts at the top of the screen on phones and uses the full height, so you can see far more jobs at once.',
+      'When the keyboard opens it shrinks to fit the space above it — and grows right back when the keyboard closes. No more hunting behind the keyboard.',
+      'Jobs now list newest first — today\'s jobs at the top instead of being shuffled in with year-old ones — and search results follow the same order.',
+    ],
+  },
+  {
     version: 'v2.1349',
     date: '2026-08-03',
     title: 'Dashboard cards: matching collapse arrows',
