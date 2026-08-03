@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1352',
+    date: '2026-08-03',
+    title: 'Schedule Day view: readable on phones',
+    kind: 'feature',
+    highlights: [
+      'On phones, each person\'s day is now a clean list — time chips like "8a–11a · 891 · Take 5- Liberty Hill" with a day summary ("6a–6p · 5 stops") — instead of a squeezed timeline with overlapping labels.',
+      'Clocked time shows as its own green row (tap it for My Time), travel warnings sit between stops, and people with nothing scheduled collapse to one "Free" line.',
+      'Applies to both Schedule → Day and Quickfill\'s Schedule section; tablets and desktops keep the full drag-and-drop timeline.',
+    ],
+  },
+  {
     version: 'v2.1350',
     date: '2026-08-03',
     title: 'Add job to schedule: room to work on phones',

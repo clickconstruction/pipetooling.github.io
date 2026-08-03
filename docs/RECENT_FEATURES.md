@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1350)
+last_updated: 2026-08-03 (v2.1352)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1352)
+
+### Schedule Day view: phone agenda rows replace the squeezed time-tracks (2026-08-03)
+Owner report (assistant phone screenshots): the Day view (Schedule Dispatch hub Day tab AND Quickfill's Schedule section — one component, [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx)) compressed each person's proportional time-track into ~230px at phone width — bands collided, labels ellipsized to "891… · M… 9…", and the 8AM/12PM/4PM axis stopped meaning anything. **New `agendaVariant`** on [`QuickfillScheduleUserRow`](../src/components/schedule/QuickfillScheduleUserRow.tsx) (auto at ≤640px via `useNarrowViewport640`): each person renders as name + "6a–6p · 5 stops" summary (+ the same add/⇅ buttons), then one text row per block — orange time chip + job label + linked-crew glyph, tap → the existing `onOccupiedBandClick`; travel-gap chips interleave by time (red "— tight" when infeasible); clock sessions render as teal **Clocked** rows (tap → My Time, same as the strip); block-less people collapse to a slim "Free" row. Boundary-dot dragging is not rendered in agenda mode — edits go through band tap / add / reorder. The ≥640px proportional track + drag dots are untouched (verified: 12 bands + axis at 1280px, zero agenda chips). Fixed in review: the variant branch originally sat between the row's two `useMemo`s — crossing the 640px boundary threw "Rendered more hooks than during the previous render"; the branch now sits below all hooks. Verified live at 375×812 on both surfaces (document width stays 375). Client-only — no migration.
 
 ## Latest Updates (v2.1350)
 

@@ -94,6 +94,7 @@ import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
 import { reorderDayScheduleBlocks, scheduleTimeToMinutes as reorderTimeToMinutes, minutesToScheduleTime as reorderMinutesToTime } from '../../lib/reorderDayScheduleBlocks'
 import ReorderDayBlocksModal from '../schedule/ReorderDayBlocksModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import {
   QuickfillScheduleUserRow,
   QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
@@ -145,6 +146,8 @@ export function QuickfillScheduleSection({
   onDaySettingsApiChange?: (api: { open: () => void; windowLabel: string | null } | null) => void
 } = {}) {
   const navigate = useNavigate()
+  // Phone agenda mode (v2.1350): per-person time-chip rows instead of proportional tracks.
+  const agendaMode = useNarrowViewport640()
   const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const ledgerPrefixMap = useLedgerPrefixMap()
@@ -1400,6 +1403,7 @@ export function QuickfillScheduleSection({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No people match this search.</p>
       ) : (
         <div>
+          {agendaMode ? null : (
           <div
             style={{
               display: 'flex',
@@ -1451,6 +1455,7 @@ export function QuickfillScheduleSection({
               <div style={{ width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH, flexShrink: 0 }} aria-hidden />
             ) : null}
           </div>
+          )}
           {scheduleUsersByRoleSection.map((roleSection, sectionIndex) => {
             const headingId = `quickfill-schedule-role-${roleSection.sectionKey}`
             return (
@@ -1523,6 +1528,7 @@ export function QuickfillScheduleSection({
                           showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
                         }
                         onOccupiedBandClick={openOccupiedBandOnScheduleDispatch}
+                        agendaVariant={agendaMode}
                       />
                     )
                   })}
