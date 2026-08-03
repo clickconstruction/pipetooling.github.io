@@ -3026,6 +3026,48 @@ export type Database = {
           },
         ]
       }
+      email_send_log: {
+        Row: {
+          created_at: string
+          from_email: string | null
+          id: string
+          last_event: string | null
+          last_event_at: string | null
+          resend_email_id: string | null
+          sent_at: string | null
+          source: string
+          subject: string | null
+          to_emails: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_email?: string | null
+          id?: string
+          last_event?: string | null
+          last_event_at?: string | null
+          resend_email_id?: string | null
+          sent_at?: string | null
+          source?: string
+          subject?: string | null
+          to_emails?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_email?: string | null
+          id?: string
+          last_event?: string | null
+          last_event_at?: string | null
+          resend_email_id?: string | null
+          sent_at?: string | null
+          source?: string
+          subject?: string | null
+          to_emails?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           body: string

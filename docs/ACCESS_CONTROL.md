@@ -699,6 +699,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| **Most recent emails sent** (Settings → Notifications, v2.1338): org-wide outbound email log (`email_send_log`, dev-only SELECT RLS; fed by `resend-webhook` + dev-triggered `sync-resend-emails`) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents; dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Team leads (leader → member links for My Team; **People → Users → Team leads** modal and **People → Teams** `?tab=teams`; formerly Settings "Team Hours Sharing"); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |
