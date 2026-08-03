@@ -7,11 +7,16 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
+<<<<<<< Updated upstream
 last_updated: 2026-08-03 (v2.1318)
+=======
+last_updated: 2026-08-03 (v2.1317)
+>>>>>>> Stashed changes
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+<<<<<<< Updated upstream
 ## Latest Updates (v2.1318)
 
 ### Quickfill: bank-transfer attribution queue section (2026-08-03)
@@ -21,6 +26,12 @@ Phase 2 of the ACH/wire/check attribution plan (client-only — the v2.1308 subs
 
 ### Overhead office parts exclude duplicate-marked Mercury transactions (2026-08-03)
 Accuracy fix from the 2026-08-02 overhead parts audit: `set_mercury_transaction_duplicate` sets `mercury_transactions.duplicate_of_transaction_id` but does **not** delete the duplicate's job allocations, so a transaction split to the office job *before* being marked duplicate kept counting into the 90-day overhead pool's office-parts component. [`fetchOverheadOfficePartsByDay`](../src/lib/fetchOverheadOfficePartsByDay.ts) now adds `.is('mercury_transactions.duplicate_of_transaction_id', null)` to its Mercury-allocations `!inner` join — the same duplicate semantics the tally-queue RPCs already use (`20260619160000_click_number_remaining_rpcs_2.sql`). One fix covers both consumers via `overheadPartsBucketLoader` (v2.1307): the People → Overhead tab and the Review tab overhead line. Supply-invoice and tally sources are unaffected (duplicates are a Mercury-ledger concept). Regression test: the colocated suite's mock builder now honors PostgREST embed `.is(..., null)` filters, and a duplicate-marked tx's allocation is asserted absent from `partsUsdByDay`/`partsDetailByDay`.
+=======
+## Latest Updates (v2.1317)
+
+### Settings: "My email schedule" — see every email the app sends you (2026-08-03)
+New collapsible section on Settings → Your account (all roles): a Monday-first week grid of everything configured to email YOU, Central time — recurring job-report digests expanded onto their weekday/time slots (paused schedules render dimmed with "(paused)", not hidden), one-off sends addressed to you (billed-report shares, dispatch-day emails) on their exact day, and an "Also, when it happens" list for event streams you're on (Paid in Full, Payment received). Data comes from new self-scoped SECURITY DEFINER RPC **`get_my_email_schedule()`** (migration `20260803120000`) — necessary because the sources have mismatched RLS the recipient can't cross: billed-report requests are readable by the SENDER, so before this a recipient literally could not see a report scheduled to hit their inbox. Pure kernel [`lib/emailSchedule/emailScheduleWeek.ts`](../src/lib/emailSchedule/emailScheduleWeek.ts) (Mon-first week math, day expansion with the 0=Sun convention, in-day time sorting; +7 tests); Intl timezone placement stays in the component. Read-only by design — recipient lists are managed on each stream's own surface. New help guide `see-your-email-schedule`. Dev global management panel ships next (v2.1318).
+>>>>>>> Stashed changes
 
 ## Latest Updates (v2.1316)
 

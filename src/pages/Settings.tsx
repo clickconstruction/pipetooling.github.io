@@ -33,6 +33,7 @@ import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
 import SettingsCatalogsProspectsTab from '../components/settings/SettingsCatalogsProspectsTab'
 import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import SettingsAccountSchedulingTab from '../components/settings/SettingsAccountSchedulingTab'
+import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEmailScheduleSection'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
 import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
@@ -1179,6 +1180,7 @@ export default function Settings() {
           timeOffSectionOpen={timeOffSectionOpen}
         />
       )}
+      {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}
 
       <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title="Dashboard & alerts">
         <SettingsDashboardTab

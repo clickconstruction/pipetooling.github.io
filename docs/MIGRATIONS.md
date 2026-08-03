@@ -9,7 +9,7 @@ last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "159 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "160 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 2, 2026
+
+**`20260803120000_my_email_schedule_rpc.sql`** _(apply via `supabase db push` after merge; client fail-soft until pushed — the Settings section shows the RPC error)_
+- **Purpose**: "My email schedule" (v2.1317) — `get_my_email_schedule()`, one self-scoped read for everything configured to email the CALLER: recurring job-report digests naming them, pending one-off sends addressed to them (billed-report requests, schedule-day emails), and event-stream memberships (paid/payment app_settings uuid lists, guarded cast). SECURITY DEFINER because the sources have mismatched RLS the recipient can't cross (billed-report requests are sender-readable); returns only auth.uid()'s own entries; EXECUTE granted to authenticated (the get_dashboard_payroll_totals aggregate-read precedent).
+- **Category**: Feature schema
 
 **`20260803110000_billed_report_payload_fidelity.sql`** _(apply via `supabase db push` after merge — CREATE OR REPLACE only)_
 - **Purpose**: Fidelity fix for `get_billed_report_email_payload()` (v2.1316). The v2.1315 body restricted invoice rows to jobs with status='billed'; the board takes billed-status invoice rows from jobs of any non-paid status (working jobs with billed break-offs show in Billed Awaiting Payment), and its shared jobs list omits Paid in Full. Corrected + verified against prod to the penny (59→58 rows, $188,606.38→$188,118.88, 90+ chip 4→3/$42.9k — the delta was one $487.50 leftover billed row on a paid job).
