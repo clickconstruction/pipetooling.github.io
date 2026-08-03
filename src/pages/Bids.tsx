@@ -2770,7 +2770,6 @@ export default function Bids() {
           onError={setError}
           onReloadBids={() => { void loadBids() }}
           onReloadCustomerContacts={() => { void loadCustomerContacts() }}
-          onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
           lostSummaryModalOpen={lostSummaryModalOpen}
           lostSummaryInitialStaffTab={lostSummaryInitialStaffTab}
           onOpenLostSummary={() => setLostSummaryModalOpen(true)}
@@ -3232,6 +3231,7 @@ export default function Bids() {
       <BidFormModal
         open={bidFormOpen}
         editingBid={editingBid}
+        onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
         closeBidForm={closeBidForm}
         saveBid={saveBid}
         form={bidForm}
@@ -3540,7 +3540,7 @@ export default function Bids() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Evaluate Bids Checklist</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Go/no-go checklist</h2>
               <button
                 type="button"
                 onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}

@@ -48,7 +48,6 @@ type BidsBidBoardTabProps = {
   onError: (msg: string | null) => void
   onReloadBids: () => void
   onReloadCustomerContacts: () => void
-  onOpenEvaluateChecklist: () => void
   lostSummaryModalOpen: boolean
   lostSummaryInitialStaffTab: string | null
   onOpenLostSummary: () => void
@@ -122,7 +121,6 @@ export function BidsBidBoardTab({
   onError,
   onReloadBids,
   onReloadCustomerContacts,
-  onOpenEvaluateChecklist,
   lostSummaryModalOpen,
   lostSummaryInitialStaffTab,
   onOpenLostSummary,
@@ -989,13 +987,6 @@ export function BidsBidBoardTab({
           style={{ flex: '1 1 200px', minWidth: 0, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={onOpenEvaluateChecklist}
-            style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-          >
-            Checklist
-          </button>
           <button
             type="button"
             onClick={() => setWorkingBoardArchivedModalOpen(true)}

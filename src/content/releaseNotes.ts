@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1354',
+    date: '2026-08-03',
+    title: 'Go/no-go checklist moves into the bid form',
+    kind: 'feature',
+    highlights: [
+      'The Bid Board\'s "Checklist" button was really a go/no-go bid evaluation aid — it now lives as a small "Go/no-go" pill beside the New Bid / Edit Bid title, right where you decide whether a job is worth pursuing.',
+      'Renamed so it no longer collides with the app-wide Checklist (recurring tasks) feature; the board\'s search row gets a little roomier on phones.',
+    ],
+  },
+  {
     version: 'v2.1353',
     date: '2026-08-03',
     title: 'Bid Board: what do the due-date colors mean?',

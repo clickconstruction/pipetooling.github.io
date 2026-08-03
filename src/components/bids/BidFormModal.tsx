@@ -35,6 +35,8 @@ export type BidFormModalProps = {
   open: boolean
   editingBid: BidWithBuilder | null
   closeBidForm: () => void
+  /** Opens the go/no-go evaluate checklist (owned by Bids.tsx; renders above this modal). */
+  onOpenEvaluateChecklist?: () => void
   saveBid: (e: FormEvent<HTMLFormElement>) => void
   /** Owns all editable bid-form data fields (values + setters). */
   form: BidEditForm
@@ -106,6 +108,7 @@ export function BidFormModal(props: BidFormModalProps) {
   const {
     editingBid,
     closeBidForm,
+    onOpenEvaluateChecklist,
     saveBid,
     form,
     projects,
@@ -263,7 +266,30 @@ export function BidFormModal(props: BidFormModalProps) {
                 marginBottom: '1.5rem',
               }}
             >
-              <h2 style={{ margin: 0, minWidth: 0 }}>{editingBid ? 'Edit Bid' : 'New Bid'}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                <h2 style={{ margin: 0, minWidth: 0 }}>{editingBid ? 'Edit Bid' : 'New Bid'}</h2>
+                {onOpenEvaluateChecklist ? (
+                  <button
+                    type="button"
+                    onClick={onOpenEvaluateChecklist}
+                    title="Go/no-go — is this bid worth pursuing?"
+                    style={{
+                      padding: '0.25rem 0.6rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 999,
+                      background: 'var(--surface)',
+                      color: 'var(--text-700)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Go/no-go
+                  </button>
+                ) : null}
+              </div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {selectedServiceType ? (
                   <button

@@ -39,6 +39,10 @@ Opening a row marks its notes read, so the red badge clears. Press **Escape** or
 Tap **Pending** in the jump strip, scan the Due chips for red **(+N)** counts, then click the worst row — the dropdown shows when it was due, the last contact, and every note in one place.
 :::
 
+## Deciding whether to bid at all
+
+The go/no-go evaluation checklist (location, payment terms, bid documents, competition…) lives in the bid form: open **New Bid** or a bid's **Edit** form and tap the {{button:outline-blue|Go/no-go}} pill beside the title. It used to be the "Checklist" button on this board.
+
 ## On a phone
 
 Below tablet width each row becomes a card — bid number and due chip on top, project name, then GC · estimator · bid value · last contact, and the artifact links. Nothing scrolls sideways. Tap a card to expand the same details and notes panel.

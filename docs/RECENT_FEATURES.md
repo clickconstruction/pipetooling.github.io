@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1353)
+last_updated: 2026-08-03 (v2.1354)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1354)
+
+### Bid Board "Checklist" becomes "Go/no-go" inside the New/Edit Bid form (2026-08-03)
+Owner call: the board-toolbar **Checklist** button was mis-homed — it opened the *Evaluate Bids* go/no-go aid (location / payment terms / bid documents / competition…, ephemeral checkboxes), not the app-wide recurring-tasks Checklist its label suggested. The button leaves the Bid Board toolbar (the search row slims to Search + Archived, which also helps 375px); a compact **Go/no-go** pill now sits beside the New Bid / Edit Bid title in [`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx) (new optional `onOpenEvaluateChecklist` prop — the modal itself stays owned by `Bids.tsx` and renders above the form), so the aid appears exactly at intake/re-evaluation time. Modal heading renamed *Evaluate Bids Checklist* → **Go/no-go checklist**, killing the naming collision. Guide `read-the-bid-board` notes the new home. Client-only — no migration.
 
 ## Latest Updates (v2.1353)
 
