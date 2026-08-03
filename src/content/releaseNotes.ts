@@ -11,7 +11,7 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1342',
+    version: 'v2.1343',
     date: '2026-08-03',
     title: 'Emails-sent list: tidy rows on phones',
     kind: 'fix',
@@ -20,6 +20,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1342',
+    date: '2026-08-03',
     title: 'Under the hood: database type definitions refreshed',
     kind: 'fix',
     highlights: [
