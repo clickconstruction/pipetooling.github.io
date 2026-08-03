@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1319',
+    date: '2026-08-03',
+    title: 'More accurate 90-day overhead rates',
+    kind: 'fix',
+    highlights: [
+      'Stripe test-mode invoices no longer count as revenue in the 90-day overhead rates (People → Overhead and Review) — the overhead-per-revenue numbers read slightly higher and truer.',
+      'The 90-day window now always follows the company calendar (Chicago) — viewers in other timezones near midnight no longer see a shifted window.',
+      'The Review tab now computes its revenue days through the same shared calculation as the Overhead tab, so the two can’t drift apart.',
+    ],
+  },
+  {
     version: 'v2.1318',
     date: '2026-08-03',
     title: 'Quickfill: label bank transfers and wires',

@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
-import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
+import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
@@ -29,6 +29,7 @@ import {
   overheadBucketForSession,
   type OverheadClockSessionRow,
 } from '../../lib/overheadDailyLabor'
+import { bucketInvoiceRevenueByAppTzDay } from '../../lib/overheadAvgDailyCost'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
@@ -321,7 +322,11 @@ export default function PeopleReviewTab({
     setReviewOverheadRates((prev) => ({ ...prev, loading: true }))
     void (async () => {
       try {
-        const today = new Date().toLocaleDateString('en-CA')
+        // Anchor the whole 90-day window on the COMPANY calendar day
+        // (America/Chicago), not the viewer's browser-local date — a viewer
+        // in another timezone near midnight used to see the entire
+        // session/parts/revenue window shifted by a day.
+        const today = denverCalendarDayKey(Date.now())
         const start = ymdAddDays(today, -89)
         const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
         // Paged fetches (fetchAllRows): these are company-wide 90-day scans
@@ -350,7 +355,8 @@ export default function PeopleReviewTab({
           return q.order('id')
         }
         // Fetch a day wide on both sides, then re-bucket each invoice into
-        // its Chicago calendar day (calendarYmdInAppTzFromIso) — the old
+        // its Chicago calendar day (bucketInvoiceRevenueByAppTzDay — the same
+        // tested kernel the Overhead tab's KPI effect uses) — the old
         // UTC-bounded window pulled in the previous evening's invoices and
         // dropped everything sent after ~6pm on the last day.
         const startIsoLow = `${ymdAddDays(start, -1)}T00:00:00-00:00`
@@ -392,6 +398,12 @@ export default function PeopleReviewTab({
                     .select('amount, sent_to_customer_at')
                     .gte('sent_to_customer_at', startIsoLow)
                     .lt('sent_to_customer_at', endIsoHigh)
+                    // Stripe TEST-mode invoices are not revenue — keep them
+                    // out of the Method B denominator. NULL stripe_mode =
+                    // non-Stripe (HCP/physical) or pre-v2.1114 legacy rows,
+                    // both real revenue, so a bare .neq() would wrongly drop
+                    // them under SQL <> NULL semantics.
+                    .or('stripe_mode.is.null,stripe_mode.neq.test')
                     .order('id')
                     .range(f, t),
                 'load review 90d invoices',
@@ -490,13 +502,12 @@ export default function PeopleReviewTab({
           amount: number | null
           sent_to_customer_at: string | null
         }>
+        // Shared bucketing kernel (same call as the Overhead tab's KPI
+        // effect) instead of an inline re-implementation — the kernel's unit
+        // tests pin the inclusive [start, today] Chicago-day window.
+        const revenueByDay = bucketInvoiceRevenueByAppTzDay(invoiceRows, start, today)
         let revenueTotal = 0
-        for (const r of invoiceRows) {
-          if (!r.sent_to_customer_at) continue
-          const ymd = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
-          if (ymd < start || ymd > today) continue
-          revenueTotal += Number(r.amount ?? 0)
-        }
+        for (const v of revenueByDay.values()) revenueTotal += v
         // Shared three-lenses kernel — the SAME code that renders the
         // Overhead tab's rate strip, so the two surfaces cannot drift.
         const rates = computeOverheadRateMethods({
