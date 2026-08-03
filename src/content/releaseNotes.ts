@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1349',
+    date: '2026-08-03',
+    title: 'Dashboard cards: matching collapse arrows',
+    kind: 'fix',
+    highlights: [
+      'Recent Reports and Assigned Jobs now share the same header style — same small gray collapse arrow, same spacing — instead of two different looks side by side.',
+    ],
+  },
+  {
     version: 'v2.1347',
     date: '2026-08-03',
     title: 'Bid Board rows: click for details, built for phones',

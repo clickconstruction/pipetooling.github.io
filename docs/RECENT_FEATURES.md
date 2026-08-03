@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1347)
+last_updated: 2026-08-03 (v2.1349)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1349)
+
+### Dashboard: Recent Reports header matches its card neighbors (2026-08-03)
+User report (screenshot): **Recent Reports** and **Assigned Jobs** sit adjacent on the Dashboard but their collapse headers didn't match — Recent Reports hand-rolled its caret inside the `h2` (full 1.125rem, text-colored ▶) while Assigned Jobs goes through `DashboardGroupCard` (0.8rem, `var(--text-muted)`, baseline-aligned, 0.45rem gap). [`DashboardRecentReportsSection.tsx`](../src/components/dashboard/DashboardRecentReportsSection.tsx) now renders the identical caret treatment and drops the extra bottom padding while collapsed (GroupCard parity). The envelope header control and all behavior (session-scoped expand state, unread count, filters) unchanged. Verified live — computed styles now identical between the two headers. Client-only — no migration.
 
 ## Latest Updates (v2.1347)
 
