@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1321)
+last_updated: 2026-08-03 (v2.1322)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1322)
+
+### Customer profile modal — click the customer on any Pipeline row (2026-08-03)
+The contact-card icon (and the customer name) on Jobs → Pipeline rows now opens a full customer profile in a modal ([`CustomerProfileModal`](../src/components/customers/CustomerProfileModal.tsx), provided app-wide by `CustomerProfileModalContext` — the EditCustomerModal opener pattern, so any surface can call `openCustomerProfile(customerId)` later). Contents, all from existing tables under existing RLS: header (type chip, archived flag, "customer since"), contact band (tel:/mailto:/Maps + contact persons), the **money strip** — open balance with an aging chip (est-bill-date 30/90 rule, Collections included — flagged money is still owed), lifetime collected, and **"Pays in ~N days"** (median billed_at→paid_on gap over invoice-linked payments, last 12 months — a number no surface had) — and four work rails (jobs → Job Detail modal, projects with current step via `buildProjectAttention` → workflow, bids → Bid Preview, estimates → estimate page; jobs rail collapses past 6). Footer: Edit customer (existing modal), Their projects. Pure stats kernel [`lib/customers/customerProfileStats.ts`](../src/lib/customers/customerProfileStats.ts) (+7 tests); batched fetch in `lib/customers/fetchCustomerProfile.ts` (steps ride the projects→workflows embed chain). Rows with a customer NAME but no linked row route the same click to the existing link-or-create flow. New help guide `see-a-customers-profile`. Client-only — no migration.
 
 ## Latest Updates (v2.1321)
 

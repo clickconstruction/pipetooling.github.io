@@ -1,4 +1,5 @@
 import { Fragment, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
+import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatTimeSince } from '../../lib/jobs/jobFormatting'
@@ -186,7 +187,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
 
+  const customerProfileModal = useCustomerProfileModal()
   const stagesRowSharedCtx: StagesRowRenderContext = {
+    openCustomerProfile: customerProfileModal?.openCustomerProfile,
     showToast,
     customers,
     openEditJobAndCreateCustomerFlow,
