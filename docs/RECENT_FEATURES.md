@@ -7,17 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1347)
-
-last_updated: 2026-08-03 (v2.1346)
+last_updated: 2026-08-03 (v2.1349)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
-## Latest Updates (v2.1347)
+## Latest Updates (v2.1349)
 
 ### Dashboard: Recent Reports header matches its card neighbors (2026-08-03)
 User report (screenshot): **Recent Reports** and **Assigned Jobs** sit adjacent on the Dashboard but their collapse headers didn't match — Recent Reports hand-rolled its caret inside the `h2` (full 1.125rem, text-colored ▶) while Assigned Jobs goes through `DashboardGroupCard` (0.8rem, `var(--text-muted)`, baseline-aligned, 0.45rem gap). [`DashboardRecentReportsSection.tsx`](../src/components/dashboard/DashboardRecentReportsSection.tsx) now renders the identical caret treatment and drops the extra bottom padding while collapsed (GroupCard parity). The envelope header control and all behavior (session-scoped expand state, unread count, filters) unchanged. Verified live — computed styles now identical between the two headers. Client-only — no migration.
+
+## Latest Updates (v2.1347)
+
+### Bid Board row rework: combined row dropdown, Links cluster, phone cards (2026-08-03)
+Second slice of the approved Bid Board refresh (mockup-driven; jump strip + caps were v2.1346). **Columns**: the notes-arrow column and the trailing actions column are gone — each row leads with a right-aligned **unread-notes badge · ⬡ Counts · bid number · ⚙ Edit** cell (bare number, no ledger prefix — the page context defines the bid type; the prefixed label survives in tooltips/aria). **GC/Builder + Project** render left-aligned, one ellipsized line each (~200px; full text at the top of the row dropdown). The four artifact columns (Project Folder / Job Plans / Count Tool / Bid Send) collapse into one **Links** cluster showing only the links that exist; **Address** leaves the table entirely; **Bid $** is hidden on Unsent (nothing is priced yet); **Dist** stays and its value now opens the address in Google Maps. **Due Date and Last Contact are two-line**: weekday + date on top, signed day count below — (+4) = days after, (-2) = days until (kernel [`bidBoardDateCells.ts`](../src/lib/bids/bidBoardDateCells.ts), +9 tests; urgency: overdue red / due-within-3-days amber via theme tokens). **Row click = combined dropdown**: clicking any non-interactive part of a row (Enter works too — rows are focusable) expands a detail strip (GC/Builder, project, address → Maps, due + time, bid value, account manager, estimator) with the existing `BidBoardNotesPanel` below it — the old notes-arrow expansion state, Escape-to-close, scroll-into-view, and read-watermark behavior all carry over (opening a row now marks its notes read). **Phones (<660px)**: sections render as cards (bid # cluster + due chip / project / GC · estimator · $ · LC / links; tap to expand the same dropdown) — no horizontal scrolling; deep-link `bid-board-row-<id>` anchors and the amber highlight work on cards too. New guide `read-the-bid-board`; `bid-due-date-time` guide updated (due time now lives in the dropdown). Client-only — no migration.
 
 ## Latest Updates (v2.1346)
 
