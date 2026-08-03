@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1333',
+    date: '2026-08-03',
+    title: 'Edit Assembly looks like the rest of the family',
+    kind: 'feature',
+    highlights: [
+      'The Edit Assembly form matches the new Add Part and Add Assembly look: search at the top, compact item rows with P/A chips, and tidy × removes.',
+      'Bundle prices are edited by clicking the price itself — type the new number and press Enter. No more Edit/Save/Cancel links.',
+    ],
+  },
+  {
     version: 'v2.1332',
     date: '2026-08-03',
     title: 'Bid Board search fits your phone screen',

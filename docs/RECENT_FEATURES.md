@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1332)
+last_updated: 2026-08-03 (v2.1333)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1333)
+
+### Edit Assembly modal: visual refresh to match the authoring family (2026-08-03)
+The Edit Assembly modal (Bids → Takeoffs, via a bundle line's breakdown or a By-Stage mapping) catches up visually to the v2.1325–v2.1327 modals — behavior unchanged, shell rebuilt in [`TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx). **Boxed sections with header-band hints**: an Items box (the search moves to the TOP — no more scrolling past a long assembly to add something; the Adding…/qty hint lives in the band) and a Bundle prices box. **The Type/Name/Qty table becomes chip rows** — the Add Assembly layout: blue P / violet A chips, ellipsized names, the same keyed inline qty inputs (blur/Enter commit), per-part Prices link, mouse-only × (`tabIndex={-1}`) replacing the red Remove buttons (the remove confirm stays — writes are immediate). **Bundle prices drop the Edit/Save/Cancel link choreography**: the price itself is the control — dashed-underline button ("Click a price to change it"), click → right-aligned input that commits on Enter/blur and cancels on Escape (no-op commit when unchanged/invalid); remove is a mouse-only ×; the v2.1327 searchable add-row keeps Enter-to-add. Editable-name header and single Close footer (everything saves as you go) unchanged. Verified live on a real bundle assembly (BP329 "NICK AND MOES T-1L"): chip rows, click-price→input→Escape-reverts, zero writes during verification. Client-only — no migration.
 
 ## Latest Updates (v2.1332)
 
@@ -21,6 +26,7 @@ Phone-viewport fix for `/bids?tab=bid-board` per the `docs/E2E_SMOKE.md` viewpor
 
 ### Bids header: responsive rebuild — segmented trades, scrollable tab strips (2026-08-03)
 The Bids header broke at every width under ~1200px (trade chips colliding with "Bid Board" at ~760, chips stacking three-tall at ~1000, a ~700px-tall stacked header on phones). Rebuilt in [`Bids.tsx`](../src/pages/Bids.tsx): **(1) trades become a compact segmented control** (joined Plumbing | Electrical | HVAC, Builder-Review gray-out preserved); **(2) New Bid pins top-right at every width**; **(3) tab strips never wrap — they scroll**: new reusable [`ScrollableTabStrip`](../src/components/ScrollableTabStrip.tsx) centers its tabs while they fit (inner `margin-inline: auto` so the left edge stays reachable) and becomes a single scrollable row with edge fades when they don't, auto-scrolling the active tab into view on `?tab=` deep links (hidden scrollbar via the new `.tab-strip-scroll` class). Both the five board tabs and the nine bid-detail tabs (safety-orange highlights + `|` separators unchanged, Unsent/Working badge kept) use it. Layout: ≥1151px one row (`auto minmax(0,1fr) auto` grid) via new `wideBidsHeader` `useMatchMedia`; below that trades + New Bid share a row and the board tabs get their own strip — the `narrowViewport640` special-casing and the **four copy-pasted board-tab JSX blocks** are deleted (new `selectBidsTab` helper dedupes all 14 tab onClicks). Verified live at 375/760/1280 incl. deep-link auto-scroll. Pre-existing Bid Board table/search-row phone overflow flagged as a follow-up (not header-caused). Client-only — no migration.
+
 
 ## Latest Updates (v2.1330)
 
