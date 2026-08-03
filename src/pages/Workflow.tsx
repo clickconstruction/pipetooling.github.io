@@ -2000,7 +2000,7 @@ export default function Workflow() {
     const rpcRes = await supabase.rpc('update_step_assignment', {
       p_step_id: step.id,
       p_assigned_to_name: name ?? '',
-      p_person_id: personId ?? null,
+      p_person_id: personId ?? undefined,
     })
     err = rpcRes.error
     if (err?.message?.includes('Could not find the function')) {

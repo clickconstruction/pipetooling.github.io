@@ -7,15 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1342)
+last_updated: 2026-08-03 (v2.1343)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
-## Latest Updates (v2.1342)
+## Latest Updates (v2.1343)
 
 ### Emails-sent table: compact rows on phones (2026-08-03)
 First real-data render of the v2.1338 list at 375px showed long subjects wrapping into ~275px-tall rows. The Subject cell in [`SettingsRecentEmailsSent.tsx`](../src/components/settings/SettingsRecentEmailsSent.tsx) is now single-line ellipsized (`maxWidth` 320, `title` tooltip carries the full subject); the table keeps scrolling inside its own `overflow-x: auto` wrapper per the `docs/E2E_SMOKE.md` viewport invariant (verified `documentElement.scrollWidth` = 375 at 375×812 with live rows). Client-only — no migration.
+
+## Latest Updates (v2.1342)
+
+### Supabase generated types re-synced with prod (2026-08-03)
+`src/types/database.ts` had drifted behind the prod schema (hand-added entries plus a week of banking-attribution-era DDL). Regenerated with `npm run gen-types:linked` (CLI v2.72.7): picks up the **`banking_attributors`** and **`mercury_transaction_attribution_resolutions`** tables, the attributor RPC family (`is_banking_attributor`, `list/count_unattributed_noncard_mercury_transactions`, `attributor_allocate_transaction_to_job`, `attributor_flag_transaction_payroll`, `resolve/unresolve_noncard_transaction_attribution`), `get_billed_report_email_payload`, `user_is_assignee_of_labor_job`, and the **`jobs_ledger_invoices.stripe_mode`** column. The generator also now types defaulted RPC args as optional-without-`null` — callers of `update_step_assignment` ([`Workflow.tsx`](../src/pages/Workflow.tsx)) and `respond_to_work_order` ([`DashboardSubMoneySection.tsx`](../src/components/dashboard/DashboardSubMoneySection.tsx)) pass `undefined` instead of `null` (both args are SQL `DEFAULT NULL`, so behavior is identical), and the dashboard invoice select/mapping ([`dashboardBillingInvoiceUnits.ts`](../src/lib/dashboardBillingInvoiceUnits.ts)) + invoice test fixtures carry `stripe_mode`. Client-only — no migration.
 
 ## Latest Updates (v2.1341)
 
@@ -31,10 +36,12 @@ First live pull of the v2.1338 email log failed with Resend 401 `restricted_api_
 
 ### Dispatch Mode Inbox: "Open Gmail" link at the top (2026-08-03)
 Dispatcher ask: jump from the app inbox to the email inbox without hunting for a tab. The Dispatch Mode → Inbox tab ([`DispatchModeInbox.tsx`](../src/components/dispatchMode/DispatchModeInbox.tsx)) gets a compact **Open Gmail** button-style link (envelope icon) centered under the Inbox heading, above the notification banners — plain `https://mail.google.com/` in a new tab (`rel="noopener noreferrer"`), so Google lands the user in whichever account they're signed into. All Dispatch Mode roles. Help guide `dispatch-mode` updated. Client-only — no migration.
+
 ## Latest Updates (v2.1338)
 
 ### Settings → Notifications: org-wide "Most recent emails sent" (dev) above your push list (2026-08-03)
 The Settings "Recent push" tab is renamed **Notifications** (group id stays `settings-recent-push` — pins and deep links keep working) and gains a new first section for **dev**: **Most recent emails sent** — every email the app produces, org-wide, since sending is spread across 13 edge functions (7 shared-helper + 6 direct Resend callers) with no single choke point. Architecture: new **`email_send_log`** table (migration `20260803193428`; dev-only SELECT RLS, service-role writes only) fed two ways — new **`resend-webhook`** edge function (Svix-signature-verified `email.*` events keep `last_event` fresh: delivered/bounced/opened/…) and new dev-gated **`sync-resend-emails`** (pulls Resend's list API on the **Refresh from Resend** button — backfill + gap repair, mirroring the Mercury sync pattern). UI: [`SettingsRecentEmailsSent.tsx`](../src/components/settings/SettingsRecentEmailsSent.tsx) (When/To/Subject/Status table, newest 25 + Load more, tone chips) above the unchanged per-user push list; display kernel [`emailSendLog.ts`](../src/lib/emailSendLog.ts) (+12 tests). `database.ts` types hand-added pending post-push regen. **Ops after merge**: `supabase db push`, deploy both functions with `--no-verify-jwt`, then register the webhook in the Resend dashboard + `supabase secrets set RESEND_WEBHOOK_SECRET` (checklist in `docs/EDGE_FUNCTIONS.md` → resend-webhook). See `docs/MIGRATIONS.md`.
+
 ## Latest Updates (v2.1337)
 
 ### Quickfill: "Missing job info" rename + phone nav moves behind the hamburger (2026-08-03)
