@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1345)
+last_updated: 2026-08-03 (v2.1346)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1346)
+
+### Bid Board: section jump strip + 25-row caps on the giant sections (2026-08-03)
+First slice of the approved Bid Board refresh (mockup-driven; row rework follows in v2.1347). **(1) Jump strip**: a sticky pill row at the top of the board — Unsent / Pending / Won / Started / Lost / Health, each with its live bid count (Pending's count renders safety-orange as the board's attention hotspot). Tapping a pill expands the section if collapsed and smooth-scrolls to it (`bid-board-section-<key>` anchors, `scroll-margin-top` clears the sticky strip). **Health** finally gets a front door — the Estimating Health block sat ~7,600px deep with no way to reach it but scrolling; it's now wrapped in `#bid-board-health-section` and one tap away. The strip inner-scrolls horizontally on phones (no document overflow). **(2) Section caps**: "Not yet won or lost" (~100 rows) and "Lost" (~100) render only their first 25 rows with a full-width **"Show all N ▾" / "Show first 25 ▴"** toggle row — pure render cap in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx), sorting/search/data untouched. Deep-link safety: when a bid-row highlight (`bid-board-row-<id>`, v2.1335 pins et al.) targets a row past the cap, the section auto-uncaps before the scroll fires. Client-only — no migration.
 
 ## Latest Updates (v2.1345)
 
