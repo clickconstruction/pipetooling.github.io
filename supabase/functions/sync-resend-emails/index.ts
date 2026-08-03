@@ -37,8 +37,10 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    if (!resendApiKey?.trim()) return jsonResponse({ error: 'Server misconfigured: RESEND_API_KEY' }, 500)
+    // RESEND_API_KEY is a sending-only restricted key (least privilege for the 13
+    // sender functions); listing emails requires a full-access key, stored separately.
+    const resendApiKey = Deno.env.get('RESEND_READ_API_KEY') || Deno.env.get('RESEND_API_KEY')
+    if (!resendApiKey?.trim()) return jsonResponse({ error: 'Server misconfigured: RESEND_READ_API_KEY' }, 500)
     if (!serviceKey) return jsonResponse({ error: 'Server misconfigured: service role' }, 500)
 
     // Dev-only: this list is org-wide and includes customer-facing subjects/recipients.
