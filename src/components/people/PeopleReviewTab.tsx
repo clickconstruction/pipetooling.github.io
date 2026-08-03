@@ -30,7 +30,7 @@ import {
   type OverheadClockSessionRow,
 } from '../../lib/overheadDailyLabor'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
-import { fetchOverheadOfficePartsByDay } from '../../lib/fetchOverheadOfficePartsByDay'
+import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
   CrewJobAssignment,
@@ -370,8 +370,14 @@ export default function PeopleReviewTab({
             }),
             'load review 90d field sessions',
           ),
+          // Shared loader (same one the Overhead tab's 90-day KPI effect
+          // uses): office parts by day with Internal Transfers EXCLUDED —
+          // they're money moving between the org's own accounts, not an
+          // expense. The raw fetch here used to count them, so the Review
+          // tab's pool, rates, and split-model partsRate over-charged
+          // whenever a transfer hit the office job in the window.
           officeJobLedgerId
-            ? fetchOverheadOfficePartsByDay({
+            ? loadOfficePartsUsdByDayExcludingInternalTransfer({
                 officeJobLedgerId,
                 startYmd: start,
                 endYmd: today,

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1306)
+last_updated: 2026-08-02 (v2.1307)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1307)
+
+### Review tab overhead pool now excludes Internal Transfers (2026-08-02)
+Accuracy fix closing a divergence left by the v2.1283–1285 Internal-Transfers correctness passes: the People → Overhead tab excluded Internal Transfer Mercury transactions from its 90-day office-parts pool component, but the dev-only People → Review tab kept consuming the RAW `partsUsdByDay` — so whenever a transfer hit the office job inside the window, the Review tab's 90-day pool, all three Method A/B/C rates, its `officeParts90d` decomposition figure, and (most materially) the Team Summary split model's `partsRate` (officeParts90d ÷ fieldHours90d) over-charged overhead, skewing every person's "Profit (after overhead)". The fix extracts ONE shared loader — `loadOfficePartsUsdByDayExcludingInternalTransfer` in [`lib/overheadPartsBucketLoader.ts`](../src/lib/overheadPartsBucketLoader.ts) (fetch office parts by day → resolve each Mercury tx's Banking → Accounting bucket → per-day sums excluding the `internal_transfer` bucket; bucket-fetch failure degrades to "everything counted", preserving the Overhead tab's exact rule) — and both surfaces now build their pools through it. `collectMercuryTxIds` + `fetchAccountingBucketByTxId` moved verbatim out of `PeopleOverheadTab.tsx` into the same lib (the tab's breakdown-modal bucket effect imports them from there). Overhead tab behavior unchanged; the Review tab's rates/Team Summary now match it exactly. +7 colocated tests (Internal-Transfer filtering, unfiltered detail passthrough, supply/tally always counted, degrade rule, detail-fetch rejection, tx-id collection, bucket mapping). 395 files / 3,538 tests green.
 
 ## Latest Updates (v2.1306)
 

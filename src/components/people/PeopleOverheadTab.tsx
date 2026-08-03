@@ -12,13 +12,17 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import {
   bucketOverheadPartsLinesByAccountingLabel,
-  overheadPartsAccountingBucketFromDefaultKey,
   sumMaterialsTotalUsdExcludingInternalTransfer,
   sumPartsUsdByDayExcludingInternalTransfer,
   type OverheadPartsAccountingBucketKey,
   type OverheadPartsAccountingSection,
 } from '../../lib/overheadPartsAccountingBuckets'
-import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
+import {
+  collectMercuryTxIds,
+  fetchAccountingBucketByTxId,
+  loadOfficePartsUsdByDayExcludingInternalTransfer,
+} from '../../lib/overheadPartsBucketLoader'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import {
   aggregateOtherJobsLaborByPerson,
   aggregateOverheadDetailByPerson,
@@ -63,68 +67,6 @@ function formatOverheadTabWorkDateLabel(workDateYmd: string): string {
     day: 'numeric',
     timeZone: APP_CALENDAR_TZ,
   }).format(d)
-}
-
-/** Unique Mercury transaction ids across every line of the given per-day detail maps. */
-function collectMercuryTxIds(
-  detailMaps: ReadonlyArray<ReadonlyMap<string, OverheadPartsDetailLine[]>>,
-): string[] {
-  const ids = new Set<string>()
-  for (const m of detailMaps) {
-    for (const lines of m.values()) {
-      for (const ln of lines) {
-        if (ln.source === 'mercury' && ln.mercuryTransactionId) ids.add(ln.mercuryTransactionId)
-      }
-    }
-  }
-  return [...ids]
-}
-
-/**
- * Banking → Accounting drag-sort bucket per Mercury transaction id.
- *
- * Two-step query: assignment rows for the tx ids, then bulk-resolve label
- * `default_key` for the assigned label ids. Chunked `.in()` + paged
- * (`fetchAllRowsChunkedIn`) — the 90-day KPI window's id list is unbounded.
- * Tx ids with no assignment row are absent from the map; renderers default
- * those to the `'other'` bucket via `bucketForOverheadPartsLine`.
- */
-async function fetchAccountingBucketByTxId(
-  txIds: readonly string[],
-): Promise<Map<string, OverheadPartsAccountingBucketKey>> {
-  if (txIds.length === 0) return new Map()
-  const assignments = (await fetchAllRowsChunkedIn(
-    [...txIds],
-    (chunk, from, to) =>
-      supabase
-        .from('mercury_transaction_drag_sort_assignments')
-        .select('mercury_transaction_id, label_id')
-        .in('mercury_transaction_id', chunk)
-        .order('mercury_transaction_id')
-        .range(from, to),
-    'load overhead accounting assignments',
-  )) as Array<{ mercury_transaction_id: string; label_id: string }>
-  if (assignments.length === 0) return new Map()
-  const labelIds = [...new Set(assignments.map((a) => a.label_id))]
-  const labels = (await fetchAllRowsChunkedIn(
-    labelIds,
-    (chunk, from, to) =>
-      supabase
-        .from('mercury_drag_sort_labels')
-        .select('id, default_key')
-        .in('id', chunk)
-        .order('id')
-        .range(from, to),
-    'load overhead accounting labels',
-  )) as Array<{ id: string; default_key: string | null }>
-  const defaultKeyByLabelId = new Map<string, string | null>()
-  for (const l of labels) defaultKeyByLabelId.set(l.id, l.default_key ?? null)
-  const out = new Map<string, OverheadPartsAccountingBucketKey>()
-  for (const a of assignments) {
-    const defaultKey = defaultKeyByLabelId.get(a.label_id) ?? null
-    out.set(a.mercury_transaction_id, overheadPartsAccountingBucketFromDefaultKey(defaultKey))
-  }
-  return out
 }
 
 /**
@@ -780,22 +722,17 @@ export default function PeopleOverheadTab({
         ])
         let partsByDay: Map<string, number> = new Map()
         if (overheadOfficeJobLedgerId) {
-          const r = await fetchOverheadOfficePartsByDay({
+          // Same symmetric rule as the table: Internal Transfers are not an
+          // expense and stay out of the KPI numerator's office parts $. A
+          // bucket-fetch failure degrades to "everything counted" (empty map
+          // buckets to 'other') instead of nulling the KPIs. Shared loader —
+          // the Review tab builds its pool through the same function.
+          const r = await loadOfficePartsUsdByDayExcludingInternalTransfer({
             officeJobLedgerId: overheadOfficeJobLedgerId,
             startYmd: start,
             endYmd: today,
           })
-          // Same symmetric rule as the table: Internal Transfers are not an
-          // expense and stay out of the KPI numerator's office parts $. A
-          // bucket-fetch failure degrades to "everything counted" (empty map
-          // buckets to 'other') instead of nulling the KPIs.
-          let bucketByTxId = new Map<string, OverheadPartsAccountingBucketKey>()
-          try {
-            bucketByTxId = await fetchAccountingBucketByTxId(collectMercuryTxIds([r.partsDetailByDay]))
-          } catch {
-            /* RLS or network */
-          }
-          partsByDay = sumPartsUsdByDayExcludingInternalTransfer(r.partsDetailByDay, bucketByTxId)
+          partsByDay = r.partsUsdByDay
         }
         if (cancelled) return
         const labor = buildOverheadDailyLabor({
