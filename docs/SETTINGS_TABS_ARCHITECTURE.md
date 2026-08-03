@@ -5,7 +5,7 @@ file: docs/SETTINGS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the Settings.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what is ALREADY extracted (Settings shrank ~12k → ~5.1k lines without a map) and what remains inline in src/pages/Settings.tsx (state, loaders, handlers, supabase tables/RPCs, role gates, coupling), to drive the remaining multi-PR extraction.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 ---
 
 ## Overview
@@ -25,7 +25,7 @@ It is a **hot file**: 29 commits in the last 10 weeks (controller role v2.662, q
 
 1. **Tab switching is pure component state.** `activeSettingsTab: string` holds a group id (`'settings-account'`, `'settings-people'`, …). `getSettingsJumpGroups(myRole)` (module fn, ~line 184) builds the role-filtered tab list; an effect snaps `activeSettingsTab` to the first group when invalid. `SettingsTabBar` (module component, ~146) renders the `role="tablist"` bar using the shared `pageTabStyle` (v2.668 filled-blue selected tabs).
 2. **~~There is NO URL sync — `?tab=` and `#anchor` deep links into Settings are inert.~~ FIXED in v2.737.** `DashboardBulkDeleteAlertBanner` links to `/settings?tab=settings-data`, `DashboardClaimDevAttemptsBanner` to `/settings?tab=settings-people`, and `Calendar.tsx` links (×6) to `/settings#settings-time-off` / `/settings#settings-salary-workday`. Settings now reads `location.search`/`location.hash` via [`resolveSettingsDeepLink`](../src/lib/settingsDeepLink.ts): `?tab=` activates the group; a `#settings-*` section anchor activates its owning tab and scrolls the anchor into view (the apply effect retries when the role-filtered groups load and polls for the async-mounted anchor). Broke originally when collapsible sections became tabs (PR #35).
-3. **Mixed mount semantics.** Most tabs render inside `SettingsGroup` with `hidden={activeSettingsTab !== id}` → **kept mounted, `display: none`** (child state and self-contained loaders run even when invisible). Two strays render **outside** a SettingsGroup with conditional mount (unmount when inactive): `SettingsAccountSchedulingTab` and `SettingsCatalogsProspectsTab`. `SettingsAdvancedTab` / `SettingsHowItWorksTab` / the Recent-push wrapper take an `active` prop / wrapper div and hide themselves. Preserve each tab's existing semantics during moves.
+3. **Mixed mount semantics.** Most tabs render inside `SettingsGroup` with `hidden={activeSettingsTab !== id}` → **kept mounted, `display: none`** (child state and self-contained loaders run even when invisible). Two strays render **outside** a SettingsGroup with conditional mount (unmount when inactive): `SettingsAccountSchedulingTab` and `SettingsCatalogsProspectsTab`. `SettingsAdvancedTab` / the Recent-push wrapper take an `active` prop / wrapper div and hide themselves. Preserve each tab's existing semantics during moves.
 4. **The default landing tab is "Recent push"** (first entry in `getSettingsJumpGroups` for every role), not "Your account". Refresh always resets to it (no URL state).
 5. **File layout (post-campaign, ~1,725 lines):** imports/types 1–62; module components (`SettingsGroup` ~63, `SettingsTabBar` ~120, `getSettingsJumpGroups` ~158); `Settings()` starts ~184; the seam-hook instantiations (`useSettingsCatalogs`, `useSettingsJobsAdmin`, `useSettingsProspectsCatalog`, `useSettingsPeopleDirectory`, the three Dashboard hooks, `useSettingsAccount`, `useSettingsBackupExports`) run ~238–705; the `loadData` remnant ~707–835; effects (pins listener, estimator sync, deep-link apply) ~838–1070; JSX ~1072–end. Line numbers rot — search the symbol.
 
@@ -55,7 +55,6 @@ Tabs in `getSettingsJumpGroups` order. "Engine location" = where the tab's state
 | 7 | Catalogs & trades (`settings-catalogs`) | `SettingsCatalogsTab` + `SettingsCatalogsProspectsTab` | extracted | **`useSettingsCatalogs` hook, parent-instantiated (v2.855)**; prospects-block engine still parent | ~120 (from one hook) + ~35 | low | ~~Order #3~~ **done (v2.855)** except the prospects-block savers (fold into order #4) |
 | 8 | Templates & testing (`settings-templates`) | `SettingsTemplatesTab` (+ 6 self-contained dev blocks inside) | extracted | **self-contained** via `useSettingsTemplatesEngine` (v2.854) | 3 (`authUser`, `users`, `setError`) | — | ~~Order #2~~ **done (v2.854)** |
 | 9 | Advanced (`settings-advanced-tools`) | `SettingsAdvancedTab` | extracted | parent (`handleClaimCode`, 3 state) | 8 | low | Move claim-code state/handler into the tab (tiny) |
-| 10 | How it works (`settings-how-it-works`) | `SettingsHowItWorksTab` | extracted | stateless | 1 (`active`) | — | Done |
 | 11 | Release notes (`settings-release-notes`) | `SettingsReleaseNotesSection` | extracted (born) | **self-contained** (static data from `src/content/releaseNotes.ts`) | 0 | — | Done (v2.944) |
 | — | Page shell (banner, header, tab bar, jump groups) | inline | — | parent | — | — | **Stays in parent permanently** |
 | — | Cross-tab modals (report view/edit, MyReports, mute) | extracted components, wiring inline | — | parent | — | — | Stays (opened from Dashboard tab, shared `loadMyReportsRef`) |
@@ -91,9 +90,8 @@ Nine runtime roles: `dev`, `master_technician`, `assistant`, `controller`, `esti
 | ↳ Prospects/estimate copy block (`SettingsCatalogsProspectsTab`) | ✓ | — | — | — | — | — | — |
 | Templates & testing | ✓ | — | — | — | — | — | — |
 | Advanced (claim-code) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| How it works | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-`controller` sees exactly: Recent push, Your account, Dashboard & alerts (with assistant-like inner sections), Advanced, How it works.
+`controller` sees exactly: Recent push, Your account, Dashboard & alerts (with assistant-like inner sections), Advanced.
 
 ---
 
@@ -192,9 +190,9 @@ Nine runtime roles: `dev`, `master_technician`, `assistant`, `controller`, `esti
 - **Render:** outside any SettingsGroup, always mounted, `active` prop; gate `!isSubcontractorLikeRole(myRole)`.
 - **Status: self-contained (v2.856).** [`SettingsAdvancedTab`](../src/components/settings/SettingsAdvancedTab.tsx): "Fix app" help + **claim-code form** (dev promotion) — owns section-open + code state and the `claim-dev` edge-fn call; success invokes the parent's `onRoleMaybeChanged` → full `loadData()` (role may have changed). Failed attempts surface on the Dashboard via `DashboardClaimDevAttemptsBanner`.
 
-### 10. How it works
+### 10. How it works — REMOVED (v2.1334)
 
-- **Render:** `<SettingsHowItWorksTab active={...} />` (~5129). All roles. **Done** — stateless static copy.
+- Deleted: the static orientation copy duplicated (and drifted from) the `how-the-app-works` help guide, which is now the single home (Settings → Guides / /help).
 
 ---
 

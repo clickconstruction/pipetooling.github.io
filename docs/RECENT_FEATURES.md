@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1333)
+last_updated: 2026-08-03 (v2.1334)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1334)
+
+### Settings "How it works" tab removed; the orientation guide is the single source (2026-08-03)
+The Settings → How it works tab (`SettingsHowItWorksTab.tsx`, deleted) was a stale duplicate of the `how-the-app-works` help guide — it still claimed three roles (there are nine), "adopt assistants in Settings" (office access is automatic), "private notes" (renamed Notes for Office), "assistants can't see financial totals" (they can — what they never see is wages, v2.660), and subs who "can only Start and Complete" (they also accept/decline work orders and see their own pay since the run-subs work). Rather than maintain two orientation texts that drift, the tab is gone (unknown deep-linked tab ids already self-heal to the first group) and the **guide** got the accuracy pass: nine-role intro with the whole-shop framing (Bids/Estimates → Projects/Jobs/Dispatch → billing/payroll/banking), Sharing corrected (Notes for Office; job/project money visible, wages never, controllers see payroll; master-shares are view-only), Subs updated (work orders + own-pay Dashboard view). "Subscribed Steps" survives — that Dashboard feature is real and the guide's wording matches the UI. `settings-basics` guide's tab reference now points at the guide; `docs/SETTINGS_TABS_ARCHITECTURE.md` rows removed. Client-only — no migration.
 
 ## Latest Updates (v2.1333)
 
 ### Edit Assembly modal: visual refresh to match the authoring family (2026-08-03)
 The Edit Assembly modal (Bids → Takeoffs, via a bundle line's breakdown or a By-Stage mapping) catches up visually to the v2.1325–v2.1327 modals — behavior unchanged, shell rebuilt in [`TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx). **Boxed sections with header-band hints**: an Items box (the search moves to the TOP — no more scrolling past a long assembly to add something; the Adding…/qty hint lives in the band) and a Bundle prices box. **The Type/Name/Qty table becomes chip rows** — the Add Assembly layout: blue P / violet A chips, ellipsized names, the same keyed inline qty inputs (blur/Enter commit), per-part Prices link, mouse-only × (`tabIndex={-1}`) replacing the red Remove buttons (the remove confirm stays — writes are immediate). **Bundle prices drop the Edit/Save/Cancel link choreography**: the price itself is the control — dashed-underline button ("Click a price to change it"), click → right-aligned input that commits on Enter/blur and cancels on Escape (no-op commit when unchanged/invalid); remove is a mouse-only ×; the v2.1327 searchable add-row keeps Enter-to-add. Editable-name header and single Close footer (everything saves as you go) unchanged. Verified live on a real bundle assembly (BP329 "NICK AND MOES T-1L"): chip rows, click-price→input→Escape-reverts, zero writes during verification. Client-only — no migration.
+
 
 ## Latest Updates (v2.1332)
 
