@@ -107,7 +107,7 @@ export default function SettingsRecentEmailsSent({ isDev }: Props) {
         <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{error}</p>
       ) : rows.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          No emails logged yet — use Refresh from Resend to pull the latest sends.
+          No emails logged yet — new sends appear here automatically; Refresh from Resend backfills older history.
         </p>
       ) : (
         <>
