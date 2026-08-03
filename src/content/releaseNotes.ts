@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1345',
+    date: '2026-08-03',
+    title: 'Clock buttons look right on phones',
+    kind: 'fix',
+    highlights: [
+      'When clocked in, the timer and Update Focus buttons now stack as two clean full-width rows on phones instead of a lopsided squeezed pair.',
+      'The blue button is now labeled "Update Focus" to match the window it opens.',
+      'Completed Due Today tasks in My Inbox now read cleanly on phones — full-width title with the completion time underneath, instead of a one-word-per-line squeeze.',
+    ],
+  },
+  {
     version: 'v2.1344',
     date: '2026-08-03',
     title: 'Dispatch Mode Schedule: edit a block right from the agenda',
