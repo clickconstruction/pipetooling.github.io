@@ -9,7 +9,7 @@ last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "157 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "158 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 2, 2026
+
+**`20260803100000_billed_report_email.sql`** _(apply via `supabase db push` after merge; pair with `supabase functions deploy billed-report-email` — order-safe: the table/RPC are dormant until the edge function and Share UI ship)_
+- **Purpose**: Share the Billed Awaiting Payment report by email (v2.1315). Adds `billed_report_email_requests` (one row per requested send: requested_by, recipient_user_id, send_at; sent_at/error/attempts stamped by the edge function — rows carry NO snapshot, the report is rebuilt at send time), service-role RPC `get_billed_report_email_payload()` (server-side rebuild of the billed board mirroring the client kernels — buildBilledStageRows row selection incl. merged single-invoice rows, printBilledRowReferenceDate billed_at-first dates, billedStageRowAgingBucket 30/90 chips, Collections excluded), and pg_cron `billed-report-email` (*/5, Vault PROJECT_URL + CRON_SECRET — the paid-job-email pattern).
+- **Security**: RLS — staff (dev/master via role check/`is_assistant()` covering controller) INSERT own rows; creator+dev SELECT; creator DELETE own unsent (cancel) or dev; no client UPDATE (service role stamps). Payload RPC EXECUTE revoked from anon/authenticated, granted to service_role only. Ends with both read-only (training mode) block applications per the CREATE TABLE rule.
+- **Category**: Feature schema
 
 **`20260803000000_payment_made_email.sql`** _(apply via `supabase db push` after merge; pair with `supabase functions deploy paid-job-email` — additive both ways: pre-migration edge reads no `kind`, post-migration rows default to paid_in_full for a pre-deploy edge)_
 - **Purpose**: Payment-made email stream (v2.1310). Adds `paid_job_email_queue.kind` ('paid_in_full' | 'payment', default paid_in_full, CHECK-constrained), trigger `enqueue_payment_made_email_ai` AFTER INSERT ON `jobs_ledger_payments` (positive amounts only) enqueuing kind='payment' — every payment writer (Mark Paid RPCs, Mercury AR allocations, Stripe webhook, manual Edit Job rows) flows through this one choke point, mirroring the v2.965 status trigger. Seeds `app_settings.payment_made_email_recipients_v1` ('[]'). Also payload v5 of `get_paid_job_email_payload`: + `invoices` — the Edit Job Invoices table mirrored (drafts first, per-invoice paid sums via LATERAL, sent date + created→sent day offset in Chicago, channel, memo/note detail, bill-to label, hazmat flag from `job_hazmat_incidents.invoice_id`).

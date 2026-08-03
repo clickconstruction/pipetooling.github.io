@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1314)
+last_updated: 2026-08-03 (v2.1315)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1315)
+
+### Billed-report email substrate: table + payload RPC + edge function (2026-08-03)
+Backend half of "Share the Billed Awaiting Payment report" (UI ships next as v2.1316). Migration `20260803100000_billed_report_email.sql`: **`billed_report_email_requests`** (one row per requested send — requested_by, recipient, `send_at`; NO snapshot stored) with staff-insert/creator-cancel RLS + read-only blocks; service-role RPC **`get_billed_report_email_payload()`** rebuilding the billed board server-side **at send time** with kernel fidelity (buildBilledStageRows row selection incl. the merged single-invoice rows, Collections excluded, printBilledRowReferenceDate billed_at-first dates, billedStageRowAgingBucket 30/90 chips — fidelity notes on the function); pg_cron `billed-report-email` */5 (Vault pattern). New edge function **`billed-report-email`** (preview / test_send / send_now / cron dispatch — the paid-job-email skeleton): renders the print report email-safe with **tel:/mailto: contacts**, **every job deep-linking to `?jobDetail=`**, aging chips, red 90+ day counts, subtotals + grand total, "Sent by {name}" footer. Senders = dev/master/assistant/controller; recipients restricted to office-capable roles (report carries AR dollars). Renderer validated via vite-node against the real template. Deploy: `supabase db push` + `supabase functions deploy billed-report-email` (order-safe — dormant until the Share UI ships). See `docs/MIGRATIONS.md` + `docs/EDGE_FUNCTIONS.md`.
 
 ## Latest Updates (v2.1314)
 

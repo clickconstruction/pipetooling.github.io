@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1315',
+    date: '2026-08-03',
+    title: 'Behind the scenes: groundwork for emailing the Billed report',
+    kind: 'infra',
+    highlights: [
+      'Database and email plumbing so the office can soon email the Billed Awaiting Payment report to a teammate \u2014 now or scheduled \u2014 with clickable contacts and jobs that open right in the app.',
+      'No visible changes yet; the Share button ships next.',
+    ],
+  },
+  {
     version: 'v2.1314',
     date: '2026-08-03',
     title: 'Projects: click anywhere on a row to open its workflow',
