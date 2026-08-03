@@ -51,7 +51,7 @@ export type DashboardInvoiceJoinRow = JobsLedgerInvoiceRow & {
 }
 
 export const DASHBOARD_INVOICES_JOBS_LEDGER_SELECT =
-  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, agreed_write_down_at, agreed_write_down_by, agreed_write_down_note, agreed_write_down_previous_amount, agreed_write_down_stripe_credit_note_id, bill_to_name, bill_to_email, bill_to_phone, bill_to_stripe_customer_id, jobs_ledger!inner(hcp_number, click_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email, customer_phone, last_work_date)'
+  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, stripe_mode, agreed_write_down_at, agreed_write_down_by, agreed_write_down_note, agreed_write_down_previous_amount, agreed_write_down_stripe_credit_note_id, bill_to_name, bill_to_email, bill_to_phone, bill_to_stripe_customer_id, jobs_ledger!inner(hcp_number, click_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email, customer_phone, last_work_date)'
 
 export function buildPaymentsByInvoiceIdMap(payments: JobsLedgerPaymentRow[]): Map<string, JobsLedgerPaymentRow[]> {
   const m = new Map<string, JobsLedgerPaymentRow[]>()
@@ -86,6 +86,7 @@ export function mapJoinedInvoiceToDashboard(
     stripe_invoice_memo: r.stripe_invoice_memo,
     stripe_invoice_footer: r.stripe_invoice_footer,
     stripe_invoice_status: r.stripe_invoice_status,
+    stripe_mode: r.stripe_mode,
     agreed_write_down_at: r.agreed_write_down_at,
     agreed_write_down_by: r.agreed_write_down_by,
     agreed_write_down_note: r.agreed_write_down_note,

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1341',
+    date: '2026-08-03',
+    title: 'Under the hood: database type definitions refreshed',
+    kind: 'fix',
+    highlights: [
+      'The app\'s internal database type definitions were re-synced with the live database — no visible changes, just a sturdier foundation for upcoming banking-attribution work.',
+    ],
+  },
+  {
     version: 'v2.1339',
     date: '2026-08-03',
     title: 'Dispatch Inbox: one tap to Gmail',
