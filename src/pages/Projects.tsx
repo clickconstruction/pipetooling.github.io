@@ -13,6 +13,7 @@ import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { isRowBackgroundClick } from '../lib/rowBackgroundClick'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildProjectAttention, type ProjectAttention } from '../lib/projects/projectAttention'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
@@ -756,6 +757,16 @@ export default function Projects() {
           {orderedProjects.map((p) => (
             <li
               key={p.id}
+              // Row background opens the workflow (v2.1314): the guard asks whether the
+              // click landed on anything interactive (links, pills, chips, pencil) and
+              // only navigates when it did not — so row controls keep working untouched
+              // and future buttons cannot regress this. Text-selection releases are
+              // ignored. Keyboard path is unchanged (the project-name link).
+              onClick={(e) => {
+                if (!isRowBackgroundClick(e.target)) return
+                navigate(`/workflows/${p.id}`)
+              }}
+              title="Open workflow"
               style={{
                 padding: '0.75rem 0',
                 borderBottom: '1px solid var(--border)',
@@ -764,7 +775,10 @@ export default function Projects() {
                 justifyContent: narrow ? 'flex-start' : 'space-between',
                 alignItems: 'flex-start',
                 gap: narrow ? '0.5rem' : 0,
+                cursor: 'pointer',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
               <div>
                 <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>

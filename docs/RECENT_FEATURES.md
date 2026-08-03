@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1313)
+last_updated: 2026-08-03 (v2.1314)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1314)
+
+### Projects: click anywhere on a row to open its workflow (2026-08-03)
+Project rows now navigate to `/workflows/:id` from a click on the row's empty space — not just the name link. Implemented as an inverse guard rather than per-control stopPropagation: new kernel [`lib/rowBackgroundClick.ts`](../src/lib/rowBackgroundClick.ts) (`isRowBackgroundClick`) asks whether the click landed on/inside anything interactive (`a, button, input, select, textarea, label, [role=button], [role=link], contenteditable`) and the row only navigates when it did not — so the pencil, plans/maps links, Jobs/Bids/Estimates pills, and superintendent chips all keep working untouched, and future row controls can't regress the behavior. Releasing a text selection (sweep-selecting a customer name/address) is deliberately ignored. Rows get `cursor: pointer`, an "Open workflow" hover title, and a subtle `--bg-subtle` hover tint for discoverability; the keyboard path is unchanged (the name link). +5 kernel tests (nested-SVG-in-button, role=button spans, selection guard). Live-verified: background click navigates, pencil-SVG click stays on Projects.
 
 ## Latest Updates (v2.1313)
 

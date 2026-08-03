@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1314',
+    date: '2026-08-03',
+    title: 'Projects: click anywhere on a row to open its workflow',
+    kind: 'feature',
+    highlights: [
+      'Clicking the empty space of any Projects row now opens that project\u2019s workflow \u2014 no more aiming for the name.',
+      'Everything on the row (edit pencil, job/bid/estimate pills, links, superintendent chips) still works exactly as before, and selecting text won\u2019t trigger it.',
+    ],
+  },
+  {
     version: 'v2.1313',
     date: '2026-08-03',
     title: 'Settings: "Unpaid time off" is now "Personal Time Off"',
