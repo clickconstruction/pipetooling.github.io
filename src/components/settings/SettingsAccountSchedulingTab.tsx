@@ -309,7 +309,7 @@ export default function SettingsAccountSchedulingTab({
               <span style={{ fontSize: '0.75rem' }} aria-hidden>
                 {timeOffSectionOpen ? '▼' : '▶'}
               </span>
-              Unpaid time off
+              Personal Time Off
             </button>
             {timeOffSectionOpen && (
               <div id="settings-time-off-panel" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
