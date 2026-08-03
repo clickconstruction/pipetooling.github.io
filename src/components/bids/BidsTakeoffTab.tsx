@@ -23,7 +23,7 @@ import { bidDisplayName, formatDateYYMMDD } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import {
   clampRoughQtyFromDraft,
-  roughQtyToDraftString,
+  resolveRoughQtyOnClose,
   normalizeMaterialsModel,
   takeoffFixtureCountLabel,
   mergePartLinesToTakeoffTemplateItems,
@@ -206,6 +206,9 @@ export function BidsTakeoffTab({
   const [roughQtyNumpadDraft, setRoughQtyNumpadDraft] = useState('')
   const roughQtyNumpadLineIdRef = useRef<string | null>(null)
   const roughQtyNumpadDraftRef = useRef('')
+  // Pre-focus quantity of the active Qty input (v2.1329): the draft starts
+  // blank on focus, so close paths restore this when nothing was entered.
+  const roughQtyNumpadOriginalRef = useRef<number | null>(null)
   const roughQtyBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [takeoffRemoveConfirm, setTakeoffRemoveConfirm] = useState<
     null | { kind: 'rough_line'; lineId: string } | { kind: 'exact_mapping'; mappingId: string }
@@ -843,11 +846,12 @@ export function BidsTakeoffTab({
     const closeOnScroll = () => {
       const id = roughQtyNumpadLineIdRef.current
       if (!id) return
-      const q = clampRoughQtyFromDraft(roughQtyNumpadDraftRef.current)
+      const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
       updateTakeoffRoughPartLine(id, { quantity: q })
       setRoughQtyNumpadLineId(null)
       setRoughQtyNumpadPos(null)
       setRoughQtyNumpadDraft('')
+      roughQtyNumpadOriginalRef.current = null
     }
     window.addEventListener('scroll', closeOnScroll, true)
     window.addEventListener('resize', closeOnScroll)
@@ -862,16 +866,19 @@ export function BidsTakeoffTab({
       clearTimeout(roughQtyBlurTimeoutRef.current)
       roughQtyBlurTimeoutRef.current = null
     }
-    setRoughQtyNumpadLineId((prev) => {
-      if (prev && prev !== lineId) {
-        const q = clampRoughQtyFromDraft(roughQtyNumpadDraftRef.current)
-        updateTakeoffRoughPartLine(prev, { quantity: q })
-      }
-      return lineId
-    })
+    // Commit the previously active line BEFORE overwriting the shared
+    // draft/original refs with this line's values.
+    const prev = roughQtyNumpadLineIdRef.current
+    if (prev && prev !== lineId) {
+      const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
+      updateTakeoffRoughPartLine(prev, { quantity: q })
+    }
+    setRoughQtyNumpadLineId(lineId)
     const lineRow = takeoffRoughPartLines.find((l) => l.id === lineId)
-    const nextDraft = lineRow ? roughQtyToDraftString(lineRow.quantity) : ''
-    setRoughQtyNumpadDraft(nextDraft)
+    // Clear-on-focus (v2.1329): start blank so the next digits type fresh; the
+    // original is kept so clicking away without entering anything restores it.
+    roughQtyNumpadOriginalRef.current = lineRow ? Number(lineRow.quantity) : null
+    setRoughQtyNumpadDraft('')
     const r = input.getBoundingClientRect()
     setRoughQtyNumpadPos({ top: r.bottom + 4, left: r.left })
   }
@@ -884,11 +891,12 @@ export function BidsTakeoffTab({
       const ae = document.activeElement
       if (pad && ae && pad.contains(ae)) return
       if (roughQtyNumpadLineIdRef.current !== lineId) return
-      const q = clampRoughQtyFromDraft(roughQtyNumpadDraftRef.current)
+      const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
       updateTakeoffRoughPartLine(lineId, { quantity: q })
       setRoughQtyNumpadLineId(null)
       setRoughQtyNumpadPos(null)
       setRoughQtyNumpadDraft('')
+      roughQtyNumpadOriginalRef.current = null
     }, 150)
   }
 
@@ -896,17 +904,21 @@ export function BidsTakeoffTab({
     if (roughQtyNumpadLineId === lineId) {
       setRoughQtyNumpadDraft(raw)
     }
+    // While the draft is empty (cleared-on-focus or fully deleted), don't stamp
+    // the 0.0001 floor over the line — the close paths restore the original.
+    if (raw.trim() === '') return
     updateTakeoffRoughPartLine(lineId, { quantity: clampRoughQtyFromDraft(raw) })
   }
 
   function onRoughQtyPadEscape() {
     const id = roughQtyNumpadLineIdRef.current
     if (!id) return
-    const q = clampRoughQtyFromDraft(roughQtyNumpadDraftRef.current)
+    const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
     updateTakeoffRoughPartLine(id, { quantity: q })
     setRoughQtyNumpadLineId(null)
     setRoughQtyNumpadPos(null)
     setRoughQtyNumpadDraft('')
+    roughQtyNumpadOriginalRef.current = null
   }
 
   function addTakeoffRoughPartLine(countRowId: string) {
@@ -2207,11 +2219,12 @@ export function BidsTakeoffTab({
                     onDragStart={() => {
                       const id = roughQtyNumpadLineIdRef.current
                       if (!id) return
-                      const q = clampRoughQtyFromDraft(roughQtyNumpadDraftRef.current)
+                      const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
                       updateTakeoffRoughPartLine(id, { quantity: q })
                       setRoughQtyNumpadLineId(null)
                       setRoughQtyNumpadPos(null)
                       setRoughQtyNumpadDraft('')
+                      roughQtyNumpadOriginalRef.current = null
                     }}
                     onDragEnd={(e) => {
                       void handleRoughPartLinesDragEnd(e)
@@ -2871,6 +2884,8 @@ export function BidsTakeoffTab({
                 value={roughQtyNumpadDraft}
                 onChange={(next) => {
                   setRoughQtyNumpadDraft(next)
+                  // Empty draft = nothing entered yet — close paths restore the original.
+                  if (next.trim() === '') return
                   updateTakeoffRoughPartLine(roughQtyNumpadLineId, { quantity: clampRoughQtyFromDraft(next) })
                 }}
               />

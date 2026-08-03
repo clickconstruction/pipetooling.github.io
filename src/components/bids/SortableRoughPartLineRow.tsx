@@ -549,6 +549,9 @@ export function SortableRoughPartLineRow({
           min={roughQtyPadActive ? undefined : 0.0001}
           step={roughQtyPadActive ? undefined : 'any'}
           value={roughQtyPadActive ? roughQtyNumpadDraft : line.quantity}
+          // Clear-on-focus (v2.1329): while the draft is blank the old quantity
+          // shows as placeholder; leaving without typing restores it.
+          placeholder={roughQtyPadActive ? String(line.quantity) : undefined}
           onFocus={(e) => onRoughQtyFocus(line.id, e.currentTarget)}
           onBlur={() => onRoughQtyBlur(line.id)}
           onKeyDown={(e) => {

@@ -22,6 +22,19 @@ export function roughQtyToDraftString(q: number): string {
   return String(q)
 }
 
+/**
+ * Close-commit for the rough Qty draft (v2.1329 clear-on-focus): the draft
+ * starts BLANK when the input is focused, so a still-empty draft at close
+ * means "nothing entered" — restore the pre-focus original instead of letting
+ * `clampRoughQtyFromDraft('')` stamp the 0.0001 floor over the old quantity.
+ */
+export function resolveRoughQtyOnClose(draft: string, originalQty: number | null): number {
+  if (draft.trim() === '' && originalQty != null && Number.isFinite(originalQty)) {
+    return Math.max(0.0001, originalQty)
+  }
+  return clampRoughQtyFromDraft(draft)
+}
+
 export function normalizeMaterialsModel(v: string | null | undefined): MaterialsModel {
   return v === 'rough' ? 'rough' : 'exact'
 }
