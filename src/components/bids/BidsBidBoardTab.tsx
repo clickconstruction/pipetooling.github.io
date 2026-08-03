@@ -304,8 +304,8 @@ export function BidsBidBoardTab({
     return (
       <thead style={{ background: 'var(--bg-subtle)' }}>
         <tr>
-          <th style={{ ...th, whiteSpace: 'nowrap' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">Bid #</th>
-          <th style={th} title="GC or builder and project name" aria-label="GC or builder and project name">GC/Builder<br />Project Name</th>
+          <th style={{ ...th, whiteSpace: 'nowrap', textAlign: 'right', paddingRight: '0.4rem' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">Bid #</th>
+          <th style={{ ...th, textAlign: 'left', paddingLeft: '0.4rem' }} title="GC or builder and project name" aria-label="GC or builder and project name">GC/Builder<br />Project Name</th>
           {!hideBidColumn ? <th style={th}>Bid</th> : null}
           <th style={th}>Due<br />Date</th>
           <th style={th}>Last<br />Contact</th>
@@ -375,18 +375,6 @@ export function BidsBidBoardTab({
     }
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', whiteSpace: 'nowrap' }}>
-        <button
-          type="button"
-          onClick={() => onOpenCounts(bid)}
-          title="Open in Counts"
-          aria-label="Open in Counts"
-          style={actionStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
-          <BidBoardIcon d={BID_BOARD_ICON_PATHS.counts} />
-        </button>
-        {numberNode}
         {badgeText != null ? (
           <span
             title={`${notesUnreadRaw} unread note${notesUnreadRaw === 1 ? '' : 's'}`}
@@ -405,11 +393,24 @@ export function BidsBidBoardTab({
               alignItems: 'center',
               justifyContent: 'center',
               boxSizing: 'content-box',
+              marginRight: '0.1rem',
             }}
           >
             {badgeText}
           </span>
         ) : null}
+        <button
+          type="button"
+          onClick={() => onOpenCounts(bid)}
+          title="Open in Counts"
+          aria-label="Open in Counts"
+          style={actionStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          <BidBoardIcon d={BID_BOARD_ICON_PATHS.counts} />
+        </button>
+        {numberNode}
         <button
           type="button"
           onClick={() => onEditBid(bid)}
@@ -576,6 +577,14 @@ export function BidsBidBoardTab({
           }}
         >
           <div>
+            <span style={labelStyle}>GC/Builder</span>
+            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+          <div>
+            <span style={labelStyle}>Project</span>
+            {bid.project_name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+          <div>
             <span style={labelStyle}>Address</span>
             {bid.address ? (
               <a
@@ -653,34 +662,53 @@ export function BidsBidBoardTab({
               : {}),
           }}
         >
-          <td style={{ padding: '0.0625rem 0.15rem', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+          <td style={{ padding: '0.0625rem 0.4rem 0.0625rem 0.15rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
             {renderBidBoardBidNumberCluster(bid)}
           </td>
           <td
             style={{
-              padding: '0.0625rem',
-              maxWidth: 220,
-              whiteSpace: 'normal',
-              wordBreak: 'break-word',
-              textAlign: 'center',
+              padding: '0.0625rem 0.0625rem 0.0625rem 0.4rem',
+              maxWidth: 200,
+              textAlign: 'left',
               fontSize: '0.75rem',
               lineHeight: 1.35,
               verticalAlign: 'middle',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+            {/* One line each, ellipsized — the row dropdown carries the full text.
+                maxWidth sits on this div, not the td: auto table layout ignores td max-width. */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', maxWidth: 200, minWidth: 0 }}>
               {(bid.customers || bid.bids_gc_builders) ? (
                 <button
                   type="button"
                   onClick={() => onOpenGcBuilderOrCustomer(bid)}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'none', font: 'inherit' }}
+                  title={bid.customers?.name ?? bid.bids_gc_builders?.name ?? undefined}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-blue-500)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'none',
+                    font: 'inherit',
+                    maxWidth: '100%',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'left',
+                  }}
                 >
                   {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
                 </button>
               ) : (
                 '-'
               )}
-              <span>{bid.project_name ?? '-'}</span>
+              <span
+                title={bid.project_name ?? undefined}
+                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              >
+                {bid.project_name ?? '-'}
+              </span>
             </div>
           </td>
           {!hideBidColumn ? (
