@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1328',
+    date: '2026-08-03',
+    title: 'Add Part pickers: click and just type',
+    kind: 'feature',
+    highlights: [
+      'In the Add Part form, clicking Part Type or a supply house turns the box itself into the search — no separate search field, just click and type.',
+    ],
+  },
+  {
     version: 'v2.1327',
     date: '2026-08-03',
     title: 'Edit Assembly and Add Parts catch up to the new search',

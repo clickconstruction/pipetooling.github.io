@@ -335,6 +335,7 @@ export function PartFormModal({
                 listAriaLabel="Part types"
                 portalZIndex={DROPDOWN_Z_INDEX}
                 triggerMinHeightPx={0}
+                searchReplacesTrigger
               />
               {partTypes.length === 0 && (
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: 0 }}>
@@ -419,6 +420,7 @@ export function PartFormModal({
                             listAriaLabel="Supply houses"
                             portalZIndex={DROPDOWN_Z_INDEX}
                             triggerMinHeightPx={0}
+                            searchReplacesTrigger
                           />
                         </div>
                       )}
@@ -432,6 +434,7 @@ export function PartFormModal({
                             listAriaLabel="Supply houses"
                             portalZIndex={DROPDOWN_Z_INDEX}
                             triggerMinHeightPx={0}
+                            searchReplacesTrigger
                           />
                         )}
                         <input

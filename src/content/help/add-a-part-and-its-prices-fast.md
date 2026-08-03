@@ -10,7 +10,7 @@ The **Add Part** form is the same everywhere it appears — Bids → Takeoffs (f
 ## The fast flow
 
 1. The **Name** field is focused as soon as the form opens — just start typing.
-2. **Tab** to Manufacturer, then **Part Type** — the picker is searchable: press {{chip:gray|Enter}} or {{chip:gray|↓}} to open it, type a few letters to filter, and Enter to pick.
+2. **Tab** to Manufacturer, then **Part Type** — click it (or press {{chip:gray|Enter}} / {{chip:gray|↓}}) and the box itself becomes a search field: type a few letters to filter, then Enter to pick.
 3. Keep tabbing into **Prices**. Each price is one line: supply house, price, effective date. The supply house picker searches the same way as Part Type.
 4. **A blank price row is always waiting at the bottom.** The moment you fill anything in the last row, a fresh one appears below it — just keep tabbing and typing. Empty rows are ignored on save.
 5. Press **Enter** anywhere (or click {{button:blue|Save}}) to save.

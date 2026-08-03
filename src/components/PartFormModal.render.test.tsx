@@ -62,6 +62,15 @@ describe('PartFormModal (add mode)', () => {
     expect(screen.queryByRole('option', { name: 'PVC fittings' })).toBeNull()
   })
 
+  it('the search takes over the box on open (in-place input, no second search field)', () => {
+    renderWithProviders(<PartFormModal {...makeProps()} />)
+    const [partTypeTrigger] = screen.getAllByRole('combobox')
+    fireEvent.click(partTypeTrigger!)
+    // searchReplacesTrigger: exactly one search input, rendered in the trigger's slot
+    expect(screen.getAllByPlaceholderText('Search…')).toHaveLength(1)
+    expect(screen.queryByText('No part type')).toBeTruthy()
+  })
+
   it('appends a blank price row as soon as the last row gets content', () => {
     renderWithProviders(<PartFormModal {...makeProps()} />)
     const price = screen.getByLabelText('Price')
