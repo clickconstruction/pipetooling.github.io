@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1337',
+    date: '2026-08-03',
+    title: 'Quickfill: clearer section name, tidier phone header',
+    kind: 'fix',
+    highlights: [
+      'The "Pipeline: customer link & customer pictures" section is now "Missing job info" — it also catches missing billing emails, so the old name undersold it.',
+      'On phones, Quickfill now lives in the left hamburger menu for everyone instead of taking up a header icon.',
+    ],
+  },
+  {
     version: 'v2.1336',
     date: '2026-08-03',
     title: 'Count Tool gets a crosshair icon',

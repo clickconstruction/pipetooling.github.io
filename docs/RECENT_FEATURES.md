@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1336)
+last_updated: 2026-08-03 (v2.1337)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1337)
+
+### Quickfill: "Missing job info" rename + phone nav moves behind the hamburger (2026-08-03)
+Two small Quickfill UX cleanups. **(1) Section rename**: the `no-customer-stages` section label in `SECTIONS` ([`Quickfill.tsx`](../src/pages/Quickfill.tsx), plus its mark-history modal label) changes from *Pipeline: customer link & customer pictures* to **Missing job info** — the section checks THREE things (no linked customer, no customer-pictures link, no billing email on Ready to Bill jobs), and the help guide (`quickfill.md`) already introduced it as "Missing job info", so UI and guide now agree. `section_id` is unchanged — mark history and hidden-section settings carry over. Living docs updated (`PROJECT_DOCUMENTATION.md`, `GLOSSARY.md`, `ACCESS_CONTROL.md`). **(2) Mobile nav**: on phones the Quickfill link moves behind the left hamburger menu for **all** eligible roles. Previously dev + assistant-like saw a heart icon in the mobile header strip ([`Layout.tsx`](../src/components/Layout.tsx) `renderMobileHeaderLinks`) while master_technician alone had a hamburger row; the strip icon is removed and the hamburger "Quickfill" row's gate widens to dev / master_technician / assistant-like (matching the desktop nav gate). Desktop nav unchanged. Client-only — no migration.
 
 ## Latest Updates (v2.1336)
 

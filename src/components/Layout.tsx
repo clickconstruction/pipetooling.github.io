@@ -494,11 +494,6 @@ export default function Layout() {
             {dashboardIcon}
           </NavLink>
         ) : null}
-        {(role === 'dev' || isAssistantLike(role)) && (
-          <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
-            {quickfillIcon}
-          </NavLink>
-        )}
         {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="strip" isMobile={isMobile} />}
         {role === 'dev' && !isMobile && (
           <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
@@ -735,7 +730,7 @@ export default function Layout() {
                     zIndex: 50,
                   }}
                 >
-                  {role === 'master_technician' && (
+                  {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
                     <NavLink
                       to="/quickfill"
                       onClick={() => setMenuOpen(false)}
