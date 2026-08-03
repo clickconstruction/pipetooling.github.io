@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   clampRoughQtyFromDraft,
+  resolveRoughQtyOnClose,
   roughQtyToDraftString,
   normalizeMaterialsModel,
   takeoffFixtureCountLabel,
@@ -150,5 +151,31 @@ describe('mergePartLinesToTakeoffTemplateItems', () => {
     expect(
       mergePartLinesToTakeoffTemplateItems([{ partId: 'p1', quantity: 0 }])
     ).toEqual([{ item_type: 'part', part_id: 'p1', nested_template_id: null, quantity: 0.0001 }])
+  })
+})
+
+describe('resolveRoughQtyOnClose', () => {
+  it('restores the original when the draft was left empty', () => {
+    expect(resolveRoughQtyOnClose('', 12)).toBe(12)
+    expect(resolveRoughQtyOnClose('   ', 3.5)).toBe(3.5)
+  })
+
+  it('clamps a non-positive original to the floor', () => {
+    expect(resolveRoughQtyOnClose('', 0)).toBe(0.0001)
+  })
+
+  it('uses the typed draft when present', () => {
+    expect(resolveRoughQtyOnClose('7', 12)).toBe(7)
+    expect(resolveRoughQtyOnClose('0.5', 12)).toBe(0.5)
+  })
+
+  it('falls back to clamping when no original is known', () => {
+    expect(resolveRoughQtyOnClose('', null)).toBe(0.0001)
+    expect(resolveRoughQtyOnClose('', Number.NaN)).toBe(0.0001)
+  })
+
+  it('clamps garbage drafts like the plain clamp does', () => {
+    expect(resolveRoughQtyOnClose('abc', 12)).toBe(0.0001)
+    expect(resolveRoughQtyOnClose('-4', 12)).toBe(0.0001)
   })
 })

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1329',
+    date: '2026-08-03',
+    title: 'Takeoff quantities: click and type fresh',
+    kind: 'feature',
+    highlights: [
+      'Clicking a Qty box on the Takeoffs sheet clears it so the number pad types a fresh number — no more backspacing the old value first.',
+      'Click away without typing and the old quantity stays exactly as it was.',
+    ],
+  },
+  {
     version: 'v2.1328',
     date: '2026-08-03',
     title: 'Add Part pickers: click and just type',
