@@ -19,7 +19,7 @@ The time is optional; most bids only need the date.
 
 ## Where the time shows up
 
-- **Bid Board** — the due-date column shows the time under the date.
+- **Bid Board** — the due-date chip shows the date with a signed day count ((+4) = four days past due); the due **time** shows in the row's click-to-expand details. See [read the bid board](?g=read-the-bid-board).
 - **Submission & Followup** — the bid date column includes the time.
 - On a day with several bids due, the Bid Board orders them by time, earliest first; bids with no time sort after timed ones that day.
 

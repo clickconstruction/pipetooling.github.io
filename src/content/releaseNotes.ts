@@ -11,12 +11,44 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1349',
+    date: '2026-08-03',
+    title: 'Dashboard cards: matching collapse arrows',
+    kind: 'fix',
+    highlights: [
+      'Recent Reports and Assigned Jobs now share the same header style — same small gray collapse arrow, same spacing — instead of two different looks side by side.',
+    ],
+  },
+  {
     version: 'v2.1348',
     date: '2026-08-03',
     title: 'Bid Board: compact Archived button',
     kind: 'fix',
     highlights: [
       'The Archived button on the Bid Board is now an archive-box icon with the count — same button, less space. Hover shows "Archived bids".',
+    ],
+  },
+  {
+    version: 'v2.1347',
+    date: '2026-08-03',
+    title: 'Bid Board rows: click for details, built for phones',
+    kind: 'feature',
+    highlights: [
+      'Click anywhere on a bid row to expand it — GC and project in full, address (opens Google Maps), due date + time, bid value, team, and the notes panel, all in one place.',
+      'Due Date and Last Contact now show the weekday + date with a day count: (+4) means 4 days past, (-2) means 2 days away.',
+      'The four link columns became one Links cluster showing only what exists; the unread-notes badge, Counts, and Edit now flank the bid number.',
+      'On phones, rows become cards — no more sideways scrolling to read a bid.',
+    ],
+  },
+  {
+    version: 'v2.1346',
+    date: '2026-08-03',
+    title: 'Bid Board: jump straight to any section',
+    kind: 'feature',
+    highlights: [
+      'A sticky pill row at the top of the Bid Board — Unsent, Pending, Won, Started, Lost, and Health, each with its live count — takes you straight to that section (and opens it if collapsed).',
+      'Estimating Health is finally one tap away instead of a very long scroll.',
+      'The two ~100-bid sections (Not yet won or lost, Lost) now show their first 25 rows with a "Show all" button — the page loads and scrolls far lighter. Search and sorting are unchanged.',
     ],
   },
   {
