@@ -1,5 +1,6 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -2785,7 +2786,7 @@ export function ScheduleDispatchHub({
   const [mobileMoreMenuOpen, setMobileMoreMenuOpen] = useState(false)
   const [mobileQuickAssignOpen, setMobileQuickAssignOpen] = useState(false)
   /** Day tab's visible-hours control, reported by QuickfillScheduleSection (v2.1243). */
-  const [daySettingsApi, setDaySettingsApi] = useState<{ open: () => void; windowLabel: string | null } | null>(null)
+  const [daySettingsApi, setDaySettingsApi] = useState<{ open: () => void; windowLabel: string | null; dispatchHref: string } | null>(null)
   const newModeHeaderActive = mobileNewMode && showHubViewTabs
   const mobileTabButton = (tab: 'day' | 'people' | 'jobs', label: string) => (
     <button
@@ -2903,6 +2904,16 @@ export function ScheduleDispatchHub({
                     </span>
                   ) : null}
                 </button>
+              ) : null}
+              {daySettingsApi ? (
+                <Link
+                  to={daySettingsApi.dispatchHref}
+                  role="menuitem"
+                  onClick={() => setMobileMoreMenuOpen(false)}
+                  style={{ ...mobileMenuItemStyle, textDecoration: 'none', display: 'block' }}
+                >
+                  Open in Dispatch week…
+                </Link>
               ) : null}
               {canEdit ? (
                 <button
