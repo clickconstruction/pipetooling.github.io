@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1324',
+    date: '2026-08-03',
+    title: 'Bid margin breakdown now shows per-unit prices',
+    kind: 'feature',
+    highlights: [
+      'The "how this margin was computed" popup on Bids → Pricing now shows every line — sale price, materials, tax, labor, cost, and profit — both per unit and extended across the full count.',
+      'The margin now stands out in a colored band matching the grid’s green/yellow/red thresholds.',
+    ],
+  },
+  {
     version: 'v2.1323',
     date: '2026-08-03',
     title: 'Weekly billed-report emails, and a truthful email-schedule week',

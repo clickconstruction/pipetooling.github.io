@@ -1940,20 +1940,44 @@ export function BidsPricingTab({
           const profit = b.revenue - b.cost
           const marginPct = b.revenue > 0 ? (profit / b.revenue) * 100 : null
           const uncosted = b.materialsFromTakeoff == null || b.materialsFromTakeoff === 0
+          const flag = marginFlag(marginPct)
+          // Per-unit column only earns its space when the count actually multiplies something.
+          const showPerUnit = b.count > 1
+          const perUnit = (total: number) => (b.count > 0 ? total / b.count : total)
+          const columnCount = showPerUnit ? 3 : 2
+          const profitColor = profit < 0 ? 'var(--text-red-600)' : 'var(--text-green-600)'
+          const band =
+            flag === 'red' ?
+              { bg: 'var(--bg-red-tint)', border: 'var(--border-red)', text: 'var(--text-red-800)' }
+            : flag === 'yellow' ?
+              { bg: 'var(--bg-amber-tint)', border: 'var(--border-amber-soft)', text: 'var(--text-amber-800)' }
+            : flag === 'green' ?
+              { bg: 'var(--bg-green-tint)', border: 'var(--border-green)', text: 'var(--text-green-800)' }
+            : { bg: 'var(--bg-subtle)', border: 'var(--border)', text: undefined }
           const sectionLabelStyle: CSSProperties = {
+            padding: '0.8rem 0 0.3rem',
             fontSize: '0.6875rem',
             fontWeight: 700,
             letterSpacing: '0.05em',
             textTransform: 'uppercase',
             color: 'var(--text-faint)',
-            margin: '0.75rem 0 0.25rem',
-            textAlign: 'center',
+            textAlign: 'left',
           }
-          const lineStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '1rem' }
-          const subtotalStyle: CSSProperties = {
-            ...lineStyle,
+          const labelStyle: CSSProperties = { padding: '0.2rem 0', color: 'var(--text-muted)', textAlign: 'left' }
+          const moneyStyle: CSSProperties = {
+            padding: '0.2rem 0 0.2rem 1rem',
+            textAlign: 'right',
+            whiteSpace: 'nowrap',
+          }
+          const subtotalLabelStyle: CSSProperties = {
+            padding: '0.35rem 0',
             fontWeight: 600,
-            paddingTop: '0.4rem',
+            textAlign: 'left',
+            borderTop: '1px solid var(--border)',
+          }
+          const subtotalMoneyStyle: CSSProperties = {
+            ...moneyStyle,
+            padding: '0.35rem 0 0.35rem 1rem',
             borderTop: '1px solid var(--border)',
           }
           return (
@@ -1978,72 +2002,122 @@ export function BidsPricingTab({
                   borderRadius: 8,
                   padding: '1.5rem 2rem',
                   minWidth: 360,
-                  maxWidth: 440,
+                  maxWidth: 460,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h2 id="pricing-breakdown-title" style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>
-                  Margin breakdown: {b.fixture}
-                </h2>
-
-                <p style={sectionLabelStyle}>Revenue</p>
-                <div style={{ display: 'grid', gap: '0.35rem' }}>
-                  <div style={lineStyle}>
-                    <span style={{ color: 'var(--text-muted)' }}>Sale Price {b.isFixedPrice ? '(fixed)' : '(per unit)'}</span>
-                    <span>${formatCurrency(b.unitPrice)}</span>
-                  </div>
-                  {b.isFixedPrice ? (
-                    <div style={lineStyle}>
-                      <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>Fixed price — not multiplied by count</span>
-                      <span />
-                    </div>
-                  ) : (
-                    <div style={lineStyle}>
-                      <span style={{ color: 'var(--text-muted)' }}>× Count</span>
-                      <span>{b.count}</span>
-                    </div>
-                  )}
-                  <div style={subtotalStyle}>
-                    <span>Revenue</span>
-                    <span>${formatCurrency(b.revenue)}</span>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.75rem' }}>
+                  <h2 id="pricing-breakdown-title" style={{ margin: 0, fontSize: '1.125rem' }}>
+                    Margin breakdown: {b.fixture}
+                  </h2>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      background: 'var(--bg-subtle)',
+                      borderRadius: 999,
+                      padding: '0.15rem 0.6rem',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {b.count} unit{b.count === 1 ? '' : 's'}
+                  </span>
                 </div>
 
-                <p style={sectionLabelStyle}>Our cost</p>
-                <div style={{ display: 'grid', gap: '0.35rem' }}>
-                  <div style={lineStyle}>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      Materials {b.materialsFromTakeoff != null ? '(from Takeoffs)' : '(proportional)'}
-                    </span>
-                    <span>${formatCurrency(b.materialsBeforeTax)}</span>
-                  </div>
-                  {b.taxAmount > 0 && (
-                    <div style={lineStyle}>
-                      <span style={{ color: 'var(--text-muted)' }}>Tax ({b.taxPercent}%)</span>
-                      <span>${formatCurrency(b.taxAmount)}</span>
-                    </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  {showPerUnit && (
+                    <thead>
+                      <tr>
+                        <th />
+                        <th style={{ ...moneyStyle, fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-faint)', paddingTop: '0.5rem' }}>
+                          Per unit
+                        </th>
+                        <th style={{ ...moneyStyle, fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-faint)', paddingTop: '0.5rem' }}>
+                          {b.isFixedPrice ? 'Total' : `Total (× ${b.count})`}
+                        </th>
+                      </tr>
+                    </thead>
                   )}
-                  <div style={lineStyle}>
-                    <span style={{ color: 'var(--text-muted)' }}>Labor</span>
-                    <span>${formatCurrency(b.laborCost)}</span>
-                  </div>
-                  <div style={subtotalStyle}>
-                    <span>Our cost</span>
-                    <span>${formatCurrency(b.cost)}</span>
-                  </div>
-                </div>
+                  <tbody>
+                    <tr>
+                      <td colSpan={columnCount} style={sectionLabelStyle}>Revenue</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Sale Price{b.isFixedPrice ? ' (fixed)' : ''}</td>
+                      {showPerUnit && (
+                        <td style={moneyStyle}>{b.isFixedPrice ? '—' : `$${formatCurrency(b.unitPrice)}`}</td>
+                      )}
+                      <td style={{ ...moneyStyle, fontWeight: 600 }}>${formatCurrency(b.revenue)}</td>
+                    </tr>
+                    {b.isFixedPrice && (
+                      <tr>
+                        <td colSpan={columnCount} style={{ padding: '0.1rem 0', color: 'var(--text-faint)', fontSize: '0.8125rem' }}>
+                          Fixed price — not multiplied by count
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td colSpan={columnCount} style={sectionLabelStyle}>Our cost</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>
+                        Materials {b.materialsFromTakeoff != null ? '(from Takeoffs)' : '(proportional)'}
+                      </td>
+                      {showPerUnit && <td style={moneyStyle}>${formatCurrency(perUnit(b.materialsBeforeTax))}</td>}
+                      <td style={moneyStyle}>${formatCurrency(b.materialsBeforeTax)}</td>
+                    </tr>
+                    {b.taxAmount > 0 && (
+                      <tr>
+                        <td style={labelStyle}>Tax ({b.taxPercent}%)</td>
+                        {showPerUnit && <td style={moneyStyle}>${formatCurrency(perUnit(b.taxAmount))}</td>}
+                        <td style={moneyStyle}>${formatCurrency(b.taxAmount)}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td style={{ ...labelStyle, paddingBottom: '0.45rem' }}>Labor</td>
+                      {showPerUnit && (
+                        <td style={{ ...moneyStyle, paddingBottom: '0.45rem' }}>${formatCurrency(perUnit(b.laborCost))}</td>
+                      )}
+                      <td style={{ ...moneyStyle, paddingBottom: '0.45rem' }}>${formatCurrency(b.laborCost)}</td>
+                    </tr>
+                    <tr>
+                      <td style={subtotalLabelStyle}>Our cost</td>
+                      {showPerUnit && <td style={subtotalMoneyStyle}>${formatCurrency(perUnit(b.cost))}</td>}
+                      <td style={{ ...subtotalMoneyStyle, fontWeight: 600 }}>${formatCurrency(b.cost)}</td>
+                    </tr>
+                    <tr>
+                      <td style={subtotalLabelStyle}>Profit</td>
+                      {showPerUnit && (
+                        <td style={{ ...subtotalMoneyStyle, color: profitColor }}>${formatCurrency(perUnit(profit))}</td>
+                      )}
+                      <td style={{ ...subtotalMoneyStyle, fontWeight: 600, color: profitColor }}>
+                        ${formatCurrency(profit)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
 
-                <p style={sectionLabelStyle}>Margin</p>
-                <div style={{ display: 'grid', gap: '0.35rem' }}>
-                  <div style={lineStyle}>
-                    <span style={{ color: 'var(--text-muted)' }}>Profit (Revenue − Our cost)</span>
-                    <span style={{ color: profit < 0 ? '#dc2626' : undefined }}>${formatCurrency(profit)}</span>
-                  </div>
-                  <div style={{ ...subtotalStyle, fontSize: '1.0625rem' }}>
-                    <span>Margin (Profit ÷ Revenue)</span>
-                    <span>{marginPct != null ? `${marginPct.toFixed(1)}%` : '—'}</span>
-                  </div>
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.6rem 0.9rem',
+                    background: band.bg,
+                    border: `1px solid ${band.border}`,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    color: band.text,
+                  }}
+                >
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                    Margin <span style={{ fontWeight: 400, fontSize: '0.8125rem' }}>(Profit ÷ Revenue)</span>
+                  </span>
+                  <span style={{ fontSize: '1.375rem', fontWeight: 700 }}>
+                    {marginPct != null ? `${marginPct.toFixed(1)}%` : '—'}
+                  </span>
                 </div>
 
                 {uncosted && (
