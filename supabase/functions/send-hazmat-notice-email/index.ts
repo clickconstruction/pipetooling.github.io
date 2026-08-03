@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Companion email for the Biohazard Remediation Fee Notice: Stripe invoices
@@ -172,6 +173,13 @@ serve(async (req) => {
       const errorData = await resendResponse.json().catch(() => ({} as { message?: string }))
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
+    const resendSent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
+    await logEmailSendBestEffort({
+      resendEmailId: resendSent.id ?? null,
+      to: [customerEmailIn],
+      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      subject,
+    })
 
     // Stamp the send on the incident + audit trail (v2.1039). Service role:
     // job_hazmat_incidents and job_activity_events have no client write

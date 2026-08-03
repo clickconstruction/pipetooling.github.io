@@ -105,6 +105,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 3, 2026
 
+**`20260803200236_email_send_log_app_source.sql`** _(apply via `supabase db push` after merge, BEFORE deploying the v2.1341 sender functions — an 'app' row insert violates the old CHECK)_
+- **Purpose**: App-side email logging (v2.1341) — widen `email_send_log.source` CHECK to `('sync','webhook','app')` so the 13 sender edge functions can write their own rows at send time via `_shared/logEmailSend.ts`.
+- **Security**: No grant/policy changes.
+- **Category**: Feature schema
+
 **`20260803193428_resend_email_send_log.sql`** _(apply via `supabase db push` after merge; client-first order is safe — the Settings section shows an error state until the table exists)_
 - **Purpose**: `email_send_log` (v2.1338) — org-wide outbound email log behind Settings → Notifications → "Most recent emails sent". One row per Resend email (`resend_email_id` UNIQUE): recipients, subject, `last_event` (delivered/bounced/…), `source` `'sync' | 'webhook'`. Written only by service-role edge functions (`resend-webhook` keeps it fresh; dev-triggered `sync-resend-emails` backfills from Resend's list API).
 - **Security**: RLS enabled; SELECT `is_dev()` only; **no client write policies** (service role bypasses RLS). Ends with both read-only training-mode helpers.

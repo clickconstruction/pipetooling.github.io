@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1340)
+last_updated: 2026-08-03 (v2.1341)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1341)
+
+### Email log: the app now records its own sends (2026-08-03)
+Owner ask on the v2.1338 email log: "instead of querying Resend, use what we know the app sends." New shared [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts): a best-effort, never-throws service-role insert into `email_send_log` with `source: 'app'` and `last_event: 'sent'` (PostgREST `on_conflict=resend_email_id` + ignore-duplicates, so a webhook row that raced first — possibly already `delivered` — wins). Wired into **all 13 senders**: the shared [`resendSendEmail.ts`](../supabase/functions/_shared/resendSendEmail.ts) helper (covers its 7 callers with zero caller changes, now also captures the Resend response id) and inline calls in the 6 direct-Resend functions (`send-workflow-notification`, `send-estimate-to-customer`, `send-contract-for-signature`, `send-physical-invoice-email`, `send-hazmat-notice-email`, `test-email`). Migration `20260803200236` widens the `source` CHECK to include `'app'` — **push it before deploying the functions**. The Settings section needs no code change (it reads the table); its empty-state copy now says sends appear automatically. The Resend pull + webhook stay as enrichment (delivery status, backfill). **Ops after merge**: `supabase db push`, then redeploy all 13 sender functions (`--no-verify-jwt`). See `docs/MIGRATIONS.md`, `docs/EDGE_FUNCTIONS.md`.
 
 ## Latest Updates (v2.1340)
 

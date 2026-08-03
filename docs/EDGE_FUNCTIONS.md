@@ -2597,6 +2597,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### sync-resend-emails
 
+> **App-side logging (v2.1341)**: every sender function now writes its own `email_send_log` row at send time (source `'app'`) via [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts) — best-effort, service-role PostgREST insert with `on_conflict=resend_email_id` ignore-duplicates so a faster webhook row wins. The shared [`resendSendEmail.ts`](../supabase/functions/_shared/resendSendEmail.ts) helper covers its 7 callers; the 6 direct-Resend functions (`send-workflow-notification`, `send-estimate-to-customer`, `send-contract-for-signature`, `send-physical-invoice-email`, `send-hazmat-notice-email`, `test-email`) call the logger inline. This sync (and the webhook) remain enrichment: delivery-status updates and history backfill.
+
 **Purpose**: Pull Resend's recent-emails list (`GET https://api.resend.com/emails`) and upsert rows into **`email_send_log`** (keyed on `resend_email_id`). Powers the **Refresh from Resend** button on Settings → Notifications → "Most recent emails sent" — backfill and gap repair; `resend-webhook` keeps the table fresh between refreshes. A sync never downgrades a row's `last_event` to null.
 
 **Endpoint**: `POST /functions/v1/sync-resend-emails` (empty JSON body)
