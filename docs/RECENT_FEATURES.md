@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1343)
+last_updated: 2026-08-03 (v2.1344)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1344)
+
+### Dispatch Mode Schedule: tap the time to edit the block, tap the job to open it (2026-08-03)
+Dispatcher ask: fix a visit's time right from the phone agenda. Each agenda row on Dispatch Mode → Schedule ([`DispatchModeSchedule.tsx`](../src/components/dispatchMode/DispatchModeSchedule.tsx)) is now **two tap targets** for scheduling roles (`CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`, the Quick Assign gate): the **time column opens the Edit schedule block modal** (the same `ScheduleDispatchAddBlockModal` used by Schedule Dispatch — slider + start/end inputs + note), while the rest of the row keeps opening Job Detail unchanged. Linked-crew blocks move every leg together, Schedule-Dispatch parity. The save path is a new shared kernel [`saveEditedScheduleBlockTimes`](../src/lib/scheduleDispatchAddBlockSave.ts) (+8 tests): validates the range, fresh-fetches the linked legs ([`fetchJobScheduleBlockGroupLegs`](../src/lib/jobScheduleBlocks.ts)), overlap-checks every leg's assignee day, then `updateJobScheduleBlockGroup`/`updateJobScheduleBlock` — and `ScheduleDispatchHubPage` + `ScheduleDispatchJobWeek` now call the same kernel instead of carrying verbatim copies of that logic (~120 duplicated lines removed). `fetchDispatchModeDayBlocks` gains `note` + `shared_block_group_id` for the modal prefill. Job Mode → Schedule (self view) and non-scheduling roles keep the full-width job-detail row. Help guide `dispatch-mode` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1343)
 

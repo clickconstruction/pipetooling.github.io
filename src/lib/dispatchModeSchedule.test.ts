@@ -61,6 +61,8 @@ describe('sortDispatchModeAgendaBlocks', () => {
     assigneeName,
     timeStart,
     timeEnd: '17:00',
+    note: null,
+    sharedBlockGroupId: null,
     jobId: 'j',
     hcpNumber: null,
     clickNumber: null,
