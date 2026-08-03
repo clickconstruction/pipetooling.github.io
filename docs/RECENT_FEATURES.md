@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1318)
+last_updated: 2026-08-03 (v2.1319)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1319)
+
+### Overhead revenue correctness: test-mode filter, shared bucketing, Chicago anchor (2026-08-03)
+Three tightly-coupled accuracy fixes in the two 90-day overhead effects (Overhead tab KPI/three-lenses effect in [`PeopleOverheadTab.tsx`](../src/components/people/PeopleOverheadTab.tsx), Review tab 90-day rates effect in [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx)). **(1) Stripe test-mode invoices no longer inflate the Method B revenue denominator**: both `jobs_ledger_invoices` fetches now carry `.or('stripe_mode.is.null,stripe_mode.neq.test')` — the NULL arm is load-bearing because `stripe_mode` is NULL on non-Stripe (HCP/physical) and pre-v2.1114 legacy rows, all real revenue that a bare `.neq('stripe_mode','test')` would silently drop under SQL `<>` NULL semantics. Method B (and the per-$100 KPI) reads slightly HIGHER now that fake revenue is excluded. **(2) The Review tab's inline invoice-day re-bucketing (a behaviorally-identical untested re-implementation) is replaced by the same tested kernel the Overhead tab uses** — `bucketInvoiceRevenueByAppTzDay` ([`overheadAvgDailyCost.ts`](../src/lib/overheadAvgDailyCost.ts)), summing the per-day map for `revenueTotal`; the kernel's tests pin the inclusive Chicago-day window clamp. **(3) Both effects now anchor `today` on the company calendar day** (`denverCalendarDayKey(Date.now())`, America/Chicago) instead of browser-local `new Date().toLocaleDateString('en-CA')` — the whole 90-day session/parts/revenue window keys company-calendar days, so a viewer outside Chicago near midnight no longer sees the entire window shifted by a day (no change for Chicago-daytime viewing). The Overhead tab's weekly-table week defaults keep their deliberate device-local anchor (quirk #12 in `docs/PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`).
 
 ## Latest Updates (v2.1318)
 
