@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1341',
+    date: '2026-08-03',
+    title: 'Emails-sent list fills itself in',
+    kind: 'feature',
+    highlights: [
+      'The app now records every email it sends the moment it sends it — the Settings → Notifications list no longer depends on pulling from Resend.',
+      'Delivery statuses (Delivered, Bounced) still update automatically via the Resend webhook, and Refresh from Resend remains for backfilling history.',
+    ],
+  },
+  {
     version: 'v2.1339',
     date: '2026-08-03',
     title: 'Dispatch Inbox: one tap to Gmail',

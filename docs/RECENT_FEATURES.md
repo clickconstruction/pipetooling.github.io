@@ -7,37 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-<<<<<<< HEAD
-last_updated: 2026-08-03 (v2.1339)
-=======
-<<<<<<< HEAD
-last_updated: 2026-08-03 (v2.1338)
-=======
-last_updated: 2026-08-03 (v2.1337)
->>>>>>> origin/main
->>>>>>> origin/main
+last_updated: 2026-08-03 (v2.1341)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
-<<<<<<< HEAD
+## Latest Updates (v2.1341)
+
+### Email log: the app now records its own sends (2026-08-03)
+Owner ask on the v2.1338 email log: "instead of querying Resend, use what we know the app sends." New shared [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts): a best-effort, never-throws service-role insert into `email_send_log` with `source: 'app'` and `last_event: 'sent'` (PostgREST `on_conflict=resend_email_id` + ignore-duplicates, so a webhook row that raced first — possibly already `delivered` — wins). Wired into **all 13 senders**: the shared [`resendSendEmail.ts`](../supabase/functions/_shared/resendSendEmail.ts) helper (covers its 7 callers with zero caller changes, now also captures the Resend response id) and inline calls in the 6 direct-Resend functions (`send-workflow-notification`, `send-estimate-to-customer`, `send-contract-for-signature`, `send-physical-invoice-email`, `send-hazmat-notice-email`, `test-email`). Migration `20260803200236` widens the `source` CHECK to include `'app'` — **push it before deploying the functions**. The Settings section needs no code change (it reads the table); its empty-state copy now says sends appear automatically. The Resend pull + webhook stay as enrichment (delivery status, backfill). **Ops after merge**: `supabase db push`, then redeploy all 13 sender functions (`--no-verify-jwt`). See `docs/MIGRATIONS.md`, `docs/EDGE_FUNCTIONS.md`.
+
 ## Latest Updates (v2.1339)
 
 ### Dispatch Mode Inbox: "Open Gmail" link at the top (2026-08-03)
 Dispatcher ask: jump from the app inbox to the email inbox without hunting for a tab. The Dispatch Mode → Inbox tab ([`DispatchModeInbox.tsx`](../src/components/dispatchMode/DispatchModeInbox.tsx)) gets a compact **Open Gmail** button-style link (envelope icon) centered under the Inbox heading, above the notification banners — plain `https://mail.google.com/` in a new tab (`rel="noopener noreferrer"`), so Google lands the user in whichever account they're signed into. All Dispatch Mode roles. Help guide `dispatch-mode` updated. Client-only — no migration.
-=======
-<<<<<<< HEAD
 ## Latest Updates (v2.1338)
 
 ### Settings → Notifications: org-wide "Most recent emails sent" (dev) above your push list (2026-08-03)
 The Settings "Recent push" tab is renamed **Notifications** (group id stays `settings-recent-push` — pins and deep links keep working) and gains a new first section for **dev**: **Most recent emails sent** — every email the app produces, org-wide, since sending is spread across 13 edge functions (7 shared-helper + 6 direct Resend callers) with no single choke point. Architecture: new **`email_send_log`** table (migration `20260803193428`; dev-only SELECT RLS, service-role writes only) fed two ways — new **`resend-webhook`** edge function (Svix-signature-verified `email.*` events keep `last_event` fresh: delivered/bounced/opened/…) and new dev-gated **`sync-resend-emails`** (pulls Resend's list API on the **Refresh from Resend** button — backfill + gap repair, mirroring the Mercury sync pattern). UI: [`SettingsRecentEmailsSent.tsx`](../src/components/settings/SettingsRecentEmailsSent.tsx) (When/To/Subject/Status table, newest 25 + Load more, tone chips) above the unchanged per-user push list; display kernel [`emailSendLog.ts`](../src/lib/emailSendLog.ts) (+12 tests). `database.ts` types hand-added pending post-push regen. **Ops after merge**: `supabase db push`, deploy both functions with `--no-verify-jwt`, then register the webhook in the Resend dashboard + `supabase secrets set RESEND_WEBHOOK_SECRET` (checklist in `docs/EDGE_FUNCTIONS.md` → resend-webhook). See `docs/MIGRATIONS.md`.
-=======
 ## Latest Updates (v2.1337)
 
 ### Quickfill: "Missing job info" rename + phone nav moves behind the hamburger (2026-08-03)
 Two small Quickfill UX cleanups. **(1) Section rename**: the `no-customer-stages` section label in `SECTIONS` ([`Quickfill.tsx`](../src/pages/Quickfill.tsx), plus its mark-history modal label) changes from *Pipeline: customer link & customer pictures* to **Missing job info** — the section checks THREE things (no linked customer, no customer-pictures link, no billing email on Ready to Bill jobs), and the help guide (`quickfill.md`) already introduced it as "Missing job info", so UI and guide now agree. `section_id` is unchanged — mark history and hidden-section settings carry over. Living docs updated (`PROJECT_DOCUMENTATION.md`, `GLOSSARY.md`, `ACCESS_CONTROL.md`). **(2) Mobile nav**: on phones the Quickfill link moves behind the left hamburger menu for **all** eligible roles. Previously dev + assistant-like saw a heart icon in the mobile header strip ([`Layout.tsx`](../src/components/Layout.tsx) `renderMobileHeaderLinks`) while master_technician alone had a hamburger row; the strip icon is removed and the hamburger "Quickfill" row's gate widens to dev / master_technician / assistant-like (matching the desktop nav gate). Desktop nav unchanged. Client-only — no migration.
->>>>>>> origin/main
->>>>>>> origin/main
 
 ## Latest Updates (v2.1336)
 
