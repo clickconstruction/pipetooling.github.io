@@ -248,8 +248,6 @@ export function BidsTakeoffTab({
   const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPartWithType[]>([])
 
   const [takeoffNewItemPartId, setTakeoffNewItemPartId] = useState('')
-  const [takeoffNewItemPartSearchQuery, setTakeoffNewItemPartSearchQuery] = useState('')
-  const [takeoffNewItemPartDropdownOpen, setTakeoffNewItemPartDropdownOpen] = useState(false)
 
   // Part Form Modal state
   const [bidsPartFormOpen, setBidsPartFormOpen] = useState(false)
@@ -408,9 +406,8 @@ export function BidsTakeoffTab({
     setSaveAsAssemblyCountRowId(countRowId)
     setTakeoffNewTemplateApplyPriceIndex(null)
     setTakeoffNewItemPartId('')
-    setTakeoffNewItemPartSearchQuery('')
-    // The cluster-internal item-picker fields (type/template/qty/template search)
-    // are guaranteed default here: every close path runs the cluster's
+    // The cluster-internal fields (description, bundle-price drafts) are
+    // guaranteed default here: every close path runs the cluster's
     // closeTakeoffAddTemplateModal, which resets them.
     setTakeoffAddTemplateModalOpen(true)
   }
@@ -487,9 +484,9 @@ export function BidsTakeoffTab({
           setTakeoffRoughPartSearchQuery('')
           void setRoughPartLinePartAndCatalogPrice(lineId, part.id)
         } else {
+          // Add Assembly modal's create-new flow: the cluster consumes this id
+          // and adds the part straight to the item list (v2.1326).
           setTakeoffNewItemPartId(part.id)
-          setTakeoffNewItemPartSearchQuery('')
-          setTakeoffNewItemPartDropdownOpen(false)
         }
       }
     }
@@ -2817,10 +2814,6 @@ export function BidsTakeoffTab({
         setTakeoffNewTemplateItems={setTakeoffNewTemplateItems}
         takeoffNewItemPartId={takeoffNewItemPartId}
         setTakeoffNewItemPartId={setTakeoffNewItemPartId}
-        takeoffNewItemPartSearchQuery={takeoffNewItemPartSearchQuery}
-        setTakeoffNewItemPartSearchQuery={setTakeoffNewItemPartSearchQuery}
-        takeoffNewItemPartDropdownOpen={takeoffNewItemPartDropdownOpen}
-        setTakeoffNewItemPartDropdownOpen={setTakeoffNewItemPartDropdownOpen}
         saveAsAssemblyCountRowId={saveAsAssemblyCountRowId}
         setSaveAsAssemblyCountRowId={setSaveAsAssemblyCountRowId}
         takeoffNewTemplateApplyPriceIndex={takeoffNewTemplateApplyPriceIndex}
