@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1354)
+last_updated: 2026-08-03 (v2.1355)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1355)
+
+### Bid Board tools collapse onto one row: Search · Archived · Customer review (2026-08-03)
+Owner call: **Customer review** loses its own full-width row above the search bar and joins the button group to the **right of Archived**, on the search bar's line. The row is now `flexWrap: 'nowrap'` — the buttons never wrap off the line; the search input (`flex: 1 1 auto`, `minWidth: 0`) shrinks instead, and on phones (`useNarrowViewport660`) the placeholder shortens to "Search..." and Customer review's padding tightens so all three fit a 375px viewport with zero document overflow (verified: 42px single row, search 114px, buttons 83 + 130px). Removing the standalone row also reclaims ~50px of vertical space above the board on every viewport. [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx) only — Customer review's modal and the Archived icon button (v2.1348) are unchanged. Guide `read-the-bid-board` notes the new spot. Client-only — no migration.
 
 ## Latest Updates (v2.1354)
 

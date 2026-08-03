@@ -968,23 +968,15 @@ export function BidsBidBoardTab({
 
   return (
     <div>
-      {/* Board tools row — home for modal-opening buttons (Customer review is the first). */}
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <button
-          type="button"
-          onClick={() => setCustomerReviewOpen(true)}
-          style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-        >
-          Customer review
-        </button>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+      {/* Board tools row: search grows, Archived + Customer review sit to its right and never wrap
+          off the line — the search input shrinks instead (padding tightens on phones to keep it usable). */}
+      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
-          placeholder="Search (project name or GC/Builder)..."
+          placeholder={narrowViewport ? 'Search...' : 'Search (project name or GC/Builder)...'}
           value={bidBoardSearchQuery}
           onChange={(e) => setBidBoardSearchQuery(e.target.value)}
-          style={{ flex: '1 1 200px', minWidth: 0, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+          style={{ flex: '1 1 auto', minWidth: 0, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
           <button
@@ -998,6 +990,21 @@ export function BidsBidBoardTab({
               <path d="M64 128C64 110.3 78.3 96 96 96L544 96C561.7 96 576 110.3 576 128L576 160C576 177.7 561.7 192 544 192L96 192C78.3 192 64 177.7 64 160L64 128zM96 240L544 240L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 240zM248 304C234.7 304 224 314.7 224 328C224 341.3 234.7 352 248 352L392 352C405.3 352 416 341.3 416 328C416 314.7 405.3 304 392 304L248 304z" />
             </svg>
             {workingBoardArchivedBids.length > 0 ? `(${workingBoardArchivedBids.length})` : ''}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCustomerReviewOpen(true)}
+            title="Customer review"
+            style={{
+              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Customer review
           </button>
         </div>
       </div>

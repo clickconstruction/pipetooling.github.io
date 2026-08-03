@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1355',
+    date: '2026-08-03',
+    title: 'Bid Board: one tidy tools row',
+    kind: 'feature',
+    highlights: [
+      'Customer review moved up next to Archived, on the same line as the search bar — the board starts higher on the page now.',
+      'Search, Archived and Customer review stay on one line at every width, including phones.',
+    ],
+  },
+  {
     version: 'v2.1354',
     date: '2026-08-03',
     title: 'Go/no-go checklist moves into the bid form',
