@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1360)
+last_updated: 2026-08-03 (v2.1361)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1361)
+
+### Schedule Jobs tab: compact phone toolbar (2026-08-03)
+Completes the phone header compaction across all three hub tabs (Day v2.1356, People v2.1360). The Jobs tab's week nav was already compact via the shared `ScheduleDispatchWeekNav compact` prop; this pass reworks `HubJobsPanel`'s toolbar at phone width ([`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx)): the always-open search input collapses behind the same magnifier toggle (blue while open or filtering; expands a full-width input below with × clear-and-close), and the two inline checkboxes — **Only jobs with blocks this week** and **Hide weekend** — move into a **View ▾** menu matching the People tab's (same dropdown pattern, outside-click + Escape close). ≥640px keeps the inline search + checkboxes unchanged. Verified live at 375×812: compact nav + one-row toolbar, search expand/collapse, both checkboxes reachable in the menu, document width stays 375. Client-only — no migration.
 
 ## Latest Updates (v2.1360)
 
