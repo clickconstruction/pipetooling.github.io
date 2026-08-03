@@ -4,7 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, denverCalendarDayKey, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -664,7 +664,11 @@ export default function PeopleOverheadTab({
     setOverheadRateLenses((prev) => ({ ...prev, loading: true }))
     void (async () => {
       try {
-        const today = new Date().toLocaleDateString('en-CA')
+        // Anchor the whole 90-day window on the COMPANY calendar day
+        // (America/Chicago), not the viewer's browser-local date — a viewer
+        // in another timezone near midnight used to see the entire
+        // session/parts/revenue window shifted by a day.
+        const today = denverCalendarDayKey(Date.now())
         const start = ymdAddDays(today, -89)
         // Paged (fetchAllRows): a company-wide 90-day scan silently truncates
         // at PostgREST max_rows (1000) if un-ranged — a truncated day total
@@ -774,6 +778,12 @@ export default function PeopleOverheadTab({
                   .select('amount, sent_to_customer_at')
                   .gte('sent_to_customer_at', startIsoLow)
                   .lt('sent_to_customer_at', endIsoHigh)
+                  // Stripe TEST-mode invoices are not revenue — keep them out
+                  // of the Method B denominator. NULL stripe_mode = non-Stripe
+                  // (HCP/physical) or pre-v2.1114 legacy rows, both real
+                  // revenue, so a bare .neq() would wrongly drop them under
+                  // SQL <> NULL semantics.
+                  .or('stripe_mode.is.null,stripe_mode.neq.test')
                   .order('id')
                   .range(from, to),
               'load overhead 90d revenue invoices',
