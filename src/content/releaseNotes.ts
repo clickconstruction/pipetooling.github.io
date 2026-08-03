@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1344',
+    date: '2026-08-03',
+    title: 'Dispatch Mode Schedule: edit a block right from the agenda',
+    kind: 'feature',
+    highlights: [
+      'On Dispatch Mode → Schedule, tapping the time on a scheduled visit now opens the Edit schedule block modal — change the start, end, or note on the spot.',
+      'Tapping the job info still opens Job Detail, exactly as before.',
+      'Linked crew blocks move together, and overlaps with anyone\'s existing blocks are caught before saving — same rules as Schedule Dispatch.',
+    ],
+  },
+  {
     version: 'v2.1343',
     date: '2026-08-03',
     title: 'Emails-sent list: tidy rows on phones',

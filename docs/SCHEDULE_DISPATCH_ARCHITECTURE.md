@@ -5,7 +5,7 @@ file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,302 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,384 lines, container), treated as one hot ~5.7k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 ---
 
 ## What this surface is
@@ -155,7 +155,7 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 ### Add/Edit block modal cluster
 
 - **Location:** `ScheduleDispatchBlockModalState` type ~134; state ~771–783 (`blockModalState`, `addTimeStart`/`addTimeEnd` (defaults 08:00/16:00), `addNote`, `addSaving`, `addError`, `addBlockTimelineSegments`, `addBlockDraftByBlockId`); `openAddBlock` ~886–930 (builds sorted `AddBlockTimelineSegment[]` from the person-day's blocks and seeds the default range via `defaultNewBlockRangeInFirstGap`); `closeAdd` ~932; `saveBlockModal` ~1367–1490; display memos `blockModalPersonLabel`/`blockModalJobTitleForModal`/`blockModalWorkDate`/`addBlockModalTimeline` ~1331–1365; JSX `ScheduleDispatchAddBlockModal` ~2246–2263.
-- **Save path (add):** `validateScheduleDispatchBlockTimeRange` → `saveNewScheduleBlockForPersonDay` (lib; consumes `addBlockDraftByBlockId` neighbor-time drafts) → toast → `closeAdd` → `loadHub({quiet:true})`. The `kind: 'edit'` branch (group-aware overlap check + `updateJobScheduleBlockGroup`/`updateJobScheduleBlock`) is **dead on this page** — it early-returns unless `jobId` is truthy (see quirk #1).
+- **Save path (add):** `saveNewScheduleBlockForPersonDay` (lib; validates internally, consumes `addBlockDraftByBlockId` neighbor-time drafts) → toast → `closeAdd` → `loadHub({quiet:true})`. The `kind: 'edit'` branch is **dead on this page** — it early-returns unless `jobId` is truthy (see quirk #1) — and since v2.1344 it delegates to the shared `saveEditedScheduleBlockTimes` kernel (`src/lib/scheduleDispatchAddBlockSave.ts`: range validation, fresh-fetched linked-group legs, per-assignee overlap checks, group/solo update), the same kernel used by `ScheduleDispatchJobWeek`'s live edit path and Dispatch Mode → Schedule's tap-the-time edit.
 - **Supabase:** `job_schedule_blocks` via lib helpers.
 - **Extraction status + risk + approach:** Inline. **Medium risk.** Natural hook `useScheduleDispatchAddBlockModal` returning the modal props + `openAddBlock`; it is fed by the assign-picker and empty-cell flows, so extract alongside or after the modes hook. Do not silently delete the dead edit branch during the move (quirk #1).
 

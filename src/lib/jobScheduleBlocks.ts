@@ -139,6 +139,27 @@ export async function fetchJobScheduleBlocksForJobDay(
   }
 }
 
+/** Every leg of a linked block (same job + `shared_block_group_id`), one row per assignee. */
+export async function fetchJobScheduleBlockGroupLegs(
+  jobId: string,
+  groupId: string,
+): Promise<{ data: JobScheduleBlockRow[]; error: string | null }> {
+  try {
+    const data = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('job_schedule_blocks')
+          .select(SELECT_FIELDS)
+          .eq('job_id', jobId)
+          .eq('shared_block_group_id', groupId),
+      'fetchJobScheduleBlockGroupLegs',
+    )
+    return { data: (data ?? []) as JobScheduleBlockRow[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
 /** Blocks for many assignees on one day (RLS filters to visible rows). */
 export async function fetchScheduleBlocksForAssigneesOnDay(
   assigneeUserIds: string[],
