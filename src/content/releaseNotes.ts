@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1340',
+    date: '2026-08-03',
+    title: 'Emails-sent list: fix the Resend connection',
+    kind: 'fix',
+    highlights: [
+      'The "Refresh from Resend" button on Settings → Notifications now uses a dedicated read key, so the list loads instead of erroring.',
+    ],
+  },
+  {
     version: 'v2.1339',
     date: '2026-08-03',
     title: 'Dispatch Inbox: one tap to Gmail',
