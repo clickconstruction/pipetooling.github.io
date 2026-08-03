@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1336)
+last_updated: 2026-08-03 (v2.1338)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1338)
+
+### Settings → Notifications: org-wide "Most recent emails sent" (dev) above your push list (2026-08-03)
+The Settings "Recent push" tab is renamed **Notifications** (group id stays `settings-recent-push` — pins and deep links keep working) and gains a new first section for **dev**: **Most recent emails sent** — every email the app produces, org-wide, since sending is spread across 13 edge functions (7 shared-helper + 6 direct Resend callers) with no single choke point. Architecture: new **`email_send_log`** table (migration `20260803193428`; dev-only SELECT RLS, service-role writes only) fed two ways — new **`resend-webhook`** edge function (Svix-signature-verified `email.*` events keep `last_event` fresh: delivered/bounced/opened/…) and new dev-gated **`sync-resend-emails`** (pulls Resend's list API on the **Refresh from Resend** button — backfill + gap repair, mirroring the Mercury sync pattern). UI: [`SettingsRecentEmailsSent.tsx`](../src/components/settings/SettingsRecentEmailsSent.tsx) (When/To/Subject/Status table, newest 25 + Load more, tone chips) above the unchanged per-user push list; display kernel [`emailSendLog.ts`](../src/lib/emailSendLog.ts) (+12 tests). `database.ts` types hand-added pending post-push regen. **Ops after merge**: `supabase db push`, deploy both functions with `--no-verify-jwt`, then register the webhook in the Resend dashboard + `supabase secrets set RESEND_WEBHOOK_SECRET` (checklist in `docs/EDGE_FUNCTIONS.md` → resend-webhook). See `docs/MIGRATIONS.md`.
 
 ## Latest Updates (v2.1336)
 

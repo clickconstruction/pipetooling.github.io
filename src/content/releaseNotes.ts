@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1338',
+    date: '2026-08-03',
+    title: 'Settings: Notifications tab now shows emails the app sent',
+    kind: 'feature',
+    highlights: [
+      'The Recent push tab is now called Notifications.',
+      'Devs see a new "Most recent emails sent" list at the top — every email the app sends (invoices, estimates, notifications, invites), with delivery status straight from Resend.',
+      'A Refresh from Resend button pulls the latest sends on demand; a new webhook keeps statuses like Delivered and Bounced up to date automatically.',
+    ],
+  },
+  {
     version: 'v2.1336',
     date: '2026-08-03',
     title: 'Count Tool gets a crosshair icon',
