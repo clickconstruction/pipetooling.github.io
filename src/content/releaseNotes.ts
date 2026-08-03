@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1307',
+    date: '2026-08-02',
+    title: 'Review tab overhead rates no longer count Internal Transfers',
+    kind: 'fix',
+    highlights: [
+      'The People Review tab’s 90-day overhead rates and Team Summary "Profit (after overhead)" no longer count Internal Transfer bank transactions as office materials — matching the Overhead tab’s rule that transfers between the company’s own accounts are not an expense.',
+      'Both tabs now compute the office-materials pool through one shared calculation, so they can’t drift apart again.',
+      'The Overhead tab’s numbers are unchanged.',
+    ],
+  },
+  {
     version: 'v2.1306',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff assembly editors restructured',
