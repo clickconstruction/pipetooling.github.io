@@ -11,6 +11,25 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1344',
+    date: '2026-08-03',
+    title: 'Clock buttons look right on phones',
+    kind: 'fix',
+    highlights: [
+      'When clocked in, the timer and Update Focus buttons now stack as two clean full-width rows on phones instead of a lopsided squeezed pair.',
+      'The blue button is now labeled "Update Focus" to match the window it opens.',
+    ],
+  },
+  {
+    version: 'v2.1343',
+    date: '2026-08-03',
+    title: 'Emails-sent list: tidy rows on phones',
+    kind: 'fix',
+    highlights: [
+      'Long subjects no longer stretch the Settings → Notifications email rows — they trim with an ellipsis (hover for the full subject) and the table scrolls sideways within its own box.',
+    ],
+  },
+  {
     version: 'v2.1342',
     date: '2026-08-03',
     title: 'Under the hood: database type definitions refreshed',
