@@ -14,6 +14,7 @@ import {
   stageRowBilledRemainingAmount,
   stagesJobLevelStripeEmailedHintInvoice,
   sumInvoiceAppliedFromJobPayments,
+  billedStageRowAgingBucket,
   buildBilledAgingBuckets,
 } from './invoiceBilling'
 
@@ -244,5 +245,33 @@ describe('buildBilledAgingBuckets', () => {
 
   it('returns all-zero buckets for an empty board', () => {
     expect(buildBilledAgingBuckets([], NOW)).toEqual({ count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 })
+  })
+})
+
+describe('billedStageRowAgingBucket', () => {
+  const NOW = new Date('2026-07-20T12:00:00Z')
+  const rowFor = (estBillDate: string | null, amount: number) => {
+    const j = job({ id: 'j1', status: 'billed', revenue: amount, payments_made: 0 })
+    return {
+      kind: 'invoice' as const,
+      inv: inv({ id: 'i1', status: 'billed', estimated_bill_date: estBillDate, amount }),
+      job: j,
+    }
+  }
+
+  it('mirrors the buckets: 30-90, 90+, fresh, and no-date rows', () => {
+    expect(billedStageRowAgingBucket(rowFor('2026-06-01', 500), NOW)).toBe('30_90')
+    expect(billedStageRowAgingBucket(rowFor('2026-03-01', 700), NOW)).toBe('90')
+    expect(billedStageRowAgingBucket(rowFor('2026-07-10', 900), NOW)).toBeNull()
+    expect(billedStageRowAgingBucket(rowFor(null, 900), NOW)).toBeNull()
+  })
+
+  it('rows with nothing left to pay never age', () => {
+    expect(billedStageRowAgingBucket(rowFor('2026-03-01', 0), NOW)).toBeNull()
+  })
+
+  it('job-shell rows have no reference date and never age', () => {
+    const j = job({ id: 'j2', status: 'billed', revenue: 800, payments_made: 0 })
+    expect(billedStageRowAgingBucket({ kind: 'job', job: j }, NOW)).toBeNull()
   })
 })

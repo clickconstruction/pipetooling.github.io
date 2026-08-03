@@ -125,6 +125,24 @@ export function stagesJobLevelStripeEmailedHintInvoice(job: JobWithDetails): Job
 
 export type BilledAgingBuckets = { count30_90: number; sum30_90: number; count90: number; sum90: number }
 
+export type BilledAgingBucketKey = '30_90' | '90'
+
+/**
+ * Which aging bucket a billed stage row belongs to, or null when it doesn't
+ * age (job-shell rows without an invoice date, rows under 30 days, or rows
+ * with nothing left to pay). Single source of truth for BOTH the header
+ * chips' totals and the chip-click section filter (v2.1311) — the exact rule
+ * the buildBilledAgingBuckets loop has always applied.
+ */
+export function billedStageRowAgingBucket(row: StageRow, now = new Date()): BilledAgingBucketKey | null {
+  const iso = row.kind === 'job' ? null : effectiveInvoiceEstBillDate(row.inv)
+  if (!iso) return null
+  const days = calendarDaysSinceDateUtc(iso, now)
+  if (days < 30) return null
+  if (stageRowBilledRemainingAmount(row) <= 0) return null
+  return days < 90 ? '30_90' : '90'
+}
+
 /**
  * Billed Awaiting Payment aging chips: 30/90-day buckets over positive
  * remainders (Collections jobs excluded — the chips describe the Billed
@@ -144,14 +162,10 @@ export function buildBilledAgingBuckets(stagesFilteredJobs: JobWithDetails[], no
   let count90 = 0
   let sum90 = 0
   for (const r of billedRowsAging) {
-    const iso =
-      r.kind === 'job' ? null : effectiveInvoiceEstBillDate(r.inv)
-    if (!iso) continue
-    const days = calendarDaysSinceDateUtc(iso, now)
-    if (days < 30) continue
+    const bucket = billedStageRowAgingBucket(r, now)
+    if (bucket == null) continue
     const amount = stageRowBilledRemainingAmount(r)
-    if (amount <= 0) continue
-    if (days < 90) {
+    if (bucket === '30_90') {
       count30_90++
       sum30_90 += amount
     } else {

@@ -154,6 +154,16 @@ export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_compo
 export const APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS = 'paid_job_email_recipients_v1' as const
 
 /**
+ * JSON array of `users.id` uuid strings in `value_text`: who receives the "Payment made" email
+ * whenever ANY payment lands on a job (Mark Paid, Mercury AR allocation, Stripe webhook, manual
+ * Edit Job row) — the v2.1310 stream, separate from the Paid-in-Full list above. Same variant
+ * split (detailed vs sterilized) and the same JSON shape; the paid-job-email edge function reads
+ * this key for queue rows with kind='payment'. Dev writes; all authenticated read.
+ * @see `src/lib/paidJobEmail.ts`
+ */
+export const APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS = 'payment_made_email_recipients_v1' as const
+
+/**
  * JSON array of `users.id` uuid strings in `value_text`: who is emailed on EVERY estimate
  * acceptance ("always notify"), unioned with that estimate's own `accept_notify_user_ids`.
  * Dev writes (⚙ on Estimates); all authenticated read. The `accept-estimate` edge function

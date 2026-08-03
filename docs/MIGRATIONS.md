@@ -9,8 +9,8 @@ last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "156 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 2, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "157 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 2, 2026
+
+**`20260803000000_payment_made_email.sql`** _(apply via `supabase db push` after merge; pair with `supabase functions deploy paid-job-email` — additive both ways: pre-migration edge reads no `kind`, post-migration rows default to paid_in_full for a pre-deploy edge)_
+- **Purpose**: Payment-made email stream (v2.1310). Adds `paid_job_email_queue.kind` ('paid_in_full' | 'payment', default paid_in_full, CHECK-constrained), trigger `enqueue_payment_made_email_ai` AFTER INSERT ON `jobs_ledger_payments` (positive amounts only) enqueuing kind='payment' — every payment writer (Mark Paid RPCs, Mercury AR allocations, Stripe webhook, manual Edit Job rows) flows through this one choke point, mirroring the v2.965 status trigger. Seeds `app_settings.payment_made_email_recipients_v1` ('[]'). Also payload v5 of `get_paid_job_email_payload`: + `invoices` — the Edit Job Invoices table mirrored (drafts first, per-invoice paid sums via LATERAL, sent date + created→sent day offset in Chicago, channel, memo/note detail, bill-to label, hazmat flag from `job_hazmat_incidents.invoice_id`).
+- **Security**: Trigger fn SECURITY DEFINER `SET search_path = public` (same as `enqueue_paid_job_email`); queue RLS unchanged (dev SELECT only, service-role writes). Payload RPC keeps its existing definer posture; additive JSON key only. The recipients seed is dev-write via existing app_settings policies.
+- **Category**: Feature schema
 
 **`20260802220000_banking_attributors_substrate.sql`** _(apply via `supabase db push` after merge — additive: two new tables + new RPCs; nothing reads them until the attribution queue UI ships)_
 - **Purpose**: Non-card (ACH/wire/check) attribution substrate, Phase 1 (v2.1308). Prod measurement 2026-08-02: 103 non-card money-out transactions / $200,158.86 in the trailing 90 days had zero attribution of any kind, so office overhead paid by ACH (rent, insurance) never reaches the 90-day overhead pool. Adds `banking_attributors` (dev-granted capability: work the queue without Banking access), `mercury_transaction_attribution_resolutions` (`card_bill_payment` / `not_an_expense_other` marks so credit-card bill payments resolve without a bogus job attribution), queue RPCs `list/count_unattributed_noncard_mercury_transactions` (minimal fields; unresolved = no job splits, no supply-house invoice link, no `is_payroll` flag, no Internal Transfers label, no resolution row — the linked-card tally queue's semantics extended), and capability-gated writes `resolve/unresolve_noncard_transaction_attribution`, `attributor_allocate_transaction_to_job` (100%-to-one-job, splits-sum invariant preserved), `attributor_flag_transaction_payroll` (same invariant + `source='manual'` semantics as `set_tally_payroll_flag`).
