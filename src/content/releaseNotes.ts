@@ -20,6 +20,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1346',
+    date: '2026-08-03',
+    title: 'Bid Board: jump straight to any section',
+    kind: 'feature',
+    highlights: [
+      'A sticky pill row at the top of the Bid Board — Unsent, Pending, Won, Started, Lost, and Health, each with its live count — takes you straight to that section (and opens it if collapsed).',
+      'Estimating Health is finally one tap away instead of a very long scroll.',
+      'The two ~100-bid sections (Not yet won or lost, Lost) now show their first 25 rows with a "Show all" button — the page loads and scrolls far lighter. Search and sorting are unchanged.',
+    ],
+  },
+  {
     version: 'v2.1345',
     date: '2026-08-03',
     title: 'Clock buttons look right on phones',

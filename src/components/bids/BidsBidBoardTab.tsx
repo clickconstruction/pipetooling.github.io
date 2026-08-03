@@ -62,12 +62,21 @@ type BidsBidBoardTabProps = {
 const BID_BOARD_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
 
 const BID_BOARD_SECTION_CONFIG = [
-  { key: 'unsent' as const, label: BID_BOARD_UNSENT_SECTION_LABEL },
-  { key: 'pending' as const, label: 'Not yet won or lost' },
-  { key: 'won' as const, label: 'Won' },
-  { key: 'startedOrComplete' as const, label: 'Started or Complete' },
-  { key: 'lost' as const, label: 'Lost' },
+  { key: 'unsent' as const, label: BID_BOARD_UNSENT_SECTION_LABEL, jumpLabel: 'Unsent' },
+  { key: 'pending' as const, label: 'Not yet won or lost', jumpLabel: 'Pending' },
+  { key: 'won' as const, label: 'Won', jumpLabel: 'Won' },
+  { key: 'startedOrComplete' as const, label: 'Started or Complete', jumpLabel: 'Started' },
+  { key: 'lost' as const, label: 'Lost', jumpLabel: 'Lost' },
 ] as const
+
+/** Big sections render only this many rows until "Show all N" is clicked. */
+const BID_BOARD_SECTION_ROW_CAP = 25
+type CappedSectionKey = 'pending' | 'lost'
+const BID_BOARD_CAPPED_SECTIONS: readonly CappedSectionKey[] = ['pending', 'lost']
+
+function isCappedSectionKey(key: SubmissionSectionKey): key is CappedSectionKey {
+  return (BID_BOARD_CAPPED_SECTIONS as readonly string[]).includes(key)
+}
 
 export function BidsBidBoardTab({
   bids,
@@ -101,6 +110,10 @@ export function BidsBidBoardTab({
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
   const [customerReviewOpen, setCustomerReviewOpen] = useState(false)
+  const [sectionShowAll, setSectionShowAll] = useState<Record<CappedSectionKey, boolean>>({
+    pending: false,
+    lost: false,
+  })
   const bidBoardUnreadFetchSeqRef = useRef(0)
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
@@ -153,6 +166,34 @@ export function BidsBidBoardTab({
   function toggleBidBoardSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
     onSectionOpenChange((prev) => ({ ...prev, [key]: !prev[key] }))
   }
+
+  function jumpToBidBoardSection(key: SubmissionSectionKey | 'health') {
+    if (key !== 'health') {
+      onSectionOpenChange((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
+    }
+    const targetId = key === 'health' ? 'bid-board-health-section' : `bid-board-section-${key}`
+    requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  // A deep-linked row past the render cap would have nothing to scroll to —
+  // uncap its section before the highlight scroll (Bids.tsx) fires.
+  useEffect(() => {
+    if (!deepLinkHighlightId) return
+    setSectionShowAll((prev) => {
+      let next = prev
+      for (const key of BID_BOARD_CAPPED_SECTIONS) {
+        if (
+          !next[key] &&
+          bidBoardBuckets[key].findIndex((b) => b.id === deepLinkHighlightId) >= BID_BOARD_SECTION_ROW_CAP
+        ) {
+          next = { ...next, [key]: true }
+        }
+      }
+      return next
+    })
+  }, [deepLinkHighlightId, bidBoardBuckets])
 
   useEffect(() => {
     if (!expandedBidBoardBidId) return
@@ -716,11 +757,80 @@ export function BidsBidBoardTab({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <nav
+            aria-label="Bid Board sections"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 5,
+              background: 'var(--bg-page)',
+              display: 'flex',
+              gap: '0.4rem',
+              alignItems: 'center',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              padding: '0.35rem 0.125rem 0.5rem',
+              borderBottom: '1px solid var(--border)',
+              margin: '0 0 -0.5rem',
+            }}
+          >
+            {[
+              ...BID_BOARD_SECTION_CONFIG.map(({ key, jumpLabel }) => ({
+                key: key as SubmissionSectionKey | 'health',
+                jumpLabel,
+                count: bidBoardBuckets[key].length as number | null,
+              })),
+              { key: 'health' as const, jumpLabel: 'Health', count: null },
+            ].map(({ key, jumpLabel, count }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => jumpToBidBoardSection(key)}
+                title={key === 'health' ? 'Jump to Estimating Health' : `Jump to ${jumpLabel}`}
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.3rem 0.7rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 999,
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {jumpLabel}
+                {count != null ? (
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      borderRadius: 999,
+                      padding: '0.05rem 0.4rem',
+                      fontVariantNumeric: 'tabular-nums',
+                      background: key === 'pending' && count > 0 ? '#FF6600' : 'var(--bg-muted)',
+                      color: key === 'pending' && count > 0 ? '#fff' : 'var(--text-muted)',
+                    }}
+                  >
+                    {count}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </nav>
           {BID_BOARD_SECTION_CONFIG.map(({ key, label }) => {
             const sectionBids = bidBoardBuckets[key]
             const isOpen = sectionOpen[key]
+            const capExpanded = isCappedSectionKey(key) ? sectionShowAll[key] : true
+            const capApplies = isCappedSectionKey(key) && sectionBids.length > BID_BOARD_SECTION_ROW_CAP
+            const visibleSectionBids =
+              capApplies && !capExpanded ? sectionBids.slice(0, BID_BOARD_SECTION_ROW_CAP) : sectionBids
             return (
-              <div key={key}>
+              <div key={key} id={`bid-board-section-${key}`} style={{ scrollMarginTop: '3.25rem' }}>
                 {key === 'lost' ? (
                   <div
                     style={{
@@ -843,8 +953,37 @@ export function BidsBidBoardTab({
                             </td>
                           </tr>
                         ) : (
-                          sectionBids.map((bid) => renderBidBoardTableRow(bid))
+                          visibleSectionBids.map((bid) => renderBidBoardTableRow(bid))
                         )}
+                        {capApplies ? (
+                          <tr>
+                            <td colSpan={14} style={{ padding: 0, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSectionShowAll((prev) =>
+                                    isCappedSectionKey(key) ? { ...prev, [key]: !prev[key] } : prev
+                                  )
+                                }
+                                aria-expanded={capExpanded}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.5rem',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-blue-500)',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {capExpanded
+                                  ? `Show first ${BID_BOARD_SECTION_ROW_CAP} ▴`
+                                  : `Show all ${sectionBids.length} ▾`}
+                              </button>
+                            </td>
+                          </tr>
+                        ) : null}
                       </tbody>
                     </table>
                   </div>
@@ -882,13 +1021,15 @@ export function BidsBidBoardTab({
               }}
             />
           ) : null}
-          <BidBoardEstimatingHealthSection
-            staffOutcomeByRole={bidBoardStaffOutcomeByRole}
-            weeklySentSummaries={bidBoardWeeklySentSummaries}
-            filteredBids={filteredBidsForBidBoard}
-            isDev={isDev}
-            ledgerPrefixMap={ledgerPrefixMap}
-          />
+          <div id="bid-board-health-section" style={{ scrollMarginTop: '3.25rem' }}>
+            <BidBoardEstimatingHealthSection
+              staffOutcomeByRole={bidBoardStaffOutcomeByRole}
+              weeklySentSummaries={bidBoardWeeklySentSummaries}
+              filteredBids={filteredBidsForBidBoard}
+              isDev={isDev}
+              ledgerPrefixMap={ledgerPrefixMap}
+            />
+          </div>
         </div>
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
