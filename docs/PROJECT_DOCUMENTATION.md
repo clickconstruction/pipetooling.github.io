@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-08-03
+last_updated: 2026-08-06
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -3770,7 +3770,7 @@ async function myFunction() {
    - **Solution**: Centralized error handling/toast system
 3. **Styling**: Inline styles make maintenance difficult
    - **Solution**: Consider CSS modules or Tailwind
-4. **Testing**: 233 `*.test.ts(x)` files (~1,800 unit tests) run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests — there is no render-test harness
+4. **Testing**: ~440 `*.test.ts(x)` files run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests as the primary pattern, plus component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`)
 5. **Edge Function Error Messages**: Inconsistent error format
    - **Solution**: Standardize error response format
 
