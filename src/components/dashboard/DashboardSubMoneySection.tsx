@@ -176,7 +176,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
     const { data, error } = await supabase.rpc('respond_to_work_order', {
       p_commitment_id: offer.id,
       p_accept: accept,
-      p_reason: accept ? null : declineReason.trim(),
+      p_reason: accept ? undefined : declineReason.trim(),
     })
     setAnswering(false)
     if (error) {
