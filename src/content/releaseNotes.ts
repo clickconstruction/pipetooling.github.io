@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1317',
+    date: '2026-08-03',
+    title: 'Overhead: duplicate-marked bank transactions no longer count as office parts',
+    kind: 'fix',
+    highlights: [
+      'If a Mercury transaction was split to the office job and later marked as a duplicate, its amount kept counting into the 90-day overhead parts pool. It is now excluded.',
+      'Applies to both the Overhead tab and the Review tab overhead line.',
+    ],
+  },
+  {
     version: 'v2.1316',
     date: '2026-08-03',
     title: 'Email the Billed Awaiting Payment report to a teammate',

@@ -11,7 +11,7 @@ const handlers = new Map<string, () => MockResult>()
 
 function makeBuilder(key: string) {
   const b: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'neq', 'gte', 'lte', 'lt', 'gt', 'in', 'or', 'not', 'order', 'range', 'limit']) {
+  for (const m of ['select', 'eq', 'neq', 'gte', 'lte', 'lt', 'gt', 'in', 'is', 'or', 'not', 'order', 'range', 'limit']) {
     b[m] = () => b
   }
   b.then = (

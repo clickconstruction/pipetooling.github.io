@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1316)
+last_updated: 2026-08-03 (v2.1317)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1317)
+
+### Overhead office parts exclude duplicate-marked Mercury transactions (2026-08-03)
+Accuracy fix from the 2026-08-02 overhead parts audit: `set_mercury_transaction_duplicate` sets `mercury_transactions.duplicate_of_transaction_id` but does **not** delete the duplicate's job allocations, so a transaction split to the office job *before* being marked duplicate kept counting into the 90-day overhead pool's office-parts component. [`fetchOverheadOfficePartsByDay`](../src/lib/fetchOverheadOfficePartsByDay.ts) now adds `.is('mercury_transactions.duplicate_of_transaction_id', null)` to its Mercury-allocations `!inner` join — the same duplicate semantics the tally-queue RPCs already use (`20260619160000_click_number_remaining_rpcs_2.sql`). One fix covers both consumers via `overheadPartsBucketLoader` (v2.1307): the People → Overhead tab and the Review tab overhead line. Supply-invoice and tally sources are unaffected (duplicates are a Mercury-ledger concept). Regression test: the colocated suite's mock builder now honors PostgREST embed `.is(..., null)` filters, and a duplicate-marked tx's allocation is asserted absent from `partsUsdByDay`/`partsDetailByDay`.
 
 ## Latest Updates (v2.1316)
 

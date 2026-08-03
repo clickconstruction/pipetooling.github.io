@@ -126,6 +126,9 @@ export async function fetchOverheadOfficePartsByDay(args: {
     const { lowIso, highIso } = mercuryPostedAtBounds(startYmd, endYmd)
     // `!inner` makes the nested posted_at range drop parent rows server-side
     // (a plain embed filter only nulls the embed and keeps the row).
+    // Duplicate-marked transactions keep their allocations rows (marking sets
+    // `duplicate_of_transaction_id` without deleting splits), so exclude them
+    // here — same semantics as the tally-queue RPCs.
     const raw = await pagedRetry<MercuryAllocationJoinRow>(
       (from, to) =>
         supabase
@@ -134,6 +137,7 @@ export async function fetchOverheadOfficePartsByDay(args: {
           .eq('job_id', officeJobLedgerId)
           .gte('mercury_transactions.posted_at', lowIso)
           .lt('mercury_transactions.posted_at', highIso)
+          .is('mercury_transactions.duplicate_of_transaction_id', null)
           .order('created_at', { ascending: true })
           .order('id')
           .range(from, to) as unknown as PromiseLike<SupabaseClientResult<MercuryAllocationJoinRow[]>>,
