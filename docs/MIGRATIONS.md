@@ -9,7 +9,7 @@ last_updated: 2026-08-03
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "164 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "165 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 3, 2026
+
+**`20260803184515_bid_aware_pins.sql`** _(apply via `supabase db push` after merge — push promptly: a NEW client's bid-pin insert needs the column; old clients are unaffected either way)_
+- **Purpose**: Bid-aware pins (v2.1335). `user_pinned_tabs` gains nullable `bid_id uuid REFERENCES bids ON DELETE CASCADE` so a pin can deep-link to one bid's tab ("BP352 · Pricing"). The unique EXPRESSION index `user_pinned_tabs_user_path_tab_key` is replaced by `user_pinned_tabs_user_path_tab_bid_key` `(user_id, path, COALESCE(tab,''), COALESCE(bid_id::text,''))` so several bids can pin the same tab; partial index on `bid_id`. Known accepted edge (documented in-file): `merge_user_accounts` dedupes pins on path+tab only — a user merge could drop one of two same-tab bid pins.
+- **Security**: No grant/policy changes — column-additive on an own-rows RLS table.
+- **Category**: Feature schema
 
 **`20260803170642_my_email_subscriptions_estimate_stream.sql`** _(apply via `supabase db push` after merge; additive JSON keys — either deploy order of client vs migration degrades gracefully)_
 - **Purpose**: "My email subscriptions" (v2.1330) — `get_my_email_schedule()` learns the third standing event stream, Estimate accepted: `events.estimate_accepted_always` (membership in the `estimate_accepted_notify_recipients_v1` app_settings list) and a new `estimate_specific` object (count + newest-first titles capped at 5 of not-yet-accepted estimates — status `draft`/`sent` — whose `accept_notify_user_ids` names the caller). Settings → Your account renders all streams with subscribed/not-subscribed state and managed-from hints.

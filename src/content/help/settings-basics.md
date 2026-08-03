@@ -53,6 +53,8 @@ Under **Dashboard & alerts → Report notifications** (office roles), pick which
 
 Pages you pin appear in a quick bar for fast navigation, and pins sync across your devices. Manage (remove/clear) your pins from Settings.
 
+**Pin a specific bid**: with a bid open on any Bids tab (say BP352 on Pricing), the {{button:outline|Pin bid}} button at the bottom of the page pins *that bid's tab* — the Dashboard chip reads like **BP352 · pricing** and takes you straight back to the exact bid. Pin as many bids as you like; unpin from the same button (or Settings) when you're done with one.
+
 ## How the app works
 
 Looking for the plain-language explainer of roles, projects, and sharing? That's the "How do I understand how PipeTooling works?" guide here in Help (also under Settings → Guides).

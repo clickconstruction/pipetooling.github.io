@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1335',
+    date: '2026-08-03',
+    title: 'Pin a specific bid, not just the Bids page',
+    kind: 'feature',
+    highlights: [
+      'With a bid open on any Bids tab, the Pin button at the bottom now pins THAT bid — the Dashboard chip reads like "BP352 · pricing" and takes you straight back to it, on any device.',
+      'Pin as many bids as you like, even on the same tab; unpin from the same button or Settings when the bid is done.',
+      'Devs can "Pin for someone" to drop a teammate directly onto a bid\'s tab.',
+    ],
+  },
+  {
     version: 'v2.1334',
     date: '2026-08-03',
     title: 'One accurate "how it works", not two stale ones',

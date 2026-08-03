@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1334)
+last_updated: 2026-08-03 (v2.1335)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1335)
+
+### Bid-aware pins: one click back to a specific bid's tab (2026-08-03)
+Estimator ask: return to ONE bid's page constantly (e.g. BP352 → Pricing). Pins previously stored only `{path, tab}` — pinning while on a bid reopened the tab without the bid. Now `user_pinned_tabs` gains `bid_id` (migration `20260803184515`: column + FK ON DELETE CASCADE so deleting a bid cleans its pins; the unique expression index widens to `(user_id, path, COALESCE(tab,''), COALESCE(bid_id::text,''))` so several bids can pin the same tab). **On /bids with a bid selected (`?bidId=`), the Pin button becomes "Pin bid"** — the pin stores the bid and a fetched `BP352`-style label (service-type ledger prefix + bid number via `LedgerDisplayPrefixContext`), and the Dashboard chip reads **"BP352 · pricing"**, deep-linking to `/bids?tab=pricing&bidId=…`. Without a bid selected, pinning is unchanged. Everything downstream is bid-aware: [`pinnedTabs.ts`](../src/lib/pinnedTabs.ts) identity/toggle/delete/reorder (`pinKey` + `computeReorderedSort` include the bid — two same-tab bid pins reorder without colliding; +4 tests), the Dashboard quick-row chip/link, Settings pin management rows, and dev **"Pin for someone"** (drop a teammate straight onto a bid's tab). Known accepted edge: `merge_user_accounts` dedupes pins on path+tab only, so a merge could drop one of two same-tab bid pins (cosmetic; re-pin). Help guide `settings-basics` updated. See `docs/MIGRATIONS.md`.
 
 ## Latest Updates (v2.1334)
 
 ### Settings "How it works" tab removed; the orientation guide is the single source (2026-08-03)
 The Settings → How it works tab (`SettingsHowItWorksTab.tsx`, deleted) was a stale duplicate of the `how-the-app-works` help guide — it still claimed three roles (there are nine), "adopt assistants in Settings" (office access is automatic), "private notes" (renamed Notes for Office), "assistants can't see financial totals" (they can — what they never see is wages, v2.660), and subs who "can only Start and Complete" (they also accept/decline work orders and see their own pay since the run-subs work). Rather than maintain two orientation texts that drift, the tab is gone (unknown deep-linked tab ids already self-heal to the first group) and the **guide** got the accuracy pass: nine-role intro with the whole-shop framing (Bids/Estimates → Projects/Jobs/Dispatch → billing/payroll/banking), Sharing corrected (Notes for Office; job/project money visible, wages never, controllers see payroll; master-shares are view-only), Subs updated (work orders + own-pay Dashboard view). "Subscribed Steps" survives — that Dashboard feature is real and the guide's wording matches the UI. `settings-basics` guide's tab reference now points at the guide; `docs/SETTINGS_TABS_ARCHITECTURE.md` rows removed. Client-only — no migration.
+
 
 ## Latest Updates (v2.1333)
 

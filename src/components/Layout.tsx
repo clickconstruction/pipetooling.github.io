@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
@@ -188,6 +190,32 @@ export default function Layout() {
   // The current user's pins (unfiltered) — drives the pin button's pinned state. Loaded from
   // Supabase so pins sync across devices; refreshed on the pins-changed event + window focus.
   const [pins, setPins] = useState<PinnedItem[]>([])
+  // Bid-scoped pins (v2.1335): on /bids with a bid selected (?bidId=), the Pin
+  // button pins THAT bid's tab — the pin deep-links back to the exact bid.
+  const pinBidId =
+    location.pathname === '/bids' ? new URLSearchParams(location.search).get('bidId') : null
+  const ledgerPrefixMap = useLedgerPrefixMap()
+  /** "BP352"-style label for a bid pin; falls back to 'Bid' if the fetch fails. */
+  const resolveBidPinLabel = useCallback(
+    async (bidId: string): Promise<string> => {
+      try {
+        const { data } = await supabase
+          .from('bids')
+          .select('bid_number, service_type_id')
+          .eq('id', bidId)
+          .single()
+        const num = (data?.bid_number ?? '').toString().trim()
+        if (!num) return 'Bid'
+        const prefix =
+          (data?.service_type_id ? ledgerPrefixMap[data.service_type_id]?.bid : undefined) ??
+          DEFAULT_BID_LEDGER_PREFIX
+        return `${prefix}${num}`
+      } catch {
+        return 'Bid'
+      }
+    },
+    [ledgerPrefixMap],
+  )
   const [viewportNarrow, setViewportNarrow] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
@@ -1574,31 +1602,56 @@ export default function Layout() {
               type="button"
               onClick={() => {
                 const path = location.pathname
-                const label = pathToLabel(path)
                 const tab = getTabFromPath(path, location.search)
                 const tabVal = tab ?? null
-                // Optimistic flip so the button responds instantly; the event refresh reconciles.
+                const bidVal = pinBidId
+                // Optimistic flip so the button responds instantly; the event refresh reconciles
+                // (and replaces the placeholder bid label with the fetched "BP352"-style one).
                 setPins((prev) =>
-                  isPinnedIn(prev, path, tabVal)
-                    ? prev.filter((p) => !(p.path === path && (p.tab ?? null) === tabVal))
-                    : [...prev, { path, label, ...(tab ? { tab } : {}) }],
+                  isPinnedIn(prev, path, tabVal, bidVal)
+                    ? prev.filter(
+                        (p) =>
+                          !(
+                            p.path === path &&
+                            (p.tab ?? null) === tabVal &&
+                            (p.bidId ?? null) === bidVal
+                          ),
+                      )
+                    : [
+                        ...prev,
+                        {
+                          path,
+                          label: bidVal ? 'Bid' : pathToLabel(path),
+                          ...(tab ? { tab } : {}),
+                          ...(bidVal ? { bidId: bidVal } : {}),
+                        },
+                      ],
                 )
                 // On failure, force a reload so the optimistic flip reconciles with DB truth.
-                void togglePinned(authUser.id, path, label, tab ?? undefined).catch(() =>
-                  window.dispatchEvent(new CustomEvent('pipetooling-pins-changed')),
-                )
+                void (async () => {
+                  const label = bidVal ? await resolveBidPinLabel(bidVal) : pathToLabel(path)
+                  await togglePinned(authUser.id, path, label, tab ?? undefined, bidVal)
+                })().catch(() => window.dispatchEvent(new CustomEvent('pipetooling-pins-changed')))
               }}
-              title={isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search)) ? 'Unpin from dashboard' : 'Pin to dashboard'}
+              title={
+                isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search), pinBidId)
+                  ? pinBidId
+                    ? 'Unpin this bid from dashboard'
+                    : 'Unpin from dashboard'
+                  : pinBidId
+                    ? "Pin this bid's tab to dashboard"
+                    : 'Pin to dashboard'
+              }
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
+                background: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search), pinBidId)
                   ? 'var(--bg-indigo-100)'
                   : 'transparent',
-                color: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
+                color: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search), pinBidId)
                   ? 'var(--text-indigo-800)'
                   : 'var(--text-muted)',
                 border: '1px solid var(--border-strong)',
@@ -1606,15 +1659,15 @@ export default function Layout() {
                 cursor: 'pointer',
               }}
             >
-              {isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search)) ? (
+              {isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search), pinBidId) ? (
                 <>
                   <PinIcon filled />
-                  Unpin
+                  {pinBidId ? 'Unpin bid' : 'Unpin'}
                 </>
               ) : (
                 <>
                   <PinIcon filled={false} />
-                  Pin
+                  {pinBidId ? 'Pin bid' : 'Pin'}
                 </>
               )}
             </button>
@@ -1683,9 +1736,14 @@ export default function Layout() {
                       onClick={async () => {
                         if (!pinForUserId) return
                         const path = location.pathname
-                        const label = pathToLabel(path)
                         const tab = getTabFromPath(path, location.search)
-                        const item = { path, label, ...(tab ? { tab } : {}) }
+                        const label = pinBidId ? await resolveBidPinLabel(pinBidId) : pathToLabel(path)
+                        const item = {
+                          path,
+                          label,
+                          ...(tab ? { tab } : {}),
+                          ...(pinBidId ? { bidId: pinBidId } : {}),
+                        }
                         setPinForSaving(true)
                         setPinForMessage(null)
                         const { error } = await addPinForUser(pinForUserId, item)
