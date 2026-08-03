@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1311)
+last_updated: 2026-08-02 (v2.1312)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1312)
+
+### People → Scoreboard: the two-bar bonus gauge (dev-only, sample data) (2026-08-02)
+First cut of the office-facing "keep both needles in green" scoreboard, shipped as the far-left People tab for calibration. Two vertical traffic-light gauges: **Job profit ratio** (revenue ÷ cost, 0.5×–1.5× scale, green on top, 1.0× anchoring the red boundary) and **Office cost per field dollar** (green on bottom). Each carries the needle + band label with distance-to-green, "What moves it" chips (non-financial levers: 90+ unbilled, done-not-billed, unattributed sheets, office/field hours mix), a 12-week band trend strip, and a computed bonus-window banner ("N of 2 in green"). Pure kernel [`lib/people/scoreboardGauge.ts`](../src/lib/people/scoreboardGauge.ts) (band/needle/segment/distance math, +10 tests) so segments and needle can never disagree; component [`PeopleScoreboardTab.tsx`](../src/components/people/PeopleScoreboardTab.tsx) (+3 render tests: aria meters, computed banner, sample-data pill). **Dev-only and clearly badged "Sample data"** — the production data spine (one SECURITY DEFINER RPC returning band positions only, `get_dashboard_payroll_totals` precedent) and threshold calibration come later; office exposure is deliberately deferred until banking-attribution Phase 2 makes office ACH overhead visible. No URL gate on `?tab=scoreboard` (the isDev async-resolve race would bounce dev cold loads — Review's render-site-gate pattern instead). No help guide yet (dev-only sample surface).
 
 ## Latest Updates (v2.1311)
 

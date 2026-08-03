@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1312',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Company Scoreboard preview (dev-only)',
+    kind: 'infra',
+    highlights: [
+      'A new dev-only Scoreboard tab on People previews the two-gauge company health view \u2014 profit ratio and office-cost-per-field-dollar \u2014 with sample data while thresholds are calibrated.',
+      'No live numbers yet; nothing changes for non-dev roles.',
+    ],
+  },
+  {
     version: 'v2.1311',
     date: '2026-08-02',
     title: 'Cleaner Billed Awaiting Payment header with clickable aging chips',

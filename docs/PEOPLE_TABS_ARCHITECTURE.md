@@ -302,3 +302,7 @@ Lowest-coupling, domain-isolated, permission-gated tabs first; the pay/hours hub
 12. **`hours`** — **last.** The hub; extract once everything it feeds is on the shared hooks.
 
 > Already thin/extracted: `writeups` (`WriteupsContractsSubTab`), `feedback` (`TeamFeedbackDevSettingsBlock`), `activity` panel (`PeopleAppActivityPanel`). Many domain modals are already components (`PayStubLessModal`, `DraftPayrollModal`, `PersonOffsetFormModal`, `ContractBookModal`, `ReviewHoursModal`, `TeamSummaryInline`); the parent mostly orchestrates state around them.
+
+## Scoreboard tab (v2.1312 — dev-only, sample data)
+
+Far-left tab, `?tab=scoreboard`. Fully extracted from day one: [`PeopleScoreboardTab.tsx`](../src/components/people/PeopleScoreboardTab.tsx) is self-contained (no page state, no props), kernel in [`lib/people/scoreboardGauge.ts`](../src/lib/people/scoreboardGauge.ts). Render-site `isDev` gate only — deliberately NO gate in the `?tab=` URL effect (isDev resolves async; a URL gate bounces dev cold deep links to Users, the activity-tab race). Sample data until the band-positions RPC ships; see the component header for the production data-spine plan.
