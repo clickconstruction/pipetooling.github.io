@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1362',
+    date: '2026-08-03',
+    title: 'Schedule Jobs grid: more days on screen',
+    kind: 'fix',
+    highlights: [
+      'Day headers on the Jobs grid now stack the weekday over the date, so the columns are narrower — a phone shows four days at once instead of two.',
+    ],
+  },
+  {
     version: 'v2.1361',
     date: '2026-08-03',
     title: 'Schedule Jobs tab: slimmer phone header',

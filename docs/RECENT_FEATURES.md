@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1361)
+last_updated: 2026-08-03 (v2.1362)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1362)
+
+### Schedule Jobs grid: stacked day headers, narrower columns (2026-08-03)
+Owner ask: the Jobs-tab grid's day headers go from one line ("Mon (08/03)", `minWidth: 88`) to two stacked lines — weekday bold over the date (`hubDayColumnHeaderStacked` in [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx)) — with `minWidth` trimmed to 60. On a 375px phone the grid now shows four weekday columns instead of two and a half. The one-line `hubDayColumnHeaderLabel` string helper stays for its other consumers (People-grid headers, expected-manpower label, aria strings). Client-only — no migration.
 
 ## Latest Updates (v2.1361)
 
