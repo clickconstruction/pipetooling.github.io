@@ -304,7 +304,7 @@ export function BidsBidBoardTab({
       <thead style={{ background: 'var(--bg-subtle)' }}>
         <tr>
           <th style={{ ...th, whiteSpace: 'nowrap', textAlign: 'right', paddingRight: '0.4rem' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">Bid #</th>
-          <th style={{ ...th, textAlign: 'left', paddingLeft: '0.4rem' }} title="GC or builder and project name" aria-label="GC or builder and project name">GC/Builder<br />Project Name</th>
+          <th style={{ ...th, textAlign: 'left', paddingLeft: '0.4rem' }} title="Project name and GC or builder" aria-label="Project name and GC or builder">Project Name<br />GC/Builder</th>
           {!hideBidColumn ? <th style={th}>Bid</th> : null}
           <th style={th}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -606,12 +606,12 @@ export function BidsBidBoardTab({
           }}
         >
           <div>
-            <span style={labelStyle}>GC/Builder</span>
-            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
-          </div>
-          <div>
             <span style={labelStyle}>Project</span>
             {bid.project_name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </div>
+          <div>
+            <span style={labelStyle}>GC/Builder</span>
+            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
           </div>
           <div>
             <span style={labelStyle}>Address</span>
@@ -711,6 +711,12 @@ export function BidsBidBoardTab({
             {/* One line each, ellipsized — the row dropdown carries the full text.
                 maxWidth sits on this div, not the td: auto table layout ignores td max-width. */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', maxWidth: 200, minWidth: 0 }}>
+              <span
+                title={bid.project_name ?? undefined}
+                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9375rem', fontWeight: 600 }}
+              >
+                {bid.project_name ?? '-'}
+              </span>
               {(bid.customers || bid.bids_gc_builders) ? (
                 <button
                   type="button"
@@ -736,12 +742,6 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
-              <span
-                title={bid.project_name ?? undefined}
-                style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9375rem', fontWeight: 600 }}
-              >
-                {bid.project_name ?? '-'}
-              </span>
             </div>
           </td>
           {!hideBidColumn ? (

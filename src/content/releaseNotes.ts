@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1365',
+    date: '2026-08-03',
+    title: 'Bid Board: project name first',
+    kind: 'feature',
+    highlights: [
+      'Each Bid Board row now shows the project name on top with the GC/Builder underneath, so you find a bid by the job you are thinking of.',
+    ],
+  },
+  {
     version: 'v2.1364',
     date: '2026-08-03',
     title: 'People page: no more sideways scroll on phones',

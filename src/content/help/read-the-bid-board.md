@@ -33,7 +33,7 @@ Distance to the office lives in the row dropdown, along with the address — tap
 
 Click anywhere on a row (not a link or button) and it expands in place:
 
-- the GC/builder and project name in full, the **address** (tap to open Google Maps), **due date + time**, **bid value**, **estimator**, and **distance** from the office,
+- the project name and GC/builder in full, the **address** (tap to open Google Maps), **due date + time**, **bid value**, **estimator**, and **distance** from the office,
 - and below that, the same **notes panel** as always — All / Bid / Customer / Reports tabs with {{button:outline-blue|+ bid note}} and {{button:outline-blue|+ customer note}}.
 
 Opening a row marks its notes read, so the red badge clears. Press **Escape** or click the row again to close it.
