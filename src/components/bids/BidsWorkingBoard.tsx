@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { buildColumnBidMap } from '../../lib/bidWorkingBoardColumnMap'
+import { buildColumnBidMap, workingBoardBidsSignature } from '../../lib/bidWorkingBoardColumnMap'
 import { placementBidIdsSafeToDelete, type PlacementCleanupBid } from '../../lib/workingBoardPlacementCleanup'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -432,9 +432,20 @@ export function BidsWorkingBoard({
     }
   }, [userId, eligibleAssigned, onLoadError])
 
+  // The parent replaces the bids array identity on every loadBids() (and passes an
+  // inline onLoadError), so loadBoard's identity churns many times per page refresh.
+  // Only auto-reload when the content the load actually depends on changes.
+  const eligibleAssignedSignature = useMemo(
+    () => workingBoardBidsSignature(eligibleAssigned),
+    [eligibleAssigned]
+  )
+  const lastAutoLoadKeyRef = useRef<string | null>(null)
   useEffect(() => {
+    const key = `${userId}\n${eligibleAssignedSignature}`
+    if (lastAutoLoadKeyRef.current === key) return
+    lastAutoLoadKeyRef.current = key
     void loadBoard()
-  }, [loadBoard])
+  }, [loadBoard, userId, eligibleAssignedSignature])
 
   useEffect(() => {
     if (expandedBidId) setNotesTab('all')

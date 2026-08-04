@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { buildColumnBidMap, type BidWorkingBoardMapBid } from '../lib/bidWorkingBoardColumnMap'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { buildColumnBidMap, workingBoardBidsSignature, type BidWorkingBoardMapBid } from '../lib/bidWorkingBoardColumnMap'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -46,6 +46,12 @@ export function useWorkingBoardInboxCount(
   const [refreshKey, setRefreshKey] = useState(0)
   const bump = useCallback(() => setRefreshKey((k) => k + 1), [])
 
+  // The bids array identity is replaced on every parent loadBids(); refetch only
+  // when the content the tally depends on changes, reading the latest array via ref.
+  const bidsRef = useRef(bids)
+  bidsRef.current = bids
+  const bidsSignature = useMemo(() => workingBoardBidsSignature(bids), [bids])
+
   useEffect(() => {
     if (!userId) {
       setInboxCount(0)
@@ -56,7 +62,7 @@ export function useWorkingBoardInboxCount(
     if (refreshKey === 0) setLoading(true)
     void (async () => {
       try {
-        const n = await loadInboxCount(userId, bids)
+        const n = await loadInboxCount(userId, bidsRef.current)
         if (!cancelled) setInboxCount(n)
       } catch {
         if (!cancelled) setInboxCount(0)
@@ -68,7 +74,7 @@ export function useWorkingBoardInboxCount(
       cancelled = true
       setLoading(false)
     }
-  }, [userId, bids, refreshKey])
+  }, [userId, bidsSignature, refreshKey])
 
   useEffect(() => {
     if (!userId) return
