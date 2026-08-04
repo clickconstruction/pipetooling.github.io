@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1383',
+    date: '2026-08-04',
+    title: 'Unsent/Working board no longer loses your column layout',
+    kind: 'fix',
+    highlights: [
+      'Switching trades (Plumbing / Electrical / HVAC) while on the Unsent/Working tab could silently wipe your saved column layout and dump every bid back into Inbox. That can no longer happen.',
+      'The board now only clears a saved position after confirming the specific bid actually left your board — it was sent, won or lost, or reassigned to someone else.',
+      'If your board was already reset by this bug, drag your bids back into place once — the new layout will stick.',
+    ],
+  },
+  {
     version: 'v2.1382',
     date: '2026-08-04',
     title: 'Customer review: see the hours behind each customer',
