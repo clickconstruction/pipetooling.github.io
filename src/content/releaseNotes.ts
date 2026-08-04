@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1362',
+    date: '2026-08-03',
+    title: 'Bid amounts now say "k"',
+    kind: 'fix',
+    highlights: [
+      'Bid values on the Bid Board read "153k" instead of a bare "153", so it is obvious the number is the bid size — most useful on phone cards, where there is no column header to explain it.',
+    ],
+  },
+  {
     version: 'v2.1361',
     date: '2026-08-03',
     title: 'Schedule Jobs tab: slimmer phone header',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1361)
+last_updated: 2026-08-03 (v2.1362)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1362)
+
+### Bid values read `153k`, not `153` (2026-08-03)
+Owner catch on the v2.1347 phone cards: the bid value sits in a bare meta line (`Carter Lopez · William · 153 · Last contact …`) with no column header to say what the number is, so `153` read as anything but dollars. [`formatBidValueShort`](../src/lib/bids/bidFormatting.ts) now appends a **`k`** — `153000` → `153k`, `5500` → `5.5k`, null still `—`. The suffix also lands in the two table surfaces that share the kernel (Bid Board **Bid** column and the Estimating Health staff-outcome drilldown), where it's redundant with the header but consistent and harmless. Million-dollar bids keep reading in thousands (`1240k`) rather than switching units mid-column. Tests updated (+1 case for the million range). Client-only — no migration.
 
 ## Latest Updates (v2.1361)
 

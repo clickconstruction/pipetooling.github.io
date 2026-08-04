@@ -59,9 +59,13 @@ describe('formatBidValueShort', () => {
     expect(formatBidValueShort(null)).toBe('—')
   })
 
-  it('uses 0 decimals at/above 10k and 1 decimal below', () => {
-    expect(formatBidValueShort(25000)).toBe('25')
-    expect(formatBidValueShort(5500)).toBe('5.5')
+  it('uses 0 decimals at/above 10k and 1 decimal below, always with a k suffix', () => {
+    expect(formatBidValueShort(25000)).toBe('25k')
+    expect(formatBidValueShort(5500)).toBe('5.5k')
+  })
+
+  it('keeps thousands for million-dollar bids', () => {
+    expect(formatBidValueShort(1240000)).toBe('1240k')
   })
 })
 
