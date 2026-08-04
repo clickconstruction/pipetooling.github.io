@@ -19,6 +19,7 @@ import {
 } from '../../lib/dispatchSwimLanes'
 import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
+import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   dispatchModeTwoWeekGrid,
   fetchDispatchModeDayBlocks,
@@ -106,6 +107,7 @@ export default function QuickAssignSheet({
   const [jobPickerOpen, setJobPickerOpen] = useState(false)
   const [jobRows, setJobRows] = useState<ScheduleDispatchHubJobRow[]>([])
   const [jobSearch, setJobSearch] = useState('')
+  const [jobNumberQuery, setJobNumberQuery] = useState('')
   const [selectedYmd, setSelectedYmd] = useState(todayYmd)
   const [roster, setRoster] = useState<RosterPerson[]>([])
   const [lanes, setLanes] = useState<DispatchSwimLanesData | null>(null)
@@ -165,6 +167,7 @@ export default function QuickAssignSheet({
     setJob(null)
     setJobPickerOpen(true)
     setJobSearch('')
+    setJobNumberQuery('')
     setSelectedYmd(todayYmd)
     setSelected(new Set())
     setWindowSel(null)
@@ -323,17 +326,23 @@ export default function QuickAssignSheet({
   if (!open) return null
 
   const pickerRows: ScheduleDispatchAssignJobPickerRow[] = (() => {
+    const digits = jobNumberQuery.replace(/\D/g, '')
     const q = jobSearch.trim().toLowerCase()
-    return jobRows
-      .filter(
-        (r) =>
-          !q ||
-          (r.hcp_number ?? '').toLowerCase().includes(q) ||
-          (r.job_name ?? '').toLowerCase().includes(q) ||
-          (r.job_address ?? '').toLowerCase().includes(q) ||
-          (r.customer_name ?? '').toLowerCase().includes(q),
-      )
-      .sort(compareJobsByCreatedAtDesc)
+    // "#" mode is exclusive and keeps the matcher's exact-then-prefix tier order.
+    const base =
+      digits !== ''
+        ? findJobsByNumber(jobRows, digits)
+        : jobRows
+            .filter(
+              (r) =>
+                !q ||
+                (r.hcp_number ?? '').toLowerCase().includes(q) ||
+                (r.job_name ?? '').toLowerCase().includes(q) ||
+                (r.job_address ?? '').toLowerCase().includes(q) ||
+                (r.customer_name ?? '').toLowerCase().includes(q),
+            )
+            .sort(compareJobsByCreatedAtDesc)
+    return base
       .slice(0, 60)
       .map((r) => ({
         id: r.id,
@@ -790,6 +799,8 @@ export default function QuickAssignSheet({
         jobRows={pickerRows}
         searchValue={jobSearch}
         onSearchChange={setJobSearch}
+        numberQuery={jobNumberQuery}
+        onNumberQueryChange={setJobNumberQuery}
         searchPlaceholder="Search HCP, job, address, or customer"
         onPickJob={(id) => {
           const found = jobRows.find((r) => r.id === id) ?? null

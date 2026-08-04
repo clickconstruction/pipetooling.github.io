@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1374)
+last_updated: 2026-08-03 (v2.1375)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1375)
+
+### Add job to schedule: match highlighting + a "#" number-only search (2026-08-03)
+Two dispatcher asks on the shared **Add job to schedule** picker ([`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx)). **(1) Match highlighting**: the parts of each result matching what the user typed render tinted+bold (`<mark>` with theme tokens) in both the title and the subline — kernel [`assignJobPickerHighlight.ts`](../src/lib/assignJobPickerHighlight.ts) (`splitTextForQueryHighlight`, +6 tests; case-insensitive, every occurrence). **(2) "#" number search**: a round **#** chip beside the search box (the Jobs → Pipeline jump-chip pattern, v2.1135) expands into a digits-only field that filters the list to **C# / HCP number matches only** — reusing the Pipeline's exact matcher [`findJobsByNumber`](../src/lib/jobs/stagesJobNumberJump.ts) (generic widened to number-fields-only; exact hits first, then prefix, HCP before C#), so "92" puts job 92 above 926/925/…. The two modes are exclusive: opening # clears the text search, typing text closes # mode; Enter with a single match picks it; Esc collapses. Wired through all four picker hosts — Dispatch Mode Assign work ([`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx), number mode bypasses the newest-first sort to keep tier order), Schedule Dispatch hub ([`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx)), and both Quickfill schedule pickers. The search box itself sheds its browser-default look for a rounded pill with a blue focus ring, matching the # chip and the modal's button language. Verified live at 390×844 ("beck" highlights, "# 92" → 92 · 926 · 925…). Client-only — no migration.
 ## Latest Updates (v2.1374)
 
 ### Bid Board: the staff column sits between Due Date and Last Contact (2026-08-03)

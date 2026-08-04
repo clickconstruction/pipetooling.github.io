@@ -1,7 +1,36 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { splitTextForQueryHighlight } from '../../lib/assignJobPickerHighlight'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
+
+/** Query occurrences render tinted+bold; plain text passes through untouched. */
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const segs = splitTextForQueryHighlight(text, query)
+  if (segs.length === 0 || (segs.length === 1 && !segs[0]?.match)) return <>{text}</>
+  return (
+    <>
+      {segs.map((s, i) =>
+        s.match ? (
+          <mark
+            key={i}
+            style={{
+              background: 'var(--bg-blue-tint)',
+              color: 'var(--text-blue-800)',
+              fontWeight: 700,
+              borderRadius: 2,
+              padding: 0,
+            }}
+          >
+            {s.text}
+          </mark>
+        ) : (
+          <span key={i}>{s.text}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 export type ScheduleDispatchAssignJobPickerRow = {
   id: string
@@ -21,6 +50,8 @@ export function ScheduleDispatchAssignJobPickerModal({
   jobRows,
   searchValue,
   onSearchChange,
+  numberQuery,
+  onNumberQueryChange,
   onPickJob,
   onOpenJobDetail,
   onCreateNewJob,
@@ -33,6 +64,11 @@ export function ScheduleDispatchAssignJobPickerModal({
   jobRows: ScheduleDispatchAssignJobPickerRow[]
   searchValue: string
   onSearchChange: (v: string) => void
+  /** Digits-only "#" mode (C# / HCP numbers): when both props are wired, a # chip
+   * renders beside the search box; non-empty digits switch the caller's filter
+   * to number-only matching (the two modes are exclusive). */
+  numberQuery?: string
+  onNumberQueryChange?: (v: string) => void
   onPickJob: (jobId: string) => void
   /** When set, each row gets a "Job detail" briefcase button (opens above this modal). */
   onOpenJobDetail?: (jobId: string) => void
@@ -59,6 +95,26 @@ export function ScheduleDispatchAssignJobPickerModal({
   const [notComingInConfirming, setNotComingInConfirming] = useState(false)
   /** Keyboard-highlighted result (-1 = none); ↓/↑ move it, Enter picks it, typing resets it. */
   const [activeIndex, setActiveIndex] = useState(-1)
+  /** "#" number mode (live-filter variant of the Stages jump chip). */
+  const numberInputRef = useRef<HTMLInputElement>(null)
+  const [numberOpen, setNumberOpen] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
+  const hasNumberMode = numberQuery !== undefined && onNumberQueryChange !== undefined
+  const numberActive = hasNumberMode && (numberQuery ?? '').trim() !== ''
+  const highlightQuery = numberActive ? (numberQuery ?? '') : searchValue
+
+  useEffect(() => {
+    if (numberOpen) numberInputRef.current?.focus()
+  }, [numberOpen])
+
+  useEffect(() => {
+    if (!open) setNumberOpen(false)
+  }, [open])
+
+  const closeNumberMode = () => {
+    setNumberOpen(false)
+    onNumberQueryChange?.('')
+  }
 
   useEffect(() => {
     if (!open) return
@@ -165,11 +221,15 @@ export function ScheduleDispatchAssignJobPickerModal({
         {subtitle ? (
           <div style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>{subtitle}</div>
         ) : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
         <input
           ref={searchRef}
           type="search"
           value={searchValue}
-          onChange={(e) => onSearchChange(e.target.value)}
+          onChange={(e) => {
+            if (numberActive || numberOpen) closeNumberMode()
+            onSearchChange(e.target.value)
+          }}
           onKeyDown={(e) => {
             if (jobRows.length === 0) return
             if (e.key === 'ArrowDown') {
@@ -206,8 +266,103 @@ export function ScheduleDispatchAssignJobPickerModal({
               : undefined
           }
           aria-autocomplete="list"
-          style={{ marginBottom: '0.75rem', padding: '0.4rem', fontSize: '0.875rem' }}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '0.45rem 0.85rem',
+            fontSize: '0.875rem',
+            border: searchFocused ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+            boxShadow: searchFocused ? '0 0 0 1px #3b82f6' : undefined,
+            outline: 'none',
+            borderRadius: 999,
+            background: 'var(--surface)',
+            color: 'var(--text-base)',
+            boxSizing: 'border-box',
+          }}
         />
+        {hasNumberMode ? (
+          !numberOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                onSearchChange('')
+                setNumberOpen(true)
+              }}
+              title="Search by C# or HCP number only"
+              aria-label="Search by job number"
+              style={{
+                width: '2.1rem',
+                height: '2.1rem',
+                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 999,
+                background: 'var(--surface)',
+                color: 'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.9375rem',
+                cursor: 'pointer',
+              }}
+            >
+              #
+            </button>
+          ) : (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                flexShrink: 0,
+                border: '2px solid #3b82f6',
+                borderRadius: 999,
+                padding: '0.2rem 0.6rem',
+                background: 'var(--surface)',
+              }}
+            >
+              <span aria-hidden style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.875rem' }}>
+                #
+              </span>
+              <input
+                ref={numberInputRef}
+                type="text"
+                inputMode="numeric"
+                value={numberQuery ?? ''}
+                onChange={(e) => onNumberQueryChange?.(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && jobRows.length === 1 && jobRows[0]) {
+                    e.preventDefault()
+                    onPickJob(jobRows[0].id)
+                  }
+                  if (e.key === 'Escape') {
+                    e.stopPropagation()
+                    closeNumberMode()
+                  }
+                }}
+                onBlur={() => {
+                  if ((numberQuery ?? '').trim() === '') setNumberOpen(false)
+                }}
+                placeholder="C# / HCP"
+                aria-label="Job number (C# or HCP) — filters the list to number matches"
+                title="Digits only — the list shows number matches; Esc closes"
+                style={{
+                  width: '4.6rem',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-base)',
+                  fontSize: '0.875rem',
+                  fontVariantNumeric: 'tabular-nums',
+                  padding: '0.15rem 0',
+                }}
+              />
+            </span>
+          )
+        ) : null}
+        </div>
         <div style={{ overflowY: 'auto', flex: 1, border: '1px solid var(--border)', borderRadius: 6 }}>
           {jobRows.length === 0 ? (
             <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No jobs match.</div>
@@ -284,7 +439,9 @@ export function ScheduleDispatchAssignJobPickerModal({
                             </span>
                           ) : null
                         })()}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.displayTitle}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <HighlightedText text={r.displayTitle} query={highlightQuery} />
+                        </span>
                       </span>
                       {r.subline ? (
                         <span
@@ -296,7 +453,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {r.subline}
+                          <HighlightedText text={r.subline} query={highlightQuery} />
                         </span>
                       ) : null}
                     </span>

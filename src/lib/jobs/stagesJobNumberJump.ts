@@ -14,7 +14,11 @@ export type JobNumberJumpCandidate = {
   click_number?: string | null
 }
 
-export function findJobsByNumber<T extends JobNumberJumpCandidate>(jobs: T[], digitsRaw: string): T[] {
+/** Matching needs only the two numbers — also reused by the Add-job-to-schedule picker's "#" mode. */
+export function findJobsByNumber<T extends Pick<JobNumberJumpCandidate, 'hcp_number' | 'click_number'>>(
+  jobs: T[],
+  digitsRaw: string,
+): T[] {
   const digits = (digitsRaw ?? '').replace(/\D/g, '')
   if (digits === '') return []
   const exact: T[] = []
