@@ -342,7 +342,7 @@ export function BidsBidBoardTab({
           </th>
           <th style={th}>Last<br />Contact</th>
           <th style={th} title="Project folder, job plans, Count Tool, and bid submission links" aria-label="Artifact links">Links</th>
-          <th style={th} title="Account manager and estimator" aria-label="Account manager and estimator">Account Man<br />Estimator</th>
+          <th style={th} title="Estimator, with the account manager underneath when it's someone else" aria-label="Estimator and account manager">Estimator<br />Account Man</th>
         </tr>
       </thead>
     )
@@ -380,10 +380,17 @@ export function BidsBidBoardTab({
     const label = num ? formatBidLedgerNumberLabel(pref, num) : null
     let numberNode: React.ReactNode = '-'
     if (num) {
-      // Bare number on the board — the page context already defines the bid
-      // type; the prefixed label survives in the tooltip/aria text.
+      // A lone "5" reads as a count; a lowercase "b" marks it as a bid number
+      // without the full trade prefix (the trade is already chosen above the
+      // board). The prefixed label still carries the tooltip/aria text.
+      const marked = (
+        <>
+          <span style={{ fontSize: '0.75em', fontWeight: 600 }}>b</span>
+          {num}
+        </>
+      )
       numberNode = !bidPreview ? (
-        <span title={label ?? undefined}>{num}</span>
+        <span title={label ?? undefined}>{marked}</span>
       ) : (
         <button
           type="button"
@@ -400,7 +407,7 @@ export function BidsBidBoardTab({
             font: 'inherit',
           }}
         >
-          {num}
+          {marked}
         </button>
       )
     }
@@ -777,6 +784,13 @@ export function BidsBidBoardTab({
               const estLine = estNorm ? (estNorm.name || estNorm.email) : '—'
               const isSelfAm = Boolean(authUser?.id && amNorm?.id === authUser.id)
               const isSelfEst = Boolean(authUser?.id && estNorm?.id === authUser.id)
+              // One person wearing both hats prints once. Match on id when both
+              // sides have one, else fall back to the displayed name. A missing
+              // account manager prints nothing rather than a second em dash.
+              const sameStaff = Boolean(
+                amNorm && estNorm && (amNorm.id && estNorm.id ? amNorm.id === estNorm.id : amLine === estLine)
+              )
+              const showAmLine = Boolean(amNorm) && !sameStaff
               const selfLineStyle = {
                 backgroundColor: '#111827',
                 color: '#ffffff',
@@ -788,13 +802,21 @@ export function BidsBidBoardTab({
                 boxSizing: 'border-box' as const,
               }
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                  <span title={isSelfAm ? 'You' : undefined} style={isSelfAm ? selfLineStyle : undefined}>
-                    {amLine}
-                  </span>
-                  <span title={isSelfEst ? 'You' : undefined} style={isSelfEst ? selfLineStyle : undefined}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem' }}>
+                  <span
+                    title={isSelfEst ? 'You' : sameStaff ? 'Estimator and account manager' : 'Estimator'}
+                    style={{ fontSize: '0.9375rem', fontWeight: 600, ...(isSelfEst ? selfLineStyle : {}) }}
+                  >
                     {estLine}
                   </span>
+                  {showAmLine ? (
+                    <span
+                      title={isSelfAm ? 'You' : 'Account manager'}
+                      style={{ color: 'var(--text-muted)', ...(isSelfAm ? selfLineStyle : {}) }}
+                    >
+                      {amLine}
+                    </span>
+                  ) : null}
                 </div>
               )
             })()}
