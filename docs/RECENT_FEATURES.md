@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1396)
+last_updated: 2026-08-04 (v2.1397)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1397)
+
+### Bids Counts: delete confirm names the row (2026-08-04)
+Owner report: the Counts tab's delete confirm said only "Remove this row?" — with 70+ rows on a bid it's hard to be sure the right one is selected. [`CountRow.tsx`](../src/components/bids/CountRow.tsx) `remove()` now includes the row's fixture/tie-in name and count in the native confirm — `Remove "FD" (count 7)?` — falling back to the old wording only when the fixture field is blank. Verified live on prod data with a cancel-stubbed `window.confirm` (no row deleted). Client-only.
 
 ## Latest Updates (v2.1396)
 

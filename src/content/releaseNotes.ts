@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1397',
+    date: '2026-08-04',
+    title: 'Bids Counts: deleting a row now names the fixture or tie-in',
+    kind: 'feature',
+    highlights: [
+      'The delete confirmation on a Counts row now says which item you\'re removing — for example, Remove "FD" (count 7)? — instead of just "Remove this row?", so it\'s easy to check you have the right one before confirming.',
+    ],
+  },
+  {
     version: 'v2.1396',
     date: '2026-08-04',
     title: 'Edit Job: the + for another payment line moved below the list',
