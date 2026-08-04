@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1372)
+last_updated: 2026-08-03 (v2.1374)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1374)
+
+### Bid Board: the staff column sits between Due Date and Last Contact (2026-08-03)
+Owner call — **Estimator / Account Man** moves out of the far-right position to sit directly after **Due Date**, so the reading order is now Bid # · Project/GC · Bid · **Due Date · Estimator · Last Contact** · Links. That puts *when it's due*, *who owns it*, and *when we last touched it* side by side, which is the follow-up question the board actually gets asked. Header `<th>` and the matching `<td>` moved together in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx); nothing else changed — the estimator still prints large with the account manager beneath only when it's someone else (v2.1370), and the Unsent section still hides Bid $. Phone cards have no columns and are unaffected. Client-only — no migration.
 
 ## Latest Updates (v2.1372)
 

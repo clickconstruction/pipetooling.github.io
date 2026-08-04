@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1374',
+    date: '2026-08-03',
+    title: 'Bid Board: due date, estimator, last contact together',
+    kind: 'feature',
+    highlights: [
+      'The estimator column moved next to the due date, so when a bid is due, who owns it, and when you last touched it now read side by side.',
+    ],
+  },
+  {
     version: 'v2.1372',
     date: '2026-08-03',
     title: 'Under the hood: the changelog now guards itself',
