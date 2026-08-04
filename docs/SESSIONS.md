@@ -67,6 +67,38 @@ Every PR bumps the same two files (`docs/RECENT_FEATURES.md` + `src/content/rele
 - **Started:** YYYY-MM-DD
 ```
 
+## If you automate the merge wait ("shepherds")
+
+A long-running script that watches a PR, renumbers it when a version race
+lands, and re-pushes is tempting under contention. One was written on
+2026-08-03; it corrupted the changelog twice in an afternoon. The rules below
+are what it got wrong, and they apply to any agent or human doing this by hand.
+
+- **Claim, never derive.** `npm run claim` allocates atomically. A script that
+  computes `newest + 1` from its own snapshot will hand the same number to two
+  PRs — that is exactly how v2.1368 was issued twice. (The first shepherd also
+  grepped `v2\.[0-9]*` over a whole file and matched the literal `v2.NNN` in a
+  code comment, producing "v2.1". Anchor to the structured field and reject a
+  result that isn't strictly greater than the current version.)
+- **Rebase; never `reset --hard` + `git apply`.** Rebasing gives git the real
+  merge base, so a collision surfaces as a *conflict*. Rebuilding a branch from
+  a patch throws that base away and turns the collision into a silent
+  overwrite: that is how a merged PR's release-note entry disappeared while
+  both PRs reported success.
+- **Assert the outcome, not the PR state.** `MERGED` is a fact about GitHub. The
+  post-condition worth checking is that your entry's text and your code marker
+  are on `origin/main`, and that `npm test` still passes there.
+- **Separate watching from mutating.** A loop that force-pushes unattended
+  multiplies a bad computation across the branch, the PR title, and the
+  changelog before anyone sees it. Report, then apply deliberately.
+- **Prefer fewer, larger merge windows.** Under heavy contention, folding
+  related tweaks into one PR beats shepherding a stack of three.
+
+The guards in [`releaseNotes.ts`](../src/lib/releaseNotes.ts) (duplicate
+headings, release notes with no `RECENT_FEATURES.md` entry) now fail `npm test`
+when this class of damage reaches the files, and they carry a frozen allowlist
+of the pre-existing cases — shrink it, never extend it.
+
 ## Limitations
 
 - **Local sessions only.** A cloud session (claude.ai/code) doesn't share this filesystem. Fallback there: open a draft PR early with the claimed version in its title, and check `gh pr list` before picking a number.
