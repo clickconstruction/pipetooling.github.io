@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1393)
+last_updated: 2026-08-04 (v2.1394)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1394)
+
+### Takeoffs: Add-parts-to-assembly create-flow auto-adds (2026-08-04)
+Owner follow-up to v2.1392: the one pre-select hold-out now commits. New staged id `addPartsAutoAddPartId` in [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) — set ONLY by `handleBidsPartFormSave`'s create routing (normal picker selections never touch it), cleared on modal open/close — consumed by an effect in [`TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx) (the v2.1326 staged-consume pattern, guarded on `savingTemplateParts` and id-matches-selection) that calls the existing `savePartsToTemplate()` — current quantity input (default 1), preview reload, modal close. `addModeSaveLabel` collapses to a constant "Save & add". Client-only.
 
 ## Latest Updates (v2.1393)
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1394',
+    date: '2026-08-04',
+    title: 'Takeoffs: creating a part from Add-parts-to-assembly adds it too',
+    kind: 'feature',
+    highlights: [
+      'The last hold-out: creating a new part from the Add-parts-to-assembly picker now adds it straight to the assembly (at the quantity in the box, default 1) instead of just selecting it — matching every other Takeoffs picker.',
+      'The button now says "Save & add" there too. Need a different quantity? Adjust it afterwards in Edit Assembly.',
+    ],
+  },
+  {
     version: 'v2.1393',
     date: '2026-08-04',
     title: 'Other jobs: duplicate-marked bank transactions no longer count as materials',
