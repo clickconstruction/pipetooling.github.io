@@ -5,7 +5,7 @@ file: docs/E2E_SMOKE.md
 type: Engineering / Testing
 purpose: What the Playwright Tier-1 smoke suite covers, how it authenticates, when it runs, and the rules for extending it (read-only, structural assertions, non-gating).
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 ---
 
 ## What this is
@@ -20,7 +20,7 @@ There is no staging environment, so production is the only real render target. T
 - `e2e/jobs-tabs.spec.ts` — all nine Jobs tabs cold-load with their distinctive markers and zero page errors (active). The Stages always-mounted contract spec (state survives tab switches) is currently quarantined with `test.fixme` — the fill lands but reads back empty after Billing→Stages in CI; tracked in the spec's FIXME comment, do not delete.
 - `e2e/stages-board.spec.ts` — board sections + totals render; Total by Name modal; the print popup path (`window.print` stubbed so headless never hangs).
 - `e2e/viewport-smoke.spec.ts` — phone-viewport invariants at 375×812 (v2.1003): the top seven pages load with no document-level sideways overflow (the v2.980/v2.982 regression signature); Stages board tables scroll inside their own wrappers, never the page (v2.984 contract); the sticky modal header keeps its ✕ inside the panel's visible box at max scroll (v2.990, generalised to every `stickyModalHeaderStyle.ts` consumer in v2.992 — the spec drives Add inspection, the shallowest one). The overflow invariant also runs in the **tablet band** at 760px and 900px (v2.1357) on `/dashboard` and `/jobs?tab=stages` — that band is where the header row itself stops fitting and has to fold into the hamburger, and the header is global so two pages pin it. The tablet checks poll rather than sample once: the contract is that the settled page doesn't overflow, since the header measures and folds after the role lands.
-- `e2e/settings-tabs.spec.ts` — every dev-visible Settings tab cold-loads its marker with zero page errors; `?tab=` deep link activates; the v2.855 Catalogs engines render their blocks (post-decomposition pin; the Sharing & Adoption block was removed in v2.922 — grants are auto-maintained since v2.921).
+- `e2e/settings-tabs.spec.ts` — every dev-visible Settings tab cold-loads its marker with zero page errors; `?tab=` deep link activates; the v2.855 Catalogs engines render their blocks (post-decomposition pin; the Sharing & Adoption block was removed in v2.922 — grants are auto-maintained since v2.921). The tab list must track `getSettingsJumpGroups` in `src/pages/Settings.tsx` exactly — v2.1364 found it two renames behind (Recent push → Notifications, How it works → Guides) plus a missing Email & notifications tab. Markers assert **visible** text (`useInnerText: true`): inactive tabs stay mounted under `display: none`, so a `textContent` match passes for every marker on the page regardless of which tab is selected, and that vacuity is what hid the renames. Each tab click carries an explicit timeout — without one a missing label waits out the whole 90s test budget and reads as a hang rather than a rename.
 
 ## Rules (do not break these)
 

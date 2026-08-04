@@ -7,18 +7,27 @@ import { test, expect } from '@playwright/test'
  * collapsible toggles only — no saves, sends, deletes, or admin actions.
  */
 
+/**
+ * Labels must match `getSettingsJumpGroups` in `src/pages/Settings.tsx` exactly
+ * — a renamed tab strands this spec (E2E_SMOKE.md rule 6). "Recent push" became
+ * "Notifications" and "How it works" became "Guides"; because a missing tab makes
+ * `.click()` wait out the whole 90s test budget, both renames read as a mystery
+ * timeout rather than a name mismatch. The explicit click timeout below keeps the
+ * next rename cheap to diagnose.
+ */
 const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> = [
-  { label: 'Recent push', marker: 'Most recent push notifications' },
+  { label: 'Notifications', marker: 'Most recent push notifications' },
   { label: 'Your account', marker: 'My Profile' },
   { label: 'Dashboard & alerts', marker: 'Dashboard buttons' },
   { label: 'People & accounts', marker: 'Additional People' },
+  { label: 'Email & notifications', marker: 'Payment received notifications' },
   { label: 'Data & migration', marker: /[Bb]ackup/ },
   { label: 'Jobs & dispatch', marker: 'Job creation overrides' },
   { label: 'Catalogs & trades', marker: 'Manage Parts' },
   { label: 'Templates & testing', marker: 'Notification Templates' },
   { label: 'Advanced', marker: 'Fix app', expand: 'Advanced' },
+  { label: 'Guides', marker: 'How do I' },
   { label: 'Release notes', marker: 'Current version' },
-  { label: 'How it works', marker: 'How It Works' },
 ]
 
 test('every dev-visible Settings tab renders its marker without page errors', async ({ page }) => {
@@ -27,13 +36,18 @@ test('every dev-visible Settings tab renders its marker without page errors', as
 
   await page.goto('/settings')
   const main = page.locator('main')
-  // Default landing tab is Recent push for every role.
+  // Default landing tab is Notifications for every role.
   await expect(main).toContainText('Most recent push notifications')
 
   for (const tab of TABS) {
-    await page.getByRole('tab', { name: tab.label }).click()
+    // exact — two labels here differ only by case and surrounding words
+    // ("Notifications" / "Email & notifications"); pin them literally.
+    await page.getByRole('tab', { name: tab.label, exact: true }).click({ timeout: 15_000 })
     if (tab.expand) await page.getByRole('button', { name: tab.expand }).click()
-    await expect(main).toContainText(tab.marker, { timeout: 15_000 })
+    // useInnerText — inactive tabs stay mounted under `display: none`, so a
+    // textContent match passes for every marker on the page whichever tab is
+    // selected. Visible text is what makes this assertion mean anything.
+    await expect(main).toContainText(tab.marker, { timeout: 15_000, useInnerText: true })
   }
 
   expect(pageErrors).toEqual([])
