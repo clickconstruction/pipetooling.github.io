@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1382',
+    date: '2026-08-04',
+    title: 'Customer review: see the hours behind each customer',
+    kind: 'feature',
+    highlights: [
+      'On the Bid Board\'s Customer review, click any customer to see who logged their hours — a ranked contributor list with each person\'s share, split between estimating and job time.',
+      'Below that, the hours are grouped by bid and job, biggest first — expand one to see the individual clock sessions (day, person, in/out times, hours).',
+      'The customer table also got a polish: hover highlighting, a header that stays put while you scroll, and it scrolls sideways on small screens instead of cutting off the hours columns.',
+    ],
+  },
+  {
     version: 'v2.1381',
     date: '2026-08-04',
     title: 'Edit schedule block: Remove button',

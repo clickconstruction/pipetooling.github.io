@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1381)
+last_updated: 2026-08-04 (v2.1382)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1382)
+
+### Customer review: click a customer for the sessions behind the hours (2026-08-04)
+Owner ask: the Bid Board's Customer review modal ranked customers by hours but couldn't answer *whose* hours or *where they went*. Rows are now clickable and drill into a per-customer detail view; the list itself got a light refresh (hover highlight + chevron affordance, right-aligned tabular numerics, sticky header, an `overflowX: auto` wrapper so narrow screens scroll the table instead of clipping it, and a relative total-hours bar).
+
+**(1) New RPC** `list_customer_review_customer_sessions(p_customer_id, p_gc_builder_id)` (migration [`20260804110000_customer_review_session_detail.sql`](../supabase/migrations/20260804110000_customer_review_session_detail.sql)): the individual clock sessions behind ONE customer's hours — user name, bid/job label + `bid_number`, in/out timestamps, hours — with the same filters as the modal's two aggregate RPCs (excludes rejected/revoked, clips open sessions at `now()`). Param semantics mirror `customerReviewGroupKey`: customer id → that customer's bids + jobs; gc-builder id → legacy no-customer bids under that GC; both NULL → the "No customer" row. Fetched only on row click and cached per key for the modal's lifetime.
+
+**(2) New pure kernel** [`bidBoardCustomerReviewDetail.ts`](../src/lib/bidBoardCustomerReviewDetail.ts) (10 tests): `buildCustomerReviewDetail` aggregates session rows into a contributor leaderboard (per-person estimating/job split + share of total) and per-bid/per-job groups (hours-desc, sessions newest-first), plus `parseCustomerReviewGroupKey` and the display formatters (`contributorInitials`, `formatSessionDay`, `formatSessionTimeRange`, `formatContributorShare`).
+
+**(3) Detail view** in [`BidBoardCustomerReviewModal.tsx`](../src/components/bids/BidBoardCustomerReviewModal.tsx): back link + stat tiles (Total/Estimating/Job hrs, Bids, People), **Top contributors** panel (initial-chip avatars, share bars split estimating-orange vs job-blue), and **Hours by bid & job** cards — BID/JOB pill, session count, hours, expandable to the per-session table (first group starts expanded). **Esc peels one layer at a time** (detail → list → close), the v2.1100 modal pattern. Narrow viewports (`useNarrowViewport660`) stack the two panels. Guide `read-the-bid-board` gains a Customer review section.
 
 ## Latest Updates (v2.1381)
 

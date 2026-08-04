@@ -9,7 +9,7 @@ last_updated: 2026-08-04
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "168 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "169 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 4, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 4, 2026
+
+**`20260804110000_customer_review_session_detail.sql`** _(apply via `supabase db push` after merge; migration-first deploy order safe — the old client never calls the new RPC, and the new client's detail click fails gracefully with an error message until it lands)_
+- **Purpose**: Bid Board → Customer review row-click detail (v2.1382). New RPC `list_customer_review_customer_sessions(p_customer_id, p_gc_builder_id)` returning the individual clock sessions behind one customer's hours (user name via `users`, bid/job label + bid_number, in/out timestamps, computed hours), bid sessions `UNION ALL` job sessions, newest first. Same session filters as the modal's aggregate RPCs (`rejected_at`/`revoked_at` NULL, open sessions clipped at `now()`). Param semantics mirror the client's `customerReviewGroupKey`: customer id → bids with that `customer_id` + jobs with that `customer_id`; only gc-builder id → legacy bids with no customer under that GC; both NULL → bids with neither.
+- **Security**: SECURITY DEFINER + `SET search_path = public`, EXECUTE granted to `authenticated` — same posture as `list_customer_review_job_hours`, but note this one intentionally returns **per-session detail** (names + times) for the drill-down, not just aggregates. Read-only (`STABLE`), single-customer scope per call, fetched only on row click.
+- **Category**: Bids
 
 **`20260804100000_controller_banking_attributor_autogrant.sql`** _(apply via `supabase db push` after merge; either deploy order safe — no client change rides with it, and there are no active controllers today so the seed is a no-op)_
 - **Purpose**: Controller role implies the non-card attribution capability (v2.1380). Adds `banking_attributors.auto_role_grant boolean NOT NULL DEFAULT false`; `sync_controller_banking_attributors()` reconciles the grant table (INSERT auto rows for active controllers, DELETE auto rows for demoted/archived ex-controllers; manual dev grants — `auto_role_grant = false` — never touched, and a manual grant that predates a promotion survives a later demotion). Statement trigger `sync_controller_banking_attributors_on_users` on `users` (`AFTER INSERT OR UPDATE OF role, archived_at`), the `sync_company_access_grants` pattern from v2.921. Ends with a self-contained seed call.
