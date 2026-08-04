@@ -14,6 +14,7 @@ import {
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { buildColumnBidMap } from '../../lib/bidWorkingBoardColumnMap'
+import { placementBidIdsSafeToDelete, type PlacementCleanupBid } from '../../lib/workingBoardPlacementCleanup'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
@@ -87,26 +88,10 @@ async function persistPlacements(
     )
   }
 
-  const allowed = new Set<string>()
-  for (const col of columns) {
-    for (const bidId of columnBidIds[col.id] ?? []) {
-      allowed.add(`${userId}:${bidId}`)
-    }
-  }
-  const existing = await withSupabaseRetry(
-    async () => supabase.from('bid_working_board_placements').select('bid_id').eq('user_id', userId),
-    'list working board placements'
-  )
-  const existingRows = (existing ?? []) as { bid_id: string }[]
-  if (existingRows.length > 0) {
-    const toDelete = existingRows.filter((r) => !allowed.has(`${userId}:${r.bid_id}`)).map((r) => r.bid_id)
-    if (toDelete.length > 0) {
-      await withSupabaseRetry(
-        async () => supabase.from('bid_working_board_placements').delete().eq('user_id', userId).in('bid_id', toDelete),
-        'delete orphan working board placements'
-      )
-    }
-  }
+  // No deletion here (v2.1383): persist only upserts. The old "delete rows not
+  // on the board" pass keyed off the trade-filtered view, so a drag while
+  // filtered nuked the user's other-trade placements. Leaver cleanup lives in
+  // loadBoard's confirmed-ineligible pass (workingBoardPlacementCleanup.ts).
 }
 
 function findColumnForBid(bidId: string, columnBidIds: Record<string, string[]>): string | undefined {
@@ -404,12 +389,38 @@ export function BidsWorkingBoard({
       const pl = (placements ?? []) as BidWorkingPlacement[]
 
       const assignedIds = new Set(eligibleAssigned.map((b) => b.id))
-      const orphanBids = pl.filter((p) => !assignedIds.has(p.bid_id)).map((p) => p.bid_id)
-      if (orphanBids.length > 0) {
-        await withSupabaseRetry(
-          async () => supabase.from('bid_working_board_placements').delete().eq('user_id', userId).in('bid_id', orphanBids),
-          'delete unassigned working board placements'
-        )
+      // Cleanup of bids that left the board (sent / won-lost-started / reassigned)
+      // must be CONFIRMED per bid, never inferred from absence: `eligibleAssigned`
+      // is the trade-filtered view, and deleting on absence mass-reset boards to
+      // Inbox when the trade toggle changed (2026-08-04). Best-effort — a failed
+      // confirmation fetch skips cleanup rather than failing the board load.
+      // Truly deleted bids cascade their placements (FK ON DELETE CASCADE).
+      const candidateBidIds = [...new Set(pl.map((p) => p.bid_id))].filter((id) => !assignedIds.has(id))
+      if (candidateBidIds.length > 0) {
+        try {
+          const confirmed = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('bids')
+                .select('id, bid_date_sent, outcome, estimator_id, account_manager_id')
+                .in('id', candidateBidIds),
+            'confirm working board placement bids'
+          )
+          const toDelete = placementBidIdsSafeToDelete(
+            candidateBidIds,
+            (confirmed ?? []) as PlacementCleanupBid[],
+            userId
+          )
+          if (toDelete.length > 0) {
+            await withSupabaseRetry(
+              async () => supabase.from('bid_working_board_placements').delete().eq('user_id', userId).in('bid_id', toDelete),
+              'delete confirmed-ineligible working board placements'
+            )
+          }
+        } catch {
+          // Cleanup is housekeeping — stale rows are invisible (buildColumnBidMap
+          // ignores non-assigned bids) and must never block the board.
+        }
       }
       const plFiltered = pl.filter((p) => assignedIds.has(p.bid_id))
 

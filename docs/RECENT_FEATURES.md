@@ -7,10 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1382)
+last_updated: 2026-08-04 (v2.1383)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1383)
+
+### Working board: placement cleanup can no longer mass-delete layouts (2026-08-04)
+Incident (reported by Wendi, 2026-08-04): every bid on her Unsent/Working board jumped to Inbox. Root cause: both placement-cleanup passes in [`BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx) deleted `bid_working_board_placements` rows for any bid **absent from the currently loaded list** — but `Bids.tsx` loads bids **filtered by the selected trade** (`loadBids(selectedServiceTypeId)`), so flipping Plumbing → Electrical while on the Working tab made every plumbing placement look orphaned and hard-deleted it (implicit-Inbox alphabetical order in the report matched exactly).
+
+**Fix — absence is never evidence.** New pure kernel [`workingBoardPlacementCleanup.ts`](../src/lib/workingBoardPlacementCleanup.ts) (6 tests): a placement may be deleted only when its bid is re-fetched **by id, unfiltered** and positively confirmed off the board — sent (`bid_date_sent`), terminal outcome (won/lost/started_or_complete via `bidEligibleForWorkingBoardArchive`), or reassigned away (neither `estimator_id` nor `account_manager_id`). Bids absent from the confirmation fetch are kept, so a filtered/partial/RLS-hidden list can never trigger deletion. Wiring: `loadBoard` confirmation-fetches only the placements not in the current view (zero extra queries in the common case) and the whole pass is best-effort (`try/catch` — a failed fetch skips cleanup, never blocks the board); `persistPlacements` loses its delete pass entirely and is upsert-only. Truly deleted bids need no client cleanup — the FK is `ON DELETE CASCADE`. Client-only, no migration; lost layouts aren't recoverable (rows were hard-deleted) — users re-drag once.
 
 ## Latest Updates (v2.1382)
 
