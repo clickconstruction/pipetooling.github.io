@@ -380,10 +380,17 @@ export function BidsBidBoardTab({
     const label = num ? formatBidLedgerNumberLabel(pref, num) : null
     let numberNode: React.ReactNode = '-'
     if (num) {
-      // Bare number on the board — the page context already defines the bid
-      // type; the prefixed label survives in the tooltip/aria text.
+      // A lone "5" reads as a count; a lowercase "b" marks it as a bid number
+      // without the full trade prefix (the trade is already chosen above the
+      // board). The prefixed label still carries the tooltip/aria text.
+      const marked = (
+        <>
+          <span style={{ fontSize: '0.75em', fontWeight: 600 }}>b</span>
+          {num}
+        </>
+      )
       numberNode = !bidPreview ? (
-        <span title={label ?? undefined}>{num}</span>
+        <span title={label ?? undefined}>{marked}</span>
       ) : (
         <button
           type="button"
@@ -400,7 +407,7 @@ export function BidsBidBoardTab({
             font: 'inherit',
           }}
         >
-          {num}
+          {marked}
         </button>
       )
     }

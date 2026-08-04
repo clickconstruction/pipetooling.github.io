@@ -11,7 +11,7 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1369',
+    version: 'v2.1371',
     date: '2026-08-03',
     title: 'Linked crews you can actually manage',
     kind: 'feature',
@@ -19,6 +19,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'Jobs scheduled to a crew now show a link chip ("⛓ 3") on the Dispatch Schedule — tap it to see everyone on the crew.',
       'From there: Unlink someone (their time stays but stops moving with the group), Remove them, or Add a person who inherits the crew\'s times and instructions.',
       'The same management works from the Schedule Dispatch week grid on desktop.',
+    ],
+  },
+  {
+    version: 'v2.1368',
+    date: '2026-08-03',
+    title: 'Bid numbers look like bid numbers',
+    kind: 'feature',
+    highlights: [
+      'The Bid Board now shows "b146" instead of a bare "146", so a short number reads as a bid rather than a count.',
     ],
   },
   {
