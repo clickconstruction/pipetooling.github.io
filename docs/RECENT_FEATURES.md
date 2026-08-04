@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1366)
+last_updated: 2026-08-03 (v2.1367)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1367)
+
+### Quick Assign polish: slider-only times, two-line Schedule button (2026-08-03)
+Three owner tweaks on the v2.1366 slider ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx)): **(1)** the Custom `type="time"` input pair is removed — redundant now that the two-dot bar sets the window and the blue Schedule button echoes it (the Custom chip still toggles custom mode; the slider is its editor; effective granularity is the bar's 30-minute steps). **(2)** the Schedule button label becomes a deliberate two-line stack — "Schedule 1 person" over "9:00 AM–2:30 PM" — instead of wrapping mid-time. **(3)** the instructions placeholder drops its last word ("…scope, arrival)…"). Verified live: no time inputs, slider drives the window, button renders two lines. Client-only — no migration.
 
 ## Latest Updates (v2.1366)
 

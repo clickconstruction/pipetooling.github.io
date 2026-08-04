@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1367',
+    date: '2026-08-03',
+    title: 'Assign work: tidier times',
+    kind: 'fix',
+    highlights: [
+      'The separate time boxes are gone — the sliding dots set the window and the blue Schedule button shows it.',
+      'The Schedule button now reads on two clean lines: who, then when.',
+    ],
+  },
+  {
     version: 'v2.1366',
     date: '2026-08-03',
     title: 'Assign work: slide the time',
