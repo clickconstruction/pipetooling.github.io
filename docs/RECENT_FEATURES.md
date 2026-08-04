@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1388)
+last_updated: 2026-08-04 (v2.1389)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1389)
+
+### Followup Phase 3: call sessions + promised-date queue (2026-08-04)
+The last piece of the approved Followup plan.
+
+**(1) Migration** [`20260804130000_customer_followup_next_at.sql`](../supabase/migrations/20260804130000_customer_followup_next_at.sql): additive `next_followup_at timestamptz` on `customer_followup_prefs` (no new table → no read-only sweep). **Apply promptly after merge** — the new client's prefs SELECT names the column, and until it exists the whole prefs load fails soft (PIA/snooze/badges render empty; nothing breaks, nothing writes wrong).
+
+**(2) Session kernel** [`builderCallSession.ts`](../src/lib/bids/builderCallSession.ts) + **queue kernel** [`callQueueOrdering.ts`](../src/lib/bids/callQueueOrdering.ts) (8 tests): `buildCallSessionWrites` (one `customer_contacts` row; entry + `last_contact` stamp per *touched* bid — outcome tapped or note typed; `bids.outcome`/`loss_reason` updates for Won/Lost only, Rebid/RFQ is an entry not an outcome; untouched bids write nothing) and `compareCustomersForCallQueue` (three bands: overdue promises by most-overdue → no-promise by staleness → future promises by due date; newest-first ignores promises). `nextFollowupQuickPickIso` lands quick picks at 8am local.
+
+**(3) UI** — new [`BuilderCallSessionModal.tsx`](../src/components/bids/BuilderCallSessionModal.tsx) (📞 button on every card footer): dial header (first contact person + tel, win rate), per-bid outcome pills (loss-reason input on Lost), call summary, next-follow-up picks (Tomorrow/Next week/2 weeks/Custom/No date), dirty-guarded Esc/Cancel, sequential writes with retry then a prefs refetch + notes-nonce bump + reloads. Card headers gain the promise badge (red `⚠ follow-up due M/D` when due, blue when parked). Guide `follow-up-with-builders` gains the session + queue-bands sections.
 
 ## Latest Updates (v2.1388)
 

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1389',
+    date: '2026-08-04',
+    title: 'Call sessions: walk every bid while the GC is on the phone',
+    kind: 'feature',
+    highlights: [
+      'New 📞 Start call session button on every builder card: the number to dial up top, then each open bid with one-tap outcomes — Still pending, Won, Lost (with a reason), or Rebid/RFQ — plus optional notes.',
+      'One save logs the whole call: the builder\'s contact history, a dated note on every bid you touched, and any Won/Lost outcomes — set for real, no separate edit step.',
+      'Before you hang up, promise the next follow-up (Tomorrow / Next week / In 2 weeks / pick a date). The call queue now honors those promises: due follow-ups float to the top with a red badge, and builders promised a later date wait below until their day.',
+    ],
+  },
+  {
     version: 'v2.1388',
     date: '2026-08-04',
     title: 'Followup: quick-logged calls appear in the contact log instantly',
