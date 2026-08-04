@@ -69,7 +69,8 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
   }
 
   async function remove() {
-    if (!confirm('Remove this row?')) return
+    const name = (row.fixture ?? '').trim()
+    if (!confirm(name ? `Remove "${name}" (count ${row.count})?` : 'Remove this row?')) return
     await supabase.from('bids_count_rows').delete().eq('id', row.id)
     onDelete()
   }
