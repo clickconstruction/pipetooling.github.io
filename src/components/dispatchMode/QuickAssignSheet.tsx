@@ -25,12 +25,16 @@ import {
   type DispatchModeAgendaBlock,
 } from '../../lib/dispatchModeSchedule'
 import {
+  DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
+  dispatchMinutesToSlotIndex,
+  dispatchSlotIndexToMinutes,
   formatBlockDurationMinutes,
   formatDispatchQuickTimeLabel,
   timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
+import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   ribbonSpanPct,
@@ -665,6 +669,43 @@ export default function QuickAssignSheet({
                 />
               </div>
             ) : null}
+
+            {/* Two-dot range bar (6 AM–8 PM), mirroring the Add/Edit block modals.
+                Dragging a dot switches the window to Custom with that value, so the
+                bar, the chips, and the time inputs stay in sync. */}
+            {(() => {
+              const sliderWindow = effectiveWindow ?? { startMin: timeInputToMinutesSafe('08:00'), endMin: timeInputToMinutesSafe('16:00') }
+              const sliderTrim = {
+                loSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('06:00')),
+                hiSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('20:00')),
+              }
+              const applySlot = (which: 'start' | 'end') => (slotIndex: number) => {
+                const hhmm = dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(slotIndex))
+                if (!customOpen) {
+                  setCustomStart(dispatchMinutesToHHmm(sliderWindow.startMin))
+                  setCustomEnd(dispatchMinutesToHHmm(sliderWindow.endMin))
+                  setCustomOpen(true)
+                }
+                if (which === 'start') setCustomStart(hhmm)
+                else setCustomEnd(hhmm)
+              }
+              return (
+                <div style={{ padding: '0.15rem 0.5rem 0' }}>
+                  <DispatchAddBlockTimeRange
+                    slotCount={DISPATCH_ADD_BLOCK_SLOT_COUNT}
+                    startSlotIndex={dispatchMinutesToSlotIndex(sliderWindow.startMin)}
+                    endSlotIndex={dispatchMinutesToSlotIndex(sliderWindow.endMin)}
+                    onStartChange={applySlot('start')}
+                    onEndChange={applySlot('end')}
+                    formatAriaValue={(i) =>
+                      formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(i)))
+                    }
+                    groupAriaLabel="Scheduled window, 30-minute steps from 6:00 AM to 8:00 PM Central"
+                    railTrimWindow={sliderTrim}
+                  />
+                </div>
+              )
+            })()}
 
             <textarea
               value={instructions}

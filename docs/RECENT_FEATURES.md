@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1365)
+last_updated: 2026-08-03 (v2.1366)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1366)
+
+### Quick Assign: two-dot time slider (2026-08-03)
+Owner ask: the Assign work sheet ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx)) gains the same **two-thumb `DispatchAddBlockTimeRange` bar** the Add/Edit-block modals use, rendered between the time chips/Custom inputs and Job instructions, rail-trimmed to **6:00 AM–8:00 PM** (`railTrimWindow`). Fully two-way synced: picking an "all free" chip moves the dots; dragging (or arrow-keying) a dot flips the window to **Custom** with the corresponding `type="time"` input updated, and the Schedule button label follows. No behavior change to the save path. Verified live: chip → thumbs 6:00 AM/6:00 PM; ArrowLeft on the end thumb → Custom active, inputs 06:00–17:30, thumbs 6:00 AM–5:30 PM. Client-only — no migration.
 
 ## Latest Updates (v2.1365)
 
