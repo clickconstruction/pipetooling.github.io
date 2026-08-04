@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1367)
+last_updated: 2026-08-03 (v2.1369)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1369)
+
+### Linked crews become manageable: crew chip + Unlink / Remove / Add person (2026-08-03)
+Owner ask: multi-person Quick Assign jobs were already linked (`shared_block_group_id`, v2.1344 moves legs together) but the link was invisible and unmanageable. **(1) Crew chip** — Dispatch Mode → Schedule agenda rows with a linked block get a tappable "⛓ N" chip ([`DispatchModeSchedule.tsx`](../src/components/dispatchMode/DispatchModeSchedule.tsx); N = the group's legs on the loaded day). **(2) The group modal grows management** ([`LinkedScheduleGroupModal.tsx`](../src/components/schedule/LinkedScheduleGroupModal.tsx), new `canManage`/`addPeople`/`onChanged` props; `weekStart`/`weekEnd` now optional — the Hub-week column hides without them): per-leg **Unlink** (block stays, `shared_block_group_id` → null, stops moving with the crew) and **Remove** (confirm + delete), plus **Add person to crew** (one leg per distinct job/date/window in the group, note included — multi-day groups stay symmetric; roster lazy-loaded via the Quick Assign fetch pair). **(3) Schedule Dispatch hub** passes `canManage={canEdit}` + its people rows + `loadHub({quiet})`, so the previously view-only modal manages from desktop too. Writes are the existing `updateJobScheduleBlock`/`deleteJobScheduleBlock`/`insertJobScheduleBlock` helpers under the same edit-role RLS — no migration. Follow-up candidate: make the Day-tab agenda's ⛓ glyph open the same modal.
 
 ## Latest Updates (v2.1367)
 
