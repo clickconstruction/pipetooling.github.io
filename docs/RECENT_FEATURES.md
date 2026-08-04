@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1367)
+last_updated: 2026-08-03 (v2.1368)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1368)
+
+### Bid Board: bid numbers read `b146`, not a bare `146` (2026-08-03)
+A lone `5` in the Bid # column reads as a count, not an identifier. The number is now prefixed with a lowercase **`b`** at 0.75em semibold so the digits stay dominant. Not the full per-trade ledger prefix (the trade is already chosen above the board) — the prefixed label still carries the tooltip and screen-reader text. Client-only — no migration.
 
 ## Latest Updates (v2.1367)
 
