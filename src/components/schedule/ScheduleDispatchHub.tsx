@@ -115,6 +115,16 @@ function hubDayColumnHeaderLabel(dateKey: string): string {
   return `${shortDowLabel(dateKey)} (${formatMmDdSlash(dateKey)})`
 }
 
+/** Jobs-grid day header (v2.1362): weekday over date on two lines so columns stay narrow. */
+function hubDayColumnHeaderStacked(dateKey: string) {
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.25 }}>
+      <span>{shortDowLabel(dateKey)}</span>
+      <span style={{ fontWeight: 400 }}>({formatMmDdSlash(dateKey)})</span>
+    </span>
+  )
+}
+
 type HubJobsPanelProps = {
   rows: ScheduleDispatchHubMergedRow[]
   loading: boolean
@@ -380,11 +390,11 @@ function HubJobsPanel({
                     border: '1px solid var(--border)',
                     ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, 'var(--bg-muted)'),
                     fontSize: '0.75rem',
-                    minWidth: 88,
+                    minWidth: 60,
                   }}
                   title={dk}
                 >
-                  {hubDayColumnHeaderLabel(dk)}
+                  {hubDayColumnHeaderStacked(dk)}
                 </th>
               ))}
               <th style={{ padding: '0.5rem', border: '1px solid var(--border)', background: 'var(--bg-muted)' }} aria-label="Open" />
@@ -413,12 +423,14 @@ function HubJobsPanel({
                       left: 0,
                       background: 'var(--surface)',
                       zIndex: 1,
+                      minWidth: 130,
                       maxWidth: 280,
                     }}
                   >
                     <button
                       type="button"
                       onClick={() => onOpenJob(r.id)}
+                      title={r.displayTitle}
                       style={{
                         padding: 0,
                         margin: 0,
@@ -430,6 +442,10 @@ function HubJobsPanel({
                         textAlign: 'left',
                         textDecoration: 'underline',
                         textUnderlineOffset: 2,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
                       }}
                     >
                       {r.displayTitle}
