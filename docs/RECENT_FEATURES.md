@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1377)
+last_updated: 2026-08-03 (v2.1378)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1378)
+
+### Moneyfill — controller/dev financial queues page; Bank transfers move off Quickfill (2026-08-03)
+Owner ask: the "Bank transfers needing attribution" queue exposes org-level spending (rent, contract-labor ACHs, card bills), so it should not sit on Quickfill — the assistants' daily loop — even behind its capability probe. It now lives on a new page built for exactly this class of surface.
+
+**(1) New page [`Moneyfill.tsx`](../src/pages/Moneyfill.tsx)** at `/moneyfill` — the controller/dev counterpart to Quickfill: financial queues worked to zero. Role-gated in the page itself (`role !== 'dev' && role !== 'controller'` → `Navigate` to `/dashboard`; `master_technician` and assistants excluded by design). First and only section is **Bank transfers needing attribution**, reusing [`useQuickfillNoncardAttribution`](../src/hooks/useQuickfillNoncardAttribution.ts) + [`QuickfillNoncardAttributionSection`](../src/components/quickfill/QuickfillNoncardAttributionSection.tsx) unchanged — the body stays **capability-probed** (count RPC succeeds for dev + `banking_attributors` holders; 42501 → a controller without the grant sees "ask a dev for the banking-attribution grant" instead of the queue). Route registered in [`App.tsx`](../src/App.tsx) with the same `ErrorBoundary` wrap as Quickfill.
+
+**(2) Nav access points next to Quickfill** in [`Layout.tsx`](../src/components/Layout.tsx): a money-bill icon NavLink immediately after the Quickfill heart in the desktop header, and a "Moneyfill" row after Quickfill in the hamburger dropdown — both gated `role === 'dev' || role === 'controller'` (deliberately narrower than Quickfill's dev/master/assistant-like gate). No `layoutRouteAccess.ts` change: dev and assistant-like already pass every route there, and the page-level redirect is the enforcement for assistants/masters who type the URL.
+
+**(3) Quickfill sheds the section**: the `noncard-attribution` entry left `SECTIONS`, its render case, the `sectionWouldRenderOnPage` permission-probe exception, the page-level `useQuickfillNoncardAttribution` call + metric report, and the mark-less jump-chip special-casing (now `my-inbox` only) are all removed from [`Quickfill.tsx`](../src/pages/Quickfill.tsx). Existing `quickfill_section_marks` / hidden-section prefs for the id are inert. The help guide (`label-bank-transfers.md`) now points at Moneyfill and is scoped to dev + controller.
 
 ## Latest Updates (v2.1377)
 

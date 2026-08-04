@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1378',
+    date: '2026-08-03',
+    title: 'Moneyfill: a money page for controllers',
+    kind: 'feature',
+    highlights: [
+      'New Moneyfill page (the money-bill icon next to the Quickfill heart) for devs and controllers — financial queues worked to zero, starting with Bank transfers needing attribution.',
+      'Bank transfers needing attribution moved there from Quickfill, so the daily Quickfill loop no longer shows org-level spending.',
+      'Controllers still need the banking-attribution grant from a dev to see the queue itself; the page explains who to ask.',
+    ],
+  },
+  {
     version: 'v2.1377',
     date: '2026-08-03',
     title: 'Move a scheduled block to another day',

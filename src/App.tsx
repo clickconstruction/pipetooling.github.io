@@ -28,6 +28,7 @@ const JobsAccountsReceivable = lazy(() => import('./pages/JobsAccountsReceivable
 const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
+const Moneyfill = lazy(() => import('./pages/Moneyfill'))
 const Bids = lazy(() => import('./pages/Bids'))
 const Prospects = lazy(() => import('./pages/Prospects'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
@@ -288,6 +289,7 @@ function AppContent() {
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
+          <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="map" element={<Map />} />
