@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1372',
+    date: '2026-08-03',
+    title: 'Under the hood: the changelog now guards itself',
+    kind: 'infra',
+    highlights: [
+      'Automated checks now catch a release note that goes missing, or a version number used twice, before it reaches everyone.',
+    ],
+  },
+  {
     version: 'v2.1371',
     date: '2026-08-03',
     title: 'Linked crews you can actually manage',

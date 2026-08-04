@@ -7,10 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1371)
+last_updated: 2026-08-03 (v2.1372)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1372)
+
+### Changelog guards: duplicate versions and orphaned release notes now fail CI (2026-08-03)
+The drift test (v2.944) only compared the two files' **newest** versions, so the damage a version race actually does was invisible to it. Two guards added to [`releaseNotes.ts`](../src/lib/releaseNotes.ts) + its test, both running inside `npm test` (already in `ci.yml` and `deploy.yml`, so no workflow churn and no parity risk):
+
+1. **`duplicateRecentFeaturesVersions`** — the same `v2.NNN` carrying two `## Latest Updates` headings, which is what two sessions claiming one number produce the moment their doc heads merge. `newestRecentFeaturesVersionNumber` takes a max, so duplicates were invisible to every existing check.
+2. **`releaseNotesMissingFromRecentFeatures`** — a `releaseNotes.ts` entry with no matching heading, i.e. conflict resolution that kept one file's side and dropped the other's.
+
+**Both guards found pre-existing damage on main**, which is why each carries a frozen allowlist rather than a hard zero: **v2.25 / v2.95 / v2.545** are each documented twice, and **v2.1037–v2.1040** sit in `releaseNotes.ts` with no heading at all (**v2.1012** is named in prose but never as a heading). So the 2026-08-03 loss was not a first — it is a recurring failure that nothing was watching. The lists are a ratchet: shrink them, never extend them; a new entry on either means a PR lost its changelog entry.
+
+Written practice, from the post-mortem of the shepherd script that caused the latest instance: `docs/SESSIONS.md` gains **"If you automate the merge wait"** (claim don't derive; rebase, never `reset --hard` + `git apply`, which discards the merge base and converts a would-be conflict into a silent overwrite; assert the outcome on `origin/main`, not the PR's `MERGED` state; separate watching from mutating), and CLAUDE.md's release-notes bullet now points at both the guards and `npm run claim`. Client tooling + docs only — no migration, no user-facing change.
 
 ## Latest Updates (v2.1371)
 
