@@ -21,17 +21,18 @@ import type { ReleaseNote } from './releaseNotes'
 const RECENT_FEATURES_PATH = join(__dirname, '../../docs/RECENT_FEATURES.md')
 
 /**
- * Discrepancies already on main when these guards landed — frozen so anything
- * NEW fails while the historical debt is repaired separately. Both lists are a
- * ratchet: shrink them, never extend them. Extending one means a PR lost an
- * entry, which is the failure the guards exist to catch.
+ * Both guards enforce a hard zero (v2.1373). The historical damage they were
+ * frozen around when they landed in v2.1372 is repaired: `v2.25` / `v2.95` /
+ * `v2.545` each carried two "## Latest Updates" headings and are now merged
+ * under one, and the five orphaned release notes (`v2.1012`, `v2.1037`–
+ * `v2.1040`) got their headings back from git history.
  *
- * `v2.25`, `v2.95`, `v2.545` each carry two "## Latest Updates" headings.
- * `v2.1037`–`v2.1040` are in releaseNotes.ts with no heading at all; `v2.1012`
- * is mentioned in prose but never as a heading.
+ * The empty arrays stay as named constants on purpose: a future repair may need
+ * a temporary exemption, and a reviewer seeing a version added here knows
+ * exactly what it means. They are a ratchet — anything added must come back out.
  */
-const LEGACY_DUPLICATE_RECENT_FEATURES_VERSIONS: readonly number[] = [25, 95, 545]
-const LEGACY_UNDOCUMENTED_RELEASE_NOTES: readonly string[] = ['v2.1040', 'v2.1039', 'v2.1038', 'v2.1037', 'v2.1012']
+const LEGACY_DUPLICATE_RECENT_FEATURES_VERSIONS: readonly number[] = []
+const LEGACY_UNDOCUMENTED_RELEASE_NOTES: readonly string[] = []
 
 const note = (overrides: Partial<ReleaseNote>): ReleaseNote => ({
   version: 'v2.900',
