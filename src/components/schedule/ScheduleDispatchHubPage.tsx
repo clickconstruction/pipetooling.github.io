@@ -2317,6 +2317,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             weekStart={weekStart}
             weekEnd={weekEnd}
             getJobDisplayTitle={getHubJobDisplayTitle}
+            canManage={canEdit}
+            addPeople={hubAllPeopleRows.map((r) => ({ userId: r.userId, displayName: r.displayName }))}
+            onChanged={() => void loadHub({ quiet: true })}
           />
         ) : null}
         <ScheduleDispatchBlockNoteModal
