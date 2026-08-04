@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1387)
+last_updated: 2026-08-04 (v2.1388)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1388)
+
+### Followup: notes table refreshes after a quick-log (2026-08-04)
+Found during the post-merge live pass: [`CustomerNotesTable`](../src/components/customerNotes/CustomerNotesTable.tsx) owns its own per-customer fetch, so a quick-log write (which goes around the table, straight to `customer_contacts`) didn't appear until the card remounted. Fix in [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx): a per-customer `notesRefreshNonce` bumped on quick-log success keys the table (`key={customerId:nonce}`), forcing a remount + refetch. Client-only, no migration.
 
 ## Latest Updates (v2.1387)
 

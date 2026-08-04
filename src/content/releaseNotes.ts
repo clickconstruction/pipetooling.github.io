@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1388',
+    date: '2026-08-04',
+    title: 'Followup: quick-logged calls appear in the contact log instantly',
+    kind: 'fix',
+    highlights: [
+      'After logging a call on a builder card, the new entry now shows up in the General contact list immediately — previously it only appeared after collapsing and reopening the card.',
+    ],
+  },
+  {
     version: 'v2.1387',
     date: '2026-08-04',
     title: 'One Followup tab: Builder Review and Submission & Followup merge',

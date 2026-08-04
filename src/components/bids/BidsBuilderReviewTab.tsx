@@ -131,6 +131,9 @@ export function BidsBuilderReviewTab({
   const [quickLogNote, setQuickLogNote] = useState<Record<string, string>>({})
   const [quickLogChecked, setQuickLogChecked] = useState<Record<string, Set<string>>>({})
   const [savingQuickLogCustomerId, setSavingQuickLogCustomerId] = useState<string | null>(null)
+  // Bumped after a quick-log so the customer's CustomerNotesTable (which owns
+  // its own fetch) remounts and shows the new row immediately.
+  const [notesRefreshNonce, setNotesRefreshNonce] = useState<Record<string, number>>({})
   const [quietBuildersOpen, setQuietBuildersOpen] = useState(false)
 
   // PIA lives in customer_followup_prefs (v2.1385) — one shared list for the
@@ -293,6 +296,7 @@ export function BidsBuilderReviewTab({
         )
       }
       setQuickLogNote((prev) => ({ ...prev, [customer.id]: '' }))
+      setNotesRefreshNonce((prev) => ({ ...prev, [customer.id]: (prev[customer.id] ?? 0) + 1 }))
       onReloadCustomerContacts()
       onReloadBids()
     } catch (e: unknown) {
@@ -705,6 +709,7 @@ export function BidsBuilderReviewTab({
             ) : null
             const builderReviewGeneralContactTable = (
               <CustomerNotesTable
+                key={`${customer.id}:${notesRefreshNonce[customer.id] ?? 0}`}
                 customerId={customer.id}
                 customerName={customer.name}
                 onMutated={() => { onReloadCustomerContacts(); onReloadBids() }}
