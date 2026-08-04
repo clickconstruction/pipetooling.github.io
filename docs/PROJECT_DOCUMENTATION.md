@@ -1737,7 +1737,7 @@ counts_fixture_groups (id)
 ##### Bids Capabilities
 
 **Full Bids System Access**:
-- All Bids tabs (Bid Board, Builder Review, **Unsent/Working** Kanban (`tab=working`), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup). Builder Review: customers sorted by last contact (Oldest first / Newest first); PIA checkbox per customer excludes that customer when Oldest first is selected (stored per user in localStorage). **General contact** (`customer_contacts`) uses the same stacked-card notes UX as bid notes (contact method quick picks, inline add/edit/delete); optional `contact_method` column on `customer_contacts`.
+- All Bids tabs (Bid Board, **Followup** (v2.1387: merged Builder Review + Submission & Followup, with **By builder** / **By status** lenses; superintendents see By builder only), **Unsent/Working** Kanban (`tab=working`), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter). Followup By-builder lens: customers sorted by last contact (Oldest first / Newest first); PIA checkbox per customer excludes that customer when Oldest first is selected (team-shared in `customer_followup_prefs` since v2.1385, alongside snooze); per-bid stale highlighting, one-line quick-log, hit-rate/open-$ chips, and printable call sheets (v2.1386–87). **General contact** (`customer_contacts`) uses the same stacked-card notes UX as bid notes (contact method quick picks, inline add/edit/delete); optional `contact_method` column on `customer_contacts`.
 - Create, edit, and delete bids
 - Enter fixture counts with quick-select and number pad
 - Map counts to material templates (Takeoff tab)

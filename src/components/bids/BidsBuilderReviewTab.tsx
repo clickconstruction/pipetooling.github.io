@@ -8,6 +8,8 @@ import { ModalShell } from './ModalShell'
 import { formatBidNameWithValue, formatDateYYMMDD, formatTimeSinceLastContact } from '../../lib/bids/bidFormatting'
 import { buildCustomerLastContactMap, compareCustomersByLastContact } from '../../lib/bids/customerLastContact'
 import { buildBuilderQuickLogWrites, builderOpenPipelineValue, formatOpenPipelineValue } from '../../lib/bids/builderQuickLog'
+import { buildBuilderCallSheetHtml, buildFollowupQueueCallSheetHtml, type CallSheetBuilder } from '../../lib/bids/builderCallSheet'
+import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } from '../../lib/submissionFollowupStale'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
@@ -300,6 +302,45 @@ export function BidsBuilderReviewTab({
     }
   }
 
+  function makeCallSheetBuilder(customer: Customer): CallSheetBuilder {
+    const customerBids = bids.filter((b) => b.customer_id === customer.id)
+    const openBids = customerBids.filter((b) => {
+      const s = getSubmissionSectionKey(b)
+      return s === 'unsent' || s === 'pending'
+    })
+    const stats = builderBidMapStats.get(customer.id)
+    const lastIso = customerLastContactMap.get(customer.id) ?? null
+    const contactInfo = extractContactInfo(customer.contact_info ?? null)
+    return {
+      name: customer.name,
+      address: customer.address ?? null,
+      phone: contactInfo.phone?.trim() || null,
+      lastContactLabel: lastIso ? formatTimeSinceLastContact(lastIso) : null,
+      hitRatePct: stats?.counts.hitRatePct ?? null,
+      openValueLabel: formatOpenPipelineValue(builderOpenPipelineValue(openBids)),
+      people: customerContactPersons
+        .filter((cp) => cp.customer_id === customer.id)
+        .map((cp) => ({
+          name: cp.name,
+          phones: (cp.phone ?? '').split('\n').filter(Boolean),
+          email: cp.email?.trim() || null,
+          note: cp.note?.trim() || null,
+        })),
+      bids: openBids.map((b) => ({
+        label: formatBidNameWithValue(b),
+        sectionLabel: getSubmissionSectionKey(b) === 'unsent' ? 'Unsent' : 'Not yet won or lost',
+        dueLabel: b.bid_due_date ? formatDateYYMMDD(b.bid_due_date) : null,
+        lastUpdateLabel: (() => {
+          const iso = effectiveSubmissionBidLastNoteIso(b, lastContactFromEntries, customerContacts)
+          return iso ? formatTimeSinceLastContact(iso) : null
+        })(),
+      })),
+    }
+  }
+
+  const callSheetGeneratedLabel = () =>
+    `Generated ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — PipeTooling Followup`
+
   // One shared last-contact definition for sort + display (v2.1385 kernel);
   // previously duplicated inline with subtly different comparison code.
   const customerLastContactMap = useMemo(
@@ -495,6 +536,18 @@ export function BidsBuilderReviewTab({
             style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             Expand all
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const sheets = builderReviewCustomersFiltered.map((c) => makeCallSheetBuilder(c))
+              if (sheets.length === 0) return
+              printHtmlInNewWindow(buildFollowupQueueCallSheetHtml(sheets, callSheetGeneratedLabel()))
+            }}
+            title="Print the whole queue: every visible builder with their people and open bids, in call order"
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+          >
+            Print call sheet
           </button>
         </div>
         <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
@@ -887,7 +940,18 @@ export function BidsBuilderReviewTab({
                         </>
                       )}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          printHtmlInNewWindow(buildBuilderCallSheetHtml(makeCallSheetBuilder(customer), callSheetGeneratedLabel()))
+                        }}
+                        title="One-page printable sheet: this builder's people, numbers, and open bids"
+                        style={{ marginRight: 'auto', padding: '0.375rem 0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                      >
+                        Call sheet
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => {

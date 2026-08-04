@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1387',
+    date: '2026-08-04',
+    title: 'One Followup tab: Builder Review and Submission & Followup merge',
+    kind: 'feature',
+    highlights: [
+      'The two follow-up tabs are now one — Followup — with a toggle between "By builder" (the call queue) and "By status" (the outcome tables, followup sheets, and scripts). Old links keep working.',
+      'The ↗ next to any GC/Builder name on the status tables jumps straight to that builder\'s card on the queue; the stale-days threshold is shared between both lenses.',
+      'Printable call sheets: one page per builder (their people, numbers, and open bids with last-update ages), or the whole queue in call order from the toolbar.',
+      'New help guide: Settings → Help → "follow up with builders on their bids".',
+    ],
+  },
+  {
     version: 'v2.1386',
     date: '2026-08-04',
     title: 'Builder Review becomes a real call queue',

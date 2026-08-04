@@ -448,6 +448,30 @@ export default function Bids() {
   const builderReviewPendingDeepLinkBidIdRef = useRef<string | null>(null)
   const builderReviewDeepLinkAppliedBidIdRef = useRef<string | null>(null)
 
+  // v2.1387 (Followup merge): jump from a status-lens row to that builder's
+  // card on the By-builder lens — same highlight plumbing as the bid deep link.
+  const openBuilderLensForCustomer = useCallback(
+    (customerId: string) => {
+      setActiveTab('builder-review')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'builder-review')
+        return next
+      })
+      setBuilderReviewDeepLinkHighlightGen((g) => g + 1)
+      if (builderReviewDeepLinkTimeoutRef.current) {
+        clearTimeout(builderReviewDeepLinkTimeoutRef.current)
+        builderReviewDeepLinkTimeoutRef.current = null
+      }
+      setBuilderReviewDeepLinkHighlightCustomerId(customerId)
+      builderReviewDeepLinkTimeoutRef.current = window.setTimeout(() => {
+        setBuilderReviewDeepLinkHighlightCustomerId(null)
+        builderReviewDeepLinkTimeoutRef.current = null
+      }, 2500)
+    },
+    [setSearchParams]
+  )
+
   const applyBuilderReviewDeepLinkFromBid = useCallback(
     (bid: BidWithBuilder) => {
       builderReviewPendingDeepLinkBidIdRef.current = null
@@ -2363,10 +2387,11 @@ export default function Bids() {
       <button
         type="button"
         data-tabkey="builder-review"
-        onClick={() => selectBidsTab('builder-review')}
-        style={tabStyle(activeTab === 'builder-review')}
+        onClick={() => selectBidsTab(activeTab === 'submission-followup' ? 'submission-followup' : 'builder-review')}
+        style={tabStyle(activeTab === 'builder-review' || activeTab === 'submission-followup')}
+        title="Builder Review and Submission & Followup, merged — flip between lenses inside"
       >
-        Builder Review
+        Followup
       </button>
       {bidsWorkingTabButton}
       {bidsBidCostsTabButton}
@@ -2703,19 +2728,8 @@ export default function Bids() {
         </button>
         </>
         )}
-        {myRole !== 'superintendent' ? (
-          <>
-            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-            <button
-              type="button"
-              data-tabkey="submission-followup"
-              onClick={() => selectBidsTab('submission-followup')}
-              style={tabStyle(activeTab === 'submission-followup')}
-            >
-              Submission & Followup
-            </button>
-          </>
-        ) : null}
+        {/* v2.1387: Submission & Followup lives inside the merged Followup tab
+            (top strip) as the "By status" lens — its standalone button is gone. */}
         <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -2781,6 +2795,47 @@ export default function Bids() {
       )}
 
       {/* Builder Review Tab */}
+      {(activeTab === 'builder-review' || activeTab === 'submission-followup') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)' }}>
+            <button
+              type="button"
+              onClick={() => selectBidsTab('builder-review')}
+              style={{
+                padding: '0.45rem 1rem',
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'builder-review' ? '#3b82f6' : 'transparent',
+                color: activeTab === 'builder-review' ? 'white' : 'var(--text-700)',
+                fontWeight: activeTab === 'builder-review' ? 700 : 400,
+              }}
+            >
+              By builder
+            </button>
+            {myRole !== 'superintendent' && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('submission-followup')}
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'submission-followup' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'submission-followup' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'submission-followup' ? 700 : 400,
+                }}
+              >
+                By status
+              </button>
+            )}
+          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {activeTab === 'builder-review'
+              ? 'The call queue — every builder, oldest contact first, all trades.'
+              : 'The status tables — outcome sections, followup sheets, scripts.'}
+          </span>
+        </div>
+      )}
       {activeTab === 'builder-review' && (
         <BidsBuilderReviewTab
           bids={bids}
@@ -3176,6 +3231,7 @@ export default function Bids() {
           onClearBid={() => setSelectedBidForSubmission(null)}
           onEditBid={openEditBid}
           onOpenParty={openGcBuilderOrCustomerModal}
+          onOpenBuilderLens={openBuilderLensForCustomer}
           lastContactFromEntries={lastContactFromEntries}
           customerContacts={customerContacts}
                   estimatorUsers={estimatorUsers}

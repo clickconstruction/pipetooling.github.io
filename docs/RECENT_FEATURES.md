@@ -7,10 +7,25 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1386)
+last_updated: 2026-08-04 (v2.1387)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1387)
+
+### Followup train PR C: the merge — one tab, two lenses (2026-08-04)
+The presentational merge is deliberately key-preserving: the internal `activeTab` keys `builder-review` / `submission-followup` (and every existing deep link, effect, and loader keyed on them) are untouched — the ~30 call sites in [`Bids.tsx`](../src/pages/Bids.tsx) didn't move. What changed:
+
+**(1) One tab button** — "Followup" (active for either key; click resumes the last-used lens) replaces the two buttons; a **By builder / By status** lens toggle renders above both bodies. Superintendents (already bounced off submission-followup by the URL effect) simply don't get the By-status lens button.
+
+**(2) Cross-lens jump** — new `openBuilderLensForCustomer(customerId)` in the parent (same highlight/scroll plumbing as the bid deep link) passed as optional `onOpenBuilderLens` to [`BidSubmissionFollowupTab.tsx`](../src/components/bids/BidSubmissionFollowupTab.tsx); a small **↗** beside the GC/Builder cell in the pending/won/started tables jumps to that builder's card. The reverse jump (magnifier → status lens) already existed.
+
+**(3) Shared threshold** — S&F's "Highlight no update in last N days" now initializes from and persists to the same `localStorage bids_followup_stale_days` the By-builder lens uses; the two lenses can no longer disagree about what's stale.
+
+**(4) Call sheets** — kernel [`builderCallSheet.ts`](../src/lib/bids/builderCallSheet.ts) (3 tests, HTML-escaped): `buildBuilderCallSheetHtml` (one-pager: people + tel links, open bids with last-update ages, ruled note space) behind a **Call sheet** button on each card footer, and `buildFollowupQueueCallSheetHtml` (whole visible queue, call order) behind toolbar **Print call sheet**; both print via the existing `printHtmlInNewWindow`.
+
+**(5) Docs** — new guide `follow-up-with-builders` (all bids roles); GLOSSARY + PROJECT_DOCUMENTATION tab lists updated (PIA localStorage note was stale since PR A).
 
 ## Latest Updates (v2.1386)
 
