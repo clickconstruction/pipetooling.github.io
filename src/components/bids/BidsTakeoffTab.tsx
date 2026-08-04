@@ -2781,6 +2781,7 @@ export function BidsTakeoffTab({
         onClose={closeBidsPartForm}
         onSave={handleBidsPartFormSave}
         onSaveAndAddAnother={handleBidsPartFormSaveAndAddAnother}
+        addModeSaveLabel={addPartsToTemplateModalOpen ? 'Save & select' : 'Save & add'}
         editingPart={bidsPartFormEditingPart}
         initialName={bidsPartFormInitialName}
         selectedServiceTypeId={selectedServiceTypeId}
