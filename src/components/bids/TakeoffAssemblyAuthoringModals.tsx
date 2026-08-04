@@ -71,6 +71,9 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   addPartsToTemplateName: string | null
   setAddPartsToTemplateName: Dispatch<SetStateAction<string | null>>
   addPartsSelectedPartId: string
+  /** Create-from-picker staged id (v2.1394): when set, auto-add to the template and close. */
+  addPartsAutoAddPartId: string
+  setAddPartsAutoAddPartId: Dispatch<SetStateAction<string>>
   setAddPartsSelectedPartId: Dispatch<SetStateAction<string>>
   // Edit Template modal (open pointer + PartFormModal-routed part id parent-owned)
   editTemplateModalOpen: boolean
@@ -136,6 +139,8 @@ export function TakeoffAssemblyAuthoringModals({
   addPartsToTemplateName,
   setAddPartsToTemplateName,
   addPartsSelectedPartId,
+  addPartsAutoAddPartId,
+  setAddPartsAutoAddPartId,
   setAddPartsSelectedPartId,
   editTemplateModalOpen,
   setEditTemplateModalOpen,
@@ -322,8 +327,22 @@ export function TakeoffAssemblyAuthoringModals({
     setAddPartsToTemplateId(null)
     setAddPartsToTemplateName(null)
     setAddPartsSelectedPartId('')
+    setAddPartsAutoAddPartId('')
     setAddPartsQuantity('1')
   }
+
+  // PartFormModal routing (v2.1394): a part minted from this modal's picker is
+  // committed straight to the template — same contract as the Add/Edit
+  // Assembly flows (v2.1326/27) — using the current quantity input (default 1).
+  // savePartsToTemplate reloads previews and closes the modal.
+  useEffect(() => {
+    if (!addPartsToTemplateModalOpen || !addPartsAutoAddPartId) return
+    if (addPartsAutoAddPartId !== addPartsSelectedPartId) return
+    if (savingTemplateParts) return
+    setAddPartsAutoAddPartId('')
+    void savePartsToTemplate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addPartsToTemplateModalOpen, addPartsAutoAddPartId, addPartsSelectedPartId, savingTemplateParts])
 
   async function savePartsToTemplate() {
     if (!addPartsToTemplateId || !addPartsSelectedPartId) return

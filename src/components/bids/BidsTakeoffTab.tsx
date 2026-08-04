@@ -285,6 +285,10 @@ export function BidsTakeoffTab({
   const [addPartsToTemplateId, setAddPartsToTemplateId] = useState<string | null>(null)
   const [addPartsToTemplateName, setAddPartsToTemplateName] = useState<string | null>(null)
   const [addPartsSelectedPartId, setAddPartsSelectedPartId] = useState('')
+  // Staged id for the create-from-picker flow (v2.1394): when the part form
+  // minted this part, the Add-Parts modal auto-adds it (qty input, default 1)
+  // instead of only pre-selecting. Normal picker selections never set this.
+  const [addPartsAutoAddPartId, setAddPartsAutoAddPartId] = useState('')
 
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
@@ -439,6 +443,7 @@ export function BidsTakeoffTab({
     setAddPartsToTemplateId(templateId)
     setAddPartsToTemplateName(templateName)
     setAddPartsSelectedPartId('')
+    setAddPartsAutoAddPartId('')
     setAddPartsToTemplateModalOpen(true)
   }
 
@@ -466,7 +471,10 @@ export function BidsTakeoffTab({
 
       if (!wasEdit) {
         if (addPartsToTemplateModalOpen) {
+          // v2.1394: stage for auto-add — the modal's effect commits it with
+          // the current quantity input and closes, like its sibling flows.
           setAddPartsSelectedPartId(part.id)
+          setAddPartsAutoAddPartId(part.id)
         } else if (editTemplateModalOpen) {
           // Edit Assembly's create-new flow: the cluster consumes this id and
           // adds the part straight to the assembly (v2.1327).
@@ -2781,7 +2789,7 @@ export function BidsTakeoffTab({
         onClose={closeBidsPartForm}
         onSave={handleBidsPartFormSave}
         onSaveAndAddAnother={handleBidsPartFormSaveAndAddAnother}
-        addModeSaveLabel={addPartsToTemplateModalOpen ? 'Save & select' : 'Save & add'}
+        addModeSaveLabel="Save & add"
         editingPart={bidsPartFormEditingPart}
         initialName={bidsPartFormInitialName}
         selectedServiceTypeId={selectedServiceTypeId}
@@ -2834,6 +2842,8 @@ export function BidsTakeoffTab({
         setAddPartsToTemplateName={setAddPartsToTemplateName}
         addPartsSelectedPartId={addPartsSelectedPartId}
         setAddPartsSelectedPartId={setAddPartsSelectedPartId}
+        addPartsAutoAddPartId={addPartsAutoAddPartId}
+        setAddPartsAutoAddPartId={setAddPartsAutoAddPartId}
         editTemplateModalOpen={editTemplateModalOpen}
         setEditTemplateModalOpen={setEditTemplateModalOpen}
         editTemplateModalId={editTemplateModalId}
