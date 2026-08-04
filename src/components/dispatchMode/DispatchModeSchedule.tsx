@@ -13,6 +13,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
+import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
 import { LinkedScheduleGroupModal } from '../schedule/LinkedScheduleGroupModal'
@@ -35,6 +36,8 @@ type EditBlockState = {
   timeStart: string
   timeEnd: string
   note: string
+  /** Day the block will land on; starts as the day being viewed. */
+  workDate: string
 }
 
 const headerBtn: CSSProperties = {
@@ -198,6 +201,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
       timeStart: b.timeStart.slice(0, 5),
       timeEnd: b.timeEnd.slice(0, 5),
       note: b.note ?? '',
+      workDate: selectedYmd,
     })
     setEditError(null)
   }
@@ -211,6 +215,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     if (!editBlock) return
     setEditSaving(true)
     setEditError(null)
+    const movedTo = editBlock.workDate !== selectedYmd ? editBlock.workDate : null
     const res = await saveEditedScheduleBlockTimes({
       blockId: editBlock.block.id,
       jobId: editBlock.block.jobId,
@@ -220,13 +225,18 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
       timeStart: editBlock.timeStart,
       timeEnd: editBlock.timeEnd,
       note: editBlock.note,
+      newWorkDate: editBlock.workDate,
     })
     setEditSaving(false)
     if (!res.ok) {
       setEditError(res.error)
       return
     }
-    showToast('Block updated.', 'success')
+    // A moved block leaves the day on screen, so name where it went.
+    showToast(
+      movedTo ? `Moved to ${scheduleFormatWeekdayLong(movedTo)}.` : 'Block updated.',
+      'success',
+    )
     closeEditBlock()
     void loadDay(selectedYmd)
   }
@@ -713,6 +723,8 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           onChangeStart={(v) => setEditBlock((p) => (p ? { ...p, timeStart: v } : p))}
           onChangeEnd={(v) => setEditBlock((p) => (p ? { ...p, timeEnd: v } : p))}
           onChangeNote={(v) => setEditBlock((p) => (p ? { ...p, note: v } : p))}
+          newWorkDate={editBlock.workDate}
+          onChangeWorkDate={(v) => setEditBlock((p) => (p ? { ...p, workDate: v } : p))}
           onSave={() => void saveEditBlock()}
         />
       ) : null}
