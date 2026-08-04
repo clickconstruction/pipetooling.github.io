@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1390',
+    date: '2026-08-04',
+    title: 'Followup: a logged call fulfills an overdue promise',
+    kind: 'fix',
+    highlights: [
+      'Quick-logging a call on a builder whose promised follow-up was already due now clears the overdue flag — they stop pinning to the top of the queue, because you just talked to them.',
+      'Future promises stay put: texting a builder today doesn\'t cancel "call them Tuesday about the award."',
+    ],
+  },
+  {
     version: 'v2.1389',
     date: '2026-08-04',
     title: 'Call sessions: walk every bid while the GC is on the phone',

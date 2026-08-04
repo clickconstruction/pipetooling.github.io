@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1389)
+last_updated: 2026-08-04 (v2.1390)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1390)
+
+### Followup: quick-log fulfills an overdue promise (2026-08-04)
+Gap spotted while testing v2.1389's queue bands: a builder overdue on a promised follow-up stayed pinned to the queue top even after a quick-logged call, since only a full call session touches `next_followup_at`. Now [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx)'s `submitQuickLog` clears `next_followup_at` **iff the promise is already due** (contact happened after the promised instant); future promises are deliberately untouched — a text today doesn't cancel "call them Tuesday". Best-effort (a failed clear never fails the log). Client-only, no migration.
 
 ## Latest Updates (v2.1389)
 

@@ -311,6 +311,29 @@ export function BidsBuilderReviewTab({
       }
       setQuickLogNote((prev) => ({ ...prev, [customer.id]: '' }))
       setNotesRefreshNonce((prev) => ({ ...prev, [customer.id]: (prev[customer.id] ?? 0) + 1 }))
+      // A logged contact fulfills an OVERDUE promise (the call happened) so the
+      // builder stops pinning to the queue top; a future promise stays put —
+      // a text today doesn't cancel "call them Tuesday about the award".
+      const promise = nextFollowupByCustomer[customer.id]
+      if (promise && new Date(promise).getTime() <= Date.now()) {
+        try {
+          await withSupabaseRetry(
+            async () =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (supabase as any)
+                .from('customer_followup_prefs')
+                .upsert({ customer_id: customer.id, next_followup_at: null, updated_at: new Date().toISOString() }, { onConflict: 'customer_id' }),
+            'quick log: clear fulfilled promise',
+          )
+          setNextFollowupByCustomer((prev) => {
+            const next = { ...prev }
+            delete next[customer.id]
+            return next
+          })
+        } catch {
+          // Badge housekeeping only — the log itself already succeeded.
+        }
+      }
       onReloadCustomerContacts()
       onReloadBids()
     } catch (e: unknown) {
