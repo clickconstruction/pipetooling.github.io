@@ -18,6 +18,22 @@ function sortBidIdsImplicit(aId: string, bId: string, bidMap: Map<string, BidWor
   return aId.localeCompare(bId)
 }
 
+/**
+ * Content signature of the bids that feed a Working-board load: membership (id),
+ * the assignment fields the loads filter by, and `project_name` — the only field
+ * `buildColumnBidMap` sorts implicit inbox cards by. Order-insensitive, so a
+ * re-sorted or identity-replaced bids array with the same content yields the
+ * same signature.
+ */
+export function workingBoardBidsSignature(
+  bids: readonly Pick<BidWorkingBoardMapBid, 'id' | 'project_name' | 'estimator_id' | 'account_manager_id'>[]
+): string {
+  return bids
+    .map((b) => `${b.id}\u0000${b.project_name ?? ''}\u0000${b.estimator_id ?? ''}\u0000${b.account_manager_id ?? ''}`)
+    .sort()
+    .join('\u0001')
+}
+
 export function buildColumnBidMap(
   columns: BidWorkingColumn[],
   placements: BidWorkingPlacement[],

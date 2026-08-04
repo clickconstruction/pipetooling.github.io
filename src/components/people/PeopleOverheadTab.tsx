@@ -4,7 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, denverCalendarDayKey, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -38,6 +38,11 @@ import {
   type OverheadDetailScope,
   type OverheadPayConfigInput,
 } from '../../lib/overheadDailyLabor'
+import {
+  buildOverheadHygieneSummary,
+  formatOverheadHygienePersonNames,
+  type OverheadHygieneSummary,
+} from '../../lib/overheadHygiene'
 import {
   bucketInvoiceRevenueByAppTzDay,
   computeOverheadTrailingAverages,
@@ -281,6 +286,18 @@ export default function PeopleOverheadTab({
     windowEnd: string | null
     loading: boolean
   }>({ methodA: null, methodB: null, methodC: null, windowStart: null, windowEnd: null, loading: false })
+  /**
+   * Maintenance-hygiene indicators (pending approvals / unpriced hours /
+   * unassigned salary time) over the SAME 90-day window as the KPI/lenses —
+   * computed inside that effect from the same session arrays plus one extra
+   * unassigned-salary fetch (kernel: `overheadHygiene`). `summary: null`
+   * until loaded or after a whole-effect failure; the strip hides when
+   * clean (`anyAttention` false).
+   */
+  const [overheadHygiene, setOverheadHygiene] = useState<{
+    summary: OverheadHygieneSummary | null
+    loading: boolean
+  }>({ summary: null, loading: false })
   /**
    * `users.id` → `people.id` (via `people.account_user_id`) for the
    * person-id-first wage join (C1). `null` until loaded so the 90-day scan
@@ -662,9 +679,14 @@ export default function PeopleOverheadTab({
     let cancelled = false
     setOverheadAvgDailyCost((prev) => ({ ...prev, loading: true }))
     setOverheadRateLenses((prev) => ({ ...prev, loading: true }))
+    setOverheadHygiene((prev) => ({ ...prev, loading: true }))
     void (async () => {
       try {
-        const today = new Date().toLocaleDateString('en-CA')
+        // Anchor the whole 90-day window on the COMPANY calendar day
+        // (America/Chicago), not the viewer's browser-local date — a viewer
+        // in another timezone near midnight used to see the entire
+        // session/parts/revenue window shifted by a day.
+        const today = denverCalendarDayKey(Date.now())
         const start = ymdAddDays(today, -89)
         // Paged (fetchAllRows): a company-wide 90-day scan silently truncates
         // at PostgREST max_rows (1000) if un-ranged — a truncated day total
@@ -698,7 +720,23 @@ export default function PeopleOverheadTab({
           if (overheadOfficeJobLedgerId) q = q.neq('job_ledger_id', overheadOfficeJobLedgerId)
           return q.order('id')
         }
-        const [sessions, fieldSessions] = await Promise.all([
+        // Unassigned salary-schedule time for the hygiene strip's third
+        // indicator: synthetic sessions (docs/SALARY_CLOCK_SESSIONS.md) with
+        // no job AND no bid are invisible to the overhead pool entirely.
+        // Same paged pattern, same window; failure degrades to `null` (the
+        // indicator hides) via the per-source error pattern instead of
+        // nulling the KPIs/lenses with it.
+        const makeSalaryQ = () =>
+          supabase
+            .from('clock_sessions')
+            .select(sessionSelect)
+            .gte('work_date', start)
+            .lte('work_date', today)
+            .eq('origin', 'salary_schedule')
+            .is('job_ledger_id', null)
+            .is('bid_id', null)
+            .order('id')
+        const [sessions, fieldSessions, salarySessions] = await Promise.all([
           fetchAllRows(
             async (from, to) => ({
               data: (await withSupabaseRetry(
@@ -718,6 +756,25 @@ export default function PeopleOverheadTab({
               error: null,
             }),
             'load overhead 90d field sessions',
+          ),
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () => makeSalaryQ().range(from, to),
+                'load overhead 90d unassigned salary sessions',
+              )) as unknown as OverheadClockSessionRow[] | null,
+              error: null,
+            }),
+            'load overhead 90d unassigned salary sessions',
+          ).then(
+            (rows) => {
+              if (!cancelled) clearOverheadLoadError('unassigned salary time')
+              return rows
+            },
+            (e: unknown) => {
+              if (!cancelled) reportOverheadLoadError('unassigned salary time', e)
+              return null
+            },
           ),
         ])
         let partsByDay: Map<string, number> = new Map()
@@ -755,6 +812,19 @@ export default function PeopleOverheadTab({
         for (const v of fieldLabor.laborHoursByDay.values()) fieldHours90 += v
         let fieldLaborUsd90 = 0
         for (const v of fieldLabor.laborUsdByDay.values()) fieldLaborUsd90 += v
+        // Hygiene strip: pending approvals from the SAME two session arrays
+        // (zero extra fetches); unpriced hours from the builders' missingWage
+        // detail lines; unassigned salary from the third fetch above.
+        setOverheadHygiene({
+          summary: buildOverheadHygieneSummary({
+            officeAndBidSessions: sessions,
+            fieldSessions,
+            unassignedSalarySessions: salarySessions,
+            overheadDetailLines: [...labor.detailByDay.values()].flat(),
+            otherJobsDetailLines: [...fieldLabor.detailByDay.values()].flat(),
+          }),
+          loading: false,
+        })
         const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
         const totalsByDay = new Map<string, number>()
         for (const row of merged) totalsByDay.set(row.work_date, row.totalUsd)
@@ -774,6 +844,12 @@ export default function PeopleOverheadTab({
                   .select('amount, sent_to_customer_at')
                   .gte('sent_to_customer_at', startIsoLow)
                   .lt('sent_to_customer_at', endIsoHigh)
+                  // Stripe TEST-mode invoices are not revenue — keep them out
+                  // of the Method B denominator. NULL stripe_mode = non-Stripe
+                  // (HCP/physical) or pre-v2.1114 legacy rows, both real
+                  // revenue, so a bare .neq() would wrongly drop them under
+                  // SQL <> NULL semantics.
+                  .or('stripe_mode.is.null,stripe_mode.neq.test')
                   .order('id')
                   .range(from, to),
               'load overhead 90d revenue invoices',
@@ -835,6 +911,7 @@ export default function PeopleOverheadTab({
             windowEnd: null,
             loading: false,
           })
+          setOverheadHygiene({ summary: null, loading: false })
         }
       }
     })()
@@ -1172,6 +1249,49 @@ export default function PeopleOverheadTab({
     },
   ]
 
+  // ——— Maintenance-hygiene strip view model (kernel: overheadHygiene) ———
+  // One card per dirty indicator; the whole strip hides when all three are
+  // clean (or while the 90-day scan is loading / failed).
+  const fmtHygieneHours = (h: number) => `${(Math.round(h * 10) / 10).toLocaleString('en-US')}h`
+  const overheadHygieneCards: Array<{ key: string; label: string; value: string; hint: string; title: string }> = []
+  if (overheadHygiene.summary && !overheadHygiene.loading) {
+    const { pending, unpriced, unassignedSalary } = overheadHygiene.summary
+    if (pending.closedCount + pending.openCount > 0) {
+      const parts: string[] = []
+      if (pending.closedCount > 0) {
+        parts.push(
+          `${pending.closedCount} closed session${pending.closedCount === 1 ? '' : 's'} · ${fmtHygieneHours(pending.closedHours)}`,
+        )
+      }
+      if (pending.openCount > 0) parts.push(`${pending.openCount} still open`)
+      overheadHygieneCards.push({
+        key: 'pending',
+        label: 'Pending approvals (90d)',
+        value: parts.join(' + '),
+        hint: 'Approve in People → Hours.',
+        title: `Sessions in the 90-day window (${lensWindowLabel}) with no approval, rejection, or revocation — covers office/bid sessions and field sessions assigned to a job (unassigned salary time is its own indicator). Unapproved sessions are excluded from the overhead pool and the Method A/C denominators until approved; still-open sessions have no hours yet.`,
+      })
+    }
+    if (unpriced.sessionCount > 0) {
+      overheadHygieneCards.push({
+        key: 'unpriced',
+        label: 'Unpriced hours (90d)',
+        value: `${formatOverheadHygienePersonNames(unpriced.personNames)} · ${fmtHygieneHours(unpriced.hours)} at $0`,
+        hint: 'Set wages in People → Pay config.',
+        title: `Approved, closed sessions in the 90-day window (${lensWindowLabel}) whose person has no wage match in pay config — the hours still count (Method A's denominator stays full) but the dollars price at $0, deflating the overhead pool and Method C.`,
+      })
+    }
+    if (unassignedSalary && unassignedSalary.sessionCount > 0) {
+      overheadHygieneCards.push({
+        key: 'unassigned-salary',
+        label: 'Unassigned salary time (90d)',
+        value: `${unassignedSalary.sessionCount} session${unassignedSalary.sessionCount === 1 ? '' : 's'} · ${fmtHygieneHours(unassignedSalary.hours)} · ${formatOverheadHygienePersonNames(unassignedSalary.personNames)}`,
+        hint: 'Assign sessions to the office job or a bid (My Time / session assign).',
+        title: `Salary-schedule sessions in the 90-day window (${lensWindowLabel}) with no job and no bid assigned — this time is invisible to the overhead pool entirely until assigned, regardless of approval status.`,
+      })
+    }
+  }
+
   return (
     <div style={{ marginBottom: '2rem' }}>
       {Object.keys(overheadLoadErrorBySource).length > 0 ? (
@@ -1319,6 +1439,39 @@ export default function PeopleOverheadTab({
           not these.
         </p>
       </div>
+      {overheadHygieneCards.length > 0 ? (
+        <div
+          role="note"
+          aria-label="Overhead maintenance indicators"
+          style={{
+            marginBottom: '1rem',
+            border: '1px solid var(--border-amber)',
+            background: 'var(--bg-amber-tint)',
+            borderRadius: 8,
+            padding: '0.6rem 0.75rem',
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
+            ⚠ Maintenance — these are skewing the 90-day numbers above
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+              gap: '0.5rem 1rem',
+              marginTop: '0.4rem',
+            }}
+          >
+            {overheadHygieneCards.map((card) => (
+              <div key={card.key} title={card.title} style={{ fontSize: '0.8125rem' }}>
+                <div style={{ fontWeight: 650, color: 'var(--text-amber-900)' }}>{card.label}</div>
+                <div style={{ color: 'var(--text-strong)', margin: '0.1rem 0' }}>{card.value}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>{card.hint}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div
         style={{
           display: 'flex',

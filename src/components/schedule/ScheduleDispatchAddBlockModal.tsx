@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { CalendarDays } from 'lucide-react'
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   clampDispatchEndStartForMinDuration,
@@ -20,6 +21,11 @@ import {
   type AddBlockTimelineSegment,
 } from '../../lib/scheduleDispatchAddBlockTimeline'
 import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
+import {
+  scheduleMoveDayHint,
+  scheduleMoveDayOptions,
+  scheduleMoveDaySaveLabel,
+} from '../../lib/scheduleBlockMoveDayOptions'
 import { DispatchAddBlockTimeRange, type DispatchOccupiedBand } from './DispatchAddBlockTimeRange'
 
 export function ScheduleDispatchAddBlockModal({
@@ -38,7 +44,10 @@ export function ScheduleDispatchAddBlockModal({
   onChangeEnd,
   onChangeNote,
   onSave,
+  onRemove,
   addTimeline,
+  newWorkDate,
+  onChangeWorkDate,
 }: {
   open: boolean
   mode: 'add' | 'edit'
@@ -55,6 +64,23 @@ export function ScheduleDispatchAddBlockModal({
   onChangeEnd: (v: string) => void
   onChangeNote: (v: string) => void
   onSave: () => void
+  /**
+   * Opt-in: pass a handler to render a "Remove" button bottom-left of the
+   * footer (edit mode only). The handler owns the whole removal flow —
+   * callers close this modal and open their delete-confirm modal.
+   */
+  onRemove?: () => void
+  /**
+   * Day currently picked in the "Move day" row. Only meaningful alongside
+   * `onChangeWorkDate`; defaults to `workDate` (no move).
+   */
+  newWorkDate?: string
+  /**
+   * Opt-in: pass a handler to render the "Move day" row. Callers that omit it
+   * (the week grid, hub, Quickfill, and user-review surfaces, which all have
+   * drag-and-drop) render exactly as before.
+   */
+  onChangeWorkDate?: (v: string) => void
   addTimeline?: {
     segments: AddBlockTimelineSegment[]
     draftByBlockId: Record<string, { time_start: string; time_end: string }>
@@ -117,6 +143,18 @@ export function ScheduleDispatchAddBlockModal({
       onChangeEnd(ne)
     }
   }, [mode, addTimeline?.segments, addTimeline?.draftByBlockId, onChangeStart, onChangeEnd])
+
+  const moveDayEnabled = mode === 'edit' && typeof onChangeWorkDate === 'function'
+  const selectedWorkDate = newWorkDate?.trim() ? newWorkDate : workDate
+  const moveDayOptions = useMemo(
+    () => (moveDayEnabled ? scheduleMoveDayOptions(workDate) : []),
+    [moveDayEnabled, workDate],
+  )
+  const moveDayHint = moveDayEnabled ? scheduleMoveDayHint(workDate, selectedWorkDate) : null
+  const selectionOffChips =
+    moveDayOptions.length > 0 && !moveDayOptions.some((o) => o.dateKey === selectedWorkDate)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const showDatePicker = datePickerOpen || selectionOffChips
 
   const { durationDisplay, durationAriaLabel } = useMemo(() => {
     const dm = endMin > startMin ? endMin - startMin : Number.NaN
@@ -217,16 +255,122 @@ export function ScheduleDispatchAddBlockModal({
             </>
           ) : null}
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.35, wordBreak: 'break-word' }}>
+        <p style={{ margin: moveDayEnabled ? '0 0 0.625rem' : '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.35, wordBreak: 'break-word' }}>
           <strong>{personLabel}</strong>
-          {workDate.trim() ? (
+          {selectedWorkDate.trim() ? (
             <>
               {' '}
               <span aria-hidden>·</span>{' '}
-              <span title={workDate}>{scheduleFormatWeekdayLong(workDate)}</span>
+              <span title={selectedWorkDate}>{scheduleFormatWeekdayLong(selectedWorkDate)}</span>
             </>
           ) : null}
         </p>
+        {moveDayEnabled && moveDayOptions.length > 0 ? (
+          <div
+            style={{
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '0.5rem',
+              marginBottom: '0.75rem',
+              background: 'var(--bg-muted)',
+            }}
+          >
+            <div id="schedule-move-day-label" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+              Move day
+            </div>
+            <div role="group" aria-labelledby="schedule-move-day-label" style={{ display: 'flex', gap: 4 }}>
+              {moveDayOptions.map((opt) => {
+                const active = opt.dateKey === selectedWorkDate
+                return (
+                  <button
+                    key={opt.dateKey}
+                    type="button"
+                    disabled={saving}
+                    aria-pressed={active}
+                    title={opt.longLabel}
+                    onClick={() => {
+                      setDatePickerOpen(false)
+                      onChangeWorkDate?.(opt.dateKey)
+                    }}
+                    style={{
+                      flex: '1 1 0',
+                      minWidth: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      padding: '0.3rem 0.15rem',
+                      lineHeight: 1.2,
+                      border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
+                      borderRadius: 4,
+                      background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.65rem', color: active ? 'var(--text-blue-700)' : 'var(--text-muted)' }}>
+                      {opt.weekdayShort}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {opt.monthDayShort}
+                    </span>
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                disabled={saving}
+                aria-pressed={showDatePicker}
+                aria-label="Pick another date"
+                title="Pick another date"
+                onClick={() => setDatePickerOpen((v) => !v)}
+                style={{
+                  flex: '0 0 38px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.3rem',
+                  border: `1px solid ${showDatePicker ? '#2563eb' : 'var(--border-strong)'}`,
+                  borderRadius: 4,
+                  background: showDatePicker ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color: showDatePicker ? 'var(--text-blue-700)' : 'var(--text-700)',
+                  lineHeight: 1,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <CalendarDays size={16} aria-hidden />
+              </button>
+            </div>
+            {showDatePicker ? (
+              <input
+                type="date"
+                value={selectedWorkDate}
+                disabled={saving}
+                aria-label="Move this block to a specific date"
+                onChange={(e) => {
+                  if (e.target.value) onChangeWorkDate?.(e.target.value)
+                }}
+                style={{ display: 'block', marginTop: 6, width: '100%', padding: '0.35rem', fontSize: '0.8rem' }}
+              />
+            ) : null}
+            {moveDayHint ? (
+              <p
+                role="status"
+                aria-live="polite"
+                style={{
+                  margin: '0.4rem 0 0',
+                  fontSize: '0.7rem',
+                  color: 'var(--text-amber-800)',
+                  background: 'var(--bg-amber-100)',
+                  borderRadius: 4,
+                  padding: '0.3rem 0.4rem',
+                }}
+              >
+                {moveDayHint}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {error ? (
           <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0 0 0.75rem', whiteSpace: 'pre-wrap' }}>{error}</p>
         ) : null}
@@ -299,7 +443,27 @@ export function ScheduleDispatchAddBlockModal({
             style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.4rem', fontSize: '0.875rem' }}
           />
         </label>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: mode === 'edit' && onRemove ? 'space-between' : 'flex-end', alignItems: 'center' }}>
+          {mode === 'edit' && onRemove ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onRemove}
+              aria-label="Remove this block from the schedule"
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.875rem',
+                background: 'var(--surface)',
+                color: saving ? 'var(--text-muted)' : 'var(--text-red-700)',
+                border: '1px solid var(--border-red)',
+                borderRadius: 4,
+                cursor: saving ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Remove
+            </button>
+          ) : null}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             type="button"
             onClick={onClose}
@@ -321,8 +485,15 @@ export function ScheduleDispatchAddBlockModal({
               cursor: saving ? 'not-allowed' : 'pointer',
             }}
           >
-            {saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save'}
+            {saving
+              ? 'Saving…'
+              : mode === 'edit'
+                ? moveDayEnabled
+                  ? scheduleMoveDaySaveLabel(workDate, selectedWorkDate)
+                  : 'Save changes'
+                : 'Save'}
           </button>
+          </div>
         </div>
       </div>
     </div>

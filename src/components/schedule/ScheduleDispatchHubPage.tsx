@@ -76,7 +76,9 @@ import {
   ymdAddDays,
 } from '../../utils/dateUtils'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
-import { saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
+import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
+import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
+import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   RemoveScheduleBlockConfirmModal,
   validateScheduleDispatchBlockTimeRange,
@@ -819,6 +821,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubAssignJobPlacement, setHubAssignJobPlacement] = useState<HubAssignJobPlacementState | null>(null)
   const [hubAssignJobPickerOpen, setHubAssignJobPickerOpen] = useState(false)
   const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
+  const [hubAssignJobPickerNumberQuery, setHubAssignJobPickerNumberQuery] = useState('')
   const [hubCellAddContext, setHubCellAddContext] = useState<HubCellAddContextState | null>(null)
   const [hubAssignJobPickerIntent, setHubAssignJobPickerIntent] = useState<HubAssignJobPickerIntent>('toolbar')
   const [hubMultiCellAddActive, setHubMultiCellAddActive] = useState(false)
@@ -1099,6 +1102,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     stripPlaceJobFromUrl()
     setHubAssignJobPickerIntent('toolbar')
     setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
     setHubAssignJobPickerOpen(true)
   }, [stripPlaceJobFromUrl])
 
@@ -1106,6 +1110,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     setHubCellAddContext({ assigneeUserId: personUserId, workDate })
     setHubAssignJobPickerIntent('cell')
     setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
     setHubAssignJobPickerOpen(true)
   }, [])
 
@@ -1264,6 +1269,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     setHubCellAddContext(null)
     setHubAssignJobPickerIntent('multi')
     setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
     setHubAssignJobPickerOpen(true)
   }, [hubMultiCellAddSelection])
 
@@ -1306,6 +1312,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   ])
 
   const hubAssignJobPickerRows = useMemo(() => {
+    const digits = hubAssignJobPickerNumberQuery.replace(/\D/g, '')
+    if (digits !== '') return findJobsByNumber(hubMergedRows, digits)
     const q = hubAssignJobPickerSearch.trim().toLowerCase()
     let list = hubMergedRows
     if (q) {
@@ -1318,8 +1326,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           (r.customer_name ?? '').toLowerCase().includes(q),
       )
     }
-    return list
-  }, [hubMergedRows, hubAssignJobPickerSearch])
+    return [...list].sort(compareJobsByCreatedAtDesc)
+  }, [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
 
   const hubEmptyCellChoiceSubtitle = useMemo(() => {
     if (!hubCellAddContext) return ''
@@ -1394,16 +1402,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     if (blockModalState.kind === 'edit' && !jobId) return
     if (blockModalState.kind === 'add' && !authUser?.id) return
 
-    const v = validateScheduleDispatchBlockTimeRange(addTimeStart, addTimeEnd)
-    if (v) {
-      setAddError(v)
-      return
-    }
-    const ts = timeInputToPg(addTimeStart)
-    const te = timeInputToPg(addTimeEnd)
-    const candidate = scheduleBlockToRange(ts, te)
-    const noteVal = addNote.trim() || null
-
     if (blockModalState.kind === 'add') {
       const createdBy = authUser?.id
       if (!createdBy) return
@@ -1440,62 +1438,24 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       closeAdd()
       return
     }
-    const groupId = b.shared_block_group_id
-    if (groupId) {
-      const legs = blocks.filter((x) => x.job_id === jobId && x.shared_block_group_id === groupId)
-      const assigneeIds = [...new Set(legs.map((l) => l.assignee_user_id))]
-      for (const uid of assigneeIds) {
-        const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay([uid], b.work_date)
-        if (dayErr) {
-          setAddError(dayErr)
-          return
-        }
-        const excludeIds = legs.filter((l) => l.assignee_user_id === uid).map((l) => l.id)
-        if (scheduleOverlapsAny(candidate, dayBlocks, excludeIds)) {
-          setAddError('That time overlaps another block for this person on this day.')
-          return
-        }
-      }
-    } else {
-      const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay([b.assignee_user_id], b.work_date)
-      if (dayErr) {
-        setAddError(dayErr)
-        return
-      }
-      if (scheduleOverlapsAny(candidate, dayBlocks, [blockModalState.blockId])) {
-        setAddError('That time overlaps another block for this person on this day.')
-        return
-      }
-    }
-
     setAddSaving(true)
     setAddError(null)
-    if (groupId) {
-      const { error: upErr } = await updateJobScheduleBlockGroup(jobId, groupId, {
-        time_start: ts,
-        time_end: te,
-        note: noteVal,
-      })
-      setAddSaving(false)
-      if (upErr) {
-        setAddError(upErr)
-        return
-      }
-      showToast('Block updated.', 'success')
-    } else {
-      const { error: upErr } = await updateJobScheduleBlock(blockModalState.blockId, {
-        time_start: ts,
-        time_end: te,
-        note: noteVal,
-      })
-      setAddSaving(false)
-      if (upErr) {
-        setAddError(upErr)
-        return
-      }
-      showToast('Block updated.', 'success')
+    const res = await saveEditedScheduleBlockTimes({
+      blockId: blockModalState.blockId,
+      jobId,
+      assigneeUserId: b.assignee_user_id,
+      workDate: b.work_date,
+      sharedBlockGroupId: b.shared_block_group_id,
+      timeStart: addTimeStart,
+      timeEnd: addTimeEnd,
+      note: addNote,
+    })
+    setAddSaving(false)
+    if (!res.ok) {
+      setAddError(res.error)
+      return
     }
-
+    showToast('Block updated.', 'success')
     closeAdd()
     await load()
   }, [
@@ -1507,7 +1467,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     addNote,
     addBlockDraftByBlockId,
     blockById,
-    blocks,
     closeAdd,
     load,
     loadHub,
@@ -2285,6 +2244,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           onChangeEnd={setAddTimeEnd}
           onChangeNote={setAddNote}
           onSave={() => void saveBlockModal()}
+          onRemove={
+            blockModalState?.kind === 'edit' && canEdit
+              ? () => {
+                  const id = blockModalState.blockId
+                  closeAdd()
+                  requestDeleteBlock(id)
+                }
+              : undefined
+          }
           addTimeline={addBlockModalTimeline}
         />
         {removeScheduleBlockConfirmModal}
@@ -2303,6 +2271,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, serviceTypeName: r.service_type?.name ?? null, subline: hubJobPickerSubline(r) }))}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
+          numberQuery={hubAssignJobPickerNumberQuery}
+          onNumberQueryChange={setHubAssignJobPickerNumberQuery}
           searchPlaceholder="Search HCP, job, address, or customer"
           onOpenJobDetail={(pickedJobId) => {
             const row = hubMergedRows.find((r) => r.id === pickedJobId)
@@ -2365,6 +2335,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             weekStart={weekStart}
             weekEnd={weekEnd}
             getJobDisplayTitle={getHubJobDisplayTitle}
+            canManage={canEdit}
+            addPeople={hubAllPeopleRows.map((r) => ({ userId: r.userId, displayName: r.displayName }))}
+            onChanged={() => void loadHub({ quiet: true })}
           />
         ) : null}
         <ScheduleDispatchBlockNoteModal

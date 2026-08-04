@@ -1,5 +1,9 @@
 /** Shared Resend outbound helper (same contract as send-estimate-to-customer). */
 
+import { logEmailSendBestEffort } from './logEmailSend.ts'
+
+const PIPETOOLING_FROM = 'PipeTooling <team@noreply.pipetooling.com>'
+
 export async function sendEmailViaResend(
   to: string,
   subject: string,
@@ -14,7 +18,7 @@ export async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: PIPETOOLING_FROM,
       to: [to],
       subject,
       html: htmlBody,
@@ -25,5 +29,7 @@ export async function sendEmailViaResend(
     const errorData = await resendResponse.json().catch(() => ({} as { message?: string }))
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
+  const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: PIPETOOLING_FROM, subject })
   return { success: true }
 }

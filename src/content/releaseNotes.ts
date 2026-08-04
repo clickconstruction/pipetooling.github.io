@@ -11,12 +11,735 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1319',
-    date: '2026-08-03',
+    version: 'v2.1392',
+    date: '2026-08-04',
     title: 'Other jobs: duplicate-marked bank transactions no longer count as materials',
     kind: 'fix',
     highlights: [
       'Same fix as v2.1317, applied to the other side of the ledger: duplicate-marked Mercury transactions that were split to regular jobs no longer count into the "other jobs" materials totals.',
+    ],
+  },
+  {
+    version: 'v2.1391',
+    date: '2026-08-04',
+    title: 'Dropdowns you can actually drive from the keyboard',
+    kind: 'feature',
+    highlights: [
+      'Every search dropdown in the app (supply house pickers, part pickers, assignees…) now works the way you\'d expect: type a few letters and the first match highlights itself — Enter picks it, no arrowing first.',
+      'Arrow keys walk the list one row at a time (wrapping at the ends) instead of jumping back to the top; Spacebar picks the highlighted option when you haven\'t typed anything.',
+      'Tab picks the highlighted option, closes the list, and moves you to the next field — so filling a Prices row is type, Tab, type, Tab. Escape still closes without choosing.',
+    ],
+  },
+  {
+    version: 'v2.1390',
+    date: '2026-08-04',
+    title: 'Followup: a logged call fulfills an overdue promise',
+    kind: 'fix',
+    highlights: [
+      'Quick-logging a call on a builder whose promised follow-up was already due now clears the overdue flag — they stop pinning to the top of the queue, because you just talked to them.',
+      'Future promises stay put: texting a builder today doesn\'t cancel "call them Tuesday about the award."',
+    ],
+  },
+  {
+    version: 'v2.1389',
+    date: '2026-08-04',
+    title: 'Call sessions: walk every bid while the GC is on the phone',
+    kind: 'feature',
+    highlights: [
+      'New 📞 Start call session button on every builder card: the number to dial up top, then each open bid with one-tap outcomes — Still pending, Won, Lost (with a reason), or Rebid/RFQ — plus optional notes.',
+      'One save logs the whole call: the builder\'s contact history, a dated note on every bid you touched, and any Won/Lost outcomes — set for real, no separate edit step.',
+      'Before you hang up, promise the next follow-up (Tomorrow / Next week / In 2 weeks / pick a date). The call queue now honors those promises: due follow-ups float to the top with a red badge, and builders promised a later date wait below until their day.',
+    ],
+  },
+  {
+    version: 'v2.1388',
+    date: '2026-08-04',
+    title: 'Followup: quick-logged calls appear in the contact log instantly',
+    kind: 'fix',
+    highlights: [
+      'After logging a call on a builder card, the new entry now shows up in the General contact list immediately — previously it only appeared after collapsing and reopening the card.',
+    ],
+  },
+  {
+    version: 'v2.1387',
+    date: '2026-08-04',
+    title: 'One Followup tab: Builder Review and Submission & Followup merge',
+    kind: 'feature',
+    highlights: [
+      'The two follow-up tabs are now one — Followup — with a toggle between "By builder" (the call queue) and "By status" (the outcome tables, followup sheets, and scripts). Old links keep working.',
+      'The ↗ next to any GC/Builder name on the status tables jumps straight to that builder\'s card on the queue; the stale-days threshold is shared between both lenses.',
+      'Printable call sheets: one page per builder (their people, numbers, and open bids with last-update ages), or the whole queue in call order from the toolbar.',
+      'New help guide: Settings → Help → "follow up with builders on their bids".',
+    ],
+  },
+  {
+    version: 'v2.1386',
+    date: '2026-08-04',
+    title: 'Builder Review becomes a real call queue',
+    kind: 'feature',
+    highlights: [
+      'Every unsent and pending bid on a builder card now shows when it last got an update, and turns red past your "stale after N days" threshold (set it once in the toolbar — it sticks).',
+      'Log a call in one line: pick Phone/Text/Email, type what they said, and hit Log — it records one contact for the builder and stamps every checked bid at once.',
+      'New chips on each builder: win hit-rate and open pipeline dollars. The builder\'s phone number is now visible and tappable on the card header.',
+      'Snooze a builder ("awarding after board meeting — check back Aug 18") and they step out of the call queue until their wake date, visible to the whole team. Builders with no bids yet fold into a Quiet builders group at the bottom.',
+    ],
+  },
+  {
+    version: 'v2.1385',
+    date: '2026-08-04',
+    title: 'Builder Review: PIA flags are now shared with your whole team',
+    kind: 'feature',
+    highlights: [
+      'The PIA checkbox on Builder Review now saves to the database — flag a builder once and everyone sees it, on every device. Your existing flags move over automatically the first time you open the tab.',
+      'The "last contact" ordering under the hood was consolidated and hardened; sorting is unchanged, ties now break alphabetically.',
+      'First step of the Followup revamp — the Builder Review and Submission & Followup tabs are merging into one follow-up surface over the next updates.',
+    ],
+  },
+  {
+    version: 'v2.1384',
+    date: '2026-08-04',
+    title: 'Working board loads faster',
+    kind: 'fix',
+    highlights: [
+      'The Working board and its Inbox tab badge were quietly re-fetching their columns and card placements dozens of times while the Bids page refreshed — now they load once and only re-fetch when your bids actually change.',
+    ],
+  },
+  {
+    version: 'v2.1383',
+    date: '2026-08-04',
+    title: 'Unsent/Working board no longer loses your column layout',
+    kind: 'fix',
+    highlights: [
+      'Switching trades (Plumbing / Electrical / HVAC) while on the Unsent/Working tab could silently wipe your saved column layout and dump every bid back into Inbox. That can no longer happen.',
+      'The board now only clears a saved position after confirming the specific bid actually left your board — it was sent, won or lost, or reassigned to someone else.',
+      'If your board was already reset by this bug, drag your bids back into place once — the new layout will stick.',
+    ],
+  },
+  {
+    version: 'v2.1382',
+    date: '2026-08-04',
+    title: 'Customer review: see the hours behind each customer',
+    kind: 'feature',
+    highlights: [
+      'On the Bid Board\'s Customer review, click any customer to see who logged their hours — a ranked contributor list with each person\'s share, split between estimating and job time.',
+      'Below that, the hours are grouped by bid and job, biggest first — expand one to see the individual clock sessions (day, person, in/out times, hours).',
+      'The customer table also got a polish: hover highlighting, a header that stays put while you scroll, and it scrolls sideways on small screens instead of cutting off the hours columns.',
+    ],
+  },
+  {
+    version: 'v2.1381',
+    date: '2026-08-04',
+    title: 'Edit schedule block: Remove button',
+    kind: 'feature',
+    highlights: [
+      'The Edit schedule block window now has a Remove button in the bottom-left corner — take a block off the schedule right where you edit it, on the week grids and in Dispatch Mode.',
+      'A confirmation asks first, and only that one block is removed — a linked crew-mate\'s block stays put.',
+    ],
+  },
+  {
+    version: 'v2.1380',
+    date: '2026-08-04',
+    title: 'Moneyfill access comes with the controller role',
+    kind: 'feature',
+    highlights: [
+      'Anyone made a controller now gets the bank-transfer labeling queue on Moneyfill automatically — no separate grant step.',
+      'If a controller is demoted or archived, the automatic access is removed; grants a dev made by hand are left alone.',
+    ],
+  },
+  {
+    version: 'v2.1379',
+    date: '2026-08-03',
+    title: 'Move day chips now reach forward too',
+    kind: 'fix',
+    highlights: [
+      'The Move day row in the Edit schedule block modal now offers yesterday, today, and the next two days — so pushing a job to tomorrow is one tap, not a calendar trip.',
+      'Any other date, further back included, is still right there behind the calendar button.',
+    ],
+  },
+  {
+    version: 'v2.1378',
+    date: '2026-08-03',
+    title: 'Moneyfill: a money page for controllers',
+    kind: 'feature',
+    highlights: [
+      'New Moneyfill page (the money-bill icon next to the Quickfill heart) for devs and controllers — financial queues worked to zero, starting with Bank transfers needing attribution.',
+      'Bank transfers needing attribution moved there from Quickfill, so the daily Quickfill loop no longer shows org-level spending.',
+      'Controllers still need the banking-attribution grant from a dev to see the queue itself; the page explains who to ask.',
+    ],
+  },
+  {
+    version: 'v2.1377',
+    date: '2026-08-03',
+    title: 'Move a scheduled block to another day',
+    kind: 'feature',
+    highlights: [
+      'The Edit schedule block modal gains a "Move day" row: tap one of the last three days to back-date a block, or use the calendar button to pick any other date.',
+      'The date at the top updates as you pick, a banner names the day it is moving to, and the button reads "Move and save" so a day change is never silent.',
+      'Overlaps are checked against the day it is moving to, and a crew block scheduled across several days is left alone rather than pulled onto one date.',
+    ],
+  },
+  {
+    version: 'v2.1376',
+    date: '2026-08-03',
+    title: 'Quickfill: a shorter name for Tomorrow\'s Schedule',
+    kind: 'fix',
+    highlights: [
+      'The Quickfill section called "Tomorrow\'s Schedule (Dispatch hub)" is now just "Tomorrow\'s Schedule" — matching what its own history popup and the help guides already called it.',
+    ],
+  },
+  {
+    version: 'v2.1375',
+    date: '2026-08-03',
+    title: 'Add job to schedule: smarter search',
+    kind: 'feature',
+    highlights: [
+      'Search results now highlight the matching part of what you typed, so you can see at a glance why each job matched.',
+      'A new # button next to the search box searches job numbers only (C# and HCP) — type "92" and job 92 tops the list, followed by 926, 925, and the rest.',
+    ],
+  },
+  {
+    version: 'v2.1374',
+    date: '2026-08-03',
+    title: 'Bid Board: due date, estimator, last contact together',
+    kind: 'feature',
+    highlights: [
+      'The estimator column moved next to the due date, so when a bid is due, who owns it, and when you last touched it now read side by side.',
+    ],
+  },
+  {
+    version: 'v2.1373',
+    date: '2026-08-03',
+    title: 'Eight missing entries restored to the release history',
+    kind: 'infra',
+    highlights: [
+      'Five updates that shipped without a history entry — including the hazmat fee edit, void, and notice-email work — are documented again.',
+      'Three version numbers that had been used for two different releases each now read as one entry apiece, with nothing dropped.',
+      'The checks added yesterday now run with no exceptions left, so a lost entry fails immediately.',
+    ],
+  },
+  {
+    version: 'v2.1372',
+    date: '2026-08-03',
+    title: 'Under the hood: the changelog now guards itself',
+    kind: 'infra',
+    highlights: [
+      'Automated checks now catch a release note that goes missing, or a version number used twice, before it reaches everyone.',
+    ],
+  },
+  {
+    version: 'v2.1371',
+    date: '2026-08-03',
+    title: 'Linked crews you can actually manage',
+    kind: 'feature',
+    highlights: [
+      'Jobs scheduled to a crew now show a link chip ("⛓ 3") on the Dispatch Schedule — tap it to see everyone on the crew.',
+      'From there: Unlink someone (their time stays but stops moving with the group), Remove them, or Add a person who inherits the crew\'s times and instructions.',
+      'The same management works from the Schedule Dispatch week grid on desktop.',
+    ],
+  },
+  {
+    version: 'v2.1370',
+    date: '2026-08-03',
+    title: 'Bid Board: the estimator stands out',
+    kind: 'feature',
+    highlights: [
+      'The staff column now leads with the estimator in much larger text, with the account manager underneath in smaller grey type.',
+      'When the same person is both the estimator and the account manager, their name appears once instead of twice.',
+    ],
+  },
+  {
+    version: 'v2.1369',
+    date: '2026-08-03',
+    title: 'Assign work: tidier times',
+    kind: 'fix',
+    highlights: [
+      'The separate time boxes are gone — the sliding dots set the window and the blue Schedule button shows it.',
+      'The Schedule button now reads on two clean lines: who, then when.',
+    ],
+  },
+  {
+    version: 'v2.1368',
+    date: '2026-08-03',
+    title: 'Bid numbers look like bid numbers',
+    kind: 'feature',
+    highlights: [
+      'The Bid Board now shows "b146" instead of a bare "146", so a short number reads as a bid rather than a count.',
+    ],
+  },
+  {
+    version: 'v2.1367',
+    date: '2026-08-03',
+    title: 'Under the hood: coordination for parallel work sessions',
+    kind: 'feature',
+    highlights: [
+      'Development sessions now reserve version numbers through a shared ledger instead of racing each other — fewer renumbered releases and mismatched titles going forward.',
+      'No visible app changes.',
+    ],
+  },
+  {
+    version: 'v2.1366',
+    date: '2026-08-03',
+    title: 'Assign work: slide the time',
+    kind: 'feature',
+    highlights: [
+      'The Assign work sheet now has the same two-dot time bar as the other scheduling windows — drag the dots between 6 AM and 8 PM and the times update everywhere, including the Schedule button.',
+    ],
+  },
+  {
+    version: 'v2.1365',
+    date: '2026-08-03',
+    title: 'Bid Board: project name first',
+    kind: 'feature',
+    highlights: [
+      'Each Bid Board row now shows the project name on top with the GC/Builder underneath, so you find a bid by the job you are thinking of.',
+    ],
+  },
+  {
+    version: 'v2.1364',
+    date: '2026-08-03',
+    title: 'People page: no more sideways scroll on phones',
+    kind: 'fix',
+    highlights: [
+      'On the People page, the search box and the "Team leads" / "Manage accounts" buttons were too wide to share one line on a phone, so every page could slide sideways. The buttons now drop to their own line and nothing runs past the edge.',
+      'Tablet and desktop are unchanged — the row still fits on one line there.',
+    ],
+  },
+  {
+    version: 'v2.1363',
+    date: '2026-08-03',
+    title: 'Schedule Jobs grid: more days on screen',
+    kind: 'fix',
+    highlights: [
+      'Day headers on the Jobs grid now stack the weekday over the date, so the columns are narrower — a phone shows four days at once instead of two.',
+      'The Job column is wider and long job names trim to two lines with an ellipsis instead of stretching the row.',
+    ],
+  },
+  {
+    version: 'v2.1362',
+    date: '2026-08-03',
+    title: 'Bid amounts now say "k"',
+    kind: 'fix',
+    highlights: [
+      'Bid values on the Bid Board read "153k" instead of a bare "153", so it is obvious the number is the bid size — most useful on phone cards, where there is no column header to explain it.',
+    ],
+  },
+  {
+    version: 'v2.1361',
+    date: '2026-08-03',
+    title: 'Schedule Jobs tab: slimmer phone header',
+    kind: 'feature',
+    highlights: [
+      'The Jobs tab matches the Day and People tabs on phones — search tucks behind the magnifier, and the two filter checkboxes live in a View menu.',
+    ],
+  },
+  {
+    version: 'v2.1360',
+    date: '2026-08-03',
+    title: 'Schedule week view: slimmer phone header',
+    kind: 'feature',
+    highlights: [
+      'The week header on phones shrinks to two rows — arrows flank "Week 32 · 08/03–08/07", and tapping the label jumps back to this week.',
+      'The four assign tools keep their spots; search now tucks behind a magnifier icon that expands a full-width box, just like the Day view.',
+    ],
+  },
+  {
+    version: 'v2.1359',
+    date: '2026-08-03',
+    title: 'Bid Board: easier to read at a glance',
+    kind: 'feature',
+    highlights: [
+      'Project names are noticeably bigger on both the table and phone cards.',
+      'Distance moved out of its own column and into the row dropdown, giving the names more room; the address there still opens Google Maps.',
+      'The dropdown drops the account manager (the estimator stays) and the note tabs now sit on the left, with "+ bid note" and "+ customer note" at the bottom of the list where you finish reading.',
+      'On phones the "LC" shorthand is now spelled out as "Last contact".',
+    ],
+  },
+  {
+    version: 'v2.1357',
+    date: '2026-08-03',
+    title: 'Tablet header: no more sideways scroll',
+    kind: 'fix',
+    highlights: [
+      'On tablet-width screens the top menu could run past the edge of the screen, letting every page slide sideways. The menu now folds into the ☰ button as soon as it stops fitting.',
+      'It used to fold correctly only after you rotated or resized the window — now it sorts itself out on its own, including when the app is opened in a background tab.',
+    ],
+  },
+  {
+    version: 'v2.1356',
+    date: '2026-08-03',
+    title: 'Schedule Day view: slimmer phone header',
+    kind: 'feature',
+    highlights: [
+      'The Day view header on phones shrinks from six rows to two — arrows flank the date, and tapping the date jumps back to Today.',
+      'Search tucks behind a magnifier icon (tap to expand), and hiding assistants and estimators is now a one-tap people icon that lights up blue when active.',
+      'In Schedule Dispatch, the Dispatch week link lives in the ⋯ menu; on Quickfill it stays right on the row.',
+    ],
+  },
+  {
+    version: 'v2.1355',
+    date: '2026-08-03',
+    title: 'Bid Board: one tidy tools row',
+    kind: 'feature',
+    highlights: [
+      'Customer review moved up next to Archived, on the same line as the search bar — the board starts higher on the page now.',
+      'Search, Archived and Customer review stay on one line at every width, including phones.',
+    ],
+  },
+  {
+    version: 'v2.1354',
+    date: '2026-08-03',
+    title: 'Go/no-go checklist moves into the bid form',
+    kind: 'feature',
+    highlights: [
+      'The Bid Board\'s "Checklist" button was really a go/no-go bid evaluation aid — it now lives as a small "Go/no-go" pill beside the New Bid / Edit Bid title, right where you decide whether a job is worth pursuing.',
+      'Renamed so it no longer collides with the app-wide Checklist (recurring tasks) feature; the board\'s search row gets a little roomier on phones.',
+    ],
+  },
+  {
+    version: 'v2.1353',
+    date: '2026-08-03',
+    title: 'Bid Board: what do the due-date colors mean?',
+    kind: 'feature',
+    highlights: [
+      'A small red/yellow/grey key now sits beside the Due Date header on the Bid Board — tap it for a plain-English legend: red = past due, yellow = due within 3 days, grey = further out.',
+    ],
+  },
+  {
+    version: 'v2.1352',
+    date: '2026-08-03',
+    title: 'Schedule Day view: readable on phones',
+    kind: 'feature',
+    highlights: [
+      'On phones, each person\'s day is now a clean list — time chips like "8a–11a · 891 · Take 5- Liberty Hill" with a day summary ("6a–6p · 5 stops") — instead of a squeezed timeline with overlapping labels.',
+      'Clocked time shows as its own green row (tap it for My Time), travel warnings sit between stops, and people with nothing scheduled collapse to one "Free" line.',
+      'Applies to both Schedule → Day and Quickfill\'s Schedule section; tablets and desktops keep the full drag-and-drop timeline.',
+    ],
+  },
+  {
+    version: 'v2.1350',
+    date: '2026-08-03',
+    title: 'Add job to schedule: room to work on phones',
+    kind: 'feature',
+    highlights: [
+      'The Add job to schedule picker now starts at the top of the screen on phones and uses the full height, so you can see far more jobs at once.',
+      'When the keyboard opens it shrinks to fit the space above it — and grows right back when the keyboard closes. No more hunting behind the keyboard.',
+      'Jobs now list newest first — today\'s jobs at the top instead of being shuffled in with year-old ones — and search results follow the same order.',
+    ],
+  },
+  {
+    version: 'v2.1349',
+    date: '2026-08-03',
+    title: 'Dashboard cards: matching collapse arrows',
+    kind: 'fix',
+    highlights: [
+      'Recent Reports and Assigned Jobs now share the same header style — same small gray collapse arrow, same spacing — instead of two different looks side by side.',
+    ],
+  },
+  {
+    version: 'v2.1348',
+    date: '2026-08-03',
+    title: 'Bid Board: compact Archived button',
+    kind: 'fix',
+    highlights: [
+      'The Archived button on the Bid Board is now an archive-box icon with the count — same button, less space. Hover shows "Archived bids".',
+    ],
+  },
+  {
+    version: 'v2.1347',
+    date: '2026-08-03',
+    title: 'Bid Board rows: click for details, built for phones',
+    kind: 'feature',
+    highlights: [
+      'Click anywhere on a bid row to expand it — GC and project in full, address (opens Google Maps), due date + time, bid value, team, and the notes panel, all in one place.',
+      'Due Date and Last Contact now show the weekday + date with a day count: (+4) means 4 days past, (-2) means 2 days away.',
+      'The four link columns became one Links cluster showing only what exists; the unread-notes badge, Counts, and Edit now flank the bid number.',
+      'On phones, rows become cards — no more sideways scrolling to read a bid.',
+    ],
+  },
+  {
+    version: 'v2.1346',
+    date: '2026-08-03',
+    title: 'Bid Board: jump straight to any section',
+    kind: 'feature',
+    highlights: [
+      'A sticky pill row at the top of the Bid Board — Unsent, Pending, Won, Started, Lost, and Health, each with its live count — takes you straight to that section (and opens it if collapsed).',
+      'Estimating Health is finally one tap away instead of a very long scroll.',
+      'The two ~100-bid sections (Not yet won or lost, Lost) now show their first 25 rows with a "Show all" button — the page loads and scrolls far lighter. Search and sorting are unchanged.',
+    ],
+  },
+  {
+    version: 'v2.1345',
+    date: '2026-08-03',
+    title: 'Clock buttons look right on phones',
+    kind: 'fix',
+    highlights: [
+      'When clocked in, the timer and Update Focus buttons now stack as two clean full-width rows on phones instead of a lopsided squeezed pair.',
+      'The blue button is now labeled "Update Focus" to match the window it opens.',
+      'Completed Due Today tasks in My Inbox now read cleanly on phones — full-width title with the completion time underneath, instead of a one-word-per-line squeeze.',
+    ],
+  },
+  {
+    version: 'v2.1344',
+    date: '2026-08-03',
+    title: 'Dispatch Mode Schedule: edit a block right from the agenda',
+    kind: 'feature',
+    highlights: [
+      'On Dispatch Mode → Schedule, tapping the time on a scheduled visit now opens the Edit schedule block modal — change the start, end, or note on the spot.',
+      'Tapping the job info still opens Job Detail, exactly as before.',
+      'Linked crew blocks move together, and overlaps with anyone\'s existing blocks are caught before saving — same rules as Schedule Dispatch.',
+    ],
+  },
+  {
+    version: 'v2.1343',
+    date: '2026-08-03',
+    title: 'Emails-sent list: tidy rows on phones',
+    kind: 'fix',
+    highlights: [
+      'Long subjects no longer stretch the Settings → Notifications email rows — they trim with an ellipsis (hover for the full subject) and the table scrolls sideways within its own box.',
+    ],
+  },
+  {
+    version: 'v2.1342',
+    date: '2026-08-03',
+    title: 'Under the hood: database type definitions refreshed',
+    kind: 'fix',
+    highlights: [
+      'The app\'s internal database type definitions were re-synced with the live database — no visible changes, just a sturdier foundation for upcoming banking-attribution work.',
+    ],
+  },
+  {
+    version: 'v2.1341',
+    date: '2026-08-03',
+    title: 'Emails-sent list fills itself in',
+    kind: 'feature',
+    highlights: [
+      'The app now records every email it sends the moment it sends it — the Settings → Notifications list no longer depends on pulling from Resend.',
+      'Delivery statuses (Delivered, Bounced) still update automatically via the Resend webhook, and Refresh from Resend remains for backfilling history.',
+    ],
+  },
+  {
+    version: 'v2.1340',
+    date: '2026-08-03',
+    title: 'Emails-sent list: fix the Resend connection',
+    kind: 'fix',
+    highlights: [
+      'The "Refresh from Resend" button on Settings → Notifications now uses a dedicated read key, so the list loads instead of erroring.',
+    ],
+  },
+  {
+    version: 'v2.1339',
+    date: '2026-08-03',
+    title: 'Dispatch Inbox: one tap to Gmail',
+    kind: 'feature',
+    highlights: [
+      'The Dispatch Mode Inbox now has an "Open Gmail" link at the top, so checking the email inbox is one tap from the app inbox.',
+    ],
+  },
+  {
+    version: 'v2.1338',
+    date: '2026-08-03',
+    title: 'Settings: Notifications tab now shows emails the app sent',
+    kind: 'feature',
+    highlights: [
+      'The Recent push tab is now called Notifications.',
+      'Devs see a new "Most recent emails sent" list at the top — every email the app sends (invoices, estimates, notifications, invites), with delivery status straight from Resend.',
+      'A Refresh from Resend button pulls the latest sends on demand; a new webhook keeps statuses like Delivered and Bounced up to date automatically.',
+    ],
+  },
+  {
+    version: 'v2.1337',
+    date: '2026-08-03',
+    title: 'Quickfill: clearer section name, tidier phone header',
+    kind: 'fix',
+    highlights: [
+      'The "Pipeline: customer link & customer pictures" section is now "Missing job info" — it also catches missing billing emails, so the old name undersold it.',
+      'On phones, Quickfill now lives in the left hamburger menu for everyone instead of taking up a header icon.',
+    ],
+  },
+  {
+    version: 'v2.1336',
+    date: '2026-08-03',
+    title: 'Count Tool gets a crosshair icon',
+    kind: 'fix',
+    highlights: [
+      'The Count Tool link on the Bid Board (and Submission & Followup) now shows a crosshair target instead of a generic file icon.',
+    ],
+  },
+  {
+    version: 'v2.1335',
+    date: '2026-08-03',
+    title: 'Pin a specific bid, not just the Bids page',
+    kind: 'feature',
+    highlights: [
+      'With a bid open on any Bids tab, the Pin button at the bottom now pins THAT bid — the Dashboard chip reads like "BP352 · pricing" and takes you straight back to it, on any device.',
+      'Pin as many bids as you like, even on the same tab; unpin from the same button or Settings when the bid is done.',
+      'Devs can "Pin for someone" to drop a teammate directly onto a bid\'s tab.',
+    ],
+  },
+  {
+    version: 'v2.1334',
+    date: '2026-08-03',
+    title: 'One accurate "how it works", not two stale ones',
+    kind: 'fix',
+    highlights: [
+      'The Settings → How it works tab is gone — it had drifted badly from reality (three roles instead of nine, old names, outdated sub permissions).',
+      'The "understand how PipeTooling works" guide is now the single, corrected orientation: nine roles, whole-shop framing, Notes for Office, and what subs can actually do today.',
+    ],
+  },
+  {
+    version: 'v2.1333',
+    date: '2026-08-03',
+    title: 'Edit Assembly looks like the rest of the family',
+    kind: 'feature',
+    highlights: [
+      'The Edit Assembly form matches the new Add Part and Add Assembly look: search at the top, compact item rows with P/A chips, and tidy × removes.',
+      'Bundle prices are edited by clicking the price itself — type the new number and press Enter. No more Edit/Save/Cancel links.',
+    ],
+  },
+  {
+    version: 'v2.1332',
+    date: '2026-08-03',
+    title: 'Bid Board search fits your phone screen',
+    kind: 'fix',
+    highlights: [
+      'The Bid Board search row no longer pushes the page sideways on a phone — the search box takes the full width with Checklist and Archived wrapping below it.',
+      'Bid tables still scroll side-to-side inside their own box, not the page.',
+    ],
+  },
+  {
+    version: 'v2.1331',
+    date: '2026-08-03',
+    title: 'The Bids header works at every screen size',
+    kind: 'feature',
+    highlights: [
+      'Plumbing / Electrical / HVAC are now one compact switch, New Bid stays top-right, and the tab rows scroll sideways instead of wrapping into a mess on smaller screens.',
+      'On phones the Bids header is a fraction of its old height, and opening a link to any tab scrolls that tab into view automatically.',
+    ],
+  },
+  {
+    version: 'v2.1330',
+    date: '2026-08-03',
+    title: 'See every email subscription you have',
+    kind: 'feature',
+    highlights: [
+      'Settings → Your account → My email schedule now lists every event-driven email stream in the app — Paid in Full, Payment received, and Estimate accepted — with a clear subscribed or not-subscribed state and where each list is managed.',
+      'Estimate-accepted subscriptions on specific estimates show up too, with the estimate names.',
+    ],
+  },
+  {
+    version: 'v2.1329',
+    date: '2026-08-03',
+    title: 'Takeoff quantities: click and type fresh',
+    kind: 'feature',
+    highlights: [
+      'Clicking a Qty box on the Takeoffs sheet clears it so the number pad types a fresh number — no more backspacing the old value first.',
+      'Click away without typing and the old quantity stays exactly as it was.',
+    ],
+  },
+  {
+    version: 'v2.1328',
+    date: '2026-08-03',
+    title: 'Add Part pickers: click and just type',
+    kind: 'feature',
+    highlights: [
+      'In the Add Part form, clicking Part Type or a supply house turns the box itself into the search — no separate search field, just click and type.',
+    ],
+  },
+  {
+    version: 'v2.1327',
+    date: '2026-08-03',
+    title: 'Edit Assembly and Add Parts catch up to the new search',
+    kind: 'feature',
+    highlights: [
+      'Edit Assembly now uses the same unified parts-and-assemblies search — picking a result adds it to the assembly instantly, and quantities are edited right in the items list.',
+      'Add Parts to an assembly gets a searchable part picker with a create-on-the-spot option when nothing matches; Enter in the quantity field adds the part.',
+      'Searchable dropdowns across the app can now offer "add it as new" when your search comes up empty.',
+    ],
+  },
+  {
+    version: 'v2.1326',
+    date: '2026-08-03',
+    title: 'Add Assembly is one search away',
+    kind: 'feature',
+    highlights: [
+      'The Add Assembly form (Takeoffs → Save as Assembly or Add assembly) now has a single search across parts AND assemblies — picking a result adds it instantly, no type dropdown or Add button.',
+      'No match? The last row offers to create the part on the spot, and it drops straight into your item list.',
+      'Bundle prices got one-line rows with a searchable supply-house picker — Enter adds the price.',
+    ],
+  },
+  {
+    version: 'v2.1325',
+    date: '2026-08-03',
+    title: 'Add Part is now keyboard-fast with searchable pickers',
+    kind: 'feature',
+    highlights: [
+      'Part Type and supply house pickers in the Add Part form are searchable — open, type a few letters, Enter to pick.',
+      'Prices are one line each and a blank row is always ready — tab straight through supply house, price, and date to keep adding prices without clicking.',
+      'New "Save & add another" button keeps the form open for entering several parts back-to-back — in Takeoffs, Materials, and the assembly modals.',
+    ],
+  },
+  {
+    version: 'v2.1324',
+    date: '2026-08-03',
+    title: 'Bid margin breakdown now shows per-unit prices',
+    kind: 'feature',
+    highlights: [
+      'The "how this margin was computed" popup on Bids → Pricing now shows every line — sale price, materials, tax, labor, cost, and profit — both per unit and extended across the full count.',
+      'The margin now stands out in a colored band matching the grid’s green/yellow/red thresholds.',
+    ],
+  },
+  {
+    version: 'v2.1323',
+    date: '2026-08-03',
+    title: 'Weekly billed-report emails, and a truthful email-schedule week',
+    kind: 'feature',
+    highlights: [
+      'Scheduling a Billed Awaiting Payment report can now Repeat weekly \u2014 it re-books itself every week until you cancel the pending send.',
+      'My email schedule now also shows emails that already went out this week, dimmed with a checkmark \u2014 Monday afternoon no longer looks like "no emails".',
+    ],
+  },
+  {
+    version: 'v2.1322',
+    date: '2026-08-03',
+    title: 'Click a customer on the Pipeline board to see their full profile',
+    kind: 'feature',
+    highlights: [
+      'The contact-card icon (or the customer\u2019s name) on any Jobs \u2192 Pipeline row opens their profile: contact info you can tap to call or email, open balance with aging, lifetime collected, and how fast they typically pay.',
+      'Their jobs, projects, bids, and estimates are right there as clickable pills \u2014 each opens the real thing.',
+      'Jobs with an unlinked customer name open the link-or-create flow instead, so you can fix the link on the spot.',
+    ],
+  },
+  {
+    version: 'v2.1321',
+    date: '2026-08-03',
+    title: 'See every email the app sends you',
+    kind: 'feature',
+    highlights: [
+      'Settings \u2192 Your account has a new "My email schedule" section: a week view of every email you\u2019re set to receive \u2014 report digests, scheduled reports, dispatch-day emails \u2014 plus event-driven ones like Paid in Full.',
+      'Read-only: it shows what\u2019s configured; changing lists still happens where each email is managed.',
+      'Devs get a new Settings \u2192 Email & notifications panel: every recurring email stream in one place \u2014 pause digests, remove recipients, cancel scheduled sends.',
+    ],
+  },
+  {
+    version: 'v2.1320',
+    date: '2026-08-03',
+    title: 'Overhead: maintenance indicators for pending, unpriced, and unassigned time',
+    kind: 'feature',
+    highlights: [
+      'People → Overhead now shows an amber maintenance strip under the three lenses whenever upkeep is skewing the 90-day numbers — it disappears entirely when everything is clean.',
+      'Three indicators: sessions still awaiting approval (excluded from the numbers until approved), hours priced at $0 because the person has no wage in Pay config, and salary-schedule time with no job or bid assigned (invisible to overhead).',
+      'Each indicator shows counts, hours, and who is affected, explains its exact rule on hover, and says where to fix it. New help guide: "keep the overhead numbers accurate".',
+    ],
+  },
+  {
+    version: 'v2.1319',
+    date: '2026-08-03',
+    title: 'More accurate 90-day overhead rates',
+    kind: 'fix',
+    highlights: [
+      'Stripe test-mode invoices no longer count as revenue in the 90-day overhead rates (People → Overhead and Review) — the overhead-per-revenue numbers read slightly higher and truer.',
+      'The 90-day window now always follows the company calendar (Chicago) — viewers in other timezones near midnight no longer see a shifted window.',
+      'The Review tab now computes its revenue days through the same shared calculation as the Overhead tab, so the two can’t drift apart.',
     ],
   },
   {

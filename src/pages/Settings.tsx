@@ -17,7 +17,7 @@ import MyReportsModal from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import SettingsRecentPushNotifications from '../components/settings/SettingsRecentPushNotifications'
-import SettingsHowItWorksTab from '../components/settings/SettingsHowItWorksTab'
+import SettingsRecentEmailsSent from '../components/settings/SettingsRecentEmailsSent'
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
@@ -33,6 +33,8 @@ import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
 import SettingsCatalogsProspectsTab from '../components/settings/SettingsCatalogsProspectsTab'
 import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import SettingsAccountSchedulingTab from '../components/settings/SettingsAccountSchedulingTab'
+import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEmailScheduleSection'
+import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
 import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
@@ -158,13 +160,14 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (myRole == null) return []
   const r = myRole
   const groups: { id: string; label: string }[] = []
-  groups.push({ id: 'settings-recent-push', label: 'Recent push' })
+  groups.push({ id: 'settings-recent-push', label: 'Notifications' })
   groups.push({ id: 'settings-account', label: 'Your account' })
   groups.push({ id: 'settings-dashboard', label: 'Dashboard & alerts' })
   if (r === 'dev' || r === 'master_technician') {
     groups.push({ id: 'settings-people', label: 'People & accounts' })
   }
   if (r === 'dev') {
+    groups.push({ id: 'settings-emails', label: 'Email & notifications' })
     groups.push({ id: 'settings-data', label: 'Data & migration' })
     groups.push({ id: 'settings-jobs', label: 'Jobs & dispatch' })
   }
@@ -173,7 +176,6 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
   groups.push({ id: 'settings-guides', label: 'Guides' })
   groups.push({ id: 'settings-release-notes', label: 'Release notes' })
-  groups.push({ id: 'settings-how-it-works', label: 'How it works' })
   return groups
 }
 
@@ -1103,9 +1105,15 @@ export default function Settings() {
       <SettingsTabBar groups={settingsJumpGroups} activeId={activeSettingsTab} onSelect={setActiveSettingsTab} />
 
       <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
+        <SettingsRecentEmailsSent isDev={myRole === 'dev'} />
         <SettingsRecentPushNotifications userId={authUser?.id} />
       </div>
 
+      {myRole === 'dev' && (
+        <SettingsGroup id="settings-emails" hidden={activeSettingsTab !== 'settings-emails'} title="Email & notifications">
+          {activeSettingsTab === 'settings-emails' && <SettingsEmailStreamsSection />}
+        </SettingsGroup>
+      )}
       <SettingsGroup
         id="settings-account"
         hidden={activeSettingsTab !== 'settings-account'}
@@ -1179,6 +1187,7 @@ export default function Settings() {
           timeOffSectionOpen={timeOffSectionOpen}
         />
       )}
+      {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}
 
       <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title="Dashboard & alerts">
         <SettingsDashboardTab
@@ -1667,8 +1676,6 @@ export default function Settings() {
       >
         <SettingsReleaseNotesSection />
       </SettingsGroup>
-
-      <SettingsHowItWorksTab active={activeSettingsTab === 'settings-how-it-works'} />
     </div>
   )
 }

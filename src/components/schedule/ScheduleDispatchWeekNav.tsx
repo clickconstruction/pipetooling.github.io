@@ -28,6 +28,10 @@ type ScheduleDispatchWeekNavProps = {
   rightSlot?: ReactNode
   /** Render as a flex item inside another toolbar row (drops the bottom margin). */
   inline?: boolean
+  /** Phone (v2.1357): one slim row — chevrons flank a single-line label; tapping the
+      label jumps to the current week (blue while viewing another week). Drops the
+      This-week button and Hide-weekend checkbox (the View menu owns weekend). */
+  compact?: boolean
 }
 
 export function ScheduleDispatchWeekNav({
@@ -39,6 +43,7 @@ export function ScheduleDispatchWeekNav({
   onHideWeekendChange,
   rightSlot,
   inline = false,
+  compact = false,
 }: ScheduleDispatchWeekNavProps) {
   const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])
   const { weekTitle, dateRange } = useMemo(
@@ -48,6 +53,47 @@ export function ScheduleDispatchWeekNav({
   const displayDateRange = dateRangeOverride ?? dateRange
   // Hide "This week" while already on it — the button would be a no-op.
   const isCurrentWeek = weekStart === getDefaultWeekRange().start
+
+  if (compact) {
+    const compactLabel = weekTitle !== null ? `${weekTitle} · ${displayDateRange}` : displayDateRange
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: inline ? 0 : '0.75rem' }}>
+        <button type="button" onClick={() => onWeekShift(-1)} style={{ ...btnNeutral, padding: '0.4rem 0.65rem', borderRadius: 6 }} aria-label="Previous week">
+          ‹
+        </button>
+        <button
+          type="button"
+          onClick={onThisWeek}
+          title={isCurrentWeek ? 'Showing this week' : 'Jump to this week'}
+          aria-label={isCurrentWeek ? `Showing ${compactLabel}` : `Showing ${compactLabel} — jump to this week`}
+          aria-live="polite"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            margin: 0,
+            padding: '0.4rem 0',
+            border: 'none',
+            background: 'none',
+            font: 'inherit',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            color: isCurrentWeek ? 'var(--text-700)' : 'var(--text-blue-700)',
+            cursor: isCurrentWeek ? 'default' : 'pointer',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            textAlign: 'center',
+          }}
+        >
+          {compactLabel}
+        </button>
+        <button type="button" onClick={() => onWeekShift(1)} style={{ ...btnNeutral, padding: '0.4rem 0.65rem', borderRadius: 6 }} aria-label="Next week">
+          ›
+        </button>
+        {rightSlot ? <div style={{ flexShrink: 0 }}>{rightSlot}</div> : null}
+      </div>
+    )
+  }
 
   return (
     <div

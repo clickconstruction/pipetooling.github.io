@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -629,7 +629,7 @@ The main bid management system. Bid Board is the first tab showing all bids in a
 
 **Database**: `bids` table
 
-**Tabs**: Bid Board, **Unsent/Working** Kanban (`?tab=working`), Bid Costs, **Estimators** (`?tab=estimators` — see below), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release. Builder Review is a separate top-row tab.
+**Tabs**: Bid Board, **Followup** (v2.1387 — one top-row tab merging the old Builder Review and Submission & Followup as its **By builder** / **By status** lenses; internal tab keys `builder-review` and `submission-followup` and their URLs still work), **Unsent/Working** Kanban (`?tab=working`), Bid Costs, **Estimators** (`?tab=estimators` — see below), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, RFI, Change Order, Lien Release.
 
 ### Bid Number
 Short identifier for a bid (e.g. "456"), analogous to HCP for jobs. Stored in `bids.bid_number`. Auto-generated for new bids via `bids_bid_number_seq`; backfilled for existing bids (oldest first). **Display label** is **`{bid_prefix}{bid_number}`** where **`bid_prefix`** comes from **`service_types.ledger_bid_prefix`** for that bid’s trade (trimmed); **null/blank** falls back to **`B`** (same as legacy **`B456`**). Used in Clock In / Update Focus search labels, People Hours clock session displays, **Bid Board** (**`BidBoardBidNumberMark`** in **`Bids.tsx`**: full prefix at **`0.7em`**, **`bid_number`** at inherited size — **v2.498**), workflow tab headings, Documents, Mercury alloc search, etc. **Unified search** accepts typed **`B` + remainder** or **`ledger_bid_prefix` + remainder** (case-insensitive) to find `bid_number`. **Edit restriction**: Only dev, master_technician, and assistant can edit; estimator and primary see it read-only (enforced by UI and database trigger).
@@ -1269,7 +1269,7 @@ Feature in Customers page for bulk-pasting customer data from spreadsheet.
 **Visibility**: Collapsed by default, hidden in Bids modal
 
 ### Quickfill (page)
-The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, **Stages: customer link & customer pictures** (`no-customer-stages` — empty–Stages-search lists + union metric, **`QuickfillStagesNoCustomerSection`**, **v2.413** / copy **v2.415**), schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Jump row** (buttons under the **`h1`**): one compact **last-marked** subline per section (**`RECENT_FEATURES`** **v2.513**). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
+The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, **Missing job info** (`no-customer-stages` — empty–Stages-search lists + union metric, **`QuickfillStagesNoCustomerSection`**, **v2.413** / copy **v2.415**), schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Jump row** (buttons under the **`h1`**): one compact **last-marked** subline per section (**`RECENT_FEATURES`** **v2.513**). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
 
 ### Expandable Row
 Table row that expands to show additional details.

@@ -390,7 +390,7 @@ export function DashboardPinnedQuickRow({
                 subLaborDueTotal,
               })
               return (
-                <Link key={item.path + (item.tab ?? '')} to={to} style={pinnedItemLinkStyle}>
+                <Link key={item.path + (item.tab ?? '') + (item.bidId ?? '')} to={to} style={pinnedItemLinkStyle}>
                   {displayLabel}
                 </Link>
               )

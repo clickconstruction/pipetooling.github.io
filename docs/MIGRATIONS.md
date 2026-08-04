@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-04
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "159 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "171 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 4, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -103,7 +103,64 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### August 2026
 
+#### August 4, 2026
+
+**`20260804130000_customer_followup_next_at.sql`** _(apply via `supabase db push` promptly after merge — the v2.1389 client's prefs SELECT names the column; until applied the prefs load fails soft and PIA/snooze/badges render empty)_
+- **Purpose**: Followup Phase 3 (v2.1389). Additive `next_followup_at timestamptz` on `customer_followup_prefs` — the promised next-follow-up instant set when ending a call session; drives the call-queue bands (overdue promises → staleness → future promises).
+- **Security**: no policy changes; column rides the table's existing RLS. No new table, so no read-only sweep needed.
+- **Category**: Bids
+
+**`20260804120000_customer_followup_prefs.sql`** _(apply via `supabase db push` after merge; either deploy order safe — old client ignores the table, new client treats read failures as "no flags")_
+- **Purpose**: Followup train PR A (v2.1385). New table `customer_followup_prefs` — one team-shared row per customer: `pia boolean NOT NULL DEFAULT false` (replaces the per-browser localStorage PIA list on Builder Review) plus `snoozed_until timestamptz / snooze_note text / snoozed_by uuid` for the Followup queue snooze (UI lands in the next PR). PK = `customer_id` FK → customers ON DELETE CASCADE; `snoozed_by` FK → users ON DELETE SET NULL.
+- **Security**: RLS enabled; select/insert/update/delete for `authenticated` (same audience as the bids surfaces; policies created idempotently via pg_policies checks). Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` — required for every CREATE TABLE.
+- **Category**: Bids
+
+**`20260804110000_customer_review_session_detail.sql`** _(apply via `supabase db push` after merge; migration-first deploy order safe — the old client never calls the new RPC, and the new client's detail click fails gracefully with an error message until it lands)_
+- **Purpose**: Bid Board → Customer review row-click detail (v2.1382). New RPC `list_customer_review_customer_sessions(p_customer_id, p_gc_builder_id)` returning the individual clock sessions behind one customer's hours (user name via `users`, bid/job label + bid_number, in/out timestamps, computed hours), bid sessions `UNION ALL` job sessions, newest first. Same session filters as the modal's aggregate RPCs (`rejected_at`/`revoked_at` NULL, open sessions clipped at `now()`). Param semantics mirror the client's `customerReviewGroupKey`: customer id → bids with that `customer_id` + jobs with that `customer_id`; only gc-builder id → legacy bids with no customer under that GC; both NULL → bids with neither.
+- **Security**: SECURITY DEFINER + `SET search_path = public`, EXECUTE granted to `authenticated` — same posture as `list_customer_review_job_hours`, but note this one intentionally returns **per-session detail** (names + times) for the drill-down, not just aggregates. Read-only (`STABLE`), single-customer scope per call, fetched only on row click.
+- **Category**: Bids
+
+**`20260804100000_controller_banking_attributor_autogrant.sql`** _(apply via `supabase db push` after merge; either deploy order safe — no client change rides with it, and there are no active controllers today so the seed is a no-op)_
+- **Purpose**: Controller role implies the non-card attribution capability (v2.1380). Adds `banking_attributors.auto_role_grant boolean NOT NULL DEFAULT false`; `sync_controller_banking_attributors()` reconciles the grant table (INSERT auto rows for active controllers, DELETE auto rows for demoted/archived ex-controllers; manual dev grants — `auto_role_grant = false` — never touched, and a manual grant that predates a promotion survives a later demotion). Statement trigger `sync_controller_banking_attributors_on_users` on `users` (`AFTER INSERT OR UPDATE OF role, archived_at`), the `sync_company_access_grants` pattern from v2.921. Ends with a self-contained seed call.
+- **Security**: Both functions SECURITY DEFINER + `SET search_path = public` (RLS on `banking_attributors` is dev-write-only; the trigger must be able to write regardless of who changed the role — including service-role edge functions). EXECUTE revoked from `anon`/`authenticated`; only the trigger calls them. No policy changes; no new table, so no read-only sweep needed.
+- **Category**: Access Control
+
+#### August 3, 2026
+
+**`20260803200236_email_send_log_app_source.sql`** _(apply via `supabase db push` after merge, BEFORE deploying the v2.1341 sender functions — an 'app' row insert violates the old CHECK)_
+- **Purpose**: App-side email logging (v2.1341) — widen `email_send_log.source` CHECK to `('sync','webhook','app')` so the 13 sender edge functions can write their own rows at send time via `_shared/logEmailSend.ts`.
+- **Security**: No grant/policy changes.
+- **Category**: Feature schema
+
+**`20260803193428_resend_email_send_log.sql`** _(apply via `supabase db push` after merge; client-first order is safe — the Settings section shows an error state until the table exists)_
+- **Purpose**: `email_send_log` (v2.1338) — org-wide outbound email log behind Settings → Notifications → "Most recent emails sent". One row per Resend email (`resend_email_id` UNIQUE): recipients, subject, `last_event` (delivered/bounced/…), `source` `'sync' | 'webhook'`. Written only by service-role edge functions (`resend-webhook` keeps it fresh; dev-triggered `sync-resend-emails` backfills from Resend's list API).
+- **Security**: RLS enabled; SELECT `is_dev()` only; **no client write policies** (service role bypasses RLS). Ends with both read-only training-mode helpers.
+- **Category**: Feature schema
+
+**`20260803184515_bid_aware_pins.sql`** _(apply via `supabase db push` after merge — push promptly: a NEW client's bid-pin insert needs the column; old clients are unaffected either way)_
+- **Purpose**: Bid-aware pins (v2.1335). `user_pinned_tabs` gains nullable `bid_id uuid REFERENCES bids ON DELETE CASCADE` so a pin can deep-link to one bid's tab ("BP352 · Pricing"). The unique EXPRESSION index `user_pinned_tabs_user_path_tab_key` is replaced by `user_pinned_tabs_user_path_tab_bid_key` `(user_id, path, COALESCE(tab,''), COALESCE(bid_id::text,''))` so several bids can pin the same tab; partial index on `bid_id`. Known accepted edge (documented in-file): `merge_user_accounts` dedupes pins on path+tab only — a user merge could drop one of two same-tab bid pins.
+- **Security**: No grant/policy changes — column-additive on an own-rows RLS table.
+- **Category**: Feature schema
+
+**`20260803170642_my_email_subscriptions_estimate_stream.sql`** _(apply via `supabase db push` after merge; additive JSON keys — either deploy order of client vs migration degrades gracefully)_
+- **Purpose**: "My email subscriptions" (v2.1330) — `get_my_email_schedule()` learns the third standing event stream, Estimate accepted: `events.estimate_accepted_always` (membership in the `estimate_accepted_notify_recipients_v1` app_settings list) and a new `estimate_specific` object (count + newest-first titles capped at 5 of not-yet-accepted estimates — status `draft`/`sent` — whose `accept_notify_user_ids` names the caller). Settings → Your account renders all streams with subscribed/not-subscribed state and managed-from hints.
+- **Security**: No grant/policy changes — CREATE OR REPLACE of the self-scoped SECURITY DEFINER RPC; still returns only auth.uid()'s own memberships.
+- **Category**: Feature schema
+
 #### August 2, 2026
+
+**`20260803140000_billed_report_repeat_weekly.sql`** _(apply via `supabase db push` after merge; pair with `supabase functions deploy billed-report-email`)_
+- **Purpose**: Weekly billed-report chains + truthful week view (v2.1323). Adds `billed_report_email_requests.repeat_weekly` — self-perpetuating: on successful dispatch the edge function enqueues next week's row (+7d, duplicate-guarded), so a pending row always exists and cancelling it ends the chain. `get_my_email_schedule()` now also returns rows already SENT during the current Chicago Mon–Sun week (with sent_at + repeat_weekly) — the v2.1321 pending-only rule hid a 7 AM send by 7:05, making Monday afternoon look like "no emails". `get_global_email_schedule()` billed_requests gain repeat_weekly for the dev panel's weekly tag.
+- **Security**: No grant/policy changes — column-additive + CREATE OR REPLACE of the two self/dev-scoped RPCs.
+- **Category**: Feature schema
+
+**`20260803130000_global_email_schedule_rpc.sql`** _(apply via `supabase db push` after merge, same window as `20260803120000`)_
+- **Purpose**: Dev-only `get_global_email_schedule()` (v2.1321) — one aggregate of every recurring/scheduled email stream for Settings → Email & notifications: report schedules with cadence + recipients (row ids for chip-removal), the paid/payment app_settings recipient lists resolved to users, pending billed-report sends, pending schedule-day emails. Returns NULL for non-devs. No new write surface — the panel reuses each stream's existing write path; schedule-day rows are read-only (no dev UPDATE/DELETE policy exists).
+- **Category**: Feature schema
+
+**`20260803120000_my_email_schedule_rpc.sql`** _(apply via `supabase db push` after merge; client fail-soft until pushed — the Settings section shows the RPC error)_
+- **Purpose**: "My email schedule" (v2.1321) — `get_my_email_schedule()`, one self-scoped read for everything configured to email the CALLER: recurring job-report digests naming them, pending one-off sends addressed to them (billed-report requests, schedule-day emails), and event-stream memberships (paid/payment app_settings uuid lists, guarded cast). SECURITY DEFINER because the sources have mismatched RLS the recipient can't cross (billed-report requests are sender-readable); returns only auth.uid()'s own entries; EXECUTE granted to authenticated (the get_dashboard_payroll_totals precedent).
+- **Category**: Feature schema
 
 **`20260803110000_billed_report_payload_fidelity.sql`** _(apply via `supabase db push` after merge — CREATE OR REPLACE only)_
 - **Purpose**: Fidelity fix for `get_billed_report_email_payload()` (v2.1316). The v2.1315 body restricted invoice rows to jobs with status='billed'; the board takes billed-status invoice rows from jobs of any non-paid status (working jobs with billed break-offs show in Billed Awaiting Payment), and its shared jobs list omits Paid in Full. Corrected + verified against prod to the penny (59→58 rows, $188,606.38→$188,118.88, 90+ chip 4→3/$42.9k — the delta was one $487.50 leftover billed row on a paid job).

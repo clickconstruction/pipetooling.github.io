@@ -167,6 +167,39 @@ export type Database = {
           },
         ]
       }
+      banking_attributors: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banking_attributors_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banking_attributors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banking_user_prefs: {
         Row: {
           accounting_apply_rules_by_default: boolean | null
@@ -1075,56 +1108,6 @@ export type Database = {
           },
         ]
       }
-      bids_tally_parts: {
-        Row: {
-          bid_id: string
-          created_at: string | null
-          created_by_user_id: string
-          fixture_cost: number | null
-          fixture_name: string
-          id: string
-          migrated_from_job_id: string | null
-          part_id: string | null
-          purchase_order_id: string | null
-          quantity: number
-          sequence_order: number
-        }
-        Insert: {
-          bid_id: string
-          created_at?: string | null
-          created_by_user_id: string
-          fixture_cost?: number | null
-          fixture_name?: string
-          id?: string
-          migrated_from_job_id?: string | null
-          part_id?: string | null
-          purchase_order_id?: string | null
-          quantity?: number
-          sequence_order?: number
-        }
-        Update: {
-          bid_id?: string
-          created_at?: string | null
-          created_by_user_id?: string
-          fixture_cost?: number | null
-          fixture_name?: string
-          id?: string
-          migrated_from_job_id?: string | null
-          part_id?: string | null
-          purchase_order_id?: string | null
-          quantity?: number
-          sequence_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bids_tally_parts_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       bids_submission_entries: {
         Row: {
           bid_id: string
@@ -1326,6 +1309,77 @@ export type Database = {
           },
         ]
       }
+      bids_tally_parts: {
+        Row: {
+          bid_id: string
+          created_at: string | null
+          created_by_user_id: string
+          fixture_cost: number | null
+          fixture_name: string
+          id: string
+          migrated_from_job_id: string | null
+          part_id: string | null
+          purchase_order_id: string | null
+          quantity: number
+          sequence_order: number
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string | null
+          created_by_user_id: string
+          fixture_cost?: number | null
+          fixture_name?: string
+          id?: string
+          migrated_from_job_id?: string | null
+          part_id?: string | null
+          purchase_order_id?: string | null
+          quantity?: number
+          sequence_order?: number
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string | null
+          created_by_user_id?: string
+          fixture_cost?: number | null
+          fixture_name?: string
+          id?: string
+          migrated_from_job_id?: string | null
+          part_id?: string | null
+          purchase_order_id?: string | null
+          quantity?: number
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_tally_parts_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_tally_parts_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_tally_parts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_tally_parts_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billed_report_email_requests: {
         Row: {
           attempts: number
@@ -1333,6 +1387,7 @@ export type Database = {
           error: string | null
           id: string
           recipient_user_id: string
+          repeat_weekly: boolean
           requested_by: string
           send_at: string
           sent_at: string | null
@@ -1343,6 +1398,7 @@ export type Database = {
           error?: string | null
           id?: string
           recipient_user_id: string
+          repeat_weekly?: boolean
           requested_by: string
           send_at: string
           sent_at?: string | null
@@ -1353,6 +1409,7 @@ export type Database = {
           error?: string | null
           id?: string
           recipient_user_id?: string
+          repeat_weekly?: boolean
           requested_by?: string
           send_at?: string
           sent_at?: string | null
@@ -2565,6 +2622,7 @@ export type Database = {
           master_user_id: string
           name: string
           stripe_customer_id: string | null
+          stripe_customer_id_test: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2581,6 +2639,7 @@ export type Database = {
           master_user_id: string
           name: string
           stripe_customer_id?: string | null
+          stripe_customer_id_test?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2597,6 +2656,7 @@ export type Database = {
           master_user_id?: string
           name?: string
           stripe_customer_id?: string | null
+          stripe_customer_id_test?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2704,6 +2764,57 @@ export type Database = {
           },
         ]
       }
+      developments: {
+        Row: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          gc_customer_id: string | null
+          id: string
+          master_user_id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          city?: string | null
+          created_at?: string
+          gc_customer_id?: string | null
+          id?: string
+          master_user_id: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          city?: string | null
+          created_at?: string
+          gc_customer_id?: string | null
+          id?: string
+          master_user_id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developments_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_group_members: {
         Row: {
           user_id: string
@@ -2778,57 +2889,6 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "dispatch_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      developments: {
-        Row: {
-          archived_at: string | null
-          city: string | null
-          created_at: string
-          gc_customer_id: string | null
-          id: string
-          master_user_id: string
-          name: string
-          notes: string | null
-          updated_at: string
-        }
-        Insert: {
-          archived_at?: string | null
-          city?: string | null
-          created_at?: string
-          gc_customer_id?: string | null
-          id?: string
-          master_user_id: string
-          name: string
-          notes?: string | null
-          updated_at?: string
-        }
-        Update: {
-          archived_at?: string | null
-          city?: string | null
-          created_at?: string
-          gc_customer_id?: string | null
-          id?: string
-          master_user_id?: string
-          name?: string
-          notes?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "developments_gc_customer_id_fkey"
-            columns: ["gc_customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "developments_master_user_id_fkey"
-            columns: ["master_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3022,6 +3082,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_send_log: {
+        Row: {
+          created_at: string
+          from_email: string | null
+          id: string
+          last_event: string | null
+          last_event_at: string | null
+          resend_email_id: string | null
+          sent_at: string | null
+          source: string
+          subject: string | null
+          to_emails: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_email?: string | null
+          id?: string
+          last_event?: string | null
+          last_event_at?: string | null
+          resend_email_id?: string | null
+          sent_at?: string | null
+          source?: string
+          subject?: string | null
+          to_emails?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_email?: string | null
+          id?: string
+          last_event?: string | null
+          last_event_at?: string | null
+          resend_email_id?: string | null
+          sent_at?: string | null
+          source?: string
+          subject?: string | null
+          to_emails?: string[]
+          updated_at?: string
+        }
+        Relationships: []
       }
       email_templates: {
         Row: {
@@ -4441,10 +4543,10 @@ export type Database = {
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
-          development_id: string | null
-          gc_customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          development_id: string | null
+          gc_customer_id: string | null
           google_drive_link: string | null
           hcp_number: string
           id: string
@@ -4475,10 +4577,10 @@ export type Database = {
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
-          development_id?: string | null
-          gc_customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          development_id?: string | null
+          gc_customer_id?: string | null
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
@@ -4509,10 +4611,10 @@ export type Database = {
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
-          development_id?: string | null
-          gc_customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          development_id?: string | null
+          gc_customer_id?: string | null
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
@@ -4701,6 +4803,7 @@ export type Database = {
           stripe_invoice_id: string | null
           stripe_invoice_memo: string | null
           stripe_invoice_status: string | null
+          stripe_mode: string | null
         }
         Insert: {
           agreed_write_down_at?: string | null
@@ -4729,6 +4832,7 @@ export type Database = {
           stripe_invoice_id?: string | null
           stripe_invoice_memo?: string | null
           stripe_invoice_status?: string | null
+          stripe_mode?: string | null
         }
         Update: {
           agreed_write_down_at?: string | null
@@ -4757,6 +4861,7 @@ export type Database = {
           stripe_invoice_id?: string | null
           stripe_invoice_memo?: string | null
           stripe_invoice_status?: string | null
+          stripe_mode?: string | null
         }
         Relationships: [
           {
@@ -6066,6 +6171,45 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_attribution_resolutions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          mercury_transaction_id: string
+          note: string | null
+          resolution_kind: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          mercury_transaction_id: string
+          note?: string | null
+          resolution_kind: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          mercury_transaction_id?: string
+          note?: string | null
+          resolution_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_attribution_res_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_attribution_resolutions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_attributions: {
         Row: {
           mercury_transaction_id: string
@@ -6095,6 +6239,54 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_transaction_bid_allocations: {
+        Row: {
+          amount: number
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          mercury_transaction_id: string
+          migrated_from_job_id: string | null
+          note: string | null
+        }
+        Insert: {
+          amount: number
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mercury_transaction_id: string
+          migrated_from_job_id?: string | null
+          note?: string | null
+        }
+        Update: {
+          amount?: number
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mercury_transaction_id?: string
+          migrated_from_job_id?: string | null
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_bid_allocations_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_bid_allocations_tx_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -6493,6 +6685,7 @@ export type Database = {
           error: string | null
           id: string
           job_ledger_id: string
+          kind: string
           queued_at: string | null
           sent_at: string | null
         }
@@ -6501,6 +6694,7 @@ export type Database = {
           error?: string | null
           id?: string
           job_ledger_id: string
+          kind?: string
           queued_at?: string | null
           sent_at?: string | null
         }
@@ -6509,6 +6703,7 @@ export type Database = {
           error?: string | null
           id?: string
           job_ledger_id?: string
+          kind?: string
           queued_at?: string | null
           sent_at?: string | null
         }
@@ -7262,6 +7457,20 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "people_labor_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_jobs_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "project_workflow_steps"
+            referencedColumns: ["id"]
+          },
         ]
       }
       people_pay_config: {
@@ -7422,11 +7631,11 @@ export type Database = {
           contract_lineage_id: string
           created_at?: string | null
           dashboard_prompt_after_clock_in?: boolean
+          doc_type?: string
           document_name: string
+          expires_at?: string | null
           id?: string
           lineage_version?: number
-          doc_type?: string
-          expires_at?: string | null
           note?: string | null
           person_id?: string | null
           person_name: string
@@ -7452,11 +7661,11 @@ export type Database = {
           contract_lineage_id?: string
           created_at?: string | null
           dashboard_prompt_after_clock_in?: boolean
+          doc_type?: string
           document_name?: string
+          expires_at?: string | null
           id?: string
           lineage_version?: number
-          doc_type?: string
-          expires_at?: string | null
           note?: string | null
           person_id?: string | null
           person_name?: string
@@ -7482,6 +7691,13 @@ export type Database = {
             columns: ["applied_contract_template_document_id"]
             isOneToOne: false
             referencedRelation: "contract_template_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
@@ -7900,6 +8116,13 @@ export type Database = {
           workflow_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_workflow_steps_assigned_person_id_fkey"
+            columns: ["assigned_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_workflow_steps_template_step_id_fkey"
             columns: ["template_step_id"]
@@ -9565,10 +9788,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "step_commitments_step_id_fkey"
-            columns: ["step_id"]
+            foreignKeyName: "step_commitments_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "project_workflow_steps"
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_commitments_labor_job_id_fkey"
+            columns: ["labor_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
             referencedColumns: ["id"]
           },
           {
@@ -9579,10 +9809,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "step_commitments_labor_job_id_fkey"
-            columns: ["labor_job_id"]
+            foreignKeyName: "step_commitments_step_id_fkey"
+            columns: ["step_id"]
             isOneToOne: false
-            referencedRelation: "people_labor_jobs"
+            referencedRelation: "project_workflow_steps"
             referencedColumns: ["id"]
           },
         ]
@@ -9687,53 +9917,23 @@ export type Database = {
       stripe_webhook_events: {
         Row: {
           event_type: string
+          livemode: boolean | null
           received_at: string
           stripe_event_id: string
         }
         Insert: {
           event_type: string
+          livemode?: boolean | null
           received_at?: string
           stripe_event_id: string
         }
         Update: {
           event_type?: string
+          livemode?: boolean | null
           received_at?: string
           stripe_event_id?: string
         }
         Relationships: []
-      }
-      supply_house_invoice_job_allocations: {
-        Row: {
-          invoice_id: string
-          job_id: string
-          pct: number
-        }
-        Insert: {
-          invoice_id: string
-          job_id: string
-          pct: number
-        }
-        Update: {
-          invoice_id?: string
-          job_id?: string
-          pct?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "supply_house_invoice_job_allocations_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "supply_house_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supply_house_invoice_job_allocations_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       supply_house_invoice_bid_allocations: {
         Row: {
@@ -9771,43 +9971,35 @@ export type Database = {
           },
         ]
       }
-      mercury_transaction_bid_allocations: {
+      supply_house_invoice_job_allocations: {
         Row: {
-          amount: number
-          bid_id: string
-          created_at: string
-          created_by: string | null
-          id: string
-          mercury_transaction_id: string
-          migrated_from_job_id: string | null
-          note: string | null
+          invoice_id: string
+          job_id: string
+          pct: number
         }
         Insert: {
-          amount: number
-          bid_id: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          mercury_transaction_id: string
-          migrated_from_job_id?: string | null
-          note?: string | null
+          invoice_id: string
+          job_id: string
+          pct: number
         }
         Update: {
-          amount?: number
-          bid_id?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          mercury_transaction_id?: string
-          migrated_from_job_id?: string | null
-          note?: string | null
+          invoice_id?: string
+          job_id?: string
+          pct?: number
         }
         Relationships: [
           {
-            foreignKeyName: "mercury_transaction_bid_allocations_bid_id_fkey"
-            columns: ["bid_id"]
+            foreignKeyName: "supply_house_invoice_job_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
             isOneToOne: false
-            referencedRelation: "bids"
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_job_allocations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -10950,6 +11142,7 @@ export type Database = {
       }
       user_pinned_tabs: {
         Row: {
+          bid_id: string | null
           id: string
           label: string
           path: string
@@ -10958,6 +11151,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bid_id?: string | null
           id?: string
           label: string
           path: string
@@ -10966,6 +11160,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bid_id?: string | null
           id?: string
           label?: string
           path?: string
@@ -10974,6 +11169,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_pinned_tabs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_pinned_tabs_user_id_fkey"
             columns: ["user_id"]
@@ -11414,6 +11616,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "workflow_projections_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "project_workflow_steps"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workflow_projections_workflow_id_fkey"
             columns: ["workflow_id"]
             isOneToOne: false
@@ -11770,6 +11979,18 @@ export type Database = {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
       }
+      attributor_allocate_transaction_to_job: {
+        Args: {
+          p_job_id: string
+          p_mercury_transaction_id: string
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      attributor_flag_transaction_payroll: {
+        Args: { p_is_payroll?: boolean; p_mercury_transaction_id: string }
+        Returns: undefined
+      }
       auth_uid_is_helpers_or_subcontractor: { Args: never; Returns: boolean }
       auth_user_can_merge_customers: { Args: never; Returns: boolean }
       auto_clock_out_eod_if_due: { Args: never; Returns: undefined }
@@ -11896,6 +12117,10 @@ export type Database = {
       }
       count_mercury_transactions_for_bank_payments: {
         Args: { p_filter?: Json }
+        Returns: number
+      }
+      count_unattributed_noncard_mercury_transactions: {
+        Args: never
         Returns: number
       }
       count_unlinked_mercury_transactions_for_tally: {
@@ -12092,6 +12317,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assigned_person_id: string | null
           assigned_skill: string | null
           assigned_to_name: string | null
           created_at: string | null
@@ -12143,11 +12369,13 @@ export type Database = {
           service_type_id: string
         }[]
       }
+      get_billed_report_email_payload: { Args: never; Returns: Json }
       get_collect_payment_certify_payload: {
         Args: { p_job_id: string }
         Returns: Json
       }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
+      get_global_email_schedule: { Args: never; Returns: Json }
       get_hazmat_notice_by_token: { Args: { p_token: string }; Returns: Json }
       get_invoice_allocation_lines_for_jobs: {
         Args: { p_job_ids: string[] }
@@ -12266,6 +12494,7 @@ export type Database = {
           person_name: string
         }[]
       }
+      get_my_email_schedule: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_parts_ordered_by_price_count:
         | {
@@ -12352,6 +12581,7 @@ export type Database = {
             Returns: string
           }
       is_assistant: { Args: never; Returns: boolean }
+      is_banking_attributor: { Args: never; Returns: boolean }
       is_bid_pricing_user: { Args: never; Returns: boolean }
       is_checklist_tech_tree_staff_or_primary: { Args: never; Returns: boolean }
       is_controller: { Args: never; Returns: boolean }
@@ -12963,20 +13193,15 @@ export type Database = {
           user_id: string
         }[]
       }
-      list_unlinked_payments_for_bank_payments: {
-        Args: never
+      list_unattributed_noncard_mercury_transactions: {
+        Args: { p_limit?: number }
         Returns: {
-          payment_id: string
-          job_id: string
           amount: number
-          paid_on: string | null
-          note: string | null
-          payment_type: string | null
-          reference_number: string | null
-          invoice_id: string | null
-          hcp_number: string | null
-          click_number: string | null
-          job_name: string | null
+          counterparty_name: string
+          external_memo: string
+          kind: string
+          mercury_transaction_id: string
+          posted_at: string
         }[]
       }
       list_unlabeled_mercury_transactions: {
@@ -13010,6 +13235,22 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      list_unlinked_payments_for_bank_payments: {
+        Args: never
+        Returns: {
+          amount: number
+          click_number: string
+          hcp_number: string
+          invoice_id: string
+          job_id: string
+          job_name: string
+          note: string
+          paid_on: string
+          payment_id: string
+          payment_type: string
+          reference_number: string
+        }[]
       }
       list_user_display_names: {
         Args: { p_user_ids: string[] }
@@ -13318,10 +13559,22 @@ export type Database = {
           window_start_utc: string
         }[]
       }
+      resolve_noncard_transaction_attribution: {
+        Args: {
+          p_mercury_transaction_id: string
+          p_note?: string
+          p_resolution_kind: string
+        }
+        Returns: undefined
+      }
       resolve_pay_person_id: { Args: { p_name: string }; Returns: string }
       resolve_pay_person_id_from_clock_user: {
         Args: { p_display_name: string; p_user_id: string }
         Returns: string
+      }
+      respond_to_work_order: {
+        Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string }
+        Returns: Json
       }
       restore_deleted_records: {
         Args: { p_dry_run?: boolean; p_group_key: string }
@@ -13388,6 +13641,10 @@ export type Database = {
           title: string
         }[]
       }
+      search_job_ids_matching_schedule_or_clock: {
+        Args: { p_job_ids: string[]; p_query: string }
+        Returns: string[]
+      }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {
@@ -13397,10 +13654,6 @@ export type Database = {
           id: string
           source: string
         }[]
-      }
-      search_job_ids_matching_schedule_or_clock: {
-        Args: { p_job_ids: string[]; p_query: string }
-        Returns: string[]
       }
       search_jobs_for_tally_mercury_assign: {
         Args: { search_text?: string }
@@ -13442,16 +13695,8 @@ export type Database = {
         }
         Returns: Json
       }
-      respond_to_work_order: {
-        Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string | null }
-        Returns: Json
-      }
       set_job_collections_flag: {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
-        Returns: Json
-      }
-      settle_step_commitment: {
-        Args: { p_commitment_id: string; p_dry_run?: boolean }
         Returns: Json
       }
       set_mercury_transaction_ar_returned: {
@@ -13465,6 +13710,10 @@ export type Database = {
       set_tally_payroll_flag: {
         Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
         Returns: undefined
+      }
+      settle_step_commitment: {
+        Args: { p_commitment_id: string; p_dry_run?: boolean }
+        Returns: Json
       }
       split_bid_into_versions: {
         Args: {
@@ -13561,6 +13810,10 @@ export type Database = {
           submission_count: number
         }[]
       }
+      unresolve_noncard_transaction_attribution: {
+        Args: { p_mercury_transaction_id: string }
+        Returns: undefined
+      }
       update_bids_count_rows_order:
         | {
             Args: { p_bid_id: string; p_ordered_ids: string[] }
@@ -13594,7 +13847,11 @@ export type Database = {
         Returns: undefined
       }
       update_step_assignment: {
-        Args: { p_assigned_to_name: string; p_person_id?: string | null; p_step_id: string }
+        Args: {
+          p_assigned_to_name: string
+          p_person_id?: string
+          p_step_id: string
+        }
         Returns: undefined
       }
       update_step_notes: {
@@ -13644,6 +13901,10 @@ export type Database = {
         Returns: boolean
       }
       user_has_team_prospects_access: { Args: never; Returns: boolean }
+      user_is_assignee_of_labor_job: {
+        Args: { p_labor_job_id: string }
+        Returns: boolean
+      }
       user_is_bid_estimator_or_account_manager: {
         Args: { bid_uuid: string }
         Returns: boolean

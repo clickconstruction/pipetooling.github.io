@@ -28,6 +28,7 @@ const JobsAccountsReceivable = lazy(() => import('./pages/JobsAccountsReceivable
 const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
+const Moneyfill = lazy(() => import('./pages/Moneyfill'))
 const Bids = lazy(() => import('./pages/Bids'))
 const Prospects = lazy(() => import('./pages/Prospects'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
@@ -67,6 +68,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
+import { CustomerProfileModalProvider } from './contexts/CustomerProfileModalContext'
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
 import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalContext'
@@ -237,11 +239,13 @@ function AppContent() {
                                         <JobsListCacheProvider>
                                           <UpdateFocusOpenerBridgeProvider>
                                             <JobDetailModalProvider>
+                                              <CustomerProfileModalProvider>
                                               <UserReviewModalProvider>
                                                 <ActiveAccountsModalProvider>
                                                   <Layout />
                                                 </ActiveAccountsModalProvider>
                                               </UserReviewModalProvider>
+                                              </CustomerProfileModalProvider>
                                             </JobDetailModalProvider>
                                           </UpdateFocusOpenerBridgeProvider>
                                         </JobsListCacheProvider>
@@ -285,6 +289,7 @@ function AppContent() {
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
+          <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="map" element={<Map />} />

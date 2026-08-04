@@ -46,6 +46,7 @@ import {
   formatScheduleDispatchHubJobTitle,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   defaultNewBlockRangeInFirstGap,
   type AddBlockTimelineSegment,
@@ -94,6 +95,7 @@ import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
 import { reorderDayScheduleBlocks, scheduleTimeToMinutes as reorderTimeToMinutes, minutesToScheduleTime as reorderMinutesToTime } from '../../lib/reorderDayScheduleBlocks'
 import ReorderDayBlocksModal from '../schedule/ReorderDayBlocksModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import {
   QuickfillScheduleUserRow,
   QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
@@ -142,9 +144,13 @@ export function QuickfillScheduleSection({
    * { open, windowLabel } (null on unmount) so the host renders the menu item
    * and the active-window tint; the inline gear no longer renders.
    */
-  onDaySettingsApiChange?: (api: { open: () => void; windowLabel: string | null } | null) => void
+  onDaySettingsApiChange?: (api: { open: () => void; windowLabel: string | null; dispatchHref: string } | null) => void
 } = {}) {
   const navigate = useNavigate()
+  // Phone agenda mode (v2.1350): per-person time-chip rows instead of proportional tracks.
+  const agendaMode = useNarrowViewport640()
+  // Compact phone header (v2.1353): search collapses behind the magnifier toggle.
+  const [compactSearchOpen, setCompactSearchOpen] = useState(false)
   const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const ledgerPrefixMap = useLedgerPrefixMap()
@@ -220,17 +226,6 @@ export function QuickfillScheduleSection({
     setDaySettingsDraftEnd(dayRailWindow?.endMin ?? MAX_MIN)
     setDaySettingsOpen(true)
   }, [dayRailWindow])
-  // Report the visible-hours control to the host (Dispatch hub ⋯ menu, v2.1243).
-  useEffect(() => {
-    if (!onDaySettingsApiChange || !showDaySettings) return
-    onDaySettingsApiChange({
-      open: openDaySettings,
-      windowLabel: dayRailWindow
-        ? `${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.startMin))}–${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.endMin))}`
-        : null,
-    })
-    return () => onDaySettingsApiChange(null)
-  }, [onDaySettingsApiChange, showDaySettings, openDaySettings, dayRailWindow])
   const saveDaySettings = useCallback(() => {
     const s = daySettingsDraftStart
     const e = daySettingsDraftEnd
@@ -489,6 +484,7 @@ export function QuickfillScheduleSection({
   const [cellAddContext, setCellAddContext] = useState<{ assigneeUserId: string; workDate: string } | null>(null)
   const [assignJobPickerOpen, setAssignJobPickerOpen] = useState(false)
   const [assignJobPickerSearch, setAssignJobPickerSearch] = useState('')
+  const [assignJobPickerNumberQuery, setAssignJobPickerNumberQuery] = useState('')
   const [blockModalState, setBlockModalState] = useState<QuickfillBlockModalState | null>(null)
   const [reorderUserId, setReorderUserId] = useState<string | null>(null)
   const [reorderSaving, setReorderSaving] = useState(false)
@@ -571,6 +567,7 @@ export function QuickfillScheduleSection({
     setAssignJobPickerOpen(false)
     setCellAddContext(null)
     setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
   }, [])
 
   const openQuickfillAddBlock = useCallback(
@@ -578,6 +575,7 @@ export function QuickfillScheduleSection({
       setAssignJobPickerOpen(false)
       setCellAddContext(null)
       setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
       setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
       const rows = blocksByUserId.get(args.assigneeUserId) ?? []
       const labelFor = (jid: string) => jobTitleById.get(jid) ?? formatScheduleDispatchHubJobTitle(null, null)
@@ -651,9 +649,12 @@ export function QuickfillScheduleSection({
 
   const quickfillAssignJobPickerRows = useMemo(() => {
     const q = assignJobPickerSearch.trim().toLowerCase()
+    const digits = assignJobPickerNumberQuery.replace(/\D/g, '')
     const sessionTodaySet = new Set(quickfillOrderedSessionJobLedgerIds)
     let list = quickfillPickerJobsSorted
-    if (q) {
+    if (digits !== '') {
+      list = findJobsByNumber(list, digits)
+    } else if (q) {
       list = list.filter(
         (j) =>
           (j.hcp_number ?? '').toLowerCase().includes(q) ||
@@ -666,7 +667,7 @@ export function QuickfillScheduleSection({
       displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name),
       sessionToday: sessionTodaySet.has(j.id),
     }))
-  }, [assignJobPickerSearch, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
+  }, [assignJobPickerSearch, assignJobPickerNumberQuery, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
 
   const quickfillCellChoiceSubtitle = useMemo(() => {
     if (!cellAddContext) return ''
@@ -706,6 +707,7 @@ export function QuickfillScheduleSection({
     setAssignJobPickerOpen(false)
     setCellAddContext(null)
     setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
     closeQuickfillAddBlock()
   }, [workDate, closeQuickfillAddBlock])
 
@@ -720,6 +722,19 @@ export function QuickfillScheduleSection({
     const weekStart = companyWeekStartSundayContaining(workDate) ?? getDefaultWeekRange().start
     return `/schedule-dispatch?week=${encodeURIComponent(weekStart)}&day=${encodeURIComponent(workDate)}`
   }, [workDate])
+
+  // Report the visible-hours control to the host (Dispatch hub ⋯ menu, v2.1243).
+  useEffect(() => {
+    if (!onDaySettingsApiChange || !showDaySettings) return
+    onDaySettingsApiChange({
+      open: openDaySettings,
+      windowLabel: dayRailWindow
+        ? `${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.startMin))}–${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.endMin))}`
+        : null,
+      dispatchHref: scheduleDispatchHref,
+    })
+    return () => onDaySettingsApiChange(null)
+  }, [onDaySettingsApiChange, showDaySettings, openDaySettings, dayRailWindow, scheduleDispatchHref])
 
   const openOccupiedBandOnScheduleDispatch = useCallback(
     (band: DispatchOccupiedBand) => {
@@ -1304,9 +1319,127 @@ export function QuickfillScheduleSection({
       </div>
   )
 
+  /** Compact phone header (agenda mode): one nav row — chevrons, tap-date-for-Today,
+      search + staff-filter toggles. Dispatch stays a visible chip only outside the hub
+      (the hub surfaces it in its ⋯ menu via daySettingsApi.dispatchHref). */
+  const isTodaySelected = workDate === denverCalendarDayKey(Date.now())
+  const compactDayLabel = dayLabel.replace(/^([A-Za-z]{3})[A-Za-z]*, /, '$1, ').replace(/, \d{4}$/, '')
+  const compactNavButtonStyle: React.CSSProperties = {
+    padding: '0.4rem 0.65rem',
+    fontSize: '0.9375rem',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 6,
+    background: 'var(--surface)',
+    cursor: 'pointer',
+    lineHeight: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
+  const compactDayNavRow = (
+    <div style={{ marginBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <button type="button" onClick={() => setWorkDate((d) => ymdAddDays(d, -1))} title="Previous day" aria-label="Previous day" style={compactNavButtonStyle}>
+          ‹
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkDate(denverCalendarDayKey(Date.now()))}
+          title={isTodaySelected ? 'Showing today' : 'Jump to today'}
+          aria-label={isTodaySelected ? `Showing ${dayLabel}` : `Showing ${dayLabel} — jump to today`}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            margin: 0,
+            padding: '0.4rem 0',
+            border: 'none',
+            background: 'none',
+            font: 'inherit',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            color: isTodaySelected ? 'var(--text-700)' : 'var(--text-blue-700)',
+            cursor: isTodaySelected ? 'default' : 'pointer',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {compactDayLabel}
+        </button>
+        <button type="button" onClick={() => setWorkDate((d) => ymdAddDays(d, 1))} title="Next day" aria-label="Next day" style={compactNavButtonStyle}>
+          ›
+        </button>
+        <button
+          type="button"
+          onClick={() => setCompactSearchOpen((o) => !o)}
+          title="Search by person or job"
+          aria-label="Search by person or job"
+          aria-expanded={compactSearchOpen}
+          style={{
+            ...compactNavButtonStyle,
+            ...(compactSearchOpen || searchQuery.trim() !== ''
+              ? { border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+              : {}),
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="14" height="14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+            <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4 457.4 502.6 330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={toggleHideAssistantsEstimators}
+          title={hideAssistantsEstimators ? 'Assistants and estimators hidden — tap to unhide' : 'Hide assistants and estimators'}
+          aria-label={hideAssistantsEstimators ? 'Unhide assistants and estimators' : 'Hide assistants and estimators'}
+          aria-pressed={hideAssistantsEstimators}
+          style={{
+            ...compactNavButtonStyle,
+            ...(hideAssistantsEstimators
+              ? { border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+              : {}),
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+            <path d="M320 80C377.4 80 424 126.6 424 184C424 241.4 377.4 288 320 288C262.6 288 216 241.4 216 184C216 126.6 262.6 80 320 80zM96 152C135.8 152 168 184.2 168 224C168 263.8 135.8 296 96 296C56.2 296 24 263.8 24 224C24 184.2 56.2 152 96 152zM0 480C0 409.3 57.3 352 128 352C140.8 352 153.2 353.9 164.9 357.4C132 394.2 112 442.8 112 496L112 512C112 523.4 114.4 534.2 118.7 544L32 544C14.3 544 0 529.7 0 512L0 480zM521.3 544C525.6 534.2 528 523.4 528 512L528 496C528 442.8 508 394.2 475.1 357.4C486.8 353.9 499.2 352 512 352C582.7 352 640 409.3 640 480L640 512C640 529.7 625.7 544 608 544L521.3 544zM472 224C472 184.2 504.2 152 544 152C583.8 152 616 184.2 616 224C616 263.8 583.8 296 544 296C504.2 296 472 263.8 472 224zM160 496C160 407.6 231.6 336 320 336C408.4 336 480 407.6 480 496L480 512C480 529.7 465.7 544 448 544L192 544C174.3 544 160 529.7 160 512L160 496z" />
+          </svg>
+        </button>
+        {!onDaySettingsApiChange ? (
+          <Link to={scheduleDispatchHref} aria-label="Open Schedule Dispatch for the week of this day" style={{ ...compactNavButtonStyle, fontSize: '0.8125rem', color: 'var(--text-700)', textDecoration: 'none' }}>
+            Dispatch
+          </Link>
+        ) : null}
+      </div>
+      {compactSearchOpen ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem' }}>
+          <input
+            type="search"
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by person or job…"
+            aria-label="Search by person or job"
+            style={{ flex: 1, minWidth: 0, padding: '0.4rem 0.5rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('')
+              setCompactSearchOpen(false)
+            }}
+            title="Clear search and close"
+            aria-label="Clear search and close"
+            style={compactNavButtonStyle}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+
   return (
     <div>
-      {showDaySettings ? dayNavRow : null}
+      {showDaySettings ? (agendaMode ? compactDayNavRow : dayNavRow) : null}
       {!hideConflictPrompt ? (
         <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
           {SCHEDULE_CONFLICTS_DEFAULT_PROMPT}
@@ -1327,6 +1460,7 @@ export function QuickfillScheduleSection({
           hints. Hover for details.
         </p>
       ) : null}
+      {agendaMode ? null : (
       <div
         style={{
           display: 'flex',
@@ -1387,7 +1521,8 @@ export function QuickfillScheduleSection({
             : 'Hide assistants and estimators'}
         </button>
       </div>
-      {!showDaySettings ? dayNavRow : null}
+      )}
+      {!showDaySettings ? (agendaMode ? compactDayNavRow : dayNavRow) : null}
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : sortedUsers.length === 0 ? (
@@ -1400,6 +1535,7 @@ export function QuickfillScheduleSection({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No people match this search.</p>
       ) : (
         <div>
+          {agendaMode ? null : (
           <div
             style={{
               display: 'flex',
@@ -1451,6 +1587,7 @@ export function QuickfillScheduleSection({
               <div style={{ width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH, flexShrink: 0 }} aria-hidden />
             ) : null}
           </div>
+          )}
           {scheduleUsersByRoleSection.map((roleSection, sectionIndex) => {
             const headingId = `quickfill-schedule-role-${roleSection.sectionKey}`
             return (
@@ -1504,6 +1641,7 @@ export function QuickfillScheduleSection({
                             ? () => {
                                 setCellAddContext({ assigneeUserId: id, workDate })
                                 setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
                                 setAssignJobPickerOpen(true)
                               }
                             : undefined
@@ -1523,6 +1661,7 @@ export function QuickfillScheduleSection({
                           showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
                         }
                         onOccupiedBandClick={openOccupiedBandOnScheduleDispatch}
+                        agendaVariant={agendaMode}
                       />
                     )
                   })}
@@ -1539,6 +1678,8 @@ export function QuickfillScheduleSection({
         jobRows={quickfillAssignJobPickerRows}
         searchValue={assignJobPickerSearch}
         onSearchChange={setAssignJobPickerSearch}
+        numberQuery={assignJobPickerNumberQuery}
+        onNumberQueryChange={setAssignJobPickerNumberQuery}
         onPickJob={(jobId) => {
           if (!cellAddContext) return
           openQuickfillAddBlock({

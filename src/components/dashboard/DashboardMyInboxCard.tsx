@@ -9,6 +9,7 @@ import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 import ChecklistItemMuteModal from '../ChecklistItemMuteModal'
 import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { formatTDays, getDaysUntilDue } from '../../lib/dashboardMyInbox'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
@@ -589,7 +590,7 @@ export function DashboardMyInboxCard({
                   key={inst.id}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: isMobile ? 'flex-start' : 'center',
                     gap: '0.75rem',
                     padding: '0.5rem 0.75rem',
                     border: '1px solid var(--border)',
@@ -602,13 +603,21 @@ export function DashboardMyInboxCard({
                     type="checkbox"
                     checked={isCompleted}
                     onChange={() => void toggleChecklistComplete(inst)}
+                    style={isMobile ? { marginTop: 3 } : undefined}
                   />
-                  <span style={{ flex: 1, fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? 'var(--text-muted)' : 'inherit' }}>
-                    <ChecklistTitleWithLinks title={title} links={links} />
-                  </span>
-                  {inst.completed_at && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {new Date(inst.completed_at).toLocaleString()}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? 'var(--text-muted)' : 'inherit' }}>
+                      <ChecklistTitleWithLinks title={title} links={links} />
+                    </span>
+                    {isMobile && inst.completed_at && (
+                      <span style={{ display: 'block', marginTop: 2, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {formatNotificationDatetime(inst.completed_at)}
+                      </span>
+                    )}
+                  </div>
+                  {!isMobile && inst.completed_at && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {formatNotificationDatetime(inst.completed_at)}
                     </span>
                   )}
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

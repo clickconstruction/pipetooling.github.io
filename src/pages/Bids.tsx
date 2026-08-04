@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fromDatetimeLocal } from '../utils/datetimeLocal'
@@ -65,6 +65,8 @@ import {
   getCustomerDisplay,
 } from '../lib/bids/bidFormatting'
 import { tabStyle, bidsTabStyle } from '../lib/bids/bidStyles'
+import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
+import { useMatchMedia } from '../hooks/useMatchMedia'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
@@ -173,6 +175,9 @@ export default function Bids() {
   const navigate = useNavigate()
   const [, setSearchParams] = useSearchParams()
   const narrowViewport640 = useNarrowViewport640()
+  // Header layout: one row (trades | board tabs | New Bid) needs ~1150px; below
+  // that the board tabs drop to their own single-row scrollable strip (v2.1331).
+  const wideBidsHeader = useMatchMedia('(min-width: 1151px)')
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -442,6 +447,30 @@ export default function Bids() {
   const builderReviewDeepLinkTimeoutRef = useRef<number | null>(null)
   const builderReviewPendingDeepLinkBidIdRef = useRef<string | null>(null)
   const builderReviewDeepLinkAppliedBidIdRef = useRef<string | null>(null)
+
+  // v2.1387 (Followup merge): jump from a status-lens row to that builder's
+  // card on the By-builder lens — same highlight plumbing as the bid deep link.
+  const openBuilderLensForCustomer = useCallback(
+    (customerId: string) => {
+      setActiveTab('builder-review')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'builder-review')
+        return next
+      })
+      setBuilderReviewDeepLinkHighlightGen((g) => g + 1)
+      if (builderReviewDeepLinkTimeoutRef.current) {
+        clearTimeout(builderReviewDeepLinkTimeoutRef.current)
+        builderReviewDeepLinkTimeoutRef.current = null
+      }
+      setBuilderReviewDeepLinkHighlightCustomerId(customerId)
+      builderReviewDeepLinkTimeoutRef.current = window.setTimeout(() => {
+        setBuilderReviewDeepLinkHighlightCustomerId(null)
+        builderReviewDeepLinkTimeoutRef.current = null
+      }, 2500)
+    },
+    [setSearchParams]
+  )
 
   const applyBuilderReviewDeepLinkFromBid = useCallback(
     (bid: BidWithBuilder) => {
@@ -2256,40 +2285,14 @@ export default function Bids() {
     return workingBoardEligibleBids.filter((b) => !!b.working_board_archived_at)
   }, [bids, myRole, workingBoardEligibleBids])
 
-  const bidsPrimaryTabsContainerStyle: CSSProperties = narrowViewport640
-    ? {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        width: '100%',
-        gap: '0.35rem',
-        minWidth: 0,
-      }
-    : {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: '0.25rem',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        minWidth: 0,
-      }
-
-  const bidsPrimaryTabMobileTopRowStyle: CSSProperties = narrowViewport640
-    ? { flex: 1, minWidth: 0, boxSizing: 'border-box' }
-    : {}
-
-  const bidsPrimaryTabMobileBidCostsRowStyle: CSSProperties = narrowViewport640
-    ? { width: '100%', boxSizing: 'border-box' }
-    : {}
-
-  const bidsPrimaryTabsNarrowTopRowStyle: CSSProperties = {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '0.25rem',
-    width: '100%',
-    minWidth: 0,
-    alignItems: 'stretch',
+  /** One place for tab switches: state + the ?tab= URL param (v2.1331 dedupe). */
+  const selectBidsTab = (tab: typeof activeTab) => {
+    setActiveTab(tab)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', tab)
+      return next
+    })
   }
 
   const BIDS_WORKING_TAB_LABEL = 'Unsent/Working'
@@ -2298,34 +2301,23 @@ export default function Bids() {
   const workingInboxBadgeText = workingInboxCount > 9 ? '9+' : String(workingInboxCount)
   const bidsWorkingTabButton = (
     <span
+      data-tabkey="working"
       style={{
         position: 'relative',
-        display: narrowViewport640 ? 'flex' : 'inline-flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        ...(narrowViewport640 ? { flex: 1, minWidth: 0 } : {}),
+        flexShrink: 0,
       }}
     >
       <button
         type="button"
-        onClick={() => {
-          setActiveTab('working')
-          setSearchParams((p) => {
-            const next = new URLSearchParams(p)
-            next.set('tab', 'working')
-            return next
-          })
-        }}
+        onClick={() => selectBidsTab('working')}
         aria-label={
           workingInboxCount > 0
             ? `${BIDS_WORKING_TAB_LABEL}, ${workingInboxCount} in inbox`
             : BIDS_WORKING_TAB_LABEL
         }
-        style={{
-          ...tabStyle(activeTab === 'working'),
-          ...bidsPrimaryTabMobileTopRowStyle,
-          ...(narrowViewport640 ? { width: '100%' } : {}),
-          ...(narrowViewport640 && workingInboxCount > 0 ? { paddingRight: '1.35rem' } : {}),
-        }}
+        style={tabStyle(activeTab === 'working')}
       >
         {BIDS_WORKING_TAB_LABEL}
       </button>
@@ -2362,18 +2354,9 @@ export default function Bids() {
     myRole === 'dev' ? (
       <button
         type="button"
-        onClick={() => {
-          setActiveTab('bid-costs')
-          setSearchParams((p) => {
-            const next = new URLSearchParams(p)
-            next.set('tab', 'bid-costs')
-            return next
-          })
-        }}
-        style={{
-          ...tabStyle(activeTab === 'bid-costs'),
-          ...bidsPrimaryTabMobileBidCostsRowStyle,
-        }}
+        data-tabkey="bid-costs"
+        onClick={() => selectBidsTab('bid-costs')}
+        style={tabStyle(activeTab === 'bid-costs')}
       >
         Bid Costs
       </button>
@@ -2382,21 +2365,38 @@ export default function Bids() {
   const bidsEstimatorsTabButton = (
     <button
       type="button"
-      onClick={() => {
-        setActiveTab('estimators')
-        setSearchParams((p) => {
-          const next = new URLSearchParams(p)
-          next.set('tab', 'estimators')
-          return next
-        })
-      }}
-      style={{
-        ...tabStyle(activeTab === 'estimators'),
-        ...bidsPrimaryTabMobileBidCostsRowStyle,
-      }}
+      data-tabkey="estimators"
+      onClick={() => selectBidsTab('estimators')}
+      style={tabStyle(activeTab === 'estimators')}
     >
       Estimators
     </button>
+  )
+
+  /** The five board tabs as one single-row strip (centers when it fits, scrolls when it doesn't). */
+  const bidsBoardTabsStrip = (
+    <ScrollableTabStrip activeKey={activeTab} ariaLabel="Bid boards">
+      <button
+        type="button"
+        data-tabkey="bid-board"
+        onClick={() => selectBidsTab('bid-board')}
+        style={tabStyle(activeTab === 'bid-board')}
+      >
+        Bid Board
+      </button>
+      <button
+        type="button"
+        data-tabkey="builder-review"
+        onClick={() => selectBidsTab(activeTab === 'submission-followup' ? 'submission-followup' : 'builder-review')}
+        style={tabStyle(activeTab === 'builder-review' || activeTab === 'submission-followup')}
+        title="Builder Review and Submission & Followup, merged — flip between lenses inside"
+      >
+        Followup
+      </button>
+      {bidsWorkingTabButton}
+      {bidsBidCostsTabButton}
+      {bidsEstimatorsTabButton}
+    </ScrollableTabStrip>
   )
 
   const { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows } = useBidPricingRows({
@@ -2465,6 +2465,72 @@ export default function Bids() {
       : (myRole === 'superintendent' && superintendentServiceTypeIds && superintendentServiceTypeIds.length > 0)
         ? serviceTypes.filter((st) => superintendentServiceTypeIds.includes(st.id))
         : serviceTypes
+
+  /** Trades as a compact segmented control; grayed on Builder Review (all-trade roster). */
+  const bidsTradeSegments =
+    visibleServiceTypes.length > 0 ? (
+      <div
+        role="group"
+        aria-label="Trade"
+        style={{
+          display: 'inline-flex',
+          flexShrink: 0,
+          border: '1px solid var(--border-strong)',
+          borderRadius: 6,
+          overflow: 'hidden',
+          opacity: activeTab === 'builder-review' ? 0.5 : 1,
+          pointerEvents: activeTab === 'builder-review' ? 'none' : 'auto',
+        }}
+      >
+        {visibleServiceTypes.map((st, i) => {
+          const active = selectedServiceTypeId === st.id
+          return (
+            <button
+              key={st.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                if (st.id !== selectedServiceTypeId) {
+                  setSelectedServiceTypeId(st.id)
+                  closeSharedBidAndClearUrl()
+                }
+              }}
+              style={{
+                padding: '0.45rem 0.85rem',
+                border: 'none',
+                borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
+                background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
+                fontWeight: active ? 600 : 400,
+                cursor: 'pointer',
+              }}
+            >
+              {st.name}
+            </button>
+          )
+        })}
+      </div>
+    ) : null
+
+  const bidsNewBidButton =
+    visibleServiceTypes.length > 0 ? (
+      <button
+        type="button"
+        onClick={openNewBid}
+        style={{
+          padding: '0.5rem 1rem',
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: 4,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        New Bid
+      </button>
+    ) : null
+
 
   if (loading) {
     return (
@@ -2575,285 +2641,69 @@ export default function Bids() {
         )}
 
 
-      {/* Service types (left) + primary tabs (center) + New Bid (right); trade toggles grayed on Builder Review */}
-      {visibleServiceTypes.length > 0 && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: narrowViewport640 ? 'minmax(0, 1fr)' : '1fr auto 1fr',
-            alignItems: narrowViewport640 ? 'stretch' : 'center',
-            gap: '0.5rem',
-            marginBottom: '0.65rem',
-          }}
-        >
+      {/* Header (v2.1331): trades (segmented) + board tabs + New Bid. One row on wide
+          screens; below ~1150px trades + New Bid share a row and the board tabs drop
+          to their own single-row scrollable strip. */}
+      <div style={{ marginBottom: '0.65rem' }}>
+        {wideBidsHeader ? (
           <div
             style={{
-              display: 'flex',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-              minWidth: 0,
-              opacity: activeTab === 'builder-review' ? 0.5 : 1,
-              pointerEvents: activeTab === 'builder-review' ? 'none' : 'auto',
-              cursor: activeTab === 'builder-review' ? 'not-allowed' : 'default',
+              display: 'grid',
+              gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+              alignItems: 'center',
+              gap: '0.75rem',
             }}
           >
-            {visibleServiceTypes.map((st) => (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => {
-                  if (st.id !== selectedServiceTypeId) {
-                    setSelectedServiceTypeId(st.id)
-                    closeSharedBidAndClearUrl()
-                  }
-                }}
+            {bidsTradeSegments ?? <span />}
+            {bidsBoardTabsStrip}
+            {bidsNewBidButton ?? <span />}
+          </div>
+        ) : (
+          <>
+            {(bidsTradeSegments || bidsNewBidButton) && (
+              <div
                 style={{
-                  padding: '0.5rem 1rem',
-                  border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid var(--border-strong)',
-                  background: selectedServiceTypeId === st.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                  color: selectedServiceTypeId === st.id ? 'var(--text-blue-500)' : 'var(--text-700)',
-                  borderRadius: 6,
-                  fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
-                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.5rem',
                 }}
               >
-                {st.name}
-              </button>
-            ))}
-          </div>
-          <div style={bidsPrimaryTabsContainerStyle}>
-            {narrowViewport640 ? (
-              <>
-                <div style={bidsPrimaryTabsNarrowTopRowStyle}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('bid-board')
-                      setSearchParams((p) => {
-                        const next = new URLSearchParams(p)
-                        next.set('tab', 'bid-board')
-                        return next
-                      })
-                    }}
-                    style={{ ...tabStyle(activeTab === 'bid-board'), ...bidsPrimaryTabMobileTopRowStyle }}
-                  >
-                    Bid Board
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('builder-review')
-                      setSearchParams((p) => {
-                        const next = new URLSearchParams(p)
-                        next.set('tab', 'builder-review')
-                        return next
-                      })
-                    }}
-                    style={{ ...tabStyle(activeTab === 'builder-review'), ...bidsPrimaryTabMobileTopRowStyle }}
-                  >
-                    Builder Review
-                  </button>
-                  {bidsWorkingTabButton}
-                </div>
-                {bidsBidCostsTabButton}
-                {bidsEstimatorsTabButton}
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('bid-board')
-                    setSearchParams((p) => {
-                      const next = new URLSearchParams(p)
-                      next.set('tab', 'bid-board')
-                      return next
-                    })
-                  }}
-                  style={{ ...tabStyle(activeTab === 'bid-board'), ...bidsPrimaryTabMobileTopRowStyle }}
-                >
-                  Bid Board
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('builder-review')
-                    setSearchParams((p) => {
-                      const next = new URLSearchParams(p)
-                      next.set('tab', 'builder-review')
-                      return next
-                    })
-                  }}
-                  style={{ ...tabStyle(activeTab === 'builder-review'), ...bidsPrimaryTabMobileTopRowStyle }}
-                >
-                  Builder Review
-                </button>
-                {bidsWorkingTabButton}
-                {bidsBidCostsTabButton}
-                {bidsEstimatorsTabButton}
-              </>
+                {bidsTradeSegments ?? <span />}
+                {bidsNewBidButton}
+              </div>
             )}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: narrowViewport640 ? 'stretch' : 'flex-end',
-              minWidth: 0,
-            }}
-          >
-            <button
-              type="button"
-              onClick={openNewBid}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-                ...(narrowViewport640 ? { width: '100%', boxSizing: 'border-box' } : {}),
-              }}
-            >
-              New Bid
-            </button>
-          </div>
-        </div>
-      )}
+            {bidsBoardTabsStrip}
+          </>
+        )}
+      </div>
 
+      {/* Bid-detail tabs (v2.1331): one row always — centered while they fit,
+          horizontally scrollable with edge fades when they don't. */}
       <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr auto 1fr',
-            alignItems: 'center',
-            gap: '0.5rem',
-            width: '100%',
-          }}
-        >
-          <div style={visibleServiceTypes.length === 0 ? bidsPrimaryTabsContainerStyle : { display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap', minWidth: 0 }}>
-            {visibleServiceTypes.length === 0 && (
-              <>
-                {narrowViewport640 ? (
-                  <>
-                    <div style={bidsPrimaryTabsNarrowTopRowStyle}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('bid-board')
-                          setSearchParams((p) => {
-                            const next = new URLSearchParams(p)
-                            next.set('tab', 'bid-board')
-                            return next
-                          })
-                        }}
-                        style={{ ...tabStyle(activeTab === 'bid-board'), ...bidsPrimaryTabMobileTopRowStyle }}
-                      >
-                        Bid Board
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('builder-review')
-                          setSearchParams((p) => {
-                            const next = new URLSearchParams(p)
-                            next.set('tab', 'builder-review')
-                            return next
-                          })
-                        }}
-                        style={{ ...tabStyle(activeTab === 'builder-review'), ...bidsPrimaryTabMobileTopRowStyle }}
-                      >
-                        Builder Review
-                      </button>
-                      {bidsWorkingTabButton}
-                    </div>
-                    {bidsBidCostsTabButton}
-                    {bidsEstimatorsTabButton}
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('bid-board')
-                        setSearchParams((p) => {
-                          const next = new URLSearchParams(p)
-                          next.set('tab', 'bid-board')
-                          return next
-                        })
-                      }}
-                      style={{ ...tabStyle(activeTab === 'bid-board'), ...bidsPrimaryTabMobileTopRowStyle }}
-                    >
-                      Bid Board
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('builder-review')
-                        setSearchParams((p) => {
-                          const next = new URLSearchParams(p)
-                          next.set('tab', 'builder-review')
-                          return next
-                        })
-                      }}
-                      style={{ ...tabStyle(activeTab === 'builder-review'), ...bidsPrimaryTabMobileTopRowStyle }}
-                    >
-                      Builder Review
-                    </button>
-                    {bidsWorkingTabButton}
-                    {bidsBidCostsTabButton}
-                    {bidsEstimatorsTabButton}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-            }}
-          >
+        <ScrollableTabStrip activeKey={activeTab} ariaLabel="Bid detail tabs">
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('counts')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'counts')
-              return next
-            })
-          }}
+          data-tabkey="counts"
+          onClick={() => selectBidsTab('counts')}
           style={bidsTabStyle(activeTab === 'counts', 'counts')}
         >
           Counts
         </button>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('takeoffs')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'takeoffs')
-              return next
-            })
-          }}
+          data-tabkey="takeoffs"
+          onClick={() => selectBidsTab('takeoffs')}
           style={tabStyle(activeTab === 'takeoffs')}
         >
           Takeoffs
         </button>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('labor')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'labor')
-              return next
-            })
-          }}
+          data-tabkey="labor"
+          onClick={() => selectBidsTab('labor')}
           style={tabStyle(activeTab === 'labor')}
         >
           Labor
@@ -2862,99 +2712,50 @@ export default function Bids() {
         <>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('pricing')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'pricing')
-              return next
-            })
-          }}
+          data-tabkey="pricing"
+          onClick={() => selectBidsTab('pricing')}
           style={bidsTabStyle(activeTab === 'pricing', 'pricing')}
         >
           Pricing
         </button>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('cover-letter')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'cover-letter')
-              return next
-            })
-          }}
+          data-tabkey="cover-letter"
+          onClick={() => selectBidsTab('cover-letter')}
           style={bidsTabStyle(activeTab === 'cover-letter', 'cover-letter')}
         >
           Cover Letter
         </button>
         </>
         )}
-        {myRole !== 'superintendent' ? (
-          <>
-            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('submission-followup')
-                setSearchParams((p) => {
-                  const next = new URLSearchParams(p)
-                  next.set('tab', 'submission-followup')
-                  return next
-                })
-              }}
-              style={tabStyle(activeTab === 'submission-followup')}
-            >
-              Submission & Followup
-            </button>
-          </>
-        ) : null}
+        {/* v2.1387: Submission & Followup lives inside the merged Followup tab
+            (top strip) as the "By status" lens — its standalone button is gone. */}
         <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('rfi')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'rfi')
-              return next
-            })
-          }}
+          data-tabkey="rfi"
+          onClick={() => selectBidsTab('rfi')}
           style={tabStyle(activeTab === 'rfi')}
         >
           RFI
         </button>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('change-order')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'change-order')
-              return next
-            })
-          }}
+          data-tabkey="change-order"
+          onClick={() => selectBidsTab('change-order')}
           style={tabStyle(activeTab === 'change-order')}
         >
           Change Order
         </button>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('lien-release')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'lien-release')
-              return next
-            })
-          }}
+          data-tabkey="lien-release"
+          onClick={() => selectBidsTab('lien-release')}
           style={tabStyle(activeTab === 'lien-release')}
         >
           Lien Release
         </button>
-          </div>
-          <div aria-hidden style={{ minWidth: 0 }} />
-        </div>
+        </ScrollableTabStrip>
       </div>
 
       <WorkingBoardArchiveConfirmDialog
@@ -2983,7 +2784,6 @@ export default function Bids() {
           onError={setError}
           onReloadBids={() => { void loadBids() }}
           onReloadCustomerContacts={() => { void loadCustomerContacts() }}
-          onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
           lostSummaryModalOpen={lostSummaryModalOpen}
           lostSummaryInitialStaffTab={lostSummaryInitialStaffTab}
           onOpenLostSummary={() => setLostSummaryModalOpen(true)}
@@ -2995,6 +2795,47 @@ export default function Bids() {
       )}
 
       {/* Builder Review Tab */}
+      {(activeTab === 'builder-review' || activeTab === 'submission-followup') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)' }}>
+            <button
+              type="button"
+              onClick={() => selectBidsTab('builder-review')}
+              style={{
+                padding: '0.45rem 1rem',
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'builder-review' ? '#3b82f6' : 'transparent',
+                color: activeTab === 'builder-review' ? 'white' : 'var(--text-700)',
+                fontWeight: activeTab === 'builder-review' ? 700 : 400,
+              }}
+            >
+              By builder
+            </button>
+            {myRole !== 'superintendent' && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('submission-followup')}
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'submission-followup' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'submission-followup' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'submission-followup' ? 700 : 400,
+                }}
+              >
+                By status
+              </button>
+            )}
+          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {activeTab === 'builder-review'
+              ? 'The call queue — every builder, oldest contact first, all trades.'
+              : 'The status tables — outcome sections, followup sheets, scripts.'}
+          </span>
+        </div>
+      )}
       {activeTab === 'builder-review' && (
         <BidsBuilderReviewTab
           bids={bids}
@@ -3390,6 +3231,7 @@ export default function Bids() {
           onClearBid={() => setSelectedBidForSubmission(null)}
           onEditBid={openEditBid}
           onOpenParty={openGcBuilderOrCustomerModal}
+          onOpenBuilderLens={openBuilderLensForCustomer}
           lastContactFromEntries={lastContactFromEntries}
           customerContacts={customerContacts}
                   estimatorUsers={estimatorUsers}
@@ -3445,6 +3287,7 @@ export default function Bids() {
       <BidFormModal
         open={bidFormOpen}
         editingBid={editingBid}
+        onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
         closeBidForm={closeBidForm}
         saveBid={saveBid}
         form={bidForm}
@@ -3753,7 +3596,7 @@ export default function Bids() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Evaluate Bids Checklist</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Go/no-go checklist</h2>
               <button
                 type="button"
                 onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}

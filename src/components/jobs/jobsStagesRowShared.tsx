@@ -54,6 +54,8 @@ export type StagesRowRenderContext = {
   showToast: ReturnType<typeof useToastContext>['showToast']
   customers: CustomerRow[]
   openEditJobAndCreateCustomerFlow: (job: JobWithDetails) => void
+  /** Opens the customer profile modal (v2.1322); optional — surfaces without the provider omit it. */
+  openCustomerProfile?: (customerId: string) => void
   stagesManHoursByJobId: Map<string, number>
   stagesManHoursLoading: boolean
   stagesLaborBreakdownByJobId: Map<string, Array<{ personName: string; hours: number }>>
@@ -436,7 +438,20 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         gap: '0.25rem',
       }}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+      {/* Icon + name open the customer profile modal (v2.1322); rows with a
+          customer NAME but no linked row route to the existing create/link
+          flow instead — same affordance, honest destination. */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          if (job.customer_id) ctx.openCustomerProfile?.(job.customer_id)
+          else openEditJobAndCreateCustomerFlow(job)
+        }}
+        title={job.customer_id ? 'Open customer profile' : 'Link or create this customer'}
+        aria-label={job.customer_id ? `Open customer profile for ${cn || 'customer'}` : `Link or create customer ${cn || ''}`.trim()}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 640 640"
@@ -448,8 +463,8 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         >
           <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
         </svg>
-        <span>{(job.customer_name ?? '').trim() || '—'}</span>
-      </span>
+        <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn || '—'}</span>
+      </button>
       {gcName || developmentName ? (
         // GC and development share one muted row — they're the same "who/where
         // does this roll up to" fact; wraps on narrow columns. The icons keep

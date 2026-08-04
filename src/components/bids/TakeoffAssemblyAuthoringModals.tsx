@@ -1,6 +1,9 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ModalShell } from './ModalShell'
+import { SearchableSelect } from '../SearchableSelect'
+import { TakeoffItemSearchCombobox } from './TakeoffItemSearchCombobox'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { mergeItemIntoDrafts, mergeTemplateItemDrafts, mergedPartQuantity } from '../../lib/bids/mergeTemplateItemDrafts'
 import { getTemplatePartsPreview } from '../../lib/materialPOUtils'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -52,10 +55,6 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   setTakeoffNewTemplateItems: Dispatch<SetStateAction<TakeoffNewTemplateItemDraft[]>>
   takeoffNewItemPartId: string
   setTakeoffNewItemPartId: Dispatch<SetStateAction<string>>
-  takeoffNewItemPartSearchQuery: string
-  setTakeoffNewItemPartSearchQuery: Dispatch<SetStateAction<string>>
-  takeoffNewItemPartDropdownOpen: boolean
-  setTakeoffNewItemPartDropdownOpen: Dispatch<SetStateAction<boolean>>
   saveAsAssemblyCountRowId: string | null
   setSaveAsAssemblyCountRowId: Dispatch<SetStateAction<string | null>>
   takeoffNewTemplateApplyPriceIndex: number | null
@@ -73,11 +72,7 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   setAddPartsToTemplateName: Dispatch<SetStateAction<string | null>>
   addPartsSelectedPartId: string
   setAddPartsSelectedPartId: Dispatch<SetStateAction<string>>
-  addPartsSearchQuery: string
-  setAddPartsSearchQuery: Dispatch<SetStateAction<string>>
-  addPartsDropdownOpen: boolean
-  setAddPartsDropdownOpen: Dispatch<SetStateAction<boolean>>
-  // Edit Template modal (open pointer + part picker states parent-owned)
+  // Edit Template modal (open pointer + PartFormModal-routed part id parent-owned)
   editTemplateModalOpen: boolean
   setEditTemplateModalOpen: Dispatch<SetStateAction<boolean>>
   editTemplateModalId: string | null
@@ -86,10 +81,6 @@ export type TakeoffAssemblyAuthoringModalsProps = {
   setEditTemplateModalName: Dispatch<SetStateAction<string | null>>
   editTemplateNewItemPartId: string
   setEditTemplateNewItemPartId: Dispatch<SetStateAction<string>>
-  editTemplateNewItemPartSearchQuery: string
-  setEditTemplateNewItemPartSearchQuery: Dispatch<SetStateAction<string>>
-  editTemplateNewItemPartDropdownOpen: boolean
-  setEditTemplateNewItemPartDropdownOpen: Dispatch<SetStateAction<boolean>>
 }
 
 /**
@@ -130,10 +121,6 @@ export function TakeoffAssemblyAuthoringModals({
   setTakeoffNewTemplateItems,
   takeoffNewItemPartId,
   setTakeoffNewItemPartId,
-  takeoffNewItemPartSearchQuery,
-  setTakeoffNewItemPartSearchQuery,
-  takeoffNewItemPartDropdownOpen,
-  setTakeoffNewItemPartDropdownOpen,
   saveAsAssemblyCountRowId,
   setSaveAsAssemblyCountRowId,
   takeoffNewTemplateApplyPriceIndex,
@@ -150,10 +137,6 @@ export function TakeoffAssemblyAuthoringModals({
   setAddPartsToTemplateName,
   addPartsSelectedPartId,
   setAddPartsSelectedPartId,
-  addPartsSearchQuery,
-  setAddPartsSearchQuery,
-  addPartsDropdownOpen,
-  setAddPartsDropdownOpen,
   editTemplateModalOpen,
   setEditTemplateModalOpen,
   editTemplateModalId,
@@ -162,10 +145,6 @@ export function TakeoffAssemblyAuthoringModals({
   setEditTemplateModalName,
   editTemplateNewItemPartId,
   setEditTemplateNewItemPartId,
-  editTemplateNewItemPartSearchQuery,
-  setEditTemplateNewItemPartSearchQuery,
-  editTemplateNewItemPartDropdownOpen,
-  setEditTemplateNewItemPartDropdownOpen,
 }: TakeoffAssemblyAuthoringModalsProps) {
   const { showToast } = useToastContext()
 
@@ -176,12 +155,8 @@ export function TakeoffAssemblyAuthoringModals({
   const [takeoffNewTemplatePrices, setTakeoffNewTemplatePrices] = useState<Array<{ supplyHouseId: string; supplyHouseName: string; price: number }>>([])
   const [takeoffNewTemplatePriceSupplyHouseId, setTakeoffNewTemplatePriceSupplyHouseId] = useState('')
   const [takeoffNewTemplatePriceValue, setTakeoffNewTemplatePriceValue] = useState('')
-  const [takeoffNewItemType, setTakeoffNewItemType] = useState<'part' | 'template'>('part')
-  const [takeoffNewItemTemplateId, setTakeoffNewItemTemplateId] = useState('')
-  const [takeoffNewItemQuantity, setTakeoffNewItemQuantity] = useState('1')
-  const [takeoffNewItemTemplateSearchQuery, setTakeoffNewItemTemplateSearchQuery] = useState('')
-  const [takeoffNewItemTemplateDropdownOpen, setTakeoffNewItemTemplateDropdownOpen] = useState(false)
   const [savingTakeoffNewTemplate, setSavingTakeoffNewTemplate] = useState(false)
+  const narrowViewport = useNarrowViewport640()
 
   // Add Parts to Template modal internals
   const [addPartsQuantity, setAddPartsQuantity] = useState('1')
@@ -189,11 +164,6 @@ export function TakeoffAssemblyAuthoringModals({
 
   // Edit Template modal internals
   const [editTemplateItems, setEditTemplateItems] = useState<Array<{ id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number }>>([])
-  const [editTemplateNewItemType, setEditTemplateNewItemType] = useState<'part' | 'template'>('part')
-  const [editTemplateNewItemTemplateId, setEditTemplateNewItemTemplateId] = useState('')
-  const [editTemplateNewItemQuantity, setEditTemplateNewItemQuantity] = useState('1')
-  const [editTemplateNewItemTemplateSearchQuery, setEditTemplateNewItemTemplateSearchQuery] = useState('')
-  const [editTemplateNewItemTemplateDropdownOpen, setEditTemplateNewItemTemplateDropdownOpen] = useState(false)
   const [editTemplateAddingItem, setEditTemplateAddingItem] = useState(false)
   // Bundle supply-house prices (material_template_prices) edited inline in the Edit Assembly modal.
   const [editTemplatePrices, setEditTemplatePrices] = useState<Array<{ id: string; supply_house_id: string; supply_house_name: string; price: number }>>([])
@@ -211,12 +181,7 @@ export function TakeoffAssemblyAuthoringModals({
     setTakeoffNewTemplateName('')
     setTakeoffNewTemplateDescription('')
     setTakeoffNewTemplateItems([])
-    setTakeoffNewItemType('part')
     setTakeoffNewItemPartId('')
-    setTakeoffNewItemTemplateId('')
-    setTakeoffNewItemQuantity('1')
-    setTakeoffNewItemPartSearchQuery('')
-    setTakeoffNewItemTemplateSearchQuery('')
     setTakeoffNewTemplatePrices([])
     setTakeoffNewTemplatePriceSupplyHouseId('')
     setTakeoffNewTemplatePriceValue('')
@@ -315,25 +280,29 @@ export function TakeoffAssemblyAuthoringModals({
     setSavingTakeoffNewTemplate(false)
   }
 
-  function addTakeoffNewTemplateItem() {
-    if (takeoffNewItemType === 'part' && !takeoffNewItemPartId) return
-    if (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId) return
-    const qty = Math.max(1, parseInt(takeoffNewItemQuantity, 10) || 1)
+  /** Unified-search pick → item row immediately (parts merge by part_id, so
+   * re-picking a part bumps its quantity instead of duplicating the row). */
+  function addTakeoffNewTemplateItemDirect(kind: 'part' | 'template', id: string) {
     setTakeoffNewTemplateItems((prev) =>
-      // For parts: merge with existing same part instead of adding duplicate row
       mergeItemIntoDrafts(prev, {
-        item_type: takeoffNewItemType,
-        part_id: takeoffNewItemType === 'part' ? takeoffNewItemPartId : null,
-        nested_template_id: takeoffNewItemType === 'template' ? takeoffNewItemTemplateId : null,
-        quantity: qty,
+        item_type: kind,
+        part_id: kind === 'part' ? id : null,
+        nested_template_id: kind === 'template' ? id : null,
+        quantity: 1,
       })
     )
-    setTakeoffNewItemPartId('')
-    setTakeoffNewItemTemplateId('')
-    setTakeoffNewItemQuantity('1')
-    setTakeoffNewItemPartSearchQuery('')
-    setTakeoffNewItemTemplateSearchQuery('')
   }
+
+  // PartFormModal routing: after "Add … as a new part" saves, the parent's
+  // handleBidsPartFormSave stages the new part id into takeoffNewItemPartId
+  // (the pre-v2.1326 picker contract). With no staged picker anymore, consume
+  // it by adding the part straight to the item list.
+  useEffect(() => {
+    if (!takeoffAddTemplateModalOpen || !takeoffNewItemPartId) return
+    addTakeoffNewTemplateItemDirect('part', takeoffNewItemPartId)
+    setTakeoffNewItemPartId('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [takeoffAddTemplateModalOpen, takeoffNewItemPartId])
 
   function removeTakeoffNewTemplateItem(index: number) {
     setTakeoffNewTemplateItems((prev) => prev.filter((_, i) => i !== index))
@@ -354,8 +323,6 @@ export function TakeoffAssemblyAuthoringModals({
     setAddPartsToTemplateName(null)
     setAddPartsSelectedPartId('')
     setAddPartsQuantity('1')
-    setAddPartsSearchQuery('')
-    setAddPartsDropdownOpen(false)
   }
 
   async function savePartsToTemplate() {
@@ -432,11 +399,6 @@ export function TakeoffAssemblyAuthoringModals({
   useEffect(() => {
     if (!editTemplateModalOpen || !editTemplateModalId) return
     setEditTemplateNameDraft(editTemplateModalName ?? '')
-    setEditTemplateNewItemType('part')
-    setEditTemplateNewItemTemplateId('')
-    setEditTemplateNewItemQuantity('1')
-    setEditTemplateNewItemTemplateSearchQuery('')
-    setEditTemplateNewItemTemplateDropdownOpen(false)
     setEditTemplateNewPriceSupplyHouseId('')
     setEditTemplateNewPriceValue('')
     setEditTemplatePriceEditing({})
@@ -454,10 +416,6 @@ export function TakeoffAssemblyAuthoringModals({
     setEditTemplateNameDraft('')
     setEditTemplateItems([])
     setEditTemplateNewItemPartId('')
-    setEditTemplateNewItemTemplateId('')
-    setEditTemplateNewItemQuantity('1')
-    setEditTemplateNewItemPartSearchQuery('')
-    setEditTemplateNewItemTemplateSearchQuery('')
     setEditTemplatePrices([])
     setEditTemplateNewPriceSupplyHouseId('')
     setEditTemplateNewPriceValue('')
@@ -569,49 +527,37 @@ export function TakeoffAssemblyAuthoringModals({
     setEditTemplateItems((data as Array<{ id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number }>) ?? [])
   }
 
-  async function addEditTemplateItem() {
+  /** Shared post-mutation refresh: item list, bundle-parts cache, template preview. */
+  async function refreshEditTemplateAfterItemMutation() {
     if (!editTemplateModalId) return
-    if (editTemplateNewItemType === 'part' && !editTemplateNewItemPartId) {
-      setError('Please select a part')
-      return
-    }
-    if (editTemplateNewItemType === 'template' && !editTemplateNewItemTemplateId) {
-      setError('Please select an assembly')
-      return
-    }
-    const quantity = Math.max(1, parseInt(editTemplateNewItemQuantity, 10) || 1)
-    if (editTemplateNewItemType === 'template' && editTemplateNewItemTemplateId === editTemplateModalId) {
+    await loadEditTemplateItems(editTemplateModalId)
+    invalidateBundleParts(editTemplateModalId)
+    setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
+    getTemplatePartsPreview(supabase, editTemplateModalId)
+      .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
+      .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
+  }
+
+  /** Unified-search pick → DB write at qty 1 (existing parts merge +1; adjust
+   * quantities inline in the items table). Mirrors Add Assembly's direct-add. */
+  async function addEditTemplateItemDirect(kind: 'part' | 'template', id: string) {
+    if (!editTemplateModalId || editTemplateAddingItem) return
+    if (kind === 'template' && id === editTemplateModalId) {
       setError('Cannot add an assembly to itself')
       return
     }
     setEditTemplateAddingItem(true)
     setError(null)
 
-    // For parts: if part already exists in template, add to quantity instead of inserting duplicate
-    if (editTemplateNewItemType === 'part' && editTemplateNewItemPartId) {
-      const existing = editTemplateItems.find(
-        (i) => i.item_type === 'part' && i.part_id === editTemplateNewItemPartId
-      )
+    if (kind === 'part') {
+      const existing = editTemplateItems.find((i) => i.item_type === 'part' && i.part_id === id)
       if (existing) {
         const { error: updateErr } = await supabase
           .from('material_template_items')
-          .update({ quantity: mergedPartQuantity(existing.quantity, quantity) })
+          .update({ quantity: mergedPartQuantity(existing.quantity, 1) })
           .eq('id', existing.id)
-        if (updateErr) {
-          setError(updateErr.message)
-        } else {
-          await loadEditTemplateItems(editTemplateModalId)
-          invalidateBundleParts(editTemplateModalId)
-          setEditTemplateNewItemPartId('')
-          setEditTemplateNewItemTemplateId('')
-          setEditTemplateNewItemQuantity('1')
-          setEditTemplateNewItemPartSearchQuery('')
-          setEditTemplateNewItemTemplateSearchQuery('')
-          setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
-          getTemplatePartsPreview(supabase, editTemplateModalId)
-            .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
-            .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
-        }
+        if (updateErr) setError(updateErr.message)
+        else await refreshEditTemplateAfterItemMutation()
         setEditTemplateAddingItem(false)
         return
       }
@@ -620,30 +566,42 @@ export function TakeoffAssemblyAuthoringModals({
     const maxOrder = editTemplateItems.length === 0 ? 0 : Math.max(...editTemplateItems.map((i) => i.sequence_order))
     const { error: insertError } = await supabase.from('material_template_items').insert({
       template_id: editTemplateModalId,
-      item_type: editTemplateNewItemType,
-      part_id: editTemplateNewItemType === 'part' ? editTemplateNewItemPartId : null,
-      nested_template_id: editTemplateNewItemType === 'template' ? editTemplateNewItemTemplateId : null,
-      quantity,
+      item_type: kind,
+      part_id: kind === 'part' ? id : null,
+      nested_template_id: kind === 'template' ? id : null,
+      quantity: 1,
       sequence_order: maxOrder + 1,
       notes: null,
     })
-    if (insertError) {
-      setError(insertError.message)
-    } else {
-      await loadEditTemplateItems(editTemplateModalId)
-      invalidateBundleParts(editTemplateModalId)
-      setEditTemplateNewItemPartId('')
-      setEditTemplateNewItemTemplateId('')
-      setEditTemplateNewItemQuantity('1')
-      setEditTemplateNewItemPartSearchQuery('')
-      setEditTemplateNewItemTemplateSearchQuery('')
-      setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
-      getTemplatePartsPreview(supabase, editTemplateModalId)
-        .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
-        .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
-    }
+    if (insertError) setError(insertError.message)
+    else await refreshEditTemplateAfterItemMutation()
     setEditTemplateAddingItem(false)
   }
+
+  /** Inline qty edit in the Existing-items table (commit on blur/Enter). */
+  async function updateEditTemplateItemQuantity(itemId: string, newQuantity: number) {
+    if (!editTemplateModalId) return
+    const qty = Math.max(1, Math.floor(newQuantity) || 1)
+    const current = editTemplateItems.find((i) => i.id === itemId)
+    if (!current || current.quantity === qty) return
+    setError(null)
+    const { error: updateErr } = await supabase
+      .from('material_template_items')
+      .update({ quantity: qty })
+      .eq('id', itemId)
+    if (updateErr) setError(updateErr.message)
+    else await refreshEditTemplateAfterItemMutation()
+  }
+
+  // PartFormModal routing for the Edit Assembly modal: the parent stages the
+  // newly created part id into editTemplateNewItemPartId (pre-v2.1327 picker
+  // contract); consume it by adding the part straight to the assembly.
+  useEffect(() => {
+    if (!editTemplateModalOpen || !editTemplateNewItemPartId) return
+    void addEditTemplateItemDirect('part', editTemplateNewItemPartId)
+    setEditTemplateNewItemPartId('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTemplateModalOpen, editTemplateNewItemPartId])
 
   async function removeEditTemplateItem(itemId: string) {
     if (!confirm('Remove this item from the assembly?')) return
@@ -672,165 +630,182 @@ export function TakeoffAssemblyAuthoringModals({
               <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
             </div>
             <form onSubmit={saveTakeoffNewTemplate}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Name *</label>
-                <input type="text" value={takeoffNewTemplateName} onChange={(e) => setTakeoffNewTemplateName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: narrowViewport ? '1fr' : 'minmax(0, 1fr) minmax(0, 1.4fr)', gap: '0.75rem 0.9rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500, fontSize: '0.875rem' }}>Name *</label>
+                  <input type="text" value={takeoffNewTemplateName} onChange={(e) => setTakeoffNewTemplateName(e.target.value)} required autoFocus style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500, fontSize: '0.875rem' }}>Description</label>
+                  <input type="text" value={takeoffNewTemplateDescription} onChange={(e) => setTakeoffNewTemplateDescription(e.target.value)} placeholder="optional" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                </div>
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Description</label>
-                <textarea value={takeoffNewTemplateDescription} onChange={(e) => setTakeoffNewTemplateDescription(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Items (parts or assembly)</div>
-                <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
-                  <select value={takeoffNewItemType} onChange={(e) => setTakeoffNewItemType(e.target.value as 'part' | 'template')} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}>
-                    <option value="part">Part</option>
-                    <option value="template">Nested Assembly</option>
-                  </select>
-                  {takeoffNewItemType === 'part' ? (
-                    <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                        <input type="text" value={takeoffNewItemPartId ? (takeoffAddTemplateParts.find((p) => p.id === takeoffNewItemPartId)?.name ?? '') : takeoffNewItemPartSearchQuery} onChange={(e) => setTakeoffNewItemPartSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemPartDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemPartDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemPartDropdownOpen(false) }} readOnly={!!takeoffNewItemPartId} placeholder="Search parts by name, manufacturer, type, or notes…" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: takeoffNewItemPartId ? 'var(--bg-muted)' : undefined }} />
-                        {takeoffNewItemPartId && <button type="button" onClick={() => { setTakeoffNewItemPartId(''); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
-                      </div>
-                      {takeoffNewItemPartDropdownOpen && (
-                        <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                          {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
-                        </ul>
-                      )}
-                    </div>
+              <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4 }}>
+                <div style={{ padding: '0.6rem 0.9rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Items</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Picking a result adds it — search again for the next</span>
+                </div>
+                <div style={{ padding: '0.75rem 0.9rem' }}>
+                  <TakeoffItemSearchCombobox
+                    parts={takeoffAddTemplateParts}
+                    templates={materialTemplates}
+                    filterPartsByQuery={filterPartsByQuery}
+                    filterTemplatesByQuery={filterTemplatesByQuery}
+                    partsLoading={takeoffAddTemplateParts.length === 0}
+                    onPick={(pick) => addTakeoffNewTemplateItemDirect(pick.kind, pick.id)}
+                    onCreateNew={(q) => openBidsPartFormForCreate(q)}
+                  />
+                  {takeoffNewTemplateItems.length === 0 ? (
+                    <p style={{ margin: '0.75rem 0 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                      No items yet — search above to add parts or nested assemblies.
+                    </p>
                   ) : (
-                    <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                        <input type="text" value={takeoffNewItemTemplateId ? (materialTemplates.find((t) => t.id === takeoffNewItemTemplateId)?.name ?? '') : takeoffNewItemTemplateSearchQuery} onChange={(e) => setTakeoffNewItemTemplateSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemTemplateDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemTemplateDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemTemplateDropdownOpen(false) }} readOnly={!!takeoffNewItemTemplateId} placeholder="Search assemblies by name or description…" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: takeoffNewItemTemplateId ? 'var(--bg-muted)' : undefined }} />
-                        {takeoffNewItemTemplateId && <button type="button" onClick={() => { setTakeoffNewItemTemplateId(''); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
-                      </div>
-                      {takeoffNewItemTemplateDropdownOpen && (
-                        <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                          {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input type="number" min={1} value={takeoffNewItemQuantity} onChange={(e) => setTakeoffNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    <button type="button" onClick={addTakeoffNewTemplateItem} disabled={(takeoffNewItemType === 'part' && !takeoffNewItemPartId) || (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add item</button>
-                  </div>
-                </div>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Prices</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}></th></tr></thead>
-                    <tbody>
-                      {takeoffNewTemplateItems.length === 0 ? (
-                        <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies above.</td></tr>
-                      ) : (
-                        takeoffNewTemplateItems.map((item, idx) => {
-                          const name = item.item_type === 'part' && item.part_id ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—') : item.item_type === 'template' && item.nested_template_id ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—') : '—'
-                          return (
-                            <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={item.quantity}
-                                  onChange={(e) => updateTakeoffNewTemplateItemQuantity(idx, parseInt(e.target.value, 10) || 1)}
-                                  style={{ width: 64, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                                />
-                              </td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>
-                                {item.item_type === 'part' && item.part_id ? (
-                                  <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
-                                ) : '—'}
-                              </td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {saveAsAssemblyCountRowId
-                    ? 'Optional: a bundle price a supply house quotes for this whole assembly. Pick one below with “Use for takeoff” to replace this fixture’s part lines with a single bundle line at that price.'
-                    : 'Optional: a bundle price a supply house quotes for this whole assembly. Saved with the assembly and usable later via Add assembly → Add as bundle.'}
-                </p>
-                {takeoffNewTemplatePrices.length > 0 && (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
-                    <tbody>
-                      {takeoffNewTemplatePrices.map((p, idx) => (
-                        <tr key={p.supplyHouseId} style={{ borderBottom: '1px solid var(--border)' }}>
-                          {saveAsAssemblyCountRowId && (
-                            <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
-                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                                <input
-                                  type="radio"
-                                  name="takeoff-apply-bundle-price"
-                                  checked={takeoffNewTemplateApplyPriceIndex === idx}
-                                  onChange={() => setTakeoffNewTemplateApplyPriceIndex(idx)}
-                                />
-                                Use for takeoff
-                              </label>
-                            </td>
-                          )}
-                          <td style={{ padding: '0.4rem 0.5rem' }}>{p.supplyHouseName}</td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>${p.price.toFixed(2)}</td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
+                    <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
+                      {takeoffNewTemplateItems.map((item, idx) => {
+                        const isPart = item.item_type === 'part'
+                        const name = isPart && item.part_id ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—') : !isPart && item.nested_template_id ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—') : '—'
+                        return (
+                          <div key={idx} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr) 72px 56px 26px', gap: '0.5rem', alignItems: 'center' }}>
+                            <span
+                              title={isPart ? 'Part' : 'Assembly'}
+                              style={{ width: 20, height: 20, borderRadius: 4, background: isPart ? 'var(--bg-blue-tint)' : 'var(--bg-violet-100)', color: isPart ? 'var(--text-blue-700)' : 'var(--text-violet-700)', fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              {isPart ? 'P' : 'A'}
+                            </span>
+                            <span title={name} style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              aria-label={`Quantity for ${name}`}
+                              value={item.quantity}
+                              onChange={(e) => updateTakeoffNewTemplateItemQuantity(idx, parseInt(e.target.value, 10) || 1)}
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                            />
+                            {isPart && item.part_id ? (
+                              <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0', background: 'none', color: 'var(--text-blue-700)', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', textAlign: 'center' }}>Prices</button>
+                            ) : (
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', textAlign: 'center' }}>—</span>
+                            )}
                             <button
                               type="button"
-                              onClick={() => {
-                                setTakeoffNewTemplatePrices((prev) => prev.filter((_, i) => i !== idx))
-                                setTakeoffNewTemplateApplyPriceIndex((cur) => {
-                                  if (cur == null) return cur
-                                  if (cur === idx) return null
-                                  return cur > idx ? cur - 1 : cur
-                                })
-                              }}
-                              style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}
+                              onClick={() => removeTakeoffNewTemplateItem(idx)}
+                              tabIndex={-1}
+                              aria-label={`Remove ${name}`}
+                              title="Remove item"
+                              style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
                             >
-                              Remove
+                              ×
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {(() => {
-                  const used = new Set(takeoffNewTemplatePrices.map((p) => p.supplyHouseId))
-                  const available = supplyHouses.filter((sh) => !used.has(sh.id))
-                  if (available.length === 0) {
-                    return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
-                  }
-                  const priceNum = parseFloat(takeoffNewTemplatePriceValue)
-                  const canAdd = !!takeoffNewTemplatePriceSupplyHouseId && !isNaN(priceNum) && priceNum >= 0
-                  const addPrice = () => {
-                    const sh = supplyHouses.find((s) => s.id === takeoffNewTemplatePriceSupplyHouseId)
-                    if (!sh || !canAdd) return
-                    setTakeoffNewTemplatePrices((prev) => [...prev, { supplyHouseId: sh.id, supplyHouseName: sh.name, price: priceNum }])
-                    setTakeoffNewTemplatePriceSupplyHouseId('')
-                    setTakeoffNewTemplatePriceValue('')
-                  }
-                  return (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
-                      <select value={takeoffNewTemplatePriceSupplyHouseId} onChange={(e) => setTakeoffNewTemplatePriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}>
-                        <option value="">Select supply house</option>
-                        {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
-                      </select>
-                      <input type="number" min={0} step="0.01" value={takeoffNewTemplatePriceValue} onChange={(e) => setTakeoffNewTemplatePriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                      <button type="button" disabled={!canAdd} onClick={addPrice} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>Add</button>
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })()}
+                  )}
+                </div>
+              </div>
+              <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4 }}>
+                <div style={{ padding: '0.6rem 0.9rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                    Bundle prices <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>One whole-assembly quote per supply house</span>
+                </div>
+                <div style={{ padding: '0.75rem 0.9rem' }}>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {saveAsAssemblyCountRowId
+                      ? 'A bundle price a supply house quotes for this whole assembly. Pick one below with “Use for takeoff” to replace this fixture’s part lines with a single bundle line at that price.'
+                      : 'A bundle price a supply house quotes for this whole assembly. Saved with the assembly and usable later via Add assembly → Add as bundle.'}
+                  </p>
+                  {takeoffNewTemplatePrices.length > 0 && (
+                    <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                      {takeoffNewTemplatePrices.map((p, idx) => (
+                        <div key={p.supplyHouseId} style={{ display: 'grid', gridTemplateColumns: saveAsAssemblyCountRowId ? 'auto minmax(0, 1fr) 90px 26px' : 'minmax(0, 1fr) 90px 26px', gap: '0.5rem', alignItems: 'center' }}>
+                          {saveAsAssemblyCountRowId && (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
+                              <input
+                                type="radio"
+                                name="takeoff-apply-bundle-price"
+                                checked={takeoffNewTemplateApplyPriceIndex === idx}
+                                onChange={() => setTakeoffNewTemplateApplyPriceIndex(idx)}
+                              />
+                              Use for takeoff
+                            </label>
+                          )}
+                          <span style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.supplyHouseName}</span>
+                          <span style={{ fontSize: '0.875rem', textAlign: 'right' }}>${p.price.toFixed(2)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTakeoffNewTemplatePrices((prev) => prev.filter((_, i) => i !== idx))
+                              setTakeoffNewTemplateApplyPriceIndex((cur) => {
+                                if (cur == null) return cur
+                                if (cur === idx) return null
+                                return cur > idx ? cur - 1 : cur
+                              })
+                            }}
+                            tabIndex={-1}
+                            aria-label={`Remove ${p.supplyHouseName} bundle price`}
+                            title="Remove bundle price"
+                            style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(() => {
+                    const used = new Set(takeoffNewTemplatePrices.map((p) => p.supplyHouseId))
+                    const available = supplyHouses.filter((sh) => !used.has(sh.id))
+                    if (available.length === 0) {
+                      return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
+                    }
+                    const priceNum = parseFloat(takeoffNewTemplatePriceValue)
+                    const canAdd = !!takeoffNewTemplatePriceSupplyHouseId && !isNaN(priceNum) && priceNum >= 0
+                    const addPrice = () => {
+                      const sh = supplyHouses.find((s) => s.id === takeoffNewTemplatePriceSupplyHouseId)
+                      if (!sh || !canAdd) return
+                      setTakeoffNewTemplatePrices((prev) => [...prev, { supplyHouseId: sh.id, supplyHouseName: sh.name, price: priceNum }])
+                      setTakeoffNewTemplatePriceSupplyHouseId('')
+                      setTakeoffNewTemplatePriceValue('')
+                    }
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem auto', gap: '0.5rem', alignItems: 'center' }}>
+                        <SearchableSelect
+                          value={takeoffNewTemplatePriceSupplyHouseId}
+                          onChange={setTakeoffNewTemplatePriceSupplyHouseId}
+                          options={available.map((sh) => ({ value: sh.id, label: sh.name }))}
+                          placeholder="Supply house…"
+                          listAriaLabel="Supply houses"
+                          portalZIndex={1200}
+                          triggerMinHeightPx={0}
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={takeoffNewTemplatePriceValue}
+                          onChange={(e) => setTakeoffNewTemplatePriceValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            // Enter commits the draft price row instead of submitting the form.
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              addPrice()
+                            }
+                          }}
+                          placeholder="0.00"
+                          aria-label="Bundle price"
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                        />
+                        <button type="button" disabled={!canAdd} onClick={addPrice} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>Add</button>
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
                 <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={savingTakeoffNewTemplate} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffNewTemplate ? 'Saving…' : 'Save'}</button>
+                <button type="submit" disabled={savingTakeoffNewTemplate} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffNewTemplate ? 'Saving…' : 'Save assembly'}</button>
               </div>
             </form>
         </ModalShell>
@@ -882,74 +857,32 @@ export function TakeoffAssemblyAuthoringModals({
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Part *</label>
-              <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={addPartsSelectedPartId ? (takeoffAddTemplateParts.find((p) => p.id === addPartsSelectedPartId)?.name ?? '') : addPartsSearchQuery}
-                    onChange={(e) => setAddPartsSearchQuery(e.target.value)}
-                    onFocus={() => setAddPartsDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setAddPartsDropdownOpen(false), 150)}
-                    onKeyDown={(e) => { if (e.key === 'Escape') setAddPartsDropdownOpen(false) }}
-                    readOnly={!!addPartsSelectedPartId}
-                    placeholder="Search parts by name, manufacturer, type, or notes…"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: addPartsSelectedPartId ? 'var(--bg-muted)' : undefined }}
-                  />
-                  {addPartsSelectedPartId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddPartsSelectedPartId('')
-                        setAddPartsSearchQuery('')
-                        setAddPartsDropdownOpen(true)
-                      }}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {addPartsDropdownOpen && (
-                  <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                    {takeoffAddTemplateParts.length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li>
-                    ) : filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                        No parts match.{' '}
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            openBidsPartFormForCreate(addPartsSearchQuery.trim())
-                            setAddPartsDropdownOpen(false)
-                          }}
-                          style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                        >
-                          Add Part
-                        </button>
-                      </li>
-                    ) : (
-                      filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).map((p) => (
-                        <li
-                          key={p.id}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setAddPartsSelectedPartId(p.id)
-                            setAddPartsSearchQuery('')
-                            setAddPartsDropdownOpen(false)
-                          }}
-                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                          onMouseEnter={(e) => ((e.target as HTMLElement).style.background = 'var(--bg-subtle)')}
-                          onMouseLeave={(e) => ((e.target as HTMLElement).style.background = 'transparent')}
-                        >
-                          <div style={{ fontWeight: 500 }}>{p.name}</div>
-                          {p.manufacturer && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.manufacturer}</div>}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                )}
-              </div>
+              <SearchableSelect
+                value={addPartsSelectedPartId}
+                onChange={setAddPartsSelectedPartId}
+                options={takeoffAddTemplateParts.map((p) => ({
+                  value: p.id,
+                  label: [p.name, p.manufacturer, p.part_types?.name, p.notes].filter(Boolean).join(' '),
+                  labelContent: (
+                    <span style={{ display: 'block' }}>
+                      <span style={{ display: 'block', fontWeight: 500 }}>{p.name}</span>
+                      {(p.manufacturer || p.part_types?.name) && (
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </span>
+                  ),
+                }))}
+                placeholder={takeoffAddTemplateParts.length === 0 ? 'Loading parts…' : 'Search parts…'}
+                listAriaLabel="Parts"
+                listMaxHeightPx={200}
+                portalZIndex={1200}
+                noMatchesAction={{
+                  label: (q) => `+ Add “${q}” as a new part…`,
+                  onSelect: (q) => openBidsPartFormForCreate(q),
+                }}
+              />
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
@@ -959,7 +892,14 @@ export function TakeoffAssemblyAuthoringModals({
                 min="1"
                 value={addPartsQuantity}
                 onChange={(e) => setAddPartsQuantity(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                onKeyDown={(e) => {
+                  // Enter = Add to Assembly (there is no form here; buttons are type=button)
+                  if (e.key === 'Enter' && addPartsSelectedPartId && !savingTemplateParts) {
+                    e.preventDefault()
+                    void savePartsToTemplate()
+                  }
+                }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
 
@@ -1018,7 +958,7 @@ export function TakeoffAssemblyAuthoringModals({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Edit Assembly</label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -1051,226 +991,209 @@ export function TakeoffAssemblyAuthoringModals({
               </div>
             )}
 
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Existing items</div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: 'var(--bg-subtle)' }}>
-                    <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Prices</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editTemplateItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies below.</td>
-                      </tr>
-                    ) : (
-                      editTemplateItems.map((item) => {
-                        const name = item.item_type === 'part' && item.part_id
-                          ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—')
-                          : item.item_type === 'template' && item.nested_template_id
-                            ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—')
-                            : '—'
-                        return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {item.item_type === 'part' && item.part_id ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
-                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                  Prices
-                                </button>
-                              ) : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => removeEditTemplateItem(item.id)}
-                                style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
+            {/* Items (v2.1333 restyle): search first, then compact chip rows — the
+                Add Assembly modal's layout; all writes are immediate as before. */}
+            <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4 }}>
+              <div style={{ padding: '0.6rem 0.9rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Items</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {editTemplateAddingItem ? 'Adding…' : 'Picking a result adds it at qty 1 — adjust inline'}
+                </span>
               </div>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Add item</div>
-              <div style={{ padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
-                <select
-                  value={editTemplateNewItemType}
-                  onChange={(e) => setEditTemplateNewItemType(e.target.value as 'part' | 'template')}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
-                >
-                  <option value="part">Part</option>
-                  <option value="template">Nested Assembly</option>
-                </select>
-                {editTemplateNewItemType === 'part' ? (
-                  <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={editTemplateNewItemPartId ? (takeoffAddTemplateParts.find((p) => p.id === editTemplateNewItemPartId)?.name ?? '') : editTemplateNewItemPartSearchQuery}
-                        onChange={(e) => setEditTemplateNewItemPartSearchQuery(e.target.value)}
-                        onFocus={() => setEditTemplateNewItemPartDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setEditTemplateNewItemPartDropdownOpen(false), 150)}
-                        onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemPartDropdownOpen(false) }}
-                        readOnly={!!editTemplateNewItemPartId}
-                        placeholder="Search parts by name, manufacturer, type, or notes…"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editTemplateNewItemPartId ? 'var(--bg-muted)' : undefined }}
-                      />
-                      {editTemplateNewItemPartId && (
-                        <button type="button" onClick={() => { setEditTemplateNewItemPartId(''); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
-                      )}
-                    </div>
-                    {editTemplateNewItemPartDropdownOpen && (
-                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
-                      </ul>
-                    )}
-                  </div>
+              <div style={{ padding: '0.75rem 0.9rem' }}>
+                <TakeoffItemSearchCombobox
+                  parts={takeoffAddTemplateParts}
+                  templates={materialTemplates.filter((t) => t.id !== editTemplateModalId)}
+                  filterPartsByQuery={filterPartsByQuery}
+                  filterTemplatesByQuery={filterTemplatesByQuery}
+                  partsLoading={takeoffAddTemplateParts.length === 0}
+                  onPick={(pick) => void addEditTemplateItemDirect(pick.kind, pick.id)}
+                  onCreateNew={(q) => openBidsPartFormForCreate(q)}
+                />
+                {editTemplateItems.length === 0 ? (
+                  <p style={{ margin: '0.75rem 0 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    No items yet — search above to add parts or nested assemblies.
+                  </p>
                 ) : (
-                  <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={editTemplateNewItemTemplateId ? (materialTemplates.find((t) => t.id === editTemplateNewItemTemplateId)?.name ?? '') : editTemplateNewItemTemplateSearchQuery}
-                        onChange={(e) => setEditTemplateNewItemTemplateSearchQuery(e.target.value)}
-                        onFocus={() => setEditTemplateNewItemTemplateDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setEditTemplateNewItemTemplateDropdownOpen(false), 150)}
-                        onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemTemplateDropdownOpen(false) }}
-                        readOnly={!!editTemplateNewItemTemplateId}
-                        placeholder="Search assemblies by name or description…"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editTemplateNewItemTemplateId ? 'var(--bg-muted)' : undefined }}
-                      />
-                      {editTemplateNewItemTemplateId && (
-                        <button type="button" onClick={() => { setEditTemplateNewItemTemplateId(''); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
-                      )}
-                    </div>
-                    {editTemplateNewItemTemplateDropdownOpen && (
-                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
-                      </ul>
-                    )}
+                  <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
+                    {editTemplateItems.map((item) => {
+                      const isPart = item.item_type === 'part'
+                      const name = isPart && item.part_id
+                        ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—')
+                        : !isPart && item.nested_template_id
+                          ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—')
+                          : '—'
+                      return (
+                        <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr) 72px 56px 26px', gap: '0.5rem', alignItems: 'center' }}>
+                          <span
+                            title={isPart ? 'Part' : 'Assembly'}
+                            style={{ width: 20, height: 20, borderRadius: 4, background: isPart ? 'var(--bg-blue-tint)' : 'var(--bg-violet-100)', color: isPart ? 'var(--text-blue-700)' : 'var(--text-violet-700)', fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            {isPart ? 'P' : 'A'}
+                          </span>
+                          <span title={name} style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                          <input
+                            key={`${item.id}-${item.quantity}`}
+                            type="number"
+                            min={1}
+                            defaultValue={item.quantity}
+                            aria-label={`Quantity for ${name}`}
+                            onBlur={(e) => void updateEditTemplateItemQuantity(item.id, parseInt(e.target.value, 10))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                ;(e.target as HTMLInputElement).blur()
+                              }
+                            }}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                          />
+                          {isPart && item.part_id ? (
+                            <button
+                              type="button"
+                              onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
+                              style={{ padding: '0.25rem 0', background: 'none', color: 'var(--text-blue-700)', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', textAlign: 'center' }}
+                            >
+                              Prices
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', textAlign: 'center' }}>—</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeEditTemplateItem(item.id)}
+                            tabIndex={-1}
+                            aria-label={`Remove ${name}`}
+                            title="Remove item"
+                            style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input type="number" min={1} value={editTemplateNewItemQuantity} onChange={(e) => setEditTemplateNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                  <button type="button" onClick={addEditTemplateItem} disabled={editTemplateAddingItem || (editTemplateNewItemType === 'part' && !editTemplateNewItemPartId) || (editTemplateNewItemType === 'template' && !editTemplateNewItemTemplateId)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{editTemplateAddingItem ? 'Adding…' : 'Add item'}</button>
-                </div>
               </div>
             </div>
 
-            <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Bundle prices a supply house quotes for this whole assembly. Used when adding this assembly as a bundle and shown in the bundle breakdown.
-              </p>
-              {editTemplatePrices.length > 0 && (
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
-                  <tbody>
+            {/* Bundle prices (v2.1333 restyle): one-line rows; the price itself is the
+                edit control (click → input, Enter/blur commits, Escape cancels). */}
+            <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4 }}>
+              <div style={{ padding: '0.6rem 0.9rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                  Bundle prices <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click a price to change it</span>
+              </div>
+              <div style={{ padding: '0.75rem 0.9rem' }}>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Bundle prices a supply house quotes for this whole assembly. Used when adding this assembly as a bundle and shown in the bundle breakdown.
+                </p>
+                {editTemplatePrices.length > 0 && (
+                  <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.75rem' }}>
                     {editTemplatePrices.map((p) => {
                       const editingVal = editTemplatePriceEditing[p.id]
                       const isEditing = editingVal !== undefined
+                      const cancelEdit = () =>
+                        setEditTemplatePriceEditing((prev) => {
+                          const next = { ...prev }
+                          delete next[p.id]
+                          return next
+                        })
+                      const commitEdit = () => {
+                        const n = parseFloat(editingVal ?? '')
+                        if (!Number.isNaN(n) && n >= 0 && n !== p.price) void updateEditTemplatePrice(p.id, n)
+                        else cancelEdit()
+                      }
                       return (
-                        <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.4rem 0.5rem' }}>{p.supply_house_name}</td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={editingVal}
-                                autoFocus
-                                onChange={(e) => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                                style={{ width: '7rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
-                              />
-                            ) : (
-                              `$${p.price.toFixed(2)}`
-                            )}
-                          </td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {isEditing ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const n = parseFloat(editingVal)
-                                    if (!Number.isNaN(n) && n >= 0) void updateEditTemplatePrice(p.id, n)
-                                  }}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer', marginRight: '0.5rem' }}
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditTemplatePriceEditing((prev) => { const next = { ...prev }; delete next[p.id]; return next })}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: String(p.price) }))}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer', marginRight: '0.5rem' }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void removeEditTemplatePrice(p.id)}
-                                  style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}
-                                >
-                                  Remove
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
+                        <div key={p.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem 26px', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.supply_house_name}</span>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={editingVal}
+                              autoFocus
+                              onChange={(e) => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                              onBlur={commitEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  ;(e.target as HTMLInputElement).blur()
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault()
+                                  cancelEdit()
+                                }
+                              }}
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: String(p.price) }))}
+                              title="Click to change this bundle price"
+                              aria-label={`Change ${p.supply_house_name} bundle price, currently $${p.price.toFixed(2)}`}
+                              style={{ justifySelf: 'end', padding: '0.15rem 0', background: 'none', border: 'none', borderBottom: '1px dashed var(--border-400)', borderRadius: 0, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.875rem' }}
+                            >
+                              ${p.price.toFixed(2)}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void removeEditTemplatePrice(p.id)}
+                            tabIndex={-1}
+                            aria-label={`Remove ${p.supply_house_name} bundle price`}
+                            title="Remove bundle price"
+                            style={{ width: 26, height: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            ×
+                          </button>
+                        </div>
                       )
                     })}
-                  </tbody>
-                </table>
-              )}
-              {(() => {
-                const used = new Set(editTemplatePrices.map((p) => p.supply_house_id))
-                const available = supplyHouses.filter((sh) => !used.has(sh.id))
-                if (available.length === 0) {
-                  return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
-                }
-                const priceNum = parseFloat(editTemplateNewPriceValue)
-                const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
-                return (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
-                    <select value={editTemplateNewPriceSupplyHouseId} onChange={(e) => setEditTemplateNewPriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}>
-                      <option value="">Select supply house</option>
-                      {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
-                    </select>
-                    <input type="number" min={0} step="0.01" value={editTemplateNewPriceValue} onChange={(e) => setEditTemplateNewPriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
                   </div>
-                )
-              })()}
+                )}
+                {(() => {
+                  const used = new Set(editTemplatePrices.map((p) => p.supply_house_id))
+                  const available = supplyHouses.filter((sh) => !used.has(sh.id))
+                  if (available.length === 0) {
+                    return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
+                  }
+                  const priceNum = parseFloat(editTemplateNewPriceValue)
+                  const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 7rem auto', gap: '0.5rem', alignItems: 'center' }}>
+                      <SearchableSelect
+                        value={editTemplateNewPriceSupplyHouseId}
+                        onChange={setEditTemplateNewPriceSupplyHouseId}
+                        options={available.map((sh) => ({ value: sh.id, label: sh.name }))}
+                        placeholder="Supply house…"
+                        listAriaLabel="Supply houses"
+                        portalZIndex={1200}
+                        triggerMinHeightPx={0}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={editTemplateNewPriceValue}
+                        onChange={(e) => setEditTemplateNewPriceValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && canAdd) {
+                            e.preventDefault()
+                            void addEditTemplatePrice()
+                          }
+                        }}
+                        placeholder="0.00"
+                        aria-label="Bundle price"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      />
+                      <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>

@@ -5,15 +5,33 @@ import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 /** Re-export of company IANA zone (CST/CDT via DST). Same as `APP_CALENDAR_TZ`. */
 export const JOB_SCHEDULE_TIMEZONE = APP_CALENDAR_TZ
 
-/** YYYY-MM-DD in Chicago for "now". */
-export function scheduleTodayDateKey(now: Date = new Date()): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
+/**
+ * YYYY-MM-DD for an instant, in company time.
+ *
+ * Assembled from `formatToParts` rather than relying on a locale's numeric
+ * date pattern: `en-CA` yields "2026-08-03" on modern ICU but "08/03/2026" on
+ * older builds (Node 20's bundled ICU, which is what vitest runs on), so a
+ * pattern-dependent version is correct in the browser yet untestable in CI.
+ */
+function scheduleDateKeyInAppTz(d: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: JOB_SCHEDULE_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  })
-  return formatter.format(now)
+  }).formatToParts(d)
+  const at = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((p) => p.type === type)?.value ?? ''
+  const y = at('year')
+  const mon = at('month')
+  const day = at('day')
+  if (!y || !mon || !day) return ''
+  return `${y}-${mon}-${day}`
+}
+
+/** YYYY-MM-DD in Chicago for "now". */
+export function scheduleTodayDateKey(now: Date = new Date()): string {
+  return scheduleDateKeyInAppTz(now)
 }
 
 export function scheduleFormatWeekdayLong(dateKey: string): string {
@@ -70,13 +88,7 @@ export function scheduleDateKeyAddDays(dateKey: string, deltaDays: number): stri
 }
 
 function scheduleDateKeyFromUtcNoon(d: Date): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: JOB_SCHEDULE_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-  return formatter.format(d)
+  return scheduleDateKeyInAppTz(d)
 }
 
 /**

@@ -161,7 +161,7 @@ export function DashboardRecentReportsSection({
             border: '1px solid var(--border)',
             borderRadius: 8,
             background: 'var(--surface)',
-            padding: '0.85rem 1rem 1rem',
+            padding: recentReportsExpanded ? '0.85rem 1rem 1rem' : '0.85rem 1rem',
             marginTop: '1rem',
             marginBottom: '1rem',
             scrollMarginTop: 8,
@@ -172,10 +172,10 @@ export function DashboardRecentReportsSection({
               type="button"
               onClick={() => setRecentReportsExpanded((prev) => !prev)}
               aria-expanded={recentReportsExpanded}
-              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flex: 1, minWidth: 0, gap: '0.5rem' }}
+              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', flex: 1, minWidth: 0, gap: '0.45rem' }}
             >
-              <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span aria-hidden>{recentReportsExpanded ? '▼' : '▶'}</span>
+              <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{recentReportsExpanded ? '▼' : '▶'}</span>
+              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
                 Recent Reports ({recentReportsUnreadCount(recentReports, hiddenReportIds, readReportIds)})
               </h2>
             </button>

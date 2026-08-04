@@ -9,13 +9,30 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { RELEASE_NOTES } from '../content/releaseNotes'
 import {
+  duplicateRecentFeaturesVersions,
   newestRecentFeaturesVersionNumber,
+  recentFeaturesVersionNumbers,
   releaseNoteVersionNumber,
+  releaseNotesMissingFromRecentFeatures,
   validateReleaseNotes,
 } from './releaseNotes'
 import type { ReleaseNote } from './releaseNotes'
 
 const RECENT_FEATURES_PATH = join(__dirname, '../../docs/RECENT_FEATURES.md')
+
+/**
+ * Both guards enforce a hard zero (v2.1373). The historical damage they were
+ * frozen around when they landed in v2.1372 is repaired: `v2.25` / `v2.95` /
+ * `v2.545` each carried two "## Latest Updates" headings and are now merged
+ * under one, and the five orphaned release notes (`v2.1012`, `v2.1037`–
+ * `v2.1040`) got their headings back from git history.
+ *
+ * The empty arrays stay as named constants on purpose: a future repair may need
+ * a temporary exemption, and a reviewer seeing a version added here knows
+ * exactly what it means. They are a ratchet — anything added must come back out.
+ */
+const LEGACY_DUPLICATE_RECENT_FEATURES_VERSIONS: readonly number[] = []
+const LEGACY_UNDOCUMENTED_RELEASE_NOTES: readonly string[] = []
 
 const note = (overrides: Partial<ReleaseNote>): ReleaseNote => ({
   version: 'v2.900',
@@ -40,6 +57,65 @@ describe('release notes content', () => {
       'docs/RECENT_FEATURES.md has a newer version than src/content/releaseNotes.ts — every PR ships a ' +
         'release note: add an entry for the new version (same v2.NNN) to src/content/releaseNotes.ts',
     ).toBe(newestDocumented)
+  })
+
+  it('no version is documented twice in RECENT_FEATURES.md', () => {
+    const dupes = duplicateRecentFeaturesVersions(readFileSync(RECENT_FEATURES_PATH, 'utf8')).filter(
+      (v) => !LEGACY_DUPLICATE_RECENT_FEATURES_VERSIONS.includes(v),
+    )
+    expect(
+      dupes,
+      'docs/RECENT_FEATURES.md documents the same v2.NNN twice — two sessions claimed one number. ' +
+        'Claim with `npm run claim` and renumber the newer entry; do not delete either one.',
+    ).toEqual([])
+  })
+
+  it('every release note has a RECENT_FEATURES.md entry', () => {
+    const missing = releaseNotesMissingFromRecentFeatures(
+      RELEASE_NOTES,
+      readFileSync(RECENT_FEATURES_PATH, 'utf8'),
+    ).filter((v) => !LEGACY_UNDOCUMENTED_RELEASE_NOTES.includes(v))
+    expect(
+      missing,
+      'these versions are in src/content/releaseNotes.ts but have no docs/RECENT_FEATURES.md heading — ' +
+        'a merge or conflict resolution dropped one side of the pair',
+    ).toEqual([])
+  })
+})
+
+describe('recentFeaturesVersionNumbers', () => {
+  it('lists every heading version in file order', () => {
+    const md = '## Latest Updates (v2.3)\ntext\n\n## Latest Updates (v2.1)\nmore\n'
+    expect(recentFeaturesVersionNumbers(md)).toEqual([3, 1])
+  })
+
+  it('ignores headings that are not the Latest Updates form', () => {
+    expect(recentFeaturesVersionNumbers('### Latest Updates (v2.3)\n## Other (v2.4)\n')).toEqual([])
+  })
+})
+
+describe('duplicateRecentFeaturesVersions', () => {
+  it('is empty for a clean file', () => {
+    expect(duplicateRecentFeaturesVersions('## Latest Updates (v2.3)\n## Latest Updates (v2.2)\n')).toEqual([])
+  })
+
+  it('reports a version documented twice, ascending', () => {
+    const md = '## Latest Updates (v2.9)\n## Latest Updates (v2.5)\n## Latest Updates (v2.9)\n## Latest Updates (v2.5)\n'
+    expect(duplicateRecentFeaturesVersions(md)).toEqual([5, 9])
+  })
+})
+
+describe('releaseNotesMissingFromRecentFeatures', () => {
+  it('is empty when every note is documented', () => {
+    const md = '## Latest Updates (v2.901)\n## Latest Updates (v2.900)\n'
+    expect(releaseNotesMissingFromRecentFeatures([note({ version: 'v2.901' }), note({ version: 'v2.900' })], md)).toEqual([])
+  })
+
+  it('names notes with no matching heading', () => {
+    const md = '## Latest Updates (v2.900)\n'
+    expect(releaseNotesMissingFromRecentFeatures([note({ version: 'v2.901' }), note({ version: 'v2.900' })], md)).toEqual([
+      'v2.901',
+    ])
   })
 })
 

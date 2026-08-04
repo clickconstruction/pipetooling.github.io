@@ -47,6 +47,11 @@ input.no-spinner[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Single-row tab strips (ScrollableTabStrip): scroll without scrollbar chrome */
+.tab-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Rough takeoffs table: compact underline-only qty */
 input.rough-takeoff-qty-input[type="number"] {
   border: none;

@@ -11,6 +11,16 @@ import { test, expect, type Page } from '@playwright/test'
 
 const PHONE = { width: 375, height: 812 }
 
+/**
+ * Tablet band (v2.1357). Between the 640px hamburger breakpoint and a wide
+ * desktop the header row is the thing that can overflow: the nav links plus the
+ * right-hand icon strip need ~925px, and `useNavFitCollapse` is what folds them
+ * into the hamburger when they don't fit. These widths pin that it actually
+ * happens — the collapse used to depend on a ResizeObserver callback, which a
+ * tab that never renders never receives.
+ */
+const TABLET_WIDTHS = [760, 900]
+
 test.use({ viewport: PHONE })
 
 async function expectNoSidewaysOverflow(page: Page, label: string) {
@@ -21,6 +31,24 @@ async function expectNoSidewaysOverflow(page: Page, label: string) {
     clientWidth: document.documentElement.clientWidth,
   }))
   expect(metrics.scrollWidth, `${label}: page overflows sideways (${metrics.scrollWidth}px layout in ${metrics.clientWidth}px viewport)`).toBeLessThanOrEqual(metrics.clientWidth)
+}
+
+/**
+ * Same invariant, asserted on the settled page. The header measures itself once
+ * the role lands and folds to the hamburger if the row doesn't fit, so the
+ * contract is that the page is not overflowing once it has settled — not that
+ * it never overflows for a frame during boot.
+ */
+async function expectSettledNoSidewaysOverflow(page: Page, label: string) {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+        ),
+      { timeout: 15000, message: `${label}: page still overflows sideways after settling` }
+    )
+    .toBeLessThanOrEqual(0)
 }
 
 const PAGES: Array<{ path: string; marker: RegExp | string }> = [
@@ -39,6 +67,24 @@ for (const { path, marker } of PAGES) {
     await expect(page.locator('main')).toContainText(marker, { timeout: 20000 })
     await expectNoSidewaysOverflow(page, path)
   })
+}
+
+// The header is global, so two pages are enough to pin it; both already have
+// cold-load coverage above, which keeps the marker waits honest.
+const TABLET_PAGES: Array<{ path: string; marker: RegExp | string }> = [
+  { path: '/dashboard', marker: 'My Schedule' },
+  { path: '/jobs?tab=stages', marker: /Working \(\d+\)/ },
+]
+
+for (const width of TABLET_WIDTHS) {
+  for (const { path, marker } of TABLET_PAGES) {
+    test(`no sideways overflow at ${width}px: ${path}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1024 })
+      await page.goto(path)
+      await expect(page.locator('main')).toContainText(marker, { timeout: 20000 })
+      await expectSettledNoSidewaysOverflow(page, `${path} @ ${width}px`)
+    })
+  }
 }
 
 test('Stages tables scroll inside their own wrappers, not the page', async ({ page }) => {

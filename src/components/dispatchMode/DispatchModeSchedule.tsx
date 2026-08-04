@@ -10,8 +10,16 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
+import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
+import { deleteJobScheduleBlock } from '../../lib/jobScheduleBlocks'
+import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
+import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
+import { RemoveScheduleBlockConfirmModal } from '../schedule/scheduleDispatchRemoveBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
+import { LinkedScheduleGroupModal } from '../schedule/LinkedScheduleGroupModal'
+import { fetchUsersTabRosterForScheduleDispatchHub, fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
 import {
   dispatchModeAddDays,
   dispatchModeAgendaHeading,
@@ -23,6 +31,16 @@ import {
 } from '../../lib/dispatchModeSchedule'
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+/** Draft for the time-column tap target: edit one block's start/end/note. */
+type EditBlockState = {
+  block: DispatchModeAgendaBlock
+  timeStart: string
+  timeEnd: string
+  note: string
+  /** Day the block will land on; starts as the day being viewed. */
+  workDate: string
+}
 
 const headerBtn: CSSProperties = {
   padding: '0.35rem 0.6rem',
@@ -39,8 +57,16 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const jobDetailModal = useJobDetailModal()
 
   const { role } = useAuth()
+  const { showToast } = useToastContext()
   const canQuickAssign = !selfUserId && role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
+  /** Same gate as Quick Assign: tapping a row's time column edits that block's times. */
+  const canEditBlocks = canQuickAssign
   const [quickAssignOpen, setQuickAssignOpen] = useState(false)
+  const [editBlock, setEditBlock] = useState<EditBlockState | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [deleteBlockId, setDeleteBlockId] = useState<string | null>(null)
+  const [deleteBlockBusy, setDeleteBlockBusy] = useState(false)
   const todayYmd = denverCalendarDayKey(Date.now())
   const [selectedYmd, setSelectedYmd] = useState<string>(todayYmd)
   /** Anchor for the visible two-week window; ‹ › shift it ±14 days across months. */
@@ -84,6 +110,43 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   useEffect(() => {
     void loadDay(selectedYmd)
   }, [selectedYmd, loadDay])
+
+  /* Linked-crew management (v2.1368): ⛓ chip on linked rows → the crew modal. */
+  const [crewGroupId, setCrewGroupId] = useState<string | null>(null)
+  const [crewRoster, setCrewRoster] = useState<Array<{ userId: string; displayName: string }>>([])
+  useEffect(() => {
+    if (!crewGroupId || crewRoster.length > 0 || !canEditBlocks) return
+    let cancelled = false
+    void (async () => {
+      const rosterRes = await fetchUsersTabRosterForScheduleDispatchHub(role === 'dev')
+      const ids = rosterRes.data.map((r) => r.id)
+      const { data: names } = await fetchUserNamesForIds(ids)
+      if (cancelled) return
+      setCrewRoster(
+        ids
+          .map((id) => ({ userId: id, displayName: names.get(id) ?? 'Unknown' }))
+          .sort((a, b) => a.displayName.localeCompare(b.displayName)),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [crewGroupId, crewRoster.length, canEditBlocks, role])
+  const crewCountByGroupId = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const b of blocks) {
+      if (!b.sharedBlockGroupId) continue
+      m.set(b.sharedBlockGroupId, (m.get(b.sharedBlockGroupId) ?? 0) + 1)
+    }
+    return m
+  }, [blocks])
+  const jobTitleByJobId = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const b of blocks) {
+      m.set(b.jobId, `${effectiveJobLedgerNumber(b.hcpNumber, b.clickNumber) || '—'} · ${b.jobName}`)
+    }
+    return m
+  }, [blocks])
 
   const goToday = () => {
     setSelectedYmd(todayYmd)
@@ -134,6 +197,79 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
       else next.add(id)
       return next
     })
+  }
+
+  const openEditBlock = (b: DispatchModeAgendaBlock) => {
+    setEditBlock({
+      block: b,
+      timeStart: b.timeStart.slice(0, 5),
+      timeEnd: b.timeEnd.slice(0, 5),
+      note: b.note ?? '',
+      workDate: selectedYmd,
+    })
+    setEditError(null)
+  }
+
+  const closeEditBlock = () => {
+    setEditBlock(null)
+    setEditError(null)
+  }
+
+  const saveEditBlock = async () => {
+    if (!editBlock) return
+    setEditSaving(true)
+    setEditError(null)
+    const movedTo = editBlock.workDate !== selectedYmd ? editBlock.workDate : null
+    const res = await saveEditedScheduleBlockTimes({
+      blockId: editBlock.block.id,
+      jobId: editBlock.block.jobId,
+      assigneeUserId: editBlock.block.assigneeUserId,
+      workDate: selectedYmd,
+      sharedBlockGroupId: editBlock.block.sharedBlockGroupId,
+      timeStart: editBlock.timeStart,
+      timeEnd: editBlock.timeEnd,
+      note: editBlock.note,
+      newWorkDate: editBlock.workDate,
+    })
+    setEditSaving(false)
+    if (!res.ok) {
+      setEditError(res.error)
+      return
+    }
+    // A moved block leaves the day on screen, so name where it went.
+    showToast(
+      movedTo ? `Moved to ${scheduleFormatWeekdayLong(movedTo)}.` : 'Block updated.',
+      'success',
+    )
+    closeEditBlock()
+    void loadDay(selectedYmd)
+  }
+
+  // "Remove" in the edit modal: close it and hand off to the shared confirm
+  // modal (same flow as the week grid / hub delete).
+  const requestDeleteBlock = () => {
+    if (!editBlock || !canEditBlocks) return
+    const id = editBlock.block.id
+    closeEditBlock()
+    setDeleteBlockId(id)
+  }
+
+  const confirmDeleteBlock = async () => {
+    const id = deleteBlockId
+    if (!id || !canEditBlocks) return
+    setDeleteBlockBusy(true)
+    try {
+      const { error: delErr } = await deleteJobScheduleBlock(id)
+      if (delErr) {
+        showToast(delErr, 'error')
+        return
+      }
+      setDeleteBlockId(null)
+      showToast('Removed from schedule.', 'success')
+      void loadDay(selectedYmd)
+    } finally {
+      setDeleteBlockBusy(false)
+    }
   }
 
   return (
@@ -369,93 +505,192 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
             )
             const num = effectiveJobLedgerNumber(b.hcpNumber, b.clickNumber) || '—'
             const pill = buildServiceTypeTradePill(b.serviceTypeName)
-            return (
-              <li key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <button
-                  type="button"
-                  onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
-                  aria-label={`Open job detail for ${num} · ${b.jobName}`}
-                  style={{
-                    display: 'flex',
-                    width: '100%',
-                    alignItems: 'flex-start',
-                    gap: '0.75rem',
-                    padding: '0.7rem 0.75rem',
-                    border: 'none',
-                    background: 'var(--surface)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    minWidth: 0,
-                  }}
-                >
-                  <span style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, width: 74 }}>
-                    <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>
-                      {formatDispatchQuickTimeLabel(b.timeStart)}
+            const timeColumn = (
+              <span style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, width: 74 }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                  {formatDispatchQuickTimeLabel(b.timeStart)}
+                </span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
+                  {formatBlockDurationMinutes(durationMin)}
+                </span>
+              </span>
+            )
+            const detailsColumn = (
+              <span
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  borderLeft: '2px solid var(--border-strong)',
+                  paddingLeft: '0.65rem',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  {pill ? (
+                    <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
+                      {pill.label}
                     </span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
-                      {formatBlockDurationMinutes(durationMin)}
-                    </span>
-                  </span>
+                  ) : null}
                   <span
                     style={{
-                      minWidth: 0,
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                      borderLeft: '2px solid var(--border-strong)',
-                      paddingLeft: '0.65rem',
+                      fontWeight: 600,
+                      fontSize: '0.9375rem',
+                      color: 'var(--text-strong)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                      {pill ? (
-                        <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
-                          {pill.label}
-                        </span>
-                      ) : null}
-                      <span
+                    {num} · {b.jobName}
+                  </span>
+                </span>
+                {b.customerName ? (
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{b.customerName}</span>
+                ) : null}
+                {b.jobAddress ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
+                ) : null}
+                {isMobile ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                    {b.assigneeName}
+                  </span>
+                ) : null}
+              </span>
+            )
+            const assigneeColumn = !isMobile ? (
+              <span
+                style={{
+                  flexShrink: 0,
+                  alignSelf: 'center',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-blue-700)',
+                  fontWeight: 600,
+                  maxWidth: '10rem',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {b.assigneeName}
+              </span>
+            ) : null
+            return (
+              <li key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                {canEditBlocks ? (
+                  <div style={{ display: 'flex', width: '100%', alignItems: 'stretch', background: 'var(--surface)' }}>
+                    <button
+                      type="button"
+                      onClick={() => openEditBlock(b)}
+                      aria-label={`Edit time for ${num} · ${b.jobName}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        flexShrink: 0,
+                        padding: '0.7rem 0.75rem',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {timeColumn}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
+                      aria-label={`Open job detail for ${num} · ${b.jobName}`}
+                      style={{
+                        display: 'flex',
+                        flex: 1,
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        padding: '0.7rem 0.75rem 0.7rem 0',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        minWidth: 0,
+                      }}
+                    >
+                      {detailsColumn}
+                      {assigneeColumn}
+                    </button>
+                    {b.sharedBlockGroupId ? (
+                      <button
+                        type="button"
+                        onClick={() => setCrewGroupId(b.sharedBlockGroupId)}
+                        aria-label={`Linked crew of ${crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1} — view and manage`}
+                        title="Linked crew — view and manage"
                         style={{
+                          alignSelf: 'center',
+                          flexShrink: 0,
+                          margin: '0 0.6rem 0 0',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
                           fontWeight: 600,
-                          fontSize: '0.9375rem',
-                          color: 'var(--text-strong)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          border: '1px solid #2563eb',
+                          borderRadius: 999,
+                          background: 'var(--surface)',
+                          color: 'var(--text-blue-700)',
+                          cursor: 'pointer',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {num} · {b.jobName}
-                      </span>
-                    </span>
-                    {b.customerName ? (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{b.customerName}</span>
+                        ⛓ {crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1}
+                      </button>
                     ) : null}
-                    {b.jobAddress ? (
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
-                    ) : null}
-                    {isMobile ? (
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
-                        {b.assigneeName}
-                      </span>
-                    ) : null}
-                  </span>
-                  {!isMobile ? (
-                    <span
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', width: '100%', alignItems: 'stretch', background: 'var(--surface)' }}>
+                    <button
+                      type="button"
+                      onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
+                      aria-label={`Open job detail for ${num} · ${b.jobName}`}
                       style={{
-                        flexShrink: 0,
-                        alignSelf: 'center',
-                        fontSize: '0.875rem',
-                        color: 'var(--text-blue-700)',
-                        fontWeight: 600,
-                        maxWidth: '10rem',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        flex: 1,
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        padding: '0.7rem 0.75rem',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        minWidth: 0,
                       }}
                     >
-                      {b.assigneeName}
-                    </span>
-                  ) : null}
-                </button>
+                      {timeColumn}
+                      {detailsColumn}
+                      {assigneeColumn}
+                    </button>
+                    {b.sharedBlockGroupId ? (
+                      <button
+                        type="button"
+                        onClick={() => setCrewGroupId(b.sharedBlockGroupId)}
+                        aria-label={`Linked crew of ${crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1} — view`}
+                        title="Linked crew — view"
+                        style={{
+                          alignSelf: 'center',
+                          flexShrink: 0,
+                          margin: '0 0.6rem 0 0',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          border: '1px solid #2563eb',
+                          borderRadius: 999,
+                          background: 'var(--surface)',
+                          color: 'var(--text-blue-700)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ⛓ {crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1}
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </li>
             )
           })}
@@ -487,6 +722,15 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           +
         </button>
       ) : null}
+      <LinkedScheduleGroupModal
+        open={crewGroupId != null}
+        onClose={() => setCrewGroupId(null)}
+        groupId={crewGroupId}
+        getJobDisplayTitle={(jobId) => jobTitleByJobId.get(jobId) ?? 'Job'}
+        canManage={canEditBlocks}
+        addPeople={crewRoster}
+        onChanged={() => void loadDay(selectedYmd)}
+      />
       {canQuickAssign ? (
         <QuickAssignSheet
           open={quickAssignOpen}
@@ -494,6 +738,37 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           onScheduled={() => void loadDay(selectedYmd)}
         />
       ) : null}
+      {editBlock ? (
+        <ScheduleDispatchAddBlockModal
+          open
+          mode="edit"
+          jobTitle={`${effectiveJobLedgerNumber(editBlock.block.hcpNumber, editBlock.block.clickNumber) || '—'} · ${editBlock.block.jobName}`}
+          personLabel={editBlock.block.assigneeName}
+          workDate={selectedYmd}
+          timeStart={editBlock.timeStart}
+          timeEnd={editBlock.timeEnd}
+          note={editBlock.note}
+          saving={editSaving}
+          error={editError}
+          onClose={closeEditBlock}
+          onChangeStart={(v) => setEditBlock((p) => (p ? { ...p, timeStart: v } : p))}
+          onChangeEnd={(v) => setEditBlock((p) => (p ? { ...p, timeEnd: v } : p))}
+          onChangeNote={(v) => setEditBlock((p) => (p ? { ...p, note: v } : p))}
+          newWorkDate={editBlock.workDate}
+          onChangeWorkDate={(v) => setEditBlock((p) => (p ? { ...p, workDate: v } : p))}
+          onSave={() => void saveEditBlock()}
+          onRemove={canEditBlocks ? requestDeleteBlock : undefined}
+        />
+      ) : null}
+      <RemoveScheduleBlockConfirmModal
+        open={deleteBlockId != null}
+        busy={deleteBlockBusy}
+        onCancel={() => {
+          if (deleteBlockBusy) return
+          setDeleteBlockId(null)
+        }}
+        onConfirm={() => void confirmDeleteBlock()}
+      />
     </div>
   )
 }

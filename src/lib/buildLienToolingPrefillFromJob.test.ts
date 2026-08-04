@@ -27,6 +27,7 @@ function makeInvoice(overrides: Partial<Inv> & Pick<Inv, 'id' | 'job_id'>): Inv 
     stripe_invoice_memo: overrides.stripe_invoice_memo ?? null,
     stripe_invoice_footer: overrides.stripe_invoice_footer ?? null,
     stripe_invoice_status: overrides.stripe_invoice_status ?? null,
+    stripe_mode: overrides.stripe_mode ?? null,
     agreed_write_down_at: overrides.agreed_write_down_at ?? null,
     agreed_write_down_by: overrides.agreed_write_down_by ?? null,
     agreed_write_down_note: overrides.agreed_write_down_note ?? null,

@@ -68,11 +68,53 @@ export function validateReleaseNotes(notes: ReleaseNote[]): string[] {
  */
 export function newestRecentFeaturesVersionNumber(markdown: string): number | null {
   let newest: number | null = null
-  for (const m of markdown.matchAll(/^## Latest Updates \(v2\.(\d+)\)/gm)) {
-    const digits = m[1]
-    if (digits == null) continue
-    const num = Number(digits)
+  for (const num of recentFeaturesVersionNumbers(markdown)) {
     if (newest == null || num > newest) newest = num
   }
   return newest
+}
+
+/** Every version number with a "## Latest Updates (v2.NNN)" heading, in file order. */
+export function recentFeaturesVersionNumbers(markdown: string): number[] {
+  const versions: number[] = []
+  for (const m of markdown.matchAll(/^## Latest Updates \(v2\.(\d+)\)/gm)) {
+    const digits = m[1]
+    if (digits != null) versions.push(Number(digits))
+  }
+  return versions
+}
+
+/**
+ * Versions with more than one "## Latest Updates" heading, ascending.
+ *
+ * Two sessions that claim the same v2.NNN produce this the moment their doc
+ * heads are merged together — which is the visible half of the failure that
+ * silently dropped a merged PR's entry on 2026-08-03. `newestRecentFeatures-
+ * VersionNumber` takes a max, so duplicates are invisible to it; this is the
+ * check that fails instead of letting the merge through.
+ */
+export function duplicateRecentFeaturesVersions(markdown: string): number[] {
+  const seen = new Set<number>()
+  const dupes = new Set<number>()
+  for (const num of recentFeaturesVersionNumbers(markdown)) {
+    if (seen.has(num)) dupes.add(num)
+    seen.add(num)
+  }
+  return [...dupes].sort((a, b) => a - b)
+}
+
+/**
+ * Release-note versions with no matching RECENT_FEATURES.md heading. Conflict
+ * resolution that keeps one file's entry and drops the other's leaves the pair
+ * inconsistent; the newest-version drift test only compares the two heads, so
+ * anything below the newest entry can rot unnoticed.
+ */
+export function releaseNotesMissingFromRecentFeatures(notes: ReleaseNote[], markdown: string): string[] {
+  const documented = new Set(recentFeaturesVersionNumbers(markdown))
+  return notes
+    .filter((note) => {
+      const num = releaseNoteVersionNumber(note.version)
+      return num != null && !documented.has(num)
+    })
+    .map((note) => note.version)
 }

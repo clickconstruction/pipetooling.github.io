@@ -18,18 +18,24 @@ import {
   type DispatchSwimLanesData,
 } from '../../lib/dispatchSwimLanes'
 import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
+import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
+import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   dispatchModeTwoWeekGrid,
   fetchDispatchModeDayBlocks,
   type DispatchModeAgendaBlock,
 } from '../../lib/dispatchModeSchedule'
 import {
+  DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
+  dispatchMinutesToSlotIndex,
+  dispatchSlotIndexToMinutes,
   formatBlockDurationMinutes,
   formatDispatchQuickTimeLabel,
   timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
+import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   ribbonSpanPct,
@@ -101,6 +107,7 @@ export default function QuickAssignSheet({
   const [jobPickerOpen, setJobPickerOpen] = useState(false)
   const [jobRows, setJobRows] = useState<ScheduleDispatchHubJobRow[]>([])
   const [jobSearch, setJobSearch] = useState('')
+  const [jobNumberQuery, setJobNumberQuery] = useState('')
   const [selectedYmd, setSelectedYmd] = useState(todayYmd)
   const [roster, setRoster] = useState<RosterPerson[]>([])
   const [lanes, setLanes] = useState<DispatchSwimLanesData | null>(null)
@@ -160,6 +167,7 @@ export default function QuickAssignSheet({
     setJob(null)
     setJobPickerOpen(true)
     setJobSearch('')
+    setJobNumberQuery('')
     setSelectedYmd(todayYmd)
     setSelected(new Set())
     setWindowSel(null)
@@ -318,16 +326,23 @@ export default function QuickAssignSheet({
   if (!open) return null
 
   const pickerRows: ScheduleDispatchAssignJobPickerRow[] = (() => {
+    const digits = jobNumberQuery.replace(/\D/g, '')
     const q = jobSearch.trim().toLowerCase()
-    return jobRows
-      .filter(
-        (r) =>
-          !q ||
-          (r.hcp_number ?? '').toLowerCase().includes(q) ||
-          (r.job_name ?? '').toLowerCase().includes(q) ||
-          (r.job_address ?? '').toLowerCase().includes(q) ||
-          (r.customer_name ?? '').toLowerCase().includes(q),
-      )
+    // "#" mode is exclusive and keeps the matcher's exact-then-prefix tier order.
+    const base =
+      digits !== ''
+        ? findJobsByNumber(jobRows, digits)
+        : jobRows
+            .filter(
+              (r) =>
+                !q ||
+                (r.hcp_number ?? '').toLowerCase().includes(q) ||
+                (r.job_name ?? '').toLowerCase().includes(q) ||
+                (r.job_address ?? '').toLowerCase().includes(q) ||
+                (r.customer_name ?? '').toLowerCase().includes(q),
+            )
+            .sort(compareJobsByCreatedAtDesc)
+    return base
       .slice(0, 60)
       .map((r) => ({
         id: r.id,
@@ -642,33 +657,48 @@ export default function QuickAssignSheet({
                 </>
               )}
             </div>
-            {customOpen ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="time"
-                  value={customStart}
-                  step={900}
-                  aria-label="Start time"
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  style={{ padding: '0.3rem', fontSize: '0.875rem' }}
-                />
-                <span style={{ color: 'var(--text-muted)' }}>–</span>
-                <input
-                  type="time"
-                  value={customEnd}
-                  step={900}
-                  aria-label="End time"
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  style={{ padding: '0.3rem', fontSize: '0.875rem' }}
-                />
-              </div>
-            ) : null}
+            {/* Two-dot range bar (6 AM–8 PM), mirroring the Add/Edit block modals.
+                Dragging a dot switches the window to Custom with that value, so the
+                bar, the chips, and the time inputs stay in sync. */}
+            {(() => {
+              const sliderWindow = effectiveWindow ?? { startMin: timeInputToMinutesSafe('08:00'), endMin: timeInputToMinutesSafe('16:00') }
+              const sliderTrim = {
+                loSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('06:00')),
+                hiSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('20:00')),
+              }
+              const applySlot = (which: 'start' | 'end') => (slotIndex: number) => {
+                const hhmm = dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(slotIndex))
+                if (!customOpen) {
+                  setCustomStart(dispatchMinutesToHHmm(sliderWindow.startMin))
+                  setCustomEnd(dispatchMinutesToHHmm(sliderWindow.endMin))
+                  setCustomOpen(true)
+                }
+                if (which === 'start') setCustomStart(hhmm)
+                else setCustomEnd(hhmm)
+              }
+              return (
+                <div style={{ padding: '0.15rem 0.5rem 0' }}>
+                  <DispatchAddBlockTimeRange
+                    slotCount={DISPATCH_ADD_BLOCK_SLOT_COUNT}
+                    startSlotIndex={dispatchMinutesToSlotIndex(sliderWindow.startMin)}
+                    endSlotIndex={dispatchMinutesToSlotIndex(sliderWindow.endMin)}
+                    onStartChange={applySlot('start')}
+                    onEndChange={applySlot('end')}
+                    formatAriaValue={(i) =>
+                      formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(i)))
+                    }
+                    groupAriaLabel="Scheduled window, 30-minute steps from 6:00 AM to 8:00 PM Central"
+                    railTrimWindow={sliderTrim}
+                  />
+                </div>
+              )
+            })()}
 
             <textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value.slice(0, 500))}
               rows={2}
-              placeholder="Job instructions (gate codes, scope, arrival details)…"
+              placeholder="Job instructions (gate codes, scope, arrival)…"
               aria-label="Job instructions"
               style={{
                 width: '100%',
@@ -722,11 +752,16 @@ export default function QuickAssignSheet({
                   cursor: canSchedule ? 'pointer' : 'not-allowed',
                 }}
               >
-                {saving
-                  ? 'Scheduling…'
-                  : effectiveWindow && selected.size > 0
-                    ? `Schedule ${selected.size} ${selected.size === 1 ? 'person' : 'people'} · ${windowLabel(effectiveWindow)}`
-                    : 'Pick people and a time'}
+                {saving ? (
+                  'Scheduling…'
+                ) : effectiveWindow && selected.size > 0 ? (
+                  <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.3 }}>
+                    <span>{`Schedule ${selected.size} ${selected.size === 1 ? 'person' : 'people'}`}</span>
+                    <span style={{ fontWeight: 500 }}>{windowLabel(effectiveWindow)}</span>
+                  </span>
+                ) : (
+                  'Pick people and a time'
+                )}
               </button>
             </div>
           </>
@@ -764,6 +799,8 @@ export default function QuickAssignSheet({
         jobRows={pickerRows}
         searchValue={jobSearch}
         onSearchChange={setJobSearch}
+        numberQuery={jobNumberQuery}
+        onNumberQueryChange={setJobNumberQuery}
         searchPlaceholder="Search HCP, job, address, or customer"
         onPickJob={(id) => {
           const found = jobRows.find((r) => r.id === id) ?? null

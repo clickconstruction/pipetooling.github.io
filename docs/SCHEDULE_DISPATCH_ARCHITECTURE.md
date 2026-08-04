@@ -5,7 +5,7 @@ file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,302 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,384 lines, container), treated as one hot ~5.7k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-03
 ---
 
 ## What this surface is
@@ -155,8 +155,10 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 ### Add/Edit block modal cluster
 
 - **Location:** `ScheduleDispatchBlockModalState` type ~134; state ~771–783 (`blockModalState`, `addTimeStart`/`addTimeEnd` (defaults 08:00/16:00), `addNote`, `addSaving`, `addError`, `addBlockTimelineSegments`, `addBlockDraftByBlockId`); `openAddBlock` ~886–930 (builds sorted `AddBlockTimelineSegment[]` from the person-day's blocks and seeds the default range via `defaultNewBlockRangeInFirstGap`); `closeAdd` ~932; `saveBlockModal` ~1367–1490; display memos `blockModalPersonLabel`/`blockModalJobTitleForModal`/`blockModalWorkDate`/`addBlockModalTimeline` ~1331–1365; JSX `ScheduleDispatchAddBlockModal` ~2246–2263.
-- **Save path (add):** `validateScheduleDispatchBlockTimeRange` → `saveNewScheduleBlockForPersonDay` (lib; consumes `addBlockDraftByBlockId` neighbor-time drafts) → toast → `closeAdd` → `loadHub({quiet:true})`. The `kind: 'edit'` branch (group-aware overlap check + `updateJobScheduleBlockGroup`/`updateJobScheduleBlock`) is **dead on this page** — it early-returns unless `jobId` is truthy (see quirk #1).
+- **Save path (add):** `saveNewScheduleBlockForPersonDay` (lib; validates internally, consumes `addBlockDraftByBlockId` neighbor-time drafts) → toast → `closeAdd` → `loadHub({quiet:true})`. The `kind: 'edit'` branch is **dead on this page** — it early-returns unless `jobId` is truthy (see quirk #1) — and since v2.1344 it delegates to the shared `saveEditedScheduleBlockTimes` kernel (`src/lib/scheduleDispatchAddBlockSave.ts`: range validation, fresh-fetched linked-group legs, per-assignee overlap checks, group/solo update), the same kernel used by `ScheduleDispatchJobWeek`'s live edit path and Dispatch Mode → Schedule's tap-the-time edit.
 - **Supabase:** `job_schedule_blocks` via lib helpers.
+- **"Move day" row (v2.1377) — opt-in, and this page does NOT opt in.** `ScheduleDispatchAddBlockModal` renders a day-picker row only when a caller passes `onChangeWorkDate` **and** `mode === 'edit'`. Of the five call sites, only Dispatch Mode → Schedule passes it (it is the one surface with no drag-and-drop). This page, `ScheduleDispatchJobWeek`, Quickfill, and user-review pass nothing and are visually unchanged. Chips come from the pure kernel `src/lib/scheduleBlockMoveDayOptions.ts`; the modal keeps no day state of its own beyond "is the free-date input revealed".
+- **"Remove" button (v2.1381) — second opt-in prop, and all three edit surfaces pass it.** `onRemove` renders a red-outline Remove button bottom-left of the footer (edit mode only). The modal owns no deletion logic: this page and `ScheduleDispatchJobWeek` close the modal and hand the block id to their existing `requestDeleteBlock` → `RemoveScheduleBlockConfirmModal` → `deleteJobScheduleBlock` flow; Dispatch Mode → Schedule grew the same confirm-modal flow locally. Single-row delete only — a linked crew-mate's block is untouched (crew-wide removal stays in `LinkedScheduleGroupModal`).
 - **Extraction status + risk + approach:** Inline. **Medium risk.** Natural hook `useScheduleDispatchAddBlockModal` returning the modal props + `openAddBlock`; it is fed by the assign-picker and empty-cell flows, so extract alongside or after the modes hook. Do not silently delete the dead edit branch during the move (quirk #1).
 
 ### Assign-job picker cluster
@@ -219,6 +221,7 @@ Consequence for extraction: Hub-file splits are prop-preserving file moves (chea
 13. **Drag disabled ≠ hidden** — the red drag strip stays visible and clicking it toasts `SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE`; drag is also disabled during multi-cell add and linked-copy modes.
 14. **Escape handling is per-mode effects on `window`** (placement/assign, linked copy, multi-cell, delete-confirm each have their own listener with different guards, e.g. delete ignores Esc while busy).
 15. **Tomorrow variant week-nav escapes the embed** — `shiftWeek`/`goThisWeek`/`openJobWeekGrid` `navigate()` to `/schedule-dispatch?…` instead of mutating local state.
+16. **`move_job_schedule_block_group` has NO date predicate** — it moves every leg of a `(job_id, shared_block_group_id)` group whatever `work_date` each sits on. Harmless while groups were single-day; since "Add person to crew" (v2.1371) writes one leg per distinct job/date/window, **multi-day groups are routine and moving one day of one collapses the whole group onto a single date**. `saveEditedScheduleBlockTimes` guards this (refuses a day move when the fetched legs span `>1` `work_date`, v2.1377), but **the drag path `executeScheduleDispatchBlockReassign` still calls the RPC unguarded** — dragging one day of a multi-day crew group is a live bug. Proper fix is a date-scoped `move_job_schedule_block_group_day(job, group, from_date, to_date)` RPC that both paths share; until then do not add new callers.
 
 ---
 

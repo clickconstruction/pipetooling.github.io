@@ -1595,9 +1595,14 @@ export default function ClockInOutButton({
         disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
         title={clockOutTallyGateLoading ? 'Checking card assignments…' : 'Clock out'}
         style={{
+          flex: '1 1 220px',
+          minWidth: 0,
+          minHeight: 48,
+          boxSizing: 'border-box',
           padding: '0.5rem 1rem',
           fontSize: '1rem',
           fontWeight: 600,
+          whiteSpace: 'nowrap',
           border: '2px solid #dc2626',
           borderRadius: 8,
           background: '#dc2626',
@@ -1619,11 +1624,14 @@ export default function ClockInOutButton({
             : 'Switch to a new focus (clocks out and starts new session)'
         }
         style={{
-          flex: 1,
+          flex: '1 1 220px',
           minWidth: 0,
+          minHeight: 48,
+          boxSizing: 'border-box',
           padding: '0.5rem 1rem',
           fontSize: '1rem',
           fontWeight: 600,
+          whiteSpace: 'nowrap',
           border: '2px solid #3b82f6',
           borderRadius: 8,
           background: '#3b82f6',
@@ -1631,7 +1639,7 @@ export default function ClockInOutButton({
           cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
         }}
       >
-        Update Focus this Shift
+        Update Focus
       </button>
     </>
   ) : salaryUiActive ? (

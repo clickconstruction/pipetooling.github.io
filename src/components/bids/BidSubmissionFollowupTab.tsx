@@ -58,6 +58,8 @@ type BidSubmissionFollowupTabProps = {
   onClearBid: () => void
   onEditBid: (bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue' }) => void
   onOpenParty: (bid: BidWithBuilder) => void
+  /** Followup merge (v2.1387): jump to this customer's card on the By-builder lens. */
+  onOpenBuilderLens?: (customerId: string) => void
   lastContactFromEntries: Record<string, string>
   customerContacts: CustomerContact[]
   estimatorUsers: EstimatorUser[]
@@ -86,6 +88,7 @@ export function BidSubmissionFollowupTab({
   onClearBid,
   onEditBid,
   onOpenParty,
+  onOpenBuilderLens,
   lastContactFromEntries,
   customerContacts,
   estimatorUsers,
@@ -106,7 +109,23 @@ export function BidSubmissionFollowupTab({
   const { showToast } = useToastContext()
 
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
-  const [submissionFollowupStaleDaysInput, setSubmissionFollowupStaleDaysInput] = useState('')
+  // Shared with the By-builder lens (v2.1387): both lenses read/persist the
+  // same "stale after N days" value so they can never disagree.
+  const [submissionFollowupStaleDaysInput, setSubmissionFollowupStaleDaysInput] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      return localStorage.getItem('bids_followup_stale_days') ?? ''
+    } catch {
+      return ''
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('bids_followup_stale_days', submissionFollowupStaleDaysInput)
+    } catch {
+      // ignore
+    }
+  }, [submissionFollowupStaleDaysInput])
   const [submissionFollowupNotesTab, setSubmissionFollowupNotesTab] = useState<'all' | 'bid' | 'customer'>('all')
   const [submissionFollowupUnifiedAddingKind, setSubmissionFollowupUnifiedAddingKind] =
     useState<UnifiedNotesAddingKind>(null)
@@ -1696,9 +1715,21 @@ export function BidSubmissionFollowupTab({
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                          {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                          </button>
+                          {onOpenBuilderLens && bid.customer_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
+                              title="Open this builder on the By-builder lens (all their bids + contact log)"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+                            >
+                              ↗
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         '—'
                       )}
@@ -1825,7 +1856,7 @@ export function BidSubmissionFollowupTab({
                       {bid.count_tooling_plans_link ? (
                         <a href={bid.count_tooling_plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.count_tooling_plans_link!) }} title="CountTooling Plans" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
-                            <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM298.2 359.6C306.8 349.5 305.7 334.4 295.6 325.8C285.5 317.2 270.4 318.3 261.8 328.4L213.8 384.4C206.1 393.4 206.1 406.6 213.8 415.6L261.8 471.6C270.4 481.7 285.6 482.8 295.6 474.2C305.6 465.6 306.8 450.4 298.2 440.4L263.6 400L298.2 359.6zM378.2 328.4C369.6 318.3 354.4 317.2 344.4 325.8C334.4 334.4 333.2 349.6 341.8 359.6L376.4 400L341.8 440.4C333.2 450.5 334.3 465.6 344.4 474.2C354.5 482.8 369.6 481.7 378.2 471.6L426.2 415.6C433.9 406.6 433.9 393.4 426.2 384.4L378.2 328.4z"/>
+                            <path d="M320 48C337.7 48 352 62.3 352 80L352 98.3C450.1 112.3 527.7 189.9 541.7 288L560 288C577.7 288 592 302.3 592 320C592 337.7 577.7 352 560 352L541.7 352C527.7 450.1 450.1 527.7 352 541.7L352 560C352 577.7 337.7 592 320 592C302.3 592 288 577.7 288 560L288 541.7C189.9 527.7 112.3 450.1 98.3 352L80 352C62.3 352 48 337.7 48 320C48 302.3 62.3 288 80 288L98.3 288C112.3 189.9 189.9 112.3 288 98.3L288 80C288 62.3 302.3 48 320 48zM163.2 352C175.9 414.7 225.3 464.1 288 476.8L288 464C288 446.3 302.3 432 320 432C337.7 432 352 446.3 352 464L352 476.8C414.7 464.1 464.1 414.7 476.8 352L464 352C446.3 352 432 337.7 432 320C432 302.3 446.3 288 464 288L476.8 288C464.1 225.3 414.7 175.9 352 163.2L352 176C352 193.7 337.7 208 320 208C302.3 208 288 193.7 288 176L288 163.2C225.3 175.9 175.9 225.3 163.2 288L176 288C193.7 288 208 302.3 208 320C208 337.7 193.7 352 176 352L163.2 352zM320 272C346.5 272 368 293.5 368 320C368 346.5 346.5 368 320 368C293.5 368 272 346.5 272 320C272 293.5 293.5 272 320 272z"/>
                           </svg>
                         </a>
                       ) : (
@@ -1847,9 +1878,21 @@ export function BidSubmissionFollowupTab({
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                          {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                          </button>
+                          {onOpenBuilderLens && bid.customer_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
+                              title="Open this builder on the By-builder lens (all their bids + contact log)"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+                            >
+                              ↗
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         '—'
                       )}
@@ -1937,9 +1980,21 @@ export function BidSubmissionFollowupTab({
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                          {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                          </button>
+                          {onOpenBuilderLens && bid.customer_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
+                              title="Open this builder on the By-builder lens (all their bids + contact log)"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+                            >
+                              ↗
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         '—'
                       )}

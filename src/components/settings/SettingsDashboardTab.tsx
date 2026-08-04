@@ -146,7 +146,7 @@ type SettingsDashboardTabProps = {
 }
 
 function pinKeyOf(item: PinnedItem): string {
-  return `${item.path}:${item.tab ?? ''}`
+  return `${item.path}:${item.tab ?? ''}:${item.bidId ?? ''}`
 }
 function pinLabel(item: PinnedItem): string {
   return item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label
