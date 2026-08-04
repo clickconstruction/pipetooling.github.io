@@ -423,12 +423,14 @@ function HubJobsPanel({
                       left: 0,
                       background: 'var(--surface)',
                       zIndex: 1,
+                      minWidth: 130,
                       maxWidth: 280,
                     }}
                   >
                     <button
                       type="button"
                       onClick={() => onOpenJob(r.id)}
+                      title={r.displayTitle}
                       style={{
                         padding: 0,
                         margin: 0,
@@ -440,6 +442,10 @@ function HubJobsPanel({
                         textAlign: 'left',
                         textDecoration: 'underline',
                         textUnderlineOffset: 2,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
                       }}
                     >
                       {r.displayTitle}

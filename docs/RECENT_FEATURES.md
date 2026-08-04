@@ -7,15 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1362)
+last_updated: 2026-08-03 (v2.1363)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1363)
+
+### Schedule Jobs grid: stacked day headers, narrower columns; wider two-line job column (2026-08-03)
+Owner asks, same grid: **(1)** the day headers go from one line ("Mon (08/03)", `minWidth: 88`) to two stacked lines — weekday bold over the date (`hubDayColumnHeaderStacked` in [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx)) — with `minWidth` trimmed to 60; a 375px phone shows four weekday columns instead of two and a half. The one-line `hubDayColumnHeaderLabel` string helper stays for its other consumers (People-grid headers, expected-manpower label, aria strings). **(2)** the sticky **Job** column widens and its link clamps to **two lines with an ellipsis** (`-webkit-line-clamp: 2`; full title stays in the link `title` tooltip), so long names like "922 · Michael Palmer (Ivan Kopecky)" stop stretching rows five lines tall. Client-only — no migration.
+
 ## Latest Updates (v2.1362)
 
-### Schedule Jobs grid: stacked day headers, narrower columns (2026-08-03)
-Owner ask: the Jobs-tab grid's day headers go from one line ("Mon (08/03)", `minWidth: 88`) to two stacked lines — weekday bold over the date (`hubDayColumnHeaderStacked` in [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx)) — with `minWidth` trimmed to 60. On a 375px phone the grid now shows four weekday columns instead of two and a half. The one-line `hubDayColumnHeaderLabel` string helper stays for its other consumers (People-grid headers, expected-manpower label, aria strings). Client-only — no migration.
+### Bid values read `153k`, not `153` (2026-08-03)
+Owner catch on the v2.1347 phone cards: the bid value sits in a bare meta line (`Carter Lopez · William · 153 · Last contact …`) with no column header to say what the number is, so `153` read as anything but dollars. [`formatBidValueShort`](../src/lib/bids/bidFormatting.ts) now appends a **`k`** — `153000` → `153k`, `5500` → `5.5k`, null still `—`. The suffix also lands in the two table surfaces that share the kernel (Bid Board **Bid** column and the Estimating Health staff-outcome drilldown), where it's redundant with the header but consistent and harmless. Million-dollar bids keep reading in thousands (`1240k`) rather than switching units mid-column. Tests updated (+1 case for the million range). Client-only — no migration.
 
 ## Latest Updates (v2.1361)
 
