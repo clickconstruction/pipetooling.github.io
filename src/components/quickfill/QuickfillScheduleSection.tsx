@@ -46,6 +46,7 @@ import {
   formatScheduleDispatchHubJobTitle,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   defaultNewBlockRangeInFirstGap,
   type AddBlockTimelineSegment,
@@ -483,6 +484,7 @@ export function QuickfillScheduleSection({
   const [cellAddContext, setCellAddContext] = useState<{ assigneeUserId: string; workDate: string } | null>(null)
   const [assignJobPickerOpen, setAssignJobPickerOpen] = useState(false)
   const [assignJobPickerSearch, setAssignJobPickerSearch] = useState('')
+  const [assignJobPickerNumberQuery, setAssignJobPickerNumberQuery] = useState('')
   const [blockModalState, setBlockModalState] = useState<QuickfillBlockModalState | null>(null)
   const [reorderUserId, setReorderUserId] = useState<string | null>(null)
   const [reorderSaving, setReorderSaving] = useState(false)
@@ -565,6 +567,7 @@ export function QuickfillScheduleSection({
     setAssignJobPickerOpen(false)
     setCellAddContext(null)
     setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
   }, [])
 
   const openQuickfillAddBlock = useCallback(
@@ -572,6 +575,7 @@ export function QuickfillScheduleSection({
       setAssignJobPickerOpen(false)
       setCellAddContext(null)
       setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
       setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
       const rows = blocksByUserId.get(args.assigneeUserId) ?? []
       const labelFor = (jid: string) => jobTitleById.get(jid) ?? formatScheduleDispatchHubJobTitle(null, null)
@@ -645,9 +649,12 @@ export function QuickfillScheduleSection({
 
   const quickfillAssignJobPickerRows = useMemo(() => {
     const q = assignJobPickerSearch.trim().toLowerCase()
+    const digits = assignJobPickerNumberQuery.replace(/\D/g, '')
     const sessionTodaySet = new Set(quickfillOrderedSessionJobLedgerIds)
     let list = quickfillPickerJobsSorted
-    if (q) {
+    if (digits !== '') {
+      list = findJobsByNumber(list, digits)
+    } else if (q) {
       list = list.filter(
         (j) =>
           (j.hcp_number ?? '').toLowerCase().includes(q) ||
@@ -660,7 +667,7 @@ export function QuickfillScheduleSection({
       displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name),
       sessionToday: sessionTodaySet.has(j.id),
     }))
-  }, [assignJobPickerSearch, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
+  }, [assignJobPickerSearch, assignJobPickerNumberQuery, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
 
   const quickfillCellChoiceSubtitle = useMemo(() => {
     if (!cellAddContext) return ''
@@ -700,6 +707,7 @@ export function QuickfillScheduleSection({
     setAssignJobPickerOpen(false)
     setCellAddContext(null)
     setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
     closeQuickfillAddBlock()
   }, [workDate, closeQuickfillAddBlock])
 
@@ -1633,6 +1641,7 @@ export function QuickfillScheduleSection({
                             ? () => {
                                 setCellAddContext({ assigneeUserId: id, workDate })
                                 setAssignJobPickerSearch('')
+    setAssignJobPickerNumberQuery('')
                                 setAssignJobPickerOpen(true)
                               }
                             : undefined
@@ -1669,6 +1678,8 @@ export function QuickfillScheduleSection({
         jobRows={quickfillAssignJobPickerRows}
         searchValue={assignJobPickerSearch}
         onSearchChange={setAssignJobPickerSearch}
+        numberQuery={assignJobPickerNumberQuery}
+        onNumberQueryChange={setAssignJobPickerNumberQuery}
         onPickJob={(jobId) => {
           if (!cellAddContext) return
           openQuickfillAddBlock({

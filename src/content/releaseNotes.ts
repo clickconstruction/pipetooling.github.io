@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1375',
+    date: '2026-08-03',
+    title: 'Add job to schedule: smarter search',
+    kind: 'feature',
+    highlights: [
+      'Search results now highlight the matching part of what you typed, so you can see at a glance why each job matched.',
+      'A new # button next to the search box searches job numbers only (C# and HCP) — type "92" and job 92 tops the list, followed by 926, 925, and the rest.',
+    ],
+  },
+  {
     version: 'v2.1374',
     date: '2026-08-03',
     title: 'Bid Board: due date, estimator, last contact together',

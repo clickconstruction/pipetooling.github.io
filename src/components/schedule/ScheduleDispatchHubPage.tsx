@@ -78,6 +78,7 @@ import {
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
+import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   RemoveScheduleBlockConfirmModal,
   validateScheduleDispatchBlockTimeRange,
@@ -820,6 +821,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubAssignJobPlacement, setHubAssignJobPlacement] = useState<HubAssignJobPlacementState | null>(null)
   const [hubAssignJobPickerOpen, setHubAssignJobPickerOpen] = useState(false)
   const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
+  const [hubAssignJobPickerNumberQuery, setHubAssignJobPickerNumberQuery] = useState('')
   const [hubCellAddContext, setHubCellAddContext] = useState<HubCellAddContextState | null>(null)
   const [hubAssignJobPickerIntent, setHubAssignJobPickerIntent] = useState<HubAssignJobPickerIntent>('toolbar')
   const [hubMultiCellAddActive, setHubMultiCellAddActive] = useState(false)
@@ -1100,6 +1102,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     stripPlaceJobFromUrl()
     setHubAssignJobPickerIntent('toolbar')
     setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
     setHubAssignJobPickerOpen(true)
   }, [stripPlaceJobFromUrl])
 
@@ -1107,6 +1110,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     setHubCellAddContext({ assigneeUserId: personUserId, workDate })
     setHubAssignJobPickerIntent('cell')
     setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
     setHubAssignJobPickerOpen(true)
   }, [])
 
@@ -1265,6 +1269,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     setHubCellAddContext(null)
     setHubAssignJobPickerIntent('multi')
     setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
     setHubAssignJobPickerOpen(true)
   }, [hubMultiCellAddSelection])
 
@@ -1307,6 +1312,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   ])
 
   const hubAssignJobPickerRows = useMemo(() => {
+    const digits = hubAssignJobPickerNumberQuery.replace(/\D/g, '')
+    if (digits !== '') return findJobsByNumber(hubMergedRows, digits)
     const q = hubAssignJobPickerSearch.trim().toLowerCase()
     let list = hubMergedRows
     if (q) {
@@ -1320,7 +1327,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       )
     }
     return [...list].sort(compareJobsByCreatedAtDesc)
-  }, [hubMergedRows, hubAssignJobPickerSearch])
+  }, [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
 
   const hubEmptyCellChoiceSubtitle = useMemo(() => {
     if (!hubCellAddContext) return ''
@@ -2255,6 +2262,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, serviceTypeName: r.service_type?.name ?? null, subline: hubJobPickerSubline(r) }))}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
+          numberQuery={hubAssignJobPickerNumberQuery}
+          onNumberQueryChange={setHubAssignJobPickerNumberQuery}
           searchPlaceholder="Search HCP, job, address, or customer"
           onOpenJobDetail={(pickedJobId) => {
             const row = hubMergedRows.find((r) => r.id === pickedJobId)
