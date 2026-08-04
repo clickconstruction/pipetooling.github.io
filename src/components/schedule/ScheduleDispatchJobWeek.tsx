@@ -1047,6 +1047,15 @@ export function ScheduleDispatchJobWeek() {
         onChangeEnd={setAddTimeEnd}
         onChangeNote={setAddNote}
         onSave={() => void saveBlockModal()}
+        onRemove={
+          blockModalState?.kind === 'edit' && canEdit
+            ? () => {
+                const id = blockModalState.blockId
+                closeAdd()
+                requestDeleteBlock(id)
+              }
+            : undefined
+        }
         addTimeline={addBlockModalTimeline}
       />
       <ScheduleDispatchBlockNoteModal

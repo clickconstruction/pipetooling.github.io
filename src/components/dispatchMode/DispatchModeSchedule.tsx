@@ -13,8 +13,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
+import { deleteJobScheduleBlock } from '../../lib/jobScheduleBlocks'
 import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
+import { RemoveScheduleBlockConfirmModal } from '../schedule/scheduleDispatchRemoveBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
 import { LinkedScheduleGroupModal } from '../schedule/LinkedScheduleGroupModal'
 import { fetchUsersTabRosterForScheduleDispatchHub, fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
@@ -63,6 +65,8 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const [editBlock, setEditBlock] = useState<EditBlockState | null>(null)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [deleteBlockId, setDeleteBlockId] = useState<string | null>(null)
+  const [deleteBlockBusy, setDeleteBlockBusy] = useState(false)
   const todayYmd = denverCalendarDayKey(Date.now())
   const [selectedYmd, setSelectedYmd] = useState<string>(todayYmd)
   /** Anchor for the visible two-week window; ‹ › shift it ±14 days across months. */
@@ -239,6 +243,33 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     )
     closeEditBlock()
     void loadDay(selectedYmd)
+  }
+
+  // "Remove" in the edit modal: close it and hand off to the shared confirm
+  // modal (same flow as the week grid / hub delete).
+  const requestDeleteBlock = () => {
+    if (!editBlock || !canEditBlocks) return
+    const id = editBlock.block.id
+    closeEditBlock()
+    setDeleteBlockId(id)
+  }
+
+  const confirmDeleteBlock = async () => {
+    const id = deleteBlockId
+    if (!id || !canEditBlocks) return
+    setDeleteBlockBusy(true)
+    try {
+      const { error: delErr } = await deleteJobScheduleBlock(id)
+      if (delErr) {
+        showToast(delErr, 'error')
+        return
+      }
+      setDeleteBlockId(null)
+      showToast('Removed from schedule.', 'success')
+      void loadDay(selectedYmd)
+    } finally {
+      setDeleteBlockBusy(false)
+    }
   }
 
   return (
@@ -726,8 +757,18 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           newWorkDate={editBlock.workDate}
           onChangeWorkDate={(v) => setEditBlock((p) => (p ? { ...p, workDate: v } : p))}
           onSave={() => void saveEditBlock()}
+          onRemove={canEditBlocks ? requestDeleteBlock : undefined}
         />
       ) : null}
+      <RemoveScheduleBlockConfirmModal
+        open={deleteBlockId != null}
+        busy={deleteBlockBusy}
+        onCancel={() => {
+          if (deleteBlockBusy) return
+          setDeleteBlockId(null)
+        }}
+        onConfirm={() => void confirmDeleteBlock()}
+      />
     </div>
   )
 }

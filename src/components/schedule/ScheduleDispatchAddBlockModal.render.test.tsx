@@ -152,3 +152,37 @@ describe('ScheduleDispatchAddBlockModal — move day row', () => {
     expect(buttons.every((b) => b.hasAttribute('disabled'))).toBe(true)
   })
 })
+
+describe('ScheduleDispatchAddBlockModal — remove button', () => {
+  it('is absent when the caller does not opt in', () => {
+    renderWithProviders(<ScheduleDispatchAddBlockModal {...makeProps()} />)
+    expect(screen.queryByRole('button', { name: 'Remove this block from the schedule' })).toBeNull()
+  })
+
+  it('is absent in add mode even when a handler is passed', () => {
+    renderWithProviders(
+      <ScheduleDispatchAddBlockModal {...makeProps({ mode: 'add', onRemove: vi.fn() })} />,
+    )
+    expect(screen.queryByRole('button', { name: 'Remove this block from the schedule' })).toBeNull()
+  })
+
+  it('renders in edit mode and hands off to the caller on click', () => {
+    const onRemove = vi.fn()
+    renderWithProviders(<ScheduleDispatchAddBlockModal {...makeProps({ onRemove })} />)
+    const btn = screen.getByRole('button', { name: 'Remove this block from the schedule' })
+    expect(btn.textContent).toBe('Remove')
+    fireEvent.click(btn)
+    expect(onRemove).toHaveBeenCalledTimes(1)
+  })
+
+  it('is disabled while saving', () => {
+    renderWithProviders(
+      <ScheduleDispatchAddBlockModal {...makeProps({ onRemove: vi.fn(), saving: true })} />,
+    )
+    expect(
+      screen
+        .getByRole('button', { name: 'Remove this block from the schedule' })
+        .hasAttribute('disabled'),
+    ).toBe(true)
+  })
+})
