@@ -96,7 +96,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   {
     id: 'quickfill-tomorrow-schedule',
     sectionId: 'tomorrow-schedule',
-    label: "Tomorrow's Schedule (Dispatch hub)",
+    label: "Tomorrow's Schedule",
   },
   { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email Inbox' },
   { id: 'quickfill-email-next-actions', sectionId: 'email-next-actions', label: 'Email: Next Actions' },

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1375)
+last_updated: 2026-08-03 (v2.1376)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1376)
+
+### Quickfill: "Tomorrow's Schedule (Dispatch hub)" is just "Tomorrow's Schedule" (2026-08-03)
+Owner call — the `(Dispatch hub)` suffix named the *implementation* (the section embeds `QuickfillTomorrowsScheduleSection`, a one-day Dispatch hub view) rather than what the reader is looking at. The `SECTIONS` label in [`Quickfill.tsx`](../src/pages/Quickfill.tsx) drops it. Three things already used the short name and now agree with the chip, the heading and each other: the **mark-history modal** (it passed `label: "Tomorrow's Schedule"` all along, so the modal title used to disagree with the section it opened from) and both help guides (`quickfill`, `schedule-dispatch`). **`sectionId: 'tomorrow-schedule'` is unchanged** — it keys mark history and hidden-section settings, exactly as the v2.1337 rename preserved `no-customer-stages`, so nobody's marks or hidden-section preferences move. Label-only; no guide edits needed since the guides were already right. Client-only — no migration.
 
 ## Latest Updates (v2.1375)
 
