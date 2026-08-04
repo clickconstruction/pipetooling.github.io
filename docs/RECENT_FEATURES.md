@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1383)
+last_updated: 2026-08-04 (v2.1384)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1384)
+
+### Working board: one fetch per real change, not per bids refresh (2026-08-04)
+Fetch instrumentation on `/bids?tab=working` showed ~30+ identical GETs each to `bid_working_board_columns` and `bid_working_board_placements` during a single Plumbing→Electrical→Plumbing toggle. Two effects were keyed on **array identity**: `loadBoard` in [`BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx) (a `useCallback` over `eligibleAssigned` — a memo over the `bids` array the parent replaces on every `loadBids()` — plus an inline `onLoadError` prop) and the whole-page [`useWorkingBoardInboxCount`](../src/hooks/useWorkingBoardInboxCount.ts) tally hook (keyed on the `bids` array itself). Every bids-state replacement re-fired both, even with identical content.
+
+**(1) New pure kernel** `workingBoardBidsSignature` in [`bidWorkingBoardColumnMap.ts`](../src/lib/bidWorkingBoardColumnMap.ts) (6 tests): an order-insensitive content signature over exactly the fields the loads consume — `id` (membership), `estimator_id`/`account_manager_id` (assignment filters), and `project_name` (the implicit inbox sort key). Identity-only replacement → same signature.
+
+**(2) BidsWorkingBoard** auto-load effect now guards on `userId` + that signature via a ref, so the board loads once per *content* change; `loadBoard` itself is untouched (its identity may still churn, the guard absorbs it) — deliberately zero overlap with the v2.1383 cleanup change to its body, and fewer loadBoard runs during trade toggles also means fewer trips through that cleanup pass. Manual `loadBoard()` calls (column ops, persist-failure recovery) behave exactly as before.
+
+**(3) useWorkingBoardInboxCount** keys its refetch effect on the signature instead of the `bids` array (latest array read through a ref), keeping the Realtime `bump()` path unchanged.
 
 ## Latest Updates (v2.1383)
 

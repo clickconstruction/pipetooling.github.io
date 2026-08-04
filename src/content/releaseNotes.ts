@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1384',
+    date: '2026-08-04',
+    title: 'Working board loads faster',
+    kind: 'fix',
+    highlights: [
+      'The Working board and its Inbox tab badge were quietly re-fetching their columns and card placements dozens of times while the Bids page refreshed — now they load once and only re-fetch when your bids actually change.',
+    ],
+  },
+  {
     version: 'v2.1383',
     date: '2026-08-04',
     title: 'Unsent/Working board no longer loses your column layout',
