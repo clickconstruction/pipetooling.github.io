@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1367',
+    date: '2026-08-03',
+    title: 'Under the hood: coordination for parallel work sessions',
+    kind: 'feature',
+    highlights: [
+      'Development sessions now reserve version numbers through a shared ledger instead of racing each other — fewer renumbered releases and mismatched titles going forward.',
+      'No visible app changes.',
+    ],
+  },
+  {
     version: 'v2.1366',
     date: '2026-08-03',
     title: 'Assign work: slide the time',
