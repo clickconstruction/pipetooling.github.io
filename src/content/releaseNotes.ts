@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1376',
+    date: '2026-08-03',
+    title: 'Quickfill: a shorter name for Tomorrow\'s Schedule',
+    kind: 'fix',
+    highlights: [
+      'The Quickfill section called "Tomorrow\'s Schedule (Dispatch hub)" is now just "Tomorrow\'s Schedule" — matching what its own history popup and the help guides already called it.',
+    ],
+  },
+  {
     version: 'v2.1375',
     date: '2026-08-03',
     title: 'Add job to schedule: smarter search',
