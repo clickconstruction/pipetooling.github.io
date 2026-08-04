@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1395',
+    date: '2026-08-04',
+    title: 'Takeoffs: "Save & add" on a part line actually adds the part now',
+    kind: 'fix',
+    highlights: [
+      'Creating a new part from a takeoff part line saved the part to the catalog but left the line empty — the part never got attached. It now lands on the line, with its catalog price, every time.',
+      'The other create-a-part spots (Add assembly, Edit assembly, Add parts to assembly) were unaffected and keep working as before.',
+    ],
+  },
+  {
     version: 'v2.1394',
     date: '2026-08-04',
     title: 'Takeoffs: creating a part from Add-parts-to-assembly adds it too',

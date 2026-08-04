@@ -92,7 +92,7 @@ export function SortableRoughPartLineRow({
   bundlePartLines: BundlePartLine[] | undefined
   bundleCollapsed: boolean
   onToggleBundleCollapsed: () => void
-  openBidsPartFormForCreate: (initialName: string) => void
+  openBidsPartFormForCreate: (initialName: string, roughLineId?: string) => void
   onOpenEditTakeoffPart: (partId: string) => void
   materialTemplates: MaterialTemplateWithAssemblyType[]
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
@@ -293,7 +293,10 @@ export function SortableRoughPartLineRow({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
-                      openBidsPartFormForCreate(takeoffRoughPartSearchQuery.trim())
+                      // Pass the line id explicitly (v2.1395): the picker state
+                      // set below is nulled by this input's onBlur as soon as
+                      // the form takes focus, so it can't be trusted at save.
+                      openBidsPartFormForCreate(takeoffRoughPartSearchQuery.trim(), line.id)
                       setTakeoffRoughPartPickerLineId(line.id)
                     }}
                     style={{
