@@ -11,12 +11,23 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1392',
+    version: 'v2.1393',
     date: '2026-08-04',
     title: 'Other jobs: duplicate-marked bank transactions no longer count as materials',
     kind: 'fix',
     highlights: [
       'Same fix as v2.1317, applied to the other side of the ledger: duplicate-marked Mercury transactions that were split to regular jobs no longer count into the "other jobs" materials totals.',
+    ],
+  },
+  {
+    version: 'v2.1392',
+    date: '2026-08-04',
+    title: 'Takeoffs: the part form says what Save really does',
+    kind: 'feature',
+    highlights: [
+      'Creating a part from a Takeoffs picker already drops the new part straight into the line or assembly you came from — but the button just said "Save," so it read like you\'d have to go find the part afterwards. It now says "Save & add."',
+      'From the Add-parts-to-assembly window it says "Save & select" — the new part lands selected in the picker so you can set the quantity before adding.',
+      'Editing an existing part keeps the plain "Save."',
     ],
   },
   {
