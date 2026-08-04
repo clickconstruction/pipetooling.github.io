@@ -15,6 +15,8 @@ import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatch
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
+import { LinkedScheduleGroupModal } from '../schedule/LinkedScheduleGroupModal'
+import { fetchUsersTabRosterForScheduleDispatchHub, fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
 import {
   dispatchModeAddDays,
   dispatchModeAgendaHeading,
@@ -101,6 +103,43 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   useEffect(() => {
     void loadDay(selectedYmd)
   }, [selectedYmd, loadDay])
+
+  /* Linked-crew management (v2.1368): ⛓ chip on linked rows → the crew modal. */
+  const [crewGroupId, setCrewGroupId] = useState<string | null>(null)
+  const [crewRoster, setCrewRoster] = useState<Array<{ userId: string; displayName: string }>>([])
+  useEffect(() => {
+    if (!crewGroupId || crewRoster.length > 0 || !canEditBlocks) return
+    let cancelled = false
+    void (async () => {
+      const rosterRes = await fetchUsersTabRosterForScheduleDispatchHub(role === 'dev')
+      const ids = rosterRes.data.map((r) => r.id)
+      const { data: names } = await fetchUserNamesForIds(ids)
+      if (cancelled) return
+      setCrewRoster(
+        ids
+          .map((id) => ({ userId: id, displayName: names.get(id) ?? 'Unknown' }))
+          .sort((a, b) => a.displayName.localeCompare(b.displayName)),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [crewGroupId, crewRoster.length, canEditBlocks, role])
+  const crewCountByGroupId = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const b of blocks) {
+      if (!b.sharedBlockGroupId) continue
+      m.set(b.sharedBlockGroupId, (m.get(b.sharedBlockGroupId) ?? 0) + 1)
+    }
+    return m
+  }, [blocks])
+  const jobTitleByJobId = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const b of blocks) {
+      m.set(b.jobId, `${effectiveJobLedgerNumber(b.hcpNumber, b.clickNumber) || '—'} · ${b.jobName}`)
+    }
+    return m
+  }, [blocks])
 
   const goToday = () => {
     setSelectedYmd(todayYmd)
@@ -537,29 +576,79 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                       {detailsColumn}
                       {assigneeColumn}
                     </button>
+                    {b.sharedBlockGroupId ? (
+                      <button
+                        type="button"
+                        onClick={() => setCrewGroupId(b.sharedBlockGroupId)}
+                        aria-label={`Linked crew of ${crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1} — view and manage`}
+                        title="Linked crew — view and manage"
+                        style={{
+                          alignSelf: 'center',
+                          flexShrink: 0,
+                          margin: '0 0.6rem 0 0',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          border: '1px solid #2563eb',
+                          borderRadius: 999,
+                          background: 'var(--surface)',
+                          color: 'var(--text-blue-700)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ⛓ {crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1}
+                      </button>
+                    ) : null}
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
-                    aria-label={`Open job detail for ${num} · ${b.jobName}`}
-                    style={{
-                      display: 'flex',
-                      width: '100%',
-                      alignItems: 'flex-start',
-                      gap: '0.75rem',
-                      padding: '0.7rem 0.75rem',
-                      border: 'none',
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      minWidth: 0,
-                    }}
-                  >
-                    {timeColumn}
-                    {detailsColumn}
-                    {assigneeColumn}
-                  </button>
+                  <div style={{ display: 'flex', width: '100%', alignItems: 'stretch', background: 'var(--surface)' }}>
+                    <button
+                      type="button"
+                      onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
+                      aria-label={`Open job detail for ${num} · ${b.jobName}`}
+                      style={{
+                        display: 'flex',
+                        flex: 1,
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        padding: '0.7rem 0.75rem',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        minWidth: 0,
+                      }}
+                    >
+                      {timeColumn}
+                      {detailsColumn}
+                      {assigneeColumn}
+                    </button>
+                    {b.sharedBlockGroupId ? (
+                      <button
+                        type="button"
+                        onClick={() => setCrewGroupId(b.sharedBlockGroupId)}
+                        aria-label={`Linked crew of ${crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1} — view`}
+                        title="Linked crew — view"
+                        style={{
+                          alignSelf: 'center',
+                          flexShrink: 0,
+                          margin: '0 0.6rem 0 0',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          border: '1px solid #2563eb',
+                          borderRadius: 999,
+                          background: 'var(--surface)',
+                          color: 'var(--text-blue-700)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ⛓ {crewCountByGroupId.get(b.sharedBlockGroupId) ?? 1}
+                      </button>
+                    ) : null}
+                  </div>
                 )}
               </li>
             )
@@ -592,6 +681,15 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           +
         </button>
       ) : null}
+      <LinkedScheduleGroupModal
+        open={crewGroupId != null}
+        onClose={() => setCrewGroupId(null)}
+        groupId={crewGroupId}
+        getJobDisplayTitle={(jobId) => jobTitleByJobId.get(jobId) ?? 'Job'}
+        canManage={canEditBlocks}
+        addPeople={crewRoster}
+        onChanged={() => void loadDay(selectedYmd)}
+      />
       {canQuickAssign ? (
         <QuickAssignSheet
           open={quickAssignOpen}
