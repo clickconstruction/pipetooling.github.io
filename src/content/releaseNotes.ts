@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1366',
+    date: '2026-08-03',
+    title: 'Assign work: slide the time',
+    kind: 'feature',
+    highlights: [
+      'The Assign work sheet now has the same two-dot time bar as the other scheduling windows — drag the dots between 6 AM and 8 PM and the times update everywhere, including the Schedule button.',
+    ],
+  },
+  {
     version: 'v2.1365',
     date: '2026-08-03',
     title: 'Bid Board: project name first',
