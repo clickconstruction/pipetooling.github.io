@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1392)
+last_updated: 2026-08-04 (v2.1393)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1393)
+
+### Other-jobs materials exclude duplicate-marked Mercury transactions (2026-08-04)
+Completes the v2.1317 fix: [`fetchOtherJobsPartsByDay`](../src/lib/fetchOverheadOfficePartsByDay.ts) — the sibling function in the same file feeding the "other jobs" materials figures — had the identical Mercury-allocations `!inner` join **without** the `.is('mercury_transactions.duplicate_of_transaction_id', null)` filter, so allocations belonging to duplicate-marked transactions still counted into its by-day totals. Same one-line filter applied; supply-invoice and tally sources unaffected (duplicates are a Mercury-ledger concept). Regression test mirrors the v2.1317 one on the other-jobs path (the colocated suite's mock builder already honors PostgREST embed `.is(..., null)` filters).
 
 ## Latest Updates (v2.1392)
 

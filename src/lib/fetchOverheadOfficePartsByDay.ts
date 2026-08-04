@@ -268,6 +268,7 @@ export async function fetchOtherJobsPartsByDay(args: {
           .select(MERCURY_ALLOC_SELECT)
           .gte('mercury_transactions.posted_at', lowIso)
           .lt('mercury_transactions.posted_at', highIso)
+          .is('mercury_transactions.duplicate_of_transaction_id', null)
         if (officeJobLedgerId) q = q.neq('job_id', officeJobLedgerId)
         return q
           .order('created_at', { ascending: true })
