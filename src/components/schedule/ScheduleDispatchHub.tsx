@@ -162,6 +162,26 @@ function HubJobsPanel({
 
   const [search, setSearch] = useState('')
   const [onlyWithBlocks, setOnlyWithBlocks] = useState(true)
+  // Phone (v2.1360): search behind a magnifier toggle; the two checkboxes move into a View menu.
+  const jobsIsMobile = useIsMobile()
+  const [mobileJobsSearchOpen, setMobileJobsSearchOpen] = useState(false)
+  const [jobsViewMenuOpen, setJobsViewMenuOpen] = useState(false)
+  const jobsViewMenuRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!jobsViewMenuOpen) return
+    const onDown = (e: globalThis.MouseEvent) => {
+      if (jobsViewMenuRef.current && !jobsViewMenuRef.current.contains(e.target as Node)) setJobsViewMenuOpen(false)
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setJobsViewMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [jobsViewMenuOpen])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -191,6 +211,111 @@ function HubJobsPanel({
         </p>
       ) : null}
 
+      {jobsIsMobile ? (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <button
+              type="button"
+              onClick={() => setMobileJobsSearchOpen((o) => !o)}
+              title="Search HCP or job name"
+              aria-label="Search HCP or job name"
+              aria-expanded={mobileJobsSearchOpen}
+              style={{
+                ...hubPeopleToolbarIconBtn,
+                ...(mobileJobsSearchOpen || search.trim() !== ''
+                  ? { borderColor: '#2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+                  : { borderColor: 'var(--border-strong)', color: 'var(--text-700)' }),
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="14" height="14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+                <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4 457.4 502.6 330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+              </svg>
+            </button>
+            <div ref={jobsViewMenuRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                aria-haspopup="true"
+                aria-expanded={jobsViewMenuOpen}
+                aria-label="View options: only jobs with blocks, hide weekend"
+                onClick={() => setJobsViewMenuOpen((o) => !o)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0.35rem 0.6rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  background: jobsViewMenuOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color: 'var(--text-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                View
+                <span aria-hidden style={{ fontSize: '0.65rem' }}>{jobsViewMenuOpen ? '▲' : '▼'}</span>
+              </button>
+              {jobsViewMenuOpen ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    zIndex: 60,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    padding: '0.6rem 0.85rem',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 6,
+                    boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={onlyWithBlocks} onChange={(e) => setOnlyWithBlocks(e.target.checked)} />
+                    Only jobs with blocks this week
+                  </label>
+                  <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={hideWeekend}
+                      onChange={(e) => onHideWeekendChange(e.target.checked)}
+                      aria-label="Hide Saturday and Sunday columns"
+                    />
+                    Hide weekend
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {mobileJobsSearchOpen ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem' }}>
+              <input
+                type="search"
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search HCP or job name"
+                aria-label="Search HCP or job name"
+                style={{ flex: 1, minWidth: 0, padding: '0.4rem 0.5rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('')
+                  setMobileJobsSearchOpen(false)
+                }}
+                title="Clear search and close"
+                aria-label="Clear search and close"
+                style={{ ...hubPeopleToolbarIconBtn, borderColor: 'var(--border-strong)', color: 'var(--text-700)' }}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
         <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
@@ -216,6 +341,7 @@ function HubJobsPanel({
           Hide weekend
         </label>
       </div>
+      )}
 
       {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : null}
 
