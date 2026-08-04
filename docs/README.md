@@ -65,6 +65,7 @@
 | [`runbooks/AGENT_APP_CRASH_INVESTIGATION.md`](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) | Ordered checklist for "why did the app crash" (503s, timeouts). |
 | [`runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) | Deep Supabase incident inspection (CLI + Dashboard logs). |
 | [`E2E_SMOKE.md`](./E2E_SMOKE.md) | Playwright Tier-1 smoke suite: coverage, auth, extension rules (read-only, structural, non-gating). |
+| [`SESSIONS.md`](./SESSIONS.md) | Advisory parallel-session ledger: claim `v2.NNN`/migrations (`npm run claim`), session cards, `npm run sessions` board. |
 | [`REMOTE_SCHEMA_INSPECTION.md`](./REMOTE_SCHEMA_INSPECTION.md) | Obsolete incident snapshot; kept for its generic schema-inspection queries only. |
 | `../src/content/help/*.md` | User-facing help guides (ship with features — see `../CLAUDE.md`). |
 
@@ -75,4 +76,4 @@
 - Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-08-02
+last_updated: 2026-08-03

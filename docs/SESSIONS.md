@@ -1,0 +1,74 @@
+# Parallel-session coordination (advisory ledger)
+
+---
+file: docs/SESSIONS.md
+type: Process / Tooling
+purpose: How concurrent Claude sessions (and humans) coordinate version numbers, migrations, and surfaces through the gitignored .claude/sessions/ ledger — claim scripts, session cards, staleness rules.
+audience: AI agents, developers
+last_updated: 2026-08-03
+---
+
+## The problem this solves
+
+Every PR bumps the same two files (`docs/RECENT_FEATURES.md` + `src/content/releaseNotes.ts`), so two sessions working at once race for the next `v2.NNN`: renumber cascades mid-rebase, drift-test failures, and commit titles on `main` that permanently disagree with the file contents (it happened three PRs in a row on 2026-08-03). Migration timestamps have collided the same way.
+
+**The fix is a shared ledger outside git.** All local sessions run on one machine against one repo, so claims live in the MAIN checkout's gitignored **`.claude/sessions/`** — visible to every session instantly, no commits, no merges, no conflicts on the ledger itself. Worktrees resolve to the same directory automatically (`git rev-parse --git-common-dir`).
+
+**Advisory, not enforced.** Nothing breaks if a session ignores the ledger — you just fall back to today's race. Claims fix the *renumbering*; the rebase conflict in the two docs files still happens under concurrency, but resolving it becomes mechanical: stack your already-correct entry above theirs, done.
+
+## Quickstart for a session shipping a PR
+
+1. **Claim your version** right before writing docs entries (not at branch time):
+
+   ```bash
+   npm run claim
+   ```
+
+   Prints and reserves the next free `v2.NNN` (atomic file creation — two sessions can never win the same number). Use that number in `RECENT_FEATURES.md` + `releaseNotes.ts` and your commit/PR title. Add a hint: `npm run claim -- dispatch schedule editing`.
+
+2. **Creating a migration?** Register the filename so parallel sessions dodge your stamp:
+
+   ```bash
+   npm run claim -- --migration supabase/migrations/<version>_<slug>.sql
+   ```
+
+   Errors if another session (or main) already holds that version — pick a later stamp.
+
+3. **Drop a session card** when starting a work stream: `.claude/sessions/active/<branch-slug>.md` (template below). Update it if your scope changes; delete it when your PR merges.
+
+4. **Before reworking a hot surface** (Bids, Jobs, Settings, the docs heads), skim the other cards:
+
+   ```bash
+   npm run sessions
+   ```
+
+   Version claims prevent number races, but only cards prevent two sessions redesigning the same component simultaneously.
+
+## What the scripts do
+
+- `npm run claim` — fetches `origin/main`, reads the TRUE newest version **from the file contents** (never trust commit titles — rebases leave them stale), sweeps claims already merged onto main, then claims `max(main, outstanding) + 1` by creating `.claude/sessions/claims/v2.NNNN.json` with the `wx` flag (loser of a simultaneous race auto-retries with the next number).
+- `npm run claim -- --release v2.NNN` — give a number back (abandoned work). Merged claims release themselves; you rarely need this.
+- `npm run sessions` — the at-a-glance board: main's newest version, outstanding claims, active session cards, staleness flags.
+
+## Staleness rules (advisory)
+
+- A claim **at or below** main's newest version auto-releases on the next `npm run claim` — its number is burned either way. **A released claim is NOT proof your PR merged**: another session's PR can take the same number while yours sits open (it happened to the PR that shipped this very ledger). Merge status comes from `gh pr view <n>` or finding your files on main — never from the ledger. In particular, never `git rebase --skip` a commit as "already merged" without `git ls-tree origin/main <one-of-its-files>` first.
+- A claim outstanding **>24h** is flagged STALE — if no open PR references it, treat the number as free (release it with `--release`).
+- A session card untouched **>3 days** is flagged — probably a finished session that forgot to clean up; delete it.
+- Claim numbers may merge out of order (a later claim's PR can land first). That's fine — entries in the docs files stay newest-version-first regardless of merge order, and the drift test only pins the newest heading to the newest release note.
+
+## Session card template
+
+```markdown
+# <branch-name>
+- **Working on:** one line — surface + goal
+- **Claimed:** v2.NNNN (and migration versions, if any)
+- **Touching:** files/surfaces where collisions would hurt
+- **Started:** YYYY-MM-DD
+```
+
+## Limitations
+
+- **Local sessions only.** A cloud session (claude.ai/code) doesn't share this filesystem. Fallback there: open a draft PR early with the claimed version in its title, and check `gh pr list` before picking a number.
+- **Humans race too.** The scripts work the same from a human shell — same ledger.
+- The pure allocation/parsing logic lives in [`src/lib/sessionClaims.ts`](../src/lib/sessionClaims.ts) (unit-tested); the scripts ([`claim-version.ts`](../scripts/claim-version.ts), [`sessions-status.ts`](../scripts/sessions-status.ts)) are thin IO run via `vite-node`.
