@@ -42,6 +42,21 @@ Opening a row marks its notes read, so the red badge clears. Press **Escape** or
 Tap **Pending** in the jump strip, scan the Due chips for red **(+N)** counts, then click the worst row — the dropdown shows when it was due, the last contact, and every note in one place.
 :::
 
+## Customer review — who are we really working for?
+
+{{button:outline|Customer review}} in the tools row opens a table of every customer across all trades: their bid counts by section (Unsent / Pending / Won / Started / Lost) and the team's reported clock hours — **Estimating hrs** (clocked to their bids), **Job hrs** (clocked to their jobs), and the total. Customers are ranked by total hours.
+
+Click any customer row to drill in:
+
+- **Top contributors** — who logged the hours, ranked, with each person's share and a split bar showing estimating (orange) vs job (blue) time.
+- **Hours by bid & job** — every bid and job that collected hours, biggest first. Tap one to expand the individual clock sessions: day, person, clock-in – clock-out, hours.
+
+Press **Escape** to step back to the customer list, and again to close.
+
+:::example see who carried a big account
+Open **Customer review**, click the top customer, and the contributors panel shows at a glance whether the hours came from estimating or the field — and who did the work.
+:::
+
 ## Deciding whether to bid at all
 
 The go/no-go evaluation checklist (location, payment terms, bid documents, competition…) lives in the bid form: open **New Bid** or a bid's **Edit** form and tap the {{button:outline-blue|Go/no-go}} pill beside the title. It used to be the "Checklist" button on this board.
