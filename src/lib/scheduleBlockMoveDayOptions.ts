@@ -1,10 +1,12 @@
 /**
  * Day options for the "Move day" row in the Edit schedule block modal.
  *
- * Back-dating is the awkward direction on a phone (Dispatch Mode has no
- * drag-and-drop, so the modal is the only way to move a block off its day).
- * The chips cover the block's own day plus the three before it; anything else
- * goes through the date input beside them.
+ * Dispatch Mode has no drag-and-drop, so the modal is the only way to move a
+ * block off its day. The common moves are "push it to tomorrow / the day
+ * after" and "back-date yesterday's visit", so the chips cover one day back
+ * through two days forward around the block's own day (owner call, v2.1379 —
+ * the first cut was three days back); anything else goes through the date
+ * input beside them.
  */
 
 import {
@@ -14,7 +16,10 @@ import {
 } from './jobScheduleChicago'
 
 /** How many days back the one-tap chips reach. */
-export const SCHEDULE_MOVE_DAY_BACK_COUNT = 3
+export const SCHEDULE_MOVE_DAY_BACK_COUNT = 1
+
+/** How many days forward the one-tap chips reach. */
+export const SCHEDULE_MOVE_DAY_FORWARD_COUNT = 2
 
 export type ScheduleMoveDayOption = {
   /** Target work_date, YYYY-MM-DD. */
@@ -47,17 +52,20 @@ function shortParts(dateKey: string): { weekdayShort: string; monthDayShort: str
 }
 
 /**
- * Chips for `workDate`, oldest first, ending on the block's own day.
+ * Chips for `workDate`, oldest first, spanning `backCount` days before the
+ * block's own day through `forwardCount` days after it.
  * Returns `[]` for an unparseable key so the caller renders no date row at all.
  */
 export function scheduleMoveDayOptions(
   workDate: string,
   backCount: number = SCHEDULE_MOVE_DAY_BACK_COUNT,
+  forwardCount: number = SCHEDULE_MOVE_DAY_FORWARD_COUNT,
 ): ScheduleMoveDayOption[] {
   if (!scheduleParseDateKeyLocal(workDate)) return []
   const back = Number.isFinite(backCount) && backCount > 0 ? Math.floor(backCount) : 0
+  const forward = Number.isFinite(forwardCount) && forwardCount > 0 ? Math.floor(forwardCount) : 0
   const out: ScheduleMoveDayOption[] = []
-  for (let delta = -back; delta <= 0; delta += 1) {
+  for (let delta = -back; delta <= forward; delta += 1) {
     const dateKey = delta === 0 ? workDate : scheduleDateKeyAddDays(workDate, delta)
     if (!dateKey) continue
     const parts = shortParts(dateKey)
