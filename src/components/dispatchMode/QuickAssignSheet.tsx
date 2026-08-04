@@ -648,28 +648,6 @@ export default function QuickAssignSheet({
                 </>
               )}
             </div>
-            {customOpen ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="time"
-                  value={customStart}
-                  step={900}
-                  aria-label="Start time"
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  style={{ padding: '0.3rem', fontSize: '0.875rem' }}
-                />
-                <span style={{ color: 'var(--text-muted)' }}>–</span>
-                <input
-                  type="time"
-                  value={customEnd}
-                  step={900}
-                  aria-label="End time"
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  style={{ padding: '0.3rem', fontSize: '0.875rem' }}
-                />
-              </div>
-            ) : null}
-
             {/* Two-dot range bar (6 AM–8 PM), mirroring the Add/Edit block modals.
                 Dragging a dot switches the window to Custom with that value, so the
                 bar, the chips, and the time inputs stay in sync. */}
@@ -711,7 +689,7 @@ export default function QuickAssignSheet({
               value={instructions}
               onChange={(e) => setInstructions(e.target.value.slice(0, 500))}
               rows={2}
-              placeholder="Job instructions (gate codes, scope, arrival details)…"
+              placeholder="Job instructions (gate codes, scope, arrival)…"
               aria-label="Job instructions"
               style={{
                 width: '100%',
@@ -765,11 +743,16 @@ export default function QuickAssignSheet({
                   cursor: canSchedule ? 'pointer' : 'not-allowed',
                 }}
               >
-                {saving
-                  ? 'Scheduling…'
-                  : effectiveWindow && selected.size > 0
-                    ? `Schedule ${selected.size} ${selected.size === 1 ? 'person' : 'people'} · ${windowLabel(effectiveWindow)}`
-                    : 'Pick people and a time'}
+                {saving ? (
+                  'Scheduling…'
+                ) : effectiveWindow && selected.size > 0 ? (
+                  <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.3 }}>
+                    <span>{`Schedule ${selected.size} ${selected.size === 1 ? 'person' : 'people'}`}</span>
+                    <span style={{ fontWeight: 500 }}>{windowLabel(effectiveWindow)}</span>
+                  </span>
+                ) : (
+                  'Pick people and a time'
+                )}
               </button>
             </div>
           </>

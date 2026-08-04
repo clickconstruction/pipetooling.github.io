@@ -38,6 +38,11 @@ What shipped: the **Account Man / Estimator** column became **Estimator / Accoun
 
 Process note: the shepherd that caused this also mis-parsed `v2.NNN` from a code comment and briefly retitled a PR "v2.1" (repaired before merge). Both failures argue for the `npm run claim` ledger (v2.1367) over ad-hoc renumbering — this entry's own number came from it. Client-only — no migration.
 
+## Latest Updates (v2.1369)
+
+### Quick Assign polish: slider-only times, two-line Schedule button (2026-08-03)
+Three owner tweaks on the v2.1366 slider ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx)): **(1)** the Custom `type="time"` input pair is removed — redundant now that the two-dot bar sets the window and the blue Schedule button echoes it (the Custom chip still toggles custom mode; the slider is its editor; effective granularity is the bar's 30-minute steps). **(2)** the Schedule button label becomes a deliberate two-line stack — "Schedule 1 person" over "9:00 AM–2:30 PM" — instead of wrapping mid-time. **(3)** the instructions placeholder drops its last word ("…scope, arrival)…"). Verified live: no time inputs, slider drives the window, button renders two lines. Client-only — no migration.
+
 ## Latest Updates (v2.1368)
 
 ### Bid Board: bid numbers read `b146`, not a bare `146` (2026-08-03)
