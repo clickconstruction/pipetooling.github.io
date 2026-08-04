@@ -44,6 +44,7 @@ export function ScheduleDispatchAddBlockModal({
   onChangeEnd,
   onChangeNote,
   onSave,
+  onRemove,
   addTimeline,
   newWorkDate,
   onChangeWorkDate,
@@ -63,6 +64,12 @@ export function ScheduleDispatchAddBlockModal({
   onChangeEnd: (v: string) => void
   onChangeNote: (v: string) => void
   onSave: () => void
+  /**
+   * Opt-in: pass a handler to render a "Remove" button bottom-left of the
+   * footer (edit mode only). The handler owns the whole removal flow —
+   * callers close this modal and open their delete-confirm modal.
+   */
+  onRemove?: () => void
   /**
    * Day currently picked in the "Move day" row. Only meaningful alongside
    * `onChangeWorkDate`; defaults to `workDate` (no move).
@@ -436,7 +443,27 @@ export function ScheduleDispatchAddBlockModal({
             style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.4rem', fontSize: '0.875rem' }}
           />
         </label>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: mode === 'edit' && onRemove ? 'space-between' : 'flex-end', alignItems: 'center' }}>
+          {mode === 'edit' && onRemove ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onRemove}
+              aria-label="Remove this block from the schedule"
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.875rem',
+                background: 'var(--surface)',
+                color: saving ? 'var(--text-muted)' : 'var(--text-red-700)',
+                border: '1px solid var(--border-red)',
+                borderRadius: 4,
+                cursor: saving ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Remove
+            </button>
+          ) : null}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             type="button"
             onClick={onClose}
@@ -466,6 +493,7 @@ export function ScheduleDispatchAddBlockModal({
                   : 'Save changes'
                 : 'Save'}
           </button>
+          </div>
         </div>
       </div>
     </div>

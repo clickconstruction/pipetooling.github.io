@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1380)
+last_updated: 2026-08-04 (v2.1381)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1381)
+
+### Edit schedule block: a Remove button (2026-08-04)
+Owner ask: take a block off the schedule from the same modal that edits it, instead of hunting for the grid's delete affordance (which Dispatch Mode — a phone surface — didn't have at all).
+
+**(1) Opt-in `onRemove` prop** on [`ScheduleDispatchAddBlockModal.tsx`](../src/components/schedule/ScheduleDispatchAddBlockModal.tsx) (the `onChangeWorkDate` pattern from v2.1377): edit mode + a handler renders a red-outline **Remove** button bottom-left of the footer (`aria-label` "Remove this block from the schedule"; disabled while saving; footer flips to `space-between` only when the button is present, so add mode and non-opted callers are byte-identical). The modal owns no deletion logic — the handler is the whole hand-off. Four render tests pin presence/absence/click/disabled.
+
+**(2) All three edit surfaces wire it.** [`ScheduleDispatchJobWeek.tsx`](../src/components/schedule/ScheduleDispatchJobWeek.tsx) and [`ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx) close the modal and hand the block id to their **existing** `requestDeleteBlock` → `RemoveScheduleBlockConfirmModal` → `deleteJobScheduleBlock` flow (gated on the same `canEdit`). [`DispatchModeSchedule.tsx`](../src/components/dispatchMode/DispatchModeSchedule.tsx) had no delete path, so it grew the same confirm-modal flow locally (`deleteBlockId`/`deleteBlockBusy`, "Removed from schedule." toast, `loadDay` refresh), gated on `canEditBlocks`. The two add-only call sites (Quickfill, user-review) pass nothing and are unchanged.
+
+**(3) Single-row semantics on purpose**: removing a block deletes just that row — a linked crew-mate's leg stays put (crew-wide removal remains the `LinkedScheduleGroupModal`'s job). Help guide (`dispatch-mode`) documents the button; client-only, no migration.
 
 ## Latest Updates (v2.1380)
 

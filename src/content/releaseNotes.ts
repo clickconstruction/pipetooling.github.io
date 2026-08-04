@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1381',
+    date: '2026-08-04',
+    title: 'Edit schedule block: Remove button',
+    kind: 'feature',
+    highlights: [
+      'The Edit schedule block window now has a Remove button in the bottom-left corner — take a block off the schedule right where you edit it, on the week grids and in Dispatch Mode.',
+      'A confirmation asks first, and only that one block is removed — a linked crew-mate\'s block stays put.',
+    ],
+  },
+  {
     version: 'v2.1380',
     date: '2026-08-04',
     title: 'Moneyfill access comes with the controller role',
