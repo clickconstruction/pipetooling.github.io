@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1364',
+    date: '2026-08-03',
+    title: 'People page: no more sideways scroll on phones',
+    kind: 'fix',
+    highlights: [
+      'On the People page, the search box and the "Team leads" / "Manage accounts" buttons were too wide to share one line on a phone, so every page could slide sideways. The buttons now drop to their own line and nothing runs past the edge.',
+      'Tablet and desktop are unchanged — the row still fits on one line there.',
+    ],
+  },
+  {
     version: 'v2.1363',
     date: '2026-08-03',
     title: 'Schedule Jobs grid: more days on screen',

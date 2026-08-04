@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1363)
+last_updated: 2026-08-03 (v2.1364)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1364)
+
+### Both red E2E smoke failures: the People users toolbar overflowed phones, and two Settings tabs had been renamed out from under their spec (2026-08-03)
+The post-deploy **E2E Smoke** workflow had been failing on every run for at least three deploys (runs 30860901114 / 30862137270 / 30863083568, shas 2d35278f → 3c435bb8). Non-gating, so nothing blocked — exactly the silent-red state [`E2E_SMOKE.md`](./E2E_SMOKE.md) rule 6 warns about. Two independent causes, both predating the v2.1357 header work.
+
+**1 — `/people` overflowed sideways at phone widths (real bug).** `no sideways overflow at 375px: /people` failed all 3 attempts with a 100px document overflow. Not the header: at 375px the nav is always the hamburger variant. The offender is the Users-tab toolbar in [`PeopleUsersTab.tsx`](../src/components/people/PeopleUsersTab.tsx) — a `display: flex` row with no `flex-wrap` holding a `flex: 1` search input plus the **Team leads** and **Manage accounts** buttons, both `white-space: nowrap`. `flex: 1` means `flex-basis: 0%`, but an `<input>`'s automatic `min-width` is its intrinsic size (~190px), so the row's min-content came to input + both buttons + gaps ≈ 440px and floored the whole document. Fix: `flexWrap: 'wrap'` on the row and `flex: '1 1 12rem'` + `minWidth: 0` on the input, so the buttons drop to a second line instead of panning the page. Measured live against prod at five widths — overflow went `+124/+69/+30/0/0` px at 320/375/414/768/1280 before, `0` at all five after, with the row height unchanged at 30px (single row) on tablet and desktop. Desktop layout is untouched: the input's grown width is identical either way once the row fits on one line.
+
+**2 — the Settings tabs spec pointed at two labels that no longer exist (stale spec).** `every dev-visible Settings tab renders its marker without page errors` timed out at ~90s on all 3 attempts. Nothing was erroring or hanging: `getSettingsJumpGroups` in [`Settings.tsx`](../src/pages/Settings.tsx) renames **Recent push → Notifications** and replaces **How it works** with **Guides**, and it gained **Email & notifications**, none of which the spec knew. Because a `.click()` with no action timeout waits out the whole test budget, a one-word rename read as a mystery timeout. [`e2e/settings-tabs.spec.ts`](../e2e/settings-tabs.spec.ts) now lists all twelve dev-visible tabs in render order with the two new ones covered (`Email & notifications` → "Payment received notifications", `Guides` → "How do I"), matches names with `exact: true`, and gives each click an explicit 15s timeout so the next rename names itself instead of eating the budget. The marker assertions also switch to `useInnerText: true`: inactive tabs stay mounted under `display: none`, and `toContainText` reads `textContent`, so *every* marker matched on *every* tab — the assertion was vacuous, which is what let both renames hide in the first place. All twelve markers were confirmed present in visible text against prod before tightening.
+
+Client + spec only — no migration.
 
 ## Latest Updates (v2.1363)
 
@@ -361,6 +372,7 @@ First code PR of the BidsTakeoffTab decomposition (per [`BIDS_TAKEOFF_TAB_ARCHIT
 
 ### Materials decomposition COMPLETE: PO Builder tab extracted (2026-08-02)
 The final move of the 12-PR Materials.tsx decomposition train (v2.1275–v2.1293, plus the version-less #974 smoke net). The PO Builder (`assemblies-po`) JSX (~960 lines) moves to [`components/materials/MaterialsPoBuilderTab.tsx`](../src/components/materials/MaterialsPoBuilderTab.tsx) as a pure JSX consumer (~85 props) of all three seams — it sat at the intersection of the assembly and PO engines, so every state atom and handler stays page-owned (most shared with Assembly Book, Purchase Orders, or the shared modals). The Template Form modal stays page-level (opened from 2 tabs + `?addAssembly=true`); `filteredDraftPOs` derivation moved with its only consumer. **End state: Materials.tsx 7,033 → 2,123 lines** — a pure orchestrator (role/service-type scope, URL router, 3 seam hooks, shared modals, 6 thin tab renders). All 16 preserve-quirks intact; behavior-preserving throughout. 388 files / 3,491 tests green (train added ~140 tests).
+
 ## Latest Updates (v2.1292)
 
 ### People Teams tab removed — Team leads modal is the single surface (2026-08-02)
@@ -410,6 +422,7 @@ The `team_leader_assignments` manager (leader→member links driving Dashboard *
 
 ### People Overhead correctness: paging, invoice window, dual-rate wages, symmetric internal transfers, pay gate (2026-08-02)
 Five fixes from the Overhead deep-dive audit, in [`PeopleOverheadTab.tsx`](../src/components/people/PeopleOverheadTab.tsx) + kernels. **(1) Paging**: every query now uses `fetchAllRows`/server-side date predicates (`mercury_transactions!inner` on `posted_at`, `supply_house_invoices!inner` on `invoice_date`, paged tally RPC, paged 90-day session/invoice scans) — previously the field-materials query had NO date filter and truncated at PostgREST's 1,000 oldest rows, silently dropping current-week field materials and **inflating Overhead % everywhere** (the v2.976/v2.1246 incident class). **(2)** The per-$100-revenue KPI ports the v2.1249 Review-tab fix (fetch a day wide both sides, re-bucket in Chicago) — evening invoices no longer fall out of the window. **(3) Dual-rate wages**: the wage lookup returns `{fieldWage, officeWage}` gated by payroll's `shouldUseDualRate`; office+bid sessions price at the office rate, matching Pay Reports exactly; `PeopleReviewTab` feeds the same kernel so both tabs agree. **(4) Internal transfers** are excluded from ALL materials totals symmetrically (office + field, table + % + KPIs + modals, shared "(not counted in Materials)" treatment) — previously only the field-side modal excluded them, so numerator and denominator used different rules. **(5)** `canAccessOverheadTab` now requires payroll access for masters (`canAccessPay`) — a non-pay-approved master used to see a silently-zero tab (RLS filtered the data underneath). Docs: ACCESS_CONTROL overhead row → "If Pay Approved"; PEOPLE_CONTRACTS_OVERHEAD quirk 15 rewritten. 379 files / 3,425 tests green. Controllers remain without access (follow-up question).
+
 ## Latest Updates (v2.1282)
 
 ### Materials decomposition: parts-catalog seam (useMaterialsCatalog) (2026-08-02)
@@ -449,6 +462,7 @@ Second Stage-A PR of the Materials.tsx decomposition. **(1)** The recursive `cal
 
 ### Materials decomposition Stage A: loadPOItemsWithDetails kernel (2026-08-02)
 First code PR of the Materials.tsx decomposition (per [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) + [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md); the render-smoke safety net landed version-less in PR #974). The `purchase_order_items` join (`*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)` + `sequence_order` ordering) and its `itemsWithDetails` mapping were copy-pasted at **12 call sites** in [`Materials.tsx`](../src/pages/Materials.tsx); they now all call `loadPOItemsWithDetails()` in new [`lib/materials/poItemDetails.ts`](../src/lib/materials/poItemDetails.ts) (+9 tests). The helper returns `null` on query error so every call site keeps its distinct pre-extraction fallback (`?? []` vs skip-the-update gate); the mapping keeps the raw join keys via spread, exactly as before. `POItemWithDetails` / `PurchaseOrderWithItems` types moved to the lib (Materials re-imports them). Materials.tsx 7,033 → 6,884 lines. Behavior-preserving only — no UX, schema, or query-shape change. Typecheck/lint clean; 372 files / 3,376 tests green (incl. the new Materials render smokes).
+
 ## Latest Updates (v2.1274)
 
 ### Projects card rail reordered — most-used first (2026-08-02)
@@ -703,6 +717,7 @@ The v2.1211 sub own-row policy on `people_labor_jobs` queried `people_labor_job_
 
 ### Guides move into Settings, with a "see what they see" role lens (2026-08-01)
 Per user request. **(1)** The `/help` "How do I…" browser is extracted verbatim to [`GuideBrowser.tsx`](../src/components/GuideBrowser.tsx) and mounted as a new **Settings → Guides** tab for **every role** (the Settings tab list is role-built, but this entry is unconditional — subs/helpers/primaries reach Settings from their allowlist, so guides are now one tap from anywhere). `/help` becomes a thin wrapper; every `?g=<slug>` deep link keeps working on both surfaces. The tab mounts only while active so its URL param and search autofocus stay inert elsewhere. **(2)** New **role lens**: supervising roles get "Viewing guides for:" chips — Everything plus every role *below* them on the supervision ladder — that re-filter the list exactly as that role sees it, with a banner naming the role ("Showing the guides a Sub sees on their Help page"). Pure kernel [`roleGuideLens.ts`](../src/lib/roleGuideLens.ts) (`guideLensRolesFor` ranks dev > master > controller > assistant > superintendent > estimator/primary > sub/helper; only superintendent-and-above get a lens; `guideLensRoleLabel` gives spoken names — `displayLabelForUserRole` deliberately keeps legacy dropdown formatting like "Master_technician"). 4 tests. Verified live: 61 guides for a dev, 14 through the Sub lens, 17 through Superintendent. Client-only.
+
 ## Latest Updates (v2.1223)
 
 ### Edit Job billing area: segment invoices bill the remaining; ①/②/③ compaction (2026-08-01)
@@ -742,6 +757,7 @@ RUN_SUBS_PLAN **Phase 4** (approved from the "Sub Dispatch" mockups), PR 4.1 —
 
 ### Stages: GC and development split by spacing, not a dot (2026-08-01)
 Per user direction. The shared GC/development row on Stages job cards ([`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) `renderJobCustomerLine`) drops the `·` separator between the hard-hat GC and the house-icon development — the icons already make the pair scannable, so the glyph was noise. The row's gap widens 0.3rem → 0.6rem so the two facts still read as separate (inner icon-to-name gaps stay 0.3rem). Verified live on the Gun Dog + DSI row. Client-only.
+
 ## Latest Updates (v2.1214)
 
 ### People → Subs: the sub relationship in one row (2026-08-01)
@@ -1287,6 +1303,7 @@ Migration [`20260730160048_revoke_stripe_webhook_rpc_public_grants.sql`](../supa
 
 ### Paid-in-full email: Cost & payment timeline (2026-07-30)
 [`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts) (**redeploy required**, after the v2.1106 `db push`): the detailed variant's "Month by month" table becomes a **Cost & payment timeline** — the Edit Job Cost Timeline retold email-safe (table-cell bars; no SVG, which Gmail/Outlook strip). Month header rows carry a center-$0 running-net bar (payments − costs, dated events only, widths scaled to max |running net|); beneath each month its events with source icons, payments green-tinted. Team labor folds to one row per person per week (`weekStartKey`); each month keeps its ~6 largest rows and folds the rest into a reconciling "…and N smaller charges" line — **capping trims rows, never bars**. Undated events go to a barless "No date" group; "Job end" = payments − all costs (ties to the scoreboard). Scoreboard gains the three v4 cost rows (supply house / tally / other, rendered only when present) and its Costs total spans all six streams. Falls back to the old monthly table on a pre-v4 payload. Verified via a bundled-renderer smoke test (10 structural assertions) + sample HTML review. Help guide + EDGE_FUNCTIONS.md updated. Deploy: `supabase functions deploy paid-job-email` after the v2.1106 push.
+
 ## Latest Updates (v2.1106)
 
 ### Paid-email payload v4: charge events for the email cost timeline (migration only) (2026-07-30)
@@ -1306,6 +1323,7 @@ Companion to v2.1100 (Edit Job): [`DetailJobModal`](../src/components/jobs/Detai
 
 ### Paid-in-full email is status-aware + shows line items (2026-07-29)
 [`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts) (**redeploy required**) now derives a payment state from payload v3 (`job.status` + `money.payments_total` vs `revenue`; migration `20260730031702`, v2.1102): green **PAID IN FULL** only when actually paid; amber **"$X (Y%) OF $Z PAID"** when partial (subject → `Payment progress — …`, paid line → "Last payment …"); gray **NOT PAID** at zero — so ad-hoc sends/previews on unpaid jobs are progress emails, not false claims (per policy, the full progress line incl. job total shows in BOTH variants). New **Line items** section under the banner in both variants (fixtures + per-item invoice-status chip PAID/BILLED/DRAFT/UNBILLED via `jobs_ledger_fixtures.invoice_id`): detailed with amounts, summary names+status only. "Paid <date>" header line and footer text are paid-only now (`paid_at` is `now()`-stamped). Every new key is guarded, so the renderer works against a pre-v3 payload in either deploy order; a payload without `job.status` renders exactly as before. Client: the Bill-modal's not-paid warning becomes an informative note ("shows its payment progress"). `EDGE_FUNCTIONS.md` + help guide updated. Deploy: `supabase db push` (v2.1102) then `supabase functions deploy paid-job-email`.
+
 ## Latest Updates (v2.1102)
 
 ### Paid-email payload v3: job status + line items (migration only) (2026-07-29)
@@ -1320,6 +1338,7 @@ Two follow-ups to v2.1099 from live use: the modal panel now has a real `height:
 
 ### Edit Job: Escape key closes the modal (2026-07-29)
 [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) closes on **Escape** through the same guarded `closeForm()` as a backdrop click (autosave flush + close-time side effects, 15s timeout, Retry/Keep-editing/Close-without-saving on failure). A window keydown listener is gated by `escCloseBlocked` — the OR of every nested-overlay shell flag (bid/import/project link choices, create-customer, segment generator, Stripe fixture preview, bill view, agreed write-down, bill-to editor) **plus** new `bannerOverlayOpen`, reported by [`JobFormSourceEstimateBanner`](../src/components/jobs/JobFormSourceEstimateBanner.tsx)'s new `onOverlayOpenChange` prop (its acceptance-record modal is child-owned and already closes itself on Esc) — so Esc never closes the form underneath a stacked modal. The listener also skips `defaultPrevented` events and calls through a `closeFormRef` to stay on the current render's closure. Help guide `edit-job-autosave.md` + JOB_FORM_MODAL_ARCHITECTURE close-path note updated. Client-only.
+
 ## Latest Updates (v2.1099)
 
 ### Job Detail: paid-in-full email is now preview-first (2026-07-29)
@@ -3073,10 +3092,12 @@ Editing a job from the Edit Job modal now posts a single consolidated **"Job upd
 
 ### Dark mode — Dispatch modal fix + modal border sweep (2026-07-19)
 Fixed the **Send a task to Dispatch** modal, which rendered a near-white card in dark mode: its `#fefdfb` card, `#e2e8f0` borders, and `white`/`#eff6ff` search rows were raw light literals the theme codemod didn't know, so they slipped past CI. Tokenized them (`var(--surface)` / `var(--border)` / `var(--bg-blue-tint)`). Then closed the gap app-wide: taught `scripts/theme-tokenize.mjs` three more literals — `#fefdfb`→surface, `#e2e8f0`→border, `#cbd5e1`→border-strong (slate-200/300 borders consolidated onto the gray-200/300 border tokens; the light shift is a few units, imperceptible on a border) — and ran the codemod, tokenizing **~29 files** of modal/panel borders so they get proper dark values instead of staying light. CI's `theme-tokenize --check` now guards all three going forward. (Remaining dark-mode long-tail — multi-line-ternary color escapes and rarer stray hexes — is a follow-up; the common modal offenders are covered.)
+
 ## Latest Updates (v2.748)
 
 ### Jobs Stages — address opens Maps, and a Dispatch bell on each job (2026-07-19)
 Two tweaks to the Stages job cards. (1) The red **map-pin** button is gone from the Last-activity icon stack; instead the **job address itself** (in the Job column) is now the Google-Maps link — same `https://www.google.com/maps/search/?api=1&query=…` URL, and its look is unchanged (muted, no underline; `color: inherit` + `text-decoration: none`). Helper `googleMapsSearchUrl()` in `src/lib/jobs/jobAddressUrls.ts` (+ tests). (2) A **Dispatch bell** (the same service-bell icon as the header Task Dispatch button) now sits in the icon stack **between the call button and the "send job as a task" button**, gated by `showTaskDispatchButton(role)`. Clicking it opens the existing `DispatchTaskModal` **pre-filled with that job as the reference** — the user types the note and hits Send. `DispatchTaskModalContext.openDispatchModal` now takes an optional `{ reference, titleSeed }` preset. (Note: the purple airplane "send job as a task" opens the checklist modal — a different flow — and is unchanged.)
+
 ## Latest Updates (v2.747)
 
 ### Jobs Stages — drag a slider to set a job's % complete (2026-07-19)

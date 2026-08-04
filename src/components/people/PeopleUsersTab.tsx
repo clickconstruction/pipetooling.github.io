@@ -516,7 +516,10 @@ export function PeopleUsersTab({
   return (
     <>
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-      <div style={{ marginBottom: '1.25rem', width: '100%', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      {/* Wraps on phones: the search box plus both nowrap buttons need ~440px of
+          min-content, which floored the whole page at 375px (E2E phone-overflow
+          smoke). Wrapping keeps the one-row desktop layout untouched. */}
+      <div style={{ marginBottom: '1.25rem', width: '100%', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <input
           type="search"
           value={usersTabSearch}
@@ -524,7 +527,10 @@ export function PeopleUsersTab({
           placeholder="Search by name, email, phone…"
           aria-label="Search people on Users tab"
           style={{
-            flex: 1,
+            // minWidth 0 defeats the input's intrinsic min-content floor, so it
+            // shrinks instead of pushing the row wider than the viewport.
+            flex: '1 1 12rem',
+            minWidth: 0,
             padding: '0.3rem 0.65rem',
             fontSize: '0.875rem',
             lineHeight: 1.35,
