@@ -126,10 +126,10 @@ type JobFormPaymentsTableProps = {
 /**
  * The ③ "Payments received" table in the Edit-Job billing section — one row per
  * payment (date + amount + memo sub-row), with Stripe- and Mercury-locked rows
- * read-only, an inline add (+) on the last unlocked row, per-row remove/unlink,
- * and the Phase-2b "Applies to" invoice selector on manual rows. Extracted
- * verbatim from JobFormModal; self-sources auth/toast, takes the job + payments +
- * the row mutators and a couple of setters as props.
+ * read-only, per-row remove/unlink, a centered add (+) below the table while a
+ * manual line is open, and the Phase-2b "Applies to" invoice selector on manual
+ * rows. Extracted verbatim from JobFormModal; self-sources auth/toast, takes the
+ * job + payments + the row mutators and a couple of setters as props.
  */
 export function JobFormPaymentsTable({
   editing,
@@ -226,17 +226,7 @@ export function JobFormPaymentsTable({
         {/* No header band (v2.1223) — the date picker and the $-prefixed amount
             group self-label, matching the ① Line Items input groups. */}
         <tbody>
-          {(() => {
-            // Last non–Stripe-locked row hosts the add (+) control. If all rows are Stripe-backed (-1), there is no inline +.
-            let lastUnlockedPaymentIdx = -1
-            for (let i = visiblePayments.length - 1; i >= 0; i--) {
-              const pr = visiblePayments[i]
-              if (pr && !stripeBillInvoiceForPaymentRow(pr, editing) && !mercuryLinkedPaymentRow(pr)) {
-                lastUnlockedPaymentIdx = i
-                break
-              }
-            }
-            return visiblePayments.map((row, idx) => {
+          {visiblePayments.map((row, idx) => {
             const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
             const mercuryPaymentLocked = mercuryLinkedPaymentRow(row)
             const payRowCanRemove =
@@ -510,70 +500,7 @@ export function JobFormPaymentsTable({
                       >
                         {unlinkingMercuryPaymentId === row.id ? 'Removing…' : 'Unlink and remove'}
                       </button>
-                    ) : mercuryPaymentLocked ? null : idx === lastUnlockedPaymentIdx ? (
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          gap: '0.35rem',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <PaymentDetailsToggle
-                          open={detailsOpen}
-                          onToggle={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: !detailsOpen }))}
-                          controlsId={`edit-job-payment-details-${row.id}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setManualEntryOpen(true)
-                            addPaymentRow()
-                          }}
-                          title="Add payment line"
-                          aria-label="Add payment line"
-                          style={{
-                            padding: '0.35rem 0.5rem',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            lineHeight: 1,
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minWidth: '1.75rem',
-                          }}
-                        >
-                          +
-                        </button>
-                        {payRowCanRemove ? (
-                          <button
-                            type="button"
-                            onClick={() => requestRemovePaymentRow(row)}
-                            title="Remove"
-                            aria-label="Remove payment row"
-                            style={{
-                              padding: '0.35rem',
-                              background: 'transparent',
-                              color: '#991b1c',
-                              border: 'none',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : (
+                    ) : mercuryPaymentLocked ? null : (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                         <PaymentDetailsToggle
                           open={detailsOpen}
@@ -786,11 +713,37 @@ export function JobFormPaymentsTable({
                 ) : null}
               </Fragment>
             )
-          })
-          })()}
+          })}
         </tbody>
       </table>
       </div>
+      )}
+      {manualEntryOpen && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={addPaymentRow}
+            title="Add payment line"
+            aria-label="Add payment line"
+            style={{
+              padding: '0.35rem 0.5rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              lineHeight: 1,
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '1.75rem',
+            }}
+          >
+            +
+          </button>
+        </div>
       )}
       {!manualEntryOpen && (
         <div

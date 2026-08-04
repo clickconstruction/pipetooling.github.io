@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1396',
+    date: '2026-08-04',
+    title: 'Edit Job: the + for another payment line moved below the list',
+    kind: 'feature',
+    highlights: [
+      'In ③ Payments received, the blue + used to sit inside the payment row between the pencil and the trash icon — it looked like it belonged to that row. It now sits centered below the payment lines, making it clear it adds a new line.',
+      'Nothing else changed: the pencil still opens a row\'s details and the trash still removes it.',
+    ],
+  },
+  {
     version: 'v2.1395',
     date: '2026-08-04',
     title: 'Takeoffs: "Save & add" on a part line actually adds the part now',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1395)
+last_updated: 2026-08-04 (v2.1396)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1396)
+
+### Edit Job payments: add (+) moves below the line (2026-08-04)
+Owner report: in ③ Payments received the blue **+** sat inside the last row's action cluster, wedged between the pencil and the trash icon — easy to misread as acting on *that* row rather than adding a new one. Fix in [`JobFormPaymentsTable.tsx`](../src/components/jobs/JobFormPaymentsTable.tsx): the inline + is gone; while manual entry is open, a centered blue **+** renders below the table (same spot the "+ Record non-Stripe payment received" pill occupies when entry is closed, so the add affordance always lives centered under the lines). The last-unlocked-row special case existed only to host that button, so `lastUnlockedPaymentIdx` and its branch collapse away — every unlocked row now renders the same pencil + trash cluster (the last row previously *hidden* trash when un-removable now shows the standard disabled trash, matching the other rows). New render tests ([`JobFormPaymentsTable.render.test.tsx`](../src/components/jobs/JobFormPaymentsTable.render.test.tsx)) pin the placement contract: pill when closed, centered + (outside the `<table>`) when open, click adds a row. Client-only.
 
 ## Latest Updates (v2.1395)
 
