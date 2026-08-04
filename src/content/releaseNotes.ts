@@ -22,6 +22,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1370',
+    date: '2026-08-03',
+    title: 'Bid Board: the estimator stands out',
+    kind: 'feature',
+    highlights: [
+      'The staff column now leads with the estimator in much larger text, with the account manager underneath in smaller grey type.',
+      'When the same person is both the estimator and the account manager, their name appears once instead of twice.',
+    ],
+  },
+  {
     version: 'v2.1368',
     date: '2026-08-03',
     title: 'Bid numbers look like bid numbers',
