@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1368',
+    date: '2026-08-03',
+    title: 'Bid numbers look like bid numbers',
+    kind: 'feature',
+    highlights: [
+      'The Bid Board now shows "b146" instead of a bare "146", so a short number reads as a bid rather than a count.',
+    ],
+  },
+  {
     version: 'v2.1367',
     date: '2026-08-03',
     title: 'Under the hood: coordination for parallel work sessions',
