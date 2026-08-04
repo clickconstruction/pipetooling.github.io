@@ -38,6 +38,12 @@ interface PartFormModalProps {
    * with the modal still open. Callers must NOT close the modal here.
    */
   onSaveAndAddAnother?: (part: MaterialPart) => void | Promise<void>
+  /**
+   * Primary-button label in ADD mode (v2.1392) — pass when saving routes the
+   * new part somewhere visible ("Save & add" on the Takeoffs pickers,
+   * "Save & select" when it only pre-selects). Edit mode always shows "Save".
+   */
+  addModeSaveLabel?: string
   editingPart?: MaterialPart | null
   initialName?: string
   selectedServiceTypeId: string
@@ -51,6 +57,7 @@ export function PartFormModal({
   onClose,
   onSave,
   onSaveAndAddAnother,
+  addModeSaveLabel,
   editingPart,
   initialName = '',
   selectedServiceTypeId,
@@ -556,7 +563,7 @@ export function PartFormModal({
                 disabled={savingPart}
                 style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
-                {savingPart ? 'Saving...' : 'Save'}
+                {savingPart ? 'Saving...' : (!editingPart && addModeSaveLabel) || 'Save'}
               </button>
             </div>
           </div>

@@ -106,3 +106,31 @@ describe('PartFormModal (add mode)', () => {
     expect(screen.queryByRole('button', { name: 'Save & add another' })).toBeNull()
   })
 })
+
+describe('PartFormModal addModeSaveLabel (v2.1392)', () => {
+  it('add mode shows the custom primary label when provided', () => {
+    renderWithProviders(<PartFormModal {...makeProps({ addModeSaveLabel: 'Save & add' })} />)
+    expect(screen.getByRole('button', { name: 'Save & add' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+  })
+
+  it('edit mode ignores the custom label — the button stays "Save"', () => {
+    const editingPart = {
+      id: 'p1',
+      name: 'Copper elbow',
+      service_type_id: 'st1',
+      part_type_id: null,
+      manufacturer: null,
+      notes: null,
+      part_types: null,
+    } as unknown as Parameters<typeof PartFormModal>[0]['editingPart']
+    renderWithProviders(<PartFormModal {...makeProps({ addModeSaveLabel: 'Save & add', editingPart })} />)
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save & add' })).toBeNull()
+  })
+
+  it('without the prop, add mode keeps the plain "Save" label', () => {
+    renderWithProviders(<PartFormModal {...makeProps()} />)
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
+  })
+})

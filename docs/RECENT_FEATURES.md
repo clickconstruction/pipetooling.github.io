@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1391)
+last_updated: 2026-08-04 (v2.1392)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1392)
+
+### Takeoffs part form: "Save & add" / "Save & select" labels (2026-08-04)
+Owner ask was "make Save also add the part to the entry field" — investigation showed `handleBidsPartFormSave` ([`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx)) **already routes** every takeoff-launched create back to its origin (rough part line + catalog price; Add/Edit Assembly item lists v2.1326/27; Add-Parts picker pre-select) — the button just didn't say so. Fix: new `addModeSaveLabel` prop on [`PartFormModal.tsx`](../src/components/PartFormModal.tsx) (add-mode only; edit mode always "Save"); BidsTakeoffTab passes **"Save & add"**, or **"Save & select"** when the Add-Parts-to-Template modal launched it (that path deliberately stays pre-select — it has a quantity input the user should still fill; auto-adding would silently commit qty 1 and close). Materials/Settings surfaces are untouched (no prop → "Save"). 3 render tests pin the label contract.
 
 ## Latest Updates (v2.1391)
 
