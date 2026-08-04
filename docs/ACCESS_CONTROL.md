@@ -93,7 +93,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 
 ### Banking attributors — scoped non-card attribution capability (v2.1308, `20260802220000_banking_attributors_substrate.sql`)
 
-`banking_attributors` (dev-granted, dev-managed; self-readable so the client can gate UI) lets specific users work the **unattributed non-card queue** (ACH/wire/check money-out Mercury transactions) with **no other Banking access**. What a holder can do — all via SECURITY DEFINER RPCs gated `is_dev() OR is_banking_attributor()`, EXECUTE revoked from `anon`:
+`banking_attributors` (dev-granted, dev-managed; self-readable so the client can gate UI) lets specific users work the **unattributed non-card queue** (ACH/wire/check money-out Mercury transactions) with **no other Banking access**. The queue UI lives on **Moneyfill** (`/moneyfill`, dev + controller — moved off Quickfill in v2.1378), so in practice holders are dev/controller; the capability remains the data-access gate regardless of role. What a holder can do — all via SECURITY DEFINER RPCs gated `is_dev() OR is_banking_attributor()`, EXECUTE revoked from `anon`:
 
 - **See**: `list_unattributed_noncard_mercury_transactions` / `count_…` — minimal fields only (posted date, amount, kind, counterparty, memo). No account ids, balances, card data, or resolved transactions.
 - **Do**: `attributor_allocate_transaction_to_job` (100% to one job — the one-tap office-overhead path; preserves the splits-sum-to-amount invariant), `attributor_flag_transaction_payroll` (contract-labor ACHs; same invariant + `source='manual'` semantics as the dev-only `set_tally_payroll_flag`), `resolve_noncard_transaction_attribution` / `unresolve_…` (`card_bill_payment` / `not_an_expense_other` marks in `mercury_transaction_attribution_resolutions`).
@@ -611,6 +611,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Map** (`/map`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Prospects** (`/prospects`) | ✅ | ✅ | ✅ | ❌ | ✅ if `estimator_prospects_access` granted | ❌ | ❌ |
 | **Quickfill** (`/quickfill`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Moneyfill** (`/moneyfill`, v2.1378 — **dev + controller only**; the one surface where controller does **not** read the assistant column: assistants and masters are excluded, `Moneyfill.tsx` redirects them to `/dashboard`) | ✅ | ❌ | ❌ (controller ✅) | ❌ | ❌ | ❌ | ❌ |
 | **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |

@@ -435,6 +435,12 @@ export default function Layout() {
       <path d="M305 151.1L320 171.8L335 151.1C360 116.5 400.2 96 442.9 96C516.4 96 576 155.6 576 229.1L576 231.7C576 343.9 436.1 474.2 363.1 529.9C350.7 539.3 335.5 544 320 544C304.5 544 289.2 539.4 276.9 529.9C203.9 474.2 64 343.9 64 231.7L64 229.1C64 155.6 123.6 96 197.1 96C239.8 96 280 116.5 305 151.1z" />
     </svg>
   )
+  // Money-bill glyph (rounded rect with punched center + edge circles), same 640-grid style as the other nav icons.
+  const moneyfillIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" fillRule="evenodd" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M96 128 L544 128 C579.3 128 608 156.7 608 192 L608 448 C608 483.3 579.3 512 544 512 L96 512 C60.7 512 32 483.3 32 448 L32 192 C32 156.7 60.7 128 96 128 Z M320 224 C267 224 224 267 224 320 C224 373 267 416 320 416 C373 416 416 373 416 320 C416 267 373 224 320 224 Z M128 296 C114.7 296 104 306.7 104 320 C104 333.3 114.7 344 128 344 C141.3 344 152 333.3 152 320 C152 306.7 141.3 296 128 296 Z M512 296 C498.7 296 488 306.7 488 320 C488 333.3 498.7 344 512 344 C525.3 344 536 333.3 536 320 C536 306.7 525.3 296 512 296 Z" />
+    </svg>
+  )
   const reviewIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
       <path d="M262.8 65.8C271.8 62.1 282.1 64.1 289 71L345 127C354.4 136.4 354.4 151.6 345 160.9L289 216.9C282.1 223.8 271.8 225.8 262.8 222.1C253.8 218.4 248 209.7 248 200L248 176L224 176C206.3 176 192 190.3 192 208L192 422.7C220.3 435 240 463.2 240 496C240 540.2 204.2 576 160 576C115.8 576 80 540.2 80 496C80 463.2 99.7 435 128 422.7L128 208C128 155 171 112 224 112L248 112L248 88C248 78.3 253.8 69.5 262.8 65.8zM456 144C456 157.3 466.7 168 480 168C493.3 168 504 157.3 504 144C504 130.7 493.3 120 480 120C466.7 120 456 130.7 456 144zM448 217.3C419.7 205 400 176.8 400 144C400 99.8 435.8 64 480 64C524.2 64 560 99.8 560 144C560 176.8 540.3 205 512 217.3L512 432C512 485 469 528 416 528L392 528L392 552C392 561.7 386.2 570.5 377.2 574.2C368.2 577.9 357.9 575.9 351 569L295 513C285.6 503.6 285.6 488.4 295 479.1L351 423.1C357.9 416.2 368.2 414.2 377.2 417.9C386.2 421.6 392 430.3 392 440L392 464L416 464C433.7 464 448 449.7 448 432L448 217.3zM136 496C136 509.3 146.7 520 160 520C173.3 520 184 509.3 184 496C184 482.7 173.3 472 160 472C146.7 472 136 482.7 136 496z" />
@@ -595,6 +601,11 @@ export default function Layout() {
             {quickfillIcon}
           </NavLink>
         )}
+        {!excludeHeaderLinks && (role === 'dev' || role === 'controller') && (
+          <NavLink to="/moneyfill" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Moneyfill" aria-label="Moneyfill">
+            {moneyfillIcon}
+          </NavLink>
+        )}
         {!excludeHeaderLinks && role === 'dev' && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
             {reviewIcon}
@@ -753,6 +764,26 @@ export default function Layout() {
                     >
                       {quickfillIcon}
                       Quickfill
+                    </NavLink>
+                  )}
+                  {(role === 'dev' || role === 'controller') && (
+                    <NavLink
+                      to="/moneyfill"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="Moneyfill"
+                      aria-label="Moneyfill"
+                    >
+                      {moneyfillIcon}
+                      Moneyfill
                     </NavLink>
                   )}
                   {(role === 'master_technician' || role === 'dev') && (

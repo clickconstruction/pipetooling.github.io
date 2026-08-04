@@ -2387,6 +2387,13 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
   - **Email**, **Texts**, **Physical inbox** ([`QuickfillEmailInboxSection.tsx`](../src/components/quickfill/QuickfillEmailInboxSection.tsx), [`QuickfillTextsSection.tsx`](../src/components/quickfill/QuickfillTextsSection.tsx), [`QuickfillPhysicalInboxSection.tsx`](../src/components/quickfill/QuickfillPhysicalInboxSection.tsx)): self-reported backlog in a textarea; inner **Mark … up to date!** writes **`quickfill_section_marks`** and a **`quickfill_section_mark_events`** row with **`note_text`**. **Email** / **Texts** intro: one flex row each — **Open Gmail** \| *Still in inbox -* … / **Open SMS** \| *Still to text -* … Sections use padding / **`#fafafa`** fill **without** an outer **1px** grey border on the **`section`**. **Physical inbox** adds the same **Task**, **Task Dispatch**, and **Estimator Inbox** header actions (modal contexts from **`ChecklistAddModalContext`**, **`DispatchTaskModalContext`**, **`EstimatorTaskModalContext`**) with the same role gates as [`Layout.tsx`](../src/components/Layout.tsx). Section ids: **`email-inbox`**, **`texts`**, **`physical-inbox`**.
   - **Stale tally — Assign to jobs** (same flow as **Warnings** / **[`DashboardStaleTallyStaffFollowUpModal`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)**): **[`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx)** re-seeds job split lines only when **`open`**, **`transaction?.id`**, or **`initialUserId`** change, so typing in splits is not cleared on unrelated parent re-renders; follow-up modal memoizes **`parseTallyJobSplitsJson`** output and passes **`EMPTY_JOB_LABEL_BY_ID`** for stable props.
 
+### 6c. Moneyfill
+- **Page**: `Moneyfill.tsx`
+- **Route**: `/moneyfill` (v2.1378)
+- **Access**: **dev + controller only** — gated in the page (`Navigate` to `/dashboard` for other roles); nav entries (money-bill icon beside the Quickfill heart in the desktop header, "Moneyfill" row in the hamburger dropdown) gated the same way in [`Layout.tsx`](../src/components/Layout.tsx). No `layoutRouteAccess.ts` entry — dev/assistant-like pass every route there; the page redirect is the enforcement.
+- **Purpose**: controller/dev counterpart to Quickfill — financial queues worked to zero, kept off the assistants' daily loop.
+- **Sections**: **Bank transfers needing attribution** (moved from Quickfill in v2.1378): [`QuickfillNoncardAttributionSection`](../src/components/quickfill/QuickfillNoncardAttributionSection.tsx) fed by [`useQuickfillNoncardAttribution`](../src/hooks/useQuickfillNoncardAttribution.ts). Body stays **capability-probed** (dev + `banking_attributors` — see **`ACCESS_CONTROL.md`** → Banking attributors); a controller without the grant sees an explanatory note instead of the queue.
+
 ### 7. Calendar View
 - **Page**: `Calendar.tsx`
 - **Features**:
@@ -3810,6 +3817,7 @@ async function myFunction() {
 - `/schedule-dispatch` - Schedule Dispatch hub / job-week grids
 - `/banking` - Mercury banking (sorting, attributions)
 - `/quickfill` - Quickfill daily-review sections
+- `/moneyfill` - Moneyfill financial queues (dev + controller; v2.1378)
 - `/calendar` - Calendar view
 - `/materials` - Materials management (price book, templates, purchase orders)
 - `/estimates` (+ `/estimates/:id`) - Customer estimates

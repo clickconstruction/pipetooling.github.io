@@ -1,13 +1,13 @@
 ---
 title: label bank transfers and wires
 category: Billing & Money
-roles: dev, master_technician, assistant, controller
-keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, quickfill, banking, label
+roles: dev, controller
+keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label
 order: 60
 ---
 Card purchases get sorted on the Banking page, but money that leaves by **ACH, wire, or check** — rent, insurance, contract labor, credit-card bill payments — used to have no home. Until it's labeled, that spending never reaches the overhead numbers or any job's costs.
 
-The **Bank transfers needing attribution** section on Quickfill collects every unlabeled non-card payment so you can label them in one pass. The section only appears for people who've been granted access — if you don't see it, it's not for you yet.
+The **Bank transfers needing attribution** section on the **Moneyfill** page (the money-bill icon next to the Quickfill heart — devs and controllers only) collects every unlabeled non-card payment so you can label them in one pass. The queue itself only loads for people who've been granted access — if Moneyfill tells you to ask a dev, that grant hasn't been set up for you yet.
 
 ## Labeling a transfer
 
