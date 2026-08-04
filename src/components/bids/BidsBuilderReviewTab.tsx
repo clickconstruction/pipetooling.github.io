@@ -6,6 +6,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { CustomerNotesTable } from '../customerNotes/CustomerNotesTable'
 import { ModalShell } from './ModalShell'
 import { formatBidNameWithValue, formatDateYYMMDD, formatTimeSinceLastContact } from '../../lib/bids/bidFormatting'
+import { buildCustomerLastContactMap, compareCustomersByLastContact } from '../../lib/bids/customerLastContact'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getBidStatusLabel } from '../../lib/bids/bidStatusLabel'
 import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
@@ -94,19 +96,88 @@ export function BidsBuilderReviewTab({
   const [builderReviewSortOrder, setBuilderReviewSortOrder] = useState<'oldest-first' | 'newest-first'>('oldest-first')
   const [builderReviewPiaCustomerIds, setBuilderReviewPiaCustomerIds] = useState<Set<string>>(() => new Set())
 
-  // Builder Review PIA: load from localStorage (per user)
+  // PIA lives in customer_followup_prefs (v2.1385) — one shared list for the
+  // whole team instead of the old per-browser localStorage list. Any legacy
+  // localStorage list is migrated up once (then cleared) so nobody loses flags.
+  // Table not in generated types until the next regen — `(supabase as any)`
+  // precedent (see useQuickfillNoncardAttribution).
+  const customersLoaded = customers.length > 0
   useEffect(() => {
-    if (!authUser?.id || typeof window === 'undefined') return
-    try {
-      const raw = localStorage.getItem(`bids_builder_review_pia_${authUser.id}`)
-      if (raw) {
-        const arr = JSON.parse(raw) as string[]
-        if (Array.isArray(arr)) setBuilderReviewPiaCustomerIds(new Set(arr))
+    if (!authUser?.id || !customersLoaded) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const legacyKey = `bids_builder_review_pia_${authUser.id}`
+        let legacyIds: string[] = []
+        try {
+          const raw = typeof window !== 'undefined' ? localStorage.getItem(legacyKey) : null
+          if (raw) {
+            const arr = JSON.parse(raw) as string[]
+            if (Array.isArray(arr)) legacyIds = arr.filter((x): x is string => typeof x === 'string')
+          }
+        } catch {
+          // ignore parse errors
+        }
+        if (legacyIds.length > 0) {
+          await withSupabaseRetry(
+            async () =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (supabase as any).from('customer_followup_prefs').upsert(
+                legacyIds.map((id) => ({ customer_id: id, pia: true, updated_at: new Date().toISOString() })),
+                { onConflict: 'customer_id' },
+              ),
+            'migrate PIA flags to shared prefs',
+          )
+          try {
+            localStorage.removeItem(legacyKey)
+          } catch {
+            // ignore
+          }
+        }
+        const rows = await withSupabaseRetry(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          async () => (supabase as any).from('customer_followup_prefs').select('customer_id, pia').eq('pia', true),
+          'load followup prefs',
+        )
+        if (cancelled) return
+        setBuilderReviewPiaCustomerIds(new Set(((rows ?? []) as { customer_id: string }[]).map((r) => r.customer_id)))
+      } catch {
+        // Prefs are a nicety — an empty set beats blocking the tab on error.
       }
-    } catch {
-      // ignore parse errors
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [authUser?.id])
+  }, [authUser?.id, customersLoaded])
+
+  function toggleBuilderReviewPia(customerId: string, next: boolean) {
+    setBuilderReviewPiaCustomerIds((prev) => {
+      const s = new Set(prev)
+      if (next) s.add(customerId)
+      else s.delete(customerId)
+      return s
+    })
+    void (async () => {
+      try {
+        await withSupabaseRetry(
+          async () =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase as any)
+              .from('customer_followup_prefs')
+              .upsert({ customer_id: customerId, pia: next, updated_at: new Date().toISOString() }, { onConflict: 'customer_id' }),
+          'save PIA flag',
+        )
+      } catch (e: unknown) {
+        setBuilderReviewPiaCustomerIds((prev) => {
+          const s = new Set(prev)
+          if (next) s.delete(customerId)
+          else s.add(customerId)
+          return s
+        })
+        onError(formatErrorMessage(e, 'Failed to save the PIA flag'))
+      }
+    })()
+  }
 
   function toggleBuilderReviewSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
     setBuilderReviewSectionOpen((prev: typeof builderReviewSectionOpen) => ({ ...prev, [key]: !prev[key] }))
@@ -115,29 +186,17 @@ export function BidsBuilderReviewTab({
     setBuilderReviewCardExpanded((prev) => ({ ...prev, [customerId]: !(prev[customerId] !== false) }))
   }
 
-  const builderReviewCustomersSorted = useMemo(() => {
-    function getLastContactForCustomer(customerId: string): string | null {
-      const customerBids = bids.filter((b) => b.customer_id === customerId)
-      const customerContactDates = customerContacts.filter((c: CustomerContact) => c.customer_id === customerId).map((c: CustomerContact) => c.contact_date)
-      const dates: string[] = [...customerContactDates]
-      for (const bid of customerBids) {
-        if (bid.last_contact) dates.push(bid.last_contact)
-        const entryDate = lastContactFromEntries[bid.id]
-        if (entryDate) dates.push(entryDate)
-      }
-      if (dates.length === 0) return null
-      return dates.reduce((a, b) => (new Date(b) > new Date(a) ? b : a))
-    }
-    const asc = builderReviewSortOrder === 'oldest-first'
-    return [...customers].sort((a, b) => {
-      const aDate = getLastContactForCustomer(a.id)
-      const bDate = getLastContactForCustomer(b.id)
-      if (!aDate && !bDate) return a.name.localeCompare(b.name)
-      if (!aDate) return 1
-      if (!bDate) return -1
-      return asc ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate)
-    })
-  }, [customers, bids, customerContacts, lastContactFromEntries, builderReviewSortOrder])
+  // One shared last-contact definition for sort + display (v2.1385 kernel);
+  // previously duplicated inline with subtly different comparison code.
+  const customerLastContactMap = useMemo(
+    () => buildCustomerLastContactMap(bids, customerContacts, lastContactFromEntries),
+    [bids, customerContacts, lastContactFromEntries],
+  )
+
+  const builderReviewCustomersSorted = useMemo(
+    () => [...customers].sort((a, b) => compareCustomersByLastContact(a, b, customerLastContactMap, builderReviewSortOrder)),
+    [customers, customerLastContactMap, builderReviewSortOrder],
+  )
 
   const builderReviewCustomersFiltered = useMemo(() => {
     let list = builderReviewCustomersSorted
@@ -311,16 +370,7 @@ export function BidsBuilderReviewTab({
             const brStartedOrComplete = customerBids.filter((b) => b.outcome === 'started_or_complete')
             const brLost = customerBids.filter((b) => b.outcome === 'lost')
             const hasBids = customerBids.length > 0
-            const lastContact = (() => {
-              const dates: string[] = customerContacts.filter((c: CustomerContact) => c.customer_id === customer.id).map((c: CustomerContact) => c.contact_date)
-              for (const bid of customerBids) {
-                if (bid.last_contact) dates.push(bid.last_contact)
-                const ed = lastContactFromEntries[bid.id]
-                if (ed) dates.push(ed)
-              }
-              if (dates.length === 0) return null
-              return dates.reduce((a, b) => (new Date(b) > new Date(a) ? b : a))
-            })()
+            const lastContact = customerLastContactMap.get(customer.id) ?? null
             const isCardExpanded = builderReviewCardExpanded[customer.id] !== false
             const builderReviewOutcomeSections = hasBids ? (
               <div>
@@ -527,18 +577,7 @@ export function BidsBuilderReviewTab({
                       <input
                         type="checkbox"
                         checked={builderReviewPiaCustomerIds.has(customer.id)}
-                        onChange={(e) => {
-                          const checked = e.target.checked
-                          setBuilderReviewPiaCustomerIds((prev) => {
-                            const next = new Set(prev)
-                            if (checked) next.add(customer.id)
-                            else next.delete(customer.id)
-                            if (authUser?.id && typeof window !== 'undefined') {
-                              localStorage.setItem(`bids_builder_review_pia_${authUser.id}`, JSON.stringify([...next]))
-                            }
-                            return next
-                          })
-                        }}
+                        onChange={(e) => toggleBuilderReviewPia(customer.id, e.target.checked)}
                       />
                       PIA
                     </label>
@@ -641,16 +680,7 @@ export function BidsBuilderReviewTab({
                     <input
                       type="checkbox"
                       checked
-                      onChange={() => {
-                        setBuilderReviewPiaCustomerIds((prev) => {
-                          const next = new Set(prev)
-                          next.delete(customer.id)
-                          if (authUser?.id && typeof window !== 'undefined') {
-                            localStorage.setItem(`bids_builder_review_pia_${authUser.id}`, JSON.stringify([...next]))
-                          }
-                          return next
-                        })
-                      }}
+                      onChange={() => toggleBuilderReviewPia(customer.id, false)}
                     />
                     {customer.name}
                     {customer.address && <span style={{ color: 'var(--text-muted)' }}>{customer.address}</span>}

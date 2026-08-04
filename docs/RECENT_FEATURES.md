@@ -7,10 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1384)
+last_updated: 2026-08-04 (v2.1385)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1385)
+
+### Followup train PR A: shared PIA + one last-contact kernel (2026-08-04)
+First PR of the Builder-Review ⊕ Submission-&-Followup merge (approved with mockups 2026-08-04; see the plan in this entry's PR).
+
+**(1) `customer_followup_prefs`** (migration [`20260804120000_customer_followup_prefs.sql`](../supabase/migrations/20260804120000_customer_followup_prefs.sql)): one team-shared row per customer — `pia boolean` now, `snoozed_until/snooze_note/snoozed_by` for the queue snooze landing in PR B. RLS all-authenticated (bids-surface audience); ends with BOTH read-only sweeps (new table rule). Replaces the per-browser localStorage PIA list: [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx) one-way migrates `bids_builder_review_pia_<uid>` (upsert then clear, skipped until the roster is loaded so an empty page never wipes the legacy list), toggles are optimistic with revert-on-error. `(supabase as any)` cast until types regen.
+
+**(2) `customerLastContact.ts` kernel** (6 tests): `buildCustomerLastContactMap` (one pass; max of customer_contacts.contact_date + bids.last_contact + newest submission entry per bid) and `compareCustomersByLastContact` (never-contacted always last, alphabetical ties). Replaces the tab's two divergent inline copies (string localeCompare in the sort vs Date compare in the display — now both instant-based; mixed-offset ISO strings sort correctly). O(customers×bids) → O(bids).
 
 ## Latest Updates (v2.1384)
 

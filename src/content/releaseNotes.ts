@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1385',
+    date: '2026-08-04',
+    title: 'Builder Review: PIA flags are now shared with your whole team',
+    kind: 'feature',
+    highlights: [
+      'The PIA checkbox on Builder Review now saves to the database — flag a builder once and everyone sees it, on every device. Your existing flags move over automatically the first time you open the tab.',
+      'The "last contact" ordering under the hood was consolidated and hardened; sorting is unchanged, ties now break alphabetically.',
+      'First step of the Followup revamp — the Builder Review and Submission & Followup tabs are merging into one follow-up surface over the next updates.',
+    ],
+  },
+  {
     version: 'v2.1384',
     date: '2026-08-04',
     title: 'Working board loads faster',
