@@ -30,6 +30,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1373',
+    date: '2026-08-03',
+    title: 'Eight missing entries restored to the release history',
+    kind: 'infra',
+    highlights: [
+      'Five updates that shipped without a history entry — including the hazmat fee edit, void, and notice-email work — are documented again.',
+      'Three version numbers that had been used for two different releases each now read as one entry apiece, with nothing dropped.',
+      'The checks added yesterday now run with no exceptions left, so a lost entry fails immediately.',
+    ],
+  },
+  {
     version: 'v2.1372',
     date: '2026-08-03',
     title: 'Under the hood: the changelog now guards itself',

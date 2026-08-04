@@ -96,8 +96,9 @@ are what it got wrong, and they apply to any agent or human doing this by hand.
 
 The guards in [`releaseNotes.ts`](../src/lib/releaseNotes.ts) (duplicate
 headings, release notes with no `RECENT_FEATURES.md` entry) now fail `npm test`
-when this class of damage reaches the files, and they carry a frozen allowlist
-of the pre-existing cases — shrink it, never extend it.
+when this class of damage reaches the files. Since v2.1373 they enforce a hard
+zero — the historical cases are repaired and the allowlists are empty, so any
+failure is damage from a live PR. Restore the missing entry; don't widen the list.
 
 ## Limitations
 
