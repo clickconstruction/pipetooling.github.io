@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest'
+import { buildCallSessionWrites, callSessionOutcomeLabel, nextFollowupQuickPickIso, type CallSessionBidDecision } from './builderCallSession'
+import { compareCustomersForCallQueue, nextFollowupBadge } from './callQueueOrdering'
+
+const NOW = '2026-08-04T17:00:00Z'
+
+function decision(partial: Partial<CallSessionBidDecision> & { bidId: string }): CallSessionBidDecision {
+  return { outcome: null, note: '', lossReason: '', ...partial }
+}
+
+describe('buildCallSessionWrites', () => {
+  it('writes one contact, and entries/stamps only for touched bids', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: 'Ravi: Regan decision next week',
+      decisions: [
+        decision({ bidId: 'b1', outcome: 'still_pending', note: 'decision next week' }),
+        decision({ bidId: 'b2' }), // untouched
+        decision({ bidId: 'b3', outcome: 'lost', lossReason: 'price' }),
+      ],
+    })
+    expect(w.customerContact.details).toBe('Ravi: Regan decision next week')
+    expect(w.customerContact.contact_method).toBe('Phone')
+    expect(w.bidEntries.map((e) => e.bid_id)).toEqual(['b1', 'b3'])
+    expect(w.bidEntries[0]?.notes).toBe('Still pending. decision next week')
+    expect(w.bidEntries[1]?.notes).toBe('Marked lost on call — price')
+    expect(w.bidLastContactUpdates.map((u) => u.bidId)).toEqual(['b1', 'b3'])
+    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b3', outcome: 'lost', loss_reason: 'price' }])
+  })
+
+  it('a note alone counts as touched; won taps update outcome with no loss reason', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: '',
+      decisions: [decision({ bidId: 'b1', note: 'sent revised scope' }), decision({ bidId: 'b2', outcome: 'won' })],
+    })
+    expect(w.customerContact.details).toBe('Call session — 2 bids reviewed')
+    expect(w.bidEntries[0]?.notes).toBe('sent revised scope')
+    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b2', outcome: 'won', loss_reason: null }])
+  })
+
+  it('rebid taps log an entry but never change outcome', () => {
+    const w = buildCallSessionWrites({ customerId: 'c1', userId: 'u1', nowIso: NOW, summary: 's', decisions: [decision({ bidId: 'b1', outcome: 'rebid' })] })
+    expect(w.bidEntries[0]?.notes).toBe('Rebid / RFQ requested')
+    expect(w.bidOutcomeUpdates).toEqual([])
+  })
+})
+
+describe('callSessionOutcomeLabel', () => {
+  it('labels each outcome, with loss reason folded in', () => {
+    expect(callSessionOutcomeLabel({ outcome: 'lost', lossReason: '  ' })).toBe('Marked lost on call')
+    expect(callSessionOutcomeLabel({ outcome: null, lossReason: '' })).toBe('')
+  })
+})
+
+describe('nextFollowupQuickPickIso', () => {
+  it('lands at 8am local N days ahead', () => {
+    const base = new Date(2026, 7, 4, 16, 30) // Aug 4 local
+    const iso = nextFollowupQuickPickIso('next-week', base)
+    const d = new Date(iso)
+    expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 7, 11, 8])
+  })
+})
+
+describe('compareCustomersForCallQueue', () => {
+  const nowMs = new Date(NOW).getTime()
+  const lastContact = new Map([
+    ['stale', '2026-02-01T00:00:00Z'],
+    ['fresh', '2026-08-01T00:00:00Z'],
+    ['overdue', '2026-08-03T00:00:00Z'],
+    ['promisedLater', '2026-01-01T00:00:00Z'],
+  ])
+  const promises = { overdue: '2026-08-03T08:00:00Z', promisedLater: '2026-08-11T08:00:00Z' }
+  const c = (id: string) => ({ id, name: id })
+
+  it('bands: overdue promises, then staleness, then future promises', () => {
+    const sorted = [c('fresh'), c('promisedLater'), c('overdue'), c('stale')].sort((a, b) =>
+      compareCustomersForCallQueue(a, b, lastContact, promises, nowMs),
+    )
+    expect(sorted.map((x) => x.id)).toEqual(['overdue', 'stale', 'fresh', 'promisedLater'])
+  })
+
+  it('future promises order by due date even when contact is ancient', () => {
+    const p = { a: '2026-08-20T08:00:00Z', b: '2026-08-10T08:00:00Z' }
+    const sorted = [c('a'), c('b')].sort((x, y) => compareCustomersForCallQueue(x, y, new Map(), p, nowMs))
+    expect(sorted.map((x) => x.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('nextFollowupBadge', () => {
+  const nowMs = new Date(NOW).getTime()
+  it('labels the due date and flags overdue', () => {
+    expect(nextFollowupBadge('2026-08-03T08:00:00Z', nowMs)).toEqual({ label: 'follow-up due 8/3', overdue: true })
+    expect(nextFollowupBadge('2026-08-11T08:00:00Z', nowMs)?.overdue).toBe(false)
+    expect(nextFollowupBadge(undefined, nowMs)).toBeNull()
+    expect(nextFollowupBadge('garbage', nowMs)).toBeNull()
+  })
+})

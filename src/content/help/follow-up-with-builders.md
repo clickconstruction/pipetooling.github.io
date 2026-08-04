@@ -32,6 +32,18 @@ At the bottom of each card's bid list is a one-line composer: pick **Phone / Tex
 - **PIA** still works like before — a permanent "stop asking" flag — and is now shared with the whole team too, on every device.
 - Builders with **no bids yet** fold into a collapsed **Quiet builders** block at the bottom so the queue stays real.
 
+## Run a call session
+
+{{button:blue|📞 Start call session}} on a builder card opens the "GC on the phone" screen: the top shows who to dial (first contact person, tappable number) and your win rate with them, then every open bid, top to bottom.
+
+While they talk, tap what you hear on each bid — **Still pending**, **Won**, **Lost…** (a loss-reason box appears), or **Rebid / RFQ** — and add a note if there's more to say. Type one **call summary** for the whole conversation, promise the **next follow-up** (Tomorrow / Next week / In 2 weeks / a custom date), and hit {{button:blue|End call & save}}.
+
+One save does it all: the builder's contact log gets the summary, every bid you touched gets its own dated note (and Won/Lost bids get their outcome set for real), and the builder is re-queued by the promised date.
+
+:::example the queue follows your promises
+Once you promise dates, **Oldest first** stops being just "who waited longest": builders whose promised date has arrived float to the very top with a red {{chip:red|⚠ follow-up due 8/3}} badge, the no-promise builders follow in staleness order, and builders promised a future date wait at the bottom with a blue badge until their day comes — calling earlier than you said annoys people.
+:::
+
 ## Print a call sheet
 
 - {{button:outline|Call sheet}} on any card prints a one-pager: the builder's people and numbers, their open bids with last-update ages, and ruled space for call notes.

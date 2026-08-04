@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
@@ -7,6 +7,8 @@ import { CustomerNotesTable } from '../customerNotes/CustomerNotesTable'
 import { ModalShell } from './ModalShell'
 import { formatBidNameWithValue, formatDateYYMMDD, formatTimeSinceLastContact } from '../../lib/bids/bidFormatting'
 import { buildCustomerLastContactMap, compareCustomersByLastContact } from '../../lib/bids/customerLastContact'
+import { compareCustomersForCallQueue, nextFollowupBadge } from '../../lib/bids/callQueueOrdering'
+import { BuilderCallSessionModal } from './BuilderCallSessionModal'
 import { buildBuilderQuickLogWrites, builderOpenPipelineValue, formatOpenPipelineValue } from '../../lib/bids/builderQuickLog'
 import { buildBuilderCallSheetHtml, buildFollowupQueueCallSheetHtml, type CallSheetBuilder } from '../../lib/bids/builderCallSheet'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
@@ -101,6 +103,9 @@ export function BidsBuilderReviewTab({
   const [builderReviewPiaCustomerIds, setBuilderReviewPiaCustomerIds] = useState<Set<string>>(() => new Set())
   // Snooze (v2.1386): future wake dates per customer, from customer_followup_prefs.
   const [snoozeByCustomer, setSnoozeByCustomer] = useState<Record<string, { until: string; note: string | null }>>({})
+  // Promised next-follow-up instants (v2.1389) — past AND future; overdue floats to the queue top.
+  const [nextFollowupByCustomer, setNextFollowupByCustomer] = useState<Record<string, string>>({})
+  const [callSessionCustomer, setCallSessionCustomer] = useState<Customer | null>(null)
   const [snoozeModalCustomer, setSnoozeModalCustomer] = useState<Customer | null>(null)
   const [snoozeDateInput, setSnoozeDateInput] = useState('')
   const [snoozeNoteInput, setSnoozeNoteInput] = useState('')
@@ -142,9 +147,36 @@ export function BidsBuilderReviewTab({
   // Table not in generated types until the next regen — `(supabase as any)`
   // precedent (see useQuickfillNoncardAttribution).
   const customersLoaded = customers.length > 0
+
+  const loadFollowupPrefs = useCallback(async () => {
+    const rows = await withSupabaseRetry(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async () => (supabase as any).from('customer_followup_prefs').select('customer_id, pia, snoozed_until, snooze_note, next_followup_at'),
+      'load followup prefs',
+    )
+    const prefRows = (rows ?? []) as {
+      customer_id: string
+      pia: boolean
+      snoozed_until: string | null
+      snooze_note: string | null
+      next_followup_at: string | null
+    }[]
+    setBuilderReviewPiaCustomerIds(new Set(prefRows.filter((r) => r.pia).map((r) => r.customer_id)))
+    const nowMs = Date.now()
+    const snoozes: Record<string, { until: string; note: string | null }> = {}
+    const followups: Record<string, string> = {}
+    for (const r of prefRows) {
+      if (r.snoozed_until && new Date(r.snoozed_until).getTime() > nowMs) {
+        snoozes[r.customer_id] = { until: r.snoozed_until, note: r.snooze_note }
+      }
+      if (r.next_followup_at) followups[r.customer_id] = r.next_followup_at
+    }
+    setSnoozeByCustomer(snoozes)
+    setNextFollowupByCustomer(followups)
+  }, [])
+
   useEffect(() => {
     if (!authUser?.id || !customersLoaded) return
-    let cancelled = false
     void (async () => {
       try {
         const legacyKey = `bids_builder_review_pia_${authUser.id}`
@@ -174,30 +206,12 @@ export function BidsBuilderReviewTab({
             // ignore
           }
         }
-        const rows = await withSupabaseRetry(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          async () => (supabase as any).from('customer_followup_prefs').select('customer_id, pia, snoozed_until, snooze_note'),
-          'load followup prefs',
-        )
-        if (cancelled) return
-        const prefRows = (rows ?? []) as { customer_id: string; pia: boolean; snoozed_until: string | null; snooze_note: string | null }[]
-        setBuilderReviewPiaCustomerIds(new Set(prefRows.filter((r) => r.pia).map((r) => r.customer_id)))
-        const nowMs = Date.now()
-        const snoozes: Record<string, { until: string; note: string | null }> = {}
-        for (const r of prefRows) {
-          if (r.snoozed_until && new Date(r.snoozed_until).getTime() > nowMs) {
-            snoozes[r.customer_id] = { until: r.snoozed_until, note: r.snooze_note }
-          }
-        }
-        setSnoozeByCustomer(snoozes)
+        await loadFollowupPrefs()
       } catch {
         // Prefs are a nicety — an empty set beats blocking the tab on error.
       }
     })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, customersLoaded])
+  }, [authUser?.id, customersLoaded, loadFollowupPrefs])
 
   function toggleBuilderReviewPia(customerId: string, next: boolean) {
     setBuilderReviewPiaCustomerIds((prev) => {
@@ -352,10 +366,15 @@ export function BidsBuilderReviewTab({
     [bids, customerContacts, lastContactFromEntries],
   )
 
-  const builderReviewCustomersSorted = useMemo(
-    () => [...customers].sort((a, b) => compareCustomersByLastContact(a, b, customerLastContactMap, builderReviewSortOrder)),
-    [customers, customerLastContactMap, builderReviewSortOrder],
-  )
+  const builderReviewCustomersSorted = useMemo(() => {
+    // Oldest-first is the call queue: overdue promises → staleness → future
+    // promises (v2.1389). Newest-first stays a pure last-contact lookup order.
+    if (builderReviewSortOrder === 'oldest-first') {
+      const nowMs = Date.now()
+      return [...customers].sort((a, b) => compareCustomersForCallQueue(a, b, customerLastContactMap, nextFollowupByCustomer, nowMs))
+    }
+    return [...customers].sort((a, b) => compareCustomersByLastContact(a, b, customerLastContactMap, builderReviewSortOrder))
+  }, [customers, customerLastContactMap, builderReviewSortOrder, nextFollowupByCustomer])
 
   const customersWithBidIds = useMemo(() => {
     const s = new Set<string>()
@@ -886,6 +905,27 @@ export function BidsBuilderReviewTab({
                     >
                       Snooze ▾
                     </button>
+                    {(() => {
+                      const badge = nextFollowupBadge(nextFollowupByCustomer[customer.id], Date.now())
+                      if (!badge) return null
+                      return (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '0.12rem 0.55rem',
+                            borderRadius: 999,
+                            background: badge.overdue ? 'var(--bg-red-100)' : 'var(--bg-blue-tint)',
+                            color: badge.overdue ? 'var(--text-red-700)' : 'var(--text-blue-700)',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={badge.overdue ? 'Promised follow-up is due — this floats the builder to the queue top' : 'Promised follow-up — parked below the queue until due'}
+                        >
+                          {badge.overdue ? '⚠ ' : ''}
+                          {badge.label}
+                        </span>
+                      )
+                    })()}
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Last contact: {lastContact ? formatTimeSinceLastContact(lastContact) : '—'}
                     </span>
@@ -946,6 +986,17 @@ export function BidsBuilderReviewTab({
                       )}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCallSessionCustomer(customer)
+                        }}
+                        title="Walk every open bid while they're on the phone, then promise the next follow-up"
+                        style={{ padding: '0.375rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                      >
+                        📞 Start call session
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1082,6 +1133,31 @@ export function BidsBuilderReviewTab({
           )}
         </div>
       </div>
+
+      {callSessionCustomer && authUser?.id && (
+        <BuilderCallSessionModal
+          customer={callSessionCustomer}
+          openBids={bids.filter((b) => {
+            if (b.customer_id !== callSessionCustomer.id) return false
+            const s = getSubmissionSectionKey(b)
+            return s === 'unsent' || s === 'pending'
+          })}
+          contactPersons={customerContactPersons.filter((cp) => cp.customer_id === callSessionCustomer.id)}
+          lastContactIso={customerLastContactMap.get(callSessionCustomer.id) ?? null}
+          hitRatePct={builderBidMapStats.get(callSessionCustomer.id)?.counts.hitRatePct ?? null}
+          authUserId={authUser.id}
+          onClose={() => setCallSessionCustomer(null)}
+          onSaved={() => {
+            const cid = callSessionCustomer.id
+            setCallSessionCustomer(null)
+            setNotesRefreshNonce((prev) => ({ ...prev, [cid]: (prev[cid] ?? 0) + 1 }))
+            void loadFollowupPrefs().catch(() => {})
+            onReloadCustomerContacts()
+            onReloadBids()
+          }}
+          onError={onError}
+        />
+      )}
 
       {snoozeModalCustomer && (
         <ModalShell zIndex={1000}>

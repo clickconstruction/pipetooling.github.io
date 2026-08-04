@@ -9,7 +9,7 @@ last_updated: 2026-08-04
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "170 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "171 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 4, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 4, 2026
+
+**`20260804130000_customer_followup_next_at.sql`** _(apply via `supabase db push` promptly after merge — the v2.1389 client's prefs SELECT names the column; until applied the prefs load fails soft and PIA/snooze/badges render empty)_
+- **Purpose**: Followup Phase 3 (v2.1389). Additive `next_followup_at timestamptz` on `customer_followup_prefs` — the promised next-follow-up instant set when ending a call session; drives the call-queue bands (overdue promises → staleness → future promises).
+- **Security**: no policy changes; column rides the table's existing RLS. No new table, so no read-only sweep needed.
+- **Category**: Bids
 
 **`20260804120000_customer_followup_prefs.sql`** _(apply via `supabase db push` after merge; either deploy order safe — old client ignores the table, new client treats read failures as "no flags")_
 - **Purpose**: Followup train PR A (v2.1385). New table `customer_followup_prefs` — one team-shared row per customer: `pia boolean NOT NULL DEFAULT false` (replaces the per-browser localStorage PIA list on Builder Review) plus `snoozed_until timestamptz / snooze_note text / snoozed_by uuid` for the Followup queue snooze (UI lands in the next PR). PK = `customer_id` FK → customers ON DELETE CASCADE; `snoozed_by` FK → users ON DELETE SET NULL.
