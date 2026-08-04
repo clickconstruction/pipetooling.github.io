@@ -7,6 +7,8 @@ import { CustomerNotesTable } from '../customerNotes/CustomerNotesTable'
 import { ModalShell } from './ModalShell'
 import { formatBidNameWithValue, formatDateYYMMDD, formatTimeSinceLastContact } from '../../lib/bids/bidFormatting'
 import { buildCustomerLastContactMap, compareCustomersByLastContact } from '../../lib/bids/customerLastContact'
+import { buildBuilderQuickLogWrites, builderOpenPipelineValue, formatOpenPipelineValue } from '../../lib/bids/builderQuickLog'
+import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } from '../../lib/submissionFollowupStale'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getBidStatusLabel } from '../../lib/bids/bidStatusLabel'
@@ -95,6 +97,39 @@ export function BidsBuilderReviewTab({
   const [builderReviewSearchQuery, setBuilderReviewSearchQuery] = useState('')
   const [builderReviewSortOrder, setBuilderReviewSortOrder] = useState<'oldest-first' | 'newest-first'>('oldest-first')
   const [builderReviewPiaCustomerIds, setBuilderReviewPiaCustomerIds] = useState<Set<string>>(() => new Set())
+  // Snooze (v2.1386): future wake dates per customer, from customer_followup_prefs.
+  const [snoozeByCustomer, setSnoozeByCustomer] = useState<Record<string, { until: string; note: string | null }>>({})
+  const [snoozeModalCustomer, setSnoozeModalCustomer] = useState<Customer | null>(null)
+  const [snoozeDateInput, setSnoozeDateInput] = useState('')
+  const [snoozeNoteInput, setSnoozeNoteInput] = useState('')
+  const [savingSnooze, setSavingSnooze] = useState(false)
+  // Per-bid staleness threshold (v2.1386) — same semantics as Submission &
+  // Followup's "no update in N days" box, persisted per user.
+  const [staleDaysInput, setStaleDaysInput] = useState<string>(() => {
+    if (typeof window === 'undefined') return '14'
+    try {
+      return localStorage.getItem('bids_followup_stale_days') ?? '14'
+    } catch {
+      return '14'
+    }
+  })
+  const staleThresholdDays = useMemo(() => {
+    const n = Number.parseInt(staleDaysInput.trim(), 10)
+    return Number.isFinite(n) && n >= 1 ? n : null
+  }, [staleDaysInput])
+  useEffect(() => {
+    try {
+      localStorage.setItem('bids_followup_stale_days', staleDaysInput)
+    } catch {
+      // ignore
+    }
+  }, [staleDaysInput])
+  // Quick-log composer state, keyed per customer card.
+  const [quickLogMethod, setQuickLogMethod] = useState<Record<string, string>>({})
+  const [quickLogNote, setQuickLogNote] = useState<Record<string, string>>({})
+  const [quickLogChecked, setQuickLogChecked] = useState<Record<string, Set<string>>>({})
+  const [savingQuickLogCustomerId, setSavingQuickLogCustomerId] = useState<string | null>(null)
+  const [quietBuildersOpen, setQuietBuildersOpen] = useState(false)
 
   // PIA lives in customer_followup_prefs (v2.1385) — one shared list for the
   // whole team instead of the old per-browser localStorage list. Any legacy
@@ -136,11 +171,20 @@ export function BidsBuilderReviewTab({
         }
         const rows = await withSupabaseRetry(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          async () => (supabase as any).from('customer_followup_prefs').select('customer_id, pia').eq('pia', true),
+          async () => (supabase as any).from('customer_followup_prefs').select('customer_id, pia, snoozed_until, snooze_note'),
           'load followup prefs',
         )
         if (cancelled) return
-        setBuilderReviewPiaCustomerIds(new Set(((rows ?? []) as { customer_id: string }[]).map((r) => r.customer_id)))
+        const prefRows = (rows ?? []) as { customer_id: string; pia: boolean; snoozed_until: string | null; snooze_note: string | null }[]
+        setBuilderReviewPiaCustomerIds(new Set(prefRows.filter((r) => r.pia).map((r) => r.customer_id)))
+        const nowMs = Date.now()
+        const snoozes: Record<string, { until: string; note: string | null }> = {}
+        for (const r of prefRows) {
+          if (r.snoozed_until && new Date(r.snoozed_until).getTime() > nowMs) {
+            snoozes[r.customer_id] = { until: r.snoozed_until, note: r.snooze_note }
+          }
+        }
+        setSnoozeByCustomer(snoozes)
       } catch {
         // Prefs are a nicety — an empty set beats blocking the tab on error.
       }
@@ -186,6 +230,76 @@ export function BidsBuilderReviewTab({
     setBuilderReviewCardExpanded((prev) => ({ ...prev, [customerId]: !(prev[customerId] !== false) }))
   }
 
+  async function saveSnooze(customerId: string, untilIso: string | null, note: string) {
+    setSavingSnooze(true)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase as any).from('customer_followup_prefs').upsert(
+            {
+              customer_id: customerId,
+              snoozed_until: untilIso,
+              snooze_note: untilIso ? note.trim() || null : null,
+              snoozed_by: untilIso ? (authUser?.id ?? null) : null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'customer_id' },
+          ),
+        'save snooze',
+      )
+      setSnoozeByCustomer((prev) => {
+        const next = { ...prev }
+        if (untilIso) next[customerId] = { until: untilIso, note: note.trim() || null }
+        else delete next[customerId]
+        return next
+      })
+      setSnoozeModalCustomer(null)
+    } catch (e: unknown) {
+      onError(formatErrorMessage(e, 'Failed to save the snooze'))
+    } finally {
+      setSavingSnooze(false)
+    }
+  }
+
+  async function submitQuickLog(customer: Customer, checkedBidIds: string[]) {
+    if (!authUser?.id) return
+    setSavingQuickLogCustomerId(customer.id)
+    try {
+      const writes = buildBuilderQuickLogWrites({
+        customerId: customer.id,
+        checkedBidIds,
+        method: quickLogMethod[customer.id] ?? 'Phone',
+        note: quickLogNote[customer.id] ?? '',
+        nowIso: new Date().toISOString(),
+        userId: authUser.id,
+      })
+      await withSupabaseRetry(
+        async () => supabase.from('customer_contacts').insert(writes.customerContact),
+        'quick log: customer contact',
+      )
+      if (writes.bidEntries.length > 0) {
+        await withSupabaseRetry(
+          async () => supabase.from('bids_submission_entries').insert(writes.bidEntries),
+          'quick log: bid entries',
+        )
+      }
+      for (const u of writes.bidLastContactUpdates) {
+        await withSupabaseRetry(
+          async () => supabase.from('bids').update({ last_contact: u.last_contact }).eq('id', u.bidId),
+          'quick log: stamp bid last_contact',
+        )
+      }
+      setQuickLogNote((prev) => ({ ...prev, [customer.id]: '' }))
+      onReloadCustomerContacts()
+      onReloadBids()
+    } catch (e: unknown) {
+      onError(formatErrorMessage(e, 'Failed to log the contact'))
+    } finally {
+      setSavingQuickLogCustomerId(null)
+    }
+  }
+
   // One shared last-contact definition for sort + display (v2.1385 kernel);
   // previously duplicated inline with subtly different comparison code.
   const customerLastContactMap = useMemo(
@@ -198,35 +312,48 @@ export function BidsBuilderReviewTab({
     [customers, customerLastContactMap, builderReviewSortOrder],
   )
 
+  const customersWithBidIds = useMemo(() => {
+    const s = new Set<string>()
+    for (const b of bids) if (b.customer_id) s.add(b.customer_id)
+    return s
+  }, [bids])
+
+  const matchesBuilderSearch = useMemo(() => {
+    const q = builderReviewSearchQuery.toLowerCase().trim()
+    if (!q) return () => true
+    return (c: Customer) => c.name.toLowerCase().includes(q) || (c.address?.toLowerCase().includes(q) ?? false)
+  }, [builderReviewSearchQuery])
+
   const builderReviewCustomersFiltered = useMemo(() => {
     let list = builderReviewCustomersSorted
-    // When Oldest first: exclude PIA customers (they are ignored in the sort order)
-    if (builderReviewSortOrder === 'oldest-first' && builderReviewPiaCustomerIds.size > 0) {
-      list = list.filter((c) => !builderReviewPiaCustomerIds.has(c.id))
+    // When Oldest first (the call queue): PIA and snoozed customers step out of line.
+    if (builderReviewSortOrder === 'oldest-first') {
+      list = list.filter((c) => !builderReviewPiaCustomerIds.has(c.id) && !snoozeByCustomer[c.id])
     }
-    if (!builderReviewSearchQuery.trim()) return list
-    const q = builderReviewSearchQuery.toLowerCase().trim()
-    return list.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.address?.toLowerCase().includes(q) ?? false)
-    )
-  }, [builderReviewCustomersSorted, builderReviewSearchQuery, builderReviewSortOrder, builderReviewPiaCustomerIds])
+    // Builders with no bids at all fold into the Quiet builders block below.
+    list = list.filter((c) => customersWithBidIds.has(c.id))
+    return list.filter(matchesBuilderSearch)
+  }, [builderReviewCustomersSorted, matchesBuilderSearch, builderReviewSortOrder, builderReviewPiaCustomerIds, snoozeByCustomer, customersWithBidIds])
+
+  // Quiet builders (v2.1386): commercial customers with zero bids — kept out of
+  // the call queue, one click away (and still searchable inside the block).
+  const quietBuilders = useMemo(
+    () => builderReviewCustomersSorted.filter((c) => !customersWithBidIds.has(c.id)).filter(matchesBuilderSearch),
+    [builderReviewCustomersSorted, customersWithBidIds, matchesBuilderSearch],
+  )
+
+  const snoozedCustomersExcluded = useMemo(() => {
+    if (builderReviewSortOrder !== 'oldest-first') return []
+    return builderReviewCustomersSorted
+      .filter((c) => snoozeByCustomer[c.id] && customersWithBidIds.has(c.id))
+      .filter(matchesBuilderSearch)
+  }, [builderReviewCustomersSorted, builderReviewSortOrder, snoozeByCustomer, customersWithBidIds, matchesBuilderSearch])
 
   // When Oldest first: PIA customers that were excluded (for showing in "PIA (excluded)" section)
   const builderReviewPiaCustomersExcluded = useMemo(() => {
     if (builderReviewSortOrder !== 'oldest-first' || builderReviewPiaCustomerIds.size === 0) return []
-    let list = builderReviewCustomersSorted.filter((c) => builderReviewPiaCustomerIds.has(c.id))
-    if (builderReviewSearchQuery.trim()) {
-      const q = builderReviewSearchQuery.toLowerCase().trim()
-      list = list.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          (c.address?.toLowerCase().includes(q) ?? false)
-      )
-    }
-    return list
-  }, [builderReviewCustomersSorted, builderReviewSearchQuery, builderReviewSortOrder, builderReviewPiaCustomerIds])
+    return builderReviewCustomersSorted.filter((c) => builderReviewPiaCustomerIds.has(c.id)).filter(matchesBuilderSearch)
+  }, [builderReviewCustomersSorted, matchesBuilderSearch, builderReviewSortOrder, builderReviewPiaCustomerIds])
 
   // Deep-link: when the parent's highlight signal changes to a customer, clear the
   // search, expand that card, and scroll it into view. The parent owns the highlight
@@ -328,6 +455,18 @@ export function BidsBuilderReviewTab({
             onChange={(e) => setBuilderReviewSearchQuery(e.target.value)}
             style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            Stale after
+            <input
+              type="number"
+              min={1}
+              value={staleDaysInput}
+              onChange={(e) => setStaleDaysInput(e.target.value)}
+              aria-label="Highlight bids with no update in this many days"
+              style={{ width: 52, padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+            />
+            days
+          </label>
           <button
             type="button"
             onClick={() => setBuilderReviewSortOrder((prev) => (prev === 'oldest-first' ? 'newest-first' : 'oldest-first'))}
@@ -372,6 +511,16 @@ export function BidsBuilderReviewTab({
             const hasBids = customerBids.length > 0
             const lastContact = customerLastContactMap.get(customer.id) ?? null
             const isCardExpanded = builderReviewCardExpanded[customer.id] !== false
+            // Quick-log target set (v2.1386): defaults to every pending bid \u2014
+            // the ones a phone call is usually about; adjustable per card.
+            const quickLogDefaultChecked = new Set(brPending.map((b) => b.id))
+            const checkedSet = quickLogChecked[customer.id] ?? quickLogDefaultChecked
+            const toggleChecked = (bidId: string) => {
+              const next = new Set(checkedSet)
+              if (next.has(bidId)) next.delete(bidId)
+              else next.add(bidId)
+              setQuickLogChecked((prev) => ({ ...prev, [customer.id]: next }))
+            }
             const builderReviewOutcomeSections = hasBids ? (
               <div>
                 {[
@@ -391,9 +540,25 @@ export function BidsBuilderReviewTab({
                       {label} ({sectionBids.length})
                     </button>
                     {builderReviewSectionOpen[key] && sectionBids.length > 0 && (
-                      <ul style={{ margin: '0.25rem 0 0.5rem 1.5rem', padding: 0, listStyle: 'none' }}>
-                        {sectionBids.map((bid) => (
-                          <li key={bid.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <ul style={{ margin: '0.25rem 0 0.5rem 1rem', padding: 0, listStyle: 'none' }}>
+                        {sectionBids.map((bid) => {
+                          const isOpenSection = key === 'unsent' || key === 'pending'
+                          const lastNoteIso = isOpenSection ? effectiveSubmissionBidLastNoteIso(bid, lastContactFromEntries, customerContacts) : null
+                          const stale =
+                            isOpenSection &&
+                            staleThresholdDays !== null &&
+                            isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, staleThresholdDays)
+                          return (
+                          <li key={bid.id} style={{ marginBottom: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.125rem 0.35rem', borderRadius: 4, background: stale ? 'var(--bg-red-tint)' : undefined }}>
+                            {isOpenSection && (
+                              <input
+                                type="checkbox"
+                                checked={checkedSet.has(bid.id)}
+                                onChange={() => toggleChecked(bid.id)}
+                                title="Include this bid when logging a contact below"
+                                style={{ flexShrink: 0 }}
+                              />
+                            )}
                             <button
                               type="button"
                               onClick={() => onEditBid(bid)}
@@ -415,12 +580,74 @@ export function BidsBuilderReviewTab({
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
                             </span>
+                            {isOpenSection && (
+                              <span
+                                style={{
+                                  marginLeft: 'auto',
+                                  fontSize: '0.75rem',
+                                  whiteSpace: 'nowrap',
+                                  color: stale ? 'var(--text-red-600)' : 'var(--text-muted)',
+                                  fontWeight: stale ? 600 : 400,
+                                }}
+                                title="Latest note on this bid or its customer (same rule as Submission & Followup)"
+                              >
+                                {lastNoteIso ? formatTimeSinceLastContact(lastNoteIso) : 'no update'}
+                              </span>
+                            )}
                           </li>
-                        ))}
+                          )
+                        })}
                       </ul>
                     )}
                   </div>
                 ))}
+                <div style={{ marginTop: '0.75rem', background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {['Phone', 'Text', 'Email'].map((m) => {
+                      const active = (quickLogMethod[customer.id] ?? 'Phone') === m
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setQuickLogMethod((prev) => ({ ...prev, [customer.id]: m }))}
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '0.18rem 0.55rem',
+                            borderRadius: 999,
+                            border: '1px solid ' + (active ? '#3b82f6' : 'var(--border-strong)'),
+                            background: active ? '#3b82f6' : 'var(--surface)',
+                            color: active ? 'white' : 'var(--text-700)',
+                            cursor: 'pointer',
+                            fontWeight: active ? 700 : 400,
+                          }}
+                        >
+                          {m}
+                        </button>
+                      )
+                    })}
+                    <input
+                      type="text"
+                      value={quickLogNote[customer.id] ?? ''}
+                      onChange={(e) => setQuickLogNote((prev) => ({ ...prev, [customer.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && savingQuickLogCustomerId !== customer.id) void submitQuickLog(customer, [...checkedSet])
+                      }}
+                      placeholder="What did they say? Logs for the builder + every checked bid above…"
+                      aria-label={`Quick contact log for ${customer.name}`}
+                      style={{ flex: 1, minWidth: 180, padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.84rem' }}
+                    />
+                    <button
+                      type="button"
+                      disabled={savingQuickLogCustomerId === customer.id}
+                      onClick={() => void submitQuickLog(customer, [...checkedSet])}
+                      style={{ padding: '0.4rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', opacity: savingQuickLogCustomerId === customer.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {savingQuickLogCustomerId === customer.id
+                        ? 'Logging…'
+                        : `Log for builder${checkedSet.size > 0 ? ` + ${checkedSet.size} bid${checkedSet.size === 1 ? '' : 's'}` : ''}`}
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : null
             const builderReviewGeneralContactTable = (
@@ -534,6 +761,13 @@ export function BidsBuilderReviewTab({
                             {stats.counts.won > 0 && chip(`${stats.counts.won} won`, 'var(--bg-green-100)', 'var(--text-green-700)')}
                             {stats.counts.lost > 0 && chip(`${stats.counts.lost} lost`, 'var(--bg-red-100)', 'var(--text-red-700)')}
                             {stats.counts.pending > 0 && chip(`${stats.counts.pending} pending`, 'var(--bg-amber-tint)', 'var(--text-amber-800)')}
+                            {stats.counts.hitRatePct !== null && chip(`${stats.counts.hitRatePct}% hit rate`, 'var(--bg-blue-tint)', 'var(--text-blue-700)')}
+                            {(() => {
+                              const openValue = formatOpenPipelineValue(
+                                builderOpenPipelineValue(customerBids.filter((b) => getSubmissionSectionKey(b) === 'unsent' || getSubmissionSectionKey(b) === 'pending')),
+                              )
+                              return openValue ? chip(`${openValue} open`, 'var(--bg-muted)', 'var(--text-700)') : null
+                            })()}
                           </span>
                         )
                       })()}
@@ -547,12 +781,13 @@ export function BidsBuilderReviewTab({
                               <a
                                 href={`tel:${phone}`}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
                                 title={`Call ${phone}`}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '16px', height: '16px', fill: 'currentColor' }}>
                                   <path d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8 186.3L224.2 89z" />
                                 </svg>
+                                {phone}
                               </a>
                             )}
                             {email && (
@@ -581,6 +816,18 @@ export function BidsBuilderReviewTab({
                       />
                       PIA
                     </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSnoozeModalCustomer(customer)
+                        setSnoozeDateInput('')
+                        setSnoozeNoteInput('')
+                      }}
+                      title="Snooze — hide from the call queue until a date (shared with the team)"
+                      style={{ padding: '0.25rem 0.6rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                    >
+                      Snooze ▾
+                    </button>
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Last contact: {lastContact ? formatTimeSinceLastContact(lastContact) : '—'}
                     </span>
@@ -671,6 +918,81 @@ export function BidsBuilderReviewTab({
               </div>
             )
           })}
+          {builderReviewCustomersFiltered.length === 0 && (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
+              {builderReviewSearchQuery.trim() ? 'No builders match your search.' : 'No builders with bids in the queue.'}
+            </div>
+          )}
+          {snoozedCustomersExcluded.length > 0 && (
+            <div style={{ marginTop: '0.5rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                Snoozed — back in the queue on their wake date
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {snoozedCustomersExcluded.map((customer) => {
+                  const snooze = snoozeByCustomer[customer.id]
+                  if (!snooze) return null
+                  return (
+                    <div key={customer.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', flexWrap: 'wrap' }}>
+                      <strong>{customer.name}</strong>
+                      <span style={{ color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
+                        until {new Date(snooze.until).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+                      </span>
+                      {snooze.note && <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>“{snooze.note}”</span>}
+                      <button
+                        type="button"
+                        onClick={() => void saveSnooze(customer.id, null, '')}
+                        style={{ padding: '0.15rem 0.55rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer', fontSize: '0.72rem' }}
+                      >
+                        Wake now
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {quietBuilders.length > 0 && (
+            <div style={{ marginTop: '0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--bg-muted)' }}>
+              <button
+                type="button"
+                onClick={() => setQuietBuildersOpen((v) => !v)}
+                style={{ width: '100%', textAlign: 'left', padding: '0.7rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 600 }}
+              >
+                {quietBuildersOpen ? '▼' : '▶'} Quiet builders ({quietBuilders.length}) — no bids yet, kept out of the queue
+              </button>
+              {quietBuildersOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0 1rem 0.8rem' }}>
+                  {quietBuilders.map((customer) => (
+                    <div key={customer.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 500 }}>{customer.name}</span>
+                      {customer.address && <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{customer.address}</span>}
+                      <button
+                        type="button"
+                        onClick={() => onNewBidWithCustomer(customer)}
+                        style={{ padding: '0.15rem 0.55rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer', fontSize: '0.72rem' }}
+                      >
+                        + New Bid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          editCustomerModal?.openEditCustomerModal(customer.id, {
+                            onSaved: onLoadCustomers,
+                            onDeleted: (id) => onSetCustomers((prev) => prev.filter((c) => c.id !== id)),
+                            onMerged: ({ removedId }) => queueMicrotask(() => onSetCustomers((prev) => prev.filter((c) => c.id !== removedId))),
+                          })
+                        }
+                        style={{ padding: '0.15rem 0.55rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer', fontSize: '0.72rem' }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {builderReviewPiaCustomersExcluded.length > 0 && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>PIA (excluded from Oldest first)</div>
@@ -691,6 +1013,83 @@ export function BidsBuilderReviewTab({
           )}
         </div>
       </div>
+
+      {snoozeModalCustomer && (
+        <ModalShell zIndex={1000}>
+          <h3 style={{ margin: '0 0 0.5rem' }}>Snooze {snoozeModalCustomer.name}</h3>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Hides this builder from the Oldest-first call queue until the wake date. Everyone on the team sees the snooze.
+          </p>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            {[
+              { label: '1 week', days: 7 },
+              { label: '2 weeks', days: 14 },
+              { label: '1 month', days: 30 },
+            ].map(({ label, days }) => (
+              <button
+                key={label}
+                type="button"
+                disabled={savingSnooze}
+                onClick={() => {
+                  const until = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+                  void saveSnooze(snoozeModalCustomer.id, until.toISOString(), snoozeNoteInput)
+                }}
+                style={{ padding: '0.4rem 0.85rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                {label}
+              </button>
+            ))}
+            <input
+              type="date"
+              value={snoozeDateInput}
+              onChange={(e) => setSnoozeDateInput(e.target.value)}
+              aria-label="Snooze until date"
+              style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.85rem' }}
+            />
+          </div>
+          <input
+            type="text"
+            value={snoozeNoteInput}
+            onChange={(e) => setSnoozeNoteInput(e.target.value)}
+            placeholder="Why? (optional — e.g. “awarding after board mtg”)"
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box', marginBottom: '0.9rem', fontSize: '0.9rem' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            {snoozeByCustomer[snoozeModalCustomer.id] && (
+              <button
+                type="button"
+                disabled={savingSnooze}
+                onClick={() => void saveSnooze(snoozeModalCustomer.id, null, '')}
+                style={{ marginRight: 'auto', padding: '0.45rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                Wake now
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSnoozeModalCustomer(null)}
+              style={{ padding: '0.45rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={savingSnooze || !snoozeDateInput}
+              onClick={() => {
+                const until = new Date(`${snoozeDateInput}T08:00:00`)
+                if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+                  onError('Pick a future date for the snooze.')
+                  return
+                }
+                void saveSnooze(snoozeModalCustomer.id, until.toISOString(), snoozeNoteInput)
+              }}
+              style={{ padding: '0.45rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: savingSnooze || !snoozeDateInput ? 0.6 : 1 }}
+            >
+              {savingSnooze ? 'Saving…' : 'Snooze until date'}
+            </button>
+          </div>
+        </ModalShell>
+      )}
 
       {addContactPersonModalCustomer && (
         <ModalShell zIndex={1001} cardStyle={{ background: 'var(--surface)', padding: '1.5rem 2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>

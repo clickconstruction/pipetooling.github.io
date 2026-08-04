@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1386',
+    date: '2026-08-04',
+    title: 'Builder Review becomes a real call queue',
+    kind: 'feature',
+    highlights: [
+      'Every unsent and pending bid on a builder card now shows when it last got an update, and turns red past your "stale after N days" threshold (set it once in the toolbar — it sticks).',
+      'Log a call in one line: pick Phone/Text/Email, type what they said, and hit Log — it records one contact for the builder and stamps every checked bid at once.',
+      'New chips on each builder: win hit-rate and open pipeline dollars. The builder\'s phone number is now visible and tappable on the card header.',
+      'Snooze a builder ("awarding after board meeting — check back Aug 18") and they step out of the call queue until their wake date, visible to the whole team. Builders with no bids yet fold into a Quiet builders group at the bottom.',
+    ],
+  },
+  {
     version: 'v2.1385',
     date: '2026-08-04',
     title: 'Builder Review: PIA flags are now shared with your whole team',

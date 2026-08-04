@@ -7,10 +7,23 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1385)
+last_updated: 2026-08-04 (v2.1386)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1386)
+
+### Followup train PR B: the builder card becomes a call tool (2026-08-04)
+All in [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx); client-only (uses PR A's table + kernels).
+
+**(1) Per-bid staleness on the card**: unsent/pending bid rows show S&F's "effective last note" (`effectiveSubmissionBidLastNoteIso` — deliberately the same rule as the status tables, so the two lenses can't disagree) and tint `--bg-red-tint` past the toolbar's **Stale after N days** input (persisted `localStorage bids_followup_stale_days`, default 14; parse rules match S&F).
+
+**(2) Quick-log** (kernel [`builderQuickLog.ts`](../src/lib/bids/builderQuickLog.ts), 5 tests): method pills (Phone/Text/Email) + one note + per-bid ☑ (pending checked by default) → `buildBuilderQuickLogWrites` returns one `customer_contacts` insert + a `bids_submission_entries` insert and `bids.last_contact` stamp per checked bid, all at the same instant; empty note defaults to "<method> follow-up". Enter submits; per-card saving state; reloads contacts + bids.
+
+**(3) Header**: hit-rate chip (finally rendering the kernel's `hitRatePct`), **open pipeline** chip (`builderOpenPipelineValue`/`formatOpenPipelineValue` — unsent+pending `bid_value`, `$360k`/`$1.2M` style), and the customer phone number now visible text + `tel:` (was icon-only with tooltip).
+
+**(4) Queue hygiene**: **Snooze** modal (1 week/2 weeks/1 month/date + optional note) writes PR A's `customer_followup_prefs.snoozed_until/note/by`; snoozed builders leave the Oldest-first queue into a "Snoozed" block (wake date + note + Wake now) and auto-return once past the date (load filters expired snoozes). **Quiet builders**: zero-bid customers fold into a collapsed block (with + New Bid / Edit) instead of padding the queue bottom. Plus a real empty state for no-match searches (was blank).
 
 ## Latest Updates (v2.1385)
 
