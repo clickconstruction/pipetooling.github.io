@@ -17,6 +17,17 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Bid Board: the staff column sits between Due Date and Last Contact (2026-08-03)
 Owner call — **Estimator / Account Man** moves out of the far-right position to sit directly after **Due Date**, so the reading order is now Bid # · Project/GC · Bid · **Due Date · Estimator · Last Contact** · Links. That puts *when it's due*, *who owns it*, and *when we last touched it* side by side, which is the follow-up question the board actually gets asked. Header `<th>` and the matching `<td>` moved together in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx); nothing else changed — the estimator still prints large with the account manager beneath only when it's someone else (v2.1370), and the Unsent section still hides Bid $. Phone cards have no columns and are unaffected. Client-only — no migration.
 
+## Latest Updates (v2.1373)
+
+### The changelog guards' allowlists are empty — eight lost entries repaired (2026-08-03)
+v2.1372 landed the duplicate/orphan guards frozen around the damage they found, so they policed only *new* losses. Both allowlists in [`releaseNotes.test.ts`](../src/lib/releaseNotes.test.ts) are now `[]` and the guards enforce a **hard zero**; the arrays stay as named constants so a future temporary exemption is visible for what it is.
+
+**Five orphaned release notes got their headings back — recovered verbatim, not rewritten.** Each of `v2.1012`, `v2.1037`, `v2.1038`, `v2.1039`, `v2.1040` *did* ship a `RECENT_FEATURES.md` entry (`git show 30f2badd|7e2e08d5|586c2e0f|6244d395|9296a876 -- docs/RECENT_FEATURES.md`). The loss mechanism is visible in those diffs and is worth knowing: the next PR in each chain **renamed the previous entry's heading** to its own version instead of inserting a new one, so the older body survived while its `## Latest Updates (v2.NNN)` line was consumed — four hazmat entries (v2.1037–v2.1040) ended up stacked under the single v2.1041 heading, and v2.1012's Phase C-4 body under v2.1013's. Restoring the five headings above their own (already-present, untouched) bodies is the whole fix.
+
+**Three double-claimed numbers merged, no content dropped.** `v2.545` (Dashboard Job Mode + the day-audit `Assign` popover) and `v2.95` (Other-job-charges-in-Parts + Edit Sub Labor / Bid service-type row) were pairs of genuinely different features sharing one number — each is now one entry with both features as sibling `###` sections, the v2.95 halves rejoined at the in-sequence slot between v2.96 and v2.94. `v2.25` was different: two accounts of the *same* release, one a strict expansion of the other, so the fuller text survives with the shorter one's only unique material folded in — its whole "Pricing Tab: Searchable Price Book Features" section, plus the persistence note in Database Changes. Merging rather than renumbering throughout: the era around each pair has no free adjacent number (many apparent gaps are entries under older `## Previous Updates` / `## Updates` headings the regex doesn't match), and a same-dated feature parked at a distant unused number would be a worse lie than a shared one.
+
+CLAUDE.md and `docs/SESSIONS.md` now say hard zero — a guard failure means a live PR lost an entry, and the fix is to restore it, never to widen the list. Docs + test only; no app code, no migration.
+
 ## Latest Updates (v2.1372)
 
 ### Changelog guards: duplicate versions and orphaned release notes now fail CI (2026-08-03)
@@ -1685,22 +1696,22 @@ Follow-up to v2.1041: on small viewports the single nowrap chunk ("✉ Stripe em
 ### Jobs Stages: the "Stripe emailed customer" hint compacts to one scan line (2026-07-28)
 Request: shrink the three stacked lines (label / "Monday 10:28 PM (1 day ago)" / boxed "Resend invoice email" chip) under billed rows. [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)'s `renderStagesStripeEmailedCustomerHint` now renders **"✉ Stripe emailed Mon 10:28 PM (1d)"** with a micro **Resend** control beside it — existing short formatters (`formatDispatchNoteWeekdayShortTimeChicago`, `formatDispatchNoteDaysAgoShort`), full wording in the tooltip, and the resend keeps its paid-invoice disable + confirm behavior. Two nowrap chunks wrap cleanly in the narrow Activity column (text line + Resend) instead of three centered rows. Client-only.
 
-
+## Latest Updates (v2.1040)
 
 ### Jobs Stages: the ☣ button wears a bright green box on jobs that have a hazmat fee (2026-07-28)
 Request: make the Stages biohazard button show at a glance which jobs already carry a fee. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) fetches every `job_hazmat_incidents.job_id` with `voided_at IS NULL` in one tiny query (fees are rare; skipped for non-office roles; a failure just leaves buttons plain) into a `hazmatFeeJobIds: ReadonlySet<string>` that refreshes when the wizard creates a fee. Both row renderers ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx)) take the set as a prop: member rows get a **2px `#22c55e` border + faint green tint + rounded corners** around the orange ☣ icon and the tooltip flips to "This job has a hazmat fee — click to add another" (clicking still opens the create wizard — multiple incidents per job are supported). Voided-only jobs revert to the plain button. Render tests in both table test files (boxed exactly one of two rows, tooltip). Client-only.
 
-
+## Latest Updates (v2.1039)
 
 ### Hazmat notice email: opt-in at billing, send-any-time after, tracked everywhere (2026-07-28)
 Request: don't pre-select the notice-email box at billing, and make after-the-fact sending a real workflow. **(1)** The ☣ **Also email the notice** box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) now defaults **unchecked**. **(2)** Every successful send is stamped — migration [`20260728050000`](../supabase/migrations/20260728050000_hazmat_notice_tracking_and_link.sql) adds `notice_emailed_at`/`notice_emailed_to`, and the [`send-hazmat-notice-email`](../supabase/functions/send-hazmat-notice-email/index.ts) edge fn (the single funnel both send paths use) writes them + a `hazmat_notice_emailed` job-activity row via service role after Resend accepts. **(3)** The RIDERS row pill shows **"Notice not emailed"** (amber) / **"Notice emailed {date}"** (green, hover for address); the button becomes **Re-email notice…** after the first send, and its browser confirm is now a proper ConfirmDialog. **(4)** The Stripe success screen offers **"Email the notice now"** when the box was left unchecked. Also fixes the **silent repoint no-op** found in the 2026-07-28 crash investigation: `job_hazmat_incidents` has no client write policies, so the billing modal's direct `invoice_id` UPDATE never persisted — new `link_hazmat_fee_incident_to_invoice` RPC (office-gated, cross-job/voided refusals, idempotent) replaces all three call sites, and the migration one-row-fixes job 857's incident onto its sent Stripe invoice (which also correctly locks its Edit/Void/Delete buttons).
 
-
+## Latest Updates (v2.1038)
 
 ### Edit Job RIDERS: edit, void, or delete a hazmat fee — with an audit trail (2026-07-28)
 Request: edit a Biohazard remediation fee from Edit Job's RIDERS rows (amount, description, photos, testimonials), with an audit trail, and role-split removal (devs/masters/controllers delete; assistants void). Migration [`20260728025542_hazmat_fee_edit_void_delete.sql`](../supabase/migrations/20260728025542_hazmat_fee_edit_void_delete.sql) adds `edited_at`/`voided_at`/`voided_by` columns, the `zzz_archive_on_delete` trigger (the table postdated the v2.696 sweep), and three RPCs: **`update_hazmat_fee_incident`** (jsonb patch; an amount change ripples the delta to the linked OPEN invoice and `jobs_ledger.revenue` atomically; refuses sent/billed bills and voided fees), **`void_hazmat_fee_incident`** (office incl. assistants: subtracts the fee from the open bill + revenue, keeps the record, stamps `voided_at`/`voided_by`), **`delete_hazmat_fee_incident`** (dev/master/controller only: unwinds the money unless already voided, then deletes — archive trigger snapshots it into Recently deleted). Every path writes a `job_activity_events` row (`hazmat_fee_edited` with old→new detail, `hazmat_fee_voided`, `hazmat_fee_deleted`). Client: [`hazmatFeeEdit.ts`](../src/lib/hazmatFeeEdit.ts) kernel (`hazmatFeeMutationBlocker` mirrors the server gate for disable-with-reason; `hazmatFeeRemovalCapability` maps roles → delete/void; 4 tests) + [`HazmatFeeEditDialog`](../src/components/jobs/HazmatFeeEditDialog.tsx) (leaf z 1300: amount, description, photo links, testimonial list). RIDERS rows ([`JobFormHazmatRidersStrip.tsx`](../src/components/jobs/JobFormHazmatRidersStrip.tsx)) gain **Edit… / Void… / Delete…** buttons (per-role, ConfirmDialog-confirmed, disabled with the blocker reason once the bill is sent), a gray struck-through **Voided** state, and refresh Edit Job via `useJobHazmatIncidents().refresh`. Voided fees drop out of the Job Total (`sumHazmatRiderFees`), billing fold-ins (`foldedHazmatFeeLines`), and Bill Customer detection; the printable notice + PDF show a "Record edited {date}" stamp and a red **VOIDED** banner.
 
-
+## Latest Updates (v2.1037)
 
 ### Bill Customer: "Preview the email…" shows the notice email the customer will get (2026-07-28)
 Request: a way to see the Biohazard Remediation Fee Notice companion email before it goes out. The subject/body builders are now exported from [`sendHazmatNoticeEmail.ts`](../src/lib/sendHazmatNoticeEmail.ts) (`hazmatNoticeEmailSubject` / `hazmatNoticeEmailText`) and shared with a new pure builder [`hazmatNoticeEmailPreview.ts`](../src/lib/hazmatNoticeEmailPreview.ts) (4 tests: exact sender text, sandboxed-iframe srcdoc escaping, per-incident numbering, HTML escaping) — so the preview can never drift from what actually sends. The ☣ box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) gains a **"Preview the email…"** link that opens a window showing the envelope (To / Subject / 📎 attachment chip), the body text with the Stripe-invoice reference, and the attached notice inlined below an "ATTACHMENT PREVIEW" divider (customer-facing → pinned light). One email block per incident when several fees ride the bill. Verified live on 857: To brace.tj@…, Subject "…— Job 857", body + Stripe reference, notice iframe. Client-only.
@@ -1824,6 +1835,8 @@ Requested after the v2.1013 session surfaced the dead end live: an external sub 
 
 ### Active Accounts modal: search bar (2026-07-24)
 The People → Users **Manage accounts** modal now opens with a search bar pinned (sticky) above the account table — autofocused, matching name, email, DB role slug, or role display label ("helper" finds `helpers` rows either way) via new kernel [`activeAccountsSearch.ts`](../src/lib/activeAccountsSearch.ts) (`filterActiveAccountUsers`, 7 tests). The same query filters the Archived users section; filtered-empty states name the query ("No accounts match …"). Modal-only — the inline Settings → People & accounts card is unchanged, except the modal also drops the "Set user class…" description line to keep the search bar tight under the title (the card keeps it). Merge/convert pickers still see the full unfiltered lists. Help guide `archive-user-accounts.md` mentions the search bar. Verified live in the modal: name query, role query, no-match state, sticky-on-scroll.
+
+## Latest Updates (v2.1012)
 
 ### Person identity Phase C-4: labor wage lookups go person-first (2026-07-24)
 Third reader flip, client-side. [`teamLabor.ts`](../src/utils/teamLabor.ts)'s `fetchLaborPayConfigMap` — the wage/salary map behind Crew P&L, Job Summary labor, and the one-job modal — joined `people_pay_config` to crew rows purely by `person_name`, so a renamed pay-config row silently zeroed wages. The wage query now selects `person_id` and the map carries `id:<uuid>` keys alongside names; all three lookup sites (`loadTeamLaborData`, the one-job loader, the bids loader — their crew selects now carry `person_id` too) prefer the id key and fall back to name. Salary flags stay name-keyed until the `list_people_pay_flags` RPC flips (queued as C-4b with D). Zero behavior change for matched names; renames stop zeroing wages.
@@ -7858,12 +7871,6 @@ The card subscribes to `postgres_changes` on `clock_sessions` (this user) and `j
 - Bid-aware scheduling (`job_schedule_blocks` is jobs-only).
 - Geolocation gating on Next Job.
 - Push notification when a scheduled block's `time_start` is reached.
-
----
-
-## Latest Updates (v2.545)
-
-**Date**: 2026-05-16
 
 ### Day audit modal: per-clock-session `Assign` popover (the canonical fix path)
 
@@ -13923,28 +13930,6 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ---
 
-## Latest Updates (v2.95)
-
-**Date**: 2026-03-11
-
-### Jobs – Other job charges reflect in Parts
-
-- **Parts Cost includes Other job charges**: Job Summary Parts Cost and Jobs Parts tab Total Parts Cost now include the sum of Other job charges (manual line items from Edit Job) in addition to Parts from Tally and Invoices from Supply Houses.
-- **Parts tab Other job charges column**: New "Other job charges" column in Jobs Parts tab shows the other job charges sum per job.
-- **Parts tab Other job charges section**: When expanding a job row in Parts tab, an "Other job charges" section appears below the tally parts table when the job has those line items, listing each line item with Description and Amount.
-- **Link Other job charges to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120002_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Other job charges now uses description + amount only.
-
-### People – Review Tab (Parts Cost)
-
-- **Parts Cost includes Other job charges**: People Review Parts Cost (labor jobs, crew jobs, allocation) now includes Other job charges from `jobs_ledger_materials` in addition to tally parts and supply house invoice amounts.
-
-### Jobs – Parts Tab: Materials-Only and Invoice-Only Jobs
-
-- **Jobs with Other job charges only**: Parts tab now includes jobs that have Other job charges but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Other job charges column populated; when expanded, only the Other job charges section is shown (no empty tally parts table).
-- **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Other job charges. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
-
----
-
 ## Latest Updates (v2.108)
 
 **Date**: 2026-04-15
@@ -14431,6 +14416,22 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 ### Bids – Service Type Filter Row
 
 - **Persistent New Bid button**: A New Bid button is now always visible on the right side of the service type filter row (in line with Plumbing, Electrical, HVAC). It uses the same `openNewBid` handler and styling as before. The duplicate New Bid button was removed from the Bid Board tab toolbar. On Builder Review tab, the button is grayed out (inherits parent opacity and pointer-events).
+
+### Jobs – Other job charges reflect in Parts
+
+- **Parts Cost includes Other job charges**: Job Summary Parts Cost and Jobs Parts tab Total Parts Cost now include the sum of Other job charges (manual line items from Edit Job) in addition to Parts from Tally and Invoices from Supply Houses.
+- **Parts tab Other job charges column**: New "Other job charges" column in Jobs Parts tab shows the other job charges sum per job.
+- **Parts tab Other job charges section**: When expanding a job row in Parts tab, an "Other job charges" section appears below the tally parts table when the job has those line items, listing each line item with Description and Amount.
+- **Link Other job charges to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120002_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Other job charges now uses description + amount only.
+
+### People – Review Tab (Parts Cost)
+
+- **Parts Cost includes Other job charges**: People Review Parts Cost (labor jobs, crew jobs, allocation) now includes Other job charges from `jobs_ledger_materials` in addition to tally parts and supply house invoice amounts.
+
+### Jobs – Parts Tab: Materials-Only and Invoice-Only Jobs
+
+- **Jobs with Other job charges only**: Parts tab now includes jobs that have Other job charges but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Other job charges column populated; when expanded, only the Other job charges section is shown (no empty tally parts table).
+- **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Other job charges. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
 
 ---
 
@@ -16882,66 +16883,90 @@ Improved bid date display formatting in Bid Board for better readability.
 **Date**: 2026-02-06
 
 **Overview**:
-Enhanced the Cost Estimate tab with automated driving cost calculations based on total man-hours and distance to office, plus improved labor book application workflow.
+Enhanced the Cost Estimate tab with automated driving cost calculations and streamlined labor book application workflow.
 
 #### Driving Cost Calculation
 
-**Feature**: Automatic calculation of driving costs based on job parameters.
+**Feature**: Automatic calculation of driving costs based on job parameters and editable cost factors.
 
 **How It Works**:
-- Formula: (Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance to Office
-- Example: 40 hrs / 2 hrs/trip × $0.70/mi × 50 miles = $700
+- **Formula**: (Total Man Hours ÷ Hours Per Trip) × Rate Per Mile × Distance to Office
+- **Example**: 40 hrs ÷ 2 hrs/trip × $0.70/mi × 50 miles = $700 driving cost
 
-**Features**:
-- Editable rate per mile (default: $0.70)
-- Editable hours per trip (default: 2.0 hours)
-- Displays distance to office from bid data
-- "Edit Bid" button for quick distance updates
-- Automatically included in labor total and grand total
-- Appears in Summary section and PDF exports
+**Editable Parameters**:
+- **Rate per mile**: Default $0.70, adjustable per estimate
+- **Hours per trip**: Default 2.0 hours, adjustable per estimate
+- Parameters persist with the cost estimate when saved
 
-**UI Location**:
-Yellow-highlighted "Driving Cost Parameters" section appears after the labor hours table in Cost Estimate tab.
+**UI Features**:
+- Yellow-highlighted "Driving Cost Parameters" section after labor table
+- Displays current distance to office from bid data
+- "Edit Bid" button for quick access to update distance
+- Real-time calculation display showing trips, rate, distance, and total cost
+- Shows "Distance to office: Not set" when no distance is configured
 
-**Database**:
-- Added `driving_cost_rate` column to `cost_estimates` table
-- Added `hours_per_trip` column to `cost_estimates` table
-- Migration: `add_cost_estimate_driving_cost_fields.sql`
+**Summary Integration**:
+- Driving cost appears as separate line item in Summary section
+- Included in "Labor total" (Labor + Driving)
+- Incorporated into Grand total calculation
+- Format: `Driving: $700.00` (always visible, shows $0.00 if no distance)
+
+**PDF Export**:
+- Driving cost calculation included in Cost Estimate PDF
+- Shows breakdown: "Driving cost: 20.0 trips × $0.70/mi × 50mi = $700.00"
+- Appears in summary table with Labor and Materials totals
+- Included in Submission & Followup preview calculations for margin analysis
+
+**Database Changes**:
+- Table: `cost_estimates`
+- New columns: `driving_cost_rate` (NUMERIC(10,2), default 0.70), `hours_per_trip` (NUMERIC(10,2), default 2.0)
+- Migration file: `supabase/archive/add_cost_estimate_driving_cost_fields.sql`
+- Values persist per cost estimate; updates save to the database alongside other cost estimate changes
+
+#### Labor Book Application Workflow
+
+**Enhancement**: Streamlined labor book template application with better visibility and user experience.
+
+**Button Placement**:
+- Moved to top-right header next to Print button (previously below labor rate input)
+- Renamed to "Apply matching Labor Hours" for consistency with Takeoffs tab
+- Blue styling matching "Apply matching Fixture Templates" pattern
+- Compact size (0.35rem × 0.75rem padding)
+
+**Auto-Selection**:
+- First labor book version automatically selected when opening Cost Estimate tab
+- Preserves any previously saved labor book selection for the bid
+- Button immediately clickable without manual selection
+
+**Simplified Workflow**:
+- One-click operation (no confirmation dialogs)
+- Success message appears inline next to button
+- Shows "Applying..." state while processing
+- Green success message displays for 3 seconds after completion
+
+**Smart Matching Behavior**:
+- Only updates fixtures that exist in the selected labor book
+- Matches by fixture name and alias names (case-insensitive)
+- Non-matching fixtures remain unchanged
+
+**Fallback Logic for New Fixtures**:
+When adding new fixtures to cost estimate:
+1. Uses hours from selected labor book if fixture matches
+2. Falls back to `fixture_labor_defaults` table for non-matching fixtures (e.g., Toilet: 1/1/1 hrs)
+3. Defaults to 0 only if fixture not found in either source
 
 **Technical Details**:
-- Values persist per cost estimate
-- Updates save to database with other cost estimate changes
-- PDF export includes driving cost breakdown
-- Submission preview calculations include driving cost in margins
+- Function: `applyLaborBookHoursToEstimate()` (line 2005)
+- Sync function: `loadCostEstimateLaborRowsAndSync()` (line 1082)
+- Auto-selection logic in Cost Estimate tab useEffect (line 3326)
+- Button only visible when labor rows exist and labor book is selected
 
-#### Labor Book Application Improvements
-
-**Enhancement**: Streamlined workflow for applying labor book templates to cost estimates.
-
-**Features**:
-- "Apply matching Labor Hours" button moved to top-right header (next to Print button)
-- Auto-selects first labor book version when opening Cost Estimate tab
-- One-click application (no confirmation dialogs)
-- Blue button styling matches "Apply matching Fixture Templates" pattern
-- Success message appears inline next to button
-- Button only visible when labor book is selected
-
-**Smart Matching**:
-- Only updates fixtures that match entries in the selected labor book
-- Non-matching fixtures preserve their existing hours or fall back to system defaults
-- Uses fixture name and alias name matching (case-insensitive)
-
-**Fallback Logic**:
-When creating new labor rows:
-1. First attempts to use hours from selected labor book
-2. Falls back to `fixture_labor_defaults` table for non-matching fixtures
-3. Defaults to 0 only if fixture exists in neither source
-
-**Impact**:
-- Faster workflow - button always visible and ready to use
-- Consistent UX - matches takeoffs tab pattern
-- Safer - preserves non-matching fixture hours
-- Better discoverability - prominent header placement
+**Benefits**:
+- More discoverable - prominent header placement
+- Faster workflow - auto-selection and one-click application
+- Consistent UX - matches patterns from other tabs
+- Safer - preserves non-matching fixture hours using fallback defaults
+- Better visibility - success feedback right at the button
 
 #### Pricing Tab: Searchable Price Book Features
 
@@ -17010,99 +17035,6 @@ When creating new labor rows:
 - Use clear button (×) to quickly reassign a fixture
 - Create new entries on-the-fly when needed
 - Dropdown shows all entries when field is empty
-
----
-
-## Latest Updates (v2.25)
-
-### Cost Estimate: Driving Cost Calculation and Labor Book Improvements
-
-**Date**: 2026-02-06
-
-**Overview**:
-Enhanced the Cost Estimate tab with automated driving cost calculations and streamlined labor book application workflow.
-
-#### Driving Cost Calculation
-
-**Feature**: Automatic calculation of driving costs based on job parameters and editable cost factors.
-
-**How It Works**:
-- **Formula**: (Total Man Hours ÷ Hours Per Trip) × Rate Per Mile × Distance to Office
-- **Example**: 40 hrs ÷ 2 hrs/trip × $0.70/mi × 50 miles = $700 driving cost
-
-**Editable Parameters**:
-- **Rate per mile**: Default $0.70, adjustable per estimate
-- **Hours per trip**: Default 2.0 hours, adjustable per estimate
-- Parameters persist with the cost estimate when saved
-
-**UI Features**:
-- Yellow-highlighted "Driving Cost Parameters" section after labor table
-- Displays current distance to office from bid data
-- "Edit Bid" button for quick access to update distance
-- Real-time calculation display showing trips, rate, distance, and total cost
-- Shows "Distance to office: Not set" when no distance is configured
-
-**Summary Integration**:
-- Driving cost appears as separate line item in Summary section
-- Included in "Labor total" (Labor + Driving)
-- Incorporated into Grand total calculation
-- Format: `Driving: $700.00` (always visible, shows $0.00 if no distance)
-
-**PDF Export**:
-- Driving cost calculation included in Cost Estimate PDF
-- Shows breakdown: "Driving cost: 20.0 trips × $0.70/mi × 50mi = $700.00"
-- Appears in summary table with Labor and Materials totals
-- Included in Submission & Followup preview calculations for margin analysis
-
-**Database Changes**:
-- Table: `cost_estimates`
-- New columns: `driving_cost_rate` (NUMERIC(10,2), default 0.70), `hours_per_trip` (NUMERIC(10,2), default 2.0)
-- Migration file: `supabase/archive/add_cost_estimate_driving_cost_fields.sql`
-
-#### Labor Book Application Workflow
-
-**Enhancement**: Streamlined labor book template application with better visibility and user experience.
-
-**Button Placement**:
-- Moved to top-right header next to Print button (previously below labor rate input)
-- Renamed to "Apply matching Labor Hours" for consistency with Takeoffs tab
-- Blue styling matching "Apply matching Fixture Templates" pattern
-- Compact size (0.35rem × 0.75rem padding)
-
-**Auto-Selection**:
-- First labor book version automatically selected when opening Cost Estimate tab
-- Preserves any previously saved labor book selection for the bid
-- Button immediately clickable without manual selection
-
-**Simplified Workflow**:
-- One-click operation (no confirmation dialogs)
-- Success message appears inline next to button
-- Shows "Applying..." state while processing
-- Green success message displays for 3 seconds after completion
-
-**Smart Matching Behavior**:
-- Only updates fixtures that exist in the selected labor book
-- Matches by fixture name and alias names (case-insensitive)
-- Non-matching fixtures remain unchanged
-
-**Fallback Logic for New Fixtures**:
-When adding new fixtures to cost estimate:
-1. Uses hours from selected labor book if fixture matches
-2. Falls back to `fixture_labor_defaults` table for non-matching fixtures (e.g., Toilet: 1/1/1 hrs)
-3. Defaults to 0 only if fixture not found in either source
-
-**Technical Details**:
-- Function: `applyLaborBookHoursToEstimate()` (line 2005)
-- Sync function: `loadCostEstimateLaborRowsAndSync()` (line 1082)
-- Auto-selection logic in Cost Estimate tab useEffect (line 3326)
-- Button only visible when labor rows exist and labor book is selected
-
-**Benefits**:
-- More discoverable - prominent header placement
-- Faster workflow - auto-selection and one-click application
-- Consistent UX - matches patterns from other tabs
-- Safer - preserves non-matching fixture hours using fallback defaults
-- Better visibility - success feedback right at the button
 
 ---
 
