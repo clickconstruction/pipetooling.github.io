@@ -58,6 +58,8 @@ type BidSubmissionFollowupTabProps = {
   onClearBid: () => void
   onEditBid: (bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue' }) => void
   onOpenParty: (bid: BidWithBuilder) => void
+  /** Followup merge (v2.1387): jump to this customer's card on the By-builder lens. */
+  onOpenBuilderLens?: (customerId: string) => void
   lastContactFromEntries: Record<string, string>
   customerContacts: CustomerContact[]
   estimatorUsers: EstimatorUser[]
@@ -86,6 +88,7 @@ export function BidSubmissionFollowupTab({
   onClearBid,
   onEditBid,
   onOpenParty,
+  onOpenBuilderLens,
   lastContactFromEntries,
   customerContacts,
   estimatorUsers,
@@ -106,7 +109,23 @@ export function BidSubmissionFollowupTab({
   const { showToast } = useToastContext()
 
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
-  const [submissionFollowupStaleDaysInput, setSubmissionFollowupStaleDaysInput] = useState('')
+  // Shared with the By-builder lens (v2.1387): both lenses read/persist the
+  // same "stale after N days" value so they can never disagree.
+  const [submissionFollowupStaleDaysInput, setSubmissionFollowupStaleDaysInput] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      return localStorage.getItem('bids_followup_stale_days') ?? ''
+    } catch {
+      return ''
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('bids_followup_stale_days', submissionFollowupStaleDaysInput)
+    } catch {
+      // ignore
+    }
+  }, [submissionFollowupStaleDaysInput])
   const [submissionFollowupNotesTab, setSubmissionFollowupNotesTab] = useState<'all' | 'bid' | 'customer'>('all')
   const [submissionFollowupUnifiedAddingKind, setSubmissionFollowupUnifiedAddingKind] =
     useState<UnifiedNotesAddingKind>(null)
@@ -1696,9 +1715,21 @@ export function BidSubmissionFollowupTab({
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                          {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                          </button>
+                          {onOpenBuilderLens && bid.customer_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
+                              title="Open this builder on the By-builder lens (all their bids + contact log)"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+                            >
+                              ↗
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         '—'
                       )}
@@ -1847,9 +1878,21 @@ export function BidSubmissionFollowupTab({
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                          {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                          </button>
+                          {onOpenBuilderLens && bid.customer_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
+                              title="Open this builder on the By-builder lens (all their bids + contact log)"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+                            >
+                              ↗
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         '—'
                       )}
@@ -1937,9 +1980,21 @@ export function BidSubmissionFollowupTab({
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                          {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                          </button>
+                          {onOpenBuilderLens && bid.customer_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
+                              title="Open this builder on the By-builder lens (all their bids + contact log)"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+                            >
+                              ↗
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         '—'
                       )}

@@ -11,6 +11,41 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1387',
+    date: '2026-08-04',
+    title: 'One Followup tab: Builder Review and Submission & Followup merge',
+    kind: 'feature',
+    highlights: [
+      'The two follow-up tabs are now one — Followup — with a toggle between "By builder" (the call queue) and "By status" (the outcome tables, followup sheets, and scripts). Old links keep working.',
+      'The ↗ next to any GC/Builder name on the status tables jumps straight to that builder\'s card on the queue; the stale-days threshold is shared between both lenses.',
+      'Printable call sheets: one page per builder (their people, numbers, and open bids with last-update ages), or the whole queue in call order from the toolbar.',
+      'New help guide: Settings → Help → "follow up with builders on their bids".',
+    ],
+  },
+  {
+    version: 'v2.1386',
+    date: '2026-08-04',
+    title: 'Builder Review becomes a real call queue',
+    kind: 'feature',
+    highlights: [
+      'Every unsent and pending bid on a builder card now shows when it last got an update, and turns red past your "stale after N days" threshold (set it once in the toolbar — it sticks).',
+      'Log a call in one line: pick Phone/Text/Email, type what they said, and hit Log — it records one contact for the builder and stamps every checked bid at once.',
+      'New chips on each builder: win hit-rate and open pipeline dollars. The builder\'s phone number is now visible and tappable on the card header.',
+      'Snooze a builder ("awarding after board meeting — check back Aug 18") and they step out of the call queue until their wake date, visible to the whole team. Builders with no bids yet fold into a Quiet builders group at the bottom.',
+    ],
+  },
+  {
+    version: 'v2.1385',
+    date: '2026-08-04',
+    title: 'Builder Review: PIA flags are now shared with your whole team',
+    kind: 'feature',
+    highlights: [
+      'The PIA checkbox on Builder Review now saves to the database — flag a builder once and everyone sees it, on every device. Your existing flags move over automatically the first time you open the tab.',
+      'The "last contact" ordering under the hood was consolidated and hardened; sorting is unchanged, ties now break alphabetically.',
+      'First step of the Followup revamp — the Builder Review and Submission & Followup tabs are merging into one follow-up surface over the next updates.',
+    ],
+  },
+  {
     version: 'v2.1384',
     date: '2026-08-04',
     title: 'Working board loads faster',

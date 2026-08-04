@@ -7,10 +7,47 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1384)
+last_updated: 2026-08-04 (v2.1387)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1387)
+
+### Followup train PR C: the merge — one tab, two lenses (2026-08-04)
+The presentational merge is deliberately key-preserving: the internal `activeTab` keys `builder-review` / `submission-followup` (and every existing deep link, effect, and loader keyed on them) are untouched — the ~30 call sites in [`Bids.tsx`](../src/pages/Bids.tsx) didn't move. What changed:
+
+**(1) One tab button** — "Followup" (active for either key; click resumes the last-used lens) replaces the two buttons; a **By builder / By status** lens toggle renders above both bodies. Superintendents (already bounced off submission-followup by the URL effect) simply don't get the By-status lens button.
+
+**(2) Cross-lens jump** — new `openBuilderLensForCustomer(customerId)` in the parent (same highlight/scroll plumbing as the bid deep link) passed as optional `onOpenBuilderLens` to [`BidSubmissionFollowupTab.tsx`](../src/components/bids/BidSubmissionFollowupTab.tsx); a small **↗** beside the GC/Builder cell in the pending/won/started tables jumps to that builder's card. The reverse jump (magnifier → status lens) already existed.
+
+**(3) Shared threshold** — S&F's "Highlight no update in last N days" now initializes from and persists to the same `localStorage bids_followup_stale_days` the By-builder lens uses; the two lenses can no longer disagree about what's stale.
+
+**(4) Call sheets** — kernel [`builderCallSheet.ts`](../src/lib/bids/builderCallSheet.ts) (3 tests, HTML-escaped): `buildBuilderCallSheetHtml` (one-pager: people + tel links, open bids with last-update ages, ruled note space) behind a **Call sheet** button on each card footer, and `buildFollowupQueueCallSheetHtml` (whole visible queue, call order) behind toolbar **Print call sheet**; both print via the existing `printHtmlInNewWindow`.
+
+**(5) Docs** — new guide `follow-up-with-builders` (all bids roles); GLOSSARY + PROJECT_DOCUMENTATION tab lists updated (PIA localStorage note was stale since PR A).
+
+## Latest Updates (v2.1386)
+
+### Followup train PR B: the builder card becomes a call tool (2026-08-04)
+All in [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx); client-only (uses PR A's table + kernels).
+
+**(1) Per-bid staleness on the card**: unsent/pending bid rows show S&F's "effective last note" (`effectiveSubmissionBidLastNoteIso` — deliberately the same rule as the status tables, so the two lenses can't disagree) and tint `--bg-red-tint` past the toolbar's **Stale after N days** input (persisted `localStorage bids_followup_stale_days`, default 14; parse rules match S&F).
+
+**(2) Quick-log** (kernel [`builderQuickLog.ts`](../src/lib/bids/builderQuickLog.ts), 5 tests): method pills (Phone/Text/Email) + one note + per-bid ☑ (pending checked by default) → `buildBuilderQuickLogWrites` returns one `customer_contacts` insert + a `bids_submission_entries` insert and `bids.last_contact` stamp per checked bid, all at the same instant; empty note defaults to "<method> follow-up". Enter submits; per-card saving state; reloads contacts + bids.
+
+**(3) Header**: hit-rate chip (finally rendering the kernel's `hitRatePct`), **open pipeline** chip (`builderOpenPipelineValue`/`formatOpenPipelineValue` — unsent+pending `bid_value`, `$360k`/`$1.2M` style), and the customer phone number now visible text + `tel:` (was icon-only with tooltip).
+
+**(4) Queue hygiene**: **Snooze** modal (1 week/2 weeks/1 month/date + optional note) writes PR A's `customer_followup_prefs.snoozed_until/note/by`; snoozed builders leave the Oldest-first queue into a "Snoozed" block (wake date + note + Wake now) and auto-return once past the date (load filters expired snoozes). **Quiet builders**: zero-bid customers fold into a collapsed block (with + New Bid / Edit) instead of padding the queue bottom. Plus a real empty state for no-match searches (was blank).
+
+## Latest Updates (v2.1385)
+
+### Followup train PR A: shared PIA + one last-contact kernel (2026-08-04)
+First PR of the Builder-Review ⊕ Submission-&-Followup merge (approved with mockups 2026-08-04; see the plan in this entry's PR).
+
+**(1) `customer_followup_prefs`** (migration [`20260804120000_customer_followup_prefs.sql`](../supabase/migrations/20260804120000_customer_followup_prefs.sql)): one team-shared row per customer — `pia boolean` now, `snoozed_until/snooze_note/snoozed_by` for the queue snooze landing in PR B. RLS all-authenticated (bids-surface audience); ends with BOTH read-only sweeps (new table rule). Replaces the per-browser localStorage PIA list: [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx) one-way migrates `bids_builder_review_pia_<uid>` (upsert then clear, skipped until the roster is loaded so an empty page never wipes the legacy list), toggles are optimistic with revert-on-error. `(supabase as any)` cast until types regen.
+
+**(2) `customerLastContact.ts` kernel** (6 tests): `buildCustomerLastContactMap` (one pass; max of customer_contacts.contact_date + bids.last_contact + newest submission entry per bid) and `compareCustomersByLastContact` (never-contacted always last, alphabetical ties). Replaces the tab's two divergent inline copies (string localeCompare in the sort vs Date compare in the display — now both instant-based; mixed-offset ISO strings sort correctly). O(customers×bids) → O(bids).
 
 ## Latest Updates (v2.1384)
 
