@@ -7,10 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1379)
+last_updated: 2026-08-04 (v2.1380)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1380)
+
+### Controllers auto-hold the banking-attribution grant (2026-08-04)
+Follow-on to v2.1378 (Moneyfill): there are no active controllers today, so instead of a one-time backfill, the **controller role now implies the `banking_attributors` capability** — promote someone to controller and the Moneyfill queue works for them with no separate dev step; demote or archive them and the auto-grant revokes itself.
+
+Migration [`20260804100000_controller_banking_attributor_autogrant.sql`](../supabase/migrations/20260804100000_controller_banking_attributor_autogrant.sql): `banking_attributors.auto_role_grant` marker column + `sync_controller_banking_attributors()` reconciler + a statement trigger on `users` (`AFTER INSERT OR UPDATE OF role, archived_at` — the v2.921 `sync_company_access_grants` pattern). **Manual dev grants are never touched** (marker stays `false`), so the substrate's original use — granting the queue to someone with no other Banking access, any role — still works, and a manual grant that predates a promotion survives a later demotion. No client change; the capability probe on Moneyfill picks the grant up on next load.
 
 ## Latest Updates (v2.1379)
 

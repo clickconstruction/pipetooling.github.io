@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1380',
+    date: '2026-08-04',
+    title: 'Moneyfill access comes with the controller role',
+    kind: 'feature',
+    highlights: [
+      'Anyone made a controller now gets the bank-transfer labeling queue on Moneyfill automatically — no separate grant step.',
+      'If a controller is demoted or archived, the automatic access is removed; grants a dev made by hand are left alone.',
+    ],
+  },
+  {
     version: 'v2.1379',
     date: '2026-08-03',
     title: 'Move day chips now reach forward too',

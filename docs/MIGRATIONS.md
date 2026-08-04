@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-08-04
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "165 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 3, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "168 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 4, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -102,6 +102,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 4, 2026
+
+**`20260804100000_controller_banking_attributor_autogrant.sql`** _(apply via `supabase db push` after merge; either deploy order safe — no client change rides with it, and there are no active controllers today so the seed is a no-op)_
+- **Purpose**: Controller role implies the non-card attribution capability (v2.1380). Adds `banking_attributors.auto_role_grant boolean NOT NULL DEFAULT false`; `sync_controller_banking_attributors()` reconciles the grant table (INSERT auto rows for active controllers, DELETE auto rows for demoted/archived ex-controllers; manual dev grants — `auto_role_grant = false` — never touched, and a manual grant that predates a promotion survives a later demotion). Statement trigger `sync_controller_banking_attributors_on_users` on `users` (`AFTER INSERT OR UPDATE OF role, archived_at`), the `sync_company_access_grants` pattern from v2.921. Ends with a self-contained seed call.
+- **Security**: Both functions SECURITY DEFINER + `SET search_path = public` (RLS on `banking_attributors` is dev-write-only; the trigger must be able to write regardless of who changed the role — including service-role edge functions). EXECUTE revoked from `anon`/`authenticated`; only the trigger calls them. No policy changes; no new table, so no read-only sweep needed.
+- **Category**: Access Control
 
 #### August 3, 2026
 
