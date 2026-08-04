@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1364)
+last_updated: 2026-08-03 (v2.1365)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1365)
+
+### Bid Board: project name sits above the GC/Builder (2026-08-03)
+Owner call — the project is what identifies a row, so it now leads. In [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx) the GC/Project table cell swaps its two lines (project name first — already the larger 0.9375rem semibold line — with the blue GC/Builder link beneath), the column header follows as **Project Name / GC/Builder**, and the row dropdown's detail strip reorders **Project** ahead of **GC/Builder** so every surface agrees. Phone cards already led with the project name and are unchanged. Both lines keep their single-line ellipsis and hover tooltips; the GC link still opens the customer/GC view and the project text is still row-click-to-expand. Client-only — no migration.
 
 ## Latest Updates (v2.1364)
 
