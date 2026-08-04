@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1378)
+last_updated: 2026-08-03 (v2.1379)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1379)
+
+### Move day chips: one day back, two days forward (2026-08-03)
+Owner call on the hours-old v2.1377 row: the first cut's window (the block's own day plus the **three days before it**) optimized purely for back-dating, but the everyday moves run both ways — back-date yesterday's visit, or push a job to tomorrow / the day after. The chips in [`ScheduleDispatchAddBlockModal.tsx`](../src/components/schedule/ScheduleDispatchAddBlockModal.tsx) now span **one day back through two days forward** (for a Monday block: `Sun · Mon · Tue · Wed`), still oldest-first with the block's own day pressed; any other date — further back included — stays one tap away behind the calendar button's date input. Mechanically this is the kernel's window: [`scheduleBlockMoveDayOptions.ts`](../src/lib/scheduleBlockMoveDayOptions.ts) swaps its single `backCount` parameter for `back`/`forward` counts (`SCHEDULE_MOVE_DAY_BACK_COUNT = 1`, new `SCHEDULE_MOVE_DAY_FORWARD_COUNT = 2`); save path, overlap checks, the multi-day-crew-group guard, and the banner/"Move and save" affordances are untouched. Kernel + render tests rewritten to the new window (boundary cases now exercise both directions: month/year/leap forward crossings plus both DST transitions); help guide (`dispatch-mode`) reworded. Client-only — no migration.
 
 ## Latest Updates (v2.1378)
 

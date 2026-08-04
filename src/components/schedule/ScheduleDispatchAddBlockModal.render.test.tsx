@@ -60,7 +60,7 @@ describe('ScheduleDispatchAddBlockModal — move day row', () => {
     expect(screen.queryByText('Move day')).toBeNull()
   })
 
-  it('renders the block day plus three days back, with the current day pressed', () => {
+  it('renders one day back through two days forward, with the current day pressed', () => {
     renderWithProviders(
       <ScheduleDispatchAddBlockModal {...makeProps({ onChangeWorkDate: vi.fn() })} />,
     )
@@ -70,10 +70,10 @@ describe('ScheduleDispatchAddBlockModal — move day row', () => {
       .map((b) => b.getAttribute('title'))
       .filter((t): t is string => Boolean(t))
     expect(labels).toEqual([
-      'Friday, July 31, 2026',
-      'Saturday, August 1, 2026',
       'Sunday, August 2, 2026',
       'Monday, August 3, 2026',
+      'Tuesday, August 4, 2026',
+      'Wednesday, August 5, 2026',
       'Pick another date',
     ])
     expect(
@@ -81,11 +81,13 @@ describe('ScheduleDispatchAddBlockModal — move day row', () => {
     ).toBe('true')
   })
 
-  it('reports the picked day to the caller', () => {
+  it('reports the picked day to the caller, backward and forward', () => {
     const onChangeWorkDate = vi.fn()
     renderWithProviders(<ScheduleDispatchAddBlockModal {...makeProps({ onChangeWorkDate })} />)
-    fireEvent.click(screen.getByRole('button', { name: /Fri.*Jul 31/s }))
-    expect(onChangeWorkDate).toHaveBeenCalledWith('2026-07-31')
+    fireEvent.click(screen.getByRole('button', { name: /Sun.*Aug 2/s }))
+    expect(onChangeWorkDate).toHaveBeenCalledWith('2026-08-02')
+    fireEvent.click(screen.getByRole('button', { name: /Wed.*Aug 5/s }))
+    expect(onChangeWorkDate).toHaveBeenCalledWith('2026-08-05')
   })
 
   it('names the target day and relabels save once a different day is picked', () => {

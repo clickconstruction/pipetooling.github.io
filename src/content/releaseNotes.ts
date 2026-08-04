@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1379',
+    date: '2026-08-03',
+    title: 'Move day chips now reach forward too',
+    kind: 'fix',
+    highlights: [
+      'The Move day row in the Edit schedule block modal now offers yesterday, today, and the next two days — so pushing a job to tomorrow is one tap, not a calendar trip.',
+      'Any other date, further back included, is still right there behind the calendar button.',
+    ],
+  },
+  {
     version: 'v2.1378',
     date: '2026-08-03',
     title: 'Moneyfill: a money page for controllers',
