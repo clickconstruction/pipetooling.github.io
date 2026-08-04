@@ -340,9 +340,9 @@ export function BidsBidBoardTab({
               </button>
             </span>
           </th>
+          <th style={th} title="Estimator, with the account manager underneath when it's someone else" aria-label="Estimator and account manager">Estimator<br />Account Man</th>
           <th style={th}>Last<br />Contact</th>
           <th style={th} title="Project folder, job plans, Count Tool, and bid submission links" aria-label="Artifact links">Links</th>
-          <th style={th} title="Estimator, with the account manager underneath when it's someone else" aria-label="Estimator and account manager">Estimator<br />Account Man</th>
         </tr>
       </thead>
     )
@@ -759,12 +759,6 @@ export function BidsBidBoardTab({
           <td style={{ padding: '0.0625rem 0.2rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
             {renderBidBoardDueChip(bid)}
           </td>
-          <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
-            {renderBidBoardLastContact(bid, lcParts)}
-          </td>
-          <td style={{ padding: '0.0625rem 0.2rem', textAlign: 'center' }}>
-            {renderBidBoardLinksCluster(bid)}
-          </td>
           <td
             style={{
               padding: '0.0625rem',
@@ -820,6 +814,12 @@ export function BidsBidBoardTab({
                 </div>
               )
             })()}
+          </td>
+          <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
+            {renderBidBoardLastContact(bid, lcParts)}
+          </td>
+          <td style={{ padding: '0.0625rem 0.2rem', textAlign: 'center' }}>
+            {renderBidBoardLinksCluster(bid)}
           </td>
         </tr>
         {bid.outcome === 'lost' ? (
