@@ -7,15 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1367)
+last_updated: 2026-08-03 (v2.1368)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
-## Latest Updates (v2.1367)
+## Latest Updates (v2.1368)
 
 ### Quick Assign polish: slider-only times, two-line Schedule button (2026-08-03)
 Three owner tweaks on the v2.1366 slider ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx)): **(1)** the Custom `type="time"` input pair is removed — redundant now that the two-dot bar sets the window and the blue Schedule button echoes it (the Custom chip still toggles custom mode; the slider is its editor; effective granularity is the bar's 30-minute steps). **(2)** the Schedule button label becomes a deliberate two-line stack — "Schedule 1 person" over "9:00 AM–2:30 PM" — instead of wrapping mid-time. **(3)** the instructions placeholder drops its last word ("…scope, arrival)…"). Verified live: no time inputs, slider drives the window, button renders two lines. Client-only — no migration.
+
+## Latest Updates (v2.1367)
+
+### Parallel sessions: advisory claim ledger for versions and migrations (2026-08-03)
+Owner ask after a triple version race (v2.1342–v2.1344 all claimed mid-flight the same afternoon): concurrent Claude sessions need a way to reserve `v2.NNN`s instead of racing `git log`. New advisory ledger, [`docs/SESSIONS.md`](./SESSIONS.md): all local sessions share one machine, so claims live in the MAIN checkout's **gitignored** `.claude/sessions/` (worktrees resolve there via `git rev-parse --git-common-dir`) — visible instantly to every session, no commits, no merge conflicts on the ledger itself. **`npm run claim`** ([`scripts/claim-version.ts`](../scripts/claim-version.ts), run via vite-node) reads the true newest version from origin/main's FILE contents (commit titles lie after rebase renumbers), sweeps claims whose number has landed, and reserves the next number by atomic `wx` file creation (simultaneous sessions can't both win; loser auto-retries). `npm run claim -- --migration <file>` registers migration stamps the same way; `--release` gives a number back. **`npm run sessions`** ([`scripts/sessions-status.ts`](../scripts/sessions-status.ts)) prints the board: outstanding claims, active session cards (`.claude/sessions/active/<branch>.md`), staleness flags (claims >24h, cards >3d). Pure allocation/parsing kernel in [`sessionClaims.ts`](../src/lib/sessionClaims.ts) (+11 tests). CLAUDE.md and `docs/README.md` route to the protocol. Advisory only — rebase conflicts in the two docs heads still occur under concurrency but become mechanical (no renumbering). **Hard-won caveat, learned shipping this very PR across eight races (v2.1354 → v2.1367):** a swept claim means the NUMBER appeared on main — possibly via another session's PR — never that YOUR PR merged (the sweep message and `docs/SESSIONS.md` say so explicitly; check `gh pr view`). The ledger only fully works once every session runs a CLAUDE.md that includes it — non-ledger sessions took v2.1351, v2.1353, its own claimed v2.1354, and finally the v2.1365 it had reserved in the ledger itself out from under this PR while it was open (1351 is a permanent hole, like v2.1217) — the claim is only as good as the sessions that read it. Client tooling only — no migration, no user-facing change.
 
 ## Latest Updates (v2.1366)
 
