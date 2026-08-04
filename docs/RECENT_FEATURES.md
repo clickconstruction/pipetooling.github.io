@@ -7,10 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1390)
+last_updated: 2026-08-04 (v2.1391)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1391)
+
+### SearchableSelect: real keyboard navigation (2026-08-04)
+Owner report (Takeoffs → Add part line, Prices rows — but it's every instance): "not easy to tab through it and use the arrow keys and spacebar to select." Root causes in [`SearchableSelect.tsx`](../src/components/SearchableSelect.tsx): the search input's ArrowDown/Up handlers always jumped to first/last (never incremental), typing reset `activeIndex` to −1 (Enter had no target until you arrowed), Tab neither committed nor closed (panel hung open as focus walked away), and Space never selected.
+
+Fixes, all in the shared component (every dropdown in the app inherits them): **(1)** typing auto-highlights the first match (`activeIndexForQuery` — computed against the same render-filtered rows, minSearchChars-aware) so type→Enter is one motion; **(2)** arrows walk one row at a time with wrap-around, skipping separators (`nextSelectableIndex` reused); **(3)** **Tab commits the highlight and closes without `preventDefault` or refocus** (`commitActiveForTab`/`closeForTab` — focus flows to the next field, so a Prices row is type-Tab-type-Tab); Tab with no highlight just closes; **(4)** **Space selects when the query is empty** (typing keeps space literal), on both the search input and the closed-trigger open state; **(5)** Home/End jump first/last (search input: only while empty, preserving native caret behavior). Multi-select already behaved (v2.1331); single-select now matches. 6 new render tests pin the contract (auto-highlight, wrap, space-vs-typing, tab-commit, tab-no-highlight, escape). Verified live in the Add part Prices row.
 
 ## Latest Updates (v2.1390)
 

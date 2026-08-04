@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1391',
+    date: '2026-08-04',
+    title: 'Dropdowns you can actually drive from the keyboard',
+    kind: 'feature',
+    highlights: [
+      'Every search dropdown in the app (supply house pickers, part pickers, assignees…) now works the way you\'d expect: type a few letters and the first match highlights itself — Enter picks it, no arrowing first.',
+      'Arrow keys walk the list one row at a time (wrapping at the ends) instead of jumping back to the top; Spacebar picks the highlighted option when you haven\'t typed anything.',
+      'Tab picks the highlighted option, closes the list, and moves you to the next field — so filling a Prices row is type, Tab, type, Tab. Escape still closes without choosing.',
+    ],
+  },
+  {
     version: 'v2.1390',
     date: '2026-08-04',
     title: 'Followup: a logged call fulfills an overdue promise',

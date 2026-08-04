@@ -326,6 +326,13 @@ export function SearchableSelect({
     requestAnimationFrame(() => triggerRef.current?.focus())
   }, [])
 
+  /** Close without stealing focus back — used when Tab is walking away (v2.1391). */
+  const closeForTab = useCallback(() => {
+    setOpen(false)
+    setQuery('')
+    setActiveIndex(-1)
+  }, [])
+
   const openPanel = useCallback(() => {
     if (disabled) return
     setOpen(true)
@@ -452,6 +459,28 @@ export function SearchableSelect({
     close()
   }
 
+  /** Select the active option and close WITHOUT refocusing — Tab keeps walking to the next field. */
+  const commitActiveForTab = () => {
+    if (activeIndex >= 0) {
+      const row = filteredForRender[activeIndex]
+      if (row && isSelectableOption(row)) onChange(row.value)
+    }
+    closeForTab()
+  }
+
+  /** First selectable index the way the OPEN list will render for `newQuery` (keeps typing → Enter one motion, v2.1391). */
+  const activeIndexForQuery = (newQuery: string): number => {
+    if (newQuery.trim() === '') return -1
+    if (minSearchChars > 0 && newQuery.trim().length < minSearchChars) return -1
+    const rows = filterOptionsForListRender(
+      filterOptionsBySearch(allOptions, newQuery),
+      hideEmptyOptionInListWhenUnset,
+      emptyOption,
+      value,
+    )
+    return firstSelectableIndex(rows)
+  }
+
   const onTriggerKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -477,12 +506,24 @@ export function SearchableSelect({
         )
       }
     }
-    if (e.key === 'Enter' && open && activeIndex >= 0) {
+    if (e.key === 'Home' && open && filteredForRender.length > 0) {
+      e.preventDefault()
+      setActiveIndex(firstSelectableIndex(filteredForRender))
+    }
+    if (e.key === 'End' && open && filteredForRender.length > 0) {
+      e.preventDefault()
+      setActiveIndex(lastSelectableIndex(filteredForRender))
+    }
+    if ((e.key === 'Enter' || e.key === ' ') && open && activeIndex >= 0) {
       const row = filteredForRender[activeIndex]
       if (row && isSelectableOption(row)) {
         e.preventDefault()
         applyOption(row.value)
       }
+    }
+    if (e.key === 'Tab' && open) {
+      // Don't preventDefault — let Tab move focus onward; commit any highlight.
+      commitActiveForTab()
     }
     if (e.key === 'Escape' && open) {
       e.preventDefault()
@@ -514,16 +555,26 @@ export function SearchableSelect({
       runNoMatchesAction()
       return
     }
-    if (e.key === 'ArrowDown') {
+    // Arrows walk the list one row at a time with wrap-around (v2.1391 —
+    // previously ArrowDown always re-jumped to the first row).
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
-      const idx = firstSelectableIndex(filteredForRender)
-      if (idx >= 0) setActiveIndex(idx)
+      if (filteredForRender.length === 0) return
+      const dir = e.key === 'ArrowDown' ? 1 : -1
+      setActiveIndex((i) =>
+        i < 0
+          ? dir === 1
+            ? firstSelectableIndex(filteredForRender)
+            : lastSelectableIndex(filteredForRender)
+          : nextSelectableIndex(filteredForRender, i, dir),
+      )
       return
     }
-    if (e.key === 'ArrowUp') {
+    // Home/End jump the highlight only while there's nothing typed —
+    // with text in the box they keep their native move-the-caret meaning.
+    if ((e.key === 'Home' || e.key === 'End') && query === '' && filteredForRender.length > 0) {
       e.preventDefault()
-      const idx = lastSelectableIndex(filteredForRender)
-      if (idx >= 0) setActiveIndex(idx)
+      setActiveIndex(e.key === 'Home' ? firstSelectableIndex(filteredForRender) : lastSelectableIndex(filteredForRender))
       return
     }
     if (e.key === 'Enter' && activeIndex >= 0) {
@@ -532,6 +583,21 @@ export function SearchableSelect({
         e.preventDefault()
         applyOption(row.value)
       }
+      return
+    }
+    // Spacebar selects the highlight while the box is empty; once you're
+    // typing, space stays a literal space.
+    if (e.key === ' ' && query === '' && activeIndex >= 0) {
+      const row = filteredForRender[activeIndex]
+      if (row && isSelectableOption(row)) {
+        e.preventDefault()
+        applyOption(row.value)
+      }
+      return
+    }
+    if (e.key === 'Tab') {
+      // Commit the highlight and close, but let Tab carry focus to the next field.
+      commitActiveForTab()
     }
   }
 
@@ -578,7 +644,9 @@ export function SearchableSelect({
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
-              setActiveIndex(-1)
+              // Typing auto-highlights the first match so Enter/Tab select it
+              // without an ArrowDown first (v2.1391).
+              setActiveIndex(activeIndexForQuery(e.target.value))
             }}
             onKeyDown={onSearchKeyDown}
             placeholder="Search…"
