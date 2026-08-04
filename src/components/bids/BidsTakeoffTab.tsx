@@ -37,6 +37,7 @@ import { BidProjectCell } from './BidProjectCell'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { PartFormModal } from '../PartFormModal'
+import { resolvePartFormSaveTarget } from '../../lib/bids/partFormSaveTarget'
 import { NumericEntryPad } from '../NumericEntryPad'
 import { TakeoffPartEditIcon } from '../icons/TakeoffPartEditIcon'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -257,11 +258,21 @@ export function BidsTakeoffTab({
   const [bidsPartFormInitialName, setBidsPartFormInitialName] = useState('')
   const [bidsPartFormEditingPart, setBidsPartFormEditingPart] = useState<MaterialPartWithType | null>(null)
   const bidsPartFormIsEditRef = useRef(false)
+  /** Rough-line origin captured when the form was opened; see openBidsPartFormForCreate. */
+  const bidsPartFormRoughLineIdRef = useRef<string | null>(null)
   const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
   const [partTypes, setPartTypes] = useState<PartType[]>([])
 
-  function openBidsPartFormForCreate(initialName: string) {
+  /**
+   * @param roughLineId Rough-part-line origin captured AT CLICK TIME (v2.1395).
+   * The form focuses its Name input on open, which blurs the row's search box,
+   * whose onBlur nulls `takeoffRoughPartPickerLineId` — so by save time the
+   * live state is gone and the part never reached the line. Callers that open
+   * from a line must pass it; everyone else leaves it undefined.
+   */
+  function openBidsPartFormForCreate(initialName: string, roughLineId?: string) {
     bidsPartFormIsEditRef.current = false
+    bidsPartFormRoughLineIdRef.current = roughLineId ?? null
     setBidsPartFormEditingPart(null)
     setBidsPartFormInitialName(initialName)
     setBidsPartFormOpen(true)
@@ -269,6 +280,7 @@ export function BidsTakeoffTab({
 
   function openBidsPartFormForEdit(part: MaterialPartWithType) {
     bidsPartFormIsEditRef.current = true
+    bidsPartFormRoughLineIdRef.current = null
     setBidsPartFormEditingPart(part)
     setBidsPartFormInitialName('')
     setBidsPartFormOpen(true)
@@ -460,35 +472,48 @@ export function BidsTakeoffTab({
     const wasEdit = bidsPartFormIsEditRef.current
     bidsPartFormIsEditRef.current = false
 
+    const capturedRoughLineId = bidsPartFormRoughLineIdRef.current
+    bidsPartFormRoughLineIdRef.current = null
+
     const { data } = await supabase
       .from('material_parts')
       .select('*, part_types(*)')
       .eq('service_type_id', selectedServiceTypeId)
       .order('name', { ascending: true })
 
-    if (data) {
-      setTakeoffAddTemplateParts(data as MaterialPartWithType[])
+    if (data) setTakeoffAddTemplateParts(data as MaterialPartWithType[])
 
-      if (!wasEdit) {
-        if (addPartsToTemplateModalOpen) {
+    // Routing runs even if that catalog reload failed (v2.1395): the part is
+    // already saved, and the whole point of "Save & add" is that it lands.
+    if (!wasEdit) {
+      const target = resolvePartFormSaveTarget({
+        capturedRoughLineId,
+        addPartsToTemplateModalOpen,
+        editTemplateModalOpen,
+        livePickerLineId: takeoffRoughPartPickerLineId,
+      })
+      switch (target.kind) {
+        case 'addPartsToTemplate':
           // v2.1394: stage for auto-add — the modal's effect commits it with
           // the current quantity input and closes, like its sibling flows.
           setAddPartsSelectedPartId(part.id)
           setAddPartsAutoAddPartId(part.id)
-        } else if (editTemplateModalOpen) {
+          break
+        case 'editTemplateItem':
           // Edit Assembly's create-new flow: the cluster consumes this id and
           // adds the part straight to the assembly (v2.1327).
           setEditTemplateNewItemPartId(part.id)
-        } else if (takeoffRoughPartPickerLineId) {
-          const lineId = takeoffRoughPartPickerLineId
+          break
+        case 'roughLine':
           setTakeoffRoughPartPickerLineId(null)
           setTakeoffRoughPartSearchQuery('')
-          void setRoughPartLinePartAndCatalogPrice(lineId, part.id)
-        } else {
+          void setRoughPartLinePartAndCatalogPrice(target.lineId, part.id)
+          break
+        case 'assemblyDraftItem':
           // Add Assembly modal's create-new flow: the cluster consumes this id
           // and adds the part straight to the item list (v2.1326).
           setTakeoffNewItemPartId(part.id)
-        }
+          break
       }
     }
 

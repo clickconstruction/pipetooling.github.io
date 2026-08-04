@@ -7,10 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1394)
+last_updated: 2026-08-04 (v2.1395)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1395)
+
+### Takeoffs rough part line: "Save & add" now actually adds (2026-08-04)
+Bug report (Wendi): *"SAVE AND ADD DID NOT ADD BUT I SEE THE NAME IS CHANGED"* — the v2.1392 label shipped, but on the **rough part line** route the part was created and never attached. Reproduced end-to-end in the preview.
+
+**Root cause — a focus race, not the label.** `handleBidsPartFormSave` ([`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx)) branched on the *live* `takeoffRoughPartPickerLineId`. [`PartFormModal.tsx`](../src/components/PartFormModal.tsx) focuses its Name input on open (`requestAnimationFrame` → `nameInputRef.focus()`), which blurs the row's search box, whose `onBlur` nulls that id after 150ms ([`SortableRoughPartLineRow.tsx`](../src/components/bids/SortableRoughPartLineRow.tsx)). By save time the id was gone, the chain fell through to the Add-Assembly branch (`setTakeoffNewItemPartId`), and that id is only consumed when the Add-Assembly modal is open — so nothing happened. The v2.1392 audit read the branch and trusted it; only the *label* was verified live, not this route.
+
+**Fix.** The origin is now captured at click time: `openBidsPartFormForCreate(name, roughLineId)` stores it in `bidsPartFormRoughLineIdRef` (cleared on edit-open and after each save), which focus changes cannot touch. Routing moved into pure kernel [`partFormSaveTarget.ts`](../src/lib/bids/partFormSaveTarget.ts) (6 tests, incl. the exact regression: captured id present + live id null → still routes to the line); the captured origin wins, live picker state stays a fallback. Routing also **no longer sits inside the `if (data)` catalog-reload guard** — a failed reload used to silently skip the add too. Client-only.
 
 ## Latest Updates (v2.1394)
 
