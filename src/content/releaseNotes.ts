@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1377',
+    date: '2026-08-03',
+    title: 'Move a scheduled block to another day',
+    kind: 'feature',
+    highlights: [
+      'The Edit schedule block modal gains a "Move day" row: tap one of the last three days to back-date a block, or use the calendar button to pick any other date.',
+      'The date at the top updates as you pick, a banner names the day it is moving to, and the button reads "Move and save" so a day change is never silent.',
+      'Overlaps are checked against the day it is moving to, and a crew block scheduled across several days is left alone rather than pulled onto one date.',
+    ],
+  },
+  {
     version: 'v2.1376',
     date: '2026-08-03',
     title: 'Quickfill: a shorter name for Tomorrow\'s Schedule',

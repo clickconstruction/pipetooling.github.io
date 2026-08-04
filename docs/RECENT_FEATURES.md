@@ -7,10 +7,25 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1376)
+last_updated: 2026-08-03 (v2.1377)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1377)
+
+### Move a schedule block to another day from the Edit block modal (2026-08-03)
+Owner ask: back-date a scheduled block by a day or three without leaving Dispatch Mode. Moving a block between days was already possible — but only by **dragging** it on the desktop week grid ([`scheduleDispatchDragEnd.ts`](../src/lib/scheduleDispatchDragEnd.ts)), and Dispatch Mode is a phone surface with no drag-and-drop, so the day a block sat on was effectively frozen there.
+
+**(1) A "Move day" row** in [`ScheduleDispatchAddBlockModal.tsx`](../src/components/schedule/ScheduleDispatchAddBlockModal.tsx), between the person·date line and the time slider: four chips — the block's own day plus the **three days before it** — and a calendar button that reveals a date input for any other day, back or forward. Chips render weekday over month-day (`Fri` / `Jul 31`); the pressed chip is the day the block will land on. Picking a different day repoints the header date, raises a "Moving to Sunday, August 2, 2026" banner, and relabels the primary button **Save changes → Move and save**, so the move is never silent. Chip generation is the pure kernel [`scheduleBlockMoveDayOptions.ts`](../src/lib/scheduleBlockMoveDayOptions.ts) (+19 tests: month/year/leap boundaries and both DST transitions).
+
+**(2) Opt-in, so nothing else changed.** The row renders only when a caller passes `onChangeWorkDate` **and** `mode === 'edit'`. The modal's four other call sites — the week grid, the hub page, Quickfill, and user-review — all have drag-and-drop already and pass nothing, so they render exactly as before. Only [`DispatchModeSchedule.tsx`](../src/components/dispatchMode/DispatchModeSchedule.tsx) opts in; it carries the pending day in `EditBlockState` and, because a moved block correctly disappears from the day on screen, toasts **"Moved to Sunday, August 2, 2026."** instead of the generic "Block updated."
+
+**(3) The save path** ([`scheduleDispatchAddBlockSave.ts`](../src/lib/scheduleDispatchAddBlockSave.ts)) takes an optional `newWorkDate`; omitted, blank, or equal to the current day it is byte-identical to before (no extra query). Otherwise the overlap check runs against the **target** day rather than the original, solo blocks add `work_date` to their existing patch, and linked blocks move through the existing `move_job_schedule_block_group` RPC **before** the time/note sync — the RPC re-checks overlap under a row lock, so a target day that filled up between read and write still fails safely rather than double-booking.
+
+**(4) Multi-day linked groups are refused, not mangled.** `move_job_schedule_block_group` keys on (job, group) with **no date predicate** — it moves every leg of a group whatever day it sits on. That was harmless when groups were single-day, but "Add person to crew" (v2.1371) deliberately writes one leg per distinct job/date/window, so multi-day crew groups are now routine and moving one day of one would **collapse the whole group onto a single date**. The save path detects `>1` distinct `work_date` among the freshly-fetched legs (they already carry `work_date`, so this costs no extra query) and returns "This crew block is scheduled across several days, so it can't be moved from here." Time-and-note edits on such a group still work normally. **The desktop drag path has this same latent bug and is unguarded** — a date-scoped RPC (`move_job_schedule_block_group_day`) would fix both properly and is the follow-up candidate; this PR ships no migration.
+
+**Also fixed, because it blocked testing:** [`jobScheduleChicago.ts`](../src/lib/jobScheduleChicago.ts) built its `YYYY-MM-DD` keys with `Intl` locale `en-CA`, which modern browser ICU renders as `2026-08-03` but the older ICU bundled with **Node 20 renders as `08/03/2026`** — so `scheduleTodayDateKey` and `scheduleDateKeyAddDays` were correct in the browser and silently wrong under vitest, which is why neither had a single test. Both now assemble the key from `formatToParts`, which is pattern-independent. Browser behavior is unchanged (verified against Chrome 148); the functions gain their first coverage (8 tests). 17 save-path tests + 10 render tests for the new row. Client-only — no migration.
 
 ## Latest Updates (v2.1376)
 
