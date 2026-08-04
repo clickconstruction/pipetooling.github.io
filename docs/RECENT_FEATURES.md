@@ -7,10 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-03 (v2.1368)
+last_updated: 2026-08-03 (v2.1370)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1370)
+
+### Bid Board staff column: estimator first and large, account manager only when it differs (2026-08-03)
+**Changelog restoration — the code shipped in PR #1071 but its entry was lost.** #1071 and #1073 were rebased through a version race by an automated shepherd; both ended up stamped v2.1368, and when #1073 merged its copy of the two doc heads replaced #1071's, silently dropping this entry (the *code* for both landed intact — verified on main). Recording it now at the next claimed number rather than rewriting history.
+
+What shipped: the **Account Man / Estimator** column became **Estimator / Account Man** in [`BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx). The estimator prints first at 0.9375rem semibold (was ~0.6875rem, the same size as the account manager), with the account manager beneath in muted small text. **When one person holds both roles the name prints once** — matched on `id` when both sides carry one, falling back to the displayed name — and a **missing** account manager prints nothing rather than a second em dash, so an estimator with no AM is a single line instead of a name over `—`. On live data 61 of 78 rendered rows collapsed to one name; the 17 with a genuinely different account manager keep both lines. The dark "You" chip still marks whichever line is the signed-in user, and tooltips name the role (*Estimator*, *Account manager*, or *Estimator and account manager* on a collapsed line). Phone cards already showed the estimator alone and are unchanged.
+
+Process note: the shepherd that caused this also mis-parsed `v2.NNN` from a code comment and briefly retitled a PR "v2.1" (repaired before merge). Both failures argue for the `npm run claim` ledger (v2.1367) over ad-hoc renumbering — this entry's own number came from it. Client-only — no migration.
 
 ## Latest Updates (v2.1368)
 
