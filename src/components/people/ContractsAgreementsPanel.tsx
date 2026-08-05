@@ -35,10 +35,15 @@ export function ContractsAgreementsPanel({
   summaries,
   onJumpToPerson,
   onHide,
+  onQuickSend,
+  quickSendDocumentNames,
 }: {
   summaries: AgreementSummary[]
   onJumpToPerson: (personName: string) => void
   onHide: () => void
+  /** Quick send (v2.1410): opens the person picker for one document. Cards only show the button when the name is in `quickSendDocumentNames`. */
+  onQuickSend?: (documentName: string) => void
+  quickSendDocumentNames?: ReadonlySet<string>
 }) {
   const [expandedDocumentName, setExpandedDocumentName] = useState<string | null>(null)
 
@@ -82,23 +87,46 @@ export function ContractsAgreementsPanel({
               background: expanded ? 'var(--bg-subtle)' : 'var(--surface)',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setExpandedDocumentName((prev) => (prev === s.documentName ? null : s.documentName))}
-              aria-expanded={expanded}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
-                {s.documentName}
-              </span>
-              <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
-                {s.assignedCount} assigned ·{' '}
-                <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{s.signedCount} signed</span>
-              </span>
-              <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {expanded ? '▾' : '▸'}
-              </span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setExpandedDocumentName((prev) => (prev === s.documentName ? null : s.documentName))}
+                aria-expanded={expanded}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
+              >
+                <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+                  {s.documentName}
+                </span>
+                <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
+                  {s.assignedCount} assigned ·{' '}
+                  <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{s.signedCount} signed</span>
+                </span>
+                <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {expanded ? '▾' : '▸'}
+                </span>
+              </button>
+              {onQuickSend && quickSendDocumentNames?.has(s.documentName) ? (
+                <button
+                  type="button"
+                  onClick={() => onQuickSend(s.documentName)}
+                  title={`Send ${s.documentName} to a person`}
+                  style={{
+                    flexShrink: 0,
+                    padding: '0.2rem 0.5rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    background: '#0ea5e9',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Send to…
+                </button>
+              ) : null}
+            </div>
             <div
               aria-hidden
               style={{ marginTop: '0.4rem', height: 5, borderRadius: 3, background: 'var(--bg-200)', overflow: 'hidden' }}
