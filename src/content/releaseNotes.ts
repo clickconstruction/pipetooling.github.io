@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1401',
+    date: '2026-08-05',
+    title: 'Linked crew window reads cleanly on phones',
+    kind: 'feature',
+    highlights: [
+      'The Linked crew window no longer squeezes into a cramped table. The job, date, and time show once at the top, and below that is a simple list of crew members — each with their Unlink and Remove buttons always visible.',
+      'Crews linked across several days get one card per day. A small "outside week" tag replaces the old Hub week column, appearing only where it applies.',
+      'Adding a person is one row: pick a name, tap Add.',
+    ],
+  },
+  {
     version: 'v2.1400',
     date: '2026-08-05',
     title: 'Fix: saving a Contract Book entry errored',
