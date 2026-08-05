@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1400)
+last_updated: 2026-08-05 (v2.1401)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1401)
+
+### Linked crew modal: leg cards instead of the cramped table (2026-08-05)
+Owner report (phone screenshot from Dispatch Mode → Schedule): the Linked crew modal's 6-column bordered table collapsed on mobile — the Job column squeezed to one character per line, the Manage buttons fell off the right edge, and rows ballooned to the wrapped job title's height. Structural fix in [`LinkedScheduleGroupModal.tsx`](../src/components/schedule/LinkedScheduleGroupModal.tsx): a linked crew *shares* job/date/window by definition, so those now render **once per leg** as a header card (job title on its own full line, "Wed, Aug 5 · 8:00 AM–10:00 AM" beneath), with a "Crew · N people" list of person rows under it — initial avatar, ellipsized name, and Unlink/Remove that always stay on-screen. The "Hub week" column becomes an "outside week" badge shown only on the rows it applies to (never in Dispatch Mode, which has no week context), replacing the old amber footer note; the add-person row folds into one select ("Add a person…") + Add button. Multi-day groups render one leg card per (job, date, window) — grouping extracted to kernel [`linkedCrewLegs.ts`](../src/lib/linkedCrewLegs.ts) (`groupLinkedCrewLegs`, `linkedCrewLegKey` — now shared with the join-crew insert path — and `formatLinkedCrewWorkDate`, 7 tests). Same data, actions, and confirms; both hosts (Schedule Dispatch hub + Dispatch Mode) unchanged. 4 render tests pin the layout (header-once-per-leg, no `<table>`, badge gating, read-only variant). Verified live on the reported crew at 375px.
 
 ## Latest Updates (v2.1400)
 

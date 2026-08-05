@@ -8,6 +8,7 @@ import {
 } from '../../lib/jobScheduleBlocks'
 import { fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { formatLinkedCrewWorkDate, groupLinkedCrewLegs, linkedCrewLegKey } from '../../lib/linkedCrewLegs'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 
@@ -162,7 +163,7 @@ export function LinkedScheduleGroupModal({
     // group, so multi-day linked groups stay symmetric.
     const legs = new Map<string, JobScheduleBlockRow>()
     for (const r of rows) {
-      legs.set(`${r.job_id}|${r.work_date}|${r.time_start}|${r.time_end}`, r)
+      legs.set(linkedCrewLegKey(r), r)
     }
     setAdding(true)
     let inserted = 0
@@ -196,10 +197,7 @@ export function LinkedScheduleGroupModal({
 
   if (!open || !groupId) return null
 
-  const inWeekCount = hasWeekContext
-    ? rows.filter((r) => rowInHubWeek(r.work_date, weekStart, weekEnd)).length
-    : rows.length
-  const hasOutsideWeek = hasWeekContext && rows.length > inWeekCount
+  const legs = groupLinkedCrewLegs(rows)
 
   return (
     <div
@@ -251,117 +249,170 @@ export function LinkedScheduleGroupModal({
         ) : null}
 
         {!loading && !error && rows.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-subtle)' }}>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Work date</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Time</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Person</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Job</th>
-                  {hasWeekContext ? (
-                    <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Hub week</th>
-                  ) : null}
-                  {canManage ? (
-                    <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Manage</th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const inWeek = hasWeekContext ? rowInHubWeek(r.work_date, weekStart, weekEnd) : true
-                  return (
-                    <tr key={r.id}>
-                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                        {r.work_date}
-                      </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                        {scheduleFormatWindow(r.time_start, r.time_end)}
-                      </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)' }}>
-                        {nameByUserId.get(r.assignee_user_id) ?? '…'}
-                      </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)', wordBreak: 'break-word' }}>
-                        {getJobDisplayTitle(r.job_id)}
-                      </td>
-                      {hasWeekContext ? (
-                        <td style={{ padding: '0.45rem', border: '1px solid var(--border)' }}>
-                          {inWeek ? 'In view' : 'Outside week'}
-                        </td>
-                      ) : null}
-                      {canManage ? (
-                        <td style={{ padding: '0.45rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', gap: 6 }}>
-                            <button
-                              type="button"
-                              disabled={busyId === r.id}
-                              onClick={() => void unlinkRow(r)}
-                              title="Keep the block but stop it moving with the crew"
-                              style={actionBtn()}
-                            >
-                              Unlink
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === r.id}
-                              onClick={() => void removeRow(r)}
-                              title="Delete this person's block"
-                              style={actionBtn(true)}
-                            >
-                              Remove
-                            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {legs.map((leg) => {
+              const legRows = [...leg.rows].sort((a, b) =>
+                (nameByUserId.get(a.assignee_user_id) ?? '').localeCompare(nameByUserId.get(b.assignee_user_id) ?? ''),
+              )
+              return (
+                <div key={leg.key}>
+                  <div
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      background: 'var(--bg-subtle)',
+                      padding: '0.55rem 0.7rem',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', wordBreak: 'break-word' }}>
+                      {getJobDisplayTitle(leg.jobId)}
+                    </div>
+                    <div style={{ marginTop: '0.15rem', fontSize: '0.75rem', color: 'var(--text-600)' }}>
+                      {formatLinkedCrewWorkDate(leg.workDate)}
+                      {' · '}
+                      {scheduleFormatWindow(leg.timeStart, leg.timeEnd)}
+                    </div>
+                  </div>
+                  <p
+                    style={{
+                      margin: '0.6rem 0 0.15rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Crew · {legRows.length} {legRows.length === 1 ? 'person' : 'people'}
+                  </p>
+                  <div>
+                    {legRows.map((r, rowIdx) => {
+                      const inWeek = hasWeekContext ? rowInHubWeek(r.work_date, weekStart, weekEnd) : true
+                      const name = nameByUserId.get(r.assignee_user_id) ?? '…'
+                      return (
+                        <div
+                          key={r.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            padding: '0.5rem 0.15rem',
+                            borderBottom: rowIdx < legRows.length - 1 ? '1px solid var(--border)' : 'none',
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              background: 'var(--bg-blue-tint)',
+                              color: 'var(--text-blue-700)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {name.trim().charAt(0).toUpperCase() || '·'}
                           </span>
-                        </td>
-                      ) : null}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                          <span
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              fontSize: '0.875rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {name}
+                          </span>
+                          {hasWeekContext && !inWeek ? (
+                            <span
+                              style={{
+                                flexShrink: 0,
+                                fontSize: '0.6875rem',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: 4,
+                                background: 'var(--bg-amber-100)',
+                                color: 'var(--text-amber-800)',
+                              }}
+                            >
+                              outside week
+                            </span>
+                          ) : null}
+                          {canManage ? (
+                            <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => void unlinkRow(r)}
+                                title="Keep the block but stop it moving with the crew"
+                                style={actionBtn()}
+                              >
+                                Unlink
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => void removeRow(r)}
+                                title="Delete this person's block"
+                                style={actionBtn(true)}
+                              >
+                                Remove
+                              </button>
+                            </span>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : null}
 
         {canManage && addCandidates.length > 0 && !loading && !error && rows.length > 0 ? (
-          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              Add person to crew
+          <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <select
                 value={addUserId}
                 onChange={(e) => setAddUserId(e.target.value)}
                 aria-label="Person to add to the crew"
-                style={{ padding: '0.3rem', fontSize: '0.8125rem', maxWidth: 200 }}
+                style={{ flex: 1, minWidth: 0, padding: '0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
               >
-                <option value="">Choose…</option>
+                <option value="">Add a person…</option>
                 {addCandidates.map((p) => (
                   <option key={p.userId} value={p.userId}>
                     {p.displayName}
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              disabled={!addUserId || adding}
-              onClick={() => void addPerson()}
-              style={{
-                ...actionBtn(),
-                border: '1px solid #2563eb',
-                color: 'var(--text-blue-700)',
-                background: addUserId && !adding ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
-              }}
-            >
-              {adding ? 'Adding…' : 'Add'}
-            </button>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <button
+                type="button"
+                disabled={!addUserId || adding}
+                onClick={() => void addPerson()}
+                style={{
+                  ...actionBtn(),
+                  flexShrink: 0,
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid #2563eb',
+                  color: 'var(--text-blue-700)',
+                  background: addUserId && !adding ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
+                }}
+              >
+                {adding ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Gets the crew&rsquo;s times and instructions.
-            </span>
+            </p>
           </div>
-        ) : null}
-
-        {hasOutsideWeek && !loading && !error ? (
-          <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
-            Some peers are outside the week shown in the grid.
-          </p>
         ) : null}
 
         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
