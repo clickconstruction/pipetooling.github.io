@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1408)
+last_updated: 2026-08-05 (v2.1409)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1409)
+
+### Fix: archived people still showed as active on Contracts (2026-08-05)
+Owner report: Bill, Juan, and Joseph were archived but still sat in the active roster. Diagnosis (live data): their **user accounts** were archived, but each had an **active `people` roster row linked to that same archived account** — and v2.1408 classified a name as active if ANY active record carried it. Two fixes in [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx) / [`People.tsx`](../src/pages/People.tsx): **(1) archived wins** — a name archived as either a user account or a roster person now lands in the Archived section, active twins notwithstanding (`contractsArchivedNameSet` excludes them from the active list and the filter counts); **(2)** `loadArchivedUserNames` only ran for pay/hours/review surfaces, so the contracts tab often had an empty archived-user set — a new effect loads it on the contracts tab. Real-data impact: the Archived section grew from 3 to **15** (the full archived-account population), and "Needs attention" dropped 18 → 12 — a third of the chase list was archived people. Client-only.
 
 ## Latest Updates (v2.1408)
 
