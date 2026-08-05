@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1402)
+last_updated: 2026-08-05 (v2.1403)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1403)
+
+### Contracts Send modal prefills the signer email (2026-08-05)
+Found while walking the Send flow for the owner: the Send-for-signature modal always opened with a blank signer email even though the roster knows the person's address — every send meant retyping it, with a wrong-recipient typo risk (the edge function sends wherever the client says). [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx): new `rosterEmailForPersonName` (people first, then users, trimmed-name match — the tab's identity convention) prefills the field when Send/Resend opens; still fully editable, and blank as before when the person has no roster email. Client-only.
 
 ## Latest Updates (v2.1402)
 
 ### Stages mobile cards: ⋯ button + action sheet (2026-08-05)
 Owner report (phone): the Stages mobile cards had no way to reach View job, Edit job, and the other desktop-row tools. They actually existed — a "toolbelt" appeared when you tapped the card body — but with zero affordance nobody found it. Fix: every card's footer icon row ends with a visible **⋯** button opening the new bottom sheet [`StagesCardMoreActionsSheet.tsx`](../src/components/jobs/StagesCardMoreActionsSheet.tsx) (job number + name header, labeled rows, backdrop/Esc/Cancel close; actions run then close). Contents mirror the desktop rows per section: simple sections get View job / Edit job / Activity and notes (note-count badge) / Calendar / Click Tooling report / Partial invoice (when unallocated remains) / AIA G702-G703 (gated) / Hazmat fee (gated, "live" badge) / Send back; unified sections (Ready to Bill / Billed / Collections) get View bill, Lien Tooling, and Flag for collections in place of the simple-only items, with Click Tooling honoring `showClickTooling`. The hidden toolbelt is removed from both card variants ([`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx)) — card tap now expands just the thread panel. 4 render tests pin the ⋯ button, sheet contents/gating, run-and-close, and Cancel. Verified live at 375px (sheet → View job opened Job Detail). Client-only.
+
 
 ## Latest Updates (v2.1401)
 

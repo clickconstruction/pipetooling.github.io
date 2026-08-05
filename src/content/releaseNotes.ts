@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1403',
+    date: '2026-08-05',
+    title: 'Contracts: Send for signature fills in the email for you',
+    kind: 'fix',
+    highlights: [
+      'Sending a contract for signature now starts with the person\'s email from the roster already filled in instead of a blank box. You can still change it before sending.',
+    ],
+  },
+  {
     version: 'v2.1402',
     date: '2026-08-05',
     title: 'Stages mobile cards: every job action behind one \u22ef button',

@@ -502,6 +502,16 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     return allowed.has(chosen) ? chosen : null
   }
 
+  /** Roster email for a contracts person (people first, then users; name-keyed like everything on this tab). Prefills the Send modal's signer email. */
+  function rosterEmailForPersonName(personName: string): string {
+    const wanted = personName.trim()
+    if (!wanted) return ''
+    const fromPeople = people.find((p) => (p.name ?? '').trim() === wanted)?.email
+    if (fromPeople?.trim()) return fromPeople.trim()
+    const fromUsers = users.find((u) => (u.name ?? '').trim() === wanted)?.email
+    return fromUsers?.trim() ?? ''
+  }
+
   function getDocumentsForPerson(personName: string): PersonContractTableRow[] {
     const assignedTemplateIds = personContractAssignments.filter((a) => a.person_name === personName).map((a) => a.template_id)
     const docNamesFromTemplates = new Set<string>()
@@ -1744,7 +1754,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                       onClick={(e) => {
                                                         e.stopPropagation()
                                                         setContractSendDocId(doc.id)
-                                                        setContractSendEmail('')
+                                                        setContractSendEmail(rosterEmailForPersonName(personName))
                                                         setContractSendSubject('')
                                                         setContractSendIntro('')
                                                         setContractsError(null)
