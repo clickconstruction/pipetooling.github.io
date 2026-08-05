@@ -18,9 +18,26 @@ import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/
 import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../lib/contractBookVersionDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
 import { ContractsTabHelpModal } from './ContractsTabHelpModal'
+import { countPersonContractStatuses } from '../../lib/personContractStatusCounts'
+import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
 import { useToastContext } from '../../contexts/ToastContext'
+
+/** Small tinted pill for a document signing state; anything unknown renders as unsent. */
+function ContractStatusChip({ status, label }: { status: string; label: string }) {
+  const tone =
+    status === 'signed'
+      ? { background: 'var(--bg-green-100)', color: 'var(--text-green-800)' }
+      : status === 'sent'
+        ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+        : { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
+  return (
+    <span style={{ fontSize: '0.7rem', fontWeight: 500, padding: '0.1rem 0.45rem', borderRadius: 999, whiteSpace: 'nowrap', ...tone }}>
+      {label}
+    </span>
+  )
+}
 
 /** person_contract_documents.status values allowed for staff delete in People → Contracts */
 function isDeletablePersonContractStatus(status: string): boolean {
@@ -60,6 +77,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
+  /** Below 660px the expanded person's documents render as cards — the 8-column table cuts its Actions off-screen on phones. */
+  const contractsNarrowViewport = useNarrowViewport660()
 
   // Contracts tab state
   type ContractTemplate = { id: string; name: string; sequence_order: number; created_at: string | null }
@@ -464,6 +483,14 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     }
   }
 
+  function getAggregateStatus(docs: PersonContractTableRow[]): 'red' | 'yellow' | 'green' | null {
+    if (docs.length === 0) return null
+    const statuses = docs.map((d) => d.version?.status ?? 'unsent')
+    if (statuses.some((s) => s === 'unsent')) return 'red'
+    if (statuses.some((s) => s === 'sent')) return 'yellow'
+    return 'green'
+  }
+
   function getAggregateStatusForTemplate(personName: string, templateId: string): 'red' | 'yellow' | 'green' | null {
     const templateDocNames = new Set(
       contractTemplateDocuments.filter((d) => d.template_id === templateId).map((d) => d.document_name),
@@ -515,6 +542,188 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     const fromUsers = users.find((u) => (u.name ?? '').trim() === wanted)?.email
     return fromUsers?.trim() ?? ''
   }
+
+  /** Actions cluster for one document row — shared verbatim by the desktop table cell and the narrow-viewport cards (v2.1405). */
+  const renderContractDocActions = (personName: string, document_name: string, doc: PersonContractDocument | null) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+                                                  {doc?.status === 'signed' ? (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setContractSignedRecordModalDocId(doc.id)
+                                                      }}
+                                                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
+                                                    >
+                                                      View signed
+                                                    </button>
+                                                  ) : null}
+                                                  {doc && hasContractSigningContent(doc) && doc.status !== 'signed' ? (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setContractSendDocId(doc.id)
+                                                        setContractSendEmail(rosterEmailForPersonName(personName))
+                                                        setContractSendSubject('')
+                                                        setContractSendIntro('')
+                                                        setContractsError(null)
+                                                        setContractSendModalOpen(true)
+                                                      }}
+                                                      style={{
+                                                        padding: '0.2rem 0.4rem',
+                                                        fontSize: '0.75rem',
+                                                        background: '#0ea5e9',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: 4,
+                                                        cursor: 'pointer',
+                                                      }}
+                                                    >
+                                                      {doc.status === 'sent' ? 'Resend' : 'Send'}
+                                                    </button>
+                                                  ) : null}
+                                                  {doc && doc.status !== 'signed' ? (
+                                                    <label
+                                                      style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.25rem',
+                                                        fontSize: '0.7rem',
+                                                        cursor: contractDashboardPromptSavingId === doc.id ? 'wait' : 'pointer',
+                                                        userSelect: 'none',
+                                                      }}
+                                                      title="After each clock-in, show on this person’s Dashboard until signed"
+                                                    >
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={!!doc.dashboard_prompt_after_clock_in}
+                                                        disabled={contractDashboardPromptSavingId === doc.id}
+                                                        onChange={(e) => {
+                                                          e.stopPropagation()
+                                                          void toggleContractDashboardPrompt(doc.id, e.target.checked)
+                                                        }}
+                                                      />
+                                                      Dashboard
+                                                    </label>
+                                                  ) : null}
+                                                  {doc ? (
+                                                    <div
+                                                      data-contract-doc-menu-wrap={doc.id}
+                                                      style={{
+                                                        position: 'relative',
+                                                        display: 'inline-flex',
+                                                        verticalAlign: 'middle',
+                                                      }}
+                                                    >
+                                                      <button
+                                                        type="button"
+                                                        aria-label={`More actions for ${document_name}`}
+                                                        aria-haspopup="menu"
+                                                        aria-expanded={contractsDocumentActionsMenuOpenId === doc.id}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation()
+                                                          setContractsDocumentActionsMenuOpenId((id) =>
+                                                            id === doc.id ? null : doc.id,
+                                                          )
+                                                        }}
+                                                        style={{
+                                                          padding: '0.15rem 0.35rem',
+                                                          fontSize: '1rem',
+                                                          lineHeight: 1,
+                                                          border: '1px solid var(--border-strong)',
+                                                          borderRadius: 4,
+                                                          background: 'var(--surface)',
+                                                          cursor: 'pointer',
+                                                        }}
+                                                      >
+                                                        ⋯
+                                                      </button>
+                                                      {contractsDocumentActionsMenuOpenId === doc.id ? (
+                                                        <div
+                                                          role="menu"
+                                                          style={{
+                                                            position: 'absolute',
+                                                            top: '100%',
+                                                            right: 0,
+                                                            marginTop: 2,
+                                                            zIndex: 20,
+                                                            minWidth: 140,
+                                                            background: 'var(--surface)',
+                                                            border: '1px solid var(--border)',
+                                                            borderRadius: 6,
+                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                                            padding: '0.25rem 0',
+                                                          }}
+                                                        >
+                                                          <button
+                                                            type="button"
+                                                            role="menuitem"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation()
+                                                              setContractsDocumentActionsMenuOpenId(null)
+                                                              openContractDocumentEditModal(personName, document_name, doc)
+                                                            }}
+                                                            style={{
+                                                              display: 'flex',
+                                                              alignItems: 'center',
+                                                              width: '100%',
+                                                              padding: '0.35rem 0.65rem',
+                                                              fontSize: '0.8125rem',
+                                                              border: 'none',
+                                                              background: 'transparent',
+                                                              cursor: 'pointer',
+                                                              color: 'var(--text-strong)',
+                                                              textAlign: 'left',
+                                                            }}
+                                                          >
+                                                            Edit
+                                                          </button>
+                                                          {canDeletePeopleContracts ? (
+                                                            <button
+                                                              type="button"
+                                                              role="menuitem"
+                                                              onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setContractsDocumentActionsMenuOpenId(null)
+                                                                setContractDocumentDeleteTarget(doc)
+                                                                setContractDocumentDeleteConfirmOpen(true)
+                                                              }}
+                                                              style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.35rem',
+                                                                width: '100%',
+                                                                padding: '0.35rem 0.65rem',
+                                                                fontSize: '0.8125rem',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                cursor: 'pointer',
+                                                                color: 'var(--text-red-700)',
+                                                                textAlign: 'left',
+                                                              }}
+                                                            >
+                                                              <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                width={14}
+                                                                height={14}
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth={2}
+                                                                aria-hidden
+                                                              >
+                                                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" />
+                                                              </svg>
+                                                              Delete
+                                                            </button>
+                                                          ) : null}
+                                                        </div>
+                                                      ) : null}
+                                                    </div>
+                                                  ) : null}
+    </div>
+  )
 
   function getDocumentsForPerson(personName: string): PersonContractTableRow[] {
     const assignedTemplateIds = personContractAssignments.filter((a) => a.person_name === personName).map((a) => a.template_id)
@@ -602,14 +811,6 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       return vb - va
     })
     return tableRows
-  }
-
-  function getAggregateStatus(docs: PersonContractTableRow[]): 'red' | 'yellow' | 'green' | null {
-    if (docs.length === 0) return null
-    const statuses = docs.map((d) => d.version?.status ?? 'unsent')
-    if (statuses.some((s) => s === 'unsent')) return 'red'
-    if (statuses.some((s) => s === 'sent')) return 'yellow'
-    return 'green'
   }
 
   const contractsPersonNamesSorted = useMemo(() => {
@@ -1529,7 +1730,6 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: 48 }}>Status</th>
                       <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', width: 1 }}></th>
                     </tr>
                   </thead>
@@ -1538,22 +1738,21 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       if (contractsPersonNamesSorted.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={3} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No people in roster. Add people in Users tab first.</td>
+                            <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No people in roster. Add people in Users tab first.</td>
                           </tr>
                         )
                       }
                       if (contractsPersonNamesFiltered.length === 0 && contractsSearchNormalized) {
                         return (
                           <tr>
-                            <td colSpan={3} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matches.</td>
+                            <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matches.</td>
                           </tr>
                         )
                       }
                       return contractsPersonNamesFiltered.map((personName) => {
                         const docs = getDocumentsForPerson(personName)
-                        const status = getAggregateStatus(docs)
+                        const statusCounts = countPersonContractStatuses(docs)
                         const isExpanded = selectedContractsPersonName === personName
-                        const statusColor = status === 'green' ? '#22c55e' : status === 'yellow' ? '#eab308' : status === 'red' ? '#dc2626' : '#9ca3af'
                         return (
                           <Fragment key={personName}>
                             <tr
@@ -1567,6 +1766,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                               <td style={{ padding: '0.75rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                                   <span>{personName}</span>
+                                  {statusCounts.unsent > 0 ? <ContractStatusChip status="unsent" label={`${statusCounts.unsent} unsent`} /> : null}
+                                  {statusCounts.sent > 0 ? <ContractStatusChip status="sent" label={`${statusCounts.sent} waiting`} /> : null}
+                                  {statusCounts.signed > 0 ? <ContractStatusChip status="signed" label={`${statusCounts.signed} signed`} /> : null}
                                   {personContractAssignments
                                     .filter((a) => a.person_name === personName)
                                     .map((a) => {
@@ -1592,22 +1794,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                     })}
                                 </div>
                               </td>
-                              <td style={{ padding: '0.75rem' }}>
-                                {status !== null && (
-                                  <span
-                                    title={status === 'green' ? 'All signed' : status === 'yellow' ? 'Sent for signature' : 'Unsent'}
-                                    style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: statusColor }}
-                                    aria-hidden
-                                  />
-                                )}
-                              </td>
                               <td style={{ padding: '0.75rem', textAlign: 'right', width: 1 }}>
                                 <span style={{ fontSize: '0.75rem' }}>{isExpanded ? '▾' : '▸'}</span>
                               </td>
                             </tr>
                             {isExpanded && (
                               <tr>
-                                <td colSpan={3} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+                                <td colSpan={2} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                       <button
@@ -1652,6 +1845,45 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                     </div>
                                     {docs.length === 0 ? (
                                       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a template or add a document.</p>
+                                    ) : contractsNarrowViewport ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {docs.map(({ document_name, version, templateNames, bookLastEditedAt, lineageId }) => {
+                                          const doc = version
+                                          const appliedCustom = formatAppliedVersionPlainDate(doc?.applied_version_date)
+                                          const appliedLabel = appliedCustom ?? formatAppliedVersionPlainDate(bookLastEditedAt)
+                                          const metaBits = [
+                                            templateNames.join(', '),
+                                            doc && doc.lineage_version > 1 ? `v${doc.lineage_version}` : '',
+                                            appliedLabel ? `applied ${appliedLabel}${appliedCustom ? ' (set manually)' : ''}` : '',
+                                            doc?.signed_at ? `signed ${doc.signed_at}` : '',
+                                          ].filter(Boolean)
+                                          return (
+                                            <div
+                                              key={`${document_name}-${lineageId ?? 'none'}-${doc?.id ?? 'pending'}`}
+                                              style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.75rem' }}
+                                            >
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ flex: 1, minWidth: 0, fontWeight: 500, overflowWrap: 'anywhere' }}>{document_name}</span>
+                                                <ContractStatusChip status={doc?.status ?? 'unsent'} label={doc?.status ?? 'unsent'} />
+                                              </div>
+                                              {metaBits.length > 0 ? (
+                                                <div style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{metaBits.join(' · ')}</div>
+                                              ) : null}
+                                              {doc?.note?.trim() ? (
+                                                <div style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{doc.note}</div>
+                                              ) : null}
+                                              {doc?.url?.trim() ? (
+                                                <div style={{ margin: '0.2rem 0 0', fontSize: '0.75rem' }}>
+                                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                                                    Reference link
+                                                  </a>
+                                                </div>
+                                              ) : null}
+                                              <div style={{ marginTop: '0.45rem' }}>{renderContractDocActions(personName, document_name, doc)}</div>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
                                     ) : (
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                         <thead>
@@ -1759,191 +1991,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                               <td style={{ padding: '0.5rem' }}>{doc?.signed_at ?? '—'}</td>
                                               <td style={{ padding: '0.5rem' }}>{doc?.note ?? '—'}</td>
                                               <td style={{ padding: '0.5rem' }}>
-                                                <div
-                                                  style={{
-                                                    display: 'flex',
-                                                    flexWrap: 'wrap',
-                                                    alignItems: 'center',
-                                                    gap: '0.35rem',
-                                                  }}
-                                                >
-                                                  {doc?.status === 'signed' ? (
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        setContractSignedRecordModalDocId(doc.id)
-                                                      }}
-                                                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
-                                                    >
-                                                      View signed
-                                                    </button>
-                                                  ) : null}
-                                                  {doc && hasContractSigningContent(doc) && doc.status !== 'signed' ? (
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        setContractSendDocId(doc.id)
-                                                        setContractSendEmail(rosterEmailForPersonName(personName))
-                                                        setContractSendSubject('')
-                                                        setContractSendIntro('')
-                                                        setContractsError(null)
-                                                        setContractSendModalOpen(true)
-                                                      }}
-                                                      style={{
-                                                        padding: '0.2rem 0.4rem',
-                                                        fontSize: '0.75rem',
-                                                        background: '#0ea5e9',
-                                                        color: '#fff',
-                                                        border: 'none',
-                                                        borderRadius: 4,
-                                                        cursor: 'pointer',
-                                                      }}
-                                                    >
-                                                      {doc.status === 'sent' ? 'Resend' : 'Send'}
-                                                    </button>
-                                                  ) : null}
-                                                  {doc && doc.status !== 'signed' ? (
-                                                    <label
-                                                      style={{
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.25rem',
-                                                        fontSize: '0.7rem',
-                                                        cursor: contractDashboardPromptSavingId === doc.id ? 'wait' : 'pointer',
-                                                        userSelect: 'none',
-                                                      }}
-                                                      title="After each clock-in, show on this person’s Dashboard until signed"
-                                                    >
-                                                      <input
-                                                        type="checkbox"
-                                                        checked={!!doc.dashboard_prompt_after_clock_in}
-                                                        disabled={contractDashboardPromptSavingId === doc.id}
-                                                        onChange={(e) => {
-                                                          e.stopPropagation()
-                                                          void toggleContractDashboardPrompt(doc.id, e.target.checked)
-                                                        }}
-                                                      />
-                                                      Dashboard
-                                                    </label>
-                                                  ) : null}
-                                                  {doc ? (
-                                                    <div
-                                                      data-contract-doc-menu-wrap={doc.id}
-                                                      style={{
-                                                        position: 'relative',
-                                                        display: 'inline-flex',
-                                                        verticalAlign: 'middle',
-                                                      }}
-                                                    >
-                                                      <button
-                                                        type="button"
-                                                        aria-label={`More actions for ${document_name}`}
-                                                        aria-haspopup="menu"
-                                                        aria-expanded={contractsDocumentActionsMenuOpenId === doc.id}
-                                                        onClick={(e) => {
-                                                          e.stopPropagation()
-                                                          setContractsDocumentActionsMenuOpenId((id) =>
-                                                            id === doc.id ? null : doc.id,
-                                                          )
-                                                        }}
-                                                        style={{
-                                                          padding: '0.15rem 0.35rem',
-                                                          fontSize: '1rem',
-                                                          lineHeight: 1,
-                                                          border: '1px solid var(--border-strong)',
-                                                          borderRadius: 4,
-                                                          background: 'var(--surface)',
-                                                          cursor: 'pointer',
-                                                        }}
-                                                      >
-                                                        ⋯
-                                                      </button>
-                                                      {contractsDocumentActionsMenuOpenId === doc.id ? (
-                                                        <div
-                                                          role="menu"
-                                                          style={{
-                                                            position: 'absolute',
-                                                            top: '100%',
-                                                            right: 0,
-                                                            marginTop: 2,
-                                                            zIndex: 20,
-                                                            minWidth: 140,
-                                                            background: 'var(--surface)',
-                                                            border: '1px solid var(--border)',
-                                                            borderRadius: 6,
-                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                                                            padding: '0.25rem 0',
-                                                          }}
-                                                        >
-                                                          <button
-                                                            type="button"
-                                                            role="menuitem"
-                                                            onClick={(e) => {
-                                                              e.stopPropagation()
-                                                              setContractsDocumentActionsMenuOpenId(null)
-                                                              openContractDocumentEditModal(personName, document_name, doc)
-                                                            }}
-                                                            style={{
-                                                              display: 'flex',
-                                                              alignItems: 'center',
-                                                              width: '100%',
-                                                              padding: '0.35rem 0.65rem',
-                                                              fontSize: '0.8125rem',
-                                                              border: 'none',
-                                                              background: 'transparent',
-                                                              cursor: 'pointer',
-                                                              color: 'var(--text-strong)',
-                                                              textAlign: 'left',
-                                                            }}
-                                                          >
-                                                            Edit
-                                                          </button>
-                                                          {canDeletePeopleContracts ? (
-                                                            <button
-                                                              type="button"
-                                                              role="menuitem"
-                                                              onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                setContractsDocumentActionsMenuOpenId(null)
-                                                                setContractDocumentDeleteTarget(doc)
-                                                                setContractDocumentDeleteConfirmOpen(true)
-                                                              }}
-                                                              style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '0.35rem',
-                                                                width: '100%',
-                                                                padding: '0.35rem 0.65rem',
-                                                                fontSize: '0.8125rem',
-                                                                border: 'none',
-                                                                background: 'transparent',
-                                                                cursor: 'pointer',
-                                                                color: 'var(--text-red-700)',
-                                                                textAlign: 'left',
-                                                              }}
-                                                            >
-                                                              <svg
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                width={14}
-                                                                height={14}
-                                                                viewBox="0 0 24 24"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth={2}
-                                                                aria-hidden
-                                                              >
-                                                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" />
-                                                              </svg>
-                                                              Delete
-                                                            </button>
-                                                          ) : null}
-                                                        </div>
-                                                      ) : null}
-                                                    </div>
-                                                  ) : null}
-                                                </div>
+                                                {renderContractDocActions(personName, document_name, doc)}
                                               </td>
                                             </tr>
                                           )
