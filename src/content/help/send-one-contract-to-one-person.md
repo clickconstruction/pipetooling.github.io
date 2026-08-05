@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: contracts, send for signature, quick send, agreements panel, add document, contract book, one document
 order: 75
 ---
-You don't need to assign a whole template just to get one document signed. There are two fast paths, both in **People → Contracts**.
+You don't need to assign a whole packet just to get one document signed. There are two fast paths, both in **People → Contracts**.
 
 ## Send from the Agreements panel
 

@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1411',
+    date: '2026-08-05',
+    title: 'Contracts: one Contract library, and packets you can see through',
+    kind: 'feature',
+    highlights: [
+      'Contract Book and Manage templates merged into one "Contract library" with two tabs: Documents (every agreement, how many people have it, Send to… right there) and Packets — the new name for templates.',
+      'Packets are managed side-by-side: pick a packet, see its documents as checkboxes and who’s assigned, and before saving you’re told exactly what will happen ("added for the 4 assigned people without it, created as unsent").',
+      'Assign packets now uses checkboxes with the same plain-English preview, and Unassign moved into each packet’s ⋯ menu.',
+      'Documents that were only ever sent one-off show under "Outside the library" so nothing is invisible anymore.',
+    ],
+  },
+  {
     version: 'v2.1410',
     date: '2026-08-05',
     title: 'Contracts: send one document to one person in two clicks',

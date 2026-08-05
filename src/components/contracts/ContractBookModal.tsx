@@ -41,6 +41,12 @@ type ContractBookModalProps = {
   onPickEntry?: (entry: ContractBookTemplateDocument) => void
   /** When false, library entry Delete is hidden (e.g. People Contracts assistants). Default true. */
   canDeleteLibraryEntries?: boolean
+  /** Render only the content (no overlay/title/Close) — the Contract library modal's Documents tab (v2.1411). */
+  embedded?: boolean
+  /** Document name → people with a copy; renders "sent to N people" on each entry (v2.1411). */
+  sentCountByDocName?: ReadonlyMap<string, number>
+  /** Per-entry "Send to…" quick-send hook (v2.1411). */
+  onQuickSend?: (documentName: string) => void
 }
 
 const badgeStyle: CSSProperties = {
@@ -108,6 +114,9 @@ export function ContractBookModal({
   onSaved,
   onPickEntry,
   canDeleteLibraryEntries = true,
+  embedded = false,
+  sentCountByDocName,
+  onQuickSend,
 }: ContractBookModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingId, setViewingId] = useState<string | null>(null)
@@ -183,7 +192,7 @@ export function ContractBookModal({
   }, [open])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || embedded) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (bookEntryDeleteConfirmOpen) {
@@ -195,7 +204,7 @@ export function ContractBookModal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose, saving, addSaving, deleting, bookEntryDeleteConfirmOpen])
+  }, [open, embedded, onClose, saving, addSaving, deleting, bookEntryDeleteConfirmOpen])
 
   function nextSequenceOrder(templateId: string): number {
     let max = -1
@@ -296,7 +305,7 @@ export function ContractBookModal({
         d.document_name.trim().toLowerCase() === trimmedName.toLowerCase(),
     )
     if (dup) {
-      setError('A document with this name already exists for that template.')
+      setError('A document with this name already exists for that packet.')
       return
     }
     setSaving(true)
@@ -338,7 +347,7 @@ export function ContractBookModal({
         d.template_id === templateId && d.document_name.trim().toLowerCase() === docName.toLowerCase(),
     )
     if (dup) {
-      setError('A document with this name already exists for that template.')
+      setError('A document with this name already exists for that packet.')
       return
     }
     setAddSaving(true)
@@ -389,34 +398,34 @@ export function ContractBookModal({
 
   const busy = saving || addSaving || deleting
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 12,
-        padding: '1rem',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contract-book-title"
+  const addContractButton =
+    templates.length > 0 && !addPanelOpen ? (
+      <button
+        type="button"
+        onClick={openAddPanel}
+        disabled={busy}
         style={{
-          background: 'var(--surface)',
-          padding: '1.25rem',
-          borderRadius: 8,
-          minWidth: 320,
-          maxWidth: 'min(96vw, 720px)',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          width: '100%',
+          padding: '0.45rem 0.9rem',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          border: 'none',
+          borderRadius: 6,
+          background: '#059669',
+          color: '#fff',
+          cursor: busy ? 'not-allowed' : 'pointer',
         }}
       >
+        Add Contract
+      </button>
+    ) : null
+
+  const body = (
+    <>
+        {embedded ? (
+          addContractButton ? (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>{addContractButton}</div>
+          ) : null
+        ) : (
         <div
           style={{
             display: 'grid',
@@ -429,27 +438,7 @@ export function ContractBookModal({
           <h3 id="contract-book-title" style={{ margin: 0, fontSize: '1.125rem', justifySelf: 'start' }}>
             Contract Book
           </h3>
-          <div style={{ justifySelf: 'center' }}>
-            {templates.length > 0 && !addPanelOpen ? (
-              <button
-                type="button"
-                onClick={openAddPanel}
-                disabled={busy}
-                style={{
-                  padding: '0.45rem 0.9rem',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  border: 'none',
-                  borderRadius: 6,
-                  background: '#059669',
-                  color: '#fff',
-                  cursor: busy ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Add Contract
-              </button>
-            ) : null}
-          </div>
+          <div style={{ justifySelf: 'center' }}>{addContractButton}</div>
           <button
             type="button"
             onClick={() => {
@@ -470,6 +459,7 @@ export function ContractBookModal({
             Close
           </button>
         </div>
+        )}
         {error ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</p> : null}
 
         {onPickEntry ? (
@@ -488,7 +478,7 @@ export function ContractBookModal({
 
         {templates.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-            No contract templates yet. Create a template in <strong>Manage templates</strong> first, then you can add library entries here.
+            No packets yet. Create one on the <strong>Packets</strong> tab first, then you can add library documents here.
           </p>
         ) : null}
 
@@ -505,7 +495,7 @@ export function ContractBookModal({
             <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.65rem' }}>New library entry</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Template</label>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Packet</label>
                 <select
                   value={addTemplateId}
                   onChange={(e) => setAddTemplateId(e.target.value)}
@@ -655,7 +645,7 @@ export function ContractBookModal({
 
         {templates.length > 0 && sortedRows.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-            No library entries yet. Use <strong>Add Contract</strong> above, or add document names in Manage templates.
+            No library documents yet. Use <strong>Add Contract</strong> above.
           </p>
         ) : null}
 
@@ -702,6 +692,25 @@ export function ContractBookModal({
                     ) : null}
                     {!isEditing ? (
                       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {onQuickSend && hasLoadableContent ? (
+                          <button
+                            type="button"
+                            onClick={() => onQuickSend(row.document_name)}
+                            title={`Send ${row.document_name} to a person`}
+                            style={{
+                              padding: '0.25rem 0.55rem',
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              border: 'none',
+                              borderRadius: 6,
+                              background: '#0ea5e9',
+                              color: '#fff',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Send to…
+                          </button>
+                        ) : null}
                         {onPickEntry ? (
                           <button
                             type="button"
@@ -787,21 +796,34 @@ export function ContractBookModal({
 
                   {(() => {
                     const versionLabel = effectiveBookVersionLabel(row)
-                    if (!versionLabel) return null
+                    const sentCount = sentCountByDocName?.get(row.document_name)
+                    if (!versionLabel && sentCount == null) return null
                     const custom = bookVersionDateIsCustom(row)
                     return (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                        Version date:{' '}
-                        <span
-                          style={
-                            custom
-                              ? { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }
-                              : undefined
-                          }
-                        >
-                          {versionLabel}
-                        </span>{' '}
-                        — {custom ? 'set manually' : 'from last edit'}
+                        {versionLabel ? (
+                          <>
+                            Version date:{' '}
+                            <span
+                              style={
+                                custom
+                                  ? { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }
+                                  : undefined
+                              }
+                            >
+                              {versionLabel}
+                            </span>{' '}
+                            — {custom ? 'set manually' : 'from last edit'}
+                          </>
+                        ) : null}
+                        {sentCount != null ? (
+                          <>
+                            {versionLabel ? ' · ' : ''}
+                            {sentCount === 0
+                              ? 'not sent to anyone yet'
+                              : `sent to ${sentCount} ${sentCount === 1 ? 'person' : 'people'}`}
+                          </>
+                        ) : null}
                       </div>
                     )
                   })()}
@@ -1041,9 +1063,11 @@ export function ContractBookModal({
             })}
           </ul>
         )}
-      </div>
+    </>
+  )
 
-      {bookEntryDeleteConfirmOpen && editingId && canDeleteLibraryEntries ? (
+  const deleteConfirm =
+    bookEntryDeleteConfirmOpen && editingId && canDeleteLibraryEntries ? (
         <div
           role="presentation"
           style={{
@@ -1118,7 +1142,48 @@ export function ContractBookModal({
             </div>
           </div>
         </div>
-      ) : null}
+      ) : null
+
+  if (embedded) {
+    return (
+      <div>
+        {body}
+        {deleteConfirm}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 12,
+        padding: '1rem',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contract-book-title"
+        style={{
+          background: 'var(--surface)',
+          padding: '1.25rem',
+          borderRadius: 8,
+          minWidth: 320,
+          maxWidth: 'min(96vw, 720px)',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          width: '100%',
+        }}
+      >
+        {body}
+      </div>
+      {deleteConfirm}
     </div>
   )
 }
