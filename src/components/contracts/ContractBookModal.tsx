@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import {
   bookVersionDateIsCustom,
   effectiveBookVersionLabel,
@@ -141,6 +142,8 @@ export function ContractBookModal({
   const [addVersionDate, setAddVersionDate] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [bookEntryDeleteConfirmOpen, setBookEntryDeleteConfirmOpen] = useState(false)
+  /** Phones (v2.1413): title on its own line, chips under it, centered action row — the inline header wraps raggedly there. */
+  const narrowViewport = useNarrowViewport660()
 
   const templateById = useMemo(() => new Map(templates.map((t) => [t.id, t])), [templates])
 
@@ -658,18 +661,8 @@ export function ContractBookModal({
               const hasCanonicalUrl = Boolean(row.canonical_document_url?.trim())
               const hasLoadableContent = hasLibraryBody || hasCanonicalUrl
               const canPreview = contractBodyHasRenderableDisplay(row.book_body_html, row.book_body_format)
-              return (
-                <li
-                  key={row.id}
-                  style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0.75rem',
-                    background: isEditing ? 'var(--bg-subtle)' : 'var(--surface)',
-                  }}
-                >
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                    <strong style={{ fontSize: '0.9375rem' }}>{row.document_name}</strong>
+              const entryChips = (
+                <>
                     <span style={badgeStyle}>{tname}</span>
                     {(row.tags ?? []).map((tag) => (
                       <span key={tag} style={{ ...badgeStyle, backgroundColor: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
@@ -690,8 +683,16 @@ export function ContractBookModal({
                         Link
                       </span>
                     ) : null}
-                    {!isEditing ? (
-                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                </>
+              )
+              const entryActions = !isEditing ? (
+                      <div
+                        style={
+                          narrowViewport
+                            ? { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }
+                            : { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }
+                        }
+                      >
                         {onQuickSend && hasLoadableContent ? (
                           <button
                             type="button"
@@ -791,8 +792,34 @@ export function ContractBookModal({
                           Edit
                         </button>
                       </div>
-                    ) : null}
-                  </div>
+              ) : null
+              return (
+                <li
+                  key={row.id}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '0.75rem',
+                    background: isEditing ? 'var(--bg-subtle)' : 'var(--surface)',
+                  }}
+                >
+                  {narrowViewport ? (
+                    <div style={{ marginBottom: '0.35rem' }}>
+                      <strong style={{ display: 'block', fontSize: '0.9375rem', overflowWrap: 'anywhere' }}>
+                        {row.document_name}
+                      </strong>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem' }}>
+                        {entryChips}
+                      </div>
+                      {entryActions}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                      <strong style={{ fontSize: '0.9375rem' }}>{row.document_name}</strong>
+                      {entryChips}
+                      {entryActions}
+                    </div>
+                  )}
 
                   {(() => {
                     const versionLabel = effectiveBookVersionLabel(row)
@@ -812,8 +839,8 @@ export function ContractBookModal({
                               }
                             >
                               {versionLabel}
-                            </span>{' '}
-                            — {custom ? 'set manually' : 'from last edit'}
+                            </span>
+                            {custom ? ' — set manually' : ''}
                           </>
                         ) : null}
                         {sentCount != null ? (

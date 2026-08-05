@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1412)
+last_updated: 2026-08-05 (v2.1413)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1413)
+
+### Contract library documents: mobile card layout + quieter version line (2026-08-05)
+Owner feedback with a phone screenshot of the v2.1411 Documents tab — three asks, all in [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx). **(1)** Below 660px (`useNarrowViewport660`) each entry restructures into a card: document name as its own heading (long names wrap cleanly), the packet/tag/Link chips on a dedicated row beneath it (previously they wrapped mid-flow after the title and looked accidental; name stays first — the list is scanned by document name), and the Send to…/Preview/View/Edit actions as a **centered** row. Desktop keeps the original single-line header. **(2)** The version line drops the "— from last edit" suffix everywhere — it was the default case and carried no information; "— set manually" (with the dotted underline) still shows when a custom version date is pinned, and the edit form's From-last-edit/Custom-date toggle still explains the mechanics. Sent counts stay. Verified live at 375×812 (stacked cards, centered actions) and 1280px (unchanged inline header). Client-only.
 
 ## Latest Updates (v2.1412)
 
