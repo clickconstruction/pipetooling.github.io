@@ -1190,7 +1190,7 @@ export default function People() {
   }, [payConfigModalOpen, canAccessPay, payConfigRosterSections, users, loadPayConfigSalaryTemplateIndicators])
 
   async function loadArchivedUserNames() {
-    if (!canAccessPay && !canAccessHours) return
+    if (!canAccessPay && !canAccessHours && !canAccessContracts) return
     const { data, error } = await supabase.rpc('get_archived_user_names')
     if (error) return
     const arr = Array.isArray(data) ? data : []
@@ -3892,6 +3892,8 @@ export default function People() {
         <PeopleContractsTab
           people={people}
           users={users}
+          archivedPeople={archivedPeople}
+          archivedUserNames={archivedUserNames}
           canDeletePeopleContracts={canDeletePeopleContracts}
         />
       )}

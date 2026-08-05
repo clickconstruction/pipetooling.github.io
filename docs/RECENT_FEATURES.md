@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1407)
+last_updated: 2026-08-05 (v2.1408)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1408)
+
+### People Contracts: cards in the split view + Archived section (2026-08-05)
+Two owner asks. **(1) Squeezed-table fix**: the v2.1405 card/table switch keyed on *viewport* width, but the v2.1407 Agreements panel puts the people list in a ~5/12 lane — so on a wide monitor the documents table rendered at ~460px with the ⋯ orphaned and headers breaking. New `contractsDocsAsCards` condition in [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx): cards whenever the list is *actually* narrow — phone viewports OR the left lane while the panel is open; the full table only renders where it fits (panel hidden, or 660–1100px). Plus mid-width table polish: the actions cluster (shared closure) is now `nowrap` (fits one line even at 375px), the header reads "Applied", and the mobile/lane cards gain the body format ("Subcontractors · HTML") in their meta line. **(2) Archived section**: archived people and archived user accounts were absent from the roster entirely (people prop excludes them; the users query filters `archived_at`). The tab now takes `archivedPeople` + `archivedUserNames` (RPC `get_archived_user_names`, its People.tsx loader gate widened to contracts access) and renders a collapsed **"Archived · N"** section at the bottom — same rows (status chips, expand for documents, full actions) plus an "archived" chip; names shadowed by an active person stay active-only. Search auto-opens the section when it has matches; the Agreements panel's jump opens it for archived names; roster filters don't apply to it. The row renderer was refactored into a shared `renderRosterRow(personName, archived)` so both sections can't drift. Verified live at 1280px (cards in lane, Archived · 3 incl. an archived person with 1 unsent · 2 signed history) and 900px (full table, one-line actions).
 
 ## Latest Updates (v2.1407)
 

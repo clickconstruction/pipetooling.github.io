@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1408',
+    date: '2026-08-05',
+    title: 'Contracts: tidier documents beside the Agreements panel, and an Archived section',
+    kind: 'feature',
+    highlights: [
+      'With the Agreements panel open, a person\u2019s documents now show as the same tidy cards as on phones \u2014 no more squeezed table with wrapped buttons.',
+      'Archived people now appear in their own collapsed "Archived" section at the bottom of the list, keeping their contract history one tap away without cluttering the active roster.',
+      'Searching includes archived people automatically, and the mid-size table got small cleanups (one-line action buttons, shorter headers).',
+    ],
+  },
+  {
     version: 'v2.1407',
     date: '2026-08-05',
     title: 'Contracts: see each agreement\u2019s signatures at a glance',
