@@ -245,10 +245,14 @@ export function AssignSessionJobPopover({
       const spaceBelow = window.innerHeight - rect.bottom
       const popoverHeight = ASSIGN_POPOVER_ESTIMATED_HEIGHT
       const showAbove = spaceBelow < popoverHeight && rect.top > spaceBelow
-      setPopoverRect({
-        left: rect.left,
-        top: showAbove ? rect.top - popoverHeight - 4 : rect.bottom + 4,
-      })
+      // Clamp inside the viewport: dense tables (dashboard clock strip) put the
+      // trigger far right on phones, where anchoring at rect.left pushed the
+      // popover off-screen and it couldn't be used at all.
+      const margin = 8
+      const popoverWidth = Math.min(360, Math.max(200, window.innerWidth - margin * 2))
+      const left = Math.max(margin, Math.min(rect.left, window.innerWidth - margin - popoverWidth))
+      const top = Math.max(margin, showAbove ? rect.top - popoverHeight - 4 : rect.bottom + 4)
+      setPopoverRect({ left, top })
       const id = setTimeout(() => searchInputRef.current?.focus(), 0)
       return () => clearTimeout(id)
     } else {
@@ -440,8 +444,10 @@ export function AssignSessionJobPopover({
               left: popoverRect.left,
               top: popoverRect.top,
               zIndex: popoverZIndex,
-              minWidth: 280,
-              maxWidth: 360,
+              minWidth: 'min(280px, calc(100vw - 16px))',
+              maxWidth: 'min(360px, calc(100vw - 16px))',
+              maxHeight: 'calc(100vh - 16px)',
+              overflowY: 'auto',
               padding: '0.75rem',
               background: 'var(--surface)',
               border: '1px solid var(--border)',
