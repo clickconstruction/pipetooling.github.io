@@ -9,7 +9,7 @@ last_updated: 2026-08-05
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "174 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "175 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 5, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 5, 2026
+
+**`20260805120000_contract_signer_last_viewed.sql`** _(apply via `supabase db push` **promptly at merge** — the v2.1407 client's contracts SELECT names the column; until applied, People → Contracts fails its load with an error banner. Also `supabase functions deploy get-contract-for-signer` after merge so views start recording)_
+- **Purpose**: Agreements compliance panel (v2.1407). Additive nullable `signer_last_viewed_at timestamptz` on `person_contract_documents` — stamped by `get-contract-for-signer` on every successful fetch of a `sent` document (emailed link and Dashboard sign-now both land there). NULL = never opened since 2026-08-05; earlier views are unknowable.
+- **Security**: no policy changes; column rides the table's existing RLS; writes happen via the service-role edge function only.
+- **Category**: Database Improvements
 
 **`20260805110000_fix_update_contract_book_entry_role_gate.sql`** _(apply via `supabase db push` at merge — until applied, every Contract Book save fails with "function public.is_assistant_of_pay_approved_master() does not exist")_
 - **Purpose**: Hotfix for `20260805100000`, which rebuilt `update_contract_book_entry` from the baseline body whose role gate still called `is_assistant_of_pay_approved_master()` — dropped by `20260714200000` (the sweep rewrote live function bodies to `is_assistant()` before dropping it, but the baseline file was never touched). `CREATE OR REPLACE` of the same 7-arg function with the post-sweep gate `is_dev() OR is_pay_approved_master() OR is_assistant()`; everything else identical.

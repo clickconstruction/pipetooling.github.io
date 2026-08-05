@@ -150,6 +150,16 @@ export function ContractsTabHelpModal({
         </div>
 
         <div style={cardStyle}>
+          <p style={cardTitleStyle}>Agreements panel</p>
+          <p style={cardBodyStyle}>
+            On wide screens, the right-hand panel flips the view: one row per agreement with assigned vs. signed
+            counts. Expand one to see each person&rsquo;s compliance — when it was sent, when they last opened the
+            signing page, and when they signed. &ldquo;Viewed, not signed&rdquo; means a nudge; &ldquo;never
+            opened&rdquo; means resend or call.
+          </p>
+        </div>
+
+        <div style={cardStyle}>
           <p style={cardTitleStyle}>Applied version</p>
           <p style={cardBodyStyle}>
             The date of the Contract Book copy that applies to that row. A{' '}

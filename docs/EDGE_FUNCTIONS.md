@@ -918,7 +918,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
-**Behavior**: SHA-256 hash of `token`; load row by **`public_token_hash`** where **`status = sent`**; enforce **`public_token_expires_at`**. Returns **`signing_body_html`**, **`canonical_document_url`** (canonical column, else legacy **`url`**), **`document_name`**, **`person_name`** (still used for staff/email context; the public signing page in [`ContractAccept.tsx`](../src/pages/ContractAccept.tsx) does **not** display **For:** **`person_name`**). If **`status = signed`**, responds **409** with **`code: already_signed`** and optional thank-you strings (the app thank-you may use title-only copy; see **`RECENT_FEATURES.md`** v2.368).
+**Behavior**: SHA-256 hash of `token`; load row by **`public_token_hash`** where **`status = sent`**; enforce **`public_token_expires_at`**. Returns **`signing_body_html`**, **`canonical_document_url`** (canonical column, else legacy **`url`**), **`document_name`**, **`person_name`** (still used for staff/email context; the public signing page in [`ContractAccept.tsx`](../src/pages/ContractAccept.tsx) does **not** display **For:** **`person_name`**). If **`status = signed`**, responds **409** with **`code: already_signed`** and optional thank-you strings (the app thank-you may use title-only copy; see **`RECENT_FEATURES.md`** v2.368). Since v2.1407, every successful fetch of a viewable `sent` document also stamps **`signer_last_viewed_at = now()`** (best-effort — an update error never blocks the page) for the People → Contracts Agreements compliance panel; requires migration `20260805120000`.
 
 ---
 

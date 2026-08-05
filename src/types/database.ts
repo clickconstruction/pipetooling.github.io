@@ -7619,6 +7619,7 @@ export type Database = {
           signed_at: string | null
           signer_consented_at: string | null
           signer_ip: string | null
+          signer_last_viewed_at: string | null
           signer_printed_name: string | null
           signer_signature_storage_path: string | null
           signer_user_agent: string | null
@@ -7650,6 +7651,7 @@ export type Database = {
           signed_at?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
+          signer_last_viewed_at?: string | null
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
@@ -7681,6 +7683,7 @@ export type Database = {
           signed_at?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
+          signer_last_viewed_at?: string | null
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
