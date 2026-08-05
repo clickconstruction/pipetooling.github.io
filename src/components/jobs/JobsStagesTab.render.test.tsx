@@ -274,9 +274,17 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.queryByText(/^j: /)).toBeNull()
     expect(screen.queryByText('Left on Job')).toBeNull()
     expect(screen.getAllByText(/^Left /).length).toBeGreaterThanOrEqual(2)
-    // The pre-expanded card shows its labeled toolbelt in place.
-    expect(screen.getByText('Job detail')).toBeTruthy()
+    // v2.1402: the tap-revealed toolbelt is gone — actions live behind the
+    // card footer's visible ⋯ button, which opens the more-actions sheet.
+    expect(screen.queryByText('Job detail')).toBeNull()
+    expect(screen.queryByText('Edit job')).toBeNull()
+    const moreButtons = screen.getAllByTitle('More actions')
+    expect(moreButtons.length).toBeGreaterThanOrEqual(2)
+    fireEvent.click(moreButtons[0]!)
+    expect(screen.getByText('View job')).toBeTruthy()
     expect(screen.getByText('Edit job')).toBeTruthy()
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.queryByText('View job')).toBeNull()
     // Tapping a collapsed card requests its thread through the page setter.
     const collapsed = container.querySelector(`[data-stages-job-id="${jobs[2]!.id}"]`) as HTMLElement
     fireEvent.click(collapsed)

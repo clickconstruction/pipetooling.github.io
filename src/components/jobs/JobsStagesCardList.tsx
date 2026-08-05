@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -28,6 +29,9 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
+import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -63,8 +67,10 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  * money cell in `compact` mode (pct + bar + one condensed legend line), the
  * Next-appointment chip, a one-line activity teaser (2-line note clamp,
  * expand chevron), then an always-visible footer: invoice jump chips, View
- * reports, and the quick-icon row laid horizontally. Tapping the card (same
- * as a table row) expands the thread panel and a labeled toolbelt.
+ * reports, the quick-icon row laid horizontally, and a ⋯ button opening the
+ * StagesCardMoreActionsSheet (v2.1402) with every remaining desktop-row
+ * action, labeled. Tapping the card (same as a table row) expands the thread
+ * panel; the old tap-revealed "toolbelt" is folded into the ⋯ sheet.
  */
 
 const cardStyle: CSSProperties = {
@@ -89,17 +95,6 @@ const cardPrimaryActionStyle: CSSProperties = {
   border: 'none',
   borderRadius: 4,
   cursor: 'pointer',
-}
-
-const cardToolbeltButtonStyle: CSSProperties = {
-  padding: '0.3rem 0.6rem',
-  fontSize: '0.75rem',
-  background: 'none',
-  color: 'var(--text-700)',
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
 }
 
 function crewLine(job: JobWithDetails) {
@@ -483,13 +478,43 @@ function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails) {
   )
 }
 
-/** The card's always-visible footer: invoice chips + reports + the horizontal icon row. */
-function cardFooterRow(ctx: StagesRowRenderContext, job: JobWithDetails) {
+/** Sheet header label: effective job number + name (same shape as the send-as-task preset). */
+function cardMoreActionsTitle(job: JobWithDetails): string {
+  const numLabel = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
+  return `${(numLabel ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`
+}
+
+/** The card's always-visible footer: invoice chips + reports + the horizontal icon row + the ⋯ sheet opener. */
+function cardFooterRow(ctx: StagesRowRenderContext, job: JobWithDetails, onMoreActions: () => void) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
       {cardInvoiceChips(ctx, job)}
       {renderStagesViewReportsButton(ctx, job)}
-      <span style={{ marginLeft: 'auto' }}>{cardQuickIcons(ctx, job)}</span>
+      <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+        {cardQuickIcons(ctx, job)}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onMoreActions()
+          }}
+          title="More actions"
+          aria-label={`More actions for ${cardMoreActionsTitle(job)}`}
+          style={{
+            padding: '0.15rem 0.45rem',
+            fontSize: '1rem',
+            lineHeight: 1,
+            fontWeight: 700,
+            border: '1px solid var(--border-strong)',
+            borderRadius: 6,
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
+            cursor: 'pointer',
+          }}
+        >
+          ⋯
+        </button>
+      </span>
     </div>
   )
 }
@@ -596,6 +621,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
+  const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
     showToast: props.showToast,
     customers: props.customers,
@@ -619,6 +645,50 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     checklistAddModal,
     loadJobs: props.loadJobs,
     onDevelopmentFilter: props.onDevelopmentFilter,
+  }
+
+  const moreActionsFor = (j: JobWithDetails): StagesCardMoreAction[] => {
+    const items: StagesCardMoreAction[] = [
+      { key: 'view', label: 'View job', onClick: () => openStagesDetailJobModal(j) },
+      { key: 'edit', label: 'Edit job', onClick: () => openEdit(j) },
+      {
+        key: 'activity',
+        label: 'Activity and notes',
+        onClick: () => props.openJobThreadFullscreen(j.id),
+        badge: (() => {
+          const n = props.jobThreadStatsByJobId[j.id]?.note_count ?? 0
+          return n > 0 ? String(n) : undefined
+        })(),
+      },
+      { key: 'calendar', label: 'Calendar', onClick: () => props.openJobCalendar(j) },
+      { key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) },
+    ]
+    if (jobBillingUnallocatedDollars(j) > 0) {
+      items.push({
+        key: 'partial-invoice',
+        label: 'Partial invoice',
+        onClick: () => {
+          setCreatePartialInvoiceAmount('')
+          setCreatePartialInvoiceJob(j)
+        },
+      })
+    }
+    if (showAiaG702G703(props.authRole, j)) {
+      items.push({ key: 'aia', label: 'AIA G702-G703', onClick: () => setAiaG702StagesJob(j) })
+    }
+    if (canCreateHazmatFee) {
+      items.push({
+        key: 'hazmat',
+        label: 'Hazmat fee',
+        onClick: () => openHazmatFee(j),
+        badge: hazmatFeeJobIds?.has(j.id) ? 'live' : undefined,
+      })
+    }
+    const sendBack = onSendBack ?? onSendBackSimple
+    if (sendBack) {
+      items.push({ key: 'send-back', label: 'Send back', tone: 'muted', onClick: () => sendBack(j) })
+    }
+    return items
   }
 
   if (jobList.length === 0) {
@@ -681,67 +751,17 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
             />
             {cardNextChip(ctx, j)}
             {cardActivityTeaser(ctx, j)}
-            {cardFooterRow(ctx, j)}
-            {expanded ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                <button type="button" style={cardToolbeltButtonStyle} onClick={() => openStagesDetailJobModal(j)}>
-                  Job detail
-                </button>
-                <button type="button" style={cardToolbeltButtonStyle} onClick={() => openEdit(j)}>
-                  Edit job
-                </button>
-                <button type="button" style={cardToolbeltButtonStyle} onClick={() => props.openJobCalendar(j)}>
-                  Calendar
-                </button>
-                {(() => {
-                  const rem = jobBillingUnallocatedDollars(j)
-                  return rem > 0 ? (
-                    <button
-                      type="button"
-                      style={cardToolbeltButtonStyle}
-                      onClick={() => {
-                        setCreatePartialInvoiceAmount('')
-                        setCreatePartialInvoiceJob(j)
-                      }}
-                    >
-                      Partial invoice
-                    </button>
-                  ) : null
-                })()}
-                {showAiaG702G703(props.authRole, j) ? (
-                  <button type="button" style={cardToolbeltButtonStyle} onClick={() => setAiaG702StagesJob(j)}>
-                    AIA G702
-                  </button>
-                ) : null}
-                {canCreateHazmatFee ? (
-                  <button
-                    type="button"
-                    style={{
-                      ...cardToolbeltButtonStyle,
-                      ...(hazmatFeeJobIds?.has(j.id) ? { border: '2px solid #22c55e' } : {}),
-                      color: '#FF6600',
-                    }}
-                    onClick={() => openHazmatFee(j)}
-                  >
-                    Hazmat fee
-                  </button>
-                ) : null}
-                {onSendBack ? (
-                  <button type="button" style={{ ...cardToolbeltButtonStyle, color: 'var(--text-muted)' }} disabled={busy} onClick={() => onSendBack(j)}>
-                    Send back
-                  </button>
-                ) : null}
-                {onSendBackSimple ? (
-                  <button type="button" style={{ ...cardToolbeltButtonStyle, color: 'var(--text-muted)' }} disabled={busy} onClick={() => onSendBackSimple(j)}>
-                    Send back
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            {cardFooterRow(ctx, j, () => setMoreActionsJob(j))}
             {expanded ? renderCardThreadPanel(props, ctx, j) : null}
           </div>
         )
       })}
+      <StagesCardMoreActionsSheet
+        open={moreActionsJob != null}
+        title={moreActionsJob ? cardMoreActionsTitle(moreActionsJob) : ''}
+        actions={moreActionsJob ? moreActionsFor(moreActionsJob) : []}
+        onClose={() => setMoreActionsJob(null)}
+      />
     </div>
   )
 }
@@ -779,6 +799,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
+  const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const ctx: StagesRowRenderContext = {
     showToast: props.showToast,
     customers: props.customers,
@@ -802,6 +823,36 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     checklistAddModal,
     loadJobs: props.loadJobs,
     onDevelopmentFilter: props.onDevelopmentFilter,
+  }
+
+  const moreActionsForRow = (row: (typeof rows)[number]): StagesCardMoreAction[] => {
+    const j = row.job
+    const inv = row.kind === 'job' ? null : row.inv
+    const invWithJob: InvoiceWithJob | null = inv ? { ...inv, job: j } : null
+    const items: StagesCardMoreAction[] = [
+      { key: 'view', label: 'View job', onClick: () => openStagesDetailJobModal(j) },
+      { key: 'edit', label: 'Edit job', onClick: () => openEdit(j) },
+      { key: 'calendar', label: 'Calendar', onClick: () => props.openJobCalendar(j) },
+    ]
+    if (onViewBill && invWithJob) {
+      items.push({ key: 'view-bill', label: 'View bill', onClick: () => onViewBill(invWithJob) })
+    }
+    if (props.showClickTooling !== false) {
+      items.push({ key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) })
+    }
+    if (onOpenLienTooling) {
+      items.push({ key: 'lien', label: 'Lien Tooling', onClick: () => onOpenLienTooling({ job: j, invoice: inv }) })
+    }
+    if (onJobMoveToCollections) {
+      items.push({ key: 'collections', label: 'Flag for collections', tone: 'warn', onClick: () => onJobMoveToCollections(j) })
+    }
+    if (row.kind === 'job' && onJobSendBack) {
+      items.push({ key: 'send-back', label: jobSendBackLabel ?? 'Send back', tone: 'muted', onClick: () => onJobSendBack(j) })
+    }
+    if (row.kind !== 'job' && invWithJob) {
+      items.push({ key: 'send-back-inv', label: jobSendBackLabel ?? 'Send back', tone: 'muted', onClick: () => onInvoiceSendBack(invWithJob) })
+    }
+    return items
   }
 
   if (rows.length === 0) {
@@ -909,54 +960,17 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
             {cardNextChip(ctx, j)}
             {cardActivityTeaser(ctx, j)}
             {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
-            {cardFooterRow(ctx, j)}
-            {expanded ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                <button type="button" style={cardToolbeltButtonStyle} onClick={() => openStagesDetailJobModal(j)}>
-                  Job detail
-                </button>
-                <button type="button" style={cardToolbeltButtonStyle} onClick={() => openEdit(j)}>
-                  Edit job
-                </button>
-                <button type="button" style={cardToolbeltButtonStyle} onClick={() => props.openJobCalendar(j)}>
-                  Calendar
-                </button>
-                {onViewBill && invWithJob ? (
-                  <button type="button" style={cardToolbeltButtonStyle} onClick={() => onViewBill(invWithJob)}>
-                    View bill
-                  </button>
-                ) : null}
-                {onOpenLienTooling ? (
-                  <button type="button" style={cardToolbeltButtonStyle} onClick={() => onOpenLienTooling({ job: j, invoice: inv })}>
-                    Lien tooling
-                  </button>
-                ) : null}
-                {onJobMoveToCollections ? (
-                  <button type="button" style={{ ...cardToolbeltButtonStyle, color: 'var(--text-amber-800)' }} onClick={() => onJobMoveToCollections(j)}>
-                    To collections
-                  </button>
-                ) : null}
-                {row.kind === 'job' && onJobSendBack ? (
-                  <button type="button" style={{ ...cardToolbeltButtonStyle, color: 'var(--text-muted)' }} disabled={jobBusy} onClick={() => onJobSendBack(j)}>
-                    {jobSendBackLabel ?? 'Send back'}
-                  </button>
-                ) : null}
-                {row.kind !== 'job' && invWithJob ? (
-                  <button
-                    type="button"
-                    style={{ ...cardToolbeltButtonStyle, color: 'var(--text-muted)' }}
-                    disabled={invBusy}
-                    onClick={() => onInvoiceSendBack(invWithJob)}
-                  >
-                    {jobSendBackLabel ?? 'Send back'}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            {cardFooterRow(ctx, j, () => setMoreActionsRow(row))}
             {expanded ? renderCardThreadPanel(props, ctx, j) : null}
           </div>
         )
       })}
+      <StagesCardMoreActionsSheet
+        open={moreActionsRow != null}
+        title={moreActionsRow ? cardMoreActionsTitle(moreActionsRow.job) : ''}
+        actions={moreActionsRow ? moreActionsForRow(moreActionsRow) : []}
+        onClose={() => setMoreActionsRow(null)}
+      />
     </div>
   )
 }
