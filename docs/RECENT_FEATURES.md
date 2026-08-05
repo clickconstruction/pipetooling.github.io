@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1403)
+last_updated: 2026-08-05 (v2.1404)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1404)
+
+### People Contracts: "How this tab works" helper (2026-08-05)
+Owner ask after walking the Send and Dashboard actions together: put the explanation in the product. New ⓘ button beside the Contracts heading opens [`ContractsTabHelpModal.tsx`](../src/components/people/ContractsTabHelpModal.tsx) — four plain-English cards: **Send / Resend** (private signing link by email, preview first, "sent" until signed, fresh link on Resend, only shown when the document has signable content), **Dashboard** (reminder-not-email: the person's own Dashboard prompts "you have a contract to sign" after each clock-in until signed), **Status dots** (the red/yellow/green legend — the dots previously had no legend anywhere in the UI; colors mirror the roster literals), and **Applied version** (what the date means and why a dotted underline pins it). Footer links to /help; Esc/backdrop/Close dismiss. 4 render tests pin the cards and the link/close behavior. Client-only.
 
 ## Latest Updates (v2.1403)
 

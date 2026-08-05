@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SearchableSelect, type SearchableSelectSelectableOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
 import { checkGoogleDriveAttachmentUrl } from '../../lib/checkGoogleDriveAttachmentUrl'
@@ -16,6 +17,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
 import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../lib/contractBookVersionDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
+import { ContractsTabHelpModal } from './ContractsTabHelpModal'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -56,6 +58,8 @@ export type PeopleContractsTabProps = {
 
 export default function PeopleContractsTab({ people, users, canDeletePeopleContracts }: PeopleContractsTabProps) {
   const { showToast } = useToastContext()
+  const navigate = useNavigate()
+  const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
 
   // Contracts tab state
   type ContractTemplate = { id: string; name: string; sequence_order: number; created_at: string | null }
@@ -1410,7 +1414,34 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     <>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Contracts</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Contracts</h2>
+              <button
+                type="button"
+                onClick={() => setContractsHelpModalOpen(true)}
+                title="How this tab works"
+                aria-label="How this tab works"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  padding: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  fontStyle: 'italic',
+                  fontFamily: 'Georgia, serif',
+                  border: '1.5px solid var(--border-blue)',
+                  borderRadius: '50%',
+                  background: 'transparent',
+                  color: 'var(--text-blue-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                i
+              </button>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
@@ -2927,6 +2958,12 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
         open={contractSignedRecordModalDocId !== null}
         documentId={contractSignedRecordModalDocId}
         onClose={() => setContractSignedRecordModalDocId(null)}
+      />
+
+      <ContractsTabHelpModal
+        open={contractsHelpModalOpen}
+        onClose={() => setContractsHelpModalOpen(false)}
+        onOpenHelp={() => navigate('/help')}
       />
 
       {contractBookModalOpen && (

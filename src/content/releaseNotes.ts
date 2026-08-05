@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1404',
+    date: '2026-08-05',
+    title: 'Contracts: a ? guide built into the page',
+    kind: 'feature',
+    highlights: [
+      'A small i button next to the Contracts heading now explains the tab in plain English: what Send / Resend does, what the Dashboard checkbox reminds people about, what the red / yellow / green status dots mean, and how the Applied version date works.',
+    ],
+  },
+  {
     version: 'v2.1403',
     date: '2026-08-05',
     title: 'Contracts: Send for signature fills in the email for you',
