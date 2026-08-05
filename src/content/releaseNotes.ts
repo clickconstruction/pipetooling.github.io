@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1409',
+    date: '2026-08-05',
+    title: 'Fix: archived people no longer show as active on Contracts',
+    kind: 'fix',
+    highlights: [
+      'People whose accounts were archived (like Bill, Juan, and Joseph) were still appearing in the active Contracts list because a linked roster entry stayed active. Anyone archived anywhere now lands in the Archived section.',
+      'The filter counts got honest too \u2014 Needs attention stopped counting people you\u2019d already archived.',
+    ],
+  },
+  {
     version: 'v2.1408',
     date: '2026-08-05',
     title: 'Contracts: tidier documents beside the Agreements panel, and an Archived section',

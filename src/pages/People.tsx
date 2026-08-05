@@ -2273,6 +2273,17 @@ export default function People() {
     }
   }, [activeTab, isDev])
 
+  /** Contracts groups archived people at the bottom (v2.1409) — it needs the archived-user-name set, which otherwise only loads for pay/hours/review surfaces. */
+  useEffect(() => {
+    if (activeTab === 'contracts' && canAccessContracts) {
+      const t = setTimeout(() => {
+        void loadArchivedUserNames()
+      }, 80)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadArchivedUserNames is a stable page-level loader (same convention as the review-tab effect above)
+  }, [activeTab, canAccessContracts])
+
   // ---- Inline Team Summary callbacks (replace the old iframe postMessage handlers) ----
   //
   // The React `<TeamSummaryInline>` component calls these directly when

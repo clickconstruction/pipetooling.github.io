@@ -877,28 +877,36 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     return tableRows
   }
 
+  /** Archived names win over active twins (v2.1409): archiving a user account often leaves its linked
+   *  roster person active (Bill/Juan/Joseph pattern) — a name archived as EITHER entity belongs in the
+   *  Archived section, not the active list. */
+  const contractsArchivedNameSet = useMemo(() => {
+    const names = new Set<string>()
+    for (const p of archivedPeople ?? []) {
+      const n = (p.name ?? '').trim()
+      if (n) names.add(n)
+    }
+    for (const raw of archivedUserNames ?? []) {
+      const n = raw.trim()
+      if (n) names.add(n)
+    }
+    return names
+  }, [archivedPeople, archivedUserNames])
+
   const contractsPersonNamesSorted = useMemo(() => {
     return [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])]
       .filter((n): n is string => Boolean(n?.trim()))
+      .filter((n) => !contractsArchivedNameSet.has(n.trim()))
       .sort((a, b) => a.localeCompare(b))
-  }, [people, users])
+  }, [people, users, contractsArchivedNameSet])
 
   const contractsSearchNormalized = useMemo(() => contractsSearchQuery.trim().toLowerCase(), [contractsSearchQuery])
 
   /** Archived roster names (people + user accounts) not shadowed by an active name — the bottom Archived section. */
-  const contractsArchivedNames = useMemo(() => {
-    const active = new Set(contractsPersonNamesSorted)
-    const names = new Set<string>()
-    for (const p of archivedPeople ?? []) {
-      const n = (p.name ?? '').trim()
-      if (n && !active.has(n)) names.add(n)
-    }
-    for (const raw of archivedUserNames ?? []) {
-      const n = raw.trim()
-      if (n && !active.has(n)) names.add(n)
-    }
-    return [...names].sort((a, b) => a.localeCompare(b))
-  }, [archivedPeople, archivedUserNames, contractsPersonNamesSorted])
+  const contractsArchivedNames = useMemo(
+    () => [...contractsArchivedNameSet].sort((a, b) => a.localeCompare(b)),
+    [contractsArchivedNameSet],
+  )
 
     const [contractsRosterFilterStored, setContractsRosterFilterStored] = useState<ContractsRosterFilter | null>(() => {
     try {
