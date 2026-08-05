@@ -14,6 +14,7 @@ import { buildContractSendEmailPreview } from '../../lib/contractSendEmailPrevie
 import { normalizeCustomerAttachmentUrl } from '../../lib/estimateCustomerAttachment'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { formatAppliedVersionPlainDate, isoToPlainDateInAppTz, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
@@ -95,6 +96,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     note: string | null
     dashboard_prompt_after_clock_in?: boolean | null
     applied_contract_template_document_id: string | null
+    applied_version_date: string | null
     contract_lineage_id: string
     lineage_version: number
     supersedes_person_contract_document_id: string | null
@@ -132,6 +134,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
   const [contractDocumentFormCanonicalUrl, setContractDocumentFormCanonicalUrl] = useState('')
   /** Empty string = automatic (max updated_at among assigned templates). */
   const [contractDocumentFormAppliedTemplateDocId, setContractDocumentFormAppliedTemplateDocId] = useState('')
+  /** Empty string = derive the Applied version date from the Contract Book edit; 'YYYY-MM-DD' = custom stored date. */
+  const [contractDocumentFormAppliedVersionDate, setContractDocumentFormAppliedVersionDate] = useState('')
   const [contractDocumentFormSaving, setContractDocumentFormSaving] = useState(false)
   const [contractDocumentDeleteConfirmOpen, setContractDocumentDeleteConfirmOpen] = useState(false)
   const [contractDocumentDeleteTarget, setContractDocumentDeleteTarget] = useState<PersonContractDocument | null>(
@@ -450,7 +454,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       supabase
         .from('person_contract_documents')
         .select(
-          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, contract_lineage_id, lineage_version, supersedes_person_contract_document_id',
+          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id',
         ),
     ])
     setContractsLoading(false)
@@ -692,6 +696,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
           note: string | null
           dashboard_prompt_after_clock_in: boolean
           applied_contract_template_document_id: string | null
+          applied_version_date: string | null
         }
       } {
     const personName = contractDocumentFormPersonName.trim()
@@ -739,6 +744,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
         note: isAddRequestSignatureTab ? null : contractDocumentFormNote.trim() || null,
         dashboard_prompt_after_clock_in: dashboardForSave,
         applied_contract_template_document_id: appliedId,
+        applied_version_date: isAddUploadSignedTab ? null : contractDocumentFormAppliedVersionDate.trim() || null,
       },
     }
   }
@@ -787,6 +793,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 note: p.note,
                 dashboard_prompt_after_clock_in: p.dashboard_prompt_after_clock_in,
                 applied_contract_template_document_id: p.applied_contract_template_document_id,
+                applied_version_date: p.applied_version_date,
               })
               .eq('id', editingContractDocument.id)
               .select('id')
@@ -814,6 +821,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 note: p.note,
                 dashboard_prompt_after_clock_in: p.dashboard_prompt_after_clock_in,
                 applied_contract_template_document_id: p.applied_contract_template_document_id,
+                applied_version_date: p.applied_version_date,
               })
               .select('id')
               .single(),
@@ -871,6 +879,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
         return pin && opts.some((o) => o.value === pin) ? pin : ''
       })(),
     )
+    setContractDocumentFormAppliedVersionDate(docRow.applied_version_date ?? '')
     setCanonicalUrlCheckStatus('idle')
     setCanonicalUrlCheckMessage('')
     setContractDocumentModalOpen(true)
@@ -941,6 +950,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               signing_body_html: p.signing_body_html,
               signing_body_format: p.signing_body_format,
               canonical_document_url: p.canonical_document_url,
+              applied_version_date: p.applied_version_date,
               status: p.status,
               signed_at: p.signed_at,
               note: p.note,
@@ -1598,6 +1608,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                           setContractDocumentFormNote('')
                                           setContractDocumentFormDashboardPrompt(false)
                                           setContractDocumentFormAppliedTemplateDocId('')
+                                          setContractDocumentFormAppliedVersionDate('')
                                           setCanonicalUrlCheckStatus('idle')
                                           setCanonicalUrlCheckMessage('')
                                           setContractDocumentAddTab('request_signature')
@@ -1689,7 +1700,20 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                 {doc ? doc.lineage_version : '—'}
                                               </td>
                                               <td style={{ padding: '0.5rem', whiteSpace: 'nowrap', color: 'var(--text-600)' }}>
-                                                {bookLastEditedAt ? formatContractBookLastEditedCalendarDate(bookLastEditedAt) : '—'}
+                                                {(() => {
+                                                  const customLabel = formatAppliedVersionPlainDate(doc?.applied_version_date)
+                                                  if (customLabel) {
+                                                    return (
+                                                      <span
+                                                        title="Applied date set manually — Contract Book edits don't move it"
+                                                        style={{ textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
+                                                      >
+                                                        {customLabel}
+                                                      </span>
+                                                    )
+                                                  }
+                                                  return bookLastEditedAt ? formatContractBookLastEditedCalendarDate(bookLastEditedAt) : '—'
+                                                })()}
                                               </td>
                                               <td style={{ padding: '0.5rem' }}>{doc?.status ?? 'unsent'}</td>
                                               <td style={{ padding: '0.5rem' }}>
@@ -2384,49 +2408,54 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               </div>
             ) : null}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-                  Person
-                  <span aria-hidden="true" style={{ color: 'var(--text-red-700)' }}>
-                    {' '}
-                    *
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={contractDocumentFormPersonName}
-                  onChange={(e) => setContractDocumentFormPersonName(e.target.value)}
-                  readOnly
-                  disabled
-                  aria-required
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-                  Document name
-                  <span aria-hidden="true" style={{ color: 'var(--text-red-700)' }}>
-                    {' '}
-                    *
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={contractDocumentFormDocumentName}
-                  onChange={(e) => setContractDocumentFormDocumentName(e.target.value)}
-                  placeholder="e.g. Farm Work Agreement"
-                  readOnly={!!editingContractDocument}
-                  disabled={!!editingContractDocument}
-                  required={!editingContractDocument}
-                  aria-required={!editingContractDocument}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editingContractDocument ? 'var(--bg-subtle)' : undefined }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                    Person
+                    <span aria-hidden="true" style={{ color: 'var(--text-red-700)' }}>
+                      {' '}
+                      *
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contractDocumentFormPersonName}
+                    onChange={(e) => setContractDocumentFormPersonName(e.target.value)}
+                    readOnly
+                    disabled
+                    aria-required
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                    Document name
+                    <span aria-hidden="true" style={{ color: 'var(--text-red-700)' }}>
+                      {' '}
+                      *
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contractDocumentFormDocumentName}
+                    onChange={(e) => setContractDocumentFormDocumentName(e.target.value)}
+                    placeholder="e.g. Farm Work Agreement"
+                    readOnly={!!editingContractDocument}
+                    disabled={!!editingContractDocument}
+                    required={!editingContractDocument}
+                    aria-required={!editingContractDocument}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editingContractDocument ? 'var(--bg-subtle)' : undefined }}
+                  />
+                </div>
               </div>
               {(editingContractDocument ||
                 (!editingContractDocument && contractDocumentAddTab === 'request_signature')) && (
-                <div>
+                <div style={{ border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.65rem 0.75rem' }}>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                    Applied version
+                  </p>
                   <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-                    Applied version (Contract Book)
+                    Contract Book copy
                   </label>
                   <select
                     value={contractDocumentFormAppliedTemplateDocId}
@@ -2443,9 +2472,70 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       </option>
                     ))}
                   </select>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
-                    Pins which Contract Book row sets the &quot;Applied version&quot; date for this person. Leave automatic
-                    when any assigned template&apos;s copy is fine.
+                  <label style={{ display: 'block', fontSize: '0.8125rem', margin: '0.65rem 0 0.25rem' }}>
+                    Applied date
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div
+                      role="group"
+                      aria-label="Applied date source"
+                      style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={!contractDocumentFormAppliedVersionDate}
+                        onClick={() => setContractDocumentFormAppliedVersionDate('')}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          fontSize: '0.75rem',
+                          border: 'none',
+                          borderRadius: 0,
+                          cursor: 'pointer',
+                          background: !contractDocumentFormAppliedVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
+                          color: !contractDocumentFormAppliedVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                        }}
+                      >
+                        From book edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={!!contractDocumentFormAppliedVersionDate}
+                        onClick={() => {
+                          if (contractDocumentFormAppliedVersionDate) return
+                          const pinned = contractDocumentFormAppliedTemplateDocId
+                            ? contractTemplateDocuments.find((d) => d.id === contractDocumentFormAppliedTemplateDocId)
+                            : null
+                          setContractDocumentFormAppliedVersionDate(
+                            isoToPlainDateInAppTz(pinned?.updated_at ?? null) ?? todayPlainDateInAppTz(),
+                          )
+                        }}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          fontSize: '0.75rem',
+                          border: 'none',
+                          borderRadius: 0,
+                          borderLeft: '1px solid var(--border-strong)',
+                          cursor: 'pointer',
+                          background: contractDocumentFormAppliedVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
+                          color: contractDocumentFormAppliedVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                        }}
+                      >
+                        Custom date
+                      </button>
+                    </div>
+                    <input
+                      type="date"
+                      value={contractDocumentFormAppliedVersionDate}
+                      onChange={(e) => setContractDocumentFormAppliedVersionDate(e.target.value)}
+                      disabled={!contractDocumentFormAppliedVersionDate}
+                      aria-label="Custom applied date"
+                      style={{ padding: '0.375rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+                    />
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.45rem 0 0', lineHeight: 1.45 }}>
+                    {contractDocumentFormAppliedVersionDate
+                      ? 'This date is stored on this person’s copy and shown in the Applied version column — Contract Book edits won’t move it.'
+                      : 'Shows the date the pinned/assigned Contract Book copy was last edited; it moves when the book is edited again.'}
                   </p>
                 </div>
               )}
@@ -2536,17 +2626,28 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
                     To use <strong>Send for signature</strong>, fill at least one of: contract text, canonical URL, or signed/reference link (not required to save).
                   </p>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Status</label>
-                    <select
-                      value={contractDocumentFormStatus}
-                      onChange={(e) => setContractDocumentFormStatus(e.target.value as 'unsent' | 'sent' | 'signed')}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    >
-                      <option value="unsent">Unsent</option>
-                      <option value="sent">Sent</option>
-                      <option value="signed">Signed</option>
-                    </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Status</label>
+                      <select
+                        value={contractDocumentFormStatus}
+                        onChange={(e) => setContractDocumentFormStatus(e.target.value as 'unsent' | 'sent' | 'signed')}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      >
+                        <option value="unsent">Unsent</option>
+                        <option value="sent">Sent</option>
+                        <option value="signed">Signed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Signed date</label>
+                      <input
+                        type="date"
+                        value={contractDocumentFormSignedAt}
+                        onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      />
+                    </div>
                   </div>
                   {contractDocumentFormStatus !== 'signed' ? (
                     <label
@@ -2569,15 +2670,6 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       <span>Remind on Dashboard after clock-in (until signed)</span>
                     </label>
                   ) : null}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Signed date</label>
-                    <input
-                      type="date"
-                      value={contractDocumentFormSignedAt}
-                      onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    />
-                  </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Note</label>
                     <textarea
@@ -2677,17 +2769,6 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               }}
             >
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setContractDocumentModalOpen(false)
-                    setContractDocumentDeleteConfirmOpen(false)
-                    setContractDocumentDeleteTarget(null)
-                  }}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
                 {editingContractDocument &&
                 canDeletePeopleContracts &&
                 isDeletablePersonContractStatus(String(editingContractDocument.status)) ? (
@@ -2714,6 +2795,17 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 ) : null}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContractDocumentModalOpen(false)
+                    setContractDocumentDeleteConfirmOpen(false)
+                    setContractDocumentDeleteTarget(null)
+                  }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
                 <button
                   type="button"
                   onClick={saveContractDocument}
