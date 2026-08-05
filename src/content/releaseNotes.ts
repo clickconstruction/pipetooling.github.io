@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1412',
+    date: '2026-08-05',
+    title: 'Fix: assigning a job from your phone works again',
+    kind: 'fix',
+    highlights: [
+      'Tapping Assign in the Dashboard clock list on a phone opened the "Assign job or bid" box mostly off the edge of the screen, so you couldn’t search. It now always opens fully on screen.',
+      'The same box also stays on screen everywhere else it appears (People → Hours, the day editor).',
+    ],
+  },
+  {
     version: 'v2.1411',
     date: '2026-08-05',
     title: 'Contracts: one Contract library, and packets you can see through',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1411)
+last_updated: 2026-08-05 (v2.1412)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1412)
+
+### Fix: Assign job/bid popover unusable on phones (2026-08-05)
+Owner report with screenshots: tapping **Assign** in the Dashboard clock strip's Job-or-bid column on a phone opened the "Assign job or bid" popover mostly **off the right edge of the screen** — the search field couldn't be used at all. Cause in [`AssignSessionJobPopover.tsx`](../src/components/clock-sessions/AssignSessionJobPopover.tsx): the portal positions at the trigger's `rect.left` with a 280–360px width and never clamped to the viewport; in that dense strip the trigger sits far right, so `left + width` overflowed. Fix: the position effect now clamps **left** into `[8, innerWidth − 8 − popoverWidth]` (popover width estimated as `min(360, innerWidth − 16)`) and **top** to ≥ 8 (the existing above/below flip could also push it past the top edge on short screens); the panel style gains `minWidth/maxWidth: min(…, calc(100vw − 16px))` and `maxHeight: calc(100vh − 16px)` with `overflowY: auto`. Applies everywhere the popover is used (clock strip, People Hours, day editor modal). Verified live at 375×812: popover opens fully on-screen from the strip's Assign, search returns tappable results inside the panel. Client-only.
 
 ## Latest Updates (v2.1411)
 
