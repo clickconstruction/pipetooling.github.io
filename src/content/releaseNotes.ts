@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1400',
+    date: '2026-08-05',
+    title: 'Fix: saving a Contract Book entry errored',
+    kind: 'fix',
+    highlights: [
+      'Saving a Contract Book document briefly failed with a "function does not exist" error after the version-date update. Saves work again; nothing was lost.',
+    ],
+  },
+  {
     version: 'v2.1399',
     date: '2026-08-05',
     title: 'Contract Book: set a document\'s official version date',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1399)
+last_updated: 2026-08-05 (v2.1400)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1400)
+
+### Fix: Contract Book saves errored after v2.1399 (2026-08-05)
+Owner report: *"Failed to update contract book entry: function public.is_assistant_of_pay_approved_master() does not exist."* Root cause: migration `20260805100000` rebuilt `update_contract_book_entry` from the **baseline** body, whose role gate still called `is_assistant_of_pay_approved_master()` — a helper the 2026-07-14 assistant/pay-linkage dissolution (`20260714200000`) had rewritten to `is_assistant()` in every live function body and then **dropped**. plpgsql resolves names at execution, so the stale reference only surfaced on the first real save. Hotfix migration `20260805110000` re-`CREATE OR REPLACE`s the same 7-arg function with the post-sweep gate (`is_dev() OR is_pay_approved_master() OR is_assistant()`); signature, sentinel semantics, rename propagation, and version-minting untouched. **Lesson for future function edits: never copy a function body from the baseline — dump the live definition (or check post-baseline migrations for sweeps) first.** No client change.
 
 ## Latest Updates (v2.1399)
 
