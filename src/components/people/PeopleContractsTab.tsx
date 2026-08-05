@@ -13,23 +13,12 @@ import {
 import { buildContractSendEmailPreview } from '../../lib/contractSendEmailPreview'
 import { normalizeCustomerAttachmentUrl } from '../../lib/estimateCustomerAttachment'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { formatAppliedVersionPlainDate, isoToPlainDateInAppTz, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
+import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
+import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../lib/contractBookVersionDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
 import { useToastContext } from '../../contexts/ToastContext'
-
-function formatContractBookLastEditedCalendarDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-US', {
-    timeZone: APP_CALENDAR_TZ,
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 /** person_contract_documents.status values allowed for staff delete in People → Contracts */
 function isDeletablePersonContractStatus(status: string): boolean {
@@ -80,6 +69,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     tags: string[]
     canonical_document_url?: string | null
     updated_at: string
+    book_version_date: string | null
   }
   type PersonContractAssignment = { id: string; person_name: string; template_id: string }
   type PersonContractDocument = {
@@ -446,7 +436,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       supabase
         .from('contract_template_documents')
         .select(
-          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at',
+          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date',
         )
         .order('template_id')
         .order('sequence_order'),
@@ -494,8 +484,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       if (td.document_name !== dn) continue
       if (!assignedIds.has(td.template_id)) continue
       const tname = templateNameById.get(td.template_id) ?? td.template_id
-      const u = td.updated_at
-      const datePart = u ? formatContractBookLastEditedCalendarDate(u) : '—'
+      const datePart = effectiveBookVersionLabel(td) ?? '—'
       rows.push({ value: td.id, label: `${tname} · ${datePart}` })
     }
     rows.sort((a, b) => a.label.localeCompare(b.label))
@@ -517,6 +506,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     const assignedTemplateIds = personContractAssignments.filter((a) => a.person_name === personName).map((a) => a.template_id)
     const docNamesFromTemplates = new Set<string>()
     const docToTemplateNames = new Map<string, string[]>()
+    // Doc name → latest effective version date ('YYYY-MM-DD': book_version_date wins over updated_at's app-tz day).
     const docNameToBookUpdated = new Map<string, string>()
     for (const tid of assignedTemplateIds) {
       const template = contractTemplates.find((t) => t.id === tid)
@@ -526,7 +516,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
         const arr = docToTemplateNames.get(td.document_name) ?? []
         if (!arr.includes(templateName)) arr.push(templateName)
         docToTemplateNames.set(td.document_name, arr)
-        const u = td.updated_at
+        const u = effectiveBookVersionPlainDate(td)
         if (u) {
           const prev = docNameToBookUpdated.get(td.document_name)
           if (!prev || u > prev) docNameToBookUpdated.set(td.document_name, u)
@@ -552,8 +542,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
           pinned &&
           pinned.document_name === document_name &&
           assignedTemplateIds.includes(pinned.template_id)
-        if (pinOk && pinned.updated_at) {
-          bookLastEditedAt = pinned.updated_at
+        if (pinOk) {
+          bookLastEditedAt = effectiveBookVersionPlainDate(pinned)
         }
       }
       if (bookLastEditedAt == null) {
@@ -1712,7 +1702,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                       </span>
                                                     )
                                                   }
-                                                  return bookLastEditedAt ? formatContractBookLastEditedCalendarDate(bookLastEditedAt) : '—'
+                                                  return formatAppliedVersionPlainDate(bookLastEditedAt) ?? '—'
                                                 })()}
                                               </td>
                                               <td style={{ padding: '0.5rem' }}>{doc?.status ?? 'unsent'}</td>
@@ -2506,7 +2496,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                             ? contractTemplateDocuments.find((d) => d.id === contractDocumentFormAppliedTemplateDocId)
                             : null
                           setContractDocumentFormAppliedVersionDate(
-                            isoToPlainDateInAppTz(pinned?.updated_at ?? null) ?? todayPlainDateInAppTz(),
+                            effectiveBookVersionPlainDate(pinned) ?? todayPlainDateInAppTz(),
                           )
                         }}
                         style={{

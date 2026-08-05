@@ -25,3 +25,12 @@ Switching back to **From book edit** clears the custom date and the column retur
 
 - The paper copy was signed on a known date, but the book text was edited later for other people.
 - You're recording an older agreement after the fact and want the column to reflect when it really applied.
+
+## Set the document's official date for everyone
+
+The per-person date above is for exceptions. To set the date at the source, open the {{button:blue|Contract Book}} and {{button:outline|Edit}} the document — its **Version date** setting works the same way:
+
+- {{chip:blue|From last edit}} — the date follows the last edit to the library text (the default).
+- {{chip:gray|Custom date}} — pins the document's official version date. It shows on the book entry and feeds the pickers and Applied version column for **everyone** assigned the document, and editing the text won't move it.
+
+When both exist, the more specific one wins: a person's custom applied date beats the book's version date, which beats the last-edit date.

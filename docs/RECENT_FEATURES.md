@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1398)
+last_updated: 2026-08-05 (v2.1399)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1399)
+
+### Contract Book: settable document version date (2026-08-05)
+Owner follow-up to v2.1398: the library documents themselves get an official, settable **version date**. New nullable `contract_template_documents.book_version_date date` (migration `20260805100000`; also replaces `update_contract_book_entry` with a 7-arg version whose `p_book_version_date` uses a `DATE '0001-01-01'` **"not provided" sentinel** so the already-deployed 6-arg client can't clobber stored dates during the deploy window — NULL means clear; **apply promptly at merge**, the new client's contracts SELECT names the column). Date resolution is now a three-level cascade, top wins: per-person `applied_version_date` (v2.1398) → book `book_version_date` (this) → book `updated_at` app-tz day. Kernel [`contractBookVersionDate.ts`](../src/lib/contractBookVersionDate.ts) (`effectiveBookVersionPlainDate`/`Label`, `bookVersionDateIsCustom`, `maxEffectiveBookVersionRow` — all comparisons on the plain-date axis, 11 tests). [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx): every entry card now shows "Version date: {date} — set manually | from last edit" (dotted underline when manual, same language as the roster column), the edit form gains the From-last-edit/Custom-date toggle (v2.1398 pattern), and the add form takes an optional version date. [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx) derivations (Applied version column fallback, "Automatic (latest…)" resolution, picker labels, custom-date seed) all switch from raw `updated_at` to the effective date; the local `formatContractBookLastEditedCalendarDate` helper is retired in favor of the kernels. Help guide `set-the-applied-version-date-on-a-staff-contract` extended with the Contract Book section.
 
 ## Latest Updates (v2.1398)
 
