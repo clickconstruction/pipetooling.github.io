@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1404)
+last_updated: 2026-08-05 (v2.1405)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1405)
+
+### People Contracts: mobile document cards + status counts beside names (2026-08-05)
+Owner-approved redesign, PR 1 of 2. On phones the tab was partly broken: the expanded person's 8-column documents table (~600px) overflowed the viewport with **the Actions column (Send / Dashboard / ⋯) entirely off-screen**, and even the roster's far-right status dot sat past the edge — names with no status at all. Fixes in [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx): **(1)** the far-right dot column is gone — status renders as tinted count chips right beside the name ("1 unsent · 2 waiting · 3 signed", kernel [`personContractStatusCounts.ts`](../src/lib/personContractStatusCounts.ts), placeholders count as unsent to match the old dot); **(2)** below 660px (`useNarrowViewport660`) the documents render as cards — name + status chip, one meta line (templates · vN when >1 · applied date, "(set manually)" for pinned dates · signed date), note/reference link when present, and the full actions row always on-screen; **(3)** the actions cluster (View signed / Send / Dashboard / ⋯ menu) is extracted verbatim into a `renderContractDocActions` closure shared by the table cell and the cards, so the two can't drift. Desktop table unchanged otherwise. Verified live at 375px (zero horizontal overflow) and 1280px. PR 2 (filter chips + slimmer desktop table) follows.
 
 ## Latest Updates (v2.1404)
 

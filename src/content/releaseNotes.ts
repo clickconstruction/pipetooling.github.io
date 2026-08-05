@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1405',
+    date: '2026-08-05',
+    title: 'Contracts works properly on phones',
+    kind: 'feature',
+    highlights: [
+      'On a phone, a person\'s contract documents now show as cards with the Send button, Dashboard checkbox, and menu always on screen \u2014 before, those controls were cut off past the right edge.',
+      'Each person\'s status now shows right beside their name as small counts \u2014 like "1 unsent \u00b7 2 signed" \u2014 instead of a lone dot at the far right of the screen (which phones couldn\'t see at all).',
+    ],
+  },
+  {
     version: 'v2.1404',
     date: '2026-08-05',
     title: 'Contracts: a ? guide built into the page',
