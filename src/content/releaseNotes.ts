@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1399',
+    date: '2026-08-05',
+    title: 'Contract Book: set a document\'s official version date',
+    kind: 'feature',
+    highlights: [
+      'Each Contract Book entry now shows its version date, and the edit form lets you pin it: keep "From last edit" or switch to "Custom date" — the custom date becomes the document\'s official version date everywhere, and editing the text won\'t move it.',
+      'The pickers and Applied version column in People → Contracts use this date for everyone assigned the document. A person\'s own custom applied date still wins over it.',
+      'Manually set dates show with a dotted underline, in the book and in the roster.',
+    ],
+  },
+  {
     version: 'v2.1398',
     date: '2026-08-05',
     title: 'Contracts: set the Applied version date yourself',

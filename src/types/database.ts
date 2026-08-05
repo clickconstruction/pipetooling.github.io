@@ -2034,6 +2034,7 @@ export type Database = {
         Row: {
           book_body_format: string
           book_body_html: string | null
+          book_version_date: string | null
           canonical_document_url: string | null
           created_at: string | null
           document_name: string
@@ -2046,6 +2047,7 @@ export type Database = {
         Insert: {
           book_body_format?: string
           book_body_html?: string | null
+          book_version_date?: string | null
           canonical_document_url?: string | null
           created_at?: string | null
           document_name: string
@@ -2058,6 +2060,7 @@ export type Database = {
         Update: {
           book_body_format?: string
           book_body_html?: string | null
+          book_version_date?: string | null
           canonical_document_url?: string | null
           created_at?: string | null
           document_name?: string
@@ -13830,6 +13833,7 @@ export type Database = {
         Args: {
           p_book_body_format: string
           p_book_body_html: string
+          p_book_version_date?: string | null
           p_canonical_document_url: string
           p_contract_template_document_id: string
           p_document_name: string

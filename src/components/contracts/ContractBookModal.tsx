@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import {
+  bookVersionDateIsCustom,
+  effectiveBookVersionLabel,
+  effectiveBookVersionPlainDate,
+} from '../../lib/contractBookVersionDate'
+import { todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '@/utils/errorHandling'
 import {
@@ -13,6 +19,8 @@ import { ContractBodyDisplay } from './ContractBodyDisplay'
 export type ContractBookTemplate = { id: string; name: string; sequence_order: number }
 
 export type ContractBookTemplateDocument = {
+  updated_at?: string | null
+  book_version_date?: string | null
   id: string
   template_id: string
   document_name: string
@@ -119,6 +127,9 @@ export function ContractBookModal({
   const [addSaving, setAddSaving] = useState(false)
   const [editBookFormat, setEditBookFormat] = useState<ContractBodyFormat>('html')
   const [addBookFormat, setAddBookFormat] = useState<ContractBodyFormat>('html')
+  /** Empty string = version date follows the last edit; 'YYYY-MM-DD' = custom stored date. */
+  const [editVersionDate, setEditVersionDate] = useState('')
+  const [addVersionDate, setAddVersionDate] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [bookEntryDeleteConfirmOpen, setBookEntryDeleteConfirmOpen] = useState(false)
 
@@ -205,6 +216,7 @@ export function ContractBookModal({
     setAddCanonicalUrl('')
     setAddBody('')
     setAddBookFormat('html')
+    setAddVersionDate('')
     setError(null)
   }
 
@@ -218,6 +230,7 @@ export function ContractBookModal({
     setAddCanonicalUrl('')
     setAddBody('')
     setAddBookFormat('html')
+    setAddVersionDate('')
     setEditingId(null)
     setViewingId(null)
   }
@@ -231,6 +244,7 @@ export function ContractBookModal({
     setEditBookFormat(parseContractBodyFormat(row.book_body_format))
     setEditTagsStr((row.tags ?? []).join(', '))
     setEditCanonicalUrl(row.canonical_document_url?.trim() ?? '')
+    setEditVersionDate(row.book_version_date ?? '')
     setError(null)
     setAddPanelOpen(false)
   }
@@ -243,6 +257,7 @@ export function ContractBookModal({
     setEditTagsStr('')
     setEditCanonicalUrl('')
     setEditBookFormat('html')
+    setEditVersionDate('')
     setError(null)
   }
 
@@ -298,6 +313,7 @@ export function ContractBookModal({
             p_book_body_format: editBookFormat,
             p_tags: tags,
             p_canonical_document_url: editCanonicalUrl.trim(),
+            p_book_version_date: editVersionDate.trim() || null,
           }),
         'update contract book entry',
       )
@@ -344,9 +360,10 @@ export function ContractBookModal({
               book_body_format: addBookFormat,
               tags,
               canonical_document_url: canonStored,
+              book_version_date: addVersionDate.trim() || null,
             })
             .select(
-              'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url',
+              'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date',
             )
             .single(),
         'add contract book entry',
@@ -560,6 +577,18 @@ export function ContractBookModal({
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                  Version date (optional — otherwise follows the last edit)
+                </label>
+                <input
+                  type="date"
+                  value={addVersionDate}
+                  onChange={(e) => setAddVersionDate(e.target.value)}
+                  disabled={addSaving}
+                  style={{ padding: '0.375rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                   Library body (optional)
                 </label>
                 <BookBodyFormatToggle value={addBookFormat} onChange={setAddBookFormat} disabled={addSaving} />
@@ -756,6 +785,27 @@ export function ContractBookModal({
                     ) : null}
                   </div>
 
+                  {(() => {
+                    const versionLabel = effectiveBookVersionLabel(row)
+                    if (!versionLabel) return null
+                    const custom = bookVersionDateIsCustom(row)
+                    return (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                        Version date:{' '}
+                        <span
+                          style={
+                            custom
+                              ? { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }
+                              : undefined
+                          }
+                        >
+                          {versionLabel}
+                        </span>{' '}
+                        — {custom ? 'set manually' : 'from last edit'}
+                      </div>
+                    )
+                  })()}
+
                   {viewingId === row.id && !isEditing ? (
                     <div
                       id={`contract-book-view-${row.id}`}
@@ -834,6 +884,71 @@ export function ContractBookModal({
                           placeholder="e.g. employment, NDA"
                           style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                         />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Version date</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div
+                            role="group"
+                            aria-label="Version date source"
+                            style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}
+                          >
+                            <button
+                              type="button"
+                              aria-pressed={!editVersionDate}
+                              disabled={saving}
+                              onClick={() => setEditVersionDate('')}
+                              style={{
+                                padding: '0.35rem 0.65rem',
+                                fontSize: '0.75rem',
+                                border: 'none',
+                                borderRadius: 0,
+                                cursor: saving ? 'not-allowed' : 'pointer',
+                                background: !editVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
+                                color: !editVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                              }}
+                            >
+                              From last edit
+                            </button>
+                            <button
+                              type="button"
+                              aria-pressed={!!editVersionDate}
+                              disabled={saving}
+                              onClick={() => {
+                                if (editVersionDate) return
+                                setEditVersionDate(
+                                  effectiveBookVersionPlainDate({ updated_at: row.updated_at ?? null }) ??
+                                    todayPlainDateInAppTz(),
+                                )
+                              }}
+                              style={{
+                                padding: '0.35rem 0.65rem',
+                                fontSize: '0.75rem',
+                                border: 'none',
+                                borderRadius: 0,
+                                borderLeft: '1px solid var(--border-strong)',
+                                cursor: saving ? 'not-allowed' : 'pointer',
+                                background: editVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
+                                color: editVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                              }}
+                            >
+                              Custom date
+                            </button>
+                          </div>
+                          <input
+                            type="date"
+                            value={editVersionDate}
+                            onChange={(e) => setEditVersionDate(e.target.value)}
+                            disabled={saving || !editVersionDate}
+                            aria-label="Custom version date"
+                            style={{ padding: '0.375rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+                          />
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
+                          {editVersionDate
+                            ? 'Becomes this document’s official version date everywhere — the People → Contracts pickers and Applied version column. Editing the text won’t move it.'
+                            : 'The version date follows the last edit to this library entry.'}
+                        </p>
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>

@@ -9,7 +9,7 @@ last_updated: 2026-08-05
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "172 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "173 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 5, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 5, 2026
+
+**`20260805100000_contract_book_version_date.sql`** _(apply via `supabase db push` **promptly at merge** — the v2.1399 client's contracts SELECT names the new column and its book-entry saves call the 7-arg RPC; until applied, People → Contracts fails its load with an error banner and Contract Book saves error (no data risk))_
+- **Purpose**: Contract Book settable version date (v2.1399). Additive nullable `book_version_date date` on `contract_template_documents` (official version date; NULL = derive from `updated_at`). Replaces `update_contract_book_entry` (drops the 6-arg signature) with a 7-arg version adding `p_book_version_date date DEFAULT DATE '0001-01-01'` — the sentinel means "not provided, keep existing" so the already-deployed 6-arg client can't clear stored dates during the deploy window; explicit NULL clears back to derived. Ends with `NOTIFY pgrst, 'reload schema'` so PostgREST picks up the new signature immediately.
+- **Security**: function keeps the same role gate (dev / pay-approved master / their assistants / assistant), SECURITY DEFINER + `SET search_path = public`, EXECUTE granted to `authenticated`. Column rides the table's existing RLS; no new table, so no read-only sweep needed.
+- **Category**: Database Improvements
 
 **`20260805090000_person_contract_applied_version_date.sql`** _(apply via `supabase db push` **promptly at merge** — the v2.1398 client's contracts SELECT names the column; until applied, People → Contracts fails its load with an error banner (no crash, no data risk))_
 - **Purpose**: Settable "Applied version" date (v2.1398). Additive nullable `applied_version_date date` on `person_contract_documents` — a manually set date that overrides the derived Contract-Book-last-edited date in the People → Contracts roster; NULL keeps the previous derived behavior. Column comment documents the semantics.
