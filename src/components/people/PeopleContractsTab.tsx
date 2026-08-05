@@ -19,6 +19,15 @@ import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
 import { ContractsTabHelpModal } from './ContractsTabHelpModal'
 import { countPersonContractStatuses } from '../../lib/personContractStatusCounts'
+import {
+  CONTRACTS_ROSTER_FILTER_STORAGE_KEY,
+  contractsRosterBucket,
+  defaultContractsRosterFilter,
+  parseContractsRosterFilter,
+  personVisibleUnderContractsFilter,
+  type ContractsRosterBucket,
+  type ContractsRosterFilter,
+} from '../../lib/contractsRosterFilter'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
@@ -821,8 +830,52 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
   const contractsSearchNormalized = useMemo(() => contractsSearchQuery.trim().toLowerCase(), [contractsSearchQuery])
 
+  const [contractsRosterFilterStored, setContractsRosterFilterStored] = useState<ContractsRosterFilter | null>(() => {
+    try {
+      return parseContractsRosterFilter(typeof window !== 'undefined' ? window.localStorage.getItem(CONTRACTS_ROSTER_FILTER_STORAGE_KEY) : null)
+    } catch {
+      return null
+    }
+  })
+  /** person name → roster bucket + per-bucket totals for the chip labels. */
+  const contractsRosterBuckets = useMemo(() => {
+    const bucketByPerson = new Map<string, ContractsRosterBucket>()
+    const totals = { attention: 0, waiting: 0, done: 0, everyone: contractsPersonNamesSorted.length }
+    for (const personName of contractsPersonNamesSorted) {
+      const bucket = contractsRosterBucket(countPersonContractStatuses(getDocumentsForPerson(personName)))
+      bucketByPerson.set(personName, bucket)
+      if (bucket === 'attention') totals.attention++
+      else if (bucket === 'waiting') totals.waiting++
+      else if (bucket === 'done') totals.done++
+    }
+    return { bucketByPerson, totals }
+  }, [
+    contractsPersonNamesSorted,
+    contractTemplates,
+    contractTemplateDocuments,
+    personContractAssignments,
+    personContractDocuments,
+  ])
+  const contractsRosterFilterActive: ContractsRosterFilter =
+    contractsRosterFilterStored ?? defaultContractsRosterFilter(contractsRosterBuckets.totals.attention)
+  const setContractsRosterFilter = (f: ContractsRosterFilter) => {
+    setContractsRosterFilterStored(f)
+    try {
+      window.localStorage.setItem(CONTRACTS_ROSTER_FILTER_STORAGE_KEY, f)
+    } catch {
+      /* per-device preference only */
+    }
+  }
+
   const contractsPersonNamesFiltered = useMemo(() => {
-    if (!contractsSearchNormalized) return contractsPersonNamesSorted
+    if (!contractsSearchNormalized) {
+      return contractsPersonNamesSorted.filter((personName) =>
+        personVisibleUnderContractsFilter(
+          contractsRosterBuckets.bucketByPerson.get(personName) ?? 'none',
+          contractsRosterFilterActive,
+        ),
+      )
+    }
     return contractsPersonNamesSorted.filter((personName) => {
       if (personName.toLowerCase().includes(contractsSearchNormalized)) return true
       return getDocumentsForPerson(personName).some(({ document_name }) =>
@@ -832,6 +885,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
   }, [
     contractsPersonNamesSorted,
     contractsSearchNormalized,
+    contractsRosterBuckets,
+    contractsRosterFilterActive,
     contractTemplates,
     contractTemplateDocuments,
     personContractAssignments,
@@ -1700,6 +1755,41 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   }}
                 />
               </div>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.75rem' }} role="group" aria-label="Filter people by contract status">
+                {(
+                  [
+                    { key: 'attention', label: `Needs attention · ${contractsRosterBuckets.totals.attention}` },
+                    { key: 'waiting', label: `Waiting · ${contractsRosterBuckets.totals.waiting}` },
+                    { key: 'done', label: `Done · ${contractsRosterBuckets.totals.done}` },
+                    { key: 'everyone', label: `Everyone · ${contractsRosterBuckets.totals.everyone}` },
+                  ] as const
+                ).map(({ key, label }) => {
+                  const active = contractsRosterFilterActive === key && !contractsSearchNormalized
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={active}
+                      disabled={!!contractsSearchNormalized}
+                      title={contractsSearchNormalized ? 'Search looks across everyone; clear it to filter' : undefined}
+                      onClick={() => setContractsRosterFilter(key)}
+                      style={{
+                        padding: '0.3rem 0.7rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        borderRadius: 999,
+                        border: '1px solid ' + (active ? 'var(--border-blue)' : 'var(--border-strong)'),
+                        background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        color: contractsSearchNormalized ? 'var(--text-faint)' : active ? 'var(--text-blue-700)' : 'var(--text-600)',
+                        cursor: contractsSearchNormalized ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
               {contractsSearchNormalized && contractDocumentSearchLines.length > 0 ? (
                 <div
                   role="region"
@@ -1746,6 +1836,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                         return (
                           <tr>
                             <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matches.</td>
+                          </tr>
+                        )
+                      }
+                      if (contractsPersonNamesFiltered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No one under this filter — switch to Everyone.</td>
                           </tr>
                         )
                       }
@@ -1889,12 +1986,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                         <thead>
                                           <tr>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Document</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Ver.</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Applied version</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Status</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Ref link</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Signed</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Note</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
                                           </tr>
                                         </thead>
@@ -1958,9 +2051,31 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                     Link
                                                   </span>
                                                 ) : null}
-                                              </td>
-                                              <td style={{ padding: '0.5rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                                {doc ? doc.lineage_version : '—'}
+                                                {doc && doc.lineage_version > 1 ? (
+                                                  <span
+                                                    style={{
+                                                      marginLeft: '0.25rem',
+                                                      fontSize: '0.65rem',
+                                                      padding: '0.1rem 0.3rem',
+                                                      borderRadius: 4,
+                                                      backgroundColor: 'var(--bg-200)',
+                                                      color: 'var(--text-700)',
+                                                    }}
+                                                    title="Lineage version"
+                                                  >
+                                                    v{doc.lineage_version}
+                                                  </span>
+                                                ) : null}
+                                                {doc?.url?.trim() || doc?.note?.trim() ? (
+                                                  <div style={{ marginTop: '0.15rem', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {doc?.url?.trim() ? (
+                                                      <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                                                        Reference link
+                                                      </a>
+                                                    ) : null}
+                                                    {doc?.note?.trim() ? <span style={{ overflowWrap: 'anywhere' }}>{doc.note}</span> : null}
+                                                  </div>
+                                                ) : null}
                                               </td>
                                               <td style={{ padding: '0.5rem', whiteSpace: 'nowrap', color: 'var(--text-600)' }}>
                                                 {(() => {
@@ -1978,18 +2093,12 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                   return formatAppliedVersionPlainDate(bookLastEditedAt) ?? '—'
                                                 })()}
                                               </td>
-                                              <td style={{ padding: '0.5rem' }}>{doc?.status ?? 'unsent'}</td>
                                               <td style={{ padding: '0.5rem' }}>
-                                                {doc?.url ? (
-                                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                                                    Link
-                                                  </a>
-                                                ) : (
-                                                  '—'
-                                                )}
+                                                <ContractStatusChip status={doc?.status ?? 'unsent'} label={doc?.status ?? 'unsent'} />
+                                                {doc?.signed_at ? (
+                                                  <div style={{ marginTop: '0.15rem', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{doc.signed_at}</div>
+                                                ) : null}
                                               </td>
-                                              <td style={{ padding: '0.5rem' }}>{doc?.signed_at ?? '—'}</td>
-                                              <td style={{ padding: '0.5rem' }}>{doc?.note ?? '—'}</td>
                                               <td style={{ padding: '0.5rem' }}>
                                                 {renderContractDocActions(personName, document_name, doc)}
                                               </td>

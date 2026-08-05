@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1405)
+last_updated: 2026-08-05 (v2.1406)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1406)
+
+### People Contracts: roster filter chips + slimmer documents table (2026-08-05)
+PR 2 of the approved redesign (PR 1 = v2.1405). **Filter chips** under the search box — "Needs attention · N" (anything unsent) / "Waiting · N" (sent, nothing unsent) / "Done · N" (all signed) / "Everyone · N" — with the bucket logic in kernel [`contractsRosterFilter.ts`](../src/lib/contractsRosterFilter.ts). First visit opens on Needs attention when it has anyone (else Everyone); the choice persists per device (`people_contracts_roster_filter_v1`); a search query overrides the filter (chips disable — search always looks across everyone); a filtered-empty roster says "No one under this filter — switch to Everyone." **Slimmer desktop documents table**: 8 columns → 4 (Document / Applied version / Status / Actions). Ver. becomes a small "v2" chip only when a lineage is past version 1; Ref link and Note fold into a muted subline under the document name; Status renders as the tinted chip with the signed date beneath. The help modal's legend card updates from dots to chips and mentions the matching filter colors. Verified live: 18-person Needs-attention default vs 34 under Everyone, chips persist, slim rows carry Resend/Send · Dashboard · ⋯. Client-only.
 
 ## Latest Updates (v2.1405)
 
