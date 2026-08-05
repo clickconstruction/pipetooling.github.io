@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1402',
+    date: '2026-08-05',
+    title: 'Stages mobile cards: every job action behind one \u22ef button',
+    kind: 'feature',
+    highlights: [
+      'On the Stages mobile cards, a new \u22ef button at the end of each card\'s icon row slides up a menu with everything the desktop row offers \u2014 View job, Edit job, Activity and notes, Calendar, Click Tooling, and the section\'s billing tools (AIA, hazmat, lien, collections) where they apply.',
+      'These actions used to hide behind tapping the card body with nothing telling you so; now there\'s a visible button. Tapping the card still opens the message thread.',
+    ],
+  },
+  {
     version: 'v2.1401',
     date: '2026-08-05',
     title: 'Linked crew window reads cleanly on phones',
