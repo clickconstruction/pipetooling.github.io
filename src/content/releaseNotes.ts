@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1413',
+    date: '2026-08-05',
+    title: 'Contract library: cleaner document cards on phones',
+    kind: 'feature',
+    highlights: [
+      'On phones, each library document now reads as a tidy card: name first, its packet and tags on the next line, and the buttons centered underneath.',
+      'The version line is quieter — "from last edit" is gone (it was the normal case); dates you set manually still say so.',
+    ],
+  },
+  {
     version: 'v2.1412',
     date: '2026-08-05',
     title: 'Fix: assigning a job from your phone works again',
