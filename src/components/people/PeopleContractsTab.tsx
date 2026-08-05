@@ -29,6 +29,9 @@ import {
   type ContractsRosterFilter,
 } from '../../lib/contractsRosterFilter'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { buildAgreementSummaries } from '../../lib/contractsAgreementsPanel'
+import { ContractsAgreementsPanel } from './ContractsAgreementsPanel'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -88,6 +91,23 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
   const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
   /** Below 660px the expanded person's documents render as cards — the 8-column table cuts its Actions off-screen on phones. */
   const contractsNarrowViewport = useNarrowViewport660()
+  /** ≥1100px shows the Agreements panel beside the roster (v2.1407); per-device hide toggle. */
+  const contractsWideViewport = useMatchMedia('(min-width: 1100px)')
+  const [agreementsPanelHidden, setAgreementsPanelHidden] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem('people_contracts_agreements_panel_hidden_v1') === '1'
+    } catch {
+      return false
+    }
+  })
+  const setAgreementsPanelHiddenStored = (hidden: boolean) => {
+    setAgreementsPanelHidden(hidden)
+    try {
+      window.localStorage.setItem('people_contracts_agreements_panel_hidden_v1', hidden ? '1' : '0')
+    } catch {
+      /* per-device preference only */
+    }
+  }
 
   // Contracts tab state
   type ContractTemplate = { id: string; name: string; sequence_order: number; created_at: string | null }
@@ -115,6 +135,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     status: string
     signed_at: string | null
     sent_at: string | null
+    signer_last_viewed_at: string | null
     note: string | null
     dashboard_prompt_after_clock_in?: boolean | null
     applied_contract_template_document_id: string | null
@@ -476,7 +497,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       supabase
         .from('person_contract_documents')
         .select(
-          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id',
+          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, signer_last_viewed_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id',
         ),
     ])
     setContractsLoading(false)
@@ -550,6 +571,31 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     if (fromPeople?.trim()) return fromPeople.trim()
     const fromUsers = users.find((u) => (u.name ?? '').trim() === wanted)?.email
     return fromUsers?.trim() ?? ''
+  }
+
+  const agreementSummaries = useMemo(
+    () =>
+      buildAgreementSummaries({
+        templates: contractTemplates,
+        templateDocuments: contractTemplateDocuments,
+        assignments: personContractAssignments,
+        personDocuments: personContractDocuments,
+      }),
+    [contractTemplates, contractTemplateDocuments, personContractAssignments, personContractDocuments],
+  )
+
+  /** Agreements-panel row click: select the person, un-hide them if the filter would, and scroll their row into view. */
+  const jumpToContractsPerson = (personName: string) => {
+    setSelectedContractsPersonName(personName)
+    if (
+      !contractsSearchNormalized &&
+      !personVisibleUnderContractsFilter(contractsRosterBuckets.bucketByPerson.get(personName) ?? 'none', contractsRosterFilterActive)
+    ) {
+      setContractsRosterFilter('everyone')
+    }
+    window.setTimeout(() => {
+      document.querySelector(`[data-contracts-person-row="${CSS.escape(personName)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 60)
   }
 
   /** Actions cluster for one document row — shared verbatim by the desktop table cell and the narrow-viewport cards (v2.1405). */
@@ -1733,6 +1779,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            <div style={{ flex: 5, minWidth: 0 }}>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label htmlFor={contractsTabSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>
                   Search people and contracts
@@ -1789,6 +1837,15 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     </button>
                   )
                 })}
+                {contractsWideViewport && agreementsPanelHidden ? (
+                  <button
+                    type="button"
+                    onClick={() => setAgreementsPanelHiddenStored(false)}
+                    style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', fontSize: '0.75rem', fontWeight: 500, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-600)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Show agreements
+                  </button>
+                ) : null}
               </div>
               {contractsSearchNormalized && contractDocumentSearchLines.length > 0 ? (
                 <div
@@ -1853,6 +1910,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                         return (
                           <Fragment key={personName}>
                             <tr
+                              data-contracts-person-row={personName}
                               style={{
                                 borderBottom: '1px solid var(--border)',
                                 cursor: 'pointer',
@@ -2119,6 +2177,17 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   </tbody>
                 </table>
               </div>
+            </div>
+            {contractsWideViewport && !agreementsPanelHidden ? (
+              <div style={{ flex: 7, minWidth: 0, borderLeft: '1px solid var(--border)', paddingLeft: '1rem' }}>
+                <ContractsAgreementsPanel
+                  summaries={agreementSummaries}
+                  onJumpToPerson={jumpToContractsPerson}
+                  onHide={() => setAgreementsPanelHiddenStored(true)}
+                />
+              </div>
+            ) : null}
+            </div>
             </>
           )}
         </div>

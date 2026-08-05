@@ -107,6 +107,13 @@ serve(async (req) => {
       })
     }
 
+    // Record the view for the compliance panel (v2.1407) — best-effort; an
+    // update error must never block the signing page.
+    await admin
+      .from('person_contract_documents')
+      .update({ signer_last_viewed_at: new Date().toISOString() })
+      .eq('id', (row as { id: string }).id)
+
     const canonical =
       (r.canonical_document_url && String(r.canonical_document_url).trim()) ||
       (r.url && String(r.url).trim()) ||

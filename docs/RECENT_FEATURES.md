@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1406)
+last_updated: 2026-08-05 (v2.1407)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1407)
+
+### People Contracts: Agreements compliance panel (2026-08-05)
+Owner-approved feature: the tab was person-centric only — "who still hasn\u2019t signed the Handbook?" meant expanding people one by one. On wide screens (≥1100px) a new **Agreements panel** sits beside the roster: one card per document (kernel [`contractsAgreementsPanel.ts`](../src/lib/contractsAgreementsPanel.ts)) with **assigned · signed** counts and a progress bar (assigned = template assignees ∪ ad-hoc copies; per person the best row wins — signed > sent > unsent, then newest lineage). Expanding a card shows per-person compliance — Sent / **Last viewed** / Signed — with chase states called out: amber "viewed, not signed" (nudge) vs red "never opened" (resend/call) vs "unsent"; problem rows sort first, fully-signed agreements sink to the bottom, person names jump to (and un-hide) that person in the roster. Last-viewed is new data: migration `20260805120000` adds `person_contract_documents.signer_last_viewed_at`, stamped by [`get-contract-for-signer`](../supabase/functions/get-contract-for-signer/index.ts) on every successful open of a sent document (redeploy required) — **records from 2026-08-05 onward**, older views show "—". Panel renders in [`ContractsAgreementsPanel.tsx`](../src/components/people/ContractsAgreementsPanel.tsx) with a per-device Hide toggle ("Show agreements" pill returns it); the ⓘ help modal gains an Agreements card. 9 kernel tests.
 
 ## Latest Updates (v2.1406)
 

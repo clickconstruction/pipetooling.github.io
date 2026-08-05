@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1407',
+    date: '2026-08-05',
+    title: 'Contracts: see each agreement\u2019s signatures at a glance',
+    kind: 'feature',
+    highlights: [
+      'On desktop, a new Agreements panel sits beside the people list: every agreement with how many people are assigned versus signed, and a progress bar.',
+      'Expand an agreement to see each person\u2019s status \u2014 when it was sent, when they last opened the signing page, and when they signed. "Viewed, not signed" means a nudge should do it; "never opened" means resend or call.',
+      'Opening a signing link now records the view, starting today \u2014 older opens show a dash. Tap a name to jump to that person in the list.',
+    ],
+  },
+  {
     version: 'v2.1406',
     date: '2026-08-05',
     title: 'Contracts: filter buttons and a cleaner table',
