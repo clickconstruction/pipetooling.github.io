@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-04 (v2.1397)
+last_updated: 2026-08-05 (v2.1398)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1398)
+
+### People Contracts: settable "Applied version" date + Edit-document modal refresh (2026-08-05)
+Owner ask: the Applied version column's date couldn't be set — it always derived from the Contract Book row's `updated_at`, so a book edit silently moved everyone's date and there was no way to record when a person's copy actually applied. New nullable `person_contract_documents.applied_version_date date` (migration `20260805090000`, additive; **apply promptly at merge** — the new client's contracts SELECT names the column, so until applied the Contracts tab load errors). In [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx) the Add/Edit document modal's Applied version block becomes a boxed group: the Contract Book copy dropdown (unchanged) plus an **Applied date** toggle — *From book edit* (derived, previous behavior, the default) or *Custom date* (date input, seeded from the pinned book copy's edit date in `APP_CALENDAR_TZ`, else today). The stored date rides all three write paths (edit UPDATE, add INSERT, save-and-send INSERT; Upload Signed forces null, matching its null applied-pin rule) and wins in the roster's Applied version column, rendered with a dotted underline + "set manually" tooltip; clearing back to *From book edit* saves NULL and the column re-derives. New versions minted after a book save do NOT inherit the custom date — each version row describes its own agreement. Plain-date handling lives in kernel [`personContractAppliedDate.ts`](../src/lib/personContractAppliedDate.ts) (`formatAppliedVersionPlainDate` avoids the UTC-midnight previous-day bug; `isoToPlainDateInAppTz`/`todayPlainDateInAppTz` via `formatToParts`, 8 tests). Modal layout refresh in the same pass: Person + Document name and Status + Signed date pair up on wide screens (`auto-fit minmax(200px,1fr)` grids), and the footer follows the app pattern — Delete on the left, Cancel + Save on the right. New help guide `set-the-applied-version-date-on-a-staff-contract`.
 
 ## Latest Updates (v2.1397)
 

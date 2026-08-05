@@ -7597,6 +7597,7 @@ export type Database = {
       person_contract_documents: {
         Row: {
           applied_contract_template_document_id: string | null
+          applied_version_date: string | null
           canonical_document_url: string | null
           contract_lineage_id: string
           created_at: string | null
@@ -7627,6 +7628,7 @@ export type Database = {
         }
         Insert: {
           applied_contract_template_document_id?: string | null
+          applied_version_date?: string | null
           canonical_document_url?: string | null
           contract_lineage_id: string
           created_at?: string | null
@@ -7657,6 +7659,7 @@ export type Database = {
         }
         Update: {
           applied_contract_template_document_id?: string | null
+          applied_version_date?: string | null
           canonical_document_url?: string | null
           contract_lineage_id?: string
           created_at?: string | null

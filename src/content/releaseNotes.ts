@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1398',
+    date: '2026-08-05',
+    title: 'Contracts: set the Applied version date yourself',
+    kind: 'feature',
+    highlights: [
+      'The Applied version date on a staff contract used to follow the Contract Book\'s last edit — editing the book moved everyone\'s date. Now the Edit document window has an Applied date setting: keep "From book edit" or switch to "Custom date" and pick the date the contract really applied.',
+      'Custom dates show in the Applied version column with a dotted underline — hover to confirm it was set manually. Book edits never move them.',
+      'The Edit document window also got a light refresh: paired fields on wide screens and Delete moved to the left of the footer.',
+    ],
+  },
+  {
     version: 'v2.1397',
     date: '2026-08-04',
     title: 'Bids Counts: deleting a row now names the fixture or tie-in',
