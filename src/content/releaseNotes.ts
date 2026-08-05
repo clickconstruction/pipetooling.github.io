@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1406',
+    date: '2026-08-05',
+    title: 'Contracts: filter buttons and a cleaner table',
+    kind: 'feature',
+    highlights: [
+      'New filter buttons above the people list \u2014 Needs attention, Waiting, Done, Everyone \u2014 each with a count. The tab opens on Needs attention so the people to chase are front and center, and your choice is remembered on that device.',
+      'The documents table slimmed from eight columns to four: rarely-used details (version number, reference link, note) tuck under the document name, and status shows as the same colored chips as the list.',
+    ],
+  },
+  {
     version: 'v2.1405',
     date: '2026-08-05',
     title: 'Contracts works properly on phones',

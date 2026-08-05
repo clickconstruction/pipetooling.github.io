@@ -21,9 +21,9 @@ describe('ContractsTabHelpModal', () => {
     expect(screen.getByText('How this tab works')).toBeTruthy()
     expect(screen.getByText('Send / Resend')).toBeTruthy()
     expect(screen.getByText('Dashboard')).toBeTruthy()
-    expect(screen.getByText('Status dots')).toBeTruthy()
+    expect(screen.getByText('Status chips')).toBeTruthy()
     expect(screen.getByText('Applied version')).toBeTruthy()
-    expect(screen.getByText(/sent, waiting on a signature/)).toBeTruthy()
+    expect(screen.getByText(/waiting on a signature/)).toBeTruthy()
   })
 
   it('the Help link fires onOpenHelp and closes the modal', () => {

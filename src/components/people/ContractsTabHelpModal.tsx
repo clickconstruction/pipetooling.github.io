@@ -131,19 +131,21 @@ export function ContractsTabHelpModal({
         </div>
 
         <div style={cardStyle}>
-          <p style={cardTitleStyle}>Status dots</p>
+          <p style={cardTitleStyle}>Status chips</p>
           <p style={{ ...cardBodyStyle, lineHeight: 1.8 }}>
+            The chips beside each name count their documents:{' '}
             <span style={{ whiteSpace: 'nowrap' }}>
-              <StatusDot color="#dc2626" /> something unsent
+              <StatusDot color="#dc2626" /> unsent
             </span>
             {'  '}
             <span style={{ whiteSpace: 'nowrap' }}>
-              <StatusDot color="#eab308" /> sent, waiting on a signature
+              <StatusDot color="#eab308" /> waiting on a signature
             </span>
             {'  '}
             <span style={{ whiteSpace: 'nowrap' }}>
-              <StatusDot color="#22c55e" /> everything signed
+              <StatusDot color="#22c55e" /> signed
             </span>
+            . The filter buttons above the list use the same colors.
           </p>
         </div>
 
