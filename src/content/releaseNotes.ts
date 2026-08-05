@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1410',
+    date: '2026-08-05',
+    title: 'Contracts: send one document to one person in two clicks',
+    kind: 'feature',
+    highlights: [
+      'Every agreement card in the Agreements panel now has a "Send to…" button — pick a person from the roster (split into "hasn’t received it yet" and "already has it") and the send email opens ready to go. No template assignment needed.',
+      'Add document now starts with a simple choice: pick a document from the Contract Book (name, text, and version fill in automatically — then just Send now or Save for later) or open the full custom form.',
+      'Send emails prefill the person’s address from the roster in more places.',
+    ],
+  },
+  {
     version: 'v2.1409',
     date: '2026-08-05',
     title: 'Fix: archived people no longer show as active on Contracts',

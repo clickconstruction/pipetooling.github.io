@@ -31,6 +31,12 @@ import {
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { buildAgreementSummaries } from '../../lib/contractsAgreementsPanel'
+import {
+  listQuickAddBookDocuments,
+  quickSendReusablePersonRow,
+  resolveQuickSendSource,
+} from '../../lib/contractsQuickSend'
+import { ContractQuickSendPicker } from './ContractQuickSendPicker'
 import { ContractsAgreementsPanel } from './ContractsAgreementsPanel'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
@@ -197,6 +203,9 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractEditModalCanonicalExpanded, setContractEditModalCanonicalExpanded] = useState(false)
   const [contractSendModalOpen, setContractSendModalOpen] = useState(false)
   const [contractSendDocId, setContractSendDocId] = useState<string | null>(null)
+  /** Quick send (v2.1410): document whose person picker is open, and the in-flight guard. */
+  const [quickSendDocumentName, setQuickSendDocumentName] = useState<string | null>(null)
+  const [quickSendBusy, setQuickSendBusy] = useState(false)
   const [contractSendEmail, setContractSendEmail] = useState('')
   const [contractSendSubject, setContractSendSubject] = useState('')
   const [contractSendIntro, setContractSendIntro] = useState('')
@@ -208,6 +217,10 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractDocumentAddTab, setContractDocumentAddTab] = useState<'upload_signed' | 'request_signature'>(
     'request_signature',
   )
+  /** Add-document chooser (v2.1410): pick a Contract Book document (everything prefills) or fall through to the full custom form. */
+  const [contractAddDocSource, setContractAddDocSource] = useState<'choose' | 'book' | 'custom'>('choose')
+  const [contractAddBookPickedRowId, setContractAddBookPickedRowId] = useState<string | null>(null)
+  const [contractAddBookCustomizeOpen, setContractAddBookCustomizeOpen] = useState(false)
   const [contractDocumentFormDashboardPrompt, setContractDocumentFormDashboardPrompt] = useState(false)
   const [contractDashboardPromptSavingId, setContractDashboardPromptSavingId] = useState<string | null>(null)
   const [contractSignedRecordModalDocId, setContractSignedRecordModalDocId] = useState<string | null>(null)
@@ -463,6 +476,98 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     ],
   )
 
+  /** Applied version box (Contract Book copy + applied date) — shared by the edit modal, the custom add form, and the book path's Customize expander (v2.1410). */
+  const renderContractDocAppliedVersionBox = () => (
+    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.65rem 0.75rem' }}>
+      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+        Applied version
+      </p>
+      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+        Contract Book copy
+      </label>
+      <select
+        value={contractDocumentFormAppliedTemplateDocId}
+        onChange={(e) => setContractDocumentFormAppliedTemplateDocId(e.target.value)}
+        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+      >
+        <option value="">Automatic (latest edit among assigned templates)</option>
+        {listAppliedContractBookVersionOptions(
+          contractDocumentFormPersonName,
+          contractDocumentFormDocumentName,
+        ).map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <label style={{ display: 'block', fontSize: '0.8125rem', margin: '0.65rem 0 0.25rem' }}>
+        Applied date
+      </label>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div
+          role="group"
+          aria-label="Applied date source"
+          style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}
+        >
+          <button
+            type="button"
+            aria-pressed={!contractDocumentFormAppliedVersionDate}
+            onClick={() => setContractDocumentFormAppliedVersionDate('')}
+            style={{
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.75rem',
+              border: 'none',
+              borderRadius: 0,
+              cursor: 'pointer',
+              background: !contractDocumentFormAppliedVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
+              color: !contractDocumentFormAppliedVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
+            }}
+          >
+            From book edit
+          </button>
+          <button
+            type="button"
+            aria-pressed={!!contractDocumentFormAppliedVersionDate}
+            onClick={() => {
+              if (contractDocumentFormAppliedVersionDate) return
+              const pinned = contractDocumentFormAppliedTemplateDocId
+                ? contractTemplateDocuments.find((d) => d.id === contractDocumentFormAppliedTemplateDocId)
+                : null
+              setContractDocumentFormAppliedVersionDate(
+                effectiveBookVersionPlainDate(pinned) ?? todayPlainDateInAppTz(),
+              )
+            }}
+            style={{
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.75rem',
+              border: 'none',
+              borderRadius: 0,
+              borderLeft: '1px solid var(--border-strong)',
+              cursor: 'pointer',
+              background: contractDocumentFormAppliedVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
+              color: contractDocumentFormAppliedVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
+            }}
+          >
+            Custom date
+          </button>
+        </div>
+        <input
+          type="date"
+          value={contractDocumentFormAppliedVersionDate}
+          onChange={(e) => setContractDocumentFormAppliedVersionDate(e.target.value)}
+          disabled={!contractDocumentFormAppliedVersionDate}
+          aria-label="Custom applied date"
+          style={{ padding: '0.375rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+        />
+      </div>
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.45rem 0 0', lineHeight: 1.45 }}>
+        {contractDocumentFormAppliedVersionDate
+          ? 'This date is stored on this person’s copy and shown in the Applied version column — Contract Book edits won’t move it.'
+          : 'Shows the date the pinned/assigned Contract Book copy was last edited; it moves when the book is edited again.'}
+      </p>
+    </div>
+  )
+
   const handleContractAddTabKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -591,6 +696,115 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       }),
     [contractTemplates, contractTemplateDocuments, personContractAssignments, personContractDocuments],
   )
+
+  /** Agreement documents the quick-send picker can serve: some copy somewhere has signable content. */
+  const quickSendDocumentNames = useMemo(() => {
+    const names = new Set<string>()
+    for (const s of agreementSummaries) {
+      if (
+        resolveQuickSendSource({
+          documentName: s.documentName,
+          templateDocuments: contractTemplateDocuments,
+          personDocuments: personContractDocuments,
+        })
+      ) {
+        names.add(s.documentName)
+      }
+    }
+    return names
+  }, [agreementSummaries, contractTemplateDocuments, personContractDocuments])
+
+  /**
+   * Quick send, step 2 (v2.1410): a person was picked for a document. Reuse
+   * their best unsent/sent copy when it already has signing content; fill an
+   * empty placeholder from the resolved source; otherwise create a fresh
+   * ad-hoc unsent copy — no template assignment involved. Then open the
+   * normal Send modal on that row (canceling there keeps the unsent copy,
+   * same as Add document → Save).
+   */
+  async function openQuickSendForPerson(documentName: string, personName: string) {
+    setQuickSendBusy(true)
+    setContractsError(null)
+    try {
+      const existing = quickSendReusablePersonRow({
+        documentName,
+        personName,
+        personDocuments: personContractDocuments,
+      })
+      let docId: string
+      if (existing && hasContractSigningContent(existing)) {
+        docId = existing.id
+      } else {
+        const source = resolveQuickSendSource({
+          documentName,
+          templateDocuments: contractTemplateDocuments,
+          personDocuments: personContractDocuments,
+        })
+        if (!source) {
+          setContractsError(
+            `No signable content found for “${documentName}” — add contract text to its Contract Book entry first.`,
+          )
+          return
+        }
+        if (existing) {
+          await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('person_contract_documents')
+                .update({
+                  signing_body_html: source.signingBodyHtml,
+                  signing_body_format: source.signingBodyFormat,
+                  canonical_document_url: source.canonicalDocumentUrl,
+                  ...(source.kind === 'book'
+                    ? { applied_contract_template_document_id: source.appliedTemplateDocumentId }
+                    : {}),
+                })
+                .eq('id', existing.id),
+            'fill quick send content',
+          )
+          docId = existing.id
+        } else {
+          const inserted = await withSupabaseRetry<{ id: string }>(
+            async () =>
+              supabase
+                .from('person_contract_documents')
+                .insert({
+                  person_name: personName,
+                  document_name: documentName,
+                  contract_lineage_id: globalThis.crypto.randomUUID(),
+                  lineage_version: 1,
+                  supersedes_person_contract_document_id: null,
+                  status: 'unsent',
+                  signing_body_html: source.signingBodyHtml,
+                  signing_body_format: source.signingBodyFormat,
+                  canonical_document_url: source.canonicalDocumentUrl,
+                  applied_contract_template_document_id:
+                    source.kind === 'book' ? source.appliedTemplateDocumentId : null,
+                })
+                .select('id')
+                .single(),
+            'create quick send document',
+          )
+          if (!inserted?.id) {
+            setContractsError('Could not create the document copy.')
+            return
+          }
+          docId = inserted.id
+        }
+      }
+      setQuickSendDocumentName(null)
+      setContractSendDocId(docId)
+      setContractSendEmail(rosterEmailForPersonName(personName))
+      setContractSendSubject('')
+      setContractSendIntro('')
+      setContractSendModalOpen(true)
+      void loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Could not prepare the document to send')
+    } finally {
+      setQuickSendBusy(false)
+    }
+  }
 
   /** Agreements-panel row click: select the person, un-hide them if the filter would, and scroll their row into view. */
   const jumpToContractsPerson = (personName: string) => {
@@ -1326,7 +1540,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       setContractDocumentDeleteConfirmOpen(false)
       setContractDocumentDeleteTarget(null)
       setContractSendDocId(row.id)
-      setContractSendEmail('')
+      setContractSendEmail(rosterEmailForPersonName(p.person_name))
       setContractSendSubject('')
       setContractSendIntro('')
       setContractsError(null)
@@ -2047,6 +2261,9 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                                           setCanonicalUrlCheckStatus('idle')
                                           setCanonicalUrlCheckMessage('')
                                           setContractDocumentAddTab('request_signature')
+                                          setContractAddDocSource('choose')
+                                          setContractAddBookPickedRowId(null)
+                                          setContractAddBookCustomizeOpen(false)
                                           setContractDocumentModalOpen(true)
                                         }}
                                         style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
@@ -2268,6 +2485,11 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                   summaries={agreementSummaries}
                   onJumpToPerson={jumpToContractsPerson}
                   onHide={() => setAgreementsPanelHiddenStored(true)}
+                  onQuickSend={(documentName) => {
+                    setContractsError(null)
+                    setQuickSendDocumentName(documentName)
+                  }}
+                  quickSendDocumentNames={quickSendDocumentNames}
                 />
               </div>
             ) : null}
@@ -2687,11 +2909,103 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       {contractDocumentModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>{editingContractDocument ? 'Edit document' : 'Add document'}</h3>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
+              {editingContractDocument
+                ? 'Edit document'
+                : `Add document${contractDocumentFormPersonName.trim() ? ` — ${contractDocumentFormPersonName.trim()}` : ''}`}
+            </h3>
             {contractsError ? (
               <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{contractsError}</p>
             ) : null}
-            {!editingContractDocument ? (
+            {!editingContractDocument && contractAddDocSource !== 'choose' ? (
+              <button
+                type="button"
+                onClick={() => setContractAddDocSource('choose')}
+                style={{
+                  padding: '0.15rem 0.4rem',
+                  marginBottom: '0.6rem',
+                  fontSize: '0.75rem',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-link)',
+                }}
+              >
+                ‹ Start over
+              </button>
+            ) : null}
+            {!editingContractDocument && contractAddDocSource === 'choose' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.6rem', marginBottom: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContractDocumentAddTab('request_signature')
+                    setContractDocumentFormStatus('unsent')
+                    setContractAddBookPickedRowId(null)
+                    setContractAddBookCustomizeOpen(false)
+                    setContractAddDocSource('book')
+                  }}
+                  disabled={contractTemplateDocuments.length === 0}
+                  style={{
+                    textAlign: 'left',
+                    padding: '0.8rem 0.9rem',
+                    border: '1.5px solid var(--border-blue)',
+                    borderRadius: 8,
+                    background: 'var(--bg-blue-tint)',
+                    cursor: contractTemplateDocuments.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: contractTemplateDocuments.length === 0 ? 0.6 : 1,
+                    font: 'inherit',
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+                    From Contract Book
+                    <span
+                      style={{
+                        marginLeft: '0.4rem',
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-blue-700)',
+                        border: '1px solid var(--border-blue)',
+                        borderRadius: 999,
+                        padding: '0.08rem 0.4rem',
+                        verticalAlign: 'middle',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Most common
+                    </span>
+                  </span>
+                  <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.78rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
+                    {contractTemplateDocuments.length === 0
+                      ? 'The Contract Book is empty — add a library document there first.'
+                      : 'Pick a library document. Name, contract text, and applied version all fill in automatically.'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContractAddDocSource('custom')}
+                  style={{
+                    textAlign: 'left',
+                    padding: '0.8rem 0.9rem',
+                    border: '1.5px solid var(--border-strong)',
+                    borderRadius: 8,
+                    background: 'var(--surface)',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+                    Custom or already-signed
+                  </span>
+                  <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.78rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
+                    Blank one-off document, or record a copy that&rsquo;s already signed. Opens the full form.
+                  </span>
+                </button>
+              </div>
+            ) : null}
+            {!editingContractDocument && contractAddDocSource === 'custom' ? (
               <div
                 role="tablist"
                 aria-label="Add document workflow"
@@ -2748,7 +3062,130 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                 </button>
               </div>
             ) : null}
+            {!editingContractDocument && contractAddDocSource === 'book' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem', fontWeight: 600 }}>
+                    Document
+                  </label>
+                  <div role="radiogroup" aria-label="Contract Book document" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: 260, overflowY: 'auto' }}>
+                    {listQuickAddBookDocuments(contractTemplateDocuments).map(({ documentName, row }) => {
+                      const selected = contractAddBookPickedRowId === row.id
+                      const versionLabel = effectiveBookVersionLabel(row)
+                      return (
+                        <button
+                          key={row.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => {
+                            setContractAddBookPickedRowId(row.id)
+                            setContractDocumentFormDocumentName(documentName)
+                            setContractDocumentFormSigningBodyHtml(row.book_body_html ?? '')
+                            setContractDocumentFormSigningBodyFormat(parseContractBodyFormat(row.book_body_format))
+                            setContractDocumentFormCanonicalUrl(row.canonical_document_url?.trim() ?? '')
+                            setContractDocumentFormAppliedTemplateDocId(row.id)
+                            setContractDocumentFormAppliedVersionDate('')
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            padding: '0.5rem 0.65rem',
+                            border: selected ? '1.5px solid var(--border-blue)' : '1px solid var(--border)',
+                            borderRadius: 6,
+                            background: selected ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            cursor: 'pointer',
+                            font: 'inherit',
+                            fontSize: '0.875rem',
+                            textAlign: 'left',
+                            color: 'var(--text-strong)',
+                          }}
+                        >
+                          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{documentName}</span>
+                          {versionLabel ? (
+                            <span style={{ flexShrink: 0, fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                              version {versionLabel}
+                            </span>
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                {contractAddBookPickedRowId ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '0.78rem',
+                      color: 'var(--text-green-800)',
+                      background: 'var(--bg-green-100)',
+                      borderRadius: 6,
+                      padding: '0.45rem 0.6rem',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    ✓ Name, contract text, and applied version prefill from{' '}
+                    <strong>{contractDocumentFormDocumentName}</strong> — nothing else to fill in.
+                  </p>
+                ) : null}
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    aria-expanded={contractAddBookCustomizeOpen}
+                    onClick={() => setContractAddBookCustomizeOpen((v) => !v)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.65rem',
+                      border: 'none',
+                      background: 'var(--bg-subtle)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: 'var(--text-strong)',
+                    }}
+                  >
+                    <span>Customize text or applied date (optional)</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} aria-hidden>
+                      {contractAddBookCustomizeOpen ? '▾' : '▸'}
+                    </span>
+                  </button>
+                  {contractAddBookCustomizeOpen ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
+                      {renderContractDocAppliedVersionBox()}
+                      {contractDocModalContractTextField}
+                      {contractDocModalCanonicalUrlField}
+                    </div>
+                  ) : null}
+                </div>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={contractDocumentFormDashboardPrompt}
+                    onChange={(e) => setContractDocumentFormDashboardPrompt(e.target.checked)}
+                    style={{ marginTop: '0.15rem' }}
+                  />
+                  <span>Remind on Dashboard after clock-in (until signed)</span>
+                </label>
+              </div>
+            ) : null}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {editingContractDocument || contractAddDocSource === 'custom' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
@@ -2789,97 +3226,12 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                   />
                 </div>
               </div>
+              ) : null}
               {(editingContractDocument ||
-                (!editingContractDocument && contractDocumentAddTab === 'request_signature')) && (
-                <div style={{ border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.65rem 0.75rem' }}>
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
-                    Applied version
-                  </p>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-                    Contract Book copy
-                  </label>
-                  <select
-                    value={contractDocumentFormAppliedTemplateDocId}
-                    onChange={(e) => setContractDocumentFormAppliedTemplateDocId(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  >
-                    <option value="">Automatic (latest edit among assigned templates)</option>
-                    {listAppliedContractBookVersionOptions(
-                      contractDocumentFormPersonName,
-                      contractDocumentFormDocumentName,
-                    ).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', margin: '0.65rem 0 0.25rem' }}>
-                    Applied date
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div
-                      role="group"
-                      aria-label="Applied date source"
-                      style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}
-                    >
-                      <button
-                        type="button"
-                        aria-pressed={!contractDocumentFormAppliedVersionDate}
-                        onClick={() => setContractDocumentFormAppliedVersionDate('')}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          fontSize: '0.75rem',
-                          border: 'none',
-                          borderRadius: 0,
-                          cursor: 'pointer',
-                          background: !contractDocumentFormAppliedVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
-                          color: !contractDocumentFormAppliedVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
-                        }}
-                      >
-                        From book edit
-                      </button>
-                      <button
-                        type="button"
-                        aria-pressed={!!contractDocumentFormAppliedVersionDate}
-                        onClick={() => {
-                          if (contractDocumentFormAppliedVersionDate) return
-                          const pinned = contractDocumentFormAppliedTemplateDocId
-                            ? contractTemplateDocuments.find((d) => d.id === contractDocumentFormAppliedTemplateDocId)
-                            : null
-                          setContractDocumentFormAppliedVersionDate(
-                            effectiveBookVersionPlainDate(pinned) ?? todayPlainDateInAppTz(),
-                          )
-                        }}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          fontSize: '0.75rem',
-                          border: 'none',
-                          borderRadius: 0,
-                          borderLeft: '1px solid var(--border-strong)',
-                          cursor: 'pointer',
-                          background: contractDocumentFormAppliedVersionDate ? 'var(--bg-blue-tint)' : 'transparent',
-                          color: contractDocumentFormAppliedVersionDate ? 'var(--text-blue-700)' : 'var(--text-muted)',
-                        }}
-                      >
-                        Custom date
-                      </button>
-                    </div>
-                    <input
-                      type="date"
-                      value={contractDocumentFormAppliedVersionDate}
-                      onChange={(e) => setContractDocumentFormAppliedVersionDate(e.target.value)}
-                      disabled={!contractDocumentFormAppliedVersionDate}
-                      aria-label="Custom applied date"
-                      style={{ padding: '0.375rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
-                    />
-                  </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.45rem 0 0', lineHeight: 1.45 }}>
-                    {contractDocumentFormAppliedVersionDate
-                      ? 'This date is stored on this person’s copy and shown in the Applied version column — Contract Book edits won’t move it.'
-                      : 'Shows the date the pinned/assigned Contract Book copy was last edited; it moves when the book is edited again.'}
-                  </p>
-                </div>
-              )}
+                (!editingContractDocument &&
+                  contractAddDocSource === 'custom' &&
+                  contractDocumentAddTab === 'request_signature')) &&
+                renderContractDocAppliedVersionBox()}
               {editingContractDocument ? (
                 <>
                   <div
@@ -3021,7 +3373,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                     />
                   </div>
                 </>
-              ) : contractDocumentAddTab === 'upload_signed' ? (
+              ) : contractAddDocSource !== 'custom' ? null : contractDocumentAddTab === 'upload_signed' ? (
                   <div
                     role="tabpanel"
                     id={`${contractAddDocTabBaseId}-panel-upload`}
@@ -3147,19 +3499,44 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  onClick={saveContractDocument}
-                  disabled={contractDocumentFormSaving}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer' }}
-                >
-                  {contractDocumentFormSaving ? 'Saving…' : 'Save'}
-                </button>
-                {!editingContractDocument && contractDocumentAddTab === 'request_signature' ? (
+                {editingContractDocument || contractAddDocSource !== 'choose' ? (
+                  <button
+                    type="button"
+                    onClick={saveContractDocument}
+                    disabled={
+                      contractDocumentFormSaving ||
+                      (!editingContractDocument && contractAddDocSource === 'book' && !contractAddBookPickedRowId)
+                    }
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#3b82f6',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer',
+                      opacity:
+                        !editingContractDocument && contractAddDocSource === 'book' && !contractAddBookPickedRowId
+                          ? 0.55
+                          : 1,
+                    }}
+                  >
+                    {contractDocumentFormSaving
+                      ? 'Saving…'
+                      : !editingContractDocument && contractAddDocSource === 'book'
+                        ? 'Save for later'
+                        : 'Save'}
+                  </button>
+                ) : null}
+                {!editingContractDocument &&
+                contractAddDocSource !== 'choose' &&
+                contractDocumentAddTab === 'request_signature' ? (
                   <button
                     type="button"
                     onClick={() => void saveContractDocumentAndOpenSend()}
-                    disabled={contractDocumentFormSaving}
+                    disabled={
+                      contractDocumentFormSaving ||
+                      (contractAddDocSource === 'book' && !contractAddBookPickedRowId)
+                    }
                     style={{
                       padding: '0.5rem 1rem',
                       background: '#0ea5e9',
@@ -3167,9 +3544,14 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                       border: 'none',
                       borderRadius: 6,
                       cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer',
+                      opacity: contractAddDocSource === 'book' && !contractAddBookPickedRowId ? 0.55 : 1,
                     }}
                   >
-                    {contractDocumentFormSaving ? 'Saving…' : 'Send'}
+                    {contractDocumentFormSaving
+                      ? 'Saving…'
+                      : contractAddDocSource === 'book'
+                        ? 'Send now'
+                        : 'Send'}
                   </button>
                 ) : null}
               </div>
@@ -3263,6 +3645,17 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
             </div>
           </div>
         )}
+
+      {quickSendDocumentName ? (
+        <ContractQuickSendPicker
+          documentName={quickSendDocumentName}
+          rosterNames={contractsPersonNamesSorted}
+          personDocuments={personContractDocuments}
+          busy={quickSendBusy}
+          onPick={(personName) => void openQuickSendForPerson(quickSendDocumentName, personName)}
+          onClose={() => setQuickSendDocumentName(null)}
+        />
+      ) : null}
 
       <PersonContractSignedRecordModal
         open={contractSignedRecordModalDocId !== null}

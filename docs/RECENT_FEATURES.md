@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1409)
+last_updated: 2026-08-05 (v2.1410)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1410)
+
+### People Contracts: quick send — one document to one person (2026-08-05)
+Owner-approved redesign, PR 1 of 2 (mockups reviewed 2026-08-05). Sending ONE contract to ONE person previously meant either assigning a whole template (materializing every doc as unsent noise) or the full Add-document form — real data showed the cost: Handbook (16) and High-Trust (18) were added ad-hoc one at a time. Two new paths. **(1) Agreements panel "Send to…"** ([`ContractsAgreementsPanel.tsx`](../src/components/people/ContractsAgreementsPanel.tsx) header row restructured — the expand control was a full-width `<button>`, so the new action sits beside it): opens [`ContractQuickSendPicker.tsx`](../src/components/people/ContractQuickSendPicker.tsx), a roster picker split into "Hasn't received it yet" / "Already has it (resend)" (+ signed count, searchable). Picking a person reuses their best unsent/sent copy when it has signing content, fills an empty placeholder from the resolved source, or creates a fresh ad-hoc unsent row — then opens the normal Send modal (email prefilled; canceling keeps the unsent copy, matching Add→Save semantics). Content source = newest book copy with content (effective-version compare, applied pin recorded) else the best person copy — kernel [`contractsQuickSend.ts`](../src/lib/contractsQuickSend.ts) (`resolveQuickSendSource`, `quickSendRosterSplit`, `quickSendReusablePersonRow`, `listQuickAddBookDocuments`, 9 tests); cards without any signable content anywhere hide the button. **(2) Add document is now a two-path chooser** ([`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx)): "From Contract Book" (default; one radio list of library documents deduped to the newest effective copy — picking prefills name/text/applied pin, a "Customize text or applied date" expander holds the full editors, footer = **Send now** / **Save for later**) vs "Custom or already-signed" (today's full form, unchanged, one click away; free-text names — the "Colsolidation" typo vector — now only live there). The Applied version box was extracted to a shared `renderContractDocAppliedVersionBox()` used by edit modal + custom form + the expander. Bonus: the add-modal "Send" path now prefills the signer email from the roster (the row Send already did, v2.1403). Verified live: quick-sent the Handbook to a roster person (email + preview correct, row created with copied HTML body, then deleted), book path prefill + expander, custom path intact. Client-only.
 
 ## Latest Updates (v2.1409)
 
