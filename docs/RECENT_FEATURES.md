@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1410)
+last_updated: 2026-08-05 (v2.1411)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1411)
+
+### People Contracts: Contract library (Documents + Packets) and the Assign packets modal (2026-08-05)
+Owner-approved redesign, PR 2 of 2 (mockups reviewed 2026-08-05). The two toolbar modals — Contract Book and Manage templates — merge into one **Contract library** ([`ContractLibraryModal.tsx`](../src/components/contracts/ContractLibraryModal.tsx)) behind one toolbar button, and "templates" are renamed **Packets** in the UI (bundles of documents; tables unchanged — `contract_templates` et al; GLOSSARY gains the term). **Documents tab**: the Contract Book embedded ([`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx) gains an `embedded` mode that skips its overlay/header, plus per-entry **"sent to N people"** and a quick **Send to…** hooked to the v2.1410 picker), and a new **"Outside the library"** section listing ad-hoc documents that only exist as personal copies (live data: Handbook · 16, High-Trust · 18) with their own Send to…. **Packets tab**: master-detail replaces the old stacked form — packet list shows "N documents · N people" (0-people amber, which immediately outed Farm Work · 0), detail is a name field + a **checkbox list of library documents** (replacing the add-one-at-a-time dropdown + Remove links), an **on-save consequences line** ("X is added for the N assigned people without it (created as unsent)" / "Y leaves the packet — empty unsent copies are removed; signed stays on file"), assigned-people chips, and a styled delete confirm (replacing `window.confirm`). Save mirrors the assign-flow materialization (checked additions copy the newest effective library version and update-or-insert per assignee; removals guard on `canDeletePeopleContracts`). **Assign packets** (was Assign template): checkbox multi-select with per-packet document lists, already-assigned packets shown checked+disabled with a green chip and **Unassign moved behind a ⋯ menu**, and a live consequences line via kernel [`contractPackets.ts`](../src/lib/contractPackets.ts) (`packetStats`, `packetSaveConsequence`, `assignPacketsConsequence`, 6 tests) — "Will add for {person}: … — N documents, created as unsent." The old `saveTemplate`/Manage-templates code (~500 lines incl. the copy-source dropdown) is deleted from [`PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx); quick-send picker/Send modal z-index raised above the library so in-library sends stack correctly. Docs: ACCESS_CONTROL + PROJECT_DOCUMENTATION surface renames, applied-version help guide points at the library. Verified live: Documents tab (badges, counts, outside-library section), Packets master-detail with both consequence directions (canceled without saving), Assign packets on an unassigned person (2-document consequence) and an assigned one (chip + ⋯). Client-only.
 
 ## Latest Updates (v2.1410)
 

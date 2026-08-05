@@ -28,7 +28,7 @@ Switching back to **From book edit** clears the custom date and the column retur
 
 ## Set the document's official date for everyone
 
-The per-person date above is for exceptions. To set the date at the source, open the {{button:blue|Contract Book}} and {{button:outline|Edit}} the document — its **Version date** setting works the same way:
+The per-person date above is for exceptions. To set the date at the source, open the {{button:blue|Contract library}} (its **Documents** tab is the Contract Book) and {{button:outline|Edit}} the document — its **Version date** setting works the same way:
 
 - {{chip:blue|From last edit}} — the date follows the last edit to the library text (the default).
 - {{chip:gray|Custom date}} — pins the document's official version date. It shows on the book entry and feeds the pickers and Applied version column for **everyone** assigned the document, and editing the text won't move it.

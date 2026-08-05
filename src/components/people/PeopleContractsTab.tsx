@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SearchableSelect, type SearchableSelectSelectableOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
 import { checkGoogleDriveAttachmentUrl } from '../../lib/checkGoogleDriveAttachmentUrl'
 import { hasContractSigningContent } from '../../lib/contractSigningContent'
@@ -17,6 +16,8 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
 import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../lib/contractBookVersionDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
+import { ContractLibraryModal } from '../contracts/ContractLibraryModal'
+import { assignPacketsConsequence } from '../../lib/contractPackets'
 import { ContractsTabHelpModal } from './ContractsTabHelpModal'
 import { countPersonContractStatuses } from '../../lib/personContractStatusCounts'
 import {
@@ -172,7 +173,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractsError, setContractsError] = useState<string | null>(null)
   const [contractsSearchQuery, setContractsSearchQuery] = useState('')
   const [selectedContractsPersonName, setSelectedContractsPersonName] = useState<string | null>(null)
-  const [contractsTemplateModalOpen, setContractsTemplateModalOpen] = useState(false)
+  /** Contract library (v2.1411): merged Documents/Packets modal replacing Contract Book + Manage templates. */
+  const [contractLibraryModalOpen, setContractLibraryModalOpen] = useState(false)
   const [contractsAssignModalOpen, setContractsAssignModalOpen] = useState(false)
   const [contractBookModalOpen, setContractBookModalOpen] = useState(false)
   const [editingContractDocument, setEditingContractDocument] = useState<PersonContractDocument | null>(null)
@@ -225,32 +227,12 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractDashboardPromptSavingId, setContractDashboardPromptSavingId] = useState<string | null>(null)
   const [contractSignedRecordModalDocId, setContractSignedRecordModalDocId] = useState<string | null>(null)
   const contractAddDocTabBaseId = useId()
-  const assignTemplateSearchInputId = useId()
-  const assignTemplateRadioGroupLabelId = useId()
   const contractsTabSearchInputId = useId()
-  const templateBookPickerLabelId = useId()
-  const [editingContractTemplate, setEditingContractTemplate] = useState<ContractTemplate | null>(null)
-  const [templateFormName, setTemplateFormName] = useState('')
-  const [templateFormDocumentNames, setTemplateFormDocumentNames] = useState<string[]>([])
-  /** Picker-added names only: `document_name` → source `contract_template_documents.id` for insert copy. */
-  const [templateFormDocumentSourceByName, setTemplateFormDocumentSourceByName] = useState<Record<string, string>>({})
-  const [templateBookPickerValue, setTemplateBookPickerValue] = useState('')
-  const [templateFormSaving, setTemplateFormSaving] = useState(false)
-  const [templateFormMode, setTemplateFormMode] = useState<'none' | 'create' | 'edit'>('none')
-
-  const templateBookPickerOptions = useMemo((): SearchableSelectSelectableOption[] => {
-    const existing = new Set(templateFormDocumentNames.map((n) => n.trim().toLowerCase()))
-    return contractTemplateDocuments
-      .filter((d) => !existing.has(d.document_name.trim().toLowerCase()))
-      .map((d) => {
-        const tname = contractTemplates.find((t) => t.id === d.template_id)?.name ?? '—'
-        return {
-          value: d.id,
-          label: `${tname} — ${d.document_name}`,
-        }
-      })
-      .sort((a, b) => a.label.localeCompare(b.label))
-  }, [contractTemplateDocuments, contractTemplates, templateFormDocumentNames])
+  /** Assign packets modal (v2.1411): multi-select with a consequences line; Unassign lives behind each assigned row's ⋯ menu. */
+  const [assignPacketsSelectedIds, setAssignPacketsSelectedIds] = useState<Set<string>>(new Set())
+  const [assignPacketsSaving, setAssignPacketsSaving] = useState(false)
+  const [assignPacketUnassigningTemplateId, setAssignPacketUnassigningTemplateId] = useState<string | null>(null)
+  const [assignPacketMenuOpenId, setAssignPacketMenuOpenId] = useState<string | null>(null)
 
   const canonicalUrlIsCheckable = useMemo(
     () => Boolean(normalizeCustomerAttachmentUrl(contractDocumentFormCanonicalUrl)),
@@ -297,6 +279,17 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [contractsDocumentActionsMenuOpenId])
+
+  useEffect(() => {
+    if (assignPacketMenuOpenId === null) return
+    function handleMouseDown(e: MouseEvent) {
+      const t = e.target as HTMLElement
+      if (t.closest(`[data-assign-packet-menu-wrap="${assignPacketMenuOpenId}"]`)) return
+      setAssignPacketMenuOpenId(null)
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [assignPacketMenuOpenId])
 
   const contractBodyFormatBtn = (active: boolean) =>
     ({
@@ -490,7 +483,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         onChange={(e) => setContractDocumentFormAppliedTemplateDocId(e.target.value)}
         style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
       >
-        <option value="">Automatic (latest edit among assigned templates)</option>
+        <option value="">Automatic (latest edit among assigned packets)</option>
         {listAppliedContractBookVersionOptions(
           contractDocumentFormPersonName,
           contractDocumentFormDocumentName,
@@ -1628,310 +1621,102 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     }
   }
 
-  function openTemplateForm(template?: ContractTemplate) {
-    setEditingContractTemplate(template ?? null)
-    setTemplateFormName(template?.name ?? '')
-    setTemplateFormDocumentNames(
-      template ? contractTemplateDocuments.filter((d) => d.template_id === template.id).map((d) => d.document_name).sort() : []
+  /** Record the assignment, then make sure every packet document exists on the person — fill empty copies from the book, create missing ones as unsent. */
+  async function materializePacketForPerson(personName: string, templateId: string) {
+    await withSupabaseRetry(
+      async () => supabase.from('person_contract_assignments').insert({ person_name: personName, template_id: templateId }),
+      'assign packet to person',
     )
-    setTemplateFormDocumentSourceByName({})
-    setTemplateBookPickerValue('')
-    setTemplateFormMode(template ? 'edit' : 'create')
-  }
-
-  function closeTemplateForm() {
-    setEditingContractTemplate(null)
-    setTemplateFormName('')
-    setTemplateFormDocumentNames([])
-    setTemplateFormDocumentSourceByName({})
-    setTemplateBookPickerValue('')
-    setTemplateFormMode('none')
-  }
-
-  /** New template documents must come from Contract Book (picker maps name → source row id). */
-  function templateFormBookSourceValidationError(docNamesRequiringSource: string[]): string | null {
-    for (const docName of docNamesRequiringSource) {
-      const sourceId = templateFormDocumentSourceByName[docName]
-      if (!sourceId) {
-        return 'Each document must be added from Contract Book using the dropdown (pick an existing library entry).'
-      }
-      const sourceRow = contractTemplateDocuments.find((d) => d.id === sourceId)
-      if (!sourceRow) {
-        return 'A selected Contract Book entry is no longer available. Refresh the page and add documents from the library again.'
-      }
-    }
-    return null
-  }
-
-  async function saveTemplate() {
-    const name = templateFormName.trim()
-    if (!name) {
-      setContractsError('Template name is required.')
-      return
-    }
-    setTemplateFormSaving(true)
-    setContractsError(null)
-    try {
-      if (editingContractTemplate) {
-        const templateId = editingContractTemplate.id
-        const existing = contractTemplateDocuments.filter((d) => d.template_id === templateId).map((d) => d.document_name)
-        const toAdd = templateFormDocumentNames.filter((n) => !existing.includes(n))
-        const bookErrEdit = templateFormBookSourceValidationError(toAdd)
-        if (bookErrEdit) {
-          setContractsError(bookErrEdit)
-          return
-        }
-        const toRemove = existing.filter((n) => !templateFormDocumentNames.includes(n))
-        if (!canDeletePeopleContracts && toRemove.length > 0) {
-          setContractsError('Removing documents from a template requires a Dev or Master Technician.')
-          return
-        }
+    const templateDocs = contractTemplateDocuments.filter((d) => d.template_id === templateId)
+    for (const td of templateDocs) {
+      const candidates = personContractDocuments.filter(
+        (d) => d.person_name === personName && d.document_name === td.document_name,
+      )
+      const existing =
+        candidates.length === 0
+          ? undefined
+          : [...candidates].sort((a, b) => b.lineage_version - a.lineage_version)[0]
+      const fillSigningFromBook = !existing?.signing_body_html?.trim()
+      if (existing) {
+        const updatePayload = fillSigningFromBook
+          ? {
+              canonical_document_url: td.canonical_document_url?.trim() || null,
+              signing_body_html: td.book_body_html ?? null,
+              signing_body_format: td.book_body_format,
+              applied_contract_template_document_id: td.id,
+            }
+          : {
+              canonical_document_url: td.canonical_document_url?.trim() || null,
+              applied_contract_template_document_id: td.id,
+            }
         await withSupabaseRetry(
-          async () => supabase.from('contract_templates').update({ name }).eq('id', templateId),
-          'update contract template'
+          async () =>
+            supabase.from('person_contract_documents').update(updatePayload).eq('id', existing.id),
+          'create person contract documents',
         )
-        const assignees = personContractAssignments.filter((a) => a.template_id === templateId)
-        for (const docName of toRemove) {
-          for (const a of assignees) {
-            const pcds = personContractDocuments.filter((d) => d.person_name === a.person_name && d.document_name === docName)
-            for (const pcd of pcds) {
-              if (!personContractDocumentHasStaffData(pcd)) {
-                await withSupabaseRetry(
-                  async () => supabase.from('person_contract_documents').delete().eq('id', pcd.id),
-                  'remove empty person contract document'
-                )
-              }
-            }
-          }
-          const doc = contractTemplateDocuments.find((d) => d.template_id === templateId && d.document_name === docName)
-          if (doc) {
-            await withSupabaseRetry(
-              async () => supabase.from('contract_template_documents').delete().eq('id', doc.id),
-              'remove template document'
-            )
-          }
-        }
-        for (let i = 0; i < toAdd.length; i++) {
-          const docName = toAdd[i]!
-          const sourceId = templateFormDocumentSourceByName[docName]!
-          const sourceRow = contractTemplateDocuments.find((d) => d.id === sourceId)!
-          const insertRow: {
-            template_id: string
-            document_name: string
-            sequence_order: number
-            book_body_html?: string | null
-            book_body_format?: string
-            tags?: string[]
-            canonical_document_url?: string | null
-          } = {
-            template_id: templateId,
-            document_name: docName,
-            sequence_order: i,
-            book_body_html: sourceRow.book_body_html,
-            book_body_format: sourceRow.book_body_format,
-            tags: sourceRow.tags ?? [],
-            canonical_document_url: sourceRow.canonical_document_url?.trim() ? sourceRow.canonical_document_url : null,
-          }
-          await withSupabaseRetry(
-            async () => supabase.from('contract_template_documents').insert(insertRow),
-            'add template document'
-          )
-        }
-        for (const docName of toAdd) {
-          const sourceId = templateFormDocumentSourceByName[docName]!
-          const sourceRow = contractTemplateDocuments.find((d) => d.id === sourceId)!
-          for (const a of assignees) {
-            await withSupabaseRetry(
-              async () =>
-                supabase.from('person_contract_documents').insert({
-                  person_name: a.person_name,
-                  document_name: docName,
-                  contract_lineage_id: globalThis.crypto.randomUUID(),
-                  lineage_version: 1,
-                  supersedes_person_contract_document_id: null,
-                  status: 'unsent',
-                  signing_body_format: 'html',
-                  canonical_document_url: sourceRow.canonical_document_url?.trim() || null,
-                }),
-              'backfill person contract documents'
-            )
-          }
-        }
       } else {
-        const bookErrNew = templateFormBookSourceValidationError(templateFormDocumentNames)
-        if (bookErrNew) {
-          setContractsError(bookErrNew)
-          return
-        }
-        const inserted = await withSupabaseRetry(
-          async () => supabase.from('contract_templates').insert({ name, sequence_order: contractTemplates.length }).select('id').single(),
-          'create contract template'
+        const lid = globalThis.crypto.randomUUID()
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('person_contract_documents').insert({
+              person_name: personName,
+              document_name: td.document_name,
+              contract_lineage_id: lid,
+              lineage_version: 1,
+              supersedes_person_contract_document_id: null,
+              status: 'unsent',
+              canonical_document_url: td.canonical_document_url?.trim() || null,
+              signing_body_html: fillSigningFromBook ? td.book_body_html ?? null : null,
+              signing_body_format: fillSigningFromBook ? td.book_body_format : 'html',
+              applied_contract_template_document_id: td.id,
+            }),
+          'create person contract documents',
         )
-        const templateId = (inserted as { id: string } | null)?.id
-        if (templateId) {
-          const tid = templateId
-          for (let i = 0; i < templateFormDocumentNames.length; i++) {
-            const docName = templateFormDocumentNames[i]!
-            const sourceId = templateFormDocumentSourceByName[docName]!
-            const sourceRow = contractTemplateDocuments.find((d) => d.id === sourceId)!
-            const insertRow: {
-              template_id: string
-              document_name: string
-              sequence_order: number
-              book_body_html?: string | null
-              book_body_format?: string
-              tags?: string[]
-              canonical_document_url?: string | null
-            } = {
-              template_id: tid,
-              document_name: docName,
-              sequence_order: i,
-              book_body_html: sourceRow.book_body_html,
-              book_body_format: sourceRow.book_body_format,
-              tags: sourceRow.tags ?? [],
-              canonical_document_url: sourceRow.canonical_document_url?.trim() ? sourceRow.canonical_document_url : null,
-            }
-            await withSupabaseRetry(
-              async () => supabase.from('contract_template_documents').insert(insertRow),
-              'add template document'
-            )
-          }
-        }
       }
-      closeTemplateForm()
-      loadContracts()
-    } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to save template')
-    } finally {
-      setTemplateFormSaving(false)
     }
   }
 
-  async function deleteContractTemplate(template: ContractTemplate) {
-    if (!canDeletePeopleContracts) return
-    if (!confirm(`Delete template "${template.name}"? This will remove the template and its document list.`)) return
-    try {
-      await withSupabaseRetry(
-        async () => supabase.from('contract_templates').delete().eq('id', template.id),
-        'delete contract template'
-      )
-      loadContracts()
-      if (editingContractTemplate?.id === template.id) closeTemplateForm()
-    } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to delete template')
-    }
-  }
-
-  const [assignTemplateSelectedId, setAssignTemplateSelectedId] = useState<string | null>(null)
-  const [assignTemplateSearchQuery, setAssignTemplateSearchQuery] = useState('')
-  const [assignTemplateSaving, setAssignTemplateSaving] = useState(false)
-  const [assignTemplateUnassigningTemplateId, setAssignTemplateUnassigningTemplateId] = useState<string | null>(null)
-
-  const filteredAssignContractTemplates = useMemo(() => {
-    const q = assignTemplateSearchQuery.trim().toLowerCase()
-    if (!q) return contractTemplates
-    return contractTemplates.filter((t) => t.name.toLowerCase().includes(q))
-  }, [contractTemplates, assignTemplateSearchQuery])
-
-  useEffect(() => {
-    if (assignTemplateSelectedId == null) return
-    if (!filteredAssignContractTemplates.some((t) => t.id === assignTemplateSelectedId)) {
-      setAssignTemplateSelectedId(null)
-    }
-  }, [filteredAssignContractTemplates, assignTemplateSelectedId])
-
-  async function assignTemplateToPerson() {
+  async function assignSelectedPacketsToPerson() {
     const personName = selectedContractsPersonName
-    const templateId = assignTemplateSelectedId
-    if (!personName || !templateId) {
-      setContractsError('Please select a template.')
+    if (!personName || assignPacketsSelectedIds.size === 0) {
+      setContractsError('Pick at least one packet.')
       return
     }
-    const alreadyAssigned = personContractAssignments.some((a) => a.person_name === personName && a.template_id === templateId)
-    if (alreadyAssigned) {
-      setContractsError('This template is already assigned to this person.')
-      return
-    }
-    setAssignTemplateSaving(true)
+    setAssignPacketsSaving(true)
     setContractsError(null)
     try {
-      await withSupabaseRetry(
-        async () => supabase.from('person_contract_assignments').insert({ person_name: personName, template_id: templateId }),
-        'assign template to person'
-      )
-      const templateDocs = contractTemplateDocuments.filter((d) => d.template_id === templateId)
-      for (const td of templateDocs) {
-        const candidates = personContractDocuments.filter(
-          (d) => d.person_name === personName && d.document_name === td.document_name,
+      for (const templateId of assignPacketsSelectedIds) {
+        const alreadyAssigned = personContractAssignments.some(
+          (a) => a.person_name === personName && a.template_id === templateId,
         )
-        const existing =
-          candidates.length === 0
-            ? undefined
-            : [...candidates].sort((a, b) => b.lineage_version - a.lineage_version)[0]
-        const fillSigningFromBook = !existing?.signing_body_html?.trim()
-        if (existing) {
-          const updatePayload = fillSigningFromBook
-            ? {
-                canonical_document_url: td.canonical_document_url?.trim() || null,
-                signing_body_html: td.book_body_html ?? null,
-                signing_body_format: td.book_body_format,
-                applied_contract_template_document_id: td.id,
-              }
-            : {
-                canonical_document_url: td.canonical_document_url?.trim() || null,
-                applied_contract_template_document_id: td.id,
-              }
-          await withSupabaseRetry(
-            async () =>
-              supabase.from('person_contract_documents').update(updatePayload).eq('id', existing.id),
-            'create person contract documents',
-          )
-        } else {
-          const lid = globalThis.crypto.randomUUID()
-          await withSupabaseRetry(
-            async () =>
-              supabase.from('person_contract_documents').insert({
-                person_name: personName,
-                document_name: td.document_name,
-                contract_lineage_id: lid,
-                lineage_version: 1,
-                supersedes_person_contract_document_id: null,
-                status: 'unsent',
-                canonical_document_url: td.canonical_document_url?.trim() || null,
-                signing_body_html: fillSigningFromBook ? td.book_body_html ?? null : null,
-                signing_body_format: fillSigningFromBook ? td.book_body_format : 'html',
-                applied_contract_template_document_id: td.id,
-              }),
-            'create person contract documents',
-          )
-        }
+        if (alreadyAssigned) continue
+        await materializePacketForPerson(personName, templateId)
       }
       setContractsAssignModalOpen(false)
-      setAssignTemplateSelectedId(null)
-      setAssignTemplateSearchQuery('')
+      setAssignPacketsSelectedIds(new Set())
       loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to assign template')
+      setContractsError(e instanceof Error ? e.message : 'Failed to assign packets')
     } finally {
-      setAssignTemplateSaving(false)
+      setAssignPacketsSaving(false)
     }
   }
 
-  async function unassignTemplateFromPerson(templateId: string) {
+  async function unassignPacketFromPerson(templateId: string) {
     if (!canDeletePeopleContracts) return
     const personName = selectedContractsPersonName
     if (!personName) return
     const assignment = personContractAssignments.find((a) => a.person_name === personName && a.template_id === templateId)
     if (!assignment) {
-      setContractsError('That template is not assigned to this person.')
+      setContractsError('That packet is not assigned to this person.')
       return
     }
-    setAssignTemplateUnassigningTemplateId(templateId)
+    setAssignPacketUnassigningTemplateId(templateId)
     setContractsError(null)
     try {
       await withSupabaseRetry(
         () => supabase.from('person_contract_assignments').delete().eq('id', assignment.id),
-        'unassign contract template',
+        'unassign contract packet',
       )
       const pinnedIdsFromThisTemplate = contractTemplateDocuments
         .filter((d) => d.template_id === templateId)
@@ -1961,12 +1746,12 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
           }
         }
       }
-      showToast('Template unassigned.', 'success')
+      showToast('Packet unassigned.', 'success')
       await loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to unassign template')
+      setContractsError(e instanceof Error ? e.message : 'Failed to unassign packet')
     } finally {
-      setAssignTemplateUnassigningTemplateId(null)
+      setAssignPacketUnassigningTemplateId(null)
     }
   }
 
@@ -2012,7 +1797,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => setContractBookModalOpen(true)}
+                onClick={() => setContractLibraryModalOpen(true)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2028,14 +1813,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                 }}
               >
                 <ContractBookIcon />
-                Contract Book
-              </button>
-              <button
-                type="button"
-                onClick={() => setContractsTemplateModalOpen(true)}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
-              >
-                Manage templates
+                Contract library
               </button>
             </div>
           </div>
@@ -2234,12 +2012,12 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                                           e.stopPropagation()
                                           setContractsAssignModalOpen(true)
                                           setContractsError(null)
-                                          setAssignTemplateSelectedId(null)
-                                          setAssignTemplateSearchQuery('')
+                                          setAssignPacketsSelectedIds(new Set())
+                                          setAssignPacketMenuOpenId(null)
                                         }}
                                         style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                       >
-                                        Assign template
+                                        Assign packets
                                       </button>
                                       <button
                                         type="button"
@@ -2272,7 +2050,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                                       </button>
                                     </div>
                                     {docs.length === 0 ? (
-                                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a template or add a document.</p>
+                                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a packet or add a document.</p>
                                     ) : contractsDocsAsCards ? (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {docs.map(({ document_name, version, templateNames, bookLastEditedAt, lineageId }) => {
@@ -2498,376 +2276,234 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
           )}
         </div>
 
-      {contractsTemplateModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: '90vw', maxHeight: '85vh', overflow: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.125rem' }}>Manage templates</h3>
-              <button
-                type="button"
-                onClick={() => setContractsTemplateModalOpen(false)}
-                style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)' }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
-            {templateFormMode !== 'none' ? (
-              <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{editingContractTemplate ? 'Edit template' : 'New template'}</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Template name</label>
-                    <input
-                      type="text"
-                      value={templateFormName}
-                      onChange={(e) => setTemplateFormName(e.target.value)}
-                      placeholder="e.g. Farm Work"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Documents</label>
-                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                      Only library entries from <strong>Contract Book</strong> can be attached. Create or edit them there, then pick each one below.
-                    </p>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <label htmlFor={templateBookPickerLabelId} style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                        Add from Contract Book
-                      </label>
-                      {contractTemplateDocuments.length === 0 ? (
-                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          No library entries yet. Open <strong>Contract Book</strong> on the Contracts tab and add at least one contract under a template, then return here.
-                        </p>
-                      ) : (
-                        <>
-                          <SearchableSelect
-                            id={templateBookPickerLabelId}
-                            value={templateBookPickerValue}
-                            onChange={(id) => {
-                              if (!id) {
-                                setTemplateBookPickerValue('')
-                                return
-                              }
-                              const row = contractTemplateDocuments.find((d) => d.id === id)
-                              if (!row) {
-                                setTemplateBookPickerValue('')
-                                return
-                              }
-                              const pickedName = row.document_name
-                              setTemplateFormDocumentNames((prev) => {
-                                if (prev.some((x) => x.trim().toLowerCase() === pickedName.trim().toLowerCase())) {
-                                  return prev
-                                }
-                                return [...prev, pickedName].sort()
-                              })
-                              setTemplateFormDocumentSourceByName((prev) => ({ ...prev, [pickedName]: id }))
-                              setTemplateBookPickerValue('')
-                            }}
-                            options={templateBookPickerOptions}
-                            emptyOption={{ value: '', label: 'Select…' }}
-                            placeholder={templateBookPickerOptions.length === 0 ? 'No more to add' : 'Search…'}
-                            disabled={templateBookPickerOptions.length === 0}
-                            listAriaLabel="Add document from contract book library"
-                            portalZIndex={1200}
-                          />
-                          {templateBookPickerOptions.length === 0 ? (
-                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              Every library document name is already attached to this template.
-                            </p>
-                          ) : null}
-                        </>
-                      )}
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
-                      {templateFormDocumentNames.map((docName) => (
-                        <li key={docName} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                          {docName}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTemplateFormDocumentNames((prev) => prev.filter((d) => d !== docName))
-                              setTemplateFormDocumentSourceByName((prev) => {
-                                const next = { ...prev }
-                                delete next[docName]
-                                return next
-                              })
-                            }}
-                            style={{ padding: '0.1rem 0.35rem', fontSize: '0.75rem', color: 'var(--text-red-700)', border: 'none', background: 'none', cursor: 'pointer' }}
-                          >
-                            Remove
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={saveTemplate}
-                      disabled={templateFormSaving}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: templateFormSaving ? 'not-allowed' : 'pointer' }}
-                    >
-                      {templateFormSaving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={closeTemplateForm}
-                      style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <h4 style={{ margin: 0, fontSize: '1rem' }}>Templates</h4>
-                <button
-                  type="button"
-                  onClick={() => openTemplateForm()}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
-                >
-                  + New template
-                </button>
-              </div>
-              {contractTemplates.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No templates yet. Create one to assign to people.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', listStyle: 'none' }}>
-                  {contractTemplates.map((t) => {
-                    const docs = contractTemplateDocuments.filter((d) => d.template_id === t.id).map((d) => d.document_name).sort()
-                    return (
-                      <li key={t.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: 'var(--bg-subtle)', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <strong>{t.name}</strong>
-                          {docs.length > 0 ? (
-                            <ul
-                              style={{
-                                margin: '0.25rem 0 0',
-                                paddingLeft: '1.25rem',
-                                listStyle: 'disc',
-                                listStylePosition: 'outside',
-                                color: 'var(--text-muted)',
-                                fontSize: '0.8125rem',
-                              }}
-                            >
-                              {docs.map((docName) => (
-                                <li key={docName} style={{ marginBottom: '0.15rem' }}>
-                                  {docName}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => openTemplateForm(t)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                          {canDeletePeopleContracts ? (
-                            <button
-                              type="button"
-                              onClick={() => deleteContractTemplate(t)}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                            >
-                              Delete
-                            </button>
-                          ) : null}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {contractsAssignModalOpen && selectedContractsPersonName && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign template to {selectedContractsPersonName}</h3>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%', maxHeight: '85vh', overflow: 'auto' }}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign packets — {selectedContractsPersonName}</h3>
             {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
-            {(() => {
-              const assignedRows = personContractAssignments
-                .filter((a) => a.person_name === selectedContractsPersonName)
-                .map((a) => ({
-                  assignment: a,
-                  template: contractTemplates.find((x) => x.id === a.template_id),
-                }))
-                .sort((r, s) => (r.template?.name ?? '').localeCompare(s.template?.name ?? ''))
-              if (assignedRows.length === 0) return null
-              return (
-                <div style={{ marginBottom: '1rem' }}>
-                  <p style={{ fontSize: '0.8125rem', fontWeight: 600, margin: '0 0 0.35rem' }}>Assigned templates</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem', lineHeight: 1.45 }}>
-                    Signed or in-progress documents stay on file; only empty placeholders are removed.
-                  </p>
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    {assignedRows.map(({ assignment: a, template: t }) => {
-                      const docCount = contractTemplateDocuments.filter((d) => d.template_id === a.template_id).length
-                      const docLabel = docCount > 0 ? ` (${docCount} docs)` : ''
-                      const busyUnassign = assignTemplateUnassigningTemplateId === a.template_id
-                      return (
-                        <li
-                          key={a.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '0.5rem',
-                            padding: '0.45rem 0.65rem',
-                            border: '1px solid var(--border)',
-                            borderRadius: 6,
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <span>
-                            <span style={{ fontWeight: 600 }}>{t?.name ?? '—'}</span>
-                            {docLabel}
-                          </span>
-                          {canDeletePeopleContracts ? (
-                            <button
-                              type="button"
-                              onClick={() => void unassignTemplateFromPerson(a.template_id)}
-                              disabled={
-                                assignTemplateSaving ||
-                                assignTemplateUnassigningTemplateId !== null
-                              }
+            {contractTemplates.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                No packets yet. Create one in the <strong>Contract library</strong> first.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '0.75rem' }}>
+                {contractTemplates.map((t) => {
+                  const docs = contractTemplateDocuments
+                    .filter((d) => d.template_id === t.id)
+                    .map((d) => d.document_name)
+                    .sort()
+                  const alreadyAssigned = personContractAssignments.some(
+                    (a) => a.person_name === selectedContractsPersonName && a.template_id === t.id,
+                  )
+                  const checked = alreadyAssigned || assignPacketsSelectedIds.has(t.id)
+                  const busyUnassign = assignPacketUnassigningTemplateId === t.id
+                  return (
+                    <div
+                      key={t.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.6rem',
+                        border: checked ? '1.5px solid var(--border-blue)' : '1px solid var(--border)',
+                        borderRadius: 8,
+                        padding: '0.55rem 0.7rem',
+                        background: alreadyAssigned ? 'var(--bg-subtle)' : checked ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        opacity: alreadyAssigned ? 0.75 : 1,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={alreadyAssigned || assignPacketsSaving || assignPacketUnassigningTemplateId !== null}
+                        aria-label={`Assign ${t.name}`}
+                        onChange={(e) => {
+                          setAssignPacketsSelectedIds((prev) => {
+                            const next = new Set(prev)
+                            if (e.target.checked) next.add(t.id)
+                            else next.delete(t.id)
+                            return next
+                          })
+                        }}
+                        style={{ marginTop: '0.2rem' }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                          {t.name}
+                          {alreadyAssigned ? (
+                            <span
                               style={{
-                                padding: '0.25rem 0.55rem',
-                                fontSize: '0.8125rem',
+                                marginLeft: '0.4rem',
+                                fontSize: '0.68rem',
                                 fontWeight: 600,
-                                border: '1px solid #fecaca',
-                                borderRadius: 6,
-                                background: 'var(--bg-red-tint)',
-                                color: 'var(--text-red-700)',
-                                cursor:
-                                  assignTemplateSaving || assignTemplateUnassigningTemplateId !== null
-                                    ? 'not-allowed'
-                                    : 'pointer',
-                                flexShrink: 0,
+                                padding: '0.08rem 0.45rem',
+                                borderRadius: 999,
+                                background: 'var(--bg-green-100)',
+                                color: 'var(--text-green-800)',
+                                verticalAlign: 'middle',
                               }}
                             >
-                              {busyUnassign ? 'Unassigning…' : 'Unassign'}
-                            </button>
+                              assigned
+                            </span>
                           ) : null}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              )
-            })()}
-            {contractTemplates.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>No templates. Create one in Manage templates first.</p>
-            ) : (
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor={assignTemplateSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem' }}>
-                  Search templates
-                </label>
-                <input
-                  id={assignTemplateSearchInputId}
-                  type="search"
-                  value={assignTemplateSearchQuery}
-                  onChange={(e) => setAssignTemplateSearchQuery(e.target.value)}
-                  placeholder="Type to filter…"
-                  autoComplete="off"
-                  aria-label="Search templates"
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    marginBottom: '0.65rem',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <p id={assignTemplateRadioGroupLabelId} style={{ fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
-                  Select template
-                </p>
-                <div
-                  role="radiogroup"
-                  aria-labelledby={assignTemplateRadioGroupLabelId}
-                  style={{
-                    maxHeight: 280,
-                    overflowY: 'auto',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0.35rem',
-                  }}
-                >
-                  {filteredAssignContractTemplates.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0.35rem' }}>No templates match your search.</p>
-                  ) : (
-                    filteredAssignContractTemplates.map((t) => {
-                      const alreadyAssigned = personContractAssignments.some(
-                        (a) => a.person_name === selectedContractsPersonName && a.template_id === t.id
-                      )
-                      const docCount = contractTemplateDocuments.filter((d) => d.template_id === t.id).length
-                      const docLabel = docCount > 0 ? ` (${docCount} docs)` : ''
-                      const selected = assignTemplateSelectedId === t.id
-                      return (
-                        <div
-                          key={t.id}
-                          role="radio"
-                          aria-checked={selected}
-                          aria-disabled={alreadyAssigned}
-                          tabIndex={alreadyAssigned ? -1 : 0}
-                          onClick={() => {
-                            if (assignTemplateUnassigningTemplateId !== null) return
-                            if (!alreadyAssigned) setAssignTemplateSelectedId(t.id)
-                          }}
-                          onKeyDown={(e) => {
-                            if (assignTemplateUnassigningTemplateId !== null) return
-                            if (alreadyAssigned) return
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              setAssignTemplateSelectedId(t.id)
-                            }
-                          }}
-                          style={{
-                            padding: '0.5rem 0.65rem',
-                            borderRadius: 4,
-                            cursor:
-                              alreadyAssigned || assignTemplateUnassigningTemplateId !== null
-                                ? 'not-allowed'
-                                : 'pointer',
-                            opacity: alreadyAssigned || assignTemplateUnassigningTemplateId !== null ? 0.55 : 1,
-                            background: selected ? '#eff6ff' : alreadyAssigned ? 'var(--bg-subtle)' : 'transparent',
-                            border: selected ? '1px solid #93c5fd' : '1px solid transparent',
-                            marginBottom: 2,
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <span style={{ fontWeight: 600 }}>{t.name}</span>
-                          {docLabel}
-                          {alreadyAssigned ? (
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> — already assigned (use Unassign above)</span>
+                        </span>
+                        {docs.length > 0 ? (
+                          <span style={{ display: 'block', marginTop: '0.1rem', fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+                            {docs.join(' · ')}
+                          </span>
+                        ) : null}
+                      </div>
+                      {alreadyAssigned && canDeletePeopleContracts ? (
+                        <div data-assign-packet-menu-wrap={t.id} style={{ position: 'relative', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            aria-label={`More actions for ${t.name}`}
+                            aria-haspopup="menu"
+                            aria-expanded={assignPacketMenuOpenId === t.id}
+                            disabled={assignPacketsSaving || assignPacketUnassigningTemplateId !== null}
+                            onClick={() => setAssignPacketMenuOpenId((id) => (id === t.id ? null : t.id))}
+                            style={{
+                              padding: '0.15rem 0.4rem',
+                              fontSize: '1rem',
+                              lineHeight: 1,
+                              border: '1px solid var(--border-strong)',
+                              borderRadius: 4,
+                              background: 'var(--surface)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ⋯
+                          </button>
+                          {assignPacketMenuOpenId === t.id ? (
+                            <div
+                              role="menu"
+                              style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                marginTop: 2,
+                                zIndex: 20,
+                                minWidth: 140,
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 6,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                padding: '0.25rem 0',
+                              }}
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setAssignPacketMenuOpenId(null)
+                                  void unassignPacketFromPerson(t.id)
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  width: '100%',
+                                  padding: '0.35rem 0.65rem',
+                                  fontSize: '0.8125rem',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-red-700)',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {busyUnassign ? 'Unassigning…' : 'Unassign'}
+                              </button>
+                            </div>
                           ) : null}
                         </div>
-                      )
-                    })
-                  )}
-                </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
               </div>
             )}
+            {(() => {
+              if (!selectedContractsPersonName) return null
+              if (assignPacketsSelectedIds.size === 0) {
+                return (
+                  <p
+                    style={{
+                      margin: '0 0 1rem',
+                      fontSize: '0.78rem',
+                      color: 'var(--text-muted)',
+                      background: 'var(--bg-subtle)',
+                      border: '1px dashed var(--border-strong)',
+                      borderRadius: 8,
+                      padding: '0.5rem 0.7rem',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    Nothing selected yet — tick a packet to see what it adds.
+                  </p>
+                )
+              }
+              const { newDocNames } = assignPacketsConsequence({
+                personName: selectedContractsPersonName,
+                selectedTemplateIds: [...assignPacketsSelectedIds],
+                templateDocuments: contractTemplateDocuments,
+                personDocuments: personContractDocuments,
+              })
+              return (
+                <p
+                  style={{
+                    margin: '0 0 1rem',
+                    fontSize: '0.78rem',
+                    color: 'var(--text-amber-800)',
+                    background: 'var(--bg-amber-100)',
+                    borderRadius: 8,
+                    padding: '0.5rem 0.7rem',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {newDocNames.length === 0 ? (
+                    <>
+                      Will add for <strong>{selectedContractsPersonName}</strong>: no new documents — they already
+                      have a copy of everything in the selected {assignPacketsSelectedIds.size === 1 ? 'packet' : 'packets'}.
+                    </>
+                  ) : (
+                    <>
+                      Will add for <strong>{selectedContractsPersonName}</strong>: {newDocNames.join(', ')} —{' '}
+                      <strong>
+                        {newDocNames.length} {newDocNames.length === 1 ? 'document' : 'documents'}, created as unsent
+                      </strong>
+                      . {newDocNames.length === 1 ? 'It' : 'They'} will count under &ldquo;Needs attention&rdquo; until sent.
+                    </>
+                  )}
+                </p>
+              )
+            })()}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={assignTemplateToPerson}
+                onClick={() => {
+                  setContractsAssignModalOpen(false)
+                  setAssignPacketsSelectedIds(new Set())
+                  setAssignPacketMenuOpenId(null)
+                  setContractsError(null)
+                }}
+                disabled={assignPacketsSaving || assignPacketUnassigningTemplateId !== null}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  background: 'var(--surface)',
+                  cursor:
+                    assignPacketsSaving || assignPacketUnassigningTemplateId !== null ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void assignSelectedPacketsToPerson()}
                 disabled={
-                  assignTemplateSaving ||
-                  assignTemplateUnassigningTemplateId !== null ||
-                  !assignTemplateSelectedId ||
-                  contractTemplates.length === 0
+                  assignPacketsSaving ||
+                  assignPacketUnassigningTemplateId !== null ||
+                  assignPacketsSelectedIds.size === 0
                 }
                 style={{
                   padding: '0.5rem 1rem',
@@ -2876,30 +2512,11 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                   border: 'none',
                   borderRadius: 6,
                   cursor:
-                    assignTemplateSaving || assignTemplateUnassigningTemplateId !== null ? 'not-allowed' : 'pointer',
+                    assignPacketsSaving || assignPacketsSelectedIds.size === 0 ? 'not-allowed' : 'pointer',
+                  opacity: assignPacketsSelectedIds.size === 0 ? 0.55 : 1,
                 }}
               >
-                {assignTemplateSaving ? 'Assigning…' : 'Assign'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setContractsAssignModalOpen(false)
-                  setAssignTemplateSelectedId(null)
-                  setAssignTemplateSearchQuery('')
-                  setContractsError(null)
-                }}
-                disabled={assignTemplateSaving || assignTemplateUnassigningTemplateId !== null}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 6,
-                  background: 'var(--surface)',
-                  cursor:
-                    assignTemplateSaving || assignTemplateUnassigningTemplateId !== null ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Cancel
+                {assignPacketsSaving ? 'Assigning…' : 'Assign'}
               </button>
             </div>
           </div>
@@ -3681,8 +3298,25 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         />
       )}
 
+      {contractLibraryModalOpen && (
+        <ContractLibraryModal
+          open={contractLibraryModalOpen}
+          onClose={() => setContractLibraryModalOpen(false)}
+          templates={contractTemplates}
+          templateDocuments={contractTemplateDocuments}
+          assignments={personContractAssignments}
+          personDocuments={personContractDocuments}
+          canDeletePeopleContracts={canDeletePeopleContracts}
+          onSaved={() => void loadContracts()}
+          onQuickSend={(documentName) => {
+            setContractsError(null)
+            setQuickSendDocumentName(documentName)
+          }}
+        />
+      )}
+
       {contractSendModalOpen && contractSendDocId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 14 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90vw' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
             {contractsError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{contractsError}</p> : null}
