@@ -82,10 +82,14 @@ type UserRow = { id: string; email: string | null; name: string; role: string; n
 export type PeopleContractsTabProps = {
   people: Person[]
   users: UserRow[]
+  /** Archived roster people (page-level state) — grouped into the collapsed Archived section at the bottom (v2.1408). */
+  archivedPeople?: Person[]
+  /** Names of archived user accounts (RPC get_archived_user_names) — same Archived section. */
+  archivedUserNames?: Set<string>
   canDeletePeopleContracts: boolean
 }
 
-export default function PeopleContractsTab({ people, users, canDeletePeopleContracts }: PeopleContractsTabProps) {
+export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts }: PeopleContractsTabProps) {
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
@@ -100,6 +104,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       return false
     }
   })
+  const [contractsArchivedSectionOpen, setContractsArchivedSectionOpen] = useState(false)
   const setAgreementsPanelHiddenStored = (hidden: boolean) => {
     setAgreementsPanelHidden(hidden)
     try {
@@ -573,6 +578,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     return fromUsers?.trim() ?? ''
   }
 
+  /** Cards whenever the documents list is actually narrow: phone viewports, or the left lane while the Agreements panel is open (v2.1408 — the panel squeezes the lane to ~5/12). */
+  const contractsDocsAsCards = contractsNarrowViewport || (contractsWideViewport && !agreementsPanelHidden)
+
   const agreementSummaries = useMemo(
     () =>
       buildAgreementSummaries({
@@ -587,6 +595,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
   /** Agreements-panel row click: select the person, un-hide them if the filter would, and scroll their row into view. */
   const jumpToContractsPerson = (personName: string) => {
     setSelectedContractsPersonName(personName)
+    if (contractsArchivedNames.includes(personName)) setContractsArchivedSectionOpen(true)
     if (
       !contractsSearchNormalized &&
       !personVisibleUnderContractsFilter(contractsRosterBuckets.bucketByPerson.get(personName) ?? 'none', contractsRosterFilterActive)
@@ -600,7 +609,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
   /** Actions cluster for one document row — shared verbatim by the desktop table cell and the narrow-viewport cards (v2.1405). */
   const renderContractDocActions = (personName: string, document_name: string, doc: PersonContractDocument | null) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+    <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}>
                                                   {doc?.status === 'signed' ? (
                                                     <button
                                                       type="button"
@@ -876,7 +885,22 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
   const contractsSearchNormalized = useMemo(() => contractsSearchQuery.trim().toLowerCase(), [contractsSearchQuery])
 
-  const [contractsRosterFilterStored, setContractsRosterFilterStored] = useState<ContractsRosterFilter | null>(() => {
+  /** Archived roster names (people + user accounts) not shadowed by an active name — the bottom Archived section. */
+  const contractsArchivedNames = useMemo(() => {
+    const active = new Set(contractsPersonNamesSorted)
+    const names = new Set<string>()
+    for (const p of archivedPeople ?? []) {
+      const n = (p.name ?? '').trim()
+      if (n && !active.has(n)) names.add(n)
+    }
+    for (const raw of archivedUserNames ?? []) {
+      const n = raw.trim()
+      if (n && !active.has(n)) names.add(n)
+    }
+    return [...names].sort((a, b) => a.localeCompare(b))
+  }, [archivedPeople, archivedUserNames, contractsPersonNamesSorted])
+
+    const [contractsRosterFilterStored, setContractsRosterFilterStored] = useState<ContractsRosterFilter | null>(() => {
     try {
       return parseContractsRosterFilter(typeof window !== 'undefined' ? window.localStorage.getItem(CONTRACTS_ROSTER_FILTER_STORAGE_KEY) : null)
     } catch {
@@ -939,7 +963,26 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
     personContractDocuments,
   ])
 
-  const contractDocumentSearchLines = useMemo(() => {
+  const contractsArchivedVisible = useMemo(() => {
+    if (!contractsSearchNormalized) return contractsArchivedNames
+    return contractsArchivedNames.filter((personName) => {
+      if (personName.toLowerCase().includes(contractsSearchNormalized)) return true
+      return getDocumentsForPerson(personName).some(({ document_name }) =>
+        document_name.toLowerCase().includes(contractsSearchNormalized),
+      )
+    })
+  }, [
+    contractsArchivedNames,
+    contractsSearchNormalized,
+    contractTemplates,
+    contractTemplateDocuments,
+    personContractAssignments,
+    personContractDocuments,
+  ])
+  const contractsArchivedOpen =
+    contractsArchivedSectionOpen || (!!contractsSearchNormalized && contractsArchivedVisible.length > 0)
+
+    const contractDocumentSearchLines = useMemo(() => {
     if (!contractsSearchNormalized) return []
     const lines: { personName: string; document_name: string; status: string }[] = []
     for (const personName of contractsPersonNamesSorted) {
@@ -1889,7 +1932,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           </tr>
                         )
                       }
-                      if (contractsPersonNamesFiltered.length === 0 && contractsSearchNormalized) {
+                      if (contractsPersonNamesFiltered.length === 0 && contractsArchivedVisible.length === 0 && contractsSearchNormalized) {
                         return (
                           <tr>
                             <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matches.</td>
@@ -1903,7 +1946,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           </tr>
                         )
                       }
-                      return contractsPersonNamesFiltered.map((personName) => {
+                      const renderRosterRow = (personName: string, archived: boolean) => {
                         const docs = getDocumentsForPerson(personName)
                         const statusCounts = countPersonContractStatuses(docs)
                         const isExpanded = selectedContractsPersonName === personName
@@ -1924,6 +1967,11 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                   {statusCounts.unsent > 0 ? <ContractStatusChip status="unsent" label={`${statusCounts.unsent} unsent`} /> : null}
                                   {statusCounts.sent > 0 ? <ContractStatusChip status="sent" label={`${statusCounts.sent} waiting`} /> : null}
                                   {statusCounts.signed > 0 ? <ContractStatusChip status="signed" label={`${statusCounts.signed} signed`} /> : null}
+                                  {archived ? (
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 500, padding: '0.1rem 0.45rem', borderRadius: 999, background: 'var(--bg-200)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                      archived
+                                    </span>
+                                  ) : null}
                                   {personContractAssignments
                                     .filter((a) => a.person_name === personName)
                                     .map((a) => {
@@ -2000,7 +2048,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                     </div>
                                     {docs.length === 0 ? (
                                       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a template or add a document.</p>
-                                    ) : contractsNarrowViewport ? (
+                                    ) : contractsDocsAsCards ? (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {docs.map(({ document_name, version, templateNames, bookLastEditedAt, lineageId }) => {
                                           const doc = version
@@ -2008,6 +2056,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                           const appliedLabel = appliedCustom ?? formatAppliedVersionPlainDate(bookLastEditedAt)
                                           const metaBits = [
                                             templateNames.join(', '),
+                                            doc?.signing_body_html?.trim()
+                                              ? isMarkdownBodyFormat(doc.signing_body_format)
+                                                ? 'Markdown'
+                                                : isPlainBodyFormat(doc.signing_body_format)
+                                                  ? 'Plain'
+                                                  : 'HTML'
+                                              : '',
                                             doc && doc.lineage_version > 1 ? `v${doc.lineage_version}` : '',
                                             appliedLabel ? `applied ${appliedLabel}${appliedCustom ? ' (set manually)' : ''}` : '',
                                             doc?.signed_at ? `signed ${doc.signed_at}` : '',
@@ -2044,7 +2099,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                         <thead>
                                           <tr>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Document</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Applied version</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Applied</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Status</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
                                           </tr>
@@ -2172,7 +2227,28 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                             )}
                           </Fragment>
                         )
-                      })
+                      }
+                      return (
+                        <>
+                          {contractsPersonNamesFiltered.map((personName) => renderRosterRow(personName, false))}
+                          {contractsArchivedVisible.length > 0 ? (
+                            <>
+                              <tr
+                                onClick={() => setContractsArchivedSectionOpen((v) => !v)}
+                                style={{ cursor: 'pointer', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}
+                              >
+                                <td colSpan={2} style={{ padding: '0.55rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                  <span aria-hidden style={{ marginRight: '0.4rem' }}>{contractsArchivedOpen ? '▾' : '▸'}</span>
+                                  Archived · {contractsArchivedVisible.length}
+                                </td>
+                              </tr>
+                              {contractsArchivedOpen
+                                ? contractsArchivedVisible.map((personName) => renderRosterRow(personName, true))
+                                : null}
+                            </>
+                          ) : null}
+                        </>
+                      )
                     })()}
                   </tbody>
                 </table>
