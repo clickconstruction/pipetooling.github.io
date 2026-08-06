@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1418',
+    date: '2026-08-06',
+    title: 'Email a GC statement straight from the app',
+    kind: 'feature',
+    highlights: [
+      'GC Review gains an Email… button per GC — the app sends the same statement the Copy button builds, no pasting needed.',
+      'The To address pre-fills from the GC’s customer record and stays editable, and replies come back to your own inbox.',
+      'Each GC row shows when a statement was last sent, so the office can see who’s already been statemented.',
+    ],
+  },
+  {
     version: 'v2.1417',
     date: '2026-08-06',
     title: 'Groundwork for emailing GC statements from the app',

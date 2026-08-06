@@ -111,6 +111,7 @@ import {
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
+import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
@@ -451,6 +452,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
+  /** "Last sent" hints for GC Review's Email… (v2.1416). Best-effort: table may predate the db push. */
+  const [gcLastSentByGcId, setGcLastSentByGcId] = useState<Record<string, string>>({})
+  const refreshGcLastSent = useCallback(async () => {
+    try {
+      const rows = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('gc_statement_emails')
+            .select('gc_customer_id, sent_at')
+            .order('sent_at', { ascending: false })
+            .limit(500),
+        'gc statement last-sent hints',
+      )
+      const map: Record<string, string> = {}
+      for (const r of (rows ?? []) as Array<{ gc_customer_id: string | null; sent_at: string }>) {
+        if (r.gc_customer_id && !map[r.gc_customer_id]) map[r.gc_customer_id] = r.sent_at
+      }
+      setGcLastSentByGcId(map)
+    } catch {
+      setGcLastSentByGcId({})
+    }
+  }, [])
+  useEffect(() => {
+    if (gcReviewModalOpen) void refreshGcLastSent()
+  }, [gcReviewModalOpen, refreshGcLastSent])
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
   const [stagesNoCustomerModalOpen, setStagesNoCustomerModalOpen] = useState(false)
   const [stagesNoCustomerBtnHover, setStagesNoCustomerBtnHover] = useState(false)
@@ -2778,6 +2804,40 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       () => showToast(`Copied the ${group.gcName} statement — paste it into your email.`, 'success'),
                       () => showToast('Could not copy — try again.', 'error'),
                     )
+                  }}
+                  emailForGc={(gcId) => {
+                    const c = customers.find((x) => x.id === gcId)
+                    return c ? extractContactFromCustomer(c).email : ''
+                  }}
+                  lastSentByGcId={gcLastSentByGcId}
+                  onSendStatement={async (p) => {
+                    try {
+                      const { data, error: fnErr } = await supabase.functions.invoke('send-gc-statement-email', {
+                        body: {
+                          gc_customer_id: p.gcCustomerId,
+                          gc_name: p.gcName,
+                          group_by: p.groupBy,
+                          to_email: p.toEmail,
+                          subject: p.subject,
+                          email_html: p.emailHtml,
+                          email_text: p.emailText,
+                          total: p.total,
+                          job_count: p.jobCount,
+                        },
+                      })
+                      const resp = data as { success?: boolean; error?: string } | null
+                      if (resp && typeof resp.error === 'string' && resp.error.length > 0) {
+                        return { ok: false, error: resp.error }
+                      }
+                      if (fnErr) {
+                        return { ok: false, error: fnErr.message || 'Send failed' }
+                      }
+                      showToast(`Statement emailed to ${p.toEmail}.`, 'success')
+                      void refreshGcLastSent()
+                      return { ok: true }
+                    } catch (e) {
+                      return { ok: false, error: e instanceof Error ? e.message : 'Send failed' }
+                    }
                   }}
                 />
                 {billedTotalByNameModalOpen && (() => {

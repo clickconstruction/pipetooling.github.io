@@ -122,6 +122,7 @@ when_to_read:
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
    - [send-physical-invoice-email](#send-physical-invoice-email)
+   - [send-gc-statement-email](#send-gc-statement-email)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2117,6 +2118,22 @@ interface SendPhysicalInvoiceEmailBody {
 **Client**: [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab) invokes this Edge Function, then **`maybePromoteJobToBilledAfterCustomerInvoice`** on success. **`subject`** is **[`physicalInvoiceEmailSubject`](../src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](../src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
 
 **Deploy**: `supabase functions deploy send-physical-invoice-email --no-verify-jwt` if the hosted gateway still enforces JWT.
+
+---
+
+### send-gc-statement-email
+
+**Purpose** (v2.1418): Email a **GC statement** (job addresses, bill-sent dates, amounts owed — built client-side by [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts)) from GC Review's **Email…** dialog, then audit into **`gc_statement_emails`** via the **service-role** client (the table has no client write policies) and best-effort log to `email_send_log`.
+
+**Endpoint**: `POST /functions/v1/send-gc-statement-email`
+
+**Authentication**: Bearer JWT; **`auth.getUser`** in the function; caller's `users.role` must be dev / master_technician / assistant / controller / primary (the GC Review cohort). For `group_by: 'gc'` the `gc_customer_id` must be readable through the caller's **RLS** (blocks cross-tenant sends); the recipient address itself is office-chosen — statements often go to an AP inbox not on file. **`verify_jwt = false`** on the gateway (same pattern as `send-physical-invoice-email`).
+
+**Body**: `gc_customer_id` (null for development statements), `gc_name`, `group_by` (`gc`|`development`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`.
+
+**Sends** via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out).
+
+**Deploy**: `supabase functions deploy send-gc-statement-email --no-verify-jwt` if the hosted gateway still enforces JWT. Requires the `gc_statement_emails` table (migration `20260806202622`).
 
 ---
 

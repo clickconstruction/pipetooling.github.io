@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1417)
+last_updated: 2026-08-06 (v2.1418)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1418)
+
+### GC Review: "Email…" — the app sends the GC statement itself (2026-08-06)
+Phase 2b of GC statements (2a = the `gc_statement_emails` audit table, v2.1417). Each real GC group in the GC Review modal gains an **Email…** button ahead of Copy for email / Print. The dialog pre-fills **To** from the GC customer record's email (editable — statements often go to an AP inbox not on file) and the same recipient-neutral subject the copy path suggests; **Send statement** posts the `gcStatementEmail.ts` HTML + plain-text pair to new edge function [`send-gc-statement-email`](../supabase/functions/send-gc-statement-email/index.ts). The function verifies the JWT in-handler (`verify_jwt = false` in config.toml), allows only the GC Review cohort (dev / master_technician / assistant / controller / primary), requires the `gc_customer_id` to be readable through the **caller's RLS** for GC-grouped statements (blocks cross-tenant sends; development statements carry no customer id), sends via Resend from `team@noreply.pipetooling.com` with the **caller's email as reply-to**, best-effort logs to `email_send_log`, and audit-inserts into `gc_statement_emails` with the **service-role** client (the table has no client write policies; audit failure never fails an already-sent email). The modal shows a small **last sent {date}** hint per GC, loaded from the audit table (best-effort — tolerates the table not existing yet pre-push). `database.ts` hand-adds the `gc_statement_emails` types. Help guide [`track-a-general-contractor-on-a-job.md`](../src/content/help/track-a-general-contractor-on-a-job.md) gains the app-send paragraph; [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) documents the function. Deploy: `supabase functions deploy send-gc-statement-email` after merge (requires migration `20260806202622`).
 
 ## Latest Updates (v2.1417)
 

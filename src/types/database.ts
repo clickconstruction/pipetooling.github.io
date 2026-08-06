@@ -3785,6 +3785,66 @@ export type Database = {
           },
         ]
       }
+      gc_statement_emails: {
+        Row: {
+          gc_customer_id: string | null
+          gc_name: string
+          group_by: string
+          id: string
+          job_count: number
+          resend_email_id: string | null
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+          sent_to: string
+          subject: string
+          total: number
+        }
+        Insert: {
+          gc_customer_id?: string | null
+          gc_name: string
+          group_by?: string
+          id?: string
+          job_count: number
+          resend_email_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to: string
+          subject: string
+          total: number
+        }
+        Update: {
+          gc_customer_id?: string | null
+          gc_name?: string
+          group_by?: string
+          id?: string
+          job_count?: number
+          resend_email_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to?: string
+          subject?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_statement_emails_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_emails_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gsa_per_diem_cache: {
         Row: {
           city: string | null
