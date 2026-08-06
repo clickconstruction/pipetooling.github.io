@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 6, 2026
+
+**`20260806202622_gc_statement_emails.sql`** _(apply via `supabase db push` after merge; the 2026-08-05 contracts migration is still pending and rides in the same push. Client tolerates the table being absent — the "last sent" hint is best-effort)_
+- **Purpose**: `gc_statement_emails` audit table (v2.1417) — one row per GC statement the app emails via the `send-gc-statement-email` edge function (phase 2 of GC statements). Columns: `gc_customer_id` (FK customers, SET NULL) + `gc_name` snapshot, `group_by` gc|development, `sent_to`, `subject`, `total`, `job_count`, `sent_by` (FK users, SET NULL) + `sent_by_name`, `resend_email_id`, `sent_at`; `(gc_customer_id, sent_at desc)` index.
+- **Security**: RLS SELECT for dev/master_technician/assistant/controller/primary (the GC Review cohort); deliberately NO client write policies — inserts come only from the edge function's service role. Both read-only block sweeps applied.
+- **Ordering**: before the v2.1418 client lands is ideal (its "last sent" read is try/caught, so either order is safe); the edge function deploy needs the table.
+- **Category**: Feature schema
 
 #### August 5, 2026
 

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1416)
+last_updated: 2026-08-06 (v2.1417)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1417)
+
+### GC statement emails: audit table (2026-08-06)
+Phase 2a of sending statements to GCs. Migration `20260806202622_gc_statement_emails.sql`: new `gc_statement_emails` table — one row per statement the app emails a GC (`gc_customer_id` SET NULL on customer delete with `gc_name` snapshotted, `group_by` gc|development, `sent_to`, `subject`, `total`, `job_count`, `sent_by(+name)`, `resend_email_id`, `sent_at`) + `(gc_customer_id, sent_at desc)` index. Writes come ONLY from the send-gc-statement-email edge function (service role), so the table deliberately has no client write policies; SELECT for dev/master_technician/assistant/controller/primary feeds the GC Review "last sent {date}" hint. Both read-only block sweeps applied. DB-only (`supabase db push` after merge; the pending contracts migration rides in the same push).
 
 ## Latest Updates (v2.1416)
 
