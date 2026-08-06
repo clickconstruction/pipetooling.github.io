@@ -7,10 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1413)
+last_updated: 2026-08-06 (v2.1414)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1414)
+
+### Fix: My Schedule showed "no customer photos" on jobs that had photos (2026-08-06)
+Owner report: a Dispatch inbox task, "Add a Customer Pictures folder for 000 · Office", stayed open after the link was entered and survived hard reloads. Diagnosis (live data): the link was never missing — job `Office` / HCP 000 has carried `job_pictures_link` since 2026-07-22, and the 2026-07-21 request auto-closed correctly on 07-22. A **second** request was filed 2026-08-04 against the same job, and it could not auto-close: the auto-close in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) fires only on a blank→set **transition** inside `persistIdentitySlice`, which only runs when the identity slice is dirty — re-pasting the value already saved changes nothing.
+
+Root cause of the duplicate: [`DashboardMyScheduleSection.tsx`](../src/components/dashboard/DashboardMyScheduleSection.tsx) read the pictures link off `fromAssigned` — a lookup into the Dashboard's assigned-job lists. `list_assigned_jobs_for_dashboard` filters `WHERE jl.status IN ('waiting','working')` and `list_ready_to_bill_assigned_jobs_for_dashboard` to `ready_to_bill`, but `job_schedule_blocks` carries **no status filter**, so any scheduled job that is `billed` or `paid` is absent from both lists and resolved to `undefined` — rendering [`DashboardJobPicturesLinkRow`](../src/components/dashboard/DashboardJobPicturesLinkRow.tsx)'s red "ask Dispatch" state on jobs that already had a link. Measured blast radius over the prior 60 days: **341 schedule blocks across 47 jobs** rendered the red button, **308 of them on jobs that had a link**. "Office" is permanently `paid` and scheduled constantly, so it re-armed every time. The same `fromAssigned` gap also degraded the request payload (no HCP, no address — hence the odd "…for 000 · Office" title) and the Leave Report prefill (`hcpNumber`/`jobAddress` fell back to "—").
+
+Fix: [`useDashboardSubSchedule.ts`](../src/hooks/useDashboardSubSchedule.ts)'s existing customer-phone effect already queries `jobs_ledger` for **every** scheduled job id, so it now selects `job_pictures_link, hcp_number, click_number, job_address` alongside `customer_phone` and publishes a second `subScheduleJobMeta` map — **no extra round-trip**. New kernel `resolveSubScheduleJobMeta()` in [`dashboardSubSchedule.ts`](../src/lib/dashboardSubSchedule.ts) resolves per field, assigned-list row first, map fallback, blank/whitespace treated as absent, returning the original untrimmed string so display formatting is unchanged (6 tests). The row resolves once into `jobMeta` and uses it for the pictures control, the dispatch-request args, the detail-modal address prefill, and the Leave Report payload (`effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number)`). Prop threaded through both mounts ([`Dashboard.tsx`](../src/pages/Dashboard.tsx), [`DispatchModeHome.tsx`](../src/components/dispatchMode/DispatchModeHome.tsx)).
+
+New render smoke [`DashboardMyScheduleSection.render.test.tsx`](../src/components/dashboard/DashboardMyScheduleSection.render.test.tsx) (5 tests) pins the regression — job in neither assigned list + link in the meta map renders the blue open-photos link, not the red button — plus the genuinely-missing, whitespace-only, map-not-loaded-yet, and assigned-list-wins cases. Verified the smoke fails against the pre-fix expression. The stuck 2026-08-04 request was closed out-of-band (note: "Customer Pictures URL already set (2026-07-22) — duplicate request"). Client-only; the creation guard and self-heal for orphaned requests follow in v2.1415.
 
 ## Latest Updates (v2.1413)
 

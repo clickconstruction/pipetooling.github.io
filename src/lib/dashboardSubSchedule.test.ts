@@ -3,6 +3,7 @@ import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import {
   dedupeSubScheduleBlocks,
   partitionSubScheduleBlocksByDay,
+  resolveSubScheduleJobMeta,
   sortSubScheduleBlocksByStart,
   subScheduleJobLabel,
 } from './dashboardSubSchedule'
@@ -90,5 +91,85 @@ describe('sortSubScheduleBlocksByStart', () => {
     ]
     expect(sortSubScheduleBlocksByStart(rows).map((b) => b.id)).toEqual(['early', 'mid', 'late'])
     expect(rows.map((b) => b.id)).toEqual(['late', 'early', 'mid'])
+  })
+})
+
+describe('resolveSubScheduleJobMeta', () => {
+  const meta = {
+    job_pictures_link: 'https://drive.google.com/drive/folders/pics',
+    hcp_number: '000',
+    click_number: null,
+    job_address: '12921 FM 20 Kingsbury TX',
+  }
+
+  it('falls back to the map when the job is absent from the assigned lists', () => {
+    // The regression: a billed/paid scheduled job resolves `fromAssigned` to
+    // undefined, which used to render the red "ask Dispatch" pictures button.
+    expect(resolveSubScheduleJobMeta(undefined, meta)).toEqual(meta)
+  })
+
+  it('prefers the assigned-list row when it carries values', () => {
+    expect(
+      resolveSubScheduleJobMeta(
+        {
+          job_pictures_link: 'https://assigned',
+          hcp_number: '789',
+          click_number: '12',
+          job_address: 'Assigned Addr',
+        },
+        meta,
+      ),
+    ).toEqual({
+      job_pictures_link: 'https://assigned',
+      hcp_number: '789',
+      click_number: '12',
+      job_address: 'Assigned Addr',
+    })
+  })
+
+  it('fills per field, so a partially populated assigned row still resolves', () => {
+    expect(resolveSubScheduleJobMeta({ hcp_number: '789' }, meta)).toEqual({
+      job_pictures_link: meta.job_pictures_link,
+      hcp_number: '789',
+      click_number: null,
+      job_address: meta.job_address,
+    })
+  })
+
+  it('treats blank and whitespace-only values as absent on both sides', () => {
+    expect(
+      resolveSubScheduleJobMeta(
+        { job_pictures_link: '   ', hcp_number: '', job_address: null },
+        meta,
+      ),
+    ).toEqual(meta)
+    expect(
+      resolveSubScheduleJobMeta(null, {
+        job_pictures_link: '  ',
+        hcp_number: '',
+        click_number: '   ',
+        job_address: null,
+      }),
+    ).toEqual({
+      job_pictures_link: null,
+      hcp_number: null,
+      click_number: null,
+      job_address: null,
+    })
+  })
+
+  it('returns nulls when neither side has the job', () => {
+    expect(resolveSubScheduleJobMeta(undefined, undefined)).toEqual({
+      job_pictures_link: null,
+      hcp_number: null,
+      click_number: null,
+      job_address: null,
+    })
+  })
+
+  it('returns the original untrimmed string so display formatting is unchanged', () => {
+    expect(
+      resolveSubScheduleJobMeta({ job_address: ' 12 Main St ' }, null).job_address,
+    ).toBe(' 12 Main St ')
   })
 })
