@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1422',
+    date: '2026-08-06',
+    title: 'Pipeline: clearer section labels in the section-tools menu',
+    kind: 'fix',
+    highlights: [
+      'The Working / Billed Awaiting Payment / Paid in Full group labels in the hamburger dropdown are now centered and bolder, so it reads clearly which section each tool belongs to.',
+    ],
+  },
+  {
     version: 'v2.1421',
     date: '2026-08-06',
     title: 'Pipeline: section tools joins the stage strip',

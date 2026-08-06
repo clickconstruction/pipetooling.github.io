@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1421)
+last_updated: 2026-08-06 (v2.1422)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1422)
+
+### Pipeline: centered group labels in the section-tools dropdown (2026-08-06)
+Follow-up polish to v2.1419/v2.1421. The Working / Billed Awaiting Payment / Paid in Full group headings inside the stage-strip hamburger dropdown gain `textAlign: center` + `fontWeight: 600`, so they read as section labels over their tools rather than blending in as items. One-line style change in `JobsStagesTab.tsx`. Client-only.
 
 ## Latest Updates (v2.1421)
 

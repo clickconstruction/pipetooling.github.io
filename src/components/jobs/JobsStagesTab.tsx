@@ -1764,7 +1764,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       ),
                     }).map((group) => (
                       <div key={group.section} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem', textAlign: 'center' }}>
                           {group.section}
                         </div>
                         {group.items.map((item) => {
