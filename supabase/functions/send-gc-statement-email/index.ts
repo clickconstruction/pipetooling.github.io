@@ -87,7 +87,9 @@ serve(async (req) => {
 
     const gcCustomerId = typeof body.gc_customer_id === 'string' && body.gc_customer_id.trim() ? body.gc_customer_id.trim() : null
     const gcName = typeof body.gc_name === 'string' ? body.gc_name.trim() : ''
-    const groupBy = body.group_by === 'development' ? 'development' : 'gc'
+    // 'all' = the full GC Review report in one email ("Share all", v2.1420) —
+    // like development statements it carries no customer id.
+    const groupBy = body.group_by === 'development' ? 'development' : body.group_by === 'all' ? 'all' : 'gc'
     const toEmail = typeof body.to_email === 'string' ? body.to_email.trim() : ''
     const subject = typeof body.subject === 'string' ? body.subject.trim() : ''
     const emailHtml = typeof body.email_html === 'string' ? body.email_html.trim() : ''

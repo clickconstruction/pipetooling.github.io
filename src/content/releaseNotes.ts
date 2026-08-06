@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1420',
+    date: '2026-08-06',
+    title: 'GC Review: share the whole report at once',
+    kind: 'feature',
+    highlights: [
+      'A new Share all button at the top of GC Review opens one place to print / save the entire report as a PDF or email it from the app.',
+      'The email carries every GC section — jobs, bill-sent dates, amounts owed — plus the grand total, and can go to any address, inside or outside the company.',
+      'Sent from the app with your email as reply-to, same as per-GC statements.',
+    ],
+  },
+  {
     version: 'v2.1419',
     date: '2026-08-06',
     title: 'Pipeline: section tools in one dropdown at the top',

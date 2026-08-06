@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildGcReviewShareAllEmailHtml,
+  buildGcReviewShareAllEmailText,
   buildGcStatementEmailHtml,
   buildGcStatementEmailText,
+  gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from './gcStatementEmail'
 import type { GcReviewGroup } from '../gcReviewRollup'
@@ -72,5 +75,64 @@ describe('gcStatementEmail', () => {
     expect(text).toContain('11915 Ring Dr, Manor TX')
     expect(text).toContain('billed Jul 21, 2026')
     expect(text).toContain('Total owed: $450.00')
+  })
+})
+
+describe('gcReviewShareAllEmail', () => {
+  const second = group({
+    key: 'gc-2',
+    gcId: 'gc-2',
+    gcName: 'H & I Construction',
+    rows: [
+      {
+        ...group().rows[0]!,
+        key: 'i2',
+        jobId: 'j2',
+        hcp: '948',
+        jobName: 'Connect sink',
+        jobAddress: '12803 El Dorado, Universal City TX',
+        remaining: 1200,
+      },
+    ],
+    subtotal: 1200,
+  })
+  const report = { groups: [group(), second], grandTotal: 1650 }
+
+  it('subject names the scope, company and date', () => {
+    expect(gcReviewShareAllEmailSubject('gc', 'Aug 6, 2026')).toBe(
+      'Open balances (all GCs) — Click Plumbing and Electrical — Aug 6, 2026',
+    )
+    expect(gcReviewShareAllEmailSubject('development', 'Aug 6, 2026')).toBe(
+      'Open balances (all developments) — Click Plumbing and Electrical — Aug 6, 2026',
+    )
+  })
+
+  it('HTML renders every group as its own section plus one grand total', () => {
+    const html = buildGcReviewShareAllEmailHtml(report, { dateStr: 'Aug 6, 2026' })
+    expect(html).toContain('Open balances by GC · Aug 6, 2026')
+    expect(html).toContain('Knight Contracting')
+    expect(html).toContain('H &amp; I Construction')
+    expect(html).toContain('11915 Ring Dr, Manor TX')
+    expect(html).toContain('12803 El Dorado, Universal City TX')
+    expect(html).toContain('$450.00')
+    expect(html).toContain('$1,200.00')
+    expect(html).toContain('Total owed')
+    expect(html).toContain('$1,650.00')
+    // Recipient-safe: same vocabulary as the per-GC statement
+    expect(html).not.toContain('days past')
+    expect(html).not.toContain('Collections')
+  })
+
+  it('development grouping relabels the header scope', () => {
+    const html = buildGcReviewShareAllEmailHtml(report, { dateStr: 'Aug 6, 2026', groupBy: 'development' })
+    expect(html).toContain('Open balances by development · Aug 6, 2026')
+  })
+
+  it('plain-text variant lists each section and the grand total', () => {
+    const text = buildGcReviewShareAllEmailText(report, { dateStr: 'Aug 6, 2026' })
+    expect(text).toContain('Open balances by GC · Aug 6, 2026')
+    expect(text).toContain('Knight Contracting · 1 job · $450.00')
+    expect(text).toContain('H & I Construction · 1 job · $1,200.00')
+    expect(text).toContain('Total owed: $1,650.00')
   })
 })

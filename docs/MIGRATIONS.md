@@ -9,8 +9,8 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "175 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 5, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "176 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260806221045_gc_statement_emails_group_by_all.sql`** _(apply via `supabase db push` after merge — rides in the same push as the two entries below. Ordering tolerant: the edge function swallows audit-insert failures, so a deployed function racing this push only loses audit rows, never sends)_
+- **Purpose**: GC Review "Share all" (v2.1420) — the `send-gc-statement-email` edge function now also sends the FULL GC Review report (every GC/development section + grand total) in one email. Widens `gc_statement_emails.group_by`'s CHECK from `('gc','development')` to `('gc','development','all')`; 'all' rows carry no `gc_customer_id`.
+- **Security**: unchanged — RLS and write policies untouched; still service-role inserts only.
 
 **`20260806202622_gc_statement_emails.sql`** _(apply via `supabase db push` after merge; the 2026-08-05 contracts migration is still pending and rides in the same push. Client tolerates the table being absent — the "last sent" hint is best-effort)_
 - **Purpose**: `gc_statement_emails` audit table (v2.1417) — one row per GC statement the app emails via the `send-gc-statement-email` edge function (phase 2 of GC statements). Columns: `gc_customer_id` (FK customers, SET NULL) + `gc_name` snapshot, `group_by` gc|development, `sent_to`, `subject`, `total`, `job_count`, `sent_by` (FK users, SET NULL) + `sent_by_name`, `resend_email_id`, `sent_at`; `(gc_customer_id, sent_at desc)` index.

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1419)
+last_updated: 2026-08-06 (v2.1420)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1420)
+
+### GC Review: "Share all" — print or email the whole report (2026-08-06)
+The GC Review modal (Jobs → Pipeline → Billed Awaiting Payment) gains a **⇪ Share all** button in its header. It opens a dialog with the two whole-report paths: **Print / save as PDF** (the same all-sections print "Print all" makes — Save as PDF in the print window is the download), and **Email it from the app** — every GC/development section (job addresses, bill-sent dates, amounts owed) plus the grand total as one email, to **any address inside or outside the company**. New builders `gcReviewShareAllEmailSubject` / `buildGcReviewShareAllEmailHtml` / `buildGcReviewShareAllEmailText` in [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts) (4 new tests; the per-row/thead rendering is now shared with the per-GC statement builder, output unchanged) — same recipient-safe vocabulary as per-GC statements (no days-past-due, no Collections chips). Transport reuses [`send-gc-statement-email`](../supabase/functions/send-gc-statement-email/index.ts) with new `group_by: 'all'` (no `gc_customer_id`, like development statements; audited as `All GCs` / `All developments`); migration `20260806221045` widens the audit table's `group_by` CHECK. `SendGcStatementPayload.groupBy` widens to `GcReviewGroupBy | 'all'`. Deploy after merge: `supabase db push`, then `supabase functions deploy send-gc-statement-email --no-verify-jwt`. Help guide `track-a-general-contractor-on-a-job.md` gains the Share-all section.
 
 ## Latest Updates (v2.1419)
 

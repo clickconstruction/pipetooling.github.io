@@ -39,6 +39,13 @@ Each GC row also has {{button:outline|Copy for email}} — one click copies a **
 Prefer the app to send it? Click {{button:outline|Email…}} on the same row. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.pipetooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
 - When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.
 
+## Share the whole report
+
+The {{button:outline|⇪ Share all}} button at the top of GC Review handles the entire report at once:
+
+- **Print / save as PDF** opens the same one-report print that **Print all** makes — choose *Save as PDF* in the print window to download a copy.
+- **Email it from the app** sends every section as one email — each GC with its jobs, bill-sent dates and amounts owed, plus the grand total — to **any address, inside or outside the company**. Same clean table styling and GC-safe wording as the per-GC statement, sent from **team@noreply.pipetooling.com** with your email as the reply-to.
+
 ## What the GC does *not* change
 
 Billing. Invoices still go to the job's customer. If the GC is actually who pays a particular invoice, use **Bill to** on that invoice in Bill Customer — that's a per-invoice choice and works with or without a GC set here.

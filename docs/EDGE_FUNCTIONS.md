@@ -2123,17 +2123,17 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-gc-statement-email
 
-**Purpose** (v2.1418): Email a **GC statement** (job addresses, bill-sent dates, amounts owed — built client-side by [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts)) from GC Review's **Email…** dialog, then audit into **`gc_statement_emails`** via the **service-role** client (the table has no client write policies) and best-effort log to `email_send_log`.
+**Purpose** (v2.1418): Email a **GC statement** (job addresses, bill-sent dates, amounts owed — built client-side by [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts)) from GC Review's **Email…** dialog, then audit into **`gc_statement_emails`** via the **service-role** client (the table has no client write policies) and best-effort log to `email_send_log`. Since v2.1420 it also carries GC Review's **Share all** email — the whole report (every GC/development section + grand total) as `group_by: 'all'`.
 
 **Endpoint**: `POST /functions/v1/send-gc-statement-email`
 
-**Authentication**: Bearer JWT; **`auth.getUser`** in the function; caller's `users.role` must be dev / master_technician / assistant / controller / primary (the GC Review cohort). For `group_by: 'gc'` the `gc_customer_id` must be readable through the caller's **RLS** (blocks cross-tenant sends); the recipient address itself is office-chosen — statements often go to an AP inbox not on file. **`verify_jwt = false`** on the gateway (same pattern as `send-physical-invoice-email`).
+**Authentication**: Bearer JWT; **`auth.getUser`** in the function; caller's `users.role` must be dev / master_technician / assistant / controller / primary (the GC Review cohort). For `group_by: 'gc'` the `gc_customer_id` must be readable through the caller's **RLS** (blocks cross-tenant sends); the recipient address itself is office-chosen — statements often go to an AP inbox not on file. `'development'` and `'all'` sends carry no customer id, so they have no per-row RLS probe — the role gate is the whole check. **`verify_jwt = false`** on the gateway (same pattern as `send-physical-invoice-email`).
 
-**Body**: `gc_customer_id` (null for development statements), `gc_name`, `group_by` (`gc`|`development`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`.
+**Body**: `gc_customer_id` (null for development and Share-all sends), `gc_name` (`All GCs` / `All developments` for Share all), `group_by` (`gc`|`development`|`all`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`.
 
 **Sends** via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out).
 
-**Deploy**: `supabase functions deploy send-gc-statement-email --no-verify-jwt` if the hosted gateway still enforces JWT. Requires the `gc_statement_emails` table (migration `20260806202622`).
+**Deploy**: `supabase functions deploy send-gc-statement-email --no-verify-jwt` if the hosted gateway still enforces JWT. Requires the `gc_statement_emails` table (migration `20260806202622`); Share-all audit rows additionally need the widened `group_by` CHECK (migration `20260806221045` — a not-yet-pushed CHECK only loses the audit row, never the send).
 
 ---
 
