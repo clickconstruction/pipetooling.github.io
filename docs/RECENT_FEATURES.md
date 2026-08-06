@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1424)
+last_updated: 2026-08-06 (v2.1425)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1425)
+
+### GC statement payload RPC — Phase 1 of the gc_statement stream (2026-08-06)
+Phase 1 of making GC statements a Report Subscriptions stream (docs/REPORT_SUBSCRIPTIONS.md). Migration `20260806232759_gc_statement_email_payload.sql`: new service-role-only `get_gc_statement_email_payload(p_group_by, p_entity_id, p_include_collections)` rebuilds the GC Review rollup server-side — invoice-row/job-shell semantics copied from `get_billed_report_email_payload` (v2.1316), grouped by GC or development, `p_entity_id` NULL = whole report incl. the no-entity bucket, collections rows opt-in and flagged. **Fidelity-verified read-only against prod**: grand total $210,838.46 across 15 GC groups, Knight Contracting 10 jobs / $36,184.84 / oldest 108d, and the include-collections delta exactly $19,656.82 over 3 rows — all matching the live GC Review modal. DB-only (`supabase db push` after merge); the Phase-2 request table + cron dispatcher consume it next.
 
 ## Latest Updates (v2.1424)
 

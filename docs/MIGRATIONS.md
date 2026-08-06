@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "176 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "177 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260806232759_gc_statement_email_payload.sql`** _(apply via `supabase db push` after merge; nothing consumes it until the Phase-2 dispatcher ships, so ordering is free)_
+- **Purpose**: GC statement payload RPC (v2.1425) — `get_gc_statement_email_payload(p_group_by, p_entity_id, p_include_collections)` rebuilds the GC Review rollup server-side for the planned `gc_statement` Report Subscriptions stream. Row semantics copied from `get_billed_report_email_payload` (v2.1316); grouped by GC or development with the no-entity bucket last; fidelity-verified against prod ($210,838.46 / 15 groups / collections delta $19,656.82).
+- **Security**: SECURITY DEFINER, EXECUTE revoked from PUBLIC/anon/authenticated, granted to service_role only.
 
 **`20260806221045_gc_statement_emails_group_by_all.sql`** _(apply via `supabase db push` after merge — rides in the same push as the two entries below. Ordering tolerant: the edge function swallows audit-insert failures, so a deployed function racing this push only loses audit rows, never sends)_
 - **Purpose**: GC Review "Share all" (v2.1420) — the `send-gc-statement-email` edge function now also sends the FULL GC Review report (every GC/development section + grand total) in one email. Widens `gc_statement_emails.group_by`'s CHECK from `('gc','development')` to `('gc','development','all')`; 'all' rows carry no `gc_customer_id`.
