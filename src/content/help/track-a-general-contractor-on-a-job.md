@@ -31,6 +31,10 @@ On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
 - Hit {{button:outline|Print}} on any GC row for that GC's **statement** — their customers, bill-out dates, days outstanding, and amounts. **Print all** makes one report of every section.
+
+## Send a statement to a GC
+
+Each GC row also has {{button:outline|Copy for email}} — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language.
 - When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.
 
 ## What the GC does *not* change

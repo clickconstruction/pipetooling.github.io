@@ -12,6 +12,8 @@ type JobsGcReviewModalProps = {
   collectionsRows: StageRow[]
   /** Shell glue: build the statement HTML and open the print window (toast on popup block). */
   onPrint: (groups: GcReviewGroup[], groupBy: GcReviewGroupBy) => void
+  /** Shell glue: copy the GC-facing statement (rich HTML + plain text) for pasting into an email (v2.1414). */
+  onCopyForEmail: (group: GcReviewGroup, groupBy: GcReviewGroupBy) => void
 }
 
 /**
@@ -23,7 +25,7 @@ type JobsGcReviewModalProps = {
  * gcReviewRollup kernel so the grand total reconciles with the section header
  * by construction.
  */
-export function JobsGcReviewModal({ open, onClose, billedActiveRows, collectionsRows, onPrint }: JobsGcReviewModalProps) {
+export function JobsGcReviewModal({ open, onClose, billedActiveRows, collectionsRows, onPrint, onCopyForEmail }: JobsGcReviewModalProps) {
   const [includeCollections, setIncludeCollections] = useState(false)
   const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
   const anyDevelopment = useMemo(
@@ -165,13 +167,34 @@ export function JobsGcReviewModal({ open, onClose, billedActiveRows, collections
                   {g.jobCount} job{g.jobCount === 1 ? '' : 's'} · ${formatCurrency(g.subtotal)} outstanding
                   {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
                 </span>
+                {!g.isNoGc ? (
+                  <button
+                    type="button"
+                    onClick={() => onCopyForEmail(g, effectiveGroupBy)}
+                    title={`Copy the ${g.gcName} statement to paste into an email`}
+                    aria-label={`Copy statement for ${g.gcName} for email`}
+                    style={{
+                      marginLeft: 'auto',
+                      padding: '0.2rem 0.6rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 4,
+                      background: 'var(--surface)',
+                      cursor: 'pointer',
+                      color: 'var(--text-700)',
+                    }}
+                  >
+                    Copy for email
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => onPrint([g], effectiveGroupBy)}
                   title={`Print the ${g.gcName} statement`}
                   aria-label={`Print statement for ${g.gcName}`}
                   style={{
-                    marginLeft: 'auto',
+                    marginLeft: g.isNoGc ? 'auto' : 0,
                     padding: '0.2rem 0.6rem',
                     fontSize: '0.75rem',
                     fontWeight: 500,
