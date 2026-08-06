@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
 import {
+  buildGcReviewShareAllEmailHtml,
+  buildGcReviewShareAllEmailText,
   buildGcStatementEmailHtml,
   buildGcStatementEmailText,
+  gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
@@ -13,7 +16,8 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 export type SendGcStatementPayload = {
   gcCustomerId: string | null
   gcName: string
-  groupBy: GcReviewGroupBy
+  /** 'all' = the whole GC Review report in one email ("Share all", v2.1420). */
+  groupBy: GcReviewGroupBy | 'all'
   toEmail: string
   subject: string
   emailHtml: string
@@ -67,6 +71,12 @@ export function JobsGcReviewModal({
   const [emailDialogSubject, setEmailDialogSubject] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  /** "Share all" dialog (v2.1420): print or email the whole report. */
+  const [shareAllOpen, setShareAllOpen] = useState(false)
+  const [shareAllTo, setShareAllTo] = useState('')
+  const [shareAllSubject, setShareAllSubject] = useState('')
+  const [shareAllSending, setShareAllSending] = useState(false)
+  const [shareAllError, setShareAllError] = useState<string | null>(null)
   const anyDevelopment = useMemo(
     () => [...billedActiveRows, ...collectionsRows].some((r) => r.job.development?.id),
     [billedActiveRows, collectionsRows],
@@ -151,6 +161,37 @@ export function JobsGcReviewModal({
                 By Development
               </button>
             </span>
+          ) : null}
+          {rollup.groups.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShareAllOpen(true)
+                setShareAllTo('')
+                setShareAllSubject(
+                  gcReviewShareAllEmailSubject(
+                    effectiveGroupBy,
+                    new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                  ),
+                )
+                setShareAllError(null)
+              }}
+              title="Print the whole report or email it from the app"
+              aria-label="Share the whole GC Review report"
+              style={{
+                flexShrink: 0,
+                padding: '0.25rem 0.7rem',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: 'var(--surface)',
+                cursor: 'pointer',
+                color: 'var(--text-700)',
+              }}
+            >
+              <span aria-hidden>⇪</span> Share all
+            </button>
           ) : null}
           <button
             type="button"
@@ -257,7 +298,7 @@ export function JobsGcReviewModal({
                       color: 'var(--text-700)',
                     }}
                   >
-                    Copy for email
+                    Copy
                   </button>
                 ) : null}
                 <button
@@ -267,7 +308,7 @@ export function JobsGcReviewModal({
                   aria-label={`Print statement for ${g.gcName}`}
                   style={{
                     marginLeft: g.isNoGc ? 'auto' : 0,
-                    padding: '0.2rem 0.6rem',
+                    padding: '0.2rem 0.45rem',
                     fontSize: '0.75rem',
                     fontWeight: 500,
                     border: '1px solid var(--border-strong)',
@@ -277,7 +318,7 @@ export function JobsGcReviewModal({
                     color: 'var(--text-700)',
                   }}
                 >
-                  Print
+                  <span aria-hidden>🖨</span>
                 </button>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
@@ -457,6 +498,130 @@ export function JobsGcReviewModal({
               >
                 {emailSending ? 'Sending…' : 'Send statement'}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {shareAllOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Share the whole GC Review report"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 61,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !shareAllSending) setShareAllOpen(false)
+          }}
+        >
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)' }}>
+            <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>Share the whole report</h3>
+            <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {rollup.groups.length} {byDevelopment ? 'development' : 'GC'} section{rollup.groups.length === 1 ? '' : 's'} ·{' '}
+              ${formatCurrency(rollup.grandTotal)} outstanding
+              {includeCollections ? ' (Collections included)' : ''}
+            </p>
+            <button
+              type="button"
+              disabled={shareAllSending}
+              onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
+              title="Opens the print window — choose Save as PDF there to download a copy"
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.8rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: 'var(--surface)',
+                cursor: 'pointer',
+                color: 'var(--text-700)',
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                marginBottom: '1rem',
+              }}
+            >
+              🖨 Print / save as PDF
+            </button>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem' }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600 }}>Email it from the app</p>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>To — anyone, inside or outside the company</label>
+              <input
+                type="email"
+                value={shareAllTo}
+                onChange={(e) => setShareAllTo(e.target.value)}
+                placeholder="name@example.com"
+                disabled={shareAllSending}
+                style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
+              />
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Subject</label>
+              <input
+                type="text"
+                value={shareAllSubject}
+                onChange={(e) => setShareAllSubject(e.target.value)}
+                disabled={shareAllSending}
+                style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
+              />
+              <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                Every section above as one email — job addresses, bill-sent dates, amounts owed, and the grand total. Sent
+                from team@noreply.pipetooling.com with your email as reply-to.
+              </div>
+              {shareAllError ? (
+                <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{shareAllError}</p>
+              ) : null}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  disabled={shareAllSending}
+                  onClick={() => setShareAllOpen(false)}
+                  style={{ padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={shareAllSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareAllTo.trim())}
+                  onClick={() => {
+                    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const report = { groups: rollup.groups, grandTotal: rollup.grandTotal }
+                    setShareAllSending(true)
+                    setShareAllError(null)
+                    void onSendStatement({
+                      gcCustomerId: null,
+                      gcName: byDevelopment ? 'All developments' : 'All GCs',
+                      groupBy: 'all',
+                      toEmail: shareAllTo.trim(),
+                      subject: shareAllSubject.trim() || gcReviewShareAllEmailSubject(effectiveGroupBy, dateStr),
+                      emailHtml: buildGcReviewShareAllEmailHtml(report, { dateStr, groupBy: effectiveGroupBy }),
+                      emailText: buildGcReviewShareAllEmailText(report, { dateStr, groupBy: effectiveGroupBy }),
+                      total: rollup.grandTotal,
+                      jobCount: rollup.groups.reduce((s, g) => s + g.jobCount, 0),
+                    }).then((res) => {
+                      setShareAllSending(false)
+                      if (res.ok) {
+                        setShareAllOpen(false)
+                      } else {
+                        setShareAllError(res.error || 'Send failed — try again.')
+                      }
+                    })
+                  }}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    border: 'none',
+                    borderRadius: 4,
+                    background: '#3b82f6',
+                    color: 'white',
+                    cursor: shareAllSending ? 'wait' : 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  {shareAllSending ? 'Sending…' : 'Send report'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
