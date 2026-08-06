@@ -25,6 +25,7 @@ import {
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import {
   billedStageRowAgingBucket,
@@ -110,6 +111,7 @@ import {
 } from '../../lib/jobsStagesBoard'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
+import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
@@ -487,6 +489,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // "⋯" tools menu right of the Stages search (v2.1049) — home of every
   // toolbar control that is not New Job or search.
   const [stagesToolsMenuOpen, setStagesToolsMenuOpen] = useState(false)
+  const [stagesSectionToolsMenuOpen, setStagesSectionToolsMenuOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
     invoiceId: string
@@ -1687,6 +1690,127 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               width: '100%',
             }}
           >
+            {/* Section tools (v2.1419): the stage section headers' action buttons,
+                reachable from the jump bar without scrolling the board. */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setStagesSectionToolsMenuOpen((o) => !o)}
+                title="Section tools — quick access to the stage section buttons"
+                aria-label="Section tools"
+                aria-haspopup="menu"
+                aria-expanded={stagesSectionToolsMenuOpen}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 32,
+                  padding: 0,
+                  border: 'none',
+                  borderRadius: 8,
+                  background: stagesSectionToolsMenuOpen ? 'var(--bg-blue-tint)' : 'transparent',
+                  cursor: 'pointer',
+                  color: stagesSectionToolsMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
+                }}
+              >
+                <StagesSectionToolsIcon size={16} />
+              </button>
+              {stagesSectionToolsMenuOpen ? (
+                <>
+                  <div
+                    onClick={() => setStagesSectionToolsMenuOpen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 120 }}
+                  />
+                  <div
+                    role="menu"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 'calc(100% + 4px)',
+                      zIndex: 121,
+                      minWidth: 250,
+                      padding: '0.3rem',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 6,
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                    }}
+                  >
+                    {buildStagesSectionToolsMenu({
+                      authRole,
+                      billedRowCount: stagesBoardLists.billedActiveRows.length,
+                      collectionsRowCount: stagesBoardLists.collectionsRows.length,
+                      arBankTxUnallocatedCount:
+                        typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null,
+                      capableToBillTotalFormatted: formatCurrencyNoCents(
+                        capableToBillTotalFromWorking(stagesBoardLists.working),
+                      ),
+                    }).map((group) => (
+                      <div key={group.section} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
+                          {group.section}
+                        </div>
+                        {group.items.map((item) => {
+                          const onSelect: Record<StagesSectionToolKey, () => void> = {
+                            'capable-to-bill': () => setCapableToBillModalOpen(true),
+                            'gc-review': () => setGcReviewModalOpen(true),
+                            'accounts-receivable': () => setBankPaymentsModalOpen(true),
+                            'billed-share-print': () => setBilledShareModalOpen(true),
+                            'paid-notifications': () => setPaymentEmailSettingsOpen(true),
+                            'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
+                          }
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              disabled={item.disabled}
+                              title={item.title}
+                              onClick={() => {
+                                setStagesSectionToolsMenuOpen(false)
+                                onSelect[item.key]()
+                              }}
+                              style={{
+                                ...stagesToolsMenuItemStyle,
+                                ...(item.disabled ? { cursor: 'default', opacity: 0.5 } : {}),
+                              }}
+                            >
+                              <span>{item.label}</span>
+                              {typeof item.badgeCount === 'number' ? (
+                                <span
+                                  aria-hidden
+                                  style={{
+                                    minWidth: 18,
+                                    padding: '0 5px',
+                                    height: 18,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 9999,
+                                    background: '#f59e0b',
+                                    color: '#1c1917',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    fontVariantNumeric: 'tabular-nums',
+                                    lineHeight: 1,
+                                    boxSizing: 'border-box',
+                                  }}
+                                >
+                                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                                </span>
+                              ) : null}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
             <div
               style={{
                 display: 'flex',
