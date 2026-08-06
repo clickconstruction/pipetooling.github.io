@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1423',
+    date: '2026-08-06',
+    title: 'GC Review: tidier layout',
+    kind: 'feature',
+    highlights: [
+      'Each GC row\u2019s Email\u2026 / Copy / Print actions now live in one Share dropdown.',
+      'Share all and Print all sit together, centered under the title, with the Include Collections toggle centered below them.',
+      'The description line is shorter \u2014 just what the view shows.',
+    ],
+  },
+  {
     version: 'v2.1422',
     date: '2026-08-06',
     title: 'Pipeline: clearer section labels in the section-tools menu',
