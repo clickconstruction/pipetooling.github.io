@@ -35,6 +35,8 @@ On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {
 ## Send a statement to a GC
 
 Each GC row also has {{button:outline|Copy for email}} — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language.
+
+Prefer the app to send it? Click {{button:outline|Email…}} on the same row. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.pipetooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
 - When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.
 
 ## What the GC does *not* change
