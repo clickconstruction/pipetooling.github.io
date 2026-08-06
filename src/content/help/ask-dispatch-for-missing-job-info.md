@@ -21,6 +21,15 @@ You'll see a confirmation toast. If someone already asked, tapping again just te
 
 Works the same way: a blue photos icon opens the job's Customer Pictures folder, and a red one means no folder is linked — tap it to ask Dispatch to set one up.
 
+If the job turns out to already have a folder, tapping tells you so instead of sending a note:
+
+:::example What you'll see
+{{chip:blue|This job already has a Customer Pictures link — no need to ask Dispatch.}}
+:::
+
+That happens when your screen is showing a stale copy of the job. Nothing is sent, and any earlier request for that job is cleared automatically.
+
 ## Related
 
 - Dispatch sees these as ordinary open requests in the Dispatch inbox and clears them once the info is added.
+- Requests for a job that already has a photos folder close themselves — Dispatch no longer has to hunt for them.

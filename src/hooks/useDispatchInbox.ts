@@ -10,6 +10,11 @@ import type {
 } from '../components/DispatchInboxSection'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { DISPATCH_REQUESTS_CHANGED_EVENT } from '../lib/dispatchRequestHelpers'
+import {
+  jobIdsForPicturesRequestSweep,
+  pickOrphanedPicturesRequestIds,
+  PICTURES_REQUEST_SELF_HEAL_NOTE,
+} from '../lib/picturesDispatchRequests'
 
 const DISPATCH_REQUEST_SELECT =
   'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
@@ -32,6 +37,15 @@ export function useDispatchInbox() {
   const [dispatchNoteSubmitRequestId, setDispatchNoteSubmitRequestId] = useState<string | null>(null)
   const [dispatchNoteDraft, setDispatchNoteDraft] = useState('')
   const expandedDispatchRequestIdRef = useRef<string | null>(null)
+  /**
+   * Request ids this session has already tried to self-heal. Without it, an
+   * update that silently no-ops (RLS, or a row another tab reopened) would be
+   * retried on every reload the close itself triggers — an endless loop.
+   */
+  const sweptPicturesRequestIdsRef = useRef<Set<string>>(new Set())
+  const picturesSweepRunningRef = useRef(false)
+  /** Breaks the sweep ↔ loader cycle (the loader triggers the sweep). */
+  const loadDispatchRequestsRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -55,6 +69,65 @@ export function useDispatchInbox() {
       cancelled = true
     }
   }, [authUser?.id, role])
+
+  /**
+   * Retire open `link_job_pictures` requests whose job already has a pictures
+   * link. Those can never auto-close on their own — the auto-close in
+   * `JobFormModal` fires on a blank→set transition of `job_pictures_link`, so a
+   * request filed after the link was set stays open until someone closes it by
+   * hand. Runs only for dispatch-inbox-eligible viewers, i.e. exactly the
+   * people who can close a request anyway.
+   *
+   * Best-effort and silent: no toast, no error surfacing. A blocked update just
+   * leaves the row for a human, and the id is remembered so we never retry it
+   * into a reload loop.
+   */
+  const selfHealOrphanedPicturesRequests = useCallback(
+    async (rows: DispatchInboxRow[]) => {
+      if (!authUser?.id) return
+      if (picturesSweepRunningRef.current) return
+      const candidateRows = rows.filter((r) => !sweptPicturesRequestIdsRef.current.has(r.id))
+      const jobIds = jobIdsForPicturesRequestSweep(candidateRows)
+      if (jobIds.length === 0) return
+      picturesSweepRunningRef.current = true
+      try {
+        const jobRows = await withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger').select('id, job_pictures_link').in('id', jobIds),
+          'dispatch inbox pictures-link sweep',
+        )
+        const links = new Map<string, string | null>(
+          ((jobRows ?? []) as Array<{ id: string; job_pictures_link: string | null }>).map((r) => [
+            r.id,
+            r.job_pictures_link,
+          ]),
+        )
+        const orphanIds = pickOrphanedPicturesRequestIds(candidateRows, links)
+        if (orphanIds.length === 0) return
+        for (const id of orphanIds) sweptPicturesRequestIdsRef.current.add(id)
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('dispatch_requests')
+              .update({
+                status: 'closed',
+                closed_at: new Date().toISOString(),
+                closed_by_user_id: authUser.id,
+                closed_note: PICTURES_REQUEST_SELF_HEAL_NOTE,
+              })
+              .in('id', orphanIds)
+              .eq('status', 'open'),
+          'close orphaned link_job_pictures requests',
+        )
+        loadDispatchRequestsRef.current?.()
+      } catch (e) {
+        console.warn('dispatch inbox pictures-link sweep failed', e)
+      } finally {
+        picturesSweepRunningRef.current = false
+      }
+    },
+    [authUser?.id],
+  )
 
   const loadDispatchRequests = useCallback(() => {
     if (!authUser?.id || !dispatchInboxEligible) {
@@ -122,8 +195,11 @@ export function useDispatchInbox() {
 
       setDispatchRequests(merged)
       setDispatchRequestsLoading(false)
+      void selfHealOrphanedPicturesRequests(merged)
     })
-  }, [authUser?.id, dispatchInboxEligible])
+  }, [authUser?.id, dispatchInboxEligible, selfHealOrphanedPicturesRequests])
+
+  loadDispatchRequestsRef.current = loadDispatchRequests
 
   const fetchDismissedDispatchInboxRows = useCallback(async (): Promise<DispatchInboxDismissedRow[]> => {
     if (!authUser?.id || !dispatchInboxEligible) return []

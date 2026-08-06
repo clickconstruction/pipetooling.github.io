@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1415',
+    date: '2026-08-06',
+    title: 'Photos requests stop piling up on jobs that already have a folder',
+    kind: 'fix',
+    highlights: [
+      'Asking Dispatch for a photos folder on a job that already has one now tells you so instead of filing a note nobody can clear.',
+      'Old requests like that close themselves the next time Dispatch opens the inbox, so the list stops carrying dead items.',
+    ],
+  },
+  {
     version: 'v2.1414',
     date: '2026-08-06',
     title: 'Fix: "no customer photos" showing on jobs that had photos',

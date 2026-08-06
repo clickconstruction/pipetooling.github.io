@@ -7,10 +7,23 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1414)
+last_updated: 2026-08-06 (v2.1415)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1415)
+
+### Customer Pictures dispatch requests: creation guard + self-heal (2026-08-06)
+Follow-on to v2.1414, which fixed the *cause* (My Schedule showing the red "no photos" button on billed/paid jobs that had a link). This closes the two remaining gaps that let such a request exist and then persist forever.
+
+**The trap**: the only auto-close for `pending_action = 'link_job_pictures'` lives in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) `persistIdentitySlice` and fires on a **blank→set transition** of `jobs_ledger.job_pictures_link`. A request filed against a job that already has a link can therefore never auto-close — the link never goes blank, so the transition never fires. [`linkJobPicturesDispatchRequest.ts`](../src/lib/linkJobPicturesDispatchRequest.ts) deduped only against an existing **open request**, never against the job's link, so that state was reachable in one tap.
+
+**Guard**: the creator now reads `job_pictures_link` alongside the open-request probe (one `Promise.all`, no added latency) and routes through new kernel [`picturesDispatchRequests.ts`](../src/lib/picturesDispatchRequests.ts) → `decidePicturesDispatchRequest()` returning `create` / `already-open` / `already-linked`. **`already-linked` wins over `already-open`**: when both hold, the row IS the unclosable orphan, so the truthful message plus a close is strictly better than "already sent". Toast copy lives in the kernel (`PICTURES_DISPATCH_REQUEST_MESSAGES`) so the three paths can't drift.
+
+**Self-heal**: [`useDispatchInbox.ts`](../src/hooks/useDispatchInbox.ts) sweeps after each load — `jobIdsForPicturesRequestSweep()` collects job ids from open pictures requests, one `jobs_ledger` read fetches their links, `pickOrphanedPicturesRequestIds()` selects the redundant ones, and a single `.in('id', …).eq('status','open')` update closes them with note "Customer Pictures URL already set — closed automatically". Three deliberate safety properties: (1) a job id **absent** from the links map is never swept, so a partial or RLS-filtered read can't close a request whose link we couldn't see; (2) a `sweptPicturesRequestIdsRef` set means an update that silently no-ops (RLS, concurrent reopen) is never retried — otherwise the close→reload→sweep cycle would loop forever; (3) it runs only for `dispatchInboxEligible` viewers, i.e. exactly the people who can already close requests, and fails silently to `console.warn` rather than toasting field users about housekeeping.
+
+Kernel has 12 tests (decision matrix incl. whitespace-only links/ids; sweep picker incl. the never-sweep-unread-job and ignore-other-pending-actions cases). Help guide [`ask-dispatch-for-missing-job-info.md`](../src/content/help/ask-dispatch-for-missing-job-info.md) gains the already-linked response and a note that stale requests clear themselves. Client-only — no migration, no edge function.
 
 ## Latest Updates (v2.1414)
 
