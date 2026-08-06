@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1420)
+last_updated: 2026-08-06 (v2.1421)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1421)
+
+### Pipeline: Section tools moves into the stage strip, hamburger icon (2026-08-06)
+Follow-up to v2.1419. The Section tools dropdown button moves from the far left of the jump-bar row to **inside the centered stage strip, immediately left of Waiting** — it now reads as part of the Waiting → Working → … group — and [`StagesSectionToolsIcon`](../src/components/icons/StagesSectionToolsIcon.tsx) swaps the magnifying-glass-chart glyph for the Font Awesome **bars (hamburger)** icon (448×512 viewBox; component name unchanged). Button slims 32→26px to sit flush with the strip's text height. Dropdown contents, kernel, and permissions unchanged. Help guide `ready-to-bill-pipeline.md` wording updated. Client-only.
 
 ## Latest Updates (v2.1420)
 

@@ -1,8 +1,9 @@
 /**
  * Font Awesome Free v7.3.1 — https://fontawesome.com License — https://fontawesome.com/license/free
  * Copyright 2026 Fonticons, Inc.
- * Icon: magnifying-glass-chart (solid), native 640×640 viewBox. Marks the
- * Pipeline "Section tools" dropdown on the stage jump bar (Jobs → Pipeline).
+ * Icon: bars / hamburger menu (solid), native 448×512 viewBox. Marks the
+ * Pipeline "Section tools" dropdown that sits just left of the Waiting →
+ * Working → … stage jump strip (Jobs → Pipeline).
  */
 import type { CSSProperties } from 'react'
 
@@ -16,7 +17,7 @@ export default function StagesSectionToolsIcon({ size = 12, style }: Props) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 640 640"
+      viewBox="0 0 448 512"
       {...(fixedSize ? { width: size, height: size } : {})}
       aria-hidden
       focusable="false"
@@ -24,7 +25,7 @@ export default function StagesSectionToolsIcon({ size = 12, style }: Props) {
     >
       <path
         fill="currentColor"
-        d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM168 280L168 344C168 357.3 178.7 368 192 368C205.3 368 216 357.3 216 344L216 280C216 266.7 205.3 256 192 256C178.7 256 168 266.7 168 280zM248 184L248 344C248 357.3 258.7 368 272 368C285.3 368 296 357.3 296 344L296 184C296 170.7 285.3 160 272 160C258.7 160 248 170.7 248 184zM328 248L328 344C328 357.3 338.7 368 352 368C365.3 368 376 357.3 376 344L376 248C376 234.7 365.3 224 352 224C338.7 224 328 234.7 328 248z"
+        d="M0 96C0 78.3 14.3 64 32 64l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 128C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 288c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32L32 448c-17.7 0-32-14.3-32-32s14.3-32 32-32l384 0c17.7 0 32 14.3 32 32z"
       />
     </svg>
   )
