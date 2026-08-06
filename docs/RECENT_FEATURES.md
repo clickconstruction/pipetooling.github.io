@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1422)
+last_updated: 2026-08-06 (v2.1423)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1423)
+
+### GC Review: Share dropdown per GC + tidier header layout (2026-08-06)
+Four layout changes to the GC Review modal ([`JobsGcReviewModal.tsx`](../src/components/jobs/JobsGcReviewModal.tsx)): (1) each real GC row's Email… / Copy / 🖨 buttons collapse into one **Share ▾** dropdown (`shareMenuGroupKey` state, one open at a time, backdrop z62 / menu z63; the No-GC bucket keeps its plain print button); (2) the description drops the "Set a GC in Edit Job → Customer." coaching sentence (both GC and development variants); (3) **⇪ Share all** moves out of the header into a centered row beside a relocated **🖨 Print all** (previously next to the bottom Total, which now shows just the amount); (4) the Include Collections checkbox centers under those buttons. All actions unchanged — pure layout. Help guide `track-a-general-contractor-on-a-job.md` updated. Client-only.
 
 ## Latest Updates (v2.1422)
 

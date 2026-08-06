@@ -30,18 +30,18 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on.
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
-- Hit the {{button:outline|🖨}} print button on any GC row for that GC's **statement** — their customers, bill-out dates, days outstanding, and amounts. **Print all** makes one report of every section.
+- Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Email…**, **Copy**, and **Print**.
 
 ## Send a statement to a GC
 
-Each GC row also has {{button:outline|Copy}} — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language.
+Pick **Copy** from a GC row's {{button:outline|Share}} menu — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language. **Print** in the same menu makes that GC's printable statement.
 
-Prefer the app to send it? Click {{button:outline|Email…}} on the same row. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.pipetooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
+Prefer the app to send it? Choose **Email…** from the same Share menu. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.pipetooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
 - When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.
 
 ## Share the whole report
 
-The {{button:outline|⇪ Share all}} button at the top of GC Review handles the entire report at once:
+Two centered buttons under the GC Review title handle the entire report at once. {{button:outline|🖨 Print all}} prints every section as one report, and {{button:outline|⇪ Share all}} opens the whole-report dialog:
 
 - **Print / save as PDF** opens the same one-report print that **Print all** makes — choose *Save as PDF* in the print window to download a copy.
 - **Email it from the app** sends every section as one email — each GC with its jobs, bill-sent dates and amounts owed, plus the grand total — to **any address, inside or outside the company**. Same clean table styling and GC-safe wording as the per-GC statement, sent from **team@noreply.pipetooling.com** with your email as the reply-to.

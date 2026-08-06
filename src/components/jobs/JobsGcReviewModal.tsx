@@ -13,6 +13,20 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
+const gcShareMenuItemStyle: React.CSSProperties = {
+  display: 'block',
+  width: '100%',
+  padding: '0.45rem 0.75rem',
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  fontSize: '0.8125rem',
+  color: 'var(--text-gray-800)',
+  textAlign: 'left',
+  borderRadius: 4,
+  whiteSpace: 'nowrap',
+}
+
 export type SendGcStatementPayload = {
   gcCustomerId: string | null
   gcName: string
@@ -77,6 +91,8 @@ export function JobsGcReviewModal({
   const [shareAllSubject, setShareAllSubject] = useState('')
   const [shareAllSending, setShareAllSending] = useState(false)
   const [shareAllError, setShareAllError] = useState<string | null>(null)
+  /** Per-GC "Share" dropdown (v2.1423) — the open group's key, one at a time. */
+  const [shareMenuGroupKey, setShareMenuGroupKey] = useState<string | null>(null)
   const anyDevelopment = useMemo(
     () => [...billedActiveRows, ...collectionsRows].some((r) => r.job.development?.id),
     [billedActiveRows, collectionsRows],
@@ -162,7 +178,24 @@ export function JobsGcReviewModal({
               </button>
             </span>
           ) : null}
-          {rollup.groups.length > 0 ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+          >
+            ×
+          </button>
+        </div>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          {byDevelopment ? (
+            <>Billed Awaiting Payment grouped by each job&rsquo;s development, with bill-out dates.</>
+          ) : (
+            <>Billed Awaiting Payment grouped by each job&rsquo;s GC/Builder, with bill-out dates.</>
+          )}
+        </p>
+        {rollup.groups.length > 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <button
               type="button"
               onClick={() => {
@@ -179,7 +212,6 @@ export function JobsGcReviewModal({
               title="Print the whole report or email it from the app"
               aria-label="Share the whole GC Review report"
               style={{
-                flexShrink: 0,
                 padding: '0.25rem 0.7rem',
                 fontSize: '0.8125rem',
                 fontWeight: 500,
@@ -192,32 +224,36 @@ export function JobsGcReviewModal({
             >
               <span aria-hidden>⇪</span> Share all
             </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-          >
-            ×
-          </button>
+            <button
+              type="button"
+              onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
+              title={byDevelopment ? 'Print every development section as one report' : 'Print every GC section as one report'}
+              style={{
+                padding: '0.25rem 0.7rem',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: 'var(--surface)',
+                cursor: 'pointer',
+                color: 'var(--text-700)',
+              }}
+            >
+              <span aria-hidden>🖨</span> Print all
+            </button>
+          </div>
+        ) : null}
+        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={includeCollections}
+              onChange={() => setIncludeCollections((p) => !p)}
+              style={{ margin: 0 }}
+            />
+            Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
+          </label>
         </div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {byDevelopment ? (
-            <>Billed Awaiting Payment grouped by each job&rsquo;s development, with bill-out dates. Set a development in Edit Job → Project | Plans | Bid | Development.</>
-          ) : (
-            <>Billed Awaiting Payment grouped by each job&rsquo;s GC/Builder, with bill-out dates. Set a GC in Edit Job → Customer.</>
-          )}
-        </p>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '1rem', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={includeCollections}
-            onChange={() => setIncludeCollections((p) => !p)}
-            style={{ margin: 0 }}
-          />
-          Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
-        </label>
         {rollup.groups.length === 0 ? (
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>No billed jobs awaiting payment.</p>
         ) : (
@@ -253,21 +289,100 @@ export function JobsGcReviewModal({
                   </span>
                 ) : null}
                 {!g.isNoGc ? (
+                  /* Share dropdown (v2.1423): Email… / Copy / Print for this GC in one menu. */
+                  <div style={{ position: 'relative', marginLeft: 'auto', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShareMenuGroupKey((k) => (k === g.key ? null : g.key))}
+                      title={`Share the ${g.gcName} statement — email, copy, or print`}
+                      aria-label={`Share statement for ${g.gcName}`}
+                      aria-haspopup="menu"
+                      aria-expanded={shareMenuGroupKey === g.key}
+                      style={{
+                        padding: '0.2rem 0.6rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 4,
+                        background: shareMenuGroupKey === g.key ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        cursor: 'pointer',
+                        color: shareMenuGroupKey === g.key ? 'var(--text-link)' : 'var(--text-700)',
+                      }}
+                    >
+                      Share <span aria-hidden style={{ fontSize: '0.625rem' }}>▾</span>
+                    </button>
+                    {shareMenuGroupKey === g.key ? (
+                      <>
+                        <div onClick={() => setShareMenuGroupKey(null)} style={{ position: 'fixed', inset: 0, zIndex: 62 }} />
+                        <div
+                          role="menu"
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 'calc(100% + 4px)',
+                            zIndex: 63,
+                            minWidth: 150,
+                            padding: '0.3rem',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: 6,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShareMenuGroupKey(null)
+                              setEmailDialogGroup(g)
+                              setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
+                              setEmailDialogSubject(
+                                gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
+                              )
+                              setEmailError(null)
+                            }}
+                            title={`Email the ${g.gcName} statement from the app`}
+                            style={gcShareMenuItemStyle}
+                          >
+                            Email…
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShareMenuGroupKey(null)
+                              onCopyForEmail(g, effectiveGroupBy)
+                            }}
+                            title={`Copy the ${g.gcName} statement to paste into an email`}
+                            style={gcShareMenuItemStyle}
+                          >
+                            Copy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShareMenuGroupKey(null)
+                              onPrint([g], effectiveGroupBy)
+                            }}
+                            title={`Print the ${g.gcName} statement`}
+                            style={gcShareMenuItemStyle}
+                          >
+                            Print
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      setEmailDialogGroup(g)
-                      setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
-                      setEmailDialogSubject(
-                        gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
-                      )
-                      setEmailError(null)
-                    }}
-                    title={`Email the ${g.gcName} statement from the app`}
-                    aria-label={`Email statement for ${g.gcName}`}
+                    onClick={() => onPrint([g], effectiveGroupBy)}
+                    title={`Print the ${g.gcName} statement`}
+                    aria-label={`Print statement for ${g.gcName}`}
                     style={{
                       marginLeft: 'auto',
-                      padding: '0.2rem 0.6rem',
+                      padding: '0.2rem 0.45rem',
                       fontSize: '0.75rem',
                       fontWeight: 500,
                       border: '1px solid var(--border-strong)',
@@ -277,49 +392,9 @@ export function JobsGcReviewModal({
                       color: 'var(--text-700)',
                     }}
                   >
-                    Email…
+                    <span aria-hidden>🖨</span>
                   </button>
-                ) : null}
-                {!g.isNoGc ? (
-                  <button
-                    type="button"
-                    onClick={() => onCopyForEmail(g, effectiveGroupBy)}
-                    title={`Copy the ${g.gcName} statement to paste into an email`}
-                    aria-label={`Copy statement for ${g.gcName} for email`}
-                    style={{
-                      marginLeft: 0,
-                      padding: '0.2rem 0.6rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                      color: 'var(--text-700)',
-                    }}
-                  >
-                    Copy
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => onPrint([g], effectiveGroupBy)}
-                  title={`Print the ${g.gcName} statement`}
-                  aria-label={`Print statement for ${g.gcName}`}
-                  style={{
-                    marginLeft: g.isNoGc ? 'auto' : 0,
-                    padding: '0.2rem 0.45rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    background: 'var(--surface)',
-                    cursor: 'pointer',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  <span aria-hidden>🖨</span>
-                </button>
+                )}
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
@@ -381,28 +456,7 @@ export function JobsGcReviewModal({
             fontWeight: 600,
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
-            Total
-            {rollup.groups.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
-                title={byDevelopment ? 'Print every development section as one report' : 'Print every GC section as one report'}
-                style={{
-                  padding: '0.2rem 0.6rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  background: 'var(--surface)',
-                  cursor: 'pointer',
-                  color: 'var(--text-700)',
-                }}
-              >
-                Print all
-              </button>
-            ) : null}
-          </span>
+          <span>Total</span>
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(rollup.grandTotal)}</span>
         </div>
       </div>
