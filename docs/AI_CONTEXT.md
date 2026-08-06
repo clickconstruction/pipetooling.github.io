@@ -206,7 +206,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`). There is no render-test harness — testable logic goes in kernels, components stay thin. ~230 test files.
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~440 test files.
 
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
@@ -309,4 +309,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-08-01
+last_updated: 2026-08-06

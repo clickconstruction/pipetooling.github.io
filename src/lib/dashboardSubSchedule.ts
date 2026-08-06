@@ -53,3 +53,44 @@ export type SubScheduleDayPartition = {
   todayBlocks: JobScheduleBlockRow[]
   tomorrowBlocks: JobScheduleBlockRow[]
 }
+
+/**
+ * Per-job fields a My Schedule row needs that the Dashboard's assigned-job
+ * lists cannot supply. `list_assigned_jobs_for_dashboard` filters to
+ * `status IN ('waiting','working')` and the ready-to-bill RPC to
+ * `ready_to_bill`, but schedule blocks carry no status filter — so a scheduled
+ * job that is billed or paid is absent from BOTH lists. Before this map existed
+ * those rows resolved `job_pictures_link` to `undefined` and rendered the red
+ * "no photos — ask Dispatch" button on jobs that already had a link (which is
+ * how a duplicate, unclosable `link_job_pictures` dispatch request was filed on
+ * the permanently-paid Office job).
+ */
+export type SubScheduleJobMeta = {
+  job_pictures_link: string | null
+  hcp_number: string | null
+  click_number: string | null
+  job_address: string | null
+}
+
+/**
+ * Job-row values for one schedule block: the assigned-list row wins when it has
+ * a non-blank value, otherwise the `subScheduleJobMeta` fallback map. Blank and
+ * whitespace-only values count as absent on both sides; the returned value is
+ * the original (untrimmed) string so display formatting is unchanged.
+ */
+export function resolveSubScheduleJobMeta(
+  fromAssigned: Partial<SubScheduleJobMeta> | null | undefined,
+  fallback: SubScheduleJobMeta | null | undefined,
+): SubScheduleJobMeta {
+  const pick = (a: string | null | undefined, b: string | null | undefined): string | null => {
+    if ((a ?? '').trim()) return a ?? null
+    if ((b ?? '').trim()) return b ?? null
+    return null
+  }
+  return {
+    job_pictures_link: pick(fromAssigned?.job_pictures_link, fallback?.job_pictures_link),
+    hcp_number: pick(fromAssigned?.hcp_number, fallback?.hcp_number),
+    click_number: pick(fromAssigned?.click_number, fallback?.click_number),
+    job_address: pick(fromAssigned?.job_address, fallback?.job_address),
+  }
+}

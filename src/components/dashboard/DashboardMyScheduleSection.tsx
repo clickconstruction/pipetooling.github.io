@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
-import { sortSubScheduleBlocksByStart, type SubScheduleDayPartition } from '../../lib/dashboardSubSchedule'
+import {
+  resolveSubScheduleJobMeta,
+  sortSubScheduleBlocksByStart,
+  type SubScheduleDayPartition,
+  type SubScheduleJobMeta,
+} from '../../lib/dashboardSubSchedule'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -21,6 +26,12 @@ export type DashboardMyScheduleSectionProps = {
   subScheduleDayPartition: SubScheduleDayPartition
   subScheduleLabels: Map<string, string>
   subSchedulePhones: Map<string, string | null>
+  /**
+   * Per-job fallback for schedule rows whose job is absent from both assigned
+   * lists (billed/paid jobs — see `SubScheduleJobMeta`). Without it those rows
+   * showed the red "no photos" button on jobs that already had a link.
+   */
+  subScheduleJobMeta: Map<string, SubScheduleJobMeta>
   leaveReportReminderForJobRow: (
     j: Pick<DashboardTeamAssignedJobRow, 'id' | 'my_last_report_at'>,
   ) => boolean
@@ -63,6 +74,7 @@ export function DashboardMyScheduleSection({
   subScheduleDayPartition,
   subScheduleLabels,
   subSchedulePhones,
+  subScheduleJobMeta,
   leaveReportReminderForJobRow,
   assignedJobs,
   assignedReadyToBillJobs,
@@ -179,7 +191,13 @@ export function DashboardMyScheduleSection({
                       const fromAssigned =
                         assignedJobs.find((j) => j.id === b.job_id) ??
                         assignedReadyToBillJobs.find((j) => j.id === b.job_id)
-                      const prefillAddr = (fromAssigned?.job_address ?? '').trim() || null
+                      // Billed/paid scheduled jobs are in neither assigned list;
+                      // the meta map carries their pictures link / HCP / address.
+                      const jobMeta = resolveSubScheduleJobMeta(
+                        fromAssigned,
+                        subScheduleJobMeta.get(b.job_id),
+                      )
+                      const prefillAddr = (jobMeta.job_address ?? '').trim() || null
                       const scheduleDetailPayload = {
                         jobId: b.job_id,
                         prefillRowLabel: rowLabel,
@@ -322,13 +340,13 @@ export function DashboardMyScheduleSection({
                               <DashboardJobPicturesLinkRow
                                 layout="inline"
                                 size="large"
-                                jobPicturesLink={fromAssigned?.job_pictures_link}
+                                jobPicturesLink={jobMeta.job_pictures_link}
                                 onMissingClick={() =>
                                   void submitLinkJobPicturesDispatchRequest({
                                     jobId: b.job_id,
-                                    hcpNumber: fromAssigned?.hcp_number,
+                                    hcpNumber: jobMeta.hcp_number,
                                     jobName: fromAssigned?.job_name ?? rowLabel,
-                                    jobAddress: fromAssigned?.job_address,
+                                    jobAddress: jobMeta.job_address,
                                   })
                                 }
                               />
@@ -341,9 +359,9 @@ export function DashboardMyScheduleSection({
                                     e.stopPropagation()
                                     setLeaveReportJob({
                                       id: b.job_id,
-                                      hcpNumber: effectiveJobLedgerNumber(fromAssigned?.hcp_number, fromAssigned?.click_number) || '—',
+                                      hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
                                       jobName: fromAssigned?.job_name ?? rowLabel,
-                                      jobAddress: fromAssigned?.job_address ?? '—',
+                                      jobAddress: jobMeta.job_address ?? '—',
                                     })
                                   }}
                                 />

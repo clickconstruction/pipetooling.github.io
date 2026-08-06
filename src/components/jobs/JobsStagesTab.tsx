@@ -18,6 +18,12 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
+import {
+  buildGcStatementEmailHtml,
+  buildGcStatementEmailText,
+  gcStatementEmailSubject,
+} from '../../lib/jobsDocuments/gcStatementEmail'
+import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import {
@@ -2756,6 +2762,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups, { groupBy }))) {
                       showToast('Allow pop-ups to print the report.', 'error')
                     }
+                  }}
+                  onCopyForEmail={(group) => {
+                    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const subject = gcStatementEmailSubject(group, dateStr)
+                    // Subject rides at the top of the copied block so it can be
+                    // cut into the email's subject field; the table below it is
+                    // the body. Rich HTML pastes as a real table in Gmail /
+                    // Outlook / Apple Mail; plain text covers everything else.
+                    const html =
+                      `<p style="margin:0 0 10px;font-size:12px;color:#6b7280"><strong>Subject:</strong> ${subject}</p>` +
+                      buildGcStatementEmailHtml(group, { dateStr })
+                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, { dateStr })}`
+                    void copyRichHtmlToClipboard(html, text).then(
+                      () => showToast(`Copied the ${group.gcName} statement — paste it into your email.`, 'success'),
+                      () => showToast('Could not copy — try again.', 'error'),
+                    )
                   }}
                 />
                 {billedTotalByNameModalOpen && (() => {

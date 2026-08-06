@@ -344,6 +344,7 @@ export default function Dashboard() {
     subScheduleLoading,
     subScheduleLabels,
     subSchedulePhones,
+    subScheduleJobMeta,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
   } = useDashboardSubSchedule({
@@ -1054,6 +1055,7 @@ export default function Dashboard() {
       subScheduleDayPartition={subScheduleDayPartition}
       subScheduleLabels={subScheduleLabels}
       subSchedulePhones={subSchedulePhones}
+      subScheduleJobMeta={subScheduleJobMeta}
       leaveReportReminderForJobRow={leaveReportReminderForJobRow}
       assignedJobs={assignedJobs}
       assignedReadyToBillJobs={assignedReadyToBillJobs}

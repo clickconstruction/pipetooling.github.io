@@ -11,6 +11,38 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1416',
+    date: '2026-08-06',
+    title: 'Copy a GC statement straight into your email',
+    kind: 'feature',
+    highlights: [
+      'GC Review gains a Copy for email button per GC \u2014 paste into Gmail, Outlook, or Apple Mail and it lands as a clean table.',
+      'The statement shows what GCs ask for: job address, the date the bill was sent, and the amount owed, with a total.',
+      'A suggested subject line rides along at the top of the copy.',
+    ],
+  },
+  {
+    version: 'v2.1415',
+    date: '2026-08-06',
+    title: 'Photos requests stop piling up on jobs that already have a folder',
+    kind: 'fix',
+    highlights: [
+      'Asking Dispatch for a photos folder on a job that already has one now tells you so instead of filing a note nobody can clear.',
+      'Old requests like that close themselves the next time Dispatch opens the inbox, so the list stops carrying dead items.',
+    ],
+  },
+  {
+    version: 'v2.1414',
+    date: '2026-08-06',
+    title: 'Fix: "no customer photos" showing on jobs that had photos',
+    kind: 'fix',
+    highlights: [
+      'On My Schedule, the camera icon turned red — "no photos link, tap to ask Dispatch" — for any scheduled job that was already billed or paid, even when the job had a photos link. Tapping it filed a duplicate request Dispatch then had to close by hand.',
+      'The icon now reads the job’s real photos link, so it only turns red when the link is genuinely missing.',
+      'Leave Report on those same rows now fills in the job number and address instead of showing "—".',
+    ],
+  },
+  {
     version: 'v2.1413',
     date: '2026-08-05',
     title: 'Contract library: cleaner document cards on phones',

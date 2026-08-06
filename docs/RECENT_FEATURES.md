@@ -7,10 +7,39 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1413)
+last_updated: 2026-08-06 (v2.1416)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1416)
+
+### GC Review: "Copy for email" — a GC-facing statement you can paste anywhere (2026-08-06)
+Phase 1 of sending statements to GCs. New builder [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts) (4 tests) renders the statement a GC actually receives — **job address** (job # + name small underneath), **bill sent** date, **amount owed**, total row, and a reply-or-call footer; deliberately none of the internal vocabulary (no days-past-due, no Collections chips). Table-based inline-styled HTML so Gmail/Outlook/Apple Mail render it faithfully. `GcReviewRow` gains `jobAddress` ([`gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts)). The GC Review modal's real groups (not the No-GC bucket) get a **Copy for email** button ahead of Print — shell glue uses the cover letter's `copyRichHtmlToClipboard` (rich HTML + plain-text fallback), with the suggested subject line ("Open balances — Click Plumbing and Electrical — {date}", deliberately recipient-neutral) riding at the top of the copied block to cut into the subject field. Works for Development grouping too. App-send (Resend + audit) is phase 2. Client-only.
+
+## Latest Updates (v2.1415)
+
+### Customer Pictures dispatch requests: creation guard + self-heal (2026-08-06)
+Follow-on to v2.1414, which fixed the *cause* (My Schedule showing the red "no photos" button on billed/paid jobs that had a link). This closes the two remaining gaps that let such a request exist and then persist forever.
+
+**The trap**: the only auto-close for `pending_action = 'link_job_pictures'` lives in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) `persistIdentitySlice` and fires on a **blank→set transition** of `jobs_ledger.job_pictures_link`. A request filed against a job that already has a link can therefore never auto-close — the link never goes blank, so the transition never fires. [`linkJobPicturesDispatchRequest.ts`](../src/lib/linkJobPicturesDispatchRequest.ts) deduped only against an existing **open request**, never against the job's link, so that state was reachable in one tap.
+
+**Guard**: the creator now reads `job_pictures_link` alongside the open-request probe (one `Promise.all`, no added latency) and routes through new kernel [`picturesDispatchRequests.ts`](../src/lib/picturesDispatchRequests.ts) → `decidePicturesDispatchRequest()` returning `create` / `already-open` / `already-linked`. **`already-linked` wins over `already-open`**: when both hold, the row IS the unclosable orphan, so the truthful message plus a close is strictly better than "already sent". Toast copy lives in the kernel (`PICTURES_DISPATCH_REQUEST_MESSAGES`) so the three paths can't drift.
+
+**Self-heal**: [`useDispatchInbox.ts`](../src/hooks/useDispatchInbox.ts) sweeps after each load — `jobIdsForPicturesRequestSweep()` collects job ids from open pictures requests, one `jobs_ledger` read fetches their links, `pickOrphanedPicturesRequestIds()` selects the redundant ones, and a single `.in('id', …).eq('status','open')` update closes them with note "Customer Pictures URL already set — closed automatically". Three deliberate safety properties: (1) a job id **absent** from the links map is never swept, so a partial or RLS-filtered read can't close a request whose link we couldn't see; (2) a `sweptPicturesRequestIdsRef` set means an update that silently no-ops (RLS, concurrent reopen) is never retried — otherwise the close→reload→sweep cycle would loop forever; (3) it runs only for `dispatchInboxEligible` viewers, i.e. exactly the people who can already close requests, and fails silently to `console.warn` rather than toasting field users about housekeeping.
+
+Kernel has 12 tests (decision matrix incl. whitespace-only links/ids; sweep picker incl. the never-sweep-unread-job and ignore-other-pending-actions cases). Help guide [`ask-dispatch-for-missing-job-info.md`](../src/content/help/ask-dispatch-for-missing-job-info.md) gains the already-linked response and a note that stale requests clear themselves. Client-only — no migration, no edge function.
+
+## Latest Updates (v2.1414)
+
+### Fix: My Schedule showed "no customer photos" on jobs that had photos (2026-08-06)
+Owner report: a Dispatch inbox task, "Add a Customer Pictures folder for 000 · Office", stayed open after the link was entered and survived hard reloads. Diagnosis (live data): the link was never missing — job `Office` / HCP 000 has carried `job_pictures_link` since 2026-07-22, and the 2026-07-21 request auto-closed correctly on 07-22. A **second** request was filed 2026-08-04 against the same job, and it could not auto-close: the auto-close in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) fires only on a blank→set **transition** inside `persistIdentitySlice`, which only runs when the identity slice is dirty — re-pasting the value already saved changes nothing.
+
+Root cause of the duplicate: [`DashboardMyScheduleSection.tsx`](../src/components/dashboard/DashboardMyScheduleSection.tsx) read the pictures link off `fromAssigned` — a lookup into the Dashboard's assigned-job lists. `list_assigned_jobs_for_dashboard` filters `WHERE jl.status IN ('waiting','working')` and `list_ready_to_bill_assigned_jobs_for_dashboard` to `ready_to_bill`, but `job_schedule_blocks` carries **no status filter**, so any scheduled job that is `billed` or `paid` is absent from both lists and resolved to `undefined` — rendering [`DashboardJobPicturesLinkRow`](../src/components/dashboard/DashboardJobPicturesLinkRow.tsx)'s red "ask Dispatch" state on jobs that already had a link. Measured blast radius over the prior 60 days: **341 schedule blocks across 47 jobs** rendered the red button, **308 of them on jobs that had a link**. "Office" is permanently `paid` and scheduled constantly, so it re-armed every time. The same `fromAssigned` gap also degraded the request payload (no HCP, no address — hence the odd "…for 000 · Office" title) and the Leave Report prefill (`hcpNumber`/`jobAddress` fell back to "—").
+
+Fix: [`useDashboardSubSchedule.ts`](../src/hooks/useDashboardSubSchedule.ts)'s existing customer-phone effect already queries `jobs_ledger` for **every** scheduled job id, so it now selects `job_pictures_link, hcp_number, click_number, job_address` alongside `customer_phone` and publishes a second `subScheduleJobMeta` map — **no extra round-trip**. New kernel `resolveSubScheduleJobMeta()` in [`dashboardSubSchedule.ts`](../src/lib/dashboardSubSchedule.ts) resolves per field, assigned-list row first, map fallback, blank/whitespace treated as absent, returning the original untrimmed string so display formatting is unchanged (6 tests). The row resolves once into `jobMeta` and uses it for the pictures control, the dispatch-request args, the detail-modal address prefill, and the Leave Report payload (`effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number)`). Prop threaded through both mounts ([`Dashboard.tsx`](../src/pages/Dashboard.tsx), [`DispatchModeHome.tsx`](../src/components/dispatchMode/DispatchModeHome.tsx)).
+
+New render smoke [`DashboardMyScheduleSection.render.test.tsx`](../src/components/dashboard/DashboardMyScheduleSection.render.test.tsx) (5 tests) pins the regression — job in neither assigned list + link in the meta map renders the blue open-photos link, not the red button — plus the genuinely-missing, whitespace-only, map-not-loaded-yet, and assigned-list-wins cases. Verified the smoke fails against the pre-fix expression. The stuck 2026-08-04 request was closed out-of-band (note: "Customer Pictures URL already set (2026-07-22) — duplicate request"). Client-only; the creation guard and self-heal for orphaned requests follow in v2.1415.
 
 ## Latest Updates (v2.1413)
 

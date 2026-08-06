@@ -27,6 +27,8 @@ export type GcReviewRow = {
   /** Effective job number (HCP else Click), '—' when neither. */
   hcp: string
   jobName: string
+  /** Job street address — the lead column on GC-facing statements (v2.1414). */
+  jobAddress: string
   customerName: string
   referenceDateDisplay: string
   ageDays: number | null
@@ -64,6 +66,7 @@ function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRo
     jobId: r.job.id,
     hcp: effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—',
     jobName: (r.job.job_name ?? '').trim(),
+    jobAddress: (r.job.job_address ?? '').trim(),
     customerName: (r.job.customer_name ?? '').trim() || '—',
     referenceDateDisplay: ref.display,
     ageDays: ref.ageDays,
