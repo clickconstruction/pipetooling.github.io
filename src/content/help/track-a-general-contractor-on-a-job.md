@@ -30,11 +30,11 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on.
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
-- Hit {{button:outline|Print}} on any GC row for that GC's **statement** — their customers, bill-out dates, days outstanding, and amounts. **Print all** makes one report of every section.
+- Hit the {{button:outline|🖨}} print button on any GC row for that GC's **statement** — their customers, bill-out dates, days outstanding, and amounts. **Print all** makes one report of every section.
 
 ## Send a statement to a GC
 
-Each GC row also has {{button:outline|Copy for email}} — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language.
+Each GC row also has {{button:outline|Copy}} — one click copies a **GC-facing statement** (job address, the date the bill was sent, and the amount owed, with a total). Paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table; a suggested subject line rides at the top of the copy so you can cut it into the subject field. This version is written for the GC's eyes — no internal chips or days-past-due language.
 
 Prefer the app to send it? Click {{button:outline|Email…}} on the same row. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.pipetooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
 - When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.

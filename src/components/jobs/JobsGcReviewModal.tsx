@@ -298,7 +298,7 @@ export function JobsGcReviewModal({
                       color: 'var(--text-700)',
                     }}
                   >
-                    Copy for email
+                    Copy
                   </button>
                 ) : null}
                 <button
@@ -308,7 +308,7 @@ export function JobsGcReviewModal({
                   aria-label={`Print statement for ${g.gcName}`}
                   style={{
                     marginLeft: g.isNoGc ? 'auto' : 0,
-                    padding: '0.2rem 0.6rem',
+                    padding: '0.2rem 0.45rem',
                     fontSize: '0.75rem',
                     fontWeight: 500,
                     border: '1px solid var(--border-strong)',
@@ -318,7 +318,7 @@ export function JobsGcReviewModal({
                     color: 'var(--text-700)',
                   }}
                 >
-                  Print
+                  <span aria-hidden>🖨</span>
                 </button>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
