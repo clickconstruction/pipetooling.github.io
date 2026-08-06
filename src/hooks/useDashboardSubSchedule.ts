@@ -14,6 +14,7 @@ import {
   partitionSubScheduleBlocksByDay,
   subScheduleJobLabel,
   type SubScheduleDayPartition,
+  type SubScheduleJobMeta,
 } from '../lib/dashboardSubSchedule'
 import type { DashboardTeamAssignedJobRow } from '../lib/dashboardTeamAssignedJobRow'
 import type { UserRole } from './useAuth'
@@ -50,6 +51,9 @@ export function useDashboardSubSchedule({
   const [subScheduleLoading, setSubScheduleLoading] = useState(false)
   const [subScheduleLabels, setSubScheduleLabels] = useState<Map<string, string>>(() => new Map())
   const [subSchedulePhones, setSubSchedulePhones] = useState<Map<string, string | null>>(() => new Map())
+  const [subScheduleJobMeta, setSubScheduleJobMeta] = useState<Map<string, SubScheduleJobMeta>>(
+    () => new Map(),
+  )
   const [scheduleReminderNow, setScheduleReminderNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -144,13 +148,18 @@ export function useDashboardSubSchedule({
     }
   }, [role, authUserId, subScheduleRows, assignedJobs, assignedReadyToBillJobs])
 
+  // One query serves both the phone map and the job-meta map: it already spans
+  // every scheduled job id (not just the ones missing from the assigned lists),
+  // so the pictures link / HCP / address ride along at no extra round-trip.
   useEffect(() => {
     if (!authUserId) {
       setSubSchedulePhones(new Map())
+      setSubScheduleJobMeta(new Map())
       return
     }
     if (subScheduleRows.length === 0) {
       setSubSchedulePhones(new Map())
+      setSubScheduleJobMeta(new Map())
       return
     }
     const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
@@ -159,17 +168,38 @@ export function useDashboardSubSchedule({
       try {
         const rows = await withSupabaseRetry(
           async () =>
-            await supabase.from('jobs_ledger').select('id, customer_phone').in('id', jobIds),
+            await supabase
+              .from('jobs_ledger')
+              .select('id, customer_phone, job_pictures_link, hcp_number, click_number, job_address')
+              .in('id', jobIds),
           'dashboardSubScheduleJobPhones',
         )
         if (cancelled) return
-        const m = new Map<string, string | null>()
-        for (const r of (rows ?? []) as Array<{ id: string; customer_phone: string | null }>) {
-          m.set(r.id, r.customer_phone)
+        const phones = new Map<string, string | null>()
+        const meta = new Map<string, SubScheduleJobMeta>()
+        for (const r of (rows ?? []) as Array<{
+          id: string
+          customer_phone: string | null
+          job_pictures_link: string | null
+          hcp_number: string | null
+          click_number: string | null
+          job_address: string | null
+        }>) {
+          phones.set(r.id, r.customer_phone)
+          meta.set(r.id, {
+            job_pictures_link: r.job_pictures_link,
+            hcp_number: r.hcp_number,
+            click_number: r.click_number,
+            job_address: r.job_address,
+          })
         }
-        setSubSchedulePhones(m)
+        setSubSchedulePhones(phones)
+        setSubScheduleJobMeta(meta)
       } catch {
-        if (!cancelled) setSubSchedulePhones(new Map())
+        if (!cancelled) {
+          setSubSchedulePhones(new Map())
+          setSubScheduleJobMeta(new Map())
+        }
       }
     })()
     return () => {
@@ -204,6 +234,7 @@ export function useDashboardSubSchedule({
     subScheduleLoading,
     subScheduleLabels,
     subSchedulePhones,
+    subScheduleJobMeta,
     scheduleReminderNow,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,

@@ -54,6 +54,7 @@ export default function DispatchModeHome() {
     subScheduleLoading,
     subScheduleLabels,
     subSchedulePhones,
+    subScheduleJobMeta,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
   } = useDashboardSubSchedule({
@@ -129,6 +130,7 @@ export default function DispatchModeHome() {
           subScheduleDayPartition={subScheduleDayPartition}
           subScheduleLabels={subScheduleLabels}
           subSchedulePhones={subSchedulePhones}
+          subScheduleJobMeta={subScheduleJobMeta}
           leaveReportReminderForJobRow={leaveReportReminderForJobRow}
           assignedJobs={assignedJobs}
           assignedReadyToBillJobs={assignedReadyToBillJobs}
