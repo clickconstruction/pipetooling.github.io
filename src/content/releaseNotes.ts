@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1419',
+    date: '2026-08-06',
+    title: 'Pipeline: section tools in one dropdown at the top',
+    kind: 'feature',
+    highlights: [
+      'A new dropdown on the stage jump bar (magnifying-glass icon, left of Waiting → Working → …) collects the buttons that live on the section headers down the board.',
+      'Open Capable of Being Billed, GC Review, Accounts Receivable (with its unallocated-deposits count), Share / Print, and the notification settings without scrolling.',
+      'Each item follows the same permissions as the button it mirrors.',
+    ],
+  },
+  {
     version: 'v2.1418',
     date: '2026-08-06',
     title: 'Email a GC statement straight from the app',

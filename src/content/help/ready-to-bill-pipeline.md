@@ -37,6 +37,18 @@ A big amber slice is the signal to bill: work is finished but the money hasn't b
 
 Know the job's number? The small **#** chip left of the Pipeline search bar is the fast lane: click it, type a C# or HCP number, press Enter — the board opens the right section and scrolls to the job with a highlight flash. Partial numbers land on the first match. The big search bar stays what it was: the broad filter for names, addresses, and notes.
 
+## Section tools in one dropdown
+
+The stage headers down the board carry their own buttons — Capable of Being Billed on Working, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid In Full notifications on Paid in Full. The magnifying-glass icon at the **left of the stage jump bar** (the Waiting → Working → … strip) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
+
+:::example Section tools
+**Working** &nbsp; Capable of Being Billed: $48,450
+**Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications
+**Paid in Full** &nbsp; Paid In Full notifications
+:::
+
+The amber count on Accounts Receivable is the same unallocated-bank-deposits badge the header button wears, and every item follows the same permissions as the button it mirrors — if you can't use it on the header, it's disabled or hidden here too.
+
 Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**.
 
 ## Getting to Ready to bill

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1418)
+last_updated: 2026-08-06 (v2.1419)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1419)
+
+### Pipeline: Section tools dropdown on the stage jump bar (2026-08-06)
+The stage jump bar (Waiting → Working → Ready to Bill → Billed Awaiting Payment → Collections) gains a **Section tools** dropdown at its left — a magnifying-glass-chart icon button that collects the action buttons living on the stage section headers down the board, so the office can reach them without scrolling. Grouped by section: **Working** → Capable of Being Billed (with the live total), **Billed Awaiting Payment** → GC Review, Accounts Receivable (with the amber unallocated-bank-transactions badge), Share / Print, Paid notifications, and **Paid in Full** → Paid In Full notifications. Each item mirrors its header button's exact visibility/disabled semantics (AR renders disabled for roles outside dev/master/assistant-like/primary; Share / Print is staff-only; the two notification settings are dev/master-only; GC Review disables while Billed + Collections are both empty) — the new pure kernel [`stagesSectionToolsMenu.ts`](../src/lib/jobs/stagesSectionToolsMenu.ts) (8 tests) builds the grouped item list. New icon [`StagesSectionToolsIcon`](../src/components/icons/StagesSectionToolsIcon.tsx) (Font Awesome magnifying-glass-chart). The menu reuses the Pipeline tools (⋯) overlay pattern and item styling. Help guide `ready-to-bill-pipeline.md` documents the dropdown. Client-only.
 
 ## Latest Updates (v2.1418)
 
