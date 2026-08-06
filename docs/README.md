@@ -23,6 +23,7 @@
 | [`MIGRATIONS.md`](./MIGRATIONS.md) | Migration history + the baseline-squash story. Pair with `npm run check:migration-drift`. |
 | [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) | Reference for all Supabase Edge Functions (deploy is manual — see `../CLAUDE.md`). |
 | [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) | Billing system map: job lifecycle, invoices/break-offs, the three billing channels, Stripe test/live plumbing, payments, send-backs, cleanup — plus the live-test safety brief. |
+| [`REPORT_SUBSCRIPTIONS.md`](./REPORT_SUBSCRIPTIONS.md) | The Report Subscriptions system: streams, request tables, cron dispatchers, fresh-at-send builds, My Email Schedule — and the checklist for adding a new stream. |
 | [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md) | Bids system: all tabs, workflow, schema. |
 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | Decomposition map of `src/pages/Bids.tsx` (per-tab state/coupling, extraction status). |
 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | Same map for `src/pages/People.tsx`. |

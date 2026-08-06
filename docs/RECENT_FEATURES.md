@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1423)
+last_updated: 2026-08-06 (v2.1424)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1424)
+
+### Report Subscriptions system named + reference doc (2026-08-06)
+Stage 0 of making GC statements schedulable. New [`docs/REPORT_SUBSCRIPTIONS.md`](REPORT_SUBSCRIPTIONS.md) names the app's recurring/scheduled report-email pattern — the **Report Subscriptions system** — and defines its five pieces (share modal with scheduling, request table, pg_cron dispatcher with fresh-at-send builds + the `repeat_weekly` self-perpetuating chain, service-role payload RPC, and the `get_my_email_schedule()` → Settings "My email schedule"/"My email subscriptions" surface), the current stream inventory (`report_digest`, `billed_report`, `schedule_day`, the three event streams), design rules (recipient- vs requester-scoped listing, internal `recipient_user_id` vs external `sent_to`), and the add-a-stream checklist. GLOSSARY + docs/README index updated. Docs-only; the planned `gc_statement` stream lands as Phases 1–4.
 
 ## Latest Updates (v2.1423)
 
