@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1426',
+    date: '2026-08-06',
+    title: 'Scheduled GC statements: the delivery engine',
+    kind: 'infra',
+    highlights: [
+      'The app can now hold scheduled GC statement sends and deliver them automatically \u2014 rebuilt fresh at send time, with weekly repeats that renew themselves.',
+      'A GC with nothing outstanding is skipped, never emailed an empty statement.',
+      'The scheduling controls appear in GC Review in the next update.',
+    ],
+  },
+  {
     version: 'v2.1425',
     date: '2026-08-06',
     title: 'Groundwork for scheduled GC statements',

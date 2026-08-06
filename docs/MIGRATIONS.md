@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "177 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "178 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260806233713_gc_statement_email_requests.sql`** _(apply via `supabase db push` after merge, then deploy the gc-statement-email-dispatch edge function — the cron entry starts POSTing immediately but an undeployed function just 404s harmlessly until the deploy)_
+- **Purpose**: `gc_statement_email_requests` (v2.1426) — scheduled GC statement sends for the `gc_statement` Report Subscriptions stream. Free-text `sent_to` (outside AP inboxes), `group_by` gc|development + nullable `gc_customer_id`/`development_id` (both NULL = whole report), `include_collections`, `send_at`, `repeat_weekly`, dispatch bookkeeping (`sent_at`/`error`/`attempts`), `entity_name` display snapshot. Partial due index. Registers pg_cron `gc-statement-email-dispatch` (*/5, Vault PROJECT_URL + CRON_SECRET).
+- **Security**: RLS — INSERT own rows for the GC Review cohort (dev/master/assistant-like/primary), SELECT own or dev, DELETE own unsent or dev, no client UPDATE (service role stamps). `sent_to` CHECK-validated as an email. Both read-only block sweeps.
 
 **`20260806232759_gc_statement_email_payload.sql`** _(apply via `supabase db push` after merge; nothing consumes it until the Phase-2 dispatcher ships, so ordering is free)_
 - **Purpose**: GC statement payload RPC (v2.1425) — `get_gc_statement_email_payload(p_group_by, p_entity_id, p_include_collections)` rebuilds the GC Review rollup server-side for the planned `gc_statement` Report Subscriptions stream. Row semantics copied from `get_billed_report_email_payload` (v2.1316); grouped by GC or development with the no-entity bucket last; fidelity-verified against prod ($210,838.46 / 15 groups / collections delta $19,656.82).

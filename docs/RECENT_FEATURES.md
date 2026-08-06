@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1425)
+last_updated: 2026-08-06 (v2.1426)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1426)
+
+### Scheduled GC statements: requests table + cron dispatcher — Phase 2 (2026-08-06)
+Phase 2 of the `gc_statement` Report Subscriptions stream. Migration `20260806233713_gc_statement_email_requests.sql`: new `gc_statement_email_requests` table (free-text `sent_to` for outside AP inboxes — the stream's deliberate difference from the internal-only billed report; `group_by` + nullable `gc_customer_id`/`development_id`, both NULL = the whole Share-all report; `include_collections`; `repeat_weekly`; dispatch bookkeeping) + pg_cron registration. New cron-only edge function [`gc-statement-email-dispatch`](../supabase/functions/gc-statement-email-dispatch/index.ts): drains due rows, rebuilds each statement fresh via `get_gc_statement_email_payload` (v2.1425), renders in-function ([`render.ts`](../supabase/functions/gc-statement-email-dispatch/render.ts) mirrors `gcStatementEmail.ts` — keep in sync), sends via Resend with the requester's reply-to, audits into `gc_statement_emails`, and re-enqueues weekly chains; single-entity requests with nothing outstanding are skipped (stamped, chain still advances), never emailed empty. Scheduling UI (Phase 3) and My-email-schedule integration (Phase 4) follow. Deploy after merge: `supabase db push`, then `supabase functions deploy gc-statement-email-dispatch --no-verify-jwt`.
 
 ## Latest Updates (v2.1425)
 

@@ -577,6 +577,10 @@ verify_jwt = false
 [functions.billed-report-email]
 verify_jwt = false
 
+# Cron-only dispatcher for scheduled GC statement sends (X-Cron-Secret checked in-function).
+[functions.gc-statement-email-dispatch]
+verify_jwt = false
+
 # Emails reports to subscribed recipients via Resend: JWT validated in function (getUser); same gateway pattern as test-email.
 [functions.send-report-email]
 verify_jwt = false

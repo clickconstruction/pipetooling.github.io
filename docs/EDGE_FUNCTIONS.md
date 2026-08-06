@@ -123,6 +123,7 @@ when_to_read:
    - [create-stripe-invoice](#create-stripe-invoice)
    - [send-physical-invoice-email](#send-physical-invoice-email)
    - [send-gc-statement-email](#send-gc-statement-email)
+   - [gc-statement-email-dispatch](#gc-statement-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2134,6 +2135,20 @@ interface SendPhysicalInvoiceEmailBody {
 **Sends** via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out).
 
 **Deploy**: `supabase functions deploy send-gc-statement-email --no-verify-jwt` if the hosted gateway still enforces JWT. Requires the `gc_statement_emails` table (migration `20260806202622`); Share-all audit rows additionally need the widened `group_by` CHECK (migration `20260806221045` — a not-yet-pushed CHECK only loses the audit row, never the send).
+
+---
+
+### gc-statement-email-dispatch
+
+**Purpose** (v2.1426): Cron-only dispatcher for **scheduled** GC statement sends — Phase 2 of the `gc_statement` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](REPORT_SUBSCRIPTIONS.md)). Drains due `gc_statement_email_requests` rows (send_at ≤ now, unsent, attempts < 5, batch 10), rebuilds each statement **fresh at send time** via `get_gc_statement_email_payload` (v2.1425), renders HTML in-function ([`render.ts`](../supabase/functions/gc-statement-email-dispatch/render.ts) — keep in sync with `src/lib/jobsDocuments/gcStatementEmail.ts`), sends via Resend with the **requester's email as reply-to**, audits into `gc_statement_emails` (single statements as `gc`/`development`, whole-report rows as `all`), best-effort logs to `email_send_log`, stamps `sent_at`, and re-enqueues `repeat_weekly` chains (+7 days, guarded against retry double-inserts).
+
+**Endpoint**: `POST /functions/v1/gc-statement-email-dispatch`
+
+**Authentication**: `X-Cron-Secret` must equal `CRON_SECRET` — **no user-JWT modes**. Immediate sends stay on `send-gc-statement-email`; scheduling and cancelling are direct RLS-gated writes to `gc_statement_email_requests` from the client.
+
+**Empty statements**: a single-entity request with nothing outstanding is stamped `skipped: nothing outstanding` and never emailed — but its weekly chain still advances.
+
+**Deploy**: `supabase functions deploy gc-statement-email-dispatch --no-verify-jwt`. Requires migrations `20260806232759` (payload RPC) + `20260806233713` (requests table + pg_cron registration).
 
 ---
 
