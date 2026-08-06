@@ -40,6 +40,8 @@ export type GcStatementPayload = {
   groups: GcStatementPayloadGroup[]
 }
 
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+
 export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
 export const GC_STATEMENT_FOOTER_LINE =
   'Questions about a bill? Reply to this email or call the office.'
@@ -55,7 +57,7 @@ export function chicagoDateStr(now = new Date()): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
   })
 }
 
