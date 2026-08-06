@@ -42,7 +42,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `paid_in_full` | event | `app_settings.paid_job_email_recipients_v1` | `paid-job-email` (queue trigger) | — | ✅ |
 | `payment_received` | event | `app_settings.payment_made_email_recipients_v1` | `paid-job-email` (`kind` column) | — | ✅ |
 | `estimate_accepted` | event | `estimates.accept_notify_user_ids` (+ always-list) | accept flow | — | ✅ (v2.1330) |
-| `gc_statement` | scheduled report | *planned — Phases 1–4, see below* | *planned* | planned | planned |
+| `gc_statement` | scheduled report | Phase 1 shipped: payload RPC `get_gc_statement_email_payload` (v2.1425); table + dispatcher planned | *planned* | planned | planned |
 
 ## Design rules
 
