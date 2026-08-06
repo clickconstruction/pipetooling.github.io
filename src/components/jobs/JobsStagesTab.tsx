@@ -1690,9 +1690,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               width: '100%',
             }}
           >
-            {/* Section tools (v2.1419): the stage section headers' action buttons,
-                reachable from the jump bar without scrolling the board. */}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: '1 1 auto',
+                gap: '0.35rem',
+                textAlign: 'center',
+                minWidth: 0,
+              }}
+            >
+            {/* Section tools (v2.1419, hamburger + in-strip since v2.1421): the
+                stage section headers' action buttons, reachable right from the
+                jump strip without scrolling the board. */}
+            <div style={{ position: 'relative', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
               <button
                 type="button"
                 onClick={() => setStagesSectionToolsMenuOpen((o) => !o)}
@@ -1704,17 +1717,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 32,
-                  height: 32,
+                  width: 26,
+                  height: 26,
                   padding: 0,
                   border: 'none',
-                  borderRadius: 8,
+                  borderRadius: 6,
                   background: stagesSectionToolsMenuOpen ? 'var(--bg-blue-tint)' : 'transparent',
                   cursor: 'pointer',
                   color: stagesSectionToolsMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
                 }}
               >
-                <StagesSectionToolsIcon size={16} />
+                <StagesSectionToolsIcon size={14} />
               </button>
               {stagesSectionToolsMenuOpen ? (
                 <>
@@ -1811,18 +1824,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </>
               ) : null}
             </div>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flex: '1 1 auto',
-                gap: '0.35rem',
-                textAlign: 'center',
-                minWidth: 0,
-              }}
-            >
               <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
                 <button
                   type="button"

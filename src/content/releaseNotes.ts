@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1421',
+    date: '2026-08-06',
+    title: 'Pipeline: section tools joins the stage strip',
+    kind: 'feature',
+    highlights: [
+      'The section-tools button now sits right beside Waiting → Working → … so it reads as part of the strip, and wears a hamburger menu icon.',
+      'Same dropdown as before — Capable of Being Billed, GC Review, Accounts Receivable, Share / Print, and the notification settings.',
+    ],
+  },
+  {
     version: 'v2.1420',
     date: '2026-08-06',
     title: 'GC Review: share the whole report at once',

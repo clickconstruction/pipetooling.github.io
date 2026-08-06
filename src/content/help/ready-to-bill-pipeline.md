@@ -39,7 +39,7 @@ Know the job's number? The small **#** chip left of the Pipeline search bar is t
 
 ## Section tools in one dropdown
 
-The stage headers down the board carry their own buttons — Capable of Being Billed on Working, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid In Full notifications on Paid in Full. The magnifying-glass icon at the **left of the stage jump bar** (the Waiting → Working → … strip) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
+The stage headers down the board carry their own buttons — Capable of Being Billed on Working, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid In Full notifications on Paid in Full. The **hamburger menu icon just left of Waiting** in the stage strip (Waiting → Working → …) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
 
 :::example Section tools
 **Working** &nbsp; Capable of Being Billed: $48,450
