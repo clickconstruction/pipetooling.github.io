@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1424',
+    date: '2026-08-06',
+    title: 'Named the Report Subscriptions system',
+    kind: 'infra',
+    highlights: [
+      'The machinery behind scheduled report emails (Billed report, dispatch-day emails, My email schedule) now has a name and a reference doc, paving the way for schedulable GC statements.',
+    ],
+  },
+  {
     version: 'v2.1423',
     date: '2026-08-06',
     title: 'GC Review: tidier layout',

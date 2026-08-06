@@ -1222,6 +1222,9 @@ React pattern for sharing state across component tree without prop drilling.
 
 ## UI/UX Terms
 
+### Report Subscriptions system / stream
+The app's pattern for report emails a user can subscribe to: schedulable (date + time Central), weekly-repeatable via a self-perpetuating request-row chain, rebuilt **fresh from live data at send time** by a pg_cron dispatcher, and self-listing on **Settings → Your account → My email schedule / My email subscriptions**. Each participating report is a **stream** (`billed_report`, `schedule_day`, `report_digest`, the event streams, and — planned — `gc_statement`). Named in v2.1424; full reference: [REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md).
+
 ### Release note (vs `RECENT_FEATURES.md` entry)
 The short, user-readable summary of a release shown at **Settings → Release notes** (all roles), one per PR, stored in `src/content/releaseNotes.ts` with the same `v2.NNN` as the PR's `docs/RECENT_FEATURES.md` entry. Do not confuse the two: the **release note** is 1–4 plain-language bullets for users (no file paths); the **`RECENT_FEATURES.md` entry** is the full technical changelog record for developers/agents. A vitest drift test (`src/lib/releaseNotes.test.ts`) fails CI when the newest versions of the two diverge (v2.944).
 
