@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-05 (v2.1413)
+last_updated: 2026-08-05 (v2.1414)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1414)
+
+### GC Review: "Copy for email" — a GC-facing statement you can paste anywhere (2026-08-06)
+Phase 1 of sending statements to GCs. New builder [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts) (4 tests) renders the statement a GC actually receives — **job address** (job # + name small underneath), **bill sent** date, **amount owed**, total row, and a reply-or-call footer; deliberately none of the internal vocabulary (no days-past-due, no Collections chips). Table-based inline-styled HTML so Gmail/Outlook/Apple Mail render it faithfully. `GcReviewRow` gains `jobAddress` ([`gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts)). The GC Review modal's real groups (not the No-GC bucket) get a **Copy for email** button ahead of Print — shell glue uses the cover letter's `copyRichHtmlToClipboard` (rich HTML + plain-text fallback), with the suggested subject line ("Open balances — Click Plumbing and Electrical — {date}", deliberately recipient-neutral) riding at the top of the copied block to cut into the subject field. Works for Development grouping too. App-send (Resend + audit) is phase 2. Client-only.
 
 ## Latest Updates (v2.1413)
 

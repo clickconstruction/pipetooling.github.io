@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1414',
+    date: '2026-08-06',
+    title: 'Copy a GC statement straight into your email',
+    kind: 'feature',
+    highlights: [
+      'GC Review gains a Copy for email button per GC \u2014 paste into Gmail, Outlook, or Apple Mail and it lands as a clean table.',
+      'The statement shows what GCs ask for: job address, the date the bill was sent, and the amount owed, with a total.',
+      'A suggested subject line rides along at the top of the copy.',
+    ],
+  },
+  {
     version: 'v2.1413',
     date: '2026-08-05',
     title: 'Contract library: cleaner document cards on phones',

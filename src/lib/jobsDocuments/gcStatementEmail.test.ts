@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest'
+import {
+  buildGcStatementEmailHtml,
+  buildGcStatementEmailText,
+  gcStatementEmailSubject,
+} from './gcStatementEmail'
+import type { GcReviewGroup } from '../gcReviewRollup'
+
+function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
+  return {
+    key: 'gc-1',
+    gcId: 'gc-1',
+    gcName: 'Knight Contracting',
+    isNoGc: false,
+    rows: [
+      {
+        key: 'i1',
+        jobId: 'j1',
+        hcp: '916',
+        jobName: 'SVP Manor',
+        jobAddress: '11915 Ring Dr, Manor TX',
+        customerName: 'Knight Contracting',
+        referenceDateDisplay: 'Jul 21, 2026',
+        ageDays: 10,
+        remaining: 450,
+        inCollections: false,
+      },
+    ],
+    subtotal: 450,
+    jobCount: 1,
+    oldestAgeDays: 10,
+    ...over,
+  }
+}
+
+describe('gcStatementEmail', () => {
+  it('subject names the company and date, not the GC (works pasted to any recipient)', () => {
+    expect(gcStatementEmailSubject(group(), 'Jul 31, 2026')).toBe(
+      'Open balances — Click Plumbing and Electrical — Jul 31, 2026',
+    )
+  })
+
+  it('HTML leads with job address, bill-sent date, and amount owed, plus a total row', () => {
+    const html = buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026' })
+    expect(html).toContain('Job address')
+    expect(html).toContain('Bill sent')
+    expect(html).toContain('Amount owed')
+    expect(html).toContain('11915 Ring Dr, Manor TX')
+    expect(html).toContain('Job 916 · SVP Manor')
+    expect(html).toContain('Jul 21, 2026')
+    expect(html).toContain('$450.00')
+    expect(html).toContain('Total owed')
+    // GC-facing: no internal pressure language
+    expect(html).not.toContain('days past')
+    expect(html).not.toContain('Collections')
+  })
+
+  it('falls back to job name when the address is blank, and escapes HTML', () => {
+    const g = group({
+      gcName: 'A&B <Builders>',
+      rows: [{ ...group().rows[0]!, jobAddress: '', jobName: '<Spec House>' }],
+    })
+    const html = buildGcStatementEmailHtml(g, { dateStr: 'Jul 31, 2026' })
+    expect(html).toContain('A&amp;B &lt;Builders&gt;')
+    expect(html).toContain('&lt;Spec House&gt;')
+    expect(html).not.toContain('<Spec House>')
+  })
+
+  it('plain-text variant carries the same facts', () => {
+    const text = buildGcStatementEmailText(group(), { dateStr: 'Jul 31, 2026' })
+    expect(text).toContain('Statement for Knight Contracting · Jul 31, 2026')
+    expect(text).toContain('11915 Ring Dr, Manor TX')
+    expect(text).toContain('billed Jul 21, 2026')
+    expect(text).toContain('Total owed: $450.00')
+  })
+})
