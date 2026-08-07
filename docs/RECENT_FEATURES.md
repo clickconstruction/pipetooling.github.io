@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1428)
+last_updated: 2026-08-06 (v2.1429)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1429)
+
+### GC Review: Schedule send defaults to tomorrow 7 AM (2026-08-06)
+Walkthrough fix on v2.1427. Flipping **When → Schedule…** left the date input empty, so **Schedule send** only produced the small red "Pick a date and time." line — which read as a dead button. The Schedule… pill now pre-fills the date with **tomorrow (Central)** via `chicagoTomorrowYmd()` (en-CA `toLocaleDateString` in `APP_CALENDAR_TZ`), keeping the 07:00 default time, so the button works first-click; the validation stays as a backstop. One change in the shared `ScheduleWhenControls`, so the Share-all dialog inherits it. Client-only.
 
 ## Latest Updates (v2.1428)
 

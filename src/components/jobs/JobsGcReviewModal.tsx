@@ -25,6 +25,11 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
+/** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD (en-CA formats ISO-style). */
+function chicagoTomorrowYmd(): string {
+  return new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
+}
+
 /** "Send now | Schedule…" controls shared by the Email… and Share-all dialogs (v2.1427). */
 function ScheduleWhenControls({
   when,
@@ -70,7 +75,18 @@ function ScheduleWhenControls({
           <button type="button" disabled={disabled} onClick={() => setWhen('now')} aria-pressed={when === 'now'} style={pill(when === 'now')}>
             Send now
           </button>
-          <button type="button" disabled={disabled} onClick={() => setWhen('schedule')} aria-pressed={when === 'schedule'} style={pill(when === 'schedule')}>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setWhen('schedule')
+              // Default to tomorrow 7 AM Central so "Schedule send" works
+              // immediately (v2.1429 — an empty date read as a dead button).
+              if (!sendDate) setSendDate(chicagoTomorrowYmd())
+            }}
+            aria-pressed={when === 'schedule'}
+            style={pill(when === 'schedule')}
+          >
             Schedule…
           </button>
         </span>

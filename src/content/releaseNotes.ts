@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1429',
+    date: '2026-08-06',
+    title: 'GC Review: Schedule send works first-click',
+    kind: 'fix',
+    highlights: [
+      'Flipping to Schedule\u2026 now pre-fills tomorrow 7:00 AM Central \u2014 previously the empty date made Schedule send look like it did nothing.',
+    ],
+  },
+  {
     version: 'v2.1428',
     date: '2026-08-06',
     title: 'Scheduled GC statements join My email schedule',
