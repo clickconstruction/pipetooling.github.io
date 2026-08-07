@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1435',
+    date: '2026-08-06',
+    title: 'Complete pipeline history under the hood',
+    kind: 'infra',
+    highlights: [
+      'Every job status change is now recorded \u2014 including jobs going Paid, which previously left no trace. Groundwork for the upcoming Weekly movement report.',
+    ],
+  },
+  {
     version: 'v2.1434',
     date: '2026-08-06',
     title: 'GC Review: jobs sorted by address',
