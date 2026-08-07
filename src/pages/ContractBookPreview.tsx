@@ -132,7 +132,7 @@ export default function ContractBookPreview() {
             padding: '0.5rem 0.25rem',
             fontSize: '0.9rem',
             fontWeight: 600,
-            color: '#2563eb',
+            color: 'var(--text-link)',
             textDecoration: 'none',
             whiteSpace: 'nowrap',
           }}
