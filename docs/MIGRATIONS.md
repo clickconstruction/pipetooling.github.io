@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-06
+last_updated: 2026-08-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 7, 2026
+
+**`20260807201349_job_share_links.sql`** _(apply via `supabase db push` after merge, then deploy the `job-share` edge function; the client swap to token URLs ships in a follow-up PR — until then the table just sits unused)_
+- **Purpose**: Share-a-job Phase 2 (v2.1453) — `job_share_links` token table so texted job links unfurl as rich OG preview cards. One row per share action; stores `token_hash` (sha256 of the 128-bit raw token, which lives only in the shared URL — the `estimates.public_token_hash` pattern), `job_id`, `created_by`, `revoked_at` kill switch.
+- **Security**: RLS — INSERT gated on `created_by = auth.uid()` **and** an `EXISTS` against `jobs_ledger` (runs as the caller, so the caller's own job visibility does the gating); SELECT/UPDATE/DELETE creator-or-dev. The `job-share` edge function resolves tokens with the service role and exposes only job #/name/address/status. Ends with both read-only training-mode blocks.
 
 #### August 6, 2026
 
