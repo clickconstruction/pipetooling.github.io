@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-08-06
+last_updated: 2026-08-07
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -43,6 +43,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `payment_received` | event | `app_settings.payment_made_email_recipients_v1` | `paid-job-email` (`kind` column) | — | ✅ |
 | `estimate_accepted` | event | `estimates.accept_notify_user_ids` (+ always-list) | accept flow | — | ✅ (v2.1330) |
 | `weekly_movement` | scheduled report | `weekly_movement_email_requests` (v2.1437; internal `recipient_user_id`; previous-complete-week semantics; share UI v2.1438) | `weekly-movement-email-dispatch` | ✅ recipient-scoped (v2.1438) | — (scheduled report) |
+| `weekly_money` | scheduled report | `weekly_money_email_requests` (v2.1448; dev/controller only — wage-derived; previous-complete-week semantics) | `weekly-money-email-dispatch` | ✅ recipient-scoped (share UI + schedule branches in the follow-up PR) | — (scheduled report) |
 | `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | ✅ requester-scoped (v2.1428) | — (scheduled report, not an event stream) |
 
 ## Design rules

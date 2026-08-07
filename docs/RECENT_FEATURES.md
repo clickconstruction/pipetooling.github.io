@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1447)
+last_updated: 2026-08-07 (v2.1448)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1448)
+
+### weekly_money stream — requests table + cron dispatcher (Phase 5, backend) (2026-08-07)
+[docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md) Phase 5, steps 2–3 of the [REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md) checklist. Migration `20260807070000`: `weekly_money_email_requests` (internal `recipient_user_id`, `repeat_weekly`, attempts/error) with RLS requiring BOTH requester and recipient to be **dev/controller** (the email carries wage-derived job costs — tighter than weekly_movement's office cohort), plus pg_cron `weekly-money-email-dispatch` every 5 minutes. New cron-only [`weekly-money-email-dispatch`](../supabase/functions/weekly-money-email-dispatch/index.ts) edge function: drains due rows, rebuilds once per batch via `get_weekly_money_movement_payload(NULL)` (previous complete Central week) — the SAME RPC the modal reads, so **no client/SQL mirror exists to drift**; `render.ts` ports the kernel's row math (seed-bootstrap Δ% rule included); Resend send with requester reply-to; weekly chains re-insert +7 days. A quiet week still sends. Deploy after merge: `supabase db push`, then `supabase functions deploy weekly-money-email-dispatch --no-verify-jwt`. Share UI + My-email-schedule branches follow in the next PR.
 
 ## Latest Updates (v2.1447)
 

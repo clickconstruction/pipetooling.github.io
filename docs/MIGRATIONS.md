@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 6, 2026
 
+**`20260807070000_weekly_money_email_stream.sql`** _(apply via `supabase db push` after merge, then deploy the weekly-money-email-dispatch edge function; an undeployed function just 404s from cron harmlessly)_
+- **Purpose**: `weekly_money` Report Subscriptions stream (v2.1448) — `weekly_money_email_requests` (internal `recipient_user_id`, `repeat_weekly`, attempts/error columns) + pg_cron `weekly-money-email-dispatch` every 5 minutes (Vault `PROJECT_URL` + `CRON_SECRET`). Dispatcher reuses `get_weekly_money_movement_payload` — no mirror to verify.
+- **Security**: RLS — INSERT requires requester = auth.uid() AND requester role dev/controller AND recipient role dev/controller (wage-derived data); SELECT own + dev; DELETE own-unsent + dev; no client UPDATE. Both read-only training-mode guards re-applied (new table).
+
 **`20260807060000_weekly_money_payload_mercury_sign.sql`** _(apply via `supabase db push` after merge)_
 - **Purpose**: Weekly Money payload Mercury sign fix (v2.1443) — card purchases store negative bank-ledger amounts; the v2.1442 function summed them raw so `mercury_cost` (and the office-charges overhead bucket) read negative. Negates the allocation sum so money out is positive spend; refunds still reduce cost. Full-body replace of this train's own function (no external drift). Prod fidelity note: labor parity with `teamLabor.ts` verified exactly (9.675 h / $120.94 both sides on one job-week).
 - **Security**: unchanged (same gates/grants as `20260807053000`).
