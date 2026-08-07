@@ -105,6 +105,21 @@ describe('buildMyEmailWeekGrid', () => {
   })
 })
 
+describe('gc_statement one-offs (v2.1428)', () => {
+  it('places a gc_statement one-off with its own label and weekly flag', () => {
+    const grid = buildMyEmailWeekGrid(
+      { weekly: [] },
+      [{ stream: 'gc_statement', detail: 'Knight Contracting \u2192 ap@knight.com', ymd: '2026-08-10', minutes: 420, weekly: true }],
+      '2026-08-10',
+    )
+    const monday = grid.find((d) => d.ymd === '2026-08-10')
+    expect(monday?.entries).toHaveLength(1)
+    expect(monday?.entries[0]?.label).toBe('GC statement')
+    expect(monday?.entries[0]?.weekly).toBe(true)
+    expect(monday?.entries[0]?.detail).toBe('Knight Contracting \u2192 ap@knight.com')
+  })
+})
+
 describe('normalizeMyEmailSubscriptions', () => {
   it('maps a full v2.1330 payload', () => {
     const subs = normalizeMyEmailSubscriptions({
