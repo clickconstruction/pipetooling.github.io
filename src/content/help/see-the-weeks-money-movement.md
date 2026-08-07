@@ -31,6 +31,10 @@ Watch for the two amber flags:
 
 The **Not on jobs** line at the bottom holds office and bid labor plus office-job charges — real money out that no job absorbs.
 
+## Email it weekly
+
+The **Email this report** box schedules sends to another dev or controller: pick the person, a first-send date (defaults to next Monday 7:00 AM Central), and leave **Repeat weekly** on for a standing copy. Each send covers the previous complete week, rebuilt fresh at send time, and lists on the recipient's **Settings → My email schedule**. Cancel the pending row to end a weekly chain.
+
 ## Print it
 
 {{button:outline|🖨 Print}} opens a print-friendly copy of the current week and lens — choose **Save as PDF** to download.

@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 6, 2026
 
+**`20260807073000_email_schedule_weekly_money_stream.sql`** _(apply via `supabase db push` after merge; deployed client tolerates the old shape)_
+- **Purpose**: weekly_money schedule surfaces (v2.1449) — `get_my_email_schedule()` gains a recipient-scoped weekly_money one-offs branch; `get_global_email_schedule()` gains `weekly_money_requests`. Live-body rebuilds (bodies reproduced from this train's own 20260807025314), closer-terminated.
+- **Security**: unchanged.
+
 **`20260807070000_weekly_money_email_stream.sql`** _(apply via `supabase db push` after merge, then deploy the weekly-money-email-dispatch edge function; an undeployed function just 404s from cron harmlessly)_
 - **Purpose**: `weekly_money` Report Subscriptions stream (v2.1448) — `weekly_money_email_requests` (internal `recipient_user_id`, `repeat_weekly`, attempts/error columns) + pg_cron `weekly-money-email-dispatch` every 5 minutes (Vault `PROJECT_URL` + `CRON_SECRET`). Dispatcher reuses `get_weekly_money_movement_payload` — no mirror to verify.
 - **Security**: RLS — INSERT requires requester = auth.uid() AND requester role dev/controller AND recipient role dev/controller (wage-derived data); SELECT own + dev; DELETE own-unsent + dev; no client UPDATE. Both read-only training-mode guards re-applied (new table).

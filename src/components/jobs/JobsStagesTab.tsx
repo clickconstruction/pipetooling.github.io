@@ -2927,6 +2927,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   open={weeklyMoneyModalOpen}
                   onClose={() => setWeeklyMoneyModalOpen(false)}
                   showToast={showToast}
+                  users={users}
                 />
                 <JobsGcReviewModal
                   open={gcReviewModalOpen}
