@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "181 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "182 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260807020310_gc_statement_rows_address_order.sql`** _(apply via `supabase db push` after merge; until then scheduled statements keep the old row order — content unchanged)_
+- **Purpose**: v2.1434 — `get_gc_statement_email_payload` rows ORDER BY gains `NULLIF(lower(trim(job_address)), '') ASC NULLS LAST` ahead of the age/remaining keys, matching the client's new address sort. Live-body rebuild.
+- **Security**: unchanged — service-role only.
 
 **`20260807013246_gc_statement_recipient_schedule_visibility.sql`** _(apply via `supabase db push` after merge; deployed client unaffected either way)_
 - **Purpose**: standing-copies PR 3 (v2.1432) — `get_my_email_schedule()`'s gc_statement branch also matches rows whose `sent_to` equals the caller's own `users.email`, so internal standing-copy recipients see their weekday chips. Live-body rebuild (v2.1400 rule), semicolon-terminated (v2.1428 lesson).

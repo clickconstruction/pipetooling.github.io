@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1433)
+last_updated: 2026-08-06 (v2.1434)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1434)
+
+### GC Review: address-sorted rows with the address under the job name (2026-08-06)
+`gcReviewRollup.sortReviewRows` re-orders each group's rows **address A→Z** (case-insensitive, blank addresses last) with the old oldest-first/largest-remaining order demoted to the within-address tiebreak — same-site rows now sit together (+1 kernel test). The modal's Job cell gains the street address in small faint text under the number · name. Migration `20260807020310_gc_statement_rows_address_order.sql` gives `get_gc_statement_email_payload`'s per-group jsonb_agg the same address-first ORDER BY (live-body rebuild, closer-only semicolon) so scheduled statement emails match send-now ones. Verified live: Knight's two Kenney Fort Blvd rows adjacent, 109d before 38d within the address. Client + DB (`supabase db push` after merge).
 
 ## Latest Updates (v2.1433)
 

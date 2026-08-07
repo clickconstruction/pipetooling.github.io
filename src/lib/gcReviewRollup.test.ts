@@ -128,6 +128,23 @@ describe('buildGcReviewRollup', () => {
     expect(rollup.groups[0]!.subtotal).toBe(600)
   })
 
+  it('sorts rows by address A→Z, blank addresses last, age as the tiebreak (v2.1434)', () => {
+    const zeta = job({ id: 'j1', gcCustomer: KNIGHT, job_address: '200 Zeta St' })
+    const alpha = job({ id: 'j2', gcCustomer: KNIGHT, job_address: '100 Alpha Ave' })
+    const blank = job({ id: 'j3', gcCustomer: KNIGHT, job_address: '' })
+    const rollup = buildGcReviewRollup(
+      [
+        // Oldest bill on the blank-address job — address still wins the sort.
+        invRow({ id: 'i1', job: blank, amount: 10, billed_at: '2026-06-01T00:00:00Z' }),
+        invRow({ id: 'i2', job: zeta, amount: 20, billed_at: '2026-07-01T00:00:00Z' }),
+        invRow({ id: 'i3', job: alpha, amount: 30, billed_at: '2026-07-21T00:00:00Z' }),
+      ],
+      [],
+      { now: NOW },
+    )
+    expect(rollup.groups[0]!.rows.map((r) => r.jobAddress)).toEqual(['100 Alpha Ave', '200 Zeta St', ''])
+  })
+
   it('sorts GC groups by subtotal descending and rows oldest-first', () => {
     const small = job({ id: 'j1', gcCustomer: KNIGHT })
     const big = job({ id: 'j2', gcCustomer: LOBERG })

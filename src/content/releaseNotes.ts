@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1434',
+    date: '2026-08-06',
+    title: 'GC Review: jobs sorted by address',
+    kind: 'feature',
+    highlights: [
+      'Each GC\u2019s jobs now list in address order with the street address in small under the job name \u2014 same-site work sits together.',
+      'Emailed statements (including scheduled ones) use the same order.',
+    ],
+  },
+  {
     version: 'v2.1433',
     date: '2026-08-06',
     title: 'GC Review: Share all stands out',
