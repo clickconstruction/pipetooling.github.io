@@ -8,6 +8,7 @@ import {
   type MoneyfillQueueCount,
 } from './moneyfillWeekClose'
 import type { NoncardAttributionQueueRow } from './banking/noncardAttributionQueue'
+import { cardChargesQueueCount, unsplitCardChargesFromTxs, weekUtcBounds } from './moneyfillWeekClose'
 
 const row = (posted: string | null, amount: number): NoncardAttributionQueueRow => ({
   mercury_transaction_id: 'x',
@@ -95,5 +96,35 @@ describe('summarizeWeekClose + confidence line', () => {
         { key: 'supply-invoices', label: 'Supply invoices', count: null, dollars: null },
       ]),
     ).toBeNull()
+  })
+})
+
+describe('card charges queue', () => {
+  const tx = (id: string, amount: number, cardId: string | null) => ({
+    id,
+    posted_at: '2026-08-04T12:00:00-05:00',
+    counterparty_name: 'Ferguson',
+    amount,
+    raw: cardId ? ({ details: { debitCardInfo: { id: cardId } } } as never) : null,
+  })
+  const CARD = '2f9e4d1c-0000-4000-8000-000000000001'
+
+  it('keeps only unallocated negative card purchases', () => {
+    const rows = unsplitCardChargesFromTxs(
+      [tx('a', -100, CARD), tx('b', -50, CARD), tx('c', -25, null), tx('d', 40, CARD)],
+      new Set(['b']),
+    )
+    expect(rows.map((r) => r.txId)).toEqual(['a'])
+    expect(cardChargesQueueCount(rows)).toMatchObject({ count: 1, dollars: 100 })
+  })
+
+  it('null rows report a partial queue', () => {
+    expect(cardChargesQueueCount(null).count).toBeNull()
+  })
+
+  it('week bounds convert Central midnights to UTC instants', () => {
+    const b = weekUtcBounds('2026-08-03')
+    expect(b?.startIso).toBe('2026-08-03T05:00:00.000Z')
+    expect(b?.endIso).toBe('2026-08-10T05:00:00.000Z')
   })
 })

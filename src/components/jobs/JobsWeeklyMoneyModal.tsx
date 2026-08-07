@@ -6,6 +6,11 @@ import { chicagoYmdOf } from '../../lib/gcStatementStandingCopies'
 import { mondayOfWeekYmd, weekLabel } from '../../lib/jobs/stagesWeeklyMovement'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import {
+  buildWeekCloseConfidenceLine,
+  fetchWeekCloseCounts,
+  type MoneyfillQueueCount,
+} from '../../lib/moneyfillWeekClose'
+import {
   buildWeeklyMoneyReportHtml,
   buildWeeklyMoneyView,
   formatWeeklyMoneyPlain,
@@ -120,6 +125,24 @@ export function JobsWeeklyMoneyModal({ open, onClose, showToast }: JobsWeeklyMon
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [payload, setPayload] = useState<WeeklyMoneyPayload | null>(null)
+  const [closeCounts, setCloseCounts] = useState<MoneyfillQueueCount[] | null>(null)
+
+  // Confidence footer: the SAME queue counts Moneyfill's weekly close shows
+  // (moneyfillWeekClose.ts — plan invariant #5). Best-effort; null hides it.
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setCloseCounts(null)
+    void fetchWeekCloseCounts(mondayYmd).then(
+      (c) => {
+        if (!cancelled) setCloseCounts(c)
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [open, mondayYmd])
 
   useEffect(() => {
     if (!open) return
@@ -255,6 +278,16 @@ export function JobsWeeklyMoneyModal({ open, onClose, showToast }: JobsWeeklyMon
                 ) : null}
               </>
             )}
+            {(() => {
+              const line = closeCounts ? buildWeekCloseConfidenceLine(closeCounts) : null
+              if (!line) return null
+              return (
+                <p style={{ margin: '0 0 0.4rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
+                  <b style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '0.625rem' }}>Confidence</b>{' '}
+                  — {line} → <a href="/moneyfill" style={{ color: 'var(--text-amber-700)', fontWeight: 700 }}>work Moneyfill to zero</a>
+                </p>
+              )
+            })()}
             <p style={{ margin: 0, padding: '0.4rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <b style={{ color: 'var(--text-700)' }}>Not on jobs:</b>{' '}
               Office + bid labor {formatWeeklyMoneyPlain(view.overhead.office_labor_cost + view.overhead.bid_labor_cost)}

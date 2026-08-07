@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1445',
+    date: '2026-08-07',
+    title: 'Moneyfill: unsplit card charges queue',
+    kind: 'feature',
+    highlights: [
+      'Moneyfill lists the week\u2019s card purchases that haven\u2019t been split to jobs, with a one-click path to Banking sorting to fix each.',
+      'The Weekly Money report now shows a confidence line \u2014 the same unattributed totals \u2014 so you know when to trust the week.',
+    ],
+  },
+  {
     version: 'v2.1444',
     date: '2026-08-06',
     title: 'Moneyfill: the weekly close',
