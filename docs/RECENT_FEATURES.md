@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1446)
+last_updated: 2026-08-07 (v2.1447)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1447)
+
+### Moneyfill queues: deposits, supply-invoice coverage, and the report-readiness flags (2026-08-07)
+Queues 3e–3h complete the weekly close ([docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md) Phase 3). **Deposits not applied to jobs**: positive in-week Mercury transactions with no `jobs_ledger_payments` reference, after the org's Accounts Receivable sorting exclusions — **Apply in Bank Payments** deep-links `?openBankPayments=1`. **Supply invoices not fully allocated**: in-week invoices where Σ allocation pct < ~100 — allocation bar + red gap $, **Allocate to jobs…** → Materials → Supply Houses (the first coverage queue for this gap anywhere in the app). **Worked jobs with no % report** and **Active jobs with no job total**: computed from the SAME `get_weekly_money_movement_payload` + kernel flags as the report (no second implementation), with Job Detail / Edit job actions via the app-wide modal contexts. `fetchWeekCloseCounts` now runs all **8 registered queues in parallel**; live against prod the close header read *1 of 8 queues at zero · $81,024 still unattributed* for the closed week. Client-only.
 
 ## Latest Updates (v2.1446)
 

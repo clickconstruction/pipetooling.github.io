@@ -8,6 +8,11 @@ import {
   MoneyfillPendingApprovalSection,
   MoneyfillUnassignedTimeSection,
 } from '../components/moneyfill/MoneyfillTimeQueuesSections'
+import {
+  MoneyfillDepositsSection,
+  MoneyfillJobFlagsSections,
+  MoneyfillSupplyInvoicesSection,
+} from '../components/moneyfill/MoneyfillMoneyQueuesSections'
 import { addDaysYmd } from '../lib/emailSchedule/emailScheduleWeek'
 import { weekLabel } from '../lib/jobs/stagesWeeklyMovement'
 import {
@@ -31,7 +36,7 @@ import {
  * capability-probed (e.g. bank transfers needs the banking_attributors grant).
  */
 export default function Moneyfill() {
-  const { role } = useAuth()
+  const { role, user: authUser } = useAuth()
   const noncard = useQuickfillNoncardAttribution()
   const [weekMonday, setWeekMonday] = useState(() => previousCompleteWeekMonday())
   const [counts, setCounts] = useState<MoneyfillQueueCount[] | null>(null)
@@ -39,7 +44,7 @@ export default function Moneyfill() {
   useEffect(() => {
     let cancelled = false
     setCounts(null)
-    void fetchWeekCloseCounts(weekMonday).then(
+    void fetchWeekCloseCounts(weekMonday, authUser?.id).then(
       (c) => {
         if (!cancelled) setCounts(c)
       },
@@ -50,7 +55,7 @@ export default function Moneyfill() {
     return () => {
       cancelled = true
     }
-  }, [weekMonday])
+  }, [weekMonday, authUser?.id])
 
   const summary = useMemo(() => (counts ? summarizeWeekClose(counts) : null), [counts])
 
@@ -162,6 +167,12 @@ export default function Moneyfill() {
       <MoneyfillUnassignedTimeSection weekMonday={weekMonday} />
 
       <MoneyfillPendingApprovalSection weekMonday={weekMonday} />
+
+      <MoneyfillDepositsSection weekMonday={weekMonday} authUserId={authUser?.id} />
+
+      <MoneyfillSupplyInvoicesSection weekMonday={weekMonday} />
+
+      <MoneyfillJobFlagsSections weekMonday={weekMonday} />
 
       <section
         aria-label="Bank transfers needing attribution"
