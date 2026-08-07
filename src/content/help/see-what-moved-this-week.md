@@ -29,3 +29,7 @@ The week runs Monday–Sunday (Central); use the **‹ ›** arrows to step betw
 ## Print it
 
 {{button:outline|🖨 Print}} makes a one-page report of the week — choose *Save as PDF* in the print window to download a copy.
+
+## Email it weekly
+
+Office roles see an **Email this report** box in the modal: pick a teammate, a first send date (defaults to next Monday 7:00 AM Central), tick **Repeat weekly**, and {{button:blue|Schedule}}. Each send covers the **previous complete week** — a Monday morning email reports last Mon–Sun — rebuilt fresh at send time. Your pending sends list right there with a **Cancel** each (cancelling ends a weekly repeat), and recipients see theirs on **Settings → Your account → My email schedule**.

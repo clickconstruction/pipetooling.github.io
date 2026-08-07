@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1438',
+    date: '2026-08-06',
+    title: 'Weekly movement: email it to teammates',
+    kind: 'feature',
+    highlights: [
+      'The Weekly movement report gains an Email this report box \u2014 pick a teammate, default next Monday 7 AM, Repeat weekly on by default.',
+      'Each send covers the previous complete week, rebuilt fresh at send time; recipients see it on their My email schedule.',
+    ],
+  },
+  {
     version: 'v2.1437',
     date: '2026-08-06',
     title: 'Weekly movement: the delivery engine',
