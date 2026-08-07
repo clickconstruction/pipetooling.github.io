@@ -2915,6 +2915,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   onClose={() => setWeeklyMovementModalOpen(false)}
                   users={users}
                   showToast={showToast}
+                  canSchedule={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
                 />
                 <JobsGcReviewModal
                   open={gcReviewModalOpen}

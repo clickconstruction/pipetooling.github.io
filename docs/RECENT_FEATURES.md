@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1437)
+last_updated: 2026-08-06 (v2.1438)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1438)
+
+### Weekly movement: share UI + email schedule integration — stream complete (2026-08-06)
+Final PR of the Weekly movement build. The modal gains an **Email this report** section (sender cohort dev/master/assistant-like, mirroring RLS): internal recipient picker (office-capable roles with email), first-send date defaulting to **next Monday** 7:00 AM Central, **Repeat weekly on by default**, pending list with Cancel — IO in [`weeklyMovementEmailRequests.ts`](../src/lib/weeklyMovementEmailRequests.ts), types hand-added. Migration `20260807025314` rebuilds `get_my_email_schedule()` (recipient-scoped `weekly_movement` one-offs branch, like billed_report) and `get_global_email_schedule()` (`weekly_movement_requests`) from LIVE bodies; `emailScheduleWeek.ts` unions widen with the 'Weekly movement' label + blue tone chip in Settings. Live-verified: scheduled Robert weekly Mondays 7 AM (left active as the production proof — first send Aug 10 covers Aug 3–9). Help guides updated. Client + DB (`supabase db push` after merge).
 
 ## Latest Updates (v2.1437)
 

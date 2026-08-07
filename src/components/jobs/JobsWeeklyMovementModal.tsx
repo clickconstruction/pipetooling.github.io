@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -7,6 +8,12 @@ import { chicagoYmdOf } from '../../lib/gcStatementStandingCopies'
 import { salaryZonedWallClockToUtcMs } from '../../lib/salaryZonedWallClock'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import {
+  cancelWeeklyMovementSend,
+  listMyPendingWeeklyMovementSends,
+  scheduleWeeklyMovementSend,
+  type PendingWeeklyMovementSend,
+} from '../../lib/weeklyMovementEmailRequests'
 import {
   buildWeeklyMovement,
   buildWeeklyMovementReportHtml,
@@ -28,15 +35,76 @@ import {
 type JobsWeeklyMovementModalProps = {
   open: boolean
   onClose: () => void
-  users: Array<{ id: string; name: string }>
+  users: Array<{ id: string; name: string; email?: string | null; role?: string }>
   showToast: (msg: string, kind: 'success' | 'error') => void
+  /** Scheduling is for the sender cohort (dev / master_technician / assistant-like — mirrors RLS). */
+  canSchedule: boolean
 }
 
-export function JobsWeeklyMovementModal({ open, onClose, users, showToast }: JobsWeeklyMovementModalProps) {
+export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSchedule }: JobsWeeklyMovementModalProps) {
+  const { user: authUser } = useAuth()
   const [mondayYmd, setMondayYmd] = useState(() => mondayOfWeekYmd(chicagoYmdOf(new Date())))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<WeeklyMovementData | null>(null)
+  /** Share section (v2.1438): scheduled sends of the previous-complete-week report. */
+  const [shareRecipientId, setShareRecipientId] = useState('')
+  const [shareDate, setShareDate] = useState(() => addDaysYmd(mondayOfWeekYmd(chicagoYmdOf(new Date())), 7))
+  const [shareTime, setShareTime] = useState('07:00')
+  const [shareWeekly, setShareWeekly] = useState(true)
+  const [shareBusy, setShareBusy] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
+  const [pendingSends, setPendingSends] = useState<PendingWeeklyMovementSend[]>([])
+  useEffect(() => {
+    if (!open || !canSchedule) return
+    let cancelled = false
+    void listMyPendingWeeklyMovementSends().then(
+      (rows) => {
+        if (!cancelled) setPendingSends(rows)
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [open, canSchedule])
+  const refreshPending = () => {
+    void listMyPendingWeeklyMovementSends().then(setPendingSends, () => {})
+  }
+  const pickableRecipients = users
+    .filter((u) => ['dev', 'master_technician', 'assistant', 'controller', 'primary'].includes(u.role ?? '') && (u.email ?? '').includes('@'))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const recipientName = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
+  const submitShare = () => {
+    const hm = /^(\d{1,2}):(\d{2})$/.exec(shareTime.trim())
+    if (!shareRecipientId || !/^\d{4}-\d{2}-\d{2}$/.test(shareDate) || !hm) {
+      setShareError('Pick a person, date, and time.')
+      return
+    }
+    const ms = salaryZonedWallClockToUtcMs(shareDate, Number(hm[1]), Number(hm[2]), 0, APP_CALENDAR_TZ)
+    if (ms == null || ms <= Date.now()) {
+      setShareError('Pick a time in the future (Central).')
+      return
+    }
+    setShareBusy(true)
+    setShareError(null)
+    void scheduleWeeklyMovementSend({
+      requestedBy: authUser?.id ?? '',
+      recipientUserId: shareRecipientId,
+      sendAtIso: new Date(ms).toISOString(),
+      repeatWeekly: shareWeekly,
+    }).then(
+      () => {
+        setShareBusy(false)
+        setShareRecipientId('')
+        refreshPending()
+      },
+      (e: unknown) => {
+        setShareBusy(false)
+        setShareError(e instanceof Error ? e.message : 'Could not schedule — try again.')
+      },
+    )
+  }
 
   useEffect(() => {
     if (!open) return
@@ -175,6 +243,87 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast }: Job
             <span aria-hidden>🖨</span> Print
           </button>
         </div>
+        {canSchedule ? (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', marginBottom: '1rem' }}>
+            <p style={{ margin: '0 0 0.15rem', fontSize: '0.8125rem', fontWeight: 600 }}>Email this report</p>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Each send covers the previous complete week (a Monday 7 AM email reports last Mon–Sun), rebuilt fresh at
+              send time.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <select
+                value={shareRecipientId}
+                onChange={(e) => setShareRecipientId(e.target.value)}
+                disabled={shareBusy}
+                aria-label="Send to"
+                style={{ flex: 1, minWidth: 140, padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+              >
+                <option value="">Send to…</option>
+                {pickableRecipients.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} — {(u.role ?? '').replace('_', ' ')}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={shareDate}
+                onChange={(e) => setShareDate(e.target.value)}
+                disabled={shareBusy}
+                aria-label="First send date"
+                style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+              />
+              <input
+                type="time"
+                value={shareTime}
+                onChange={(e) => setShareTime(e.target.value)}
+                disabled={shareBusy}
+                aria-label="Send time (Central)"
+                style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+              />
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={shareWeekly} onChange={() => setShareWeekly((w) => !w)} disabled={shareBusy} style={{ margin: 0 }} />
+                Repeat weekly
+              </label>
+              <button
+                type="button"
+                onClick={submitShare}
+                disabled={shareBusy || !shareRecipientId}
+                style={{ marginLeft: 'auto', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 500, border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: shareBusy ? 'wait' : 'pointer' }}
+              >
+                {shareBusy ? 'Scheduling…' : 'Schedule'}
+              </button>
+            </div>
+            {shareError ? (
+              <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{shareError}</p>
+            ) : null}
+            {pendingSends.length > 0 ? (
+              <div style={{ marginTop: '0.5rem' }}>
+                {pendingSends.map((r) => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', padding: '0.1rem 0' }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      → {recipientName(r.recipient_user_id)}
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {new Date(r.send_at).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {r.repeat_weekly ? ' · weekly' : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void cancelWeeklyMovementSend(r.id).then(refreshPending, refreshPending)
+                      }}
+                      title="Cancel this scheduled send (ends a weekly chain)"
+                      style={{ padding: '0.05rem 0.45rem', fontSize: '0.6875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {loading ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }} role="status">
             Loading the week…

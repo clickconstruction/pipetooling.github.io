@@ -22,7 +22,7 @@ export type MyEmailSchedulePayload = {
     activity_scope: string
   }>
   one_offs: Array<{
-    stream: 'billed_report' | 'schedule_day' | 'gc_statement'
+    stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement'
     send_at: string
     /** Set when the send already went out (current-week history rows, v2.1323). */
     sent_at?: string | null
@@ -69,7 +69,7 @@ export function normalizeMyEmailSubscriptions(
 }
 
 export type WeekGridEntry = {
-  stream: 'report_digest' | 'billed_report' | 'schedule_day' | 'gc_statement'
+  stream: 'report_digest' | 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement'
   label: string
   timeLabel: string
   /** Minutes since midnight — the in-day sort key. */
@@ -130,7 +130,7 @@ export function currentWeekDays(todayYmd: string): Array<{ ymd: string; dow: num
 }
 
 export type PlacedOneOff = {
-  stream: 'billed_report' | 'schedule_day' | 'gc_statement'
+  stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement'
   detail: string | null
   /** Chicago calendar day of the send instant. */
   ymd: string
@@ -169,7 +169,7 @@ export function buildMyEmailWeekGrid(
       if (o.ymd !== ymd) continue
       entries.push({
         stream: o.stream,
-        label: o.stream === 'billed_report' ? 'Billed report' : o.stream === 'gc_statement' ? 'GC statement' : 'My dispatch day',
+        label: o.stream === 'billed_report' ? 'Billed report' : o.stream === 'gc_statement' ? 'GC statement' : o.stream === 'weekly_movement' ? 'Weekly movement' : 'My dispatch day',
         timeLabel: formatMinutes(o.minutes),
         minutes: o.minutes,
         detail: o.detail,
