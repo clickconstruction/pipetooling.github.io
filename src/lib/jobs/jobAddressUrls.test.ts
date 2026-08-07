@@ -53,6 +53,16 @@ describe('formatAddressTwoLines', () => {
     expect(formatAddressTwoLines(null)).toBe(null)
     expect(formatAddressTwoLines('   ')).toBe(null)
   })
+  it('splits at the newly added San Antonio-metro localities (v2.1458 — the "Converse TX" orphan)', () => {
+    expect(formatAddressTwoLines('11545 Chestnut Rose Converse TX')).toEqual({
+      line1: '11545 Chestnut Rose',
+      line2: 'Converse TX',
+    })
+    expect(formatAddressTwoLines('100 Pat Booker Rd Universal City TX 78148')).toEqual({
+      line1: '100 Pat Booker Rd',
+      line2: 'Universal City TX',
+    })
+  })
   it('keeps a bare street address on a single line', () => {
     expect(formatAddressTwoLines('123 Main Street')).toEqual({ line1: '123 Main Street' })
   })

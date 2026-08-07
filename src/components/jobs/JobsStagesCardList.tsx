@@ -30,9 +30,9 @@ import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForReve
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
+import { buildClickToolingUrl, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
-import { useShareJob } from './ShareJobButton'
+import { ShareJobButton, useShareJob } from './ShareJobButton'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -376,7 +376,7 @@ function cardStripeEmailedHint(ctx: StagesRowRenderContext, job: JobWithDetails,
 }
 
 /** The desktop activity cell's vertical icon rail, laid horizontally on the card footer. */
-function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails) {
+function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails, openDetail: (j: JobWithDetails) => void) {
   const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
   const customerPhone = (job.customer_phone ?? '').trim()
   return (
@@ -475,6 +475,29 @@ function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails) {
           <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
         </svg>
       </button>
+      {/* Promoted from the ⋯ sheet (v2.1458): Job detail + Share are the two
+          most-used desktop row actions — visible on every card, same icons as
+          the desktop cluster. */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          openDetail(job)
+        }}
+        title="Job detail"
+        aria-label={`Open job detail for ${(job.job_name ?? '').trim() || 'Job'}`}
+        style={{ ...cardQuickIconStyle, color: 'var(--text-700)' }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+          <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
+        </svg>
+      </button>
+      <ShareJobButton
+        jobId={job.id}
+        fields={{ hcpNumber: job.hcp_number, jobName: job.job_name, jobAddress: job.job_address }}
+        size={16}
+        padding="0.3rem"
+      />
     </span>
   )
 }
@@ -486,13 +509,18 @@ function cardMoreActionsTitle(job: JobWithDetails): string {
 }
 
 /** The card's always-visible footer: invoice chips + reports + the horizontal icon row + the ⋯ sheet opener. */
-function cardFooterRow(ctx: StagesRowRenderContext, job: JobWithDetails, onMoreActions: () => void) {
+function cardFooterRow(
+  ctx: StagesRowRenderContext,
+  job: JobWithDetails,
+  onMoreActions: () => void,
+  openDetail: (j: JobWithDetails) => void,
+) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
       {cardInvoiceChips(ctx, job)}
       {renderStagesViewReportsButton(ctx, job)}
       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-        {cardQuickIcons(ctx, job)}
+        {cardQuickIcons(ctx, job, openDetail)}
         <button
           type="button"
           onClick={(e) => {
@@ -670,6 +698,19 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
       },
       { key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) },
     ]
+    if ((j.job_address ?? '').trim()) {
+      items.push({ key: 'maps', label: 'Google Maps', onClick: () => openInExternalBrowser(googleMapsSearchUrl(j.job_address)) })
+    }
+    if (props.canOpenJobScheduleModal && (j.team_members?.length ?? 0) > 0) {
+      items.push({
+        key: 'week-dispatch',
+        label: 'Week dispatch',
+        onClick: () => {
+          const week = getDefaultWeekRange().start
+          navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
+        },
+      })
+    }
     if (jobBillingUnallocatedDollars(j) > 0) {
       items.push({
         key: 'partial-invoice',
@@ -758,7 +799,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
             />
             {cardNextChip(ctx, j)}
             {cardActivityTeaser(ctx, j)}
-            {cardFooterRow(ctx, j, () => setMoreActionsJob(j))}
+            {cardFooterRow(ctx, j, () => setMoreActionsJob(j), openStagesDetailJobModal)}
             {expanded ? renderCardThreadPanel(props, ctx, j) : null}
           </div>
         )
@@ -852,6 +893,19 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     }
     if (props.showClickTooling !== false) {
       items.push({ key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) })
+    }
+    if ((j.job_address ?? '').trim()) {
+      items.push({ key: 'maps', label: 'Google Maps', onClick: () => openInExternalBrowser(googleMapsSearchUrl(j.job_address)) })
+    }
+    if (props.canOpenJobScheduleModal && (j.team_members?.length ?? 0) > 0) {
+      items.push({
+        key: 'week-dispatch',
+        label: 'Week dispatch',
+        onClick: () => {
+          const week = getDefaultWeekRange().start
+          navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
+        },
+      })
     }
     if (onOpenLienTooling) {
       items.push({ key: 'lien', label: 'Lien Tooling', onClick: () => onOpenLienTooling({ job: j, invoice: inv }) })
@@ -973,7 +1027,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
             {cardNextChip(ctx, j)}
             {cardActivityTeaser(ctx, j)}
             {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
-            {cardFooterRow(ctx, j, () => setMoreActionsRow(row))}
+            {cardFooterRow(ctx, j, () => setMoreActionsRow(row), openStagesDetailJobModal)}
             {expanded ? renderCardThreadPanel(props, ctx, j) : null}
           </div>
         )

@@ -48,9 +48,11 @@ describe('extra locality keywords (v2.1186 dev setting)', () => {
 
   it('built-in cities keep working alongside extras', () => {
     setExtraTxLocalityKeywords(['Devine'])
+    // Cibolo joined the built-ins in v2.1458 — the locality split now beats the
+    // comma fallback this case originally documented.
     expect(formatAddressTwoLines('124 Farmview Cibolo, TX')).toEqual({
-      line1: '124 Farmview Cibolo',
-      line2: 'TX',
+      line1: '124 Farmview',
+      line2: 'Cibolo, TX',
     })
     expect(formatAddressTwoLines('720 Bailey St Seguin, TX')).toEqual({
       line1: '720 Bailey St',

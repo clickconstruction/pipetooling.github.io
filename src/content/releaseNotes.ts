@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1458',
+    date: '2026-08-07',
+    title: 'Pipeline on your phone: cleaner addresses, more buttons',
+    kind: 'feature',
+    highlights: [
+      'Job addresses in Converse, Universal City, Live Oak, Cibolo, Boerne, and Leon Valley now split neatly onto two lines — no more a lone "TX" hanging on its own line, for any city.',
+      'Mobile job cards gain two shortcuts: a briefcase that opens Job Detail and a Share icon that texts the job to a teammate.',
+      'The ⋯ menu on each card adds Google Maps and Week dispatch, so everything from the desktop row is reachable on your phone.',
+    ],
+  },
+  {
     version: 'v2.1457',
     date: '2026-08-07',
     title: 'Signed-contract details wrap cleanly on phones',

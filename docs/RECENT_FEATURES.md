@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1457)
+last_updated: 2026-08-07 (v2.1458)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1458)
+
+### Pipeline mobile cards: address split fix + desktop actions surfaced (2026-08-07)
+User-reported ("TX" orphaned on its own line). Three parts: **(1)** six San Antonio-metro cities join the built-in TX locality list ([`txLocalityAddressSplit.ts`](../src/lib/txLocalityAddressSplit.ts): Converse, Universal City, Live Oak, Cibolo, Boerne, Leon Valley) so their comma-less addresses split deliberately (street / city+state) — kernel tests updated, including the Cibolo case that previously documented the comma fallback. **(2)** [`JobAddressText`](../src/components/jobs/JobAddressText.tsx) gains `text-wrap: balance`, so any *still*-unsplittable one-liner that must wrap breaks into even lines instead of orphaning the last word — applies to every Stages address render. **(3)** The mobile card quick-icon row ([`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx)) gains **Job detail** (briefcase, promoted from the ⋯ sheet's "View job") and **Share** (v2.1452 flow); both ⋯ sheets gain **Google Maps** (when the job has an address) and **Week dispatch** (when schedulable with a team) so the sheet covers the full desktop action set. Help guide `ready-to-bill-pipeline` updated.
 
 ## Latest Updates (v2.1457)
 
