@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1455',
+    date: '2026-08-07',
+    title: 'GC Review: tap a teammate instead of typing their email',
+    kind: 'feature',
+    highlights: [
+      'The GC Review email dialogs (Share all and per-GC Email…) now show your office teammates as tappable chips above the To field — one tap fills their email.',
+      'Tap the selected chip again to clear it; typing any other address, inside or outside the company, still works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1454',
     date: '2026-08-07',
     title: 'Jobs: shared links show a preview card',
