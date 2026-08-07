@@ -23,4 +23,4 @@ The percent feeds the Progress & payment bar — "value created" = the job's amo
 
 Only office roles (dev, master technician, assistant, primary) see the **Set % complete** button — the same people who can edit the job. Everyone else sees the current percent as read-only.
 
-Note: the same **Set % complete** flow is also available from the job's **Detail window** — the button sits in the action row next to {{button:green|Arrived at job}} and {{button:outline|Leaving job}}, and works identically (slider + note, posted to the activity feed).
+Note: the same **Set % complete** flow is also available from the job's **Detail window** — the button sits in the action row next to {{button:green|Arrived}} and {{button:outline|Leaving}}, and works identically (slider + note, posted to the activity feed).

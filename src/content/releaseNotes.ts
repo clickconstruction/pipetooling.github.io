@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1460',
+    date: '2026-08-07',
+    title: 'Job Detail: tidier action buttons',
+    kind: 'fix',
+    highlights: [
+      'The stamp buttons on Job Detail now read "Arrived" and "Leaving" — same actions, less crowding on phone screens. Posted notes still say "Arrived at job" / "Leaving job".',
+    ],
+  },
+  {
     version: 'v2.1459',
     date: '2026-08-07',
     title: 'Task descriptions wrap while you type',

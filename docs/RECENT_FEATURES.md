@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1459)
+last_updated: 2026-08-07 (v2.1460)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1460)
+
+### Job Detail stamp buttons shortened to "Arrived" / "Leaving" (2026-08-07)
+Copy-only: the [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) action buttons drop the "at job" / "job" suffixes so the three-button row breathes on phones. Aria-labels, the posted note body ("… — Arrived at job", [`jobThreadNoteStampBody.ts`](../src/lib/jobThreadNoteStampBody.ts)), and all behavior unchanged. Help guide `set-job-progress-on-stages` button tokens updated.
 
 ## Latest Updates (v2.1459)
 
