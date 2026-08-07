@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1442)
+last_updated: 2026-08-06 (v2.1443)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1443)
+
+### Weekly Money Movement report — the modal ships (Phase 2) (2026-08-06)
+The report from [docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md): new [`JobsWeeklyMoneyModal`](../src/components/jobs/JobsWeeklyMoneyModal.tsx) (dev + controller) — per-job money out vs money in for a Mon–Sun Central week under **Earned** (Δ% done × job total − spend) and **Cash** (in − out) lenses; KPI strip (out / in / net cash / value created / earned net), Made/Lost sections with `spend, no progress` and `no job total` flags, labor/subs/materials hover split, "Not on jobs" overhead line, week nav ‹ ›, Print. Pure kernel [`weeklyMoneyMovement.ts`](../src/lib/jobs/weeklyMoneyMovement.ts) (14 tests) shapes the `get_weekly_money_movement_payload` RPC result — all money math stays server-side (**fidelity verified against prod**: labor parity with `teamLabor.ts` exact to the cent on a sampled job-week; migration `20260807060000` fixes the Mercury sign found during verification). Entry points: stage-strip Section tools → Pipeline → **Weekly money movement** (dev/controller only, `stagesSectionToolsMenu` + tests) and `?stagesMoney=1` deep link (handle-gated + e2e cold-load spec). Help guide `see-the-weeks-money-movement.md`. Confidence footer lands with the Moneyfill weekly close (next).
 
 ## Latest Updates (v2.1442)
 
