@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1450)
+last_updated: 2026-08-07 (v2.1451)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1451)
+
+### Job % progress lands on the activity list (2026-08-07)
+Every `pct_complete` change now shows on the job's activity feed — the Jobs → Pipeline thread panel, Job Detail, and the full-screen activity view — as a `progress_updated` event ("Progress 42% → 55%", teal **Progress** tag, `status` filter bucket). Migration `20260807080000` bridges `job_pct_events` (the v2.1441 history trigger) into `job_activity_events` with the ledger's one-writer-per-source + `source_id` idempotency pattern; `seed` baseline anchors never emit; prior value derived from the previous pct event; idempotent backfill covers the day of history since Phase 0. Client: `progress_updated` added to the [`jobActivityEvent.ts`](../src/lib/jobActivityEvent.ts) type union + render registry (rows with unknown types are dropped by design, so the registry entry is what lights it up). Works for every % writer automatically — Job Detail's %+note commit, Workflow stage %, Forecast gutter, and any future RPC — because the source is the column trigger, not the surfaces.
 
 ## Latest Updates (v2.1450)
 

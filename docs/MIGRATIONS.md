@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 6, 2026
 
+**`20260807080000_job_pct_events_to_activity.sql`** _(apply via `supabase db push` after merge; client registry entry ships in the same PR)_
+- **Purpose**: % progress → activity ledger (v2.1451) — bridges `job_pct_events` (v2.1441) into `job_activity_events` as `progress_updated` events ("Progress 42% → 55%"; prior value derived from the previous pct event; `seed` baseline rows never emit). One-writer-per-source trigger + idempotent backfill of non-seed rows, source_id-guarded like `job_status_events_to_activity`.
+- **Security**: rides existing `job_activity_events` RLS (`can_read_job_activity`, non-financial); trigger SECURITY DEFINER like its siblings.
+
 **`20260807073000_email_schedule_weekly_money_stream.sql`** _(apply via `supabase db push` after merge; deployed client tolerates the old shape)_
 - **Purpose**: weekly_money schedule surfaces (v2.1449) — `get_my_email_schedule()` gains a recipient-scoped weekly_money one-offs branch; `get_global_email_schedule()` gains `weekly_money_requests`. Live-body rebuilds (bodies reproduced from this train's own 20260807025314), closer-terminated.
 - **Security**: unchanged.
