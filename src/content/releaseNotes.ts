@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1436',
+    date: '2026-08-06',
+    title: 'Pipeline: the Weekly movement report',
+    kind: 'feature',
+    highlights: [
+      'A new Weekly movement report shows every job that entered a stage in a chosen week \u2014 grouped by stage, with the day, who moved it, and the job\u2019s value.',
+      'Sent-back moves get their own section, and app-made moves (like Stripe payments) show as Automatic.',
+      'Open it from the Pipeline group in the stage strip\u2019s hamburger menu; step weeks with \u2039 \u203a and print any week.',
+    ],
+  },
+  {
     version: 'v2.1435',
     date: '2026-08-06',
     title: 'Complete pipeline history under the hood',

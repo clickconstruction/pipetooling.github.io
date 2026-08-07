@@ -959,6 +959,32 @@ export default function Jobs() {
     navigate('.', { replace: true, state: {} })
   }, [jobDetailId, jobs, jobDetailModal, loadJobs, setSearchParams, navigate, location.state])
 
+  // `?stagesWeekly=` deep link (v2.1436): open the Weekly movement modal.
+  // Same gating class as openBankPayments — wait for the imperative handle
+  // (jobsListLoading) or the call silently no-ops on cold load (v2.832 rule).
+  const stagesWeeklyParam = searchParams.get('stagesWeekly')
+  useEffect(() => {
+    const wantsOpen = stagesWeeklyParam === 'true' || stagesWeeklyParam === '1'
+    if (!wantsOpen) return
+    const strip = () => {
+      setSearchParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          next.delete('stagesWeekly')
+          return next
+        },
+        { replace: true },
+      )
+    }
+    if (activeTab !== 'stages') {
+      strip()
+      return
+    }
+    if (jobsListLoading) return
+    stagesTabRef.current?.openWeeklyMovement()
+    strip()
+  }, [stagesWeeklyParam, activeTab, jobsListLoading, setSearchParams])
+
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {
     const wantsOpen = openBankPaymentsParam === 'true' || openBankPaymentsParam === '1'

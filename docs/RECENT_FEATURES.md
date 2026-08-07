@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1435)
+last_updated: 2026-08-06 (v2.1436)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1436)
+
+### Weekly movement report — Pipeline stage moves by week (2026-08-06)
+Builds on the v2.1435 single-writer event trigger. New pure kernel [`stagesWeeklyMovement.ts`](../src/lib/jobs/stagesWeeklyMovement.ts) (7 tests): Monday-of-week/label math, Central weekday attribution, forward moves bucketed by destination stage in pipeline order (section totals count distinct jobs once), backward moves in a **Sent back** section with from → to labels, `Automatic` for service-role movers, and a printable report builder. New self-fetching [`JobsWeeklyMovementModal`](../src/components/jobs/JobsWeeklyMovementModal.tsx) (week nav ‹ ›, per-stage sections with address-under-name rows, Print) — self-fetching because the board's jobs cache omits Paid. Opened from a new **Pipeline** group at the top of the stage strip's Section tools menu, or the `?stagesWeekly=1` deep link (Jobs.tsx router effect with the v2.832 jobsListLoading handle gate + cold-load e2e spec in the same PR per the handle-gating rule). Help guide `see-what-moved-this-week.md`. Client-only; the Report Subscriptions stream (scheduled/standing emails of this report) follows.
 
 ## Latest Updates (v2.1435)
 
