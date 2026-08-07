@@ -169,16 +169,19 @@ export type Database = {
       }
       banking_attributors: {
         Row: {
+          auto_role_grant: boolean
           created_at: string
           granted_by: string | null
           user_id: string
         }
         Insert: {
+          auto_role_grant?: boolean
           created_at?: string
           granted_by?: string | null
           user_id: string
         }
         Update: {
+          auto_role_grant?: boolean
           created_at?: string
           granted_by?: string | null
           user_id?: string
@@ -2610,6 +2613,51 @@ export type Database = {
           },
         ]
       }
+      customer_followup_prefs: {
+        Row: {
+          customer_id: string
+          next_followup_at: string | null
+          pia: boolean
+          snooze_note: string | null
+          snoozed_by: string | null
+          snoozed_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          customer_id: string
+          next_followup_at?: string | null
+          pia?: boolean
+          snooze_note?: string | null
+          snoozed_by?: string | null
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          customer_id?: string
+          next_followup_at?: string | null
+          pia?: boolean
+          snooze_note?: string | null
+          snoozed_by?: string | null
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_followup_prefs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_followup_prefs_snoozed_by_fkey"
+            columns: ["snoozed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -3785,66 +3833,6 @@ export type Database = {
           },
         ]
       }
-      gc_statement_emails: {
-        Row: {
-          gc_customer_id: string | null
-          gc_name: string
-          group_by: string
-          id: string
-          job_count: number
-          resend_email_id: string | null
-          sent_at: string
-          sent_by: string | null
-          sent_by_name: string
-          sent_to: string
-          subject: string
-          total: number
-        }
-        Insert: {
-          gc_customer_id?: string | null
-          gc_name: string
-          group_by?: string
-          id?: string
-          job_count: number
-          resend_email_id?: string | null
-          sent_at?: string
-          sent_by?: string | null
-          sent_by_name?: string
-          sent_to: string
-          subject: string
-          total: number
-        }
-        Update: {
-          gc_customer_id?: string | null
-          gc_name?: string
-          group_by?: string
-          id?: string
-          job_count?: number
-          resend_email_id?: string | null
-          sent_at?: string
-          sent_by?: string | null
-          sent_by_name?: string
-          sent_to?: string
-          subject?: string
-          total?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gc_statement_emails_gc_customer_id_fkey"
-            columns: ["gc_customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gc_statement_emails_sent_by_fkey"
-            columns: ["sent_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       gc_statement_email_requests: {
         Row: {
           attempts: number
@@ -3912,6 +3900,66 @@ export type Database = {
           {
             foreignKeyName: "gc_statement_email_requests_requested_by_fkey"
             columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_statement_emails: {
+        Row: {
+          gc_customer_id: string | null
+          gc_name: string
+          group_by: string
+          id: string
+          job_count: number
+          resend_email_id: string | null
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+          sent_to: string
+          subject: string
+          total: number
+        }
+        Insert: {
+          gc_customer_id?: string | null
+          gc_name: string
+          group_by?: string
+          id?: string
+          job_count: number
+          resend_email_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to: string
+          subject: string
+          total: number
+        }
+        Update: {
+          gc_customer_id?: string | null
+          gc_name?: string
+          group_by?: string
+          id?: string
+          job_count?: number
+          resend_email_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+          sent_to?: string
+          subject?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_statement_emails_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_emails_sent_by_fkey"
+            columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -4518,6 +4566,48 @@ export type Database = {
           },
         ]
       }
+      job_pct_events: {
+        Row: {
+          changed_at: string
+          changed_by_user_id: string | null
+          id: string
+          job_id: string
+          pct: number | null
+          source: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by_user_id?: string | null
+          id?: string
+          job_id: string
+          pct?: number | null
+          source?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by_user_id?: string | null
+          id?: string
+          job_id?: string
+          pct?: number | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_pct_events_changed_by_user_id_fkey"
+            columns: ["changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pct_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_schedule_blocks: {
         Row: {
           assignee_user_id: string
@@ -4575,6 +4665,48 @@ export type Database = {
           },
           {
             foreignKeyName: "job_schedule_blocks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          job_id: string
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          job_id: string
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          job_id?: string
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_share_links_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
@@ -11716,57 +11848,6 @@ export type Database = {
         }
         Relationships: []
       }
-      weekly_movement_email_requests: {
-        Row: {
-          attempts: number
-          created_at: string
-          error: string | null
-          id: string
-          recipient_user_id: string
-          repeat_weekly: boolean
-          requested_by: string
-          send_at: string
-          sent_at: string | null
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          error?: string | null
-          id?: string
-          recipient_user_id: string
-          repeat_weekly?: boolean
-          requested_by: string
-          send_at: string
-          sent_at?: string | null
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          error?: string | null
-          id?: string
-          recipient_user_id?: string
-          repeat_weekly?: boolean
-          requested_by?: string
-          send_at?: string
-          sent_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "weekly_movement_email_requests_recipient_user_id_fkey"
-            columns: ["recipient_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "weekly_movement_email_requests_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       weekly_money_email_requests: {
         Row: {
           attempts: number
@@ -11811,6 +11892,57 @@ export type Database = {
           },
           {
             foreignKeyName: "weekly_money_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_movement_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          recipient_user_id: string
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id: string
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id?: string
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_movement_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_movement_email_requests_requested_by_fkey"
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -12619,6 +12751,14 @@ export type Database = {
         Returns: Json
       }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
+      get_gc_statement_email_payload: {
+        Args: {
+          p_entity_id?: string
+          p_group_by?: string
+          p_include_collections?: boolean
+        }
+        Returns: Json
+      }
       get_global_email_schedule: { Args: never; Returns: Json }
       get_hazmat_notice_by_token: { Args: { p_token: string }; Returns: Json }
       get_invoice_allocation_lines_for_jobs: {
@@ -12740,7 +12880,6 @@ export type Database = {
       }
       get_my_email_schedule: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
-      get_weekly_money_movement_payload: { Args: { p_week_monday?: string | null }; Returns: Json }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }
@@ -12784,6 +12923,14 @@ export type Database = {
           supply_house_name: string
           total_parts: number
         }[]
+      }
+      get_weekly_money_movement_payload: {
+        Args: { p_week_monday?: string }
+        Returns: Json
+      }
+      get_weekly_movement_email_payload: {
+        Args: { p_week_monday?: string }
+        Returns: Json
       }
       has_payroll_access: { Args: never; Returns: boolean }
       humanize_job_status: { Args: { p: string }; Returns: string }
@@ -12960,6 +13107,21 @@ export type Database = {
           tables: string[]
           window_end: string
           window_start: string
+        }[]
+      }
+      list_customer_review_customer_sessions: {
+        Args: { p_customer_id?: string; p_gc_builder_id?: string }
+        Returns: {
+          bid_number: string
+          clocked_in_at: string
+          clocked_out_at: string
+          hours: number
+          kind: string
+          session_id: string
+          target_id: string
+          target_label: string
+          user_id: string
+          user_name: string
         }[]
       }
       list_customer_review_job_hours: {
@@ -14025,6 +14187,7 @@ export type Database = {
         Returns: boolean
       }
       sync_company_access_grants: { Args: never; Returns: undefined }
+      sync_controller_banking_attributors: { Args: never; Returns: undefined }
       sync_crew_bids_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
@@ -14072,7 +14235,7 @@ export type Database = {
         Args: {
           p_book_body_format: string
           p_book_body_html: string
-          p_book_version_date?: string | null
+          p_book_version_date?: string
           p_canonical_document_url: string
           p_contract_template_document_id: string
           p_document_name: string

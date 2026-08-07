@@ -41,6 +41,27 @@ export function buildJobSharePayload(jobId: string, fields: JobShareFields, orig
   }
 }
 
+/** 128-bit random token as 32 hex chars — the public share-link credential. */
+export function generateJobShareToken(cryptoObj: Pick<Crypto, 'getRandomValues'> = crypto): string {
+  const bytes = cryptoObj.getRandomValues(new Uint8Array(16))
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/** sha256 hex of the raw token — the only form ever stored (job_share_links.token_hash). */
+export async function sha256Hex(value: string, subtle: SubtleCrypto = crypto.subtle): Promise<string> {
+  const digest = await subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/** The job-share edge function URL that unfurls as a rich OG card (Phase 2). */
+export function buildJobShareFunctionUrl(supabaseUrl: string, rawToken: string): string {
+  return `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/job-share?t=${encodeURIComponent(rawToken)}`
+}
+
 export type JobShareOutcome = 'shared' | 'copied' | 'canceled' | 'failed'
 
 /** The slice of `navigator` the share runner touches (injectable for tests). */

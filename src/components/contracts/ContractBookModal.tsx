@@ -325,7 +325,8 @@ export function ContractBookModal({
             p_book_body_format: editBookFormat,
             p_tags: tags,
             p_canonical_document_url: editCanonicalUrl.trim(),
-            p_book_version_date: editVersionDate.trim() || null,
+            // null clears the date (omission hits the keep-current sentinel); the generated Args type drops `| null`.
+            p_book_version_date: (editVersionDate.trim() || null) as unknown as string,
           }),
         'update contract book entry',
       )

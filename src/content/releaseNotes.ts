@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1454',
+    date: '2026-08-07',
+    title: 'Jobs: shared links show a preview card',
+    kind: 'feature',
+    highlights: [
+      'When you share a job, the link now unfurls in Messages as a card: job #, name, address, current status — and a street photo of the address when one exists.',
+      'Tapping the card still opens the job in the app behind the teammate’s own login; the card itself shows nothing beyond the job #, name, address, and status.',
+    ],
+  },
+  {
     version: 'v2.1453',
     date: '2026-08-07',
     title: 'infra: groundwork for rich share cards',

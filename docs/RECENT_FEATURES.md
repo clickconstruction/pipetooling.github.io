@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1453)
+last_updated: 2026-08-07 (v2.1454)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1454)
+
+### Shared job links now unfurl as rich cards (2026-08-07)
+Client half of Share-a-job Phase 2 (backend: v2.1453). `useShareJob` ([`ShareJobButton.tsx`](../src/components/jobs/ShareJobButton.tsx)) now mints a tokenized link per share: 128-bit random token (`generateJobShareToken`), sha256 hash inserted into `job_share_links` (RLS re-checks the sharer can see the job; deliberately no `withSupabaseRetry` — `navigator.share` must fire inside the tap's transient activation, so it's one fast attempt), and the shared URL becomes the `job-share` edge function URL, which unfurls in Messages as job # + name / address · status / Street View photo and redirects taps to `/jobs?jobDetail=<id>`. Any mint failure (read-only training users, offline, backend not deployed) falls back to the plain Phase 1 deep link — sharing never breaks. Kernel additions unit-tested in [`jobShare.test.ts`](../src/lib/jobShare.test.ts); `database.ts` regenerated with `job_share_links`.
 
 ## Latest Updates (v2.1453)
 
