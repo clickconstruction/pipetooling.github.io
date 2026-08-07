@@ -167,7 +167,11 @@ serve(async (req) => {
   const statusLabel = prettyStatus(job.status)
   const description = [address || null, statusLabel || null].filter(Boolean).join(' · ')
   const redirectUrl = `${appOrigin}/jobs?jobDetail=${encodeURIComponent(job.id)}`
-  const selfUrl = `${url.origin}${url.pathname}?t=${encodeURIComponent(rawToken)}`
+  // Build the public URL from SUPABASE_URL, not req.url — inside the edge
+  // runtime req.url is the gateway-internal http origin with /functions/v1
+  // stripped, which would hand preview fetchers a broken og:image URL.
+  const publicBase = (Deno.env.get('SUPABASE_URL') ?? url.origin).replace(/\/+$/, '')
+  const selfUrl = `${publicBase}/functions/v1/job-share?t=${encodeURIComponent(rawToken)}`
 
   const og = [
     `<meta property="og:site_name" content="PipeTooling">`,

@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildJobShareDeepLink,
+  buildJobShareFunctionUrl,
   buildJobSharePayload,
   buildJobShareTitle,
+  generateJobShareToken,
   runJobShare,
+  sha256Hex,
   type JobSharePayload,
 } from './jobShare'
 
@@ -51,6 +54,37 @@ describe('buildJobSharePayload', () => {
   it('omits the address line when missing', () => {
     const p = buildJobSharePayload('j1', { ...fields, jobAddress: '  ' }, 'https://pipetooling.com')
     expect(p.text).toBe('Job #951 — Shearer Pinpoint')
+  })
+})
+
+describe('generateJobShareToken', () => {
+  it('produces 32 lowercase hex chars from 16 random bytes', () => {
+    const token = generateJobShareToken({
+      getRandomValues: ((arr: Uint8Array) => {
+        arr.set(Array.from({ length: arr.length }, (_, i) => i * 16 + 1))
+        return arr
+      }) as Crypto['getRandomValues'],
+    })
+    expect(token).toMatch(/^[0-9a-f]{32}$/)
+    expect(token.startsWith('0111213141')).toBe(true)
+  })
+
+  it('uses real crypto by default and does not repeat', () => {
+    expect(generateJobShareToken()).not.toBe(generateJobShareToken())
+  })
+})
+
+describe('sha256Hex', () => {
+  it('matches the known sha256 vector for "abc"', async () => {
+    expect(await sha256Hex('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+  })
+})
+
+describe('buildJobShareFunctionUrl', () => {
+  it('builds the edge function URL and encodes the token', () => {
+    expect(buildJobShareFunctionUrl('https://x.supabase.co/', 'ab c')).toBe(
+      'https://x.supabase.co/functions/v1/job-share?t=ab%20c',
+    )
   })
 })
 
