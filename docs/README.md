@@ -56,6 +56,7 @@
 | [`PERSON_IDENTITY_PLAN.md`](./PERSON_IDENTITY_PLAN.md) | Staged migration off name-text identity onto people.id keys; Combine-people context. |
 | [`RUN_SUBS_PLAN.md`](./RUN_SUBS_PLAN.md) | Phased plan to run subcontractors through Projects: person-id step assignment, step commitments, settlement into Sub Labor, sub-facing money view. |
 | [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) | Staged, tested plan for the Stripe-mode, payments_made-invariant, and person-identity-completion workstreams (with status log). |
+| [`WEEKLY_MONEY_PLAN.md`](./WEEKLY_MONEY_PLAN.md) | Build plan for the Weekly Money Movement report (per-job money out/in + earned-value lens), the Moneyfill weekly-close queues, and the weekly_money email stream. |
 | [`CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) | Crew P&L inputs/transforms/outputs + incident log (partial-data failures). |
 | [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_SESSIONS.md) | Salaried auto-session sync behavior runbook. |
 | [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md) | Company timezone rules (`APP_CALENDAR_TZ`), instants vs wall-clock. |
