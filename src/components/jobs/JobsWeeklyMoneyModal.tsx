@@ -75,12 +75,12 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
               <td style={{ padding: '0.3rem 0.4rem' }}>
                 {r.display}
                 {r.flagSpendNoProgress ? (
-                  <span style={{ marginLeft: 6, fontSize: '0.625rem', fontWeight: 700, color: '#b45309', background: 'var(--bg-subtle)', borderRadius: 999, padding: '1px 6px', whiteSpace: 'nowrap' }}>
+                  <span style={{ marginLeft: 6, fontSize: '0.625rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '1px 6px', whiteSpace: 'nowrap' }}>
                     spend, no progress
                   </span>
                 ) : null}
                 {r.flagNoJobTotal ? (
-                  <span style={{ marginLeft: 6, fontSize: '0.625rem', fontWeight: 700, color: '#b45309', background: 'var(--bg-subtle)', borderRadius: 999, padding: '1px 6px', whiteSpace: 'nowrap' }}>
+                  <span style={{ marginLeft: 6, fontSize: '0.625rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '1px 6px', whiteSpace: 'nowrap' }}>
                     no job total
                   </span>
                 ) : null}
@@ -95,7 +95,7 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
                 {r.valueCreated != null ? formatWeeklyMoneyPlain(r.valueCreated) : '—'}
               </td>
               <td
-                style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c', fontWeight: 600 }}
+                style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-red-700)', fontWeight: 600 }}
                 title={`Labor ${formatWeeklyMoneyPlain(r.outLabor)} · Subs ${formatWeeklyMoneyPlain(r.outSubs)} · Materials ${formatWeeklyMoneyPlain(r.outMaterials)}`}
               >
                 {formatWeeklyMoneyPlain(r.moneyOut)}
@@ -103,7 +103,7 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
               <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.moneyIn > 0 ? '#15803d' : 'var(--text-muted)', fontWeight: r.moneyIn > 0 ? 600 : 400 }}>
                 {r.moneyIn > 0 ? formatWeeklyMoneyPlain(r.moneyIn) : '—'}
               </td>
-              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? '#b45309' : net >= 0 ? '#15803d' : '#b91c1c' }}>
+              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? '#b45309' : net >= 0 ? '#15803d' : 'var(--text-red-700)' }}>
                 {net != null ? formatWeeklyMoneySigned(net) : '?'}
               </td>
             </tr>
@@ -155,7 +155,7 @@ export function JobsWeeklyMoneyModal({ open, onClose, showToast }: JobsWeeklyMon
   const kpi = (k: string, v: string, tone?: 'pos' | 'neg') => (
     <div style={{ padding: '0.4rem 0.6rem', borderRight: '1px solid var(--border)', flex: 1, minWidth: 108 }}>
       <div style={{ fontSize: '0.625rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>{k}</div>
-      <div style={{ fontSize: '1.0625rem', fontWeight: 650, fontVariantNumeric: 'tabular-nums', color: tone === 'pos' ? '#15803d' : tone === 'neg' ? '#b91c1c' : 'inherit' }}>{v}</div>
+      <div style={{ fontSize: '1.0625rem', fontWeight: 650, fontVariantNumeric: 'tabular-nums', color: tone === 'pos' ? '#15803d' : tone === 'neg' ? 'var(--text-red-700)' : 'inherit' }}>{v}</div>
     </div>
   )
 
@@ -247,7 +247,7 @@ export function JobsWeeklyMoneyModal({ open, onClose, showToast }: JobsWeeklyMon
                 {view.lost.length > 0 ? (
                   <div style={{ marginBottom: '1rem' }}>
                     <p style={sectionHeadStyle}>
-                      <span style={{ color: '#b91c1c' }}>Lost money this week</span>
+                      <span style={{ color: 'var(--text-red-700)' }}>Lost money this week</span>
                       <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {view.lost.length} job{view.lost.length === 1 ? '' : 's'}</span>
                     </p>
                     <JobRows rows={view.lost} lens={lens} />
