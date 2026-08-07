@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1439)
+last_updated: 2026-08-06 (v2.1440)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1440)
+
+### Docs: Weekly Money Movement build plan (2026-08-06)
+Docs-only. New [docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md): the phased plan for the Weekly Money Movement report (per-job money out — labor/subs/materials — vs money in, under **Earned** (Δ% done × job total − spend) and **Cash** lenses, Mon–Sun Central weeks like Weekly movement), the Moneyfill "weekly close" queues that make it trustworthy (card splits, $-weighted unassigned time, pending approvals, supply-invoice allocation coverage, worked-jobs-with-no-% and no-job-total flags), and the eventual `weekly_money` Report Subscriptions stream. Key decisions recorded: `job_pct_events` Phase-0 history trigger (the % column has no history today), **RPC-first** architecture (one SECURITY DEFINER payload RPC feeds modal AND dispatcher — no client/SQL hand-mirroring like weekly_movement needed), dev+controller gating (wage-derived data), and reconciliation invariants pinning the numbers to Crew P&L / Job Summary / Payments received. ~13-PR train sketched. docs/README.md index row added.
 
 ## Latest Updates (v2.1439)
 

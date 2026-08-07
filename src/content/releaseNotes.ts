@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1440',
+    date: '2026-08-06',
+    title: 'planning: weekly money report',
+    kind: 'infra',
+    highlights: [
+      'A build plan was drafted for an upcoming Weekly Money Movement report — which jobs made or lost money each week and how far they progressed — plus the Moneyfill queues to support it. Planning only; nothing changes in the app yet.',
+    ],
+  },
+  {
     version: 'v2.1439',
     date: '2026-08-06',
     title: 'developer docs reorganized',
