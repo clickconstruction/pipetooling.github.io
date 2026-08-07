@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1439',
+    date: '2026-08-06',
+    title: 'developer docs reorganized',
+    kind: 'infra',
+    highlights: [
+      'The main technical reference was restructured so each section is a short summary that points to the right in-depth doc — no user-facing changes.',
+    ],
+  },
+  {
     version: 'v2.1438',
     date: '2026-08-06',
     title: 'Weekly movement: email it to teammates',

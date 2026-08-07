@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1438)
+last_updated: 2026-08-06 (v2.1439)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1439)
+
+### Docs: stratified depth layers — PROJECT_DOCUMENTATION conformance pass (2026-08-06)
+Docs-only. Three new maintenance rules in [docs/README.md](./README.md): **Surface layer** (first ~30 lines of every doc = self-sufficient summary readable via `Read limit=30`), **Density** (one fact per bullet, no ~10-line-plus paragraphs, enumerations become lists/tables — greppability + partial reads), **Route, don't restate** (shallower layers link to the deeper home with at most one hook sentence; each fact has exactly one home). [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) brought into conformance: new ≤30-line surface summary; **Key Features §1–19 rewritten to one surface paragraph each** (they had become a shadow changelog duplicating RECENT_FEATURES + the `*_ARCHITECTURE.md` maps, with single 3,000-token lines that defeated grep and ranged Reads); User Roles compressed to route to ACCESS_CONTROL.md (the old copies had drifted — e.g. still claimed estimators can't reach `/customers`); Bids routes to BIDS_SYSTEM.md; orphaned `jobs_ledger`-family column semantics MOVED to a new **Jobs Ledger Family (summary)** subsection under Database Schema; Known Issue #13 (fixed 2026-02-04) collapsed to a resolved note; trailing empty "Recent Updates" section deleted. File: 460KB → 183KB; every section now readable via ranged Reads. No code changes.
 
 ## Latest Updates (v2.1438)
 

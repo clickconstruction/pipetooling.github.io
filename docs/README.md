@@ -73,8 +73,11 @@
 ## Maintenance rules (how these docs stay fresh)
 
 - **Per-feature detail goes in `RECENT_FEATURES.md` only** (plus the one matching specialist doc). Entry docs (`AGENTS.md`, `AI_CONTEXT.md`, this index) are lean routers — never append feature detail, version numbers, or component inventories to them.
+- **Surface layer**: every doc's first ~30 lines must be a self-sufficient summary — what this is, when to read it, and where the depth lives — readable via `Read limit=30`. A reader who stops there should know whether to keep reading or where to go instead.
+- **Density**: one fact per bullet; no paragraph longer than ~10 lines; long enumerations become tables or lists. Greppability and partial reads are what make depth-on-demand work — a 3,000-token "line" defeats both.
+- **Route, don't restate**: a shallower layer links to the deeper home with at most one hook sentence — never a compressed restatement that can drift independently. Each fact has exactly one home; every other mention is a link.
 - **One `last_updated` stamp per doc**, in frontmatter. No line-number hints in frontmatter (`key_sections` names only) — line numbers rot immediately.
 - Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-08-03
+last_updated: 2026-08-06
