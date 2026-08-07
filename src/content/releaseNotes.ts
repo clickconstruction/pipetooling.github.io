@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1456',
+    date: '2026-08-07',
+    title: 'Contract previews work on your phone',
+    kind: 'fix',
+    highlights: [
+      'The Contract Book document preview now has a ← Contracts link to get back, and its toolbar no longer hides under the iPhone status bar.',
+      'The document also fits phone screens better, and printing it now comes out clean.',
+    ],
+  },
+  {
     version: 'v2.1455',
     date: '2026-08-07',
     title: 'GC Review: tap a teammate instead of typing their email',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1455)
+last_updated: 2026-08-07 (v2.1456)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1456)
+
+### Contract Book preview: mobile back link + status-bar fix (2026-08-07)
+[`ContractBookPreview`](../src/pages/ContractBookPreview.tsx) (`/contract/book-preview`, the new-tab Preview from People → Contracts → Contract Book) was a dead end on phones: the fixed toolbar held only Download, rendered under the iPhone status bar (no `env(safe-area-inset-top)`), and the page has no app shell — nothing to back out with. Toolbar now carries a **← Contracts** link (to `/people?tab=contracts`) on the left, gains safe-area top padding (with the page's top margin following), and the document card gets phone-width margins/padding under 640px. Same fix pass adds the missing `!important`s to the `@media print` `.cbp-page` reset, which inline styles had been silently overriding since the page's introduction (PR #121).
 
 ## Latest Updates (v2.1455)
 

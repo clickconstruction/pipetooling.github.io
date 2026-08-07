@@ -20,10 +20,13 @@ const PREVIEW_STYLES = `
 .cbp-body th,.cbp-body td{border:1px solid #d1d5db;padding:0.4rem 0.6rem;}
 .cbp-body h1,.cbp-body h2,.cbp-body h3,.cbp-body h4{line-height:1.3;}
 .cbp-body a{color:#2563eb;}
+@media (max-width: 640px){
+  .cbp-page{margin-left:0.75rem !important;margin-right:0.75rem !important;padding:1.5rem 1.25rem !important;}
+}
 @media print{
   body{background:#fff;}
   .cbp-toolbar{display:none !important;}
-  .cbp-page{max-width:none;margin:0;border:none;border-radius:0;box-shadow:none;padding:0;}
+  .cbp-page{max-width:none !important;margin:0 !important;border:none !important;border-radius:0 !important;box-shadow:none !important;padding:0 !important;}
 }
 `
 
@@ -109,13 +112,33 @@ export default function ContractBookPreview() {
           left: 0,
           right: 0,
           display: 'flex',
-          justifyContent: 'flex-end',
-          padding: '0.75rem 1rem',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          // Safe-area inset keeps the bar below the phone status bar / notch
+          // (standalone PWA renders under it; env() is 0 in normal browsers).
+          padding: 'calc(0.75rem + env(safe-area-inset-top)) 1rem 0.75rem',
           background: 'rgba(243,244,246,0.95)',
           borderBottom: '1px solid var(--border)',
           zIndex: 10,
         }}
       >
+        <Link
+          to="/people?tab=contracts"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.5rem 0.25rem',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            color: '#2563eb',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ← Contracts
+        </Link>
         {download ? (
           <a
             href={download.url}
@@ -141,7 +164,7 @@ export default function ContractBookPreview() {
         className="cbp-page"
         style={{
           maxWidth: 800,
-          margin: '4.5rem auto 3rem',
+          margin: 'calc(4.5rem + env(safe-area-inset-top)) auto 3rem',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 8,
