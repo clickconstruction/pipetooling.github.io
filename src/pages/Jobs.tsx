@@ -985,6 +985,31 @@ export default function Jobs() {
     strip()
   }, [stagesWeeklyParam, activeTab, jobsListLoading, setSearchParams])
 
+  // `?stagesMoney=` deep link (v2.1443): open the Weekly money movement modal.
+  // Same jobsListLoading handle gate as ?stagesWeekly (v2.832 rule).
+  const stagesMoneyParam = searchParams.get('stagesMoney')
+  useEffect(() => {
+    const wantsOpen = stagesMoneyParam === 'true' || stagesMoneyParam === '1'
+    if (!wantsOpen) return
+    const strip = () => {
+      setSearchParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          next.delete('stagesMoney')
+          return next
+        },
+        { replace: true },
+      )
+    }
+    if (activeTab !== 'stages') {
+      strip()
+      return
+    }
+    if (jobsListLoading) return
+    stagesTabRef.current?.openWeeklyMoney()
+    strip()
+  }, [stagesMoneyParam, activeTab, jobsListLoading, setSearchParams])
+
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {
     const wantsOpen = openBankPaymentsParam === 'true' || openBankPaymentsParam === '1'

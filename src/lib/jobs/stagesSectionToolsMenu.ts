@@ -17,6 +17,7 @@ import { isAssistantLike } from '../subcontractorLikeRole'
 
 export type StagesSectionToolKey =
   | 'weekly-movement'
+  | 'weekly-money'
   | 'capable-to-bill'
   | 'gc-review'
   | 'accounts-receivable'
@@ -56,6 +57,10 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
 
   const groups: StagesSectionToolsGroup[] = []
 
+  // Weekly money movement is dev/controller only — wage-derived job costs
+  // (mirrors the get_weekly_money_movement_payload RPC gate). Hidden, not
+  // disabled, for everyone else.
+  const canOpenWeeklyMoney = authRole === 'dev' || authRole === 'controller'
   groups.push({
     section: 'Pipeline',
     items: [
@@ -65,6 +70,16 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
         title: 'Every job that entered a stage in a chosen week, with who moved it',
         disabled: false,
       },
+      ...(canOpenWeeklyMoney
+        ? [
+            {
+              key: 'weekly-money' as const,
+              label: 'Weekly money movement',
+              title: 'Money out and in per job for a chosen week, with the % progress the spend bought',
+              disabled: false,
+            },
+          ]
+        : []),
     ],
   })
 

@@ -18,6 +18,7 @@ describe('buildStagesSectionToolsMenu', () => {
     expect(groups.map((g) => g.section)).toEqual(['Pipeline', 'Working', 'Billed Awaiting Payment', 'Paid in Full'])
     expect(keysOf(groups)).toEqual([
       'weekly-movement',
+      'weekly-money',
       'capable-to-bill',
       'gc-review',
       'accounts-receivable',
@@ -27,18 +28,34 @@ describe('buildStagesSectionToolsMenu', () => {
     ])
   })
 
-  it('master_technician matches dev (both notification settings included)', () => {
+  it('weekly money is dev/controller only — hidden (not disabled) for others', () => {
+    for (const authRole of ['dev', 'controller']) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('weekly-money')
+    }
+    for (const authRole of ['master_technician', 'assistant', 'primary', 'superintendent', null]) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('weekly-money')
+    }
+  })
+
+  it('master_technician matches dev except the dev/controller-only weekly money tool', () => {
     expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'master_technician' }))).toEqual(
-      keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })),
+      keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })).filter((k) => k !== 'weekly-money'),
     )
   })
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
-    for (const authRole of ['assistant', 'controller']) {
-      const groups = buildStagesSectionToolsMenu({ ...base, authRole })
-      expect(keysOf(groups)).toEqual(['weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
-      expect(groups.some((g) => g.section === 'Paid in Full')).toBe(false)
-    }
+    const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
+    expect(assistantKeys).toEqual(['weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
+    const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
+    expect(keysOf(controllerGroups)).toEqual([
+      'weekly-movement',
+      'weekly-money',
+      'capable-to-bill',
+      'gc-review',
+      'accounts-receivable',
+      'billed-share-print',
+    ])
+    expect(controllerGroups.some((g) => g.section === 'Paid in Full')).toBe(false)
   })
 
   it('primary can open Accounts Receivable but sees no admin tools', () => {

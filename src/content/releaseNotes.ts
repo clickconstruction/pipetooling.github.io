@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1443',
+    date: '2026-08-06',
+    title: 'Pipeline: the Weekly Money Movement report',
+    kind: 'feature',
+    highlights: [
+      'A new report for devs and controllers shows each week’s money out and money in per job — and whether the spend bought % progress.',
+      'Two lenses: Earned (value created vs cost) and Cash (collected vs spent), with jobs split into made-money and lost-money sections.',
+      'Open it from the Pipeline group in the stage strip’s hamburger menu; step weeks with ‹ › and print any week.',
+    ],
+  },
+  {
     version: 'v2.1442',
     date: '2026-08-06',
     title: 'groundwork: weekly money math',

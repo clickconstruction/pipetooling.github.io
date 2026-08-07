@@ -12689,6 +12689,7 @@ export type Database = {
       }
       get_my_email_schedule: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
+      get_weekly_money_movement_payload: { Args: { p_week_monday?: string | null }; Returns: Json }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }

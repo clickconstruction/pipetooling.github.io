@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
+import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
 import {
   buildGcStatementEmailHtml,
@@ -162,6 +163,8 @@ export type JobsStagesTabHandle = {
   openBankPayments: () => void
   /** `?stagesWeekly=` deep link: open the Weekly movement modal (v2.1436). */
   openWeeklyMovement: () => void
+  /** `?stagesMoney=` deep link: open the Weekly money movement modal (v2.1443). */
+  openWeeklyMoney: () => void
   /** `?showBilledTotalByName=` deep link: open the Total by Name modal. */
   showBilledTotalByName: () => void
 }
@@ -458,6 +461,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
   const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
+  const [weeklyMoneyModalOpen, setWeeklyMoneyModalOpen] = useState(false)
   /** "Last sent" hints for GC Review's Email… (v2.1416). Best-effort: table may predate the db push. */
   const [gcLastSentByGcId, setGcLastSentByGcId] = useState<Record<string, string>>({})
   const refreshGcLastSent = useCallback(async () => {
@@ -1256,6 +1260,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
+      openWeeklyMoney: () => setWeeklyMoneyModalOpen(true),
       showBilledTotalByName: () => setBilledTotalByNameModalOpen(true),
     }),
     [followMovedJob, focusStagesSection, applyStagesInvoiceFocus, jobs, showToast],
@@ -1775,6 +1780,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         {group.items.map((item) => {
                           const onSelect: Record<StagesSectionToolKey, () => void> = {
                             'weekly-movement': () => setWeeklyMovementModalOpen(true),
+                            'weekly-money': () => setWeeklyMoneyModalOpen(true),
                             'capable-to-bill': () => setCapableToBillModalOpen(true),
                             'gc-review': () => setGcReviewModalOpen(true),
                             'accounts-receivable': () => setBankPaymentsModalOpen(true),
@@ -2916,6 +2922,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   users={users}
                   showToast={showToast}
                   canSchedule={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+                />
+                <JobsWeeklyMoneyModal
+                  open={weeklyMoneyModalOpen}
+                  onClose={() => setWeeklyMoneyModalOpen(false)}
+                  showToast={showToast}
                 />
                 <JobsGcReviewModal
                   open={gcReviewModalOpen}

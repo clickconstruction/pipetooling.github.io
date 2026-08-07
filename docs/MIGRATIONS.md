@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 6, 2026
 
+**`20260807060000_weekly_money_payload_mercury_sign.sql`** _(apply via `supabase db push` after merge)_
+- **Purpose**: Weekly Money payload Mercury sign fix (v2.1443) — card purchases store negative bank-ledger amounts; the v2.1442 function summed them raw so `mercury_cost` (and the office-charges overhead bucket) read negative. Negates the allocation sum so money out is positive spend; refunds still reduce cost. Full-body replace of this train's own function (no external drift). Prod fidelity note: labor parity with `teamLabor.ts` verified exactly (9.675 h / $120.94 both sides on one job-week).
+- **Security**: unchanged (same gates/grants as `20260807053000`).
+
 **`20260807053000_weekly_money_movement_payload.sql`** _(apply via `supabase db push` after merge; nothing calls it until the Weekly Money report ships)_
 - **Purpose**: `get_weekly_money_movement_payload(p_week_monday date DEFAULT NULL)` (v2.1442) — Weekly Money Movement Phase 1 (`docs/WEEKLY_MONEY_PLAN.md`). One source of truth for the report: per-job money out (crew labor with `teamLabor.ts` parity math — salary 8/0, pct × day hours × wage; sub sheets by `job_date` with lineLaborCost + drive semantics, HCP-linked; mercury/supply/tally/other materials by their dated-allocation conventions), money in (`jobs_ledger_payments` by `paid_on`), `pct_start`/`pct_end` as-of week bounds from `job_pct_events`. Office-job rows + crew bid labor fold into an `overhead` bucket. NULL week = previous complete Central Mon–Sun week.
 - **Security**: SECURITY DEFINER; in-function gate — authenticated callers must be dev or controller (wage-derived data), service role passes for the future dispatcher. EXECUTE revoked from PUBLIC/anon; granted to authenticated + service_role.
