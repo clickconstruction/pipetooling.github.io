@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1436)
+last_updated: 2026-08-06 (v2.1437)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1437)
+
+### weekly_movement stream: payload RPC + requests + dispatcher (2026-08-06)
+Third Report Subscriptions stream, checklist steps 1–3 in one migration (`20260807024222`): service-role `get_weekly_movement_email_payload(p_week_monday DEFAULT NULL)` mirrors `stagesWeeklyMovement.ts` in SQL (forward sections by pipeline order with DISTINCT-job revenue totals, send_backs with from/to labels, 'Automatic' movers, `to_char(… 'Dy')` Central weekdays; NULL = **previous complete Central week** — the Monday-subscription semantics). **Fidelity-verified against prod**: 7 moves / 6 jobs, Working $23,600 · RTB $535 · Billed $19,800.38 — exactly the live modal. `weekly_movement_email_requests` uses INTERNAL `recipient_user_id` (report names who moved what — office-capable roles enforced at dispatch). New cron-only [`weekly-movement-email-dispatch`](../supabase/functions/weekly-movement-email-dispatch/index.ts) rebuilds once per batch; a quiet week still sends ("no moves" is information here, unlike GC statements). Deploy after merge: `supabase db push`, then `supabase functions deploy weekly-movement-email-dispatch --no-verify-jwt`. Share UI (PR D) follows.
 
 ## Latest Updates (v2.1436)
 

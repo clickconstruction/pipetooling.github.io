@@ -42,6 +42,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `paid_in_full` | event | `app_settings.paid_job_email_recipients_v1` | `paid-job-email` (queue trigger) | — | ✅ |
 | `payment_received` | event | `app_settings.payment_made_email_recipients_v1` | `paid-job-email` (`kind` column) | — | ✅ |
 | `estimate_accepted` | event | `estimates.accept_notify_user_ids` (+ always-list) | accept flow | — | ✅ (v2.1330) |
+| `weekly_movement` | scheduled report | `weekly_movement_email_requests` (v2.1437; internal `recipient_user_id`; previous-complete-week semantics) | `weekly-movement-email-dispatch` | planned (PR D) | — (scheduled report) |
 | `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | ✅ requester-scoped (v2.1428) | — (scheduled report, not an event stream) |
 
 ## Design rules
