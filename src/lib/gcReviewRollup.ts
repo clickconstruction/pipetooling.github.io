@@ -75,9 +75,20 @@ function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRo
   }
 }
 
-/** Oldest first (unknown dates last), then largest remaining. */
+/**
+ * Address A→Z (v2.1434 — rows for the same street/site sit together on the
+ * statement), blank addresses last, then oldest-first / largest-remaining as
+ * the tiebreak inside one address.
+ */
 function sortReviewRows(rows: GcReviewRow[]): GcReviewRow[] {
   return [...rows].sort((a, b) => {
+    const aa = a.jobAddress.trim().toLowerCase()
+    const ba = b.jobAddress.trim().toLowerCase()
+    if (aa !== ba) {
+      if (aa === '') return 1
+      if (ba === '') return -1
+      return aa.localeCompare(ba)
+    }
     if (a.ageDays != null && b.ageDays != null && a.ageDays !== b.ageDays) return b.ageDays - a.ageDays
     if (a.ageDays != null && b.ageDays == null) return -1
     if (a.ageDays == null && b.ageDays != null) return 1

@@ -724,6 +724,11 @@ export function JobsGcReviewModal({
                       <td style={{ padding: '0.3rem 0.4rem', color: 'var(--text-muted)' }}>
                         {r.hcp}
                         {r.jobName ? ` · ${r.jobName}` : ''}
+                        {r.jobAddress ? (
+                          <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
+                            {r.jobAddress}
+                          </span>
+                        ) : null}
                       </td>
                       <td style={{ padding: '0.3rem 0.4rem', whiteSpace: 'nowrap' }}>{r.referenceDateDisplay}</td>
                       <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
