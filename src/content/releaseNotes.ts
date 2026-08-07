@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1447',
+    date: '2026-08-07',
+    title: 'Moneyfill: the close is complete',
+    kind: 'feature',
+    highlights: [
+      'Four more queues finish the weekly close: unapplied deposits, supply invoices whose job splits don\u2019t cover the amount, worked jobs missing a % report, and jobs with no total.',
+      'All eight queues load in parallel and share their counts with the Weekly Money report\u2019s confidence line.',
+    ],
+  },
+  {
     version: 'v2.1446',
     date: '2026-08-07',
     title: 'Moneyfill: time queues',

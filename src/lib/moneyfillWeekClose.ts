@@ -27,6 +27,8 @@ import {
 } from './peopleHoursUnallocatedRows'
 import type { OverheadClockSessionRow } from './overheadDailyLabor'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from './overheadOfficeJobSettings'
+import { resolveBankPaymentsSortingConfigForAr, type BankingSortingConfigV1 } from './bankingSortingConfig'
+import { buildWeeklyMoneyRow, type WeeklyMoneyPayload, type WeeklyMoneyJobRow } from './jobs/weeklyMoneyMovement'
 
 export type MoneyfillQueueKey =
   | 'bank-transfers'
@@ -398,33 +400,238 @@ export function pendingApprovalQueueCount(rows: PendingApprovalSessionRow[] | nu
   }
 }
 
-/**
- * Fetch every registered queue count for a close week. Queue fetchers are
- * eligibility-probed and NEVER throw — a failed queue reports count null so
- * both surfaces can say "partial". Registry: bank transfers, card charges, unassigned time, pending approval.
- */
-export async function fetchWeekCloseCounts(weekMondayYmd: string): Promise<MoneyfillQueueCount[]> {
-  const counts: MoneyfillQueueCount[] = []
+export type SupplyInvoiceCoverageRow = {
+  invoiceId: string
+  supplyHouseName: string
+  invoiceNumber: string
+  invoiceDate: string
+  amount: number
+  /** Σ allocation pct (0–100+). */
+  allocatedPct: number
+  /** amount × (100 − allocatedPct)/100, floored at 0. */
+  gapDollars: number
+}
 
-  // bank-transfers — unattributed non-card money out, week-scoped client-side.
+/**
+ * Queue 3e: supply invoices dated in the close week whose job allocations
+ * don't cover the invoice amount. Null on error.
+ */
+export async function fetchSupplyInvoiceCoverageForWeek(weekMondayYmd: string): Promise<SupplyInvoiceCoverageRow[] | null> {
+  try {
+    const endYmd = addDaysYmd(weekMondayYmd, 7)
+    const invRes = await supabase
+      .from('supply_house_invoices')
+      .select('id, invoice_number, invoice_date, amount, supply_houses(name)')
+      .gte('invoice_date', weekMondayYmd)
+      .lt('invoice_date', endYmd)
+      .order('invoice_date', { ascending: true })
+    if (invRes.error) throw invRes.error
+    const invoices = (invRes.data ?? []) as Array<{
+      id: string
+      invoice_number: string
+      invoice_date: string
+      amount: number
+      supply_houses: { name: string } | { name: string }[] | null
+    }>
+    if (invoices.length === 0) return []
+    const allocRes = await supabase
+      .from('supply_house_invoice_job_allocations')
+      .select('invoice_id, pct')
+      .in('invoice_id', invoices.map((i) => i.id))
+    if (allocRes.error) throw allocRes.error
+    const pctByInvoice = new Map<string, number>()
+    for (const a of (allocRes.data ?? []) as Array<{ invoice_id: string; pct: number }>) {
+      pctByInvoice.set(a.invoice_id, (pctByInvoice.get(a.invoice_id) ?? 0) + Number(a.pct || 0))
+    }
+    const out: SupplyInvoiceCoverageRow[] = []
+    for (const inv of invoices) {
+      const allocatedPct = pctByInvoice.get(inv.id) ?? 0
+      // 99.5%+ counts as covered (rounding on thirds-style splits).
+      if (allocatedPct >= 99.5) continue
+      const amount = Number(inv.amount || 0)
+      const shRaw = inv.supply_houses
+      const shName = (Array.isArray(shRaw) ? shRaw[0]?.name : shRaw?.name) ?? 'Unknown supply house'
+      out.push({
+        invoiceId: inv.id,
+        supplyHouseName: shName,
+        invoiceNumber: inv.invoice_number,
+        invoiceDate: inv.invoice_date,
+        amount,
+        allocatedPct,
+        gapDollars: Math.max(0, (amount * (100 - Math.min(allocatedPct, 100))) / 100),
+      })
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+export function supplyInvoicesQueueCount(rows: SupplyInvoiceCoverageRow[] | null): MoneyfillQueueCount {
+  if (rows == null)
+    return { key: 'supply-invoices', label: MONEYFILL_QUEUE_LABELS['supply-invoices'], count: null, dollars: null }
+  return {
+    key: 'supply-invoices',
+    label: MONEYFILL_QUEUE_LABELS['supply-invoices'],
+    count: rows.length,
+    dollars: rows.reduce((s, r) => s + r.gapDollars, 0),
+  }
+}
+
+export type UnappliedDepositRow = {
+  txId: string
+  postedAt: string | null
+  counterparty: string | null
+  amount: number
+}
+
+/** Case-insensitive substring exclusion, mirroring the AR sorting filter semantics. */
+export function depositPassesArExclusions(
+  row: { counterparty: string | null; note: string | null },
+  cfg: Pick<BankingSortingConfigV1, 'excludeCounterpartyContains' | 'excludeNoteContains'>,
+): boolean {
+  const cp = (row.counterparty ?? '').toLowerCase()
+  for (const pat of cfg.excludeCounterpartyContains) {
+    const p = pat.trim().toLowerCase()
+    if (p && cp.includes(p)) return false
+  }
+  const note = (row.note ?? '').toLowerCase()
+  for (const pat of cfg.excludeNoteContains) {
+    const p = pat.trim().toLowerCase()
+    if (p && note.includes(p)) return false
+  }
+  return true
+}
+
+/**
+ * Queue 3f: money IN this week not yet applied to billed jobs — positive
+ * Mercury transactions with no jobs_ledger_payments referencing them, after
+ * the org's Accounts Receivable sorting exclusions. Null on error.
+ */
+export async function fetchUnappliedDepositsForWeek(
+  weekMondayYmd: string,
+  authUserId?: string,
+): Promise<UnappliedDepositRow[] | null> {
+  const bounds = weekUtcBounds(weekMondayYmd)
+  if (!bounds) return null
+  try {
+    const [txRes, cfg] = await Promise.all([
+      supabase
+        .from('mercury_transactions')
+        .select('id, posted_at, counterparty_name, amount, note')
+        .gt('amount', 0)
+        .gte('posted_at', bounds.startIso)
+        .lt('posted_at', bounds.endIso)
+        .order('posted_at', { ascending: true }),
+      resolveBankPaymentsSortingConfigForAr(authUserId),
+    ])
+    if (txRes.error) throw txRes.error
+    const txs = (txRes.data ?? []) as Array<{ id: string; posted_at: string | null; counterparty_name: string | null; amount: number; note: string | null }>
+    const candidates = txs.filter((t) =>
+      depositPassesArExclusions({ counterparty: t.counterparty_name, note: t.note }, cfg),
+    )
+    if (candidates.length === 0) return []
+    const payRes = await supabase
+      .from('jobs_ledger_payments')
+      .select('mercury_transaction_id')
+      .in('mercury_transaction_id', candidates.map((t) => t.id))
+    if (payRes.error) throw payRes.error
+    const applied = new Set(
+      ((payRes.data ?? []) as Array<{ mercury_transaction_id: string | null }>)
+        .map((r) => r.mercury_transaction_id)
+        .filter((x): x is string => x != null),
+    )
+    return candidates
+      .filter((t) => !applied.has(t.id))
+      .map((t) => ({ txId: t.id, postedAt: t.posted_at, counterparty: t.counterparty_name, amount: Number(t.amount) }))
+  } catch {
+    return null
+  }
+}
+
+export function depositsQueueCount(rows: UnappliedDepositRow[] | null): MoneyfillQueueCount {
+  if (rows == null)
+    return { key: 'deposits-unapplied', label: MONEYFILL_QUEUE_LABELS['deposits-unapplied'], count: null, dollars: null }
+  return {
+    key: 'deposits-unapplied',
+    label: MONEYFILL_QUEUE_LABELS['deposits-unapplied'],
+    count: rows.length,
+    dollars: rows.reduce((s, r) => s + r.amount, 0),
+  }
+}
+
+export type JobFlagQueues = {
+  noPctSignal: WeeklyMoneyJobRow[]
+  noJobTotal: WeeklyMoneyJobRow[]
+}
+
+/**
+ * Queues 3g + 3h from the payload RPC itself: jobs with in-week money the
+ * report can't score — no % signal, or no job total. Same rows, same flags,
+ * as the report (kernel reuse). Null on error (RPC is dev/controller gated).
+ */
+export async function fetchJobFlagQueuesForWeek(weekMondayYmd: string): Promise<JobFlagQueues | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rpc = (supabase as any).rpc.bind(supabase)
-    const res = await rpc('list_unattributed_noncard_mercury_transactions', { p_limit: 500 })
+    const res = await rpc('get_weekly_money_movement_payload', { p_week_monday: weekMondayYmd })
     if (res.error) throw res.error
-    counts.push(noncardWeekQueueCount(parseNoncardAttributionQueueRows(res.data), weekMondayYmd, true))
+    const payload = res.data as WeeklyMoneyPayload
+    const rows = (payload.jobs ?? []).map(buildWeeklyMoneyRow)
+    return {
+      noPctSignal: rows.filter((r) => r.flagNoPctSignal),
+      noJobTotal: rows.filter((r) => r.flagNoJobTotal),
+    }
   } catch {
-    counts.push(noncardWeekQueueCount(null, weekMondayYmd, false))
+    return null
   }
-
-  // card-charges — card purchases posted in-week with no job allocations.
-  counts.push(cardChargesQueueCount(await fetchUnsplitCardChargesForWeek(weekMondayYmd)))
-
-  // time-no-job — approved field time no job absorbs, at wage.
-  counts.push(unassignedTimeQueueCount(await fetchUnassignedTimeForWeek(weekMondayYmd)))
-
-  // pending-approval — closed sessions not yet approved (labor not booked).
-  counts.push(pendingApprovalQueueCount(await fetchPendingApprovalForWeek(weekMondayYmd)))
-
-  return counts
 }
+
+export function noPctQueueCount(q: JobFlagQueues | null): MoneyfillQueueCount {
+  if (q == null) return { key: 'no-pct-report', label: MONEYFILL_QUEUE_LABELS['no-pct-report'], count: null, dollars: null }
+  return { key: 'no-pct-report', label: MONEYFILL_QUEUE_LABELS['no-pct-report'], count: q.noPctSignal.length, dollars: null }
+}
+
+export function noJobTotalQueueCount(q: JobFlagQueues | null): MoneyfillQueueCount {
+  if (q == null) return { key: 'no-job-total', label: MONEYFILL_QUEUE_LABELS['no-job-total'], count: null, dollars: null }
+  return { key: 'no-job-total', label: MONEYFILL_QUEUE_LABELS['no-job-total'], count: q.noJobTotal.length, dollars: null }
+}
+
+/**
+ * Fetch every registered queue count for a close week. Queue fetchers are
+ * eligibility-probed and NEVER throw — a failed queue reports count null so
+ * both surfaces can say "partial". Registry: bank transfers, card charges, deposits, unassigned time, pending approval, supply invoices, no-% jobs, no-total jobs.
+ */
+export async function fetchWeekCloseCounts(weekMondayYmd: string, authUserId?: string): Promise<MoneyfillQueueCount[]> {
+  // All queues fetch in parallel; each is eligibility-probed and never throws.
+  const [noncardRows, cardRows, timeData, pendingRows, supplyRows, depositRows, jobFlags] = await Promise.all([
+    (async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rpc = (supabase as any).rpc.bind(supabase)
+        const res = await rpc('list_unattributed_noncard_mercury_transactions', { p_limit: 500 })
+        if (res.error) throw res.error
+        return parseNoncardAttributionQueueRows(res.data)
+      } catch {
+        return null
+      }
+    })(),
+    fetchUnsplitCardChargesForWeek(weekMondayYmd),
+    fetchUnassignedTimeForWeek(weekMondayYmd),
+    fetchPendingApprovalForWeek(weekMondayYmd),
+    fetchSupplyInvoiceCoverageForWeek(weekMondayYmd),
+    fetchUnappliedDepositsForWeek(weekMondayYmd, authUserId),
+    fetchJobFlagQueuesForWeek(weekMondayYmd),
+  ])
+  return [
+    noncardWeekQueueCount(noncardRows, weekMondayYmd, noncardRows != null),
+    cardChargesQueueCount(cardRows),
+    depositsQueueCount(depositRows),
+    unassignedTimeQueueCount(timeData),
+    pendingApprovalQueueCount(pendingRows),
+    supplyInvoicesQueueCount(supplyRows),
+    noPctQueueCount(jobFlags),
+    noJobTotalQueueCount(jobFlags),
+  ]
+}
+
