@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1442',
+    date: '2026-08-06',
+    title: 'groundwork: weekly money math',
+    kind: 'infra',
+    highlights: [
+      'The server can now compute each week’s per-job money out and money in — the engine behind the upcoming Weekly Money report. No visible changes yet.',
+    ],
+  },
+  {
     version: 'v2.1441',
     date: '2026-08-06',
     title: 'groundwork: job progress history',
