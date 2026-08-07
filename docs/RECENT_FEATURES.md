@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1445)
+last_updated: 2026-08-07 (v2.1446)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1446)
+
+### Moneyfill queues: approved time with no job + sessions pending approval (2026-08-07)
+Queues 3c + 3d of the weekly close ([docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md)). **Approved time with no job**: the `peopleHoursUnallocatedRows` kernel (same approved-clock-only sourcing + Convention 1 as Quickfill's Unassigned field time) run over the close week, priced **at wage** per (person, day) — day hrs / overhead / unassigned / $ table with **Open day audit** → People → Hours. **Sessions pending approval**: closed in-week `clock_sessions` nobody approved (labor cost not booked — crew rows only sync on approval), with inline **Approve** through the same `approve_clock_sessions` path as the Dashboard strip and **Review** → People → Hours. Both fetchers registered in [`moneyfillWeekClose.ts`](../src/lib/moneyfillWeekClose.ts), so the close header and the report confidence footer pick them up automatically. Live-verified against prod (last week: 6.0 h / $75 unassigned surfaced; pending queue all-clear). Client-only.
 
 ## Latest Updates (v2.1445)
 
