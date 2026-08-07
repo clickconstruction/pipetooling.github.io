@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1441',
+    date: '2026-08-06',
+    title: 'groundwork: job progress history',
+    kind: 'infra',
+    highlights: [
+      'The app now keeps a history of every change to a job’s % complete — groundwork for the upcoming Weekly Money report. No visible changes yet.',
+    ],
+  },
+  {
     version: 'v2.1440',
     date: '2026-08-06',
     title: 'planning: weekly money report',
