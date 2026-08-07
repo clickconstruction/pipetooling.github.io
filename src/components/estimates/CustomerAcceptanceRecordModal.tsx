@@ -204,22 +204,19 @@ export default function CustomerAcceptanceRecordModal({
             <h2 id="customer-acceptance-record-title" style={{ margin: 0, fontSize: '1.1rem' }}>
               Accepted estimate
             </h2>
+            {/* Flex-wrap with nowrap segments (matches PersonContractSignedRecordModal):
+                narrow screens break between the phrases, never mid-timestamp. */}
             {row && row.status === 'customer_accepted' ? (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', columnGap: '0.65rem' }}>
                 {row.acceptor_printed_name?.trim() ? (
-                  <>
+                  <span style={{ whiteSpace: 'nowrap' }}>
                     <strong>Signed as:</strong> {row.acceptor_printed_name.trim()}
-                    {row.acceptor_consented_at ? (
-                      <>
-                        {' '}
-                        · <strong>Accepted:</strong> {new Date(row.acceptor_consented_at).toLocaleString()}
-                      </>
-                    ) : null}
-                  </>
-                ) : row.acceptor_consented_at ? (
-                  <>
+                  </span>
+                ) : null}
+                {row.acceptor_consented_at ? (
+                  <span style={{ whiteSpace: 'nowrap' }}>
                     <strong>Accepted:</strong> {new Date(row.acceptor_consented_at).toLocaleString()}
-                  </>
+                  </span>
                 ) : null}
               </p>
             ) : null}
