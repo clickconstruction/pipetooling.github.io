@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1428',
+    date: '2026-08-06',
+    title: 'Scheduled GC statements join My email schedule',
+    kind: 'feature',
+    highlights: [
+      'GC statement sends you schedule now show on Settings \u2192 Your account \u2192 My email schedule \u2014 green chips with the GC and destination address, weekly chains labeled.',
+      'Devs see all pending statement sends in the global email schedule.',
+    ],
+  },
+  {
     version: 'v2.1427',
     date: '2026-08-06',
     title: 'GC Review: schedule statement emails',

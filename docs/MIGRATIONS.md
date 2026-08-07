@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "178 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "180 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260807001317_email_schedule_gc_statement_stream.sql`** _(apply via `supabase db push` after merge; the deployed client tolerates the old RPC shape)_
+- **Purpose**: Phase 4 of the gc_statement stream (v2.1428) — `get_my_email_schedule()` gains a requester-scoped `gc_statement` one-offs branch (detail "{entity} → {email}"); `get_global_email_schedule()` gains `gc_statement_requests`. Both bodies rebuilt from LIVE prod definitions (pg_get_functiondef, v2.1400 rule).
+- **Security**: unchanged — SECURITY DEFINER, self-scoped / dev-gated as before.
 
 **`20260806233713_gc_statement_email_requests.sql`** _(apply via `supabase db push` after merge, then deploy the gc-statement-email-dispatch edge function — the cron entry starts POSTing immediately but an undeployed function just 404s harmlessly until the deploy)_
 - **Purpose**: `gc_statement_email_requests` (v2.1426) — scheduled GC statement sends for the `gc_statement` Report Subscriptions stream. Free-text `sent_to` (outside AP inboxes), `group_by` gc|development + nullable `gc_customer_id`/`development_id` (both NULL = whole report), `include_collections`, `send_at`, `repeat_weekly`, dispatch bookkeeping (`sent_at`/`error`/`attempts`), `entity_name` display snapshot. Partial due index. Registers pg_cron `gc-statement-email-dispatch` (*/5, Vault PROJECT_URL + CRON_SECRET).

@@ -42,7 +42,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `paid_in_full` | event | `app_settings.paid_job_email_recipients_v1` | `paid-job-email` (queue trigger) | — | ✅ |
 | `payment_received` | event | `app_settings.payment_made_email_recipients_v1` | `paid-job-email` (`kind` column) | — | ✅ |
 | `estimate_accepted` | event | `estimates.accept_notify_user_ids` (+ always-list) | accept flow | — | ✅ (v2.1330) |
-| `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | planned (Phase 4) | planned (Phase 4) |
+| `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | ✅ requester-scoped (v2.1428) | — (scheduled report, not an event stream) |
 
 ## Design rules
 
@@ -62,6 +62,6 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 5. **Schedule integration**: extend `get_my_email_schedule()` and `get_global_email_schedule()`; add the stream's tone/label in `SettingsMyEmailScheduleSection.tsx` and, for event-like behavior, `normalizeMyEmailSubscriptions`.
 6. **Docs**: EDGE_FUNCTIONS.md section, MIGRATIONS.md entries, help guide, RECENT_FEATURES + release note, and a row in this doc's inventory table.
 
-## Planned: GC statements stream (`gc_statement`)
+## The GC statements stream (`gc_statement`) — SHIPPED
 
-Approved plan (2026-08-06): Phase 1 — server-side payload RPC mirroring [`gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) (per-GC, per-development, and whole-report 'all'). Phase 2 — `gc_statement_email_requests` with free-text `sent_to` (statements go to AP inboxes) + `gc-statement-email-dispatch` cron edge fn + audit into `gc_statement_emails`. Phase 3 — scheduling UI in GC Review's per-GC **Share → Email…** dialog and **Share all** dialog. Phase 4 — schedule/subscriptions integration, requester-scoped for outside recipients.
+Built 2026-08-06 as the pattern's second full stream (v2.1425–v2.1428): payload RPC `get_gc_statement_email_payload` (fidelity-verified against prod), `gc_statement_email_requests` (free-text `sent_to` — the first stream with outside recipients), `gc-statement-email-dispatch` cron edge fn (empty single-entity statements skipped, weekly chains still advance), scheduling UI in GC Review's Email…/Share-all dialogs with a pending-sends list, and requester-scoped My-email-schedule listing.

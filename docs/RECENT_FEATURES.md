@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1427)
+last_updated: 2026-08-06 (v2.1428)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1428)
+
+### Scheduled GC statements join My email schedule — Phase 4, stream complete (2026-08-06)
+Final phase of the `gc_statement` Report Subscriptions stream. Migration `20260807001317_email_schedule_gc_statement_stream.sql` rebuilds `get_my_email_schedule()` and `get_global_email_schedule()` from their LIVE prod bodies (dumped via `pg_get_functiondef` per the v2.1400 rule) adding: a **requester-scoped** `gc_statement` one-offs branch (outside recipients have no user row — the design rule in REPORT_SUBSCRIPTIONS.md), detail "{entity} → {email}", pending + sent-this-week rows (error-free only, so skipped nothing-outstanding weeks never show as sent); and a `gc_statement_requests` key in the dev global view. Client: `emailScheduleWeek.ts` stream unions widen to `gc_statement` with label "GC statement" (+1 test), `SettingsMyEmailScheduleSection` gains the green tone chip. Help guide `see-your-email-schedule.md` updated; REPORT_SUBSCRIPTIONS.md inventory marks the stream fully shipped. Deploy: `supabase db push` after merge (client tolerant of the pre-push RPC — unknown streams simply don't render).
 
 ## Latest Updates (v2.1427)
 
