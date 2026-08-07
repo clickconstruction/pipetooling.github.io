@@ -5,7 +5,7 @@ file: docs/WEEKLY_MONEY_PLAN.md
 type: Plan
 purpose: Build plan for the Weekly Money Movement report (money out/in per job per week, earned vs cash lenses), the Moneyfill "weekly close" queues that make it trustworthy, and the eventual weekly_money email stream
 audience: Developers, AI Agents
-last_updated: 2026-08-06
+last_updated: 2026-08-07
 key_sections:
   - name: "What we're building"
   - name: "Design decisions (defaults — veto here)"
@@ -14,6 +14,10 @@ key_sections:
   - name: "Guardrails"
   - name: "Reconciliation invariants"
 ---
+
+## Status: SHIPPED (v2.1441–v2.1449, 2026-08-07)
+
+Every phase below is built and live: `job_pct_events` (v2.1441), the payload RPC (v2.1442 + v2.1443 sign/seed fixes, fidelity-verified — labor parity with `teamLabor.ts` exact), the report modal + entry points (v2.1443), the Moneyfill weekly close with all 8 queues (v2.1444–v2.1447), and the `weekly_money` stream + schedule integration (v2.1448–v2.1449, standing Monday send active as production proof). This doc remains the design record; current behavior lives in [REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md), RECENT_FEATURES.md v2.1441–v2.1449, and the help guide `see-the-weeks-money-movement.md`. Known bootstrap note: Δ% history began 2026-08-06 — the first weeks lean on the no-%-signal flag until events accumulate.
 
 ## What we're building
 

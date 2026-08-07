@@ -1,0 +1,45 @@
+schemaname,table_name,blocks_read,write_tuples,blocks_write,activity_ratio
+realtime,subscription,42,13053,10749.5294117647,255.9:1 (Write-Heavy)
+cron,job_run_details,1824,3653,215.775234929361,1:8.5 (Read-Heavy)
+public,mercury_transactions,1083,32,9.83899127061106,1:110.1 (Read-Heavy)
+supabase_migrations,schema_migrations,102,6,0.735632183908046,1:138.7 (Read-Heavy)
+public,jobs_ledger,67,47,2.14332247557003,1:31.3 (Read-Heavy)
+public,bids_count_rows,68,44,0.640776699029126,1:106.1 (Read-Heavy)
+public,clock_sessions,63,69,1.86007702182285,1:33.9 (Read-Heavy)
+net,_http_response,1,246,63.55,63.6:1 (Write-Heavy)
+public,bids,49,111,8.76315789473684,1:5.6 (Read-Heavy)
+public,cost_estimate_labor_rows,46,60,1.91011235955056,1:24.1 (Read-Heavy)
+public,mercury_transaction_job_allocations,41,11,0.167028199566161,1:245.5 (Read-Heavy)
+public,people_hours,40,8,0.102710413694722,1:389.4 (Read-Heavy)
+public,user_app_activity_daily,18,1470,18.8461538461538,1.0:1 (Write-Heavy)
+public,mercury_transaction_attributions,30,3,0.0255570117955439,1:1173.8 (Read-Heavy)
+public,bid_count_row_custom_prices,29,4,0.0626398210290828,1:463.0 (Read-Heavy)
+auth,users,24,43,3.90909090909091,1:6.1 (Read-Heavy)
+public,people_crew_jobs,27,8,0.235294117647059,1:114.7 (Read-Heavy)
+public,job_schedule_blocks,27,10,0.218340611353712,1:123.7 (Read-Heavy)
+public,jobs_ledger_fixtures,27,2,0.0499108734402852,1:541.0 (Read-Heavy)
+auth,refresh_tokens,24,84,2.35514018691589,1:10.2 (Read-Heavy)
+public,address_geocodes,23,45,0.959488272921109,1:24.0 (Read-Heavy)
+auth,one_time_tokens,5,14,14,2.8:1 (Write-Heavy)
+public,pay_stub_days,17,14,0.279569892473118,1:60.8 (Read-Heavy)
+public,cost_estimates,14,3,0.0612244897959184,1:228.7 (Read-Heavy)
+public,user_bid_notes_read_state,11,239,2.67537313432836,0.2:1 (Write-Heavy)
+public,jobs_ledger_payments,13,3,0.0681818181818182,1:190.7 (Read-Heavy)
+auth,sessions,10,30,1.25,1:8.0 (Read-Heavy)
+public,bids_submission_entries,9,60,1.83206106870229,0.2:1 (Write-Heavy)
+public,dispatch_request_dismissals,9,49,0.942307692307692,1:9.6 (Read-Heavy)
+public,jobs_ledger_invoices,9,3,0.166666666666667,1:54.0 (Read-Heavy)
+public,pay_stubs,9,2,0.0645161290322581,1:139.5 (Read-Heavy)
+public,user_time_off,9,1,-0,Read-Only
+public,bid_working_board_columns,9,3,-0,Read-Only
+public,pay_stub_payments,9,2,-0,Read-Only
+public,users,7,1,0.0476190476190476,1:147.0 (Read-Heavy)
+public,customer_contacts,7,1,-0,Read-Only
+public,dispatch_request_notes,7,1,-0,Read-Only
+auth,mfa_amr_claims,6,19,0.38,1:15.8 (Read-Heavy)
+public,dispatch_requests,6,1,0.0363636363636364,1:165.0 (Read-Heavy)
+public,team_leader_clock_notify_prefs,6,4,-0,Read-Only
+public,quickfill_section_mark_events,6,1,-0,Read-Only
+public,bid_working_board_placements,4,1,0.0666666666666667,1:60.0 (Read-Heavy)
+public,quickfill_section_marks,3,1,0.142857142857143,1:21.0 (Read-Heavy)
+public,user_daily_goals_ack,2,1,0.0196078431372549,1:102.0 (Read-Heavy)

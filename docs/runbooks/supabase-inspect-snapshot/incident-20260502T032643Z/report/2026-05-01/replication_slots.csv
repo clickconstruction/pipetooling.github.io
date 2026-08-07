@@ -1,0 +1,2 @@
+slot_name,active,state,replication_client_address,replication_lag_gb
+supabase_realtime_messages_replication_slot_2_88_2_e1b3827,t,streaming,2600:1f10:4c1b:cc00:3f75:d158:11c6:6a8d/128,0

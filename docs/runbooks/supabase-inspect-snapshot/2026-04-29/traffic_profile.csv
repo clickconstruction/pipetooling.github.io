@@ -1,0 +1,12 @@
+schemaname,table_name,blocks_read,write_tuples,blocks_write,activity_ratio
+public,mercury_transactions,771,4,1.22987390882638,1:626.9 (Read-Heavy)
+realtime,subscription,27,652,159.673469387755,5.9:1 (Write-Heavy)
+public,clock_sessions,51,4,0.115068493150685,1:443.2 (Read-Heavy)
+public,jobs_ledger,49,2,0.0925619834710744,1:529.4 (Read-Heavy)
+public,bids,39,4,0.275862068965517,1:141.4 (Read-Heavy)
+public,person_contract_documents,15,2,0.545454545454545,1:27.5 (Read-Heavy)
+public,jobs_ledger_payments,13,2,0.0454545454545455,1:286.0 (Read-Heavy)
+public,bid_count_row_custom_prices,11,1,0.0156599552572707,1:702.4 (Read-Heavy)
+public,jobs_ledger_invoices,9,2,0.111111111111111,1:81.0 (Read-Heavy)
+public,person_contract_assignments,9,1,-0,Read-Only
+public,user_app_activity_daily,4,70,0.742049469964664,1:5.4 (Read-Heavy)

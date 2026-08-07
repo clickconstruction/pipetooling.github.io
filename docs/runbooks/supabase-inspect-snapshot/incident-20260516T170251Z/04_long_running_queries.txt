@@ -1,0 +1,11 @@
+=== 04_long_running_queries ===
+Connecting to remote database...
+
+  
+   pid     | Duration               | Query                                                                                                                                                                                        
+  ---------|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+   1119517 | 3 days 17:43:58.890154 | START_REPLICATION SLOT supabase_realtime_messages_replication_slot_2_94_0_dc6dcf1 LOGICAL 0/0 (proto_version '2', publication_names 'supabase_realtime_messages_publication', binary 'true') 
+
+A new version of Supabase CLI is available: v2.98.2 (currently installed v2.72.7)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+

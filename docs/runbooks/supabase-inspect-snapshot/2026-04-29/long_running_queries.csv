@@ -1,0 +1,2 @@
+pid,duration,query
+902,00:18:05.500875,"START_REPLICATION SLOT supabase_realtime_messages_replication_slot_v2_88_1_1 LOGICAL 0/0 (proto_version '2', publication_names 'supabase_realtime_messages_publication', binary 'true')"

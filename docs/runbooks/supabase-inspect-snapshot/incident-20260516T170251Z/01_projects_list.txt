@@ -1,0 +1,11 @@
+=== 01_projects_list ===
+
+  
+   LINKED | ORG ID               | REFERENCE ID         | NAME                   | REGION                   | CREATED AT (UTC)    
+  --------|----------------------|----------------------|------------------------|--------------------------|---------------------
+          | wgpckwsmpneimyapiedb | hrqxvfydmvtvwhvefmqc | mep-plans-markup       | West US (Oregon)         | 2026-03-01 16:44:13 
+     ●    | wgpckwsmpneimyapiedb | yewfzhbofbbyvkvtaatw | plumbing-stage-manager | East US (North Virginia) | 2026-01-17 15:23:54 
+
+A new version of Supabase CLI is available: v2.98.2 (currently installed v2.72.7)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+

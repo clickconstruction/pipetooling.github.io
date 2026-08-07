@@ -1,0 +1,5 @@
+=== 06_calls ===
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=aws-1-us-east-1.pooler.supabase.com user=postgres.yewfzhbofbbyvkvtaatw database=postgres`: failed SASL auth (read tcp 192.168.0.192:61456->18.213.155.45:5432: i/o timeout)
+Try rerunning the command with --debug to troubleshoot the error.
+
