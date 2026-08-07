@@ -124,6 +124,7 @@ when_to_read:
    - [send-physical-invoice-email](#send-physical-invoice-email)
    - [send-gc-statement-email](#send-gc-statement-email)
    - [gc-statement-email-dispatch](#gc-statement-email-dispatch)
+   - [weekly-movement-email-dispatch](#weekly-movement-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2149,6 +2150,18 @@ interface SendPhysicalInvoiceEmailBody {
 **Empty statements**: a single-entity request with nothing outstanding is stamped `skipped: nothing outstanding` and never emailed — but its weekly chain still advances.
 
 **Deploy**: `supabase functions deploy gc-statement-email-dispatch --no-verify-jwt`. Requires migrations `20260806232759` (payload RPC) + `20260806233713` (requests table + pg_cron registration).
+
+---
+
+### weekly-movement-email-dispatch
+
+**Purpose** (v2.1437): Cron-only dispatcher for scheduled **Weekly movement** report sends (`weekly_movement` Report Subscriptions stream). Drains due `weekly_movement_email_requests` rows, rebuilds the report **once per batch** via `get_weekly_movement_email_payload(NULL)` — the **previous complete Central week** — renders in-function ([`render.ts`](../supabase/functions/weekly-movement-email-dispatch/render.ts), keep in sync with `stagesWeeklyMovement.ts`), sends via Resend with the requester's reply-to, stamps, re-enqueues `repeat_weekly` chains. Recipients are **internal office-capable users only** (`recipient_user_id`; role-checked at dispatch — the report names who moved what). A quiet week still sends ("no moves" is information for this stream, unlike GC statements).
+
+**Endpoint**: `POST /functions/v1/weekly-movement-email-dispatch`
+
+**Authentication**: `X-Cron-Secret` = `CRON_SECRET`; no user-JWT modes (scheduling/cancelling are direct RLS-gated writes).
+
+**Deploy**: `supabase functions deploy weekly-movement-email-dispatch --no-verify-jwt`. Requires migration `20260807024222` (payload RPC + requests table + pg_cron).
 
 ---
 

@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "183 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "184 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260807024222_weekly_movement_email_stream.sql`** _(apply via `supabase db push` after merge, then deploy the weekly-movement-email-dispatch edge function; an undeployed function just 404s from cron harmlessly)_
+- **Purpose**: weekly_movement Report Subscriptions stream (v2.1437) — service-role `get_weekly_movement_email_payload(p_week_monday)` (NULL = previous complete Central week; fidelity-verified vs the live modal: 7 moves / 6 jobs / $23,600 + $535 + $19,800.38), `weekly_movement_email_requests` (INTERNAL `recipient_user_id` — the report names who moved what), pg_cron `weekly-movement-email-dispatch` (*/5).
+- **Security**: RPC service-role only; table RLS mirrors billed_report_email_requests (staff insert own, creator/dev read, creator cancel unsent, no client UPDATE). Both read-only block sweeps.
 
 **`20260807022001_job_status_event_single_writer_trigger.sql`** _(apply via `supabase db push` after merge; behavior-identical for existing surfaces — the send-back line keeps working, coverage just becomes complete)_
 - **Purpose**: Weekly movement Phase 0 (v2.1435) — `log_job_status_transition()` AFTER-UPDATE trigger on `jobs_ledger` becomes the SINGLE writer of `job_status_events`; `update_job_status` + the clock-out promote function rebuilt from live bodies minus their explicit INSERTs. Closes the mark-paid/reconcile/client-demote event gap.

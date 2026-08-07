@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1437',
+    date: '2026-08-06',
+    title: 'Weekly movement: the delivery engine',
+    kind: 'infra',
+    highlights: [
+      'The app can now hold scheduled Weekly movement report sends and deliver them automatically \u2014 each covering the previous complete week, rebuilt fresh at send time, with self-renewing weekly repeats.',
+      'The Share controls appear in the Weekly movement report next.',
+    ],
+  },
+  {
     version: 'v2.1436',
     date: '2026-08-06',
     title: 'Pipeline: the Weekly movement report',

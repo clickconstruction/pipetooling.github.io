@@ -581,6 +581,10 @@ verify_jwt = false
 [functions.gc-statement-email-dispatch]
 verify_jwt = false
 
+# Cron-only dispatcher for scheduled Weekly movement report sends (X-Cron-Secret checked in-function).
+[functions.weekly-movement-email-dispatch]
+verify_jwt = false
+
 # Emails reports to subscribed recipients via Resend: JWT validated in function (getUser); same gateway pattern as test-email.
 [functions.send-report-email]
 verify_jwt = false
