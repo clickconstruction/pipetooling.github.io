@@ -125,6 +125,7 @@ when_to_read:
    - [send-gc-statement-email](#send-gc-statement-email)
    - [gc-statement-email-dispatch](#gc-statement-email-dispatch)
    - [weekly-movement-email-dispatch](#weekly-movement-email-dispatch)
+   - [weekly-money-email-dispatch](#weekly-money-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2162,6 +2163,18 @@ interface SendPhysicalInvoiceEmailBody {
 **Authentication**: `X-Cron-Secret` = `CRON_SECRET`; no user-JWT modes (scheduling/cancelling are direct RLS-gated writes).
 
 **Deploy**: `supabase functions deploy weekly-movement-email-dispatch --no-verify-jwt`. Requires migration `20260807024222` (payload RPC + requests table + pg_cron).
+
+---
+
+### weekly-money-email-dispatch
+
+**Purpose** (v2.1448): Cron-only dispatcher for scheduled **Weekly Money Movement** report sends (`weekly_money` Report Subscriptions stream — `docs/WEEKLY_MONEY_PLAN.md` Phase 5). Drains due `weekly_money_email_requests` rows, rebuilds the report **once per batch** via `get_weekly_money_movement_payload(NULL)` — the **previous complete Central week** — and, unlike weekly_movement, there is **no SQL mirror to keep faithful**: the RPC is the same source of truth the client modal reads. Renders in-function ([`render.ts`](../supabase/functions/weekly-money-email-dispatch/render.ts) ports `weeklyMoneyMovement.ts` row math — material bucketing, Δ% with the seed-bootstrap rule, earned nets; keep in sync), sends via Resend with the requester's reply-to, stamps, re-enqueues `repeat_weekly` chains. Recipients restricted to **dev/controller** (`recipient_user_id`, role-checked at dispatch AND at INSERT RLS — wage-derived job costs). A quiet week still sends.
+
+**Endpoint**: `POST /functions/v1/weekly-money-email-dispatch`
+
+**Authentication**: `X-Cron-Secret` = `CRON_SECRET`; no user-JWT modes (scheduling/cancelling are direct RLS-gated writes).
+
+**Deploy**: `supabase functions deploy weekly-money-email-dispatch --no-verify-jwt`. Requires migrations `20260807053000`/`20260807060000` (payload RPC) and `20260807070000` (requests table + pg_cron).
 
 ---
 

@@ -585,6 +585,10 @@ verify_jwt = false
 [functions.weekly-movement-email-dispatch]
 verify_jwt = false
 
+# Cron-only weekly_money dispatcher (X-Cron-Secret checked in-function; v2.1448).
+[functions.weekly-money-email-dispatch]
+verify_jwt = false
+
 # Emails reports to subscribed recipients via Resend: JWT validated in function (getUser); same gateway pattern as test-email.
 [functions.send-report-email]
 verify_jwt = false

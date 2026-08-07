@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1448',
+    date: '2026-08-07',
+    title: 'Weekly money: the delivery engine',
+    kind: 'infra',
+    highlights: [
+      'The app can now hold scheduled Weekly Money Movement sends and deliver them automatically \u2014 rebuilt fresh at send time, dev/controller recipients only, with self-renewing weekly repeats.',
+      'The Share controls appear in the report next.',
+    ],
+  },
+  {
     version: 'v2.1447',
     date: '2026-08-07',
     title: 'Moneyfill: the close is complete',
