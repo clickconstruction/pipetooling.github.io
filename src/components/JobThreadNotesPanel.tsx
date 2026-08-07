@@ -192,7 +192,7 @@ function JobThreadStampButtons({
         onClick={actions.onArrived}
         aria-label="Post arrived at job note"
       >
-        Arrived at job
+        Arrived
       </button>
       <button
         type="button"
@@ -201,7 +201,7 @@ function JobThreadStampButtons({
         onClick={actions.onLeaving}
         aria-label="Post leaving job note"
       >
-        Leaving job
+        Leaving
       </button>
     </>
   )
