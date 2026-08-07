@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1446',
+    date: '2026-08-07',
+    title: 'Moneyfill: time queues',
+    kind: 'feature',
+    highlights: [
+      'Two more weekly-close queues: approved field hours no job absorbs (priced at wage) and closed sessions still waiting for approval.',
+      'Approve a pending session right from the queue, or jump to People \u2192 Hours to dig in.',
+    ],
+  },
+  {
     version: 'v2.1445',
     date: '2026-08-07',
     title: 'Moneyfill: unsplit card charges queue',

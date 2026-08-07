@@ -19,6 +19,14 @@ import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
 import { salaryZonedWallClockToUtcMs } from './salaryZonedWallClock'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import type { Json } from '../types/database'
+import {
+  computeUnallocatedFieldRows,
+  type PeopleHoursUnallocatedCrewInput,
+  type PeopleHoursUnallocatedPayConfigInput,
+  type PeopleHoursUnallocatedRow,
+} from './peopleHoursUnallocatedRows'
+import type { OverheadClockSessionRow } from './overheadDailyLabor'
+import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from './overheadOfficeJobSettings'
 
 export type MoneyfillQueueKey =
   | 'bank-transfers'
@@ -203,10 +211,197 @@ export async function fetchUnsplitCardChargesForWeek(weekMondayYmd: string): Pro
   }
 }
 
+export type UnassignedTimeWeekData = {
+  rows: PeopleHoursUnallocatedRow[]
+  totalUnallocatedHours: number
+  /** Σ unallocated hours × wage where a wage is known. */
+  totalAtWage: number
+  /** Wage lookup used for the at-wage column (person_name → $/h). */
+  wageByPersonName: Record<string, number>
+}
+
+/**
+ * Queue 3c: approved field time the week's crew rows can't allocate to any
+ * job, priced at wage. Same kernel + sourcing as Quickfill's Unassigned field
+ * time (approved-closed clock only, threshold 0 here). Null on error.
+ */
+export async function fetchUnassignedTimeForWeek(weekMondayYmd: string): Promise<UnassignedTimeWeekData | null> {
+  try {
+    const workDates = Array.from({ length: 7 }, (_, i) => addDaysYmd(weekMondayYmd, i))
+    const bounds = weekUtcBounds(weekMondayYmd)
+    if (!bounds) return null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpc = (supabase as any).rpc.bind(supabase)
+    const [flagsRes, wagesRes, crewJobsRes, crewBidsRes, sessionsRes, officeJobId] = await Promise.all([
+      rpc('list_people_pay_flags'),
+      supabase.from('people_pay_config').select('person_name, person_id, hourly_wage'),
+      supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', weekMondayYmd).lt('work_date', addDaysYmd(weekMondayYmd, 7)),
+      supabase.from('people_crew_bids').select('work_date, person_name, person_id, bid_assignments').gte('work_date', weekMondayYmd).lt('work_date', addDaysYmd(weekMondayYmd, 7)),
+      supabase
+        .from('clock_sessions')
+        .select('id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)')
+        .gte('work_date', weekMondayYmd)
+        .lt('work_date', addDaysYmd(weekMondayYmd, 7))
+        .not('clocked_out_at', 'is', null)
+        .not('approved_at', 'is', null)
+        .is('rejected_at', null)
+        .is('revoked_at', null),
+      fetchOverheadOfficeJobLedgerIdFromAppSettings(),
+    ])
+    if (flagsRes.error || wagesRes.error || crewJobsRes.error || crewBidsRes.error || sessionsRes.error) return null
+
+    const payConfig: PeopleHoursUnallocatedPayConfigInput[] = (
+      (flagsRes.data ?? []) as Array<{ person_name: string; person_id: string | null; is_salary: boolean | null; record_hours_but_salary?: boolean | null }>
+    ).map((f) => ({
+      person_name: f.person_name,
+      person_id: f.person_id ?? null,
+      is_salary: f.is_salary ?? false,
+      record_hours_but_salary: f.record_hours_but_salary ?? false,
+    }))
+
+    const wageByPersonName: Record<string, number> = {}
+    for (const w of (wagesRes.data ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
+      if (w.hourly_wage != null && Number.isFinite(Number(w.hourly_wage))) wageByPersonName[w.person_name] = Number(w.hourly_wage)
+    }
+
+    const crewByKey = new Map<string, PeopleHoursUnallocatedCrewInput>()
+    const crewKey = (n: string, d: string) => `${n}|${d}`
+    for (const r of (crewJobsRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: Array<{ job_id: string; pct: number }> }>) {
+      crewByKey.set(crewKey(r.person_name, r.work_date), {
+        work_date: r.work_date,
+        person_name: r.person_name,
+        person_id: r.person_id ?? null,
+        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+        bid_assignments: [],
+      })
+    }
+    for (const r of (crewBidsRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; bid_assignments: Array<{ bid_id: string; pct: number }> }>) {
+      const k = crewKey(r.person_name, r.work_date)
+      const existing = crewByKey.get(k)
+      if (existing) existing.bid_assignments = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
+      else
+        crewByKey.set(k, {
+          work_date: r.work_date,
+          person_name: r.person_name,
+          person_id: r.person_id ?? null,
+          job_assignments: [],
+          bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
+        })
+    }
+
+    const sessions = ((sessionsRes.data ?? []) as unknown[]).map((raw) => {
+      const s = raw as Record<string, unknown>
+      const usersRaw = s.users
+      const usersValue = Array.isArray(usersRaw) ? ((usersRaw[0] ?? null) as { name: string | null } | null) : ((usersRaw ?? null) as { name: string | null } | null)
+      return { ...(s as object), users: usersValue } as OverheadClockSessionRow
+    })
+
+    const rows = computeUnallocatedFieldRows({
+      payConfig,
+      crewRows: [...crewByKey.values()],
+      overheadSessions: sessions,
+      officeJobLedgerId: officeJobId,
+      workDates,
+      thresholdHours: 0.01,
+    })
+    let totalHours = 0
+    let totalAtWage = 0
+    for (const r of rows) {
+      totalHours += r.unallocatedHrs
+      const wage = wageByPersonName[r.personName]
+      if (wage != null) totalAtWage += r.unallocatedHrs * wage
+    }
+    return { rows, totalUnallocatedHours: totalHours, totalAtWage, wageByPersonName }
+  } catch {
+    return null
+  }
+}
+
+export function unassignedTimeQueueCount(data: UnassignedTimeWeekData | null): MoneyfillQueueCount {
+  if (data == null) return { key: 'time-no-job', label: MONEYFILL_QUEUE_LABELS['time-no-job'], count: null, dollars: null }
+  return {
+    key: 'time-no-job',
+    label: MONEYFILL_QUEUE_LABELS['time-no-job'],
+    count: data.rows.length,
+    dollars: data.totalAtWage,
+  }
+}
+
+export type PendingApprovalSessionRow = {
+  id: string
+  personName: string
+  workDate: string
+  clockedInAt: string
+  clockedOutAt: string
+  hours: number
+  atWage: number | null
+  jobOrBid: 'job' | 'bid' | null
+}
+
+/**
+ * Queue 3d: closed clock sessions in-week nobody has approved — labor cost not
+ * yet booked anywhere (crew rows only sync on approval). Null on error.
+ */
+export async function fetchPendingApprovalForWeek(weekMondayYmd: string): Promise<PendingApprovalSessionRow[] | null> {
+  try {
+    const [sessRes, wagesRes] = await Promise.all([
+      supabase
+        .from('clock_sessions')
+        .select('id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, users!clock_sessions_user_id_fkey(name)')
+        .gte('work_date', weekMondayYmd)
+        .lt('work_date', addDaysYmd(weekMondayYmd, 7))
+        .not('clocked_out_at', 'is', null)
+        .is('approved_at', null)
+        .is('rejected_at', null)
+        .is('revoked_at', null)
+        .order('work_date', { ascending: true }),
+      supabase.from('people_pay_config').select('person_name, hourly_wage'),
+    ])
+    if (sessRes.error || wagesRes.error) return null
+    const wageByName: Record<string, number> = {}
+    for (const w of (wagesRes.data ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
+      if (w.hourly_wage != null) wageByName[w.person_name] = Number(w.hourly_wage)
+    }
+    return ((sessRes.data ?? []) as unknown[]).map((raw) => {
+      const s = raw as Record<string, unknown>
+      const usersRaw = s.users
+      const u = Array.isArray(usersRaw) ? ((usersRaw[0] ?? null) as { name: string | null } | null) : ((usersRaw ?? null) as { name: string | null } | null)
+      const personName = (u?.name ?? '').trim()
+      const inAt = String(s.clocked_in_at)
+      const outAt = String(s.clocked_out_at)
+      const hours = Math.max(0, (Date.parse(outAt) - Date.parse(inAt)) / 3_600_000)
+      const wage = wageByName[personName]
+      return {
+        id: String(s.id),
+        personName: personName || '(unknown)',
+        workDate: String(s.work_date),
+        clockedInAt: inAt,
+        clockedOutAt: outAt,
+        hours,
+        atWage: wage != null ? hours * wage : null,
+        jobOrBid: s.job_ledger_id ? 'job' : s.bid_id ? 'bid' : null,
+      } satisfies PendingApprovalSessionRow
+    })
+  } catch {
+    return null
+  }
+}
+
+export function pendingApprovalQueueCount(rows: PendingApprovalSessionRow[] | null): MoneyfillQueueCount {
+  if (rows == null)
+    return { key: 'pending-approval', label: MONEYFILL_QUEUE_LABELS['pending-approval'], count: null, dollars: null }
+  return {
+    key: 'pending-approval',
+    label: MONEYFILL_QUEUE_LABELS['pending-approval'],
+    count: rows.length,
+    dollars: rows.reduce((s, r) => s + (r.atWage ?? 0), 0),
+  }
+}
+
 /**
  * Fetch every registered queue count for a close week. Queue fetchers are
  * eligibility-probed and NEVER throw — a failed queue reports count null so
- * both surfaces can say "partial". Registry: bank transfers, card charges.
+ * both surfaces can say "partial". Registry: bank transfers, card charges, unassigned time, pending approval.
  */
 export async function fetchWeekCloseCounts(weekMondayYmd: string): Promise<MoneyfillQueueCount[]> {
   const counts: MoneyfillQueueCount[] = []
@@ -224,6 +419,12 @@ export async function fetchWeekCloseCounts(weekMondayYmd: string): Promise<Money
 
   // card-charges — card purchases posted in-week with no job allocations.
   counts.push(cardChargesQueueCount(await fetchUnsplitCardChargesForWeek(weekMondayYmd)))
+
+  // time-no-job — approved field time no job absorbs, at wage.
+  counts.push(unassignedTimeQueueCount(await fetchUnassignedTimeForWeek(weekMondayYmd)))
+
+  // pending-approval — closed sessions not yet approved (labor not booked).
+  counts.push(pendingApprovalQueueCount(await fetchPendingApprovalForWeek(weekMondayYmd)))
 
   return counts
 }

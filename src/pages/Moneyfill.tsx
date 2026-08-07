@@ -4,6 +4,10 @@ import { QuickfillNoncardAttributionSection } from '../components/quickfill/Quic
 import { useAuth } from '../hooks/useAuth'
 import { useQuickfillNoncardAttribution } from '../hooks/useQuickfillNoncardAttribution'
 import { MoneyfillCardChargesSection } from '../components/moneyfill/MoneyfillCardChargesSection'
+import {
+  MoneyfillPendingApprovalSection,
+  MoneyfillUnassignedTimeSection,
+} from '../components/moneyfill/MoneyfillTimeQueuesSections'
 import { addDaysYmd } from '../lib/emailSchedule/emailScheduleWeek'
 import { weekLabel } from '../lib/jobs/stagesWeeklyMovement'
 import {
@@ -154,6 +158,10 @@ export default function Moneyfill() {
       </section>
 
       <MoneyfillCardChargesSection weekMonday={weekMonday} />
+
+      <MoneyfillUnassignedTimeSection weekMonday={weekMonday} />
+
+      <MoneyfillPendingApprovalSection weekMonday={weekMonday} />
 
       <section
         aria-label="Bank transfers needing attribution"
