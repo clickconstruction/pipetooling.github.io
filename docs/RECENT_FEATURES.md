@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1443)
+last_updated: 2026-08-06 (v2.1444)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1444)
+
+### Moneyfill becomes a weekly close — shell + shared counts lib (Phase 3a) (2026-08-06)
+[docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md) Phase 3a. `/moneyfill` gains a **Close out: Week of …** header (defaults to the previous complete Central week — the week you close Monday morning): ‹ › week nav, **N of M queues at zero · $X still unattributed** progress line + bar, and one jump chip per queue (red until zero, green at zero, — when a queue can't load). New [`moneyfillWeekClose.ts`](../src/lib/moneyfillWeekClose.ts) (9 tests) is the ONE implementation of the close-week queue counts — `fetchWeekCloseCounts` registry (each queue PR adds its fetcher; queues never throw, they report null → "some queues unavailable"), `summarizeWeekClose`, `buildWeekCloseConfidenceLine` (the report's confidence footer reads the same lib — plan invariant #5). First registered queue: **Bank transfers needing attribution**, week-scoped by Chicago posted date over the existing eligibility-probed RPC. Client-only.
 
 ## Latest Updates (v2.1443)
 
