@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1444',
+    date: '2026-08-06',
+    title: 'Moneyfill: the weekly close',
+    kind: 'feature',
+    highlights: [
+      'Moneyfill now opens with a Close out header for the previous week \u2014 how many money queues are at zero and how many dollars are still unattributed.',
+      'Queue chips fill in as more queues arrive over the next updates.',
+    ],
+  },
+  {
     version: 'v2.1443',
     date: '2026-08-06',
     title: 'Pipeline: the Weekly Money Movement report',
