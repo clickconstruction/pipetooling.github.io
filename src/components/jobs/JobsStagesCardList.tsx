@@ -32,6 +32,7 @@ import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
+import { useShareJob } from './ShareJobButton'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -621,6 +622,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
+  const shareJob = useShareJob()
   const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
     showToast: props.showToast,
@@ -661,6 +663,11 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         })(),
       },
       { key: 'calendar', label: 'Calendar', onClick: () => props.openJobCalendar(j) },
+      {
+        key: 'share',
+        label: 'Share job',
+        onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
+      },
       { key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) },
     ]
     if (jobBillingUnallocatedDollars(j) > 0) {
@@ -799,6 +806,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
+  const shareJob = useShareJob()
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const ctx: StagesRowRenderContext = {
     showToast: props.showToast,
@@ -833,6 +841,11 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       { key: 'view', label: 'View job', onClick: () => openStagesDetailJobModal(j) },
       { key: 'edit', label: 'Edit job', onClick: () => openEdit(j) },
       { key: 'calendar', label: 'Calendar', onClick: () => props.openJobCalendar(j) },
+      {
+        key: 'share',
+        label: 'Share job',
+        onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
+      },
     ]
     if (onViewBill && invWithJob) {
       items.push({ key: 'view-bill', label: 'View bill', onClick: () => onViewBill(invWithJob) })

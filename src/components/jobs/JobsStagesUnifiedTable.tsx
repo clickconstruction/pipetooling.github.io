@@ -19,6 +19,7 @@ import { jobBillingUnallocatedDollars, type InvoiceWithJob, type StageRow } from
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
+import { ShareJobButton } from './ShareJobButton'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
@@ -841,6 +842,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                   <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
                                 </svg>
                               </button>
+                              <ShareJobButton
+                                jobId={j.id}
+                                fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
+                              />
                           </div>
                           <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                               {showClickTooling && (
@@ -1327,6 +1332,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
                             </svg>
                           </button>
+                          <ShareJobButton
+                            jobId={job.id}
+                            fields={{ hcpNumber: job.hcp_number, jobName: job.job_name, jobAddress: job.job_address }}
+                          />
                         </div>
                       </div>
                     </td>

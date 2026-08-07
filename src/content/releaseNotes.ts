@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1452',
+    date: '2026-08-07',
+    title: 'Jobs: share a job by text',
+    kind: 'feature',
+    highlights: [
+      'New Share button on every Pipeline row, in Job Detail, and in the mobile card ⋯ menu — it opens your phone’s share sheet with the job #, name, and address prefilled, plus a link that opens that job in the app.',
+      'On desktop the same text and link copy to your clipboard instead.',
+      'The link grants no access — your teammate signs in as themselves and sees only what their account allows.',
+    ],
+  },
+  {
     version: 'v2.1451',
     date: '2026-08-07',
     title: 'Pipeline: progress changes in the activity list',
