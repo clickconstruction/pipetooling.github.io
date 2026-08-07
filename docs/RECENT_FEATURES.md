@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1451)
+last_updated: 2026-08-07 (v2.1452)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1452)
+
+### Share a job by text (2026-08-07)
+Phase 1 of job sharing (design doc: two-phase plan; Phase 2 adds a tokenized OG-preview edge function). A **Share** button now sits on every Jobs → Pipeline row (both icon clusters in [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx)), in the [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) header (always visible, outside the role-gated cluster), and as a **Share job** row in both mobile-card ⋯ sheets ([`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx)). All three route through `useShareJob()` / `ShareJobButton` ([`ShareJobButton.tsx`](../src/components/jobs/ShareJobButton.tsx)) over the pure kernel [`jobShare.ts`](../src/lib/jobShare.ts) (unit-tested): payload = `Job #<hcp> — <name>` + address line + a `/jobs?jobDetail=<id>` deep link (the existing self-stripping param). `navigator.share` opens the native share sheet; where unavailable the text+link copy to the clipboard with a toast; a dismissed sheet stays silent. The link grants no access — recipients land behind their own login/RLS. Help guide: `share-a-job-with-a-teammate`.
 
 ## Latest Updates (v2.1451)
 

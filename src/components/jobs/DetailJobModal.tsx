@@ -34,6 +34,8 @@ import {
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { JobCalendarModal } from './JobCalendarModal'
+import { ShareJobButton } from './ShareJobButton'
+import type { JobShareFields } from '../../lib/jobShare'
 import { ScheduleJobModal } from './ScheduleJobModal'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
@@ -686,6 +688,16 @@ export default function DetailJobModal({
     return (prefillAddress ?? '').trim()
   }, [fullJob, limitedJob, prefillAddress])
 
+  const shareFields = useMemo<JobShareFields>(() => {
+    const data = fullJob ?? limitedJob
+    if (data) return { hcpNumber: data.hcp_number, jobName: data.job_name, jobAddress: mapsAddressLine || null }
+    if (prefillRowLabel?.trim()) {
+      const { hcp, jobName } = splitScheduleDetailRowLabel(prefillRowLabel)
+      return { hcpNumber: hcp, jobName, jobAddress: mapsAddressLine || null }
+    }
+    return { hcpNumber: null, jobName: null, jobAddress: mapsAddressLine || null }
+  }, [fullJob, limitedJob, prefillRowLabel, mapsAddressLine])
+
   const detailJob = useMemo(() => {
     if (loading || error) return null
     return (fullJob ?? limitedJob) ?? null
@@ -1113,6 +1125,7 @@ export default function DetailJobModal({
             {modalTitle}
           </h2>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexShrink: 0 }}>
+            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
             {showDetailHeaderRightCluster ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
               {headerTradePill ? (
