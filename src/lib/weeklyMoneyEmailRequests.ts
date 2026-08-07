@@ -1,0 +1,47 @@
+import { supabase } from './supabase'
+
+/**
+ * IO for weekly_money_email_requests (v2.1449, weekly_money Report
+ * Subscriptions stream). Direct RLS-gated writes (dev/controller both sides);
+ * the cron dispatcher (weekly-money-email-dispatch) does the sending — each
+ * send covers the PREVIOUS complete Central week.
+ */
+
+export type PendingWeeklyMoneySend = {
+  id: string
+  recipient_user_id: string
+  send_at: string
+  repeat_weekly: boolean
+}
+
+export async function scheduleWeeklyMoneySend(input: {
+  requestedBy: string
+  recipientUserId: string
+  sendAtIso: string
+  repeatWeekly: boolean
+}): Promise<void> {
+  const { error } = await supabase.from('weekly_money_email_requests').insert({
+    requested_by: input.requestedBy,
+    recipient_user_id: input.recipientUserId,
+    send_at: input.sendAtIso,
+    repeat_weekly: input.repeatWeekly,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/** The caller's pending (unsent) scheduled sends, soonest first. */
+export async function listMyPendingWeeklyMoneySends(): Promise<PendingWeeklyMoneySend[]> {
+  const { data, error } = await supabase
+    .from('weekly_money_email_requests')
+    .select('id, recipient_user_id, send_at, repeat_weekly')
+    .is('sent_at', null)
+    .order('send_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as PendingWeeklyMoneySend[]
+}
+
+/** Cancel = delete an unsent request (RLS: creator-only, unsent-only). Ends a weekly chain. */
+export async function cancelWeeklyMoneySend(id: string): Promise<void> {
+  const { error } = await supabase.from('weekly_money_email_requests').delete().eq('id', id).is('sent_at', null)
+  if (error) throw new Error(error.message)
+}

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1448)
+last_updated: 2026-08-07 (v2.1449)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1449)
+
+### Weekly Money share UI + email schedule integration — stream complete (2026-08-07)
+Final PR of the Weekly Money Movement build ([docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md) — every phase of the plan is now shipped). The report modal gains an **Email this report** box: dev/controller recipient picker (mirrors the table RLS — wage-derived data), first-send date defaulting to next Monday 7:00 AM Central, **Repeat weekly on by default**, pending list with Cancel — IO in [`weeklyMoneyEmailRequests.ts`](../src/lib/weeklyMoneyEmailRequests.ts), types hand-added. Migration `20260807073000` rebuilds `get_my_email_schedule()` (recipient-scoped `weekly_money` one-offs branch) and `get_global_email_schedule()` (`weekly_money_requests`) from this train's own live bodies; `emailScheduleWeek.ts` unions widen with the 'Weekly money' label + green-tone chip in Settings. Help guide gains the Email-it-weekly section; REPORT_SUBSCRIPTIONS inventory marks the stream complete. Client + DB (`supabase db push` after merge).
 
 ## Latest Updates (v2.1448)
 
