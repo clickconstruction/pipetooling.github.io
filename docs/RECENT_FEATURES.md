@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1431)
+last_updated: 2026-08-06 (v2.1432)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1432)
+
+### Standing copies visible on the recipient's email schedule (2026-08-06)
+PR 3 of standing copies. Migration `20260807013246_gc_statement_recipient_schedule_visibility.sql` rebuilds `get_my_email_schedule()` from its LIVE prod body (pg_get_functiondef; statement semicolon-terminated per the v2.1428 lesson) widening the gc_statement branch's WHERE: rows now match when `requested_by` is the caller OR `sent_to` equals the caller's own `users.email` (case-insensitive) — so a Master given a Mon/Wed standing copy sees it on THEIR Settings → My email schedule, not just on the dev's. A requester scheduling to themself still yields one row (OR, same row). DB-only; `supabase db push` after merge.
 
 ## Latest Updates (v2.1431)
 

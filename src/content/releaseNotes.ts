@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1432',
+    date: '2026-08-06',
+    title: 'Standing report copies show on the recipient\u2019s email schedule',
+    kind: 'feature',
+    highlights: [
+      'Teammates given a standing GC Review copy now see it on their own Settings \u2192 My email schedule \u2014 green chips on the weekdays it arrives.',
+    ],
+  },
+  {
     version: 'v2.1431',
     date: '2026-08-06',
     title: 'GC Review: standing report copies for teammates',
