@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1451',
+    date: '2026-08-07',
+    title: 'Pipeline: progress changes in the activity list',
+    kind: 'feature',
+    highlights: [
+      'When anyone updates a job\u2019s % complete, it now shows in the job\u2019s activity list \u2014 \u201cProgress 42% \u2192 55%\u201d with who and when.',
+      'Works everywhere % is edited: Job Detail, Workflow stages, and the Forecast board.',
+    ],
+  },
+  {
     version: 'v2.1450',
     date: '2026-08-07',
     title: 'housekeeping: weekly money plan closed out',
