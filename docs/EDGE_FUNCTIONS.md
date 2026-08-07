@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 61 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-08-07
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -98,6 +98,7 @@ when_to_read:
    - [check-estimate-attachment-url](#check-estimate-attachment-url)
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
    - [street-view-preview](#street-view-preview)
+   - [job-share](#job-share)
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
    - [travel-time-batch](#travel-time-batch)
@@ -1058,6 +1059,27 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Deploy**: `supabase functions deploy street-view-preview`
 
 **Implementation**: [`supabase/functions/street-view-preview/index.ts`](../supabase/functions/street-view-preview/index.ts); client: [`src/lib/fetchStreetViewPreview.ts`](../src/lib/fetchStreetViewPreview.ts).
+
+### job-share
+
+**Purpose**: **Public** resolver for tokenized job share links (Share-a-job Phase 2, v2.1453) so a texted link unfurls as a **rich iMessage/OG card** — title = job # + name, description = address · status, image = Street View of the address — then **redirects** human taps into the app at `/jobs?jobDetail=<job id>` (behind the recipient's own login).
+
+**Endpoint**:
+
+- **HTML** (**200**): `GET /functions/v1/job-share?t=<raw token>` — OG meta tags + meta-refresh/JS redirect; **404** HTML ("no longer active") for missing/unknown/revoked tokens.
+- **Image** (**200** binary): `GET /functions/v1/job-share?t=<raw token>&img=1` — proxied Google Street View JPEG (600×314); **404** when no key/address/coverage.
+
+**Headers**: none — link-preview fetchers send no auth.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_MAPS_API_KEY` (image + coverage check; card degrades to text-only without it). Optional `APP_ORIGIN` overrides the redirect origin (default `https://pipetooling.com`).
+
+**Gateway**: `verify_jwt = false` — access is gated by the unguessable 128-bit token, matched via sha256 against `job_share_links.token_hash` (raw token only ever lives in the URL; `revoked_at` is the per-link kill switch). The OG card exposes **only** job #, name, address, status.
+
+**Validation**: `t` required, trimmed, max length 128; Street View coverage checked via the metadata endpoint before advertising `og:image` (so cards never unfurl Google's grey placeholder).
+
+**Deploy**: `supabase functions deploy job-share`
+
+**Implementation**: [`supabase/functions/job-share/index.ts`](../supabase/functions/job-share/index.ts); table: `job_share_links` (`20260807201349`); client mint + share: [`src/lib/jobShare.ts`](../src/lib/jobShare.ts) (token URL swap ships in the follow-up client PR).
 
 ---
 

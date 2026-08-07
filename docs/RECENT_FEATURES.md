@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1452)
+last_updated: 2026-08-07 (v2.1453)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1453)
+
+### Share-a-job Phase 2 backend — token table + OG preview function (2026-08-07)
+Backend for rich share cards (Phase 1: v2.1452). Migration `20260807201349` creates `job_share_links` (`token_hash` = sha256 of the raw 128-bit token — the `estimates.public_token_hash` pattern; `revoked_at` kill switch; INSERT RLS gated on the caller's own `jobs_ledger` visibility, details in [`MIGRATIONS.md`](./MIGRATIONS.md)). New public `job-share` edge function ([`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) → job-share, `verify_jwt = false`): resolves `?t=<token>` to OG meta tags (job # + name / address · status / Street View image when coverage exists) and redirects human taps to `/jobs?jobDetail=<id>`. Deploy after merge: `supabase db push` + `supabase functions deploy job-share`. No client changes here — the share buttons keep sharing plain deep links until the follow-up client PR swaps in token URLs (with deep-link fallback).
 
 ## Latest Updates (v2.1452)
 

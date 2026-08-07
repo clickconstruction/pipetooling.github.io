@@ -593,6 +593,12 @@ verify_jwt = false
 [functions.send-report-email]
 verify_jwt = false
 
+# Public OG-preview resolver for tokenized job share links (v2.1453): link
+# previews are fetched unauthenticated; unguessable sha256-hashed tokens gate
+# access, and the card exposes only job #/name/address/status.
+[functions.job-share]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1453',
+    date: '2026-08-07',
+    title: 'infra: groundwork for rich share cards',
+    kind: 'infra',
+    highlights: [
+      'Behind-the-scenes plumbing so shared job links can show a preview card (job #, name, address, and a photo of the address) in Messages. Nothing changes in the app yet — the upgrade lands in the next update.',
+    ],
+  },
+  {
     version: 'v2.1452',
     date: '2026-08-07',
     title: 'Jobs: share a job by text',
