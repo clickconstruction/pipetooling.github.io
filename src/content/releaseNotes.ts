@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1430',
+    date: '2026-08-06',
+    title: 'Groundwork for standing report copies',
+    kind: 'infra',
+    highlights: [
+      'Internal plumbing for sending the GC Review report to chosen teammates on chosen weekdays \u2014 the picker UI arrives next.',
+    ],
+  },
+  {
     version: 'v2.1429',
     date: '2026-08-06',
     title: 'GC Review: Schedule send works first-click',
