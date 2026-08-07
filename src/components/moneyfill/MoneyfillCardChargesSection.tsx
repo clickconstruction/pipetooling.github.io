@@ -5,6 +5,7 @@ import {
   type UnsplitCardChargeRow,
 } from '../../lib/moneyfillWeekClose'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /**
  * Moneyfill queue: card purchases posted in the close week with no job
@@ -73,7 +74,7 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
                 <tr key={r.txId} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                     {r.postedAt
-                      ? new Date(r.postedAt).toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric' })
+                      ? new Date(r.postedAt).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short', month: 'short', day: 'numeric' })
                       : '—'}
                   </td>
                   <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>{formatMercuryDebitCardIdCompact(r.debitCardId)}</td>
