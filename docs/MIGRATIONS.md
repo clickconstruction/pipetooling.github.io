@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 6, 2026
 
+**`20260807053000_weekly_money_movement_payload.sql`** _(apply via `supabase db push` after merge; nothing calls it until the Weekly Money report ships)_
+- **Purpose**: `get_weekly_money_movement_payload(p_week_monday date DEFAULT NULL)` (v2.1442) — Weekly Money Movement Phase 1 (`docs/WEEKLY_MONEY_PLAN.md`). One source of truth for the report: per-job money out (crew labor with `teamLabor.ts` parity math — salary 8/0, pct × day hours × wage; sub sheets by `job_date` with lineLaborCost + drive semantics, HCP-linked; mercury/supply/tally/other materials by their dated-allocation conventions), money in (`jobs_ledger_payments` by `paid_on`), `pct_start`/`pct_end` as-of week bounds from `job_pct_events`. Office-job rows + crew bid labor fold into an `overhead` bucket. NULL week = previous complete Central Mon–Sun week.
+- **Security**: SECURITY DEFINER; in-function gate — authenticated callers must be dev or controller (wage-derived data), service role passes for the future dispatcher. EXECUTE revoked from PUBLIC/anon; granted to authenticated + service_role.
+
 **`20260807051000_job_pct_events.sql`** _(apply via `supabase db push` after merge; client-independent — nothing reads the table until the Weekly Money report ships)_
 - **Purpose**: `job_pct_events` history table (v2.1441) — Weekly Money Movement Phase 0 (`docs/WEEKLY_MONEY_PLAN.md`). `jobs_ledger.pct_complete` had no history; an AFTER UPDATE single-writer trigger (`jobs_ledger_log_pct_change` → `log_job_pct_change()`, same pattern as `job_status_events` v2.1435) now records every change with `source` `manual`/`service` and `changed_by_user_id`; a one-time idempotent seed anchors every job's current value (`source` `seed`).
 - **Security**: RLS SELECT mirrors `job_status_events` (job-scoped staff/adoption/sharing + team members); no client write policies — the SECURITY DEFINER trigger is the only writer. Both read-only training-mode guards re-applied (new table).

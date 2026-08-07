@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1441)
+last_updated: 2026-08-06 (v2.1442)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1442)
+
+### Weekly Money payload RPC — one source of truth (Phase 1) (2026-08-06)
+Migration `20260807053000`: `get_weekly_money_movement_payload(p_week_monday DEFAULT NULL)` — the RPC-first architecture from [docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md) (feeds both the coming client modal and the future `weekly_money` dispatcher; no client/SQL hand-mirroring). Per Mon–Sun Central week it returns per-job rows — crew labor in **byte-math parity with `src/utils/teamLabor.ts`** (assignment pct × day hours × wage, salary 8/0 Mon–Fri), sub sheets by `job_date` (lineLaborCost + drive-cost semantics, HCP-linked), mercury allocations by Chicago posted date, supply allocations (pct × invoice amount) by `invoice_date`, tally lines by Chicago `created_at` (fixture-cost vs price-at-time rule), manual other charges, payments by `paid_on`, and `pct_start`/`pct_end` from `job_pct_events` — plus an overhead bucket (office-job rows + crew bid labor). Gate: dev/controller for authenticated callers, service_role pass-through. NULL week = previous complete week. DB-only; fidelity verification against Crew P&L / Job Summary follows the push.
 
 ## Latest Updates (v2.1441)
 
