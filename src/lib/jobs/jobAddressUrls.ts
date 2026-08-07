@@ -44,7 +44,9 @@ export function formatAddressTwoLines(addr: string | null): { line1: string; lin
   if (!a) return null
   const bestIdx = findEarliestTxLocalityIndex(a)
   if (bestIdx !== -1 && bestIdx > 0) {
-    const line1 = a.slice(0, bestIdx).trim()
+    // Comma-before-city inputs ("400 River Rd, Boerne TX") split at the
+    // locality — strip the comma the street line would otherwise keep.
+    const line1 = a.slice(0, bestIdx).trim().replace(/,\s*$/, '')
     const line2 = dropTrailingZip(a.slice(bestIdx).trim())
     return { line1, line2: line2 || undefined }
   }

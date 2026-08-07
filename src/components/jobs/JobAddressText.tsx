@@ -35,7 +35,11 @@ export function JobAddressText({ line1, line2 }: { line1: string; line2?: string
   }, [line1, line2])
 
   return (
-    <span ref={outerRef}>
+    // text-wrap: balance — when the kernel couldn't split (unknown city, no
+    // comma) and the one-liner must wrap, break into even lines instead of
+    // orphaning the last word ("…Converse | TX"). The outer span is a flex
+    // item (blockified), so balance applies.
+    <span ref={outerRef} style={{ textWrap: 'balance' }}>
       <span ref={line1Ref}>{line1}</span>
       {line2 ? (
         line1Wrapped ? (

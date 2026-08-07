@@ -51,6 +51,8 @@ The amber count on Accounts Receivable is the same unallocated-bank-deposits bad
 
 Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**.
 
+On the **mobile cards** view, the same shortcut row also carries a **briefcase** (opens Job Detail) and a **share** icon (texts the job to a teammate), and the **⋯** menu at the end of the row holds everything else — View job, Edit, Activity, Calendar, Share, Click Tooling, Google Maps, Week dispatch, and Send back.
+
 ## Getting to Ready to bill
 
 A job usually reaches Ready to bill one of two ways:

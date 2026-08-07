@@ -19,6 +19,12 @@ export const TX_JOB_ADDRESS_LOCALITY_KEYWORDS = [
   'Castroville',
   'Shavano Park',
   'Blanco',
+  'Converse',
+  'Universal City',
+  'Live Oak',
+  'Cibolo',
+  'Boerne',
+  'Leon Valley',
 ] as const
 
 /**
@@ -126,7 +132,9 @@ export function splitJobAddressForPrefill(full: string): {
   const locIdx = findEarliestTxLocalityIndex(leftRemainder)
   if (locIdx >= 0) {
     if (locIdx > 0) {
-      street = leftRemainder.slice(0, locIdx).trim()
+      // "400 River Rd, Boerne" splits at the locality — drop the comma the
+      // street segment would otherwise keep trailing.
+      street = leftRemainder.slice(0, locIdx).trim().replace(/,\s*$/, '')
       city = leftRemainder.slice(locIdx).trim()
     } else {
       city = leftRemainder
