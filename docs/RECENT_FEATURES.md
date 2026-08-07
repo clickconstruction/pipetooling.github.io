@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1434)
+last_updated: 2026-08-06 (v2.1435)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1435)
+
+### job_status_events single-writer trigger — Weekly movement Phase 0 (2026-08-06)
+Migration `20260807022001_job_status_event_single_writer_trigger.sql`. Previously only `update_job_status` and the clock-out promote trigger logged transitions; the four mark-paid RPCs, reconcile/revert paths, and client-side demotes flipped status silently — jobs going **Paid** were invisible to history. Now ONE writer: `log_job_status_transition()` (AFTER UPDATE OF status, WHEN changed) logs every transition with `auth.uid()` attribution (NULL under service role = "Stripe"); `update_job_status` and `clock_sessions_promote_job_waiting_to_working` rebuilt from LIVE bodies with their explicit INSERTs removed (no double-logging). **Rule: no function may INSERT INTO job_status_events again.** Unblocks the Weekly movement report (every stage entry now evented). DB-only; `supabase db push` after merge.
 
 ## Latest Updates (v2.1434)
 

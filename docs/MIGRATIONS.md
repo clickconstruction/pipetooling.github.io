@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "182 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "183 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260807022001_job_status_event_single_writer_trigger.sql`** _(apply via `supabase db push` after merge; behavior-identical for existing surfaces — the send-back line keeps working, coverage just becomes complete)_
+- **Purpose**: Weekly movement Phase 0 (v2.1435) — `log_job_status_transition()` AFTER-UPDATE trigger on `jobs_ledger` becomes the SINGLE writer of `job_status_events`; `update_job_status` + the clock-out promote function rebuilt from live bodies minus their explicit INSERTs. Closes the mark-paid/reconcile/client-demote event gap.
+- **Security**: trigger fn SECURITY DEFINER (event INSERT bypasses RLS the same way update_job_status's insert did); RLS on the table unchanged.
 
 **`20260807020310_gc_statement_rows_address_order.sql`** _(apply via `supabase db push` after merge; until then scheduled statements keep the old row order — content unchanged)_
 - **Purpose**: v2.1434 — `get_gc_statement_email_payload` rows ORDER BY gains `NULLIF(lower(trim(job_address)), '') ASC NULLS LAST` ahead of the age/remaining keys, matching the client's new address sort. Live-body rebuild.
