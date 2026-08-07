@@ -191,31 +191,24 @@ export function PersonContractSignedRecordModal({
             <h2 id="person-contract-signed-record-title" style={{ margin: 0, fontSize: '1.1rem' }}>
               Signed contract
             </h2>
+            {/* Flex-wrap with nowrap segments: each phrase stays whole, so a
+                narrow screen breaks between "Signed as" and the timestamp
+                instead of orphaning "PM" onto its own line. */}
             {row && row.status === 'signed' ? (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', columnGap: '0.65rem' }}>
                 {row.signer_printed_name?.trim() ? (
-                  <>
+                  <span style={{ whiteSpace: 'nowrap' }}>
                     <strong>Signed as:</strong> {row.signer_printed_name.trim()}
-                    {row.signer_consented_at ? (
-                      <>
-                        {' '}
-                        · <strong>Signed:</strong> {new Date(row.signer_consented_at).toLocaleString()}
-                      </>
-                    ) : row.signed_at ? (
-                      <>
-                        {' '}
-                        · <strong>Recorded:</strong> {new Date(row.signed_at).toLocaleString()}
-                      </>
-                    ) : null}
-                  </>
-                ) : row.signer_consented_at ? (
-                  <>
+                  </span>
+                ) : null}
+                {row.signer_consented_at ? (
+                  <span style={{ whiteSpace: 'nowrap' }}>
                     <strong>Signed:</strong> {new Date(row.signer_consented_at).toLocaleString()}
-                  </>
+                  </span>
                 ) : row.signed_at ? (
-                  <>
+                  <span style={{ whiteSpace: 'nowrap' }}>
                     <strong>Recorded:</strong> {new Date(row.signed_at).toLocaleString()}
-                  </>
+                  </span>
                 ) : null}
               </p>
             ) : null}

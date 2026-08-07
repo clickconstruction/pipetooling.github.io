@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1456)
+last_updated: 2026-08-07 (v2.1457)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1457)
+
+### Signed-record headers wrap as whole phrases (2026-08-07)
+User-reported: on phones, the "Signed as: <name> · Signed: <timestamp>" line in [`PersonContractSignedRecordModal`](../src/components/contracts/PersonContractSignedRecordModal.tsx) wrapped mid-timestamp, orphaning "PM" onto its own line. The line is now a flex-wrap row of `white-space: nowrap` segments — each phrase ("Signed as: …", "Signed/Recorded: …") stays whole, sitting side by side when they fit and breaking onto two clean lines when they don't (the "·" separator is replaced by column-gap). Same treatment applied to the identical line in [`CustomerAcceptanceRecordModal`](../src/components/estimates/CustomerAcceptanceRecordModal.tsx) ("Signed as … · Accepted …").
 
 ## Latest Updates (v2.1456)
 

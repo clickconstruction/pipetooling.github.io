@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1457',
+    date: '2026-08-07',
+    title: 'Signed-contract details wrap cleanly on phones',
+    kind: 'fix',
+    highlights: [
+      'The "Signed as / Signed" line on signed contracts (and accepted estimates) no longer breaks mid-timestamp on narrow screens — each part moves to its own line whole.',
+    ],
+  },
+  {
     version: 'v2.1456',
     date: '2026-08-07',
     title: 'Contract previews work on your phone',
