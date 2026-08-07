@@ -1,4 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import {
+  buildGcStatementRequestInsert,
+  describePendingGcStatementSend,
+  type PendingGcStatementSend,
+} from '../../lib/gcStatementSchedule'
+import {
+  cancelGcStatementSend,
+  listMyPendingGcStatementSends,
+  scheduleGcStatementSend,
+} from '../../lib/gcStatementEmailRequests'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
 import {
@@ -12,6 +24,97 @@ import {
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+
+/** "Send now | Schedule…" controls shared by the Email… and Share-all dialogs (v2.1427). */
+function ScheduleWhenControls({
+  when,
+  setWhen,
+  sendDate,
+  setSendDate,
+  sendTime,
+  setSendTime,
+  repeatWeekly,
+  setRepeatWeekly,
+  disabled,
+}: {
+  when: 'now' | 'schedule'
+  setWhen: (w: 'now' | 'schedule') => void
+  sendDate: string
+  setSendDate: (v: string) => void
+  sendTime: string
+  setSendTime: (v: string) => void
+  repeatWeekly: boolean
+  setRepeatWeekly: (v: boolean) => void
+  disabled: boolean
+}) {
+  const pill = (active: boolean): React.CSSProperties => ({
+    padding: '0.2rem 0.6rem',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    fontFamily: 'inherit',
+    border: 'none',
+    borderRadius: 999,
+    cursor: 'pointer',
+    background: active ? 'var(--bg-blue-tint)' : 'transparent',
+    color: active ? 'var(--text-link)' : 'var(--text-muted)',
+  })
+  return (
+    <div style={{ marginBottom: '0.6rem' }}>
+      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>When</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <span
+          role="group"
+          aria-label="Send timing"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', padding: '0.15rem', border: '1px solid var(--border)', borderRadius: 999 }}
+        >
+          <button type="button" disabled={disabled} onClick={() => setWhen('now')} aria-pressed={when === 'now'} style={pill(when === 'now')}>
+            Send now
+          </button>
+          <button type="button" disabled={disabled} onClick={() => setWhen('schedule')} aria-pressed={when === 'schedule'} style={pill(when === 'schedule')}>
+            Schedule…
+          </button>
+        </span>
+        {when === 'schedule' ? (
+          <>
+            <input
+              type="date"
+              value={sendDate}
+              onChange={(e) => setSendDate(e.target.value)}
+              disabled={disabled}
+              aria-label="Send date"
+              style={{ padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+            />
+            <input
+              type="time"
+              value={sendTime}
+              onChange={(e) => setSendTime(e.target.value)}
+              disabled={disabled}
+              aria-label="Send time (Central)"
+              style={{ padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+            />
+            <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Central</span>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={repeatWeekly}
+                onChange={() => setRepeatWeekly(!repeatWeekly)}
+                disabled={disabled}
+                style={{ margin: 0 }}
+              />
+              Repeat weekly
+            </label>
+          </>
+        ) : null}
+      </div>
+      {when === 'schedule' ? (
+        <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+          Scheduled sends rebuild the statement fresh at send time — a GC with nothing outstanding is skipped, never
+          emailed an empty statement.
+        </p>
+      ) : null}
+    </div>
+  )
+}
 
 const gcShareMenuItemStyle: React.CSSProperties = {
   display: 'block',
@@ -93,6 +196,33 @@ export function JobsGcReviewModal({
   const [shareAllError, setShareAllError] = useState<string | null>(null)
   /** Per-GC "Share" dropdown (v2.1423) — the open group's key, one at a time. */
   const [shareMenuGroupKey, setShareMenuGroupKey] = useState<string | null>(null)
+  /** Scheduling (v2.1427, gc_statement stream Phase 3): Send now vs Schedule… per dialog. */
+  const { user: authUser } = useAuth()
+  const [emailWhen, setEmailWhen] = useState<'now' | 'schedule'>('now')
+  const [emailSendDate, setEmailSendDate] = useState('')
+  const [emailSendTime, setEmailSendTime] = useState('07:00')
+  const [emailRepeatWeekly, setEmailRepeatWeekly] = useState(false)
+  const [shareAllWhen, setShareAllWhen] = useState<'now' | 'schedule'>('now')
+  const [shareAllSendDate, setShareAllSendDate] = useState('')
+  const [shareAllSendTime, setShareAllSendTime] = useState('07:00')
+  const [shareAllRepeatWeekly, setShareAllRepeatWeekly] = useState(false)
+  const [pendingSends, setPendingSends] = useState<PendingGcStatementSend[]>([])
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void listMyPendingGcStatementSends().then(
+      (rows) => {
+        if (!cancelled) setPendingSends(rows)
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+  const refreshPendingSends = () => {
+    void listMyPendingGcStatementSends().then(setPendingSends, () => {})
+  }
   const anyDevelopment = useMemo(
     () => [...billedActiveRows, ...collectionsRows].some((r) => r.job.development?.id),
     [billedActiveRows, collectionsRows],
@@ -208,6 +338,8 @@ export function JobsGcReviewModal({
                   ),
                 )
                 setShareAllError(null)
+                setShareAllWhen('now')
+                setShareAllRepeatWeekly(false)
               }}
               title="Print the whole report or email it from the app"
               aria-label="Share the whole GC Review report"
@@ -254,6 +386,34 @@ export function JobsGcReviewModal({
             Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
           </label>
         </div>
+        {pendingSends.length > 0 ? (
+          <div style={{ margin: '0 auto 1rem', maxWidth: 480, border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+            <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
+              Scheduled statement sends
+            </p>
+            {pendingSends.map((s) => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {describePendingGcStatementSend(s)}
+                </span>
+                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {new Date(s.send_at).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  {s.repeat_weekly ? ' · weekly' : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void cancelGcStatementSend(s.id).then(refreshPendingSends, refreshPendingSends)
+                  }}
+                  title="Cancel this scheduled send (ends a weekly chain)"
+                  style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {rollup.groups.length === 0 ? (
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>No billed jobs awaiting payment.</p>
         ) : (
@@ -342,6 +502,8 @@ export function JobsGcReviewModal({
                                 gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
                               )
                               setEmailError(null)
+                              setEmailWhen('now')
+                              setEmailRepeatWeekly(false)
                             }}
                             title={`Email the ${g.gcName} statement from the app`}
                             style={gcShareMenuItemStyle}
@@ -489,13 +651,26 @@ export function JobsGcReviewModal({
               disabled={emailSending}
               style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
             />
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Subject</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>
+              Subject{emailWhen === 'schedule' ? ' (scheduled sends use the standard subject)' : ''}
+            </label>
             <input
               type="text"
               value={emailDialogSubject}
               onChange={(e) => setEmailDialogSubject(e.target.value)}
+              disabled={emailSending || emailWhen === 'schedule'}
+              style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem', opacity: emailWhen === 'schedule' ? 0.6 : 1 }}
+            />
+            <ScheduleWhenControls
+              when={emailWhen}
+              setWhen={setEmailWhen}
+              sendDate={emailSendDate}
+              setSendDate={setEmailSendDate}
+              sendTime={emailSendTime}
+              setSendTime={setEmailSendTime}
+              repeatWeekly={emailRepeatWeekly}
+              setRepeatWeekly={setEmailRepeatWeekly}
               disabled={emailSending}
-              style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
             />
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
               Statement preview — {emailDialogGroup.jobCount} job{emailDialogGroup.jobCount === 1 ? '' : 's'}, ${formatCurrency(emailDialogGroup.subtotal)} · job addresses, bill-sent dates and amounts owed. Sent from
@@ -518,6 +693,37 @@ export function JobsGcReviewModal({
                 disabled={emailSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDialogTo.trim())}
                 onClick={() => {
                   const g = emailDialogGroup
+                  if (emailWhen === 'schedule') {
+                    const built = buildGcStatementRequestInsert({
+                      requestedBy: authUser?.id ?? '',
+                      toEmail: emailDialogTo,
+                      byDevelopment,
+                      entityId: g.gcId,
+                      entityName: g.gcName,
+                      includeCollections,
+                      sendDateYmd: emailSendDate,
+                      sendTimeHm: emailSendTime,
+                      repeatWeekly: emailRepeatWeekly,
+                    })
+                    if (!built.ok) {
+                      setEmailError(built.error)
+                      return
+                    }
+                    setEmailSending(true)
+                    setEmailError(null)
+                    void scheduleGcStatementSend(built.row).then(
+                      () => {
+                        setEmailSending(false)
+                        setEmailDialogGroup(null)
+                        refreshPendingSends()
+                      },
+                      (e: unknown) => {
+                        setEmailSending(false)
+                        setEmailError(e instanceof Error ? e.message : 'Could not schedule — try again.')
+                      },
+                    )
+                    return
+                  }
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   setEmailSending(true)
                   setEmailError(null)
@@ -550,7 +756,7 @@ export function JobsGcReviewModal({
                   fontWeight: 500,
                 }}
               >
-                {emailSending ? 'Sending…' : 'Send statement'}
+                {emailSending ? (emailWhen === 'schedule' ? 'Scheduling…' : 'Sending…') : emailWhen === 'schedule' ? 'Schedule send' : 'Send statement'}
               </button>
             </div>
           </div>
@@ -612,13 +818,26 @@ export function JobsGcReviewModal({
                 disabled={shareAllSending}
                 style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
               />
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Subject</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>
+                Subject{shareAllWhen === 'schedule' ? ' (scheduled sends use the standard subject)' : ''}
+              </label>
               <input
                 type="text"
                 value={shareAllSubject}
                 onChange={(e) => setShareAllSubject(e.target.value)}
+                disabled={shareAllSending || shareAllWhen === 'schedule'}
+                style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem', opacity: shareAllWhen === 'schedule' ? 0.6 : 1 }}
+              />
+              <ScheduleWhenControls
+                when={shareAllWhen}
+                setWhen={setShareAllWhen}
+                sendDate={shareAllSendDate}
+                setSendDate={setShareAllSendDate}
+                sendTime={shareAllSendTime}
+                setSendTime={setShareAllSendTime}
+                repeatWeekly={shareAllRepeatWeekly}
+                setRepeatWeekly={setShareAllRepeatWeekly}
                 disabled={shareAllSending}
-                style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
               />
               <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                 Every section above as one email — job addresses, bill-sent dates, amounts owed, and the grand total. Sent
@@ -640,6 +859,37 @@ export function JobsGcReviewModal({
                   type="button"
                   disabled={shareAllSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareAllTo.trim())}
                   onClick={() => {
+                    if (shareAllWhen === 'schedule') {
+                      const built = buildGcStatementRequestInsert({
+                        requestedBy: authUser?.id ?? '',
+                        toEmail: shareAllTo,
+                        byDevelopment,
+                        entityId: null,
+                        entityName: byDevelopment ? 'All developments' : 'All GCs',
+                        includeCollections,
+                        sendDateYmd: shareAllSendDate,
+                        sendTimeHm: shareAllSendTime,
+                        repeatWeekly: shareAllRepeatWeekly,
+                      })
+                      if (!built.ok) {
+                        setShareAllError(built.error)
+                        return
+                      }
+                      setShareAllSending(true)
+                      setShareAllError(null)
+                      void scheduleGcStatementSend(built.row).then(
+                        () => {
+                          setShareAllSending(false)
+                          setShareAllOpen(false)
+                          refreshPendingSends()
+                        },
+                        (e: unknown) => {
+                          setShareAllSending(false)
+                          setShareAllError(e instanceof Error ? e.message : 'Could not schedule — try again.')
+                        },
+                      )
+                      return
+                    }
                     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     const report = { groups: rollup.groups, grandTotal: rollup.grandTotal }
                     setShareAllSending(true)
@@ -673,7 +923,7 @@ export function JobsGcReviewModal({
                     fontWeight: 500,
                   }}
                 >
-                  {shareAllSending ? 'Sending…' : 'Send report'}
+                  {shareAllSending ? (shareAllWhen === 'schedule' ? 'Scheduling…' : 'Sending…') : shareAllWhen === 'schedule' ? 'Schedule send' : 'Send report'}
                 </button>
               </div>
             </div>

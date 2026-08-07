@@ -3845,6 +3845,79 @@ export type Database = {
           },
         ]
       }
+      gc_statement_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          development_id: string | null
+          entity_name: string
+          error: string | null
+          gc_customer_id: string | null
+          group_by: string
+          id: string
+          include_collections: boolean
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+          sent_to: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          development_id?: string | null
+          entity_name?: string
+          error?: string | null
+          gc_customer_id?: string | null
+          group_by?: string
+          id?: string
+          include_collections?: boolean
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+          sent_to: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          development_id?: string | null
+          entity_name?: string
+          error?: string | null
+          gc_customer_id?: string | null
+          group_by?: string
+          id?: string
+          include_collections?: boolean
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_statement_email_requests_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_email_requests_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gsa_per_diem_cache: {
         Row: {
           city: string | null
