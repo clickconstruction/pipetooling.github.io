@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1427',
+    date: '2026-08-06',
+    title: 'GC Review: schedule statement emails',
+    kind: 'feature',
+    highlights: [
+      'The Email\u2026 and Share all dialogs gain Send now | Schedule\u2026 \u2014 pick a date and time (Central) and optionally Repeat weekly.',
+      'Scheduled statements rebuild fresh at send time; a GC with nothing outstanding is skipped, never emailed empty.',
+      'Your pending sends list at the top of GC Review with a Cancel on each \u2014 cancelling ends a weekly repeat.',
+    ],
+  },
+  {
     version: 'v2.1426',
     date: '2026-08-06',
     title: 'Scheduled GC statements: the delivery engine',

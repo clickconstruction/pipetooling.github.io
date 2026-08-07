@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1426)
+last_updated: 2026-08-06 (v2.1427)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1427)
+
+### GC Review: schedule statement emails — Phase 3 of the gc_statement stream (2026-08-06)
+The per-GC **Share → Email…** dialog and the **Share all** dialog gain a **When: Send now | Schedule…** row (date + time Central via `salaryZonedWallClockToUtcMs`, optional **Repeat weekly**); scheduling is a direct RLS-gated insert into `gc_statement_email_requests` built by new pure kernel [`gcStatementSchedule.ts`](../src/lib/gcStatementSchedule.ts) (`buildGcStatementRequestInsert` routes the entity to `gc_customer_id` vs `development_id` by grouping dimension; 7 tests) with IO in [`gcStatementEmailRequests.ts`](../src/lib/gcStatementEmailRequests.ts). Scheduled sends use the standardized subject (the Subject field disables in schedule mode — the dispatcher rebuilds content at send time). A **Scheduled statement sends** list at the top of GC Review shows the caller's pending rows (entity → destination · Central time · weekly) with a Cancel each (ends a weekly chain). `gc_statement_email_requests` types hand-added to `database.ts`. Live-verified round-trip against prod: scheduled Knight → self for Aug 7 7:00 AM, row appeared in the list, cancelled cleanly. Client-only (Phase 2 shipped the table + dispatcher); Phase 4 (My email schedule integration) follows.
 
 ## Latest Updates (v2.1426)
 
