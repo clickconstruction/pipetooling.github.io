@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import AutoGrowTextarea from './AutoGrowTextarea'
 import { supabase } from '../lib/supabase'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import { useToastContext } from '../contexts/ToastContext'
@@ -23,7 +24,7 @@ export default function EstimatorTaskModal() {
   const { user: authUser } = useAuth()
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
-  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLTextAreaElement>(null)
   const [title, setTitle] = useState('')
   const [links, setLinks] = useState<string[]>([])
   const [sending, setSending] = useState(false)
@@ -250,17 +251,24 @@ export default function EstimatorTaskModal() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>What do you need?</span>
-            <input
+            <AutoGrowTextarea
               ref={titleInputRef}
-              type="text"
+              rows={1}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                // Titles stay single-logical-line (they render as one row in
+                // task lists) — the textarea only wraps visually as it grows.
+                if (e.key === 'Enter') e.preventDefault()
+              }}
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem',
                 border: '1px solid var(--border)',
                 borderRadius: 8,
                 fontSize: '0.9375rem',
+                fontFamily: 'inherit',
+                lineHeight: 1.4,
               }}
             />
           </label>

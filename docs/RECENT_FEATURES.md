@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1458)
+last_updated: 2026-08-07 (v2.1459)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1459)
+
+### Dispatch/estimator task title grows as you type (2026-08-07)
+User-reported: the "What do you need?" field in [`DispatchTaskModal`](../src/components/DispatchTaskModal.tsx) (and its twin [`EstimatorTaskModal`](../src/components/EstimatorTaskModal.tsx)) was a single-line input that scrolled horizontally — long requests became uneditable on phones. Both now use [`AutoGrowTextarea`](../src/components/AutoGrowTextarea.tsx) (`rows={1}`): the field wraps and grows to fit the text. `AutoGrowTextarea` gains `forwardRef` (additive) so the modals' focus + link-placeholder caret insertion keep working against the underlying element. Enter is suppressed — titles stay single-logical-line (they render as one row in task lists); the wrap is visual only.
 
 ## Latest Updates (v2.1458)
 
