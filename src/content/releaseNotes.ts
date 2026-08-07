@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1459',
+    date: '2026-08-07',
+    title: 'Task descriptions wrap while you type',
+    kind: 'fix',
+    highlights: [
+      'The "What do you need?" box on Send a task to Dispatch (and the estimator task form) now grows with your text and wraps onto new lines — no more scrolling sideways to edit a long request.',
+    ],
+  },
+  {
     version: 'v2.1458',
     date: '2026-08-07',
     title: 'Pipeline on your phone: cleaner addresses, more buttons',
