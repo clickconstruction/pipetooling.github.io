@@ -31,6 +31,7 @@ import {
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import { TeammateEmailChips } from './TeammateEmailChips'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
@@ -779,7 +780,8 @@ export function JobsGcReviewModal({
         >
           <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>Email statement to {emailDialogGroup.gcName}</h3>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>To</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>To — the GC, a teammate, or any email</label>
+            <TeammateEmailChips users={users} value={emailDialogTo} onPick={setEmailDialogTo} disabled={emailSending} />
             <input
               type="email"
               value={emailDialogTo}
@@ -946,7 +948,8 @@ export function JobsGcReviewModal({
             </button>
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem' }}>
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600 }}>Email once</p>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>To — anyone, inside or outside the company</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>To — tap a teammate, or type any email</label>
+              <TeammateEmailChips users={users} value={shareAllTo} onPick={setShareAllTo} disabled={shareAllSending} />
               <input
                 type="email"
                 value={shareAllTo}

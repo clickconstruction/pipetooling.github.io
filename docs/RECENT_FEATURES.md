@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1454)
+last_updated: 2026-08-07 (v2.1455)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1455)
+
+### GC Review email dialogs: tap-to-fill teammate chips (2026-08-07)
+Both typed-email To fields in [`JobsGcReviewModal`](../src/components/jobs/JobsGcReviewModal.tsx) — the Share-all "Email once" dialog and the per-GC Email… dialog — gain a wrapped row of office-staff chips (new [`TeammateEmailChips`](../src/components/jobs/TeammateEmailChips.tsx) over the [`teammateEmailChips.ts`](../src/lib/teammateEmailChips.ts) kernel, unit-tested). Tap fills the field with that teammate's email, tapping the selected chip clears it, and typing anything else deselects — outside addresses keep working; the per-GC dialog keeps its GC-email prefill. Roster = the same office-capable cohort as the Standing copies picker (dev / master / assistant / controller / primary with an email), first-name labels with "First L." disambiguation on collisions, full email · role in the tooltip. Help guide `track-a-general-contractor-on-a-job` updated.
 
 ## Latest Updates (v2.1454)
 
