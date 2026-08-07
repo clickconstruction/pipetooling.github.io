@@ -1,0 +1,102 @@
+schemaname,table_name,blocks_read,write_tuples,blocks_write,activity_ratio
+realtime,subscription,162,102212,51106,315.5:1 (Write-Heavy)
+cron,job_run_details,5745,28514,1623.02340360863,0.3:1 (Write-Heavy)
+public,mercury_transactions,4698,3873,1273.11460957179,0.3:1 (Write-Heavy)
+net,_http_response,276,2734,5354.08333333333,19.4:1 (Write-Heavy)
+public,mercury_drag_sort_labels,25,2086,882.538461538462,35.3:1 (Write-Heavy)
+supabase_migrations,schema_migrations,410,57,6.98850574712644,1:58.7 (Read-Heavy)
+public,checklist_instances,377,3,0.0633554947203754,1:5950.5 (Read-Heavy)
+public,clock_sessions,249,4039,108.015281757402,0.4:1 (Write-Heavy)
+public,bids_count_rows,222,5182,99.811177770761,0.4:1 (Write-Heavy)
+public,jobs_ledger,251,1238,53.993769470405,0.2:1 (Write-Heavy)
+public,checklist_instance_assignees,252,1,0.0120716510903427,1:20875.4 (Read-Heavy)
+public,people_hours,202,445,10.5450236966825,1:19.2 (Read-Heavy)
+public,bids,171,389,28.6967213114754,1:6.0 (Read-Heavy)
+public,cost_estimate_labor_rows,159,1144,25.7333774396295,1:6.2 (Read-Heavy)
+public,user_app_activity_daily,48,12906,126.529411764706,2.6:1 (Write-Heavy)
+public,mercury_transaction_job_allocations,135,280,4.3921568627451,1:30.7 (Read-Heavy)
+public,people_crew_jobs,121,453,9.51049723756906,1:12.7 (Read-Heavy)
+public,mercury_accounting_label_suggestions,61,3281,68.0622330689445,1.1:1 (Write-Heavy)
+public,job_schedule_blocks,120,298,6.5109243697479,1:18.4 (Read-Heavy)
+public,jobs_ledger_team_members,124,107,1.41127098321343,1:87.9 (Read-Heavy)
+public,mercury_transaction_attributions,123,228,2.0043956043956,1:61.4 (Read-Heavy)
+auth,refresh_tokens,104,885,20.3188775510204,1:5.1 (Read-Heavy)
+public,jobs_ledger_fixtures,118,129,3.08191126279863,1:38.3 (Read-Heavy)
+auth,users,70,393,35.7272727272727,0.5:1 (Write-Heavy)
+public,pay_stub_days,95,399,8.14285714285714,1:11.7 (Read-Heavy)
+public,bid_count_row_custom_prices,85,589,8.84052532833021,1:9.6 (Read-Heavy)
+public,prospects,83,31,1.20921985815603,1:68.6 (Read-Heavy)
+auth,sessions,54,470,18.8,0.3:1 (Write-Heavy)
+public,bid_pricing_assignments,64,507,8.36197916666667,1:7.7 (Read-Heavy)
+public,job_status_events,68,81,2.1572606214331,1:31.5 (Read-Heavy)
+auth,one_time_tokens,29,30,30,1.0:1 (Write-Heavy)
+public,reports,55,37,2.3125,1:23.8 (Read-Heavy)
+public,supply_house_invoices,56,19,0.63758389261745,1:87.8 (Read-Heavy)
+public,person_contract_documents,55,10,0.810810810810811,1:67.8 (Read-Heavy)
+public,mercury_transaction_drag_sort_assignments,28,1671,24.3054545454545,0.9:1 (Write-Heavy)
+public,user_bid_notes_read_state,43,397,5.59154929577465,1:7.7 (Read-Heavy)
+public,fixture_types,47,22,0.488888888888889,1:96.1 (Read-Heavy)
+public,jobs_ledger_invoices,40,151,7.42622950819672,1:5.4 (Read-Heavy)
+public,jobs_ledger_payments,45,50,1.13636363636364,1:39.6 (Read-Heavy)
+public,customers,40,16,0.653061224489796,1:61.2 (Read-Heavy)
+public,people_crew_bids,39,83,1.48214285714286,1:26.3 (Read-Heavy)
+public,purchase_orders,40,2,0.333333333333333,1:120.0 (Read-Heavy)
+public,bids_submission_entries,37,109,3.32824427480916,1:11.1 (Read-Heavy)
+public,pay_stubs,37,57,1.2,1:30.8 (Read-Heavy)
+public,notification_history,36,3,0.0825688073394495,1:436.0 (Read-Heavy)
+auth,mfa_amr_claims,30,236,4.81632653061224,1:6.2 (Read-Heavy)
+public,supply_house_invoice_job_allocations,30,20,0.333333333333333,1:90.0 (Read-Heavy)
+public,prospect_comments,30,1,0.0197628458498024,1:1518.0 (Read-Heavy)
+public,pay_stub_payments,30,41,-0,Read-Only
+public,bid_working_board_columns,30,3,-0,Read-Only
+public,cost_estimates,29,35,0.714285714285714,1:40.6 (Read-Heavy)
+public,dispatch_request_dismissals,29,66,0.6578073089701,1:44.1 (Read-Heavy)
+public,jobs_ledger_thread_notes,26,45,0.803571428571429,1:32.4 (Read-Heavy)
+public,dispatch_requests,26,9,0.327272727272727,1:79.4 (Read-Heavy)
+public,bids_takeoff_rough_part_lines,26,3,0.157894736842105,1:164.7 (Read-Heavy)
+public,customer_contacts,26,4,-0,Read-Only
+public,quickfill_section_mark_events,22,156,2.28571428571429,1:9.6 (Read-Heavy)
+public,person_offsets,24,3,0.166666666666667,1:144.0 (Read-Heavy)
+public,dispatch_request_notes,24,11,-0,Read-Only
+public,address_geocodes,23,45,0.959488272921109,1:24.0 (Read-Heavy)
+public,people,22,6,1,1:22.0 (Read-Heavy)
+public,quickfill_section_marks,15,156,7.42857142857143,0.5:1 (Write-Heavy)
+public,checklist_items,22,1,0.0392156862745098,1:561.0 (Read-Heavy)
+public,team_leader_clock_notify_prefs,21,4,-0,Read-Only
+public,pay_stub_deductions,21,6,-0,Read-Only
+public,people_pay_config,20,9,0.428571428571429,1:46.7 (Read-Heavy)
+public,pay_stub_additional_lines,18,7,2.33333333333333,1:7.7 (Read-Heavy)
+public,app_settings,19,11,0.314285714285714,1:60.5 (Read-Heavy)
+public,price_book_entries,18,25,0.539568345323741,1:33.4 (Read-Heavy)
+public,checklist_item_assignees,18,1,0.0208333333333333,1:864.0 (Read-Heavy)
+storage,objects,18,2,-0,Read-Only
+public,user_time_off,18,3,-0,Read-Only
+public,supply_houses,18,1,-0,Read-Only
+public,hours_days_correct,17,16,0.551724137931034,1:30.8 (Read-Heavy)
+public,people_labor_job_payments,17,6,-0,Read-Only
+public,jobs_ledger_materials,17,2,-0,Read-Only
+public,people_team_members,17,14,-0,Read-Only
+public,people_labor_jobs,17,17,-0,Read-Only
+public,people_labor_job_items,17,24,-0,Read-Only
+public,stripe_webhook_events,15,62,1.85074626865672,1:8.1 (Read-Heavy)
+public,users,16,4,0.19047619047619,1:84.0 (Read-Heavy)
+public,bid_working_board_placements,16,1,0.0666666666666667,1:240.0 (Read-Heavy)
+public,mercury_tally_transaction_notes,16,7,-0,Read-Only
+public,price_book_versions,15,2,0.5,1:30.0 (Read-Heavy)
+public,user_daily_goals_ack,14,58,0.502164502164502,1:27.9 (Read-Heavy)
+public,people_cost_matrix_tags,14,3,0.15,1:93.3 (Read-Heavy)
+public,person_contract_assignments,14,1,-0,Read-Only
+public,recurring_job_report_dispatch_log,14,13,-0,Read-Only
+public,mercury_accounting_label_rules,10,86,3.82222222222222,0.4:1 (Write-Heavy)
+public,report_reads,12,3,0.15,1:80.0 (Read-Heavy)
+public,contract_templates,9,1,-0,Read-Only
+cron,job,9,1,-0,Read-Only
+public,estimator_requests,9,1,-0,Read-Only
+public,contract_template_documents,9,1,-0,Read-Only
+public,people_teams,7,11,-0,Read-Only
+public,mercury_transaction_org_notes,6,6,-0,Read-Only
+public,jobs_ledger_invoice_stripe_email_sends,5,1,-0,Read-Only
+public,bid_count_row_submission_hides,2,18,-0,Read-Only
+public,quickfill_difficult_people_daily_checks,2,6,-0,Read-Only
+public,quickfill_office_arriving_daily_checks,2,9,-0,Read-Only
+public,quickfill_difficult_people_items,1,2,-0,Read-Only

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1449)
+last_updated: 2026-08-07 (v2.1450)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1450)
+
+### Docs: Weekly Money plan marked shipped (2026-08-07)
+Docs-only. [docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md) gains a SHIPPED status banner (v2.1441–v2.1449 train recap, bootstrap note, pointers to the living docs) so the plan reads as the design record it now is.
 
 ## Latest Updates (v2.1449)
 

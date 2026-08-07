@@ -1,0 +1,4 @@
+=== 07_inspect_report (CSVs in report/) ===
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=aws-1-us-east-1.pooler.supabase.com user=postgres.yewfzhbofbbyvkvtaatw database=postgres`: failed to receive message (timeout: context deadline exceeded)
+Try rerunning the command with --debug to troubleshoot the error.

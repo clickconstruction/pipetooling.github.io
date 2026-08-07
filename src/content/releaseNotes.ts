@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1450',
+    date: '2026-08-07',
+    title: 'housekeeping: weekly money plan closed out',
+    kind: 'infra',
+    highlights: [
+      'The Weekly Money build plan is marked shipped \u2014 documentation only, nothing changes in the app.',
+    ],
+  },
+  {
     version: 'v2.1449',
     date: '2026-08-07',
     title: 'Weekly money: email it weekly',

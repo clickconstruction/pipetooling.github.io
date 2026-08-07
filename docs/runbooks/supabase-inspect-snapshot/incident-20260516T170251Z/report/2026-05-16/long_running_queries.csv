@@ -1,0 +1,2 @@
+pid,duration,query
+1119517,3 days 17:44:02.616987,"START_REPLICATION SLOT supabase_realtime_messages_replication_slot_2_94_0_dc6dcf1 LOGICAL 0/0 (proto_version '2', publication_names 'supabase_realtime_messages_publication', binary 'true')"
