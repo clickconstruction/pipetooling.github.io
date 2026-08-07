@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 6, 2026
 
+**`20260807051000_job_pct_events.sql`** _(apply via `supabase db push` after merge; client-independent — nothing reads the table until the Weekly Money report ships)_
+- **Purpose**: `job_pct_events` history table (v2.1441) — Weekly Money Movement Phase 0 (`docs/WEEKLY_MONEY_PLAN.md`). `jobs_ledger.pct_complete` had no history; an AFTER UPDATE single-writer trigger (`jobs_ledger_log_pct_change` → `log_job_pct_change()`, same pattern as `job_status_events` v2.1435) now records every change with `source` `manual`/`service` and `changed_by_user_id`; a one-time idempotent seed anchors every job's current value (`source` `seed`).
+- **Security**: RLS SELECT mirrors `job_status_events` (job-scoped staff/adoption/sharing + team members); no client write policies — the SECURITY DEFINER trigger is the only writer. Both read-only training-mode guards re-applied (new table).
+
 **`20260807025314_email_schedule_weekly_movement_stream.sql`** _(apply via `supabase db push` after merge; deployed client tolerates the old shape)_
 - **Purpose**: weekly_movement schedule surfaces (v2.1438) — `get_my_email_schedule()` gains a recipient-scoped weekly_movement one-offs branch; `get_global_email_schedule()` gains `weekly_movement_requests`. Live-body rebuilds, closer-terminated.
 - **Security**: unchanged.

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1440)
+last_updated: 2026-08-06 (v2.1441)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1441)
+
+### job_pct_events — % complete history trigger (Weekly Money Phase 0) (2026-08-06)
+Phase 0 of [docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md), shipped first because history can't be backfilled. Migration `20260807051000`: new `job_pct_events` table + `jobs_ledger_log_pct_change` AFTER UPDATE trigger (single-writer pattern from `job_status_events` v2.1435; `source` = `manual` for JWT writers, `service` for service-role) + one-time `seed` anchor per job with a current `pct_complete`. RLS SELECT mirrors `job_status_events`; no client writes — the SECURITY DEFINER trigger is the only writer; both read-only guards re-applied. No client code reads it yet — the Weekly Money Movement report (Phase 2+) will derive "42% → 55% this week" from it. DB-only; `supabase db push` after merge.
 
 ## Latest Updates (v2.1440)
 
