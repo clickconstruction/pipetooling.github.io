@@ -15,8 +15,9 @@ function keysOf(groups: ReturnType<typeof buildStagesSectionToolsMenu>) {
 describe('buildStagesSectionToolsMenu', () => {
   it('dev sees every tool, grouped under the three stage sections', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })
-    expect(groups.map((g) => g.section)).toEqual(['Working', 'Billed Awaiting Payment', 'Paid in Full'])
+    expect(groups.map((g) => g.section)).toEqual(['Pipeline', 'Working', 'Billed Awaiting Payment', 'Paid in Full'])
     expect(keysOf(groups)).toEqual([
+      'weekly-movement',
       'capable-to-bill',
       'gc-review',
       'accounts-receivable',
@@ -35,14 +36,14 @@ describe('buildStagesSectionToolsMenu', () => {
   it('assistant and controller get Share / Print but not the notification settings', () => {
     for (const authRole of ['assistant', 'controller']) {
       const groups = buildStagesSectionToolsMenu({ ...base, authRole })
-      expect(keysOf(groups)).toEqual(['capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
+      expect(keysOf(groups)).toEqual(['weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
       expect(groups.some((g) => g.section === 'Paid in Full')).toBe(false)
     }
   })
 
   it('primary can open Accounts Receivable but sees no admin tools', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'primary' })
-    expect(keysOf(groups)).toEqual(['capable-to-bill', 'gc-review', 'accounts-receivable'])
+    expect(keysOf(groups)).toEqual(['weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable'])
     const ar = groups.flatMap((g) => g.items).find((i) => i.key === 'accounts-receivable')
     expect(ar?.disabled).toBe(false)
   })

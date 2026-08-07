@@ -17,6 +17,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
+import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
 import {
   buildGcStatementEmailHtml,
@@ -159,6 +160,8 @@ export type JobsStagesTabHandle = {
   focusInvoice: (invoiceId: string) => boolean
   /** `?openBankPayments=` deep link: open the Accounts Receivable modal. */
   openBankPayments: () => void
+  /** `?stagesWeekly=` deep link: open the Weekly movement modal (v2.1436). */
+  openWeeklyMovement: () => void
   /** `?showBilledTotalByName=` deep link: open the Total by Name modal. */
   showBilledTotalByName: () => void
 }
@@ -454,6 +457,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
+  const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
   /** "Last sent" hints for GC Review's Email… (v2.1416). Best-effort: table may predate the db push. */
   const [gcLastSentByGcId, setGcLastSentByGcId] = useState<Record<string, string>>({})
   const refreshGcLastSent = useCallback(async () => {
@@ -1251,6 +1255,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       },
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
+      openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       showBilledTotalByName: () => setBilledTotalByNameModalOpen(true),
     }),
     [followMovedJob, focusStagesSection, applyStagesInvoiceFocus, jobs, showToast],
@@ -1769,6 +1774,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         </div>
                         {group.items.map((item) => {
                           const onSelect: Record<StagesSectionToolKey, () => void> = {
+                            'weekly-movement': () => setWeeklyMovementModalOpen(true),
                             'capable-to-bill': () => setCapableToBillModalOpen(true),
                             'gc-review': () => setGcReviewModalOpen(true),
                             'accounts-receivable': () => setBankPaymentsModalOpen(true),
@@ -2904,6 +2910,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </>
                 ) : null}
 
+                <JobsWeeklyMovementModal
+                  open={weeklyMovementModalOpen}
+                  onClose={() => setWeeklyMovementModalOpen(false)}
+                  users={users}
+                  showToast={showToast}
+                />
                 <JobsGcReviewModal
                   open={gcReviewModalOpen}
                   onClose={() => setGcReviewModalOpen(false)}

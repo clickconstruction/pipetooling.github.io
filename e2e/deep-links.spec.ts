@@ -21,6 +21,12 @@ test('?openBankPayments=1 opens the Accounts Receivable modal (v2.832/v2.838 reg
   await expect.poll(() => new URL(page.url()).searchParams.get('openBankPayments')).toBeNull()
 })
 
+test('?stagesWeekly=1 opens the Weekly movement modal (v2.1436)', async ({ page }) => {
+  await page.goto('/jobs?tab=stages&stagesWeekly=1')
+  await expect(page.getByRole('heading', { name: 'Weekly movement' })).toBeVisible()
+  await expect.poll(() => new URL(page.url()).searchParams.get('stagesWeekly')).toBeNull()
+})
+
 test('?editLabor= with an unknown HCP opens New Sub Labor seeded with it (v2.835 regression)', async ({ page }) => {
   await page.goto('/jobs?tab=sub_sheet_ledger&editLabor=ZZE2E')
   await expect(page.getByRole('heading', { name: 'New Sub Labor' })).toBeVisible()

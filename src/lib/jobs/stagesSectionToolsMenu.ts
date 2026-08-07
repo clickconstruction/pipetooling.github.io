@@ -16,6 +16,7 @@
 import { isAssistantLike } from '../subcontractorLikeRole'
 
 export type StagesSectionToolKey =
+  | 'weekly-movement'
   | 'capable-to-bill'
   | 'gc-review'
   | 'accounts-receivable'
@@ -54,6 +55,18 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   const canSharePrint = isDevOrMaster || isAssistantLike(authRole)
 
   const groups: StagesSectionToolsGroup[] = []
+
+  groups.push({
+    section: 'Pipeline',
+    items: [
+      {
+        key: 'weekly-movement',
+        label: 'Weekly movement',
+        title: 'Every job that entered a stage in a chosen week, with who moved it',
+        disabled: false,
+      },
+    ],
+  })
 
   groups.push({
     section: 'Working',
