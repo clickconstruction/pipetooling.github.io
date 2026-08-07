@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.get_my_email_schedule()
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$
+AS $function$;
 WITH me AS (SELECT (SELECT auth.uid()) AS uid),
 chicago AS (
   SELECT today,
@@ -123,14 +123,14 @@ SELECT jsonb_build_object(
       ) c WHERE c.t IS NOT NULL), '[]'::jsonb)
   )
 );
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.get_global_email_schedule()
  RETURNS jsonb
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$
+AS $function$;
 WITH gate AS (SELECT public.is_dev() AS ok),
 setting_list AS (
   SELECT key,
@@ -208,4 +208,4 @@ SELECT CASE WHEN NOT (SELECT ok FROM gate) THEN NULL ELSE jsonb_build_object(
     WHERE d.status = 'pending' AND d.sent_at IS NULL
   ), '[]'::jsonb)
 ) END;
-$function$
+$function$;
