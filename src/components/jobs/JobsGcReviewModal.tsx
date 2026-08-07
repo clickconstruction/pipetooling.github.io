@@ -11,6 +11,14 @@ import {
   listMyPendingGcStatementSends,
   scheduleGcStatementSend,
 } from '../../lib/gcStatementEmailRequests'
+import {
+  formatWeekdays,
+  groupStandingCopies,
+  planStandingCopyEdit,
+  chicagoYmdOf,
+  type StandingCopyGroup,
+} from '../../lib/gcStatementStandingCopies'
+import { addDaysYmd, formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
 import {
@@ -25,9 +33,9 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
-/** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD (en-CA formats ISO-style). */
+/** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
 function chicagoTomorrowYmd(): string {
-  return new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
+  return addDaysYmd(chicagoYmdOf(new Date()), 1)
 }
 
 /** "Send now | Schedule…" controls shared by the Email… and Share-all dialogs (v2.1427). */
@@ -174,6 +182,10 @@ type JobsGcReviewModalProps = {
   emailForGc: (gcCustomerId: string) => string
   /** "Last sent" hints per GC customer id (ISO timestamps), loaded by the shell when the modal opens. */
   lastSentByGcId: Record<string, string>
+  /** Office user roster for the Standing copies picker (v2.1431). */
+  users: Array<{ id: string; name: string; email: string | null; role: string }>
+  /** Standing copies management is dev-only. */
+  isDev: boolean
 }
 
 /**
@@ -195,6 +207,8 @@ export function JobsGcReviewModal({
   onSendStatement,
   emailForGc,
   lastSentByGcId,
+  users,
+  isDev,
 }: JobsGcReviewModalProps) {
   const [includeCollections, setIncludeCollections] = useState(false)
   const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
@@ -223,6 +237,14 @@ export function JobsGcReviewModal({
   const [shareAllSendTime, setShareAllSendTime] = useState('07:00')
   const [shareAllRepeatWeekly, setShareAllRepeatWeekly] = useState(false)
   const [pendingSends, setPendingSends] = useState<PendingGcStatementSend[]>([])
+  /** Standing copies form (v2.1431, dev-only): teammates + weekdays for recurring whole-report emails. */
+  const [standingUserId, setStandingUserId] = useState('')
+  const [standingOutsideEmail, setStandingOutsideEmail] = useState('')
+  const [standingWeekdays, setStandingWeekdays] = useState<number[]>([])
+  const [standingTimeHm, setStandingTimeHm] = useState('07:00')
+  const [standingEditingEmail, setStandingEditingEmail] = useState<string | null>(null)
+  const [standingBusy, setStandingBusy] = useState(false)
+  const [standingError, setStandingError] = useState<string | null>(null)
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -238,6 +260,80 @@ export function JobsGcReviewModal({
   }, [open])
   const refreshPendingSends = () => {
     void listMyPendingGcStatementSends().then(setPendingSends, () => {})
+  }
+  const standingGroups = groupStandingCopies(pendingSends)
+  const standingRowIds = new Set(standingGroups.flatMap((g) => g.allRowIds))
+  /** Office-capable roster for the picker (mirrors the billed report's recipient cohort). */
+  const standingPickableUsers = users
+    .filter((u) => ['dev', 'master_technician', 'assistant', 'controller', 'primary'].includes(u.role) && (u.email ?? '').includes('@'))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const standingUserByEmail = (email: string) =>
+    users.find((u) => (u.email ?? '').trim().toLowerCase() === email) ?? null
+  const resetStandingForm = () => {
+    setStandingUserId('')
+    setStandingOutsideEmail('')
+    setStandingWeekdays([])
+    setStandingTimeHm('07:00')
+    setStandingEditingEmail(null)
+    setStandingError(null)
+  }
+  const applyStandingPlan = async (inserts: Parameters<typeof scheduleGcStatementSend>[0][], cancelIds: string[]) => {
+    for (const id of cancelIds) await cancelGcStatementSend(id)
+    for (const row of inserts) await scheduleGcStatementSend(row)
+  }
+  const submitStanding = () => {
+    const picked = standingPickableUsers.find((u) => u.id === standingUserId)
+    const email = (standingEditingEmail ?? picked?.email ?? standingOutsideEmail).trim().toLowerCase()
+    const current = standingGroups.find((g) => g.email === email) ?? null
+    const plan = planStandingCopyEdit({
+      requestedBy: authUser?.id ?? '',
+      email,
+      byDevelopment,
+      includeCollections,
+      desiredWeekdays: standingWeekdays,
+      desiredTimeHm: standingTimeHm,
+      current,
+    })
+    if (!plan.ok) {
+      setStandingError(plan.error)
+      return
+    }
+    setStandingBusy(true)
+    setStandingError(null)
+    void applyStandingPlan(plan.inserts, plan.cancelIds).then(
+      () => {
+        setStandingBusy(false)
+        resetStandingForm()
+        refreshPendingSends()
+      },
+      (e: unknown) => {
+        setStandingBusy(false)
+        setStandingError(e instanceof Error ? e.message : 'Could not save — try again.')
+      },
+    )
+  }
+  const editStanding = (g: StandingCopyGroup) => {
+    const u = standingUserByEmail(g.email)
+    setStandingUserId(u?.id ?? '')
+    setStandingOutsideEmail(u ? '' : g.email)
+    setStandingWeekdays(g.weekdays)
+    setStandingTimeHm(g.timeHm)
+    setStandingEditingEmail(g.email)
+    setStandingError(null)
+  }
+  const removeStanding = (g: StandingCopyGroup) => {
+    setStandingBusy(true)
+    void applyStandingPlan([], g.allRowIds).then(
+      () => {
+        setStandingBusy(false)
+        if (standingEditingEmail === g.email) resetStandingForm()
+        refreshPendingSends()
+      },
+      () => {
+        setStandingBusy(false)
+        refreshPendingSends()
+      },
+    )
   }
   const anyDevelopment = useMemo(
     () => [...billedActiveRows, ...collectionsRows].some((r) => r.job.development?.id),
@@ -407,7 +503,27 @@ export function JobsGcReviewModal({
             <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
               Scheduled statement sends
             </p>
-            {pendingSends.map((s) => (
+            {/* Standing whole-report copies render grouped (one line per recipient, v2.1431). */}
+            {standingGroups.map((g) => (
+              <div key={`standing-${g.email}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {byDevelopment ? 'All developments' : 'All GCs'} → {standingUserByEmail(g.email)?.name ?? g.email}
+                </span>
+                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {formatWeekdays(g.weekdays)} · {formatMinutes(parseHhMm(g.timeHm) ?? 0)} · weekly
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeStanding(g)}
+                  disabled={standingBusy}
+                  title="Cancel this standing copy (all its weekdays)"
+                  style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ))}
+            {pendingSends.filter((s) => !standingRowIds.has(s.id)).map((s) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {describePendingGcStatementSend(s)}
@@ -656,7 +772,7 @@ export function JobsGcReviewModal({
             if (e.target === e.currentTarget && !emailSending) setEmailDialogGroup(null)
           }}
         >
-          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>Email statement to {emailDialogGroup.gcName}</h3>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>To</label>
             <input
@@ -796,7 +912,7 @@ export function JobsGcReviewModal({
             if (e.target === e.currentTarget && !shareAllSending) setShareAllOpen(false)
           }}
         >
-          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>Share the whole report</h3>
             <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {rollup.groups.length} {byDevelopment ? 'development' : 'GC'} section{rollup.groups.length === 1 ? '' : 's'} ·{' '}
@@ -824,7 +940,7 @@ export function JobsGcReviewModal({
               🖨 Print / save as PDF
             </button>
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem' }}>
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600 }}>Email it from the app</p>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600 }}>Email once</p>
               <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>To — anyone, inside or outside the company</label>
               <input
                 type="email"
@@ -943,6 +1059,149 @@ export function JobsGcReviewModal({
                 </button>
               </div>
             </div>
+            {isDev ? (
+              /* Standing copies (v2.1431): teammates + weekdays for recurring
+                 whole-report emails. One repeat_weekly chain per weekday under
+                 the hood — grouped here by recipient. Dev-only. */
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', marginTop: '0.85rem' }}>
+                <p style={{ margin: '0 0 0.15rem', fontSize: '0.8125rem', fontWeight: 600 }}>Standing copies</p>
+                <p style={{ margin: '0 0 0.6rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Send this report to teammates on the weekdays you pick — rebuilt fresh each send.
+                </p>
+                {standingGroups.map((g) => {
+                  const u = standingUserByEmail(g.email)
+                  return (
+                    <div
+                      key={g.email}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.4rem 0.6rem', marginBottom: '0.4rem' }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {u?.name ?? g.email}
+                          <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {u ? u.role.replace('_', ' ') : 'outside'}</span>
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {formatWeekdays(g.weekdays)} — {formatMinutes(parseHhMm(g.timeHm) ?? 0)} Central
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => editStanding(g)}
+                        disabled={standingBusy}
+                        style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeStanding(g)}
+                        disabled={standingBusy}
+                        aria-label={`Remove standing copy for ${u?.name ?? g.email}`}
+                        style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-red-700)' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )
+                })}
+                <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.6rem 0.7rem' }}>
+                  {standingEditingEmail ? (
+                    <p style={{ margin: '0 0 0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Editing {standingUserByEmail(standingEditingEmail)?.name ?? standingEditingEmail}
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <select
+                        value={standingUserId}
+                        onChange={(e) => {
+                          setStandingUserId(e.target.value)
+                          if (e.target.value) setStandingOutsideEmail('')
+                        }}
+                        disabled={standingBusy}
+                        aria-label="Add a person"
+                        style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+                      >
+                        <option value="">Add a person…</option>
+                        {standingPickableUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} — {u.role.replace('_', ' ')}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="email"
+                        value={standingOutsideEmail}
+                        onChange={(e) => {
+                          setStandingOutsideEmail(e.target.value)
+                          if (e.target.value) setStandingUserId('')
+                        }}
+                        placeholder="or outside email"
+                        disabled={standingBusy}
+                        style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: 2 }}>Days</span>
+                    {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
+                      const active = standingWeekdays.includes(dow)
+                      return (
+                        <button
+                          key={dow}
+                          type="button"
+                          disabled={standingBusy}
+                          aria-pressed={active}
+                          onClick={() =>
+                            setStandingWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow]))}
+                          style={{
+                            width: 38,
+                            padding: '0.2rem 0',
+                            fontSize: '0.75rem',
+                            fontWeight: active ? 600 : 400,
+                            border: active ? '1px solid transparent' : '1px solid var(--border)',
+                            borderRadius: 999,
+                            background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                            color: active ? 'var(--text-link)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dow]}
+                        </button>
+                      )
+                    })}
+                    <input
+                      type="time"
+                      value={standingTimeHm}
+                      onChange={(e) => setStandingTimeHm(e.target.value)}
+                      disabled={standingBusy}
+                      aria-label="Send time (Central)"
+                      style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={submitStanding}
+                      disabled={standingBusy || (!standingEditingEmail && !standingUserId && !standingOutsideEmail.trim())}
+                      style={{ marginLeft: 'auto', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 500, border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: standingBusy ? 'wait' : 'pointer' }}
+                    >
+                      {standingBusy ? 'Saving…' : standingEditingEmail ? 'Save' : 'Add'}
+                    </button>
+                    {standingEditingEmail ? (
+                      <button
+                        type="button"
+                        onClick={resetStandingForm}
+                        disabled={standingBusy}
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                  </div>
+                  {standingError ? (
+                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{standingError}</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

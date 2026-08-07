@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1430)
+last_updated: 2026-08-06 (v2.1431)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1431)
+
+### GC Review Share-all: Standing copies (2026-08-06)
+PR 2 of standing copies. The Share-the-whole-report dialog reorganizes into **Print / Email once / Standing copies** strata; the new dev-only Standing copies section lets devs pick an office teammate (dev/master/assistant/controller/primary with an email; free-text outside addresses too), toggle **weekday pills** (Mon–Sun) and a Central time, and Add — creating one `repeat_weekly` chain per weekday via the v2.1430 kernel. Groups render one line per recipient ("Robert · dev — Mon · Wed — 7:00 AM Central") with **Edit** (diffs chains: weekday change touches only added/removed days, time change re-creates all) and **Remove** (cancels every chain). The pending-sends list groups standing chains the same way (one line + Cancel-all) while one-offs stay individual. Both sub-dialogs gain `maxHeight: 90vh; overflow: auto` (the taller content was unreachable on short viewports — found live). `JobsGcReviewModal` gains `users` + `isDev` props from JobsStagesTab; `chicagoTomorrowYmd` switches to the kernel's formatToParts ymd (en-CA is M/D/YYYY under small-ICU). Live-verified round-trip against prod: add Mon+Wed → grouped row → edit +Fri (single chain insert) → remove (all cancelled). Help guide + REPORT_SUBSCRIPTIONS.md pattern note updated. Client-only.
 
 ## Latest Updates (v2.1430)
 

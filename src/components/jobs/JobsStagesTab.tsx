@@ -2909,6 +2909,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   onClose={() => setGcReviewModalOpen(false)}
                   billedActiveRows={billedActiveRows}
                   collectionsRows={collectionsRows}
+                  users={users}
+                  isDev={authRole === 'dev'}
                   onPrint={(groups, groupBy) => {
                     if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups, { groupBy }))) {
                       showToast('Allow pop-ups to print the report.', 'error')
