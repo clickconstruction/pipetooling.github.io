@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1429)
+last_updated: 2026-08-06 (v2.1430)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1430)
+
+### Standing-copies kernel for GC Review report (2026-08-06)
+PR 1 of the Share-all "Standing copies" feature (devs pick teammates + weekdays for recurring whole-report emails). New pure kernel [`gcStatementStandingCopies.ts`](../src/lib/gcStatementStandingCopies.ts) (10 tests): a standing copy is a GROUPED VIEW of repeat_weekly whole-report chains in `gc_statement_email_requests` — no new tables. `groupStandingCopies` folds pending chains per recipient (Central weekday/time via formatToParts — NOT `toLocaleDateString('en-CA')`, which falls back to M/D/YYYY under small-ICU Node); `nextOccurrenceIso` computes first sends; `planStandingCopyEdit` diffs weekday/time edits into chain inserts + cancels (time change re-creates all chains; zero weekdays = remove). Kernel-only; the modal UI lands next.
 
 ## Latest Updates (v2.1429)
 
