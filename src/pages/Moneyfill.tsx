@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { QuickfillNoncardAttributionSection } from '../components/quickfill/QuickfillNoncardAttributionSection'
 import { useAuth } from '../hooks/useAuth'
 import { useQuickfillNoncardAttribution } from '../hooks/useQuickfillNoncardAttribution'
+import { MoneyfillCardChargesSection } from '../components/moneyfill/MoneyfillCardChargesSection'
 import { addDaysYmd } from '../lib/emailSchedule/emailScheduleWeek'
 import { weekLabel } from '../lib/jobs/stagesWeeklyMovement'
 import {
@@ -151,6 +152,8 @@ export default function Moneyfill() {
           The Weekly Money Movement report is only as true as these queues are empty — same counts, same week.
         </p>
       </section>
+
+      <MoneyfillCardChargesSection weekMonday={weekMonday} />
 
       <section
         aria-label="Bank transfers needing attribution"

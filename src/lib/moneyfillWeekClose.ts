@@ -15,6 +15,10 @@ import { chicagoYmdOf } from './gcStatementStandingCopies'
 import { mondayOfWeekYmd } from './jobs/stagesWeeklyMovement'
 import { addDaysYmd } from './emailSchedule/emailScheduleWeek'
 import { parseNoncardAttributionQueueRows, type NoncardAttributionQueueRow } from './banking/noncardAttributionQueue'
+import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
+import { salaryZonedWallClockToUtcMs } from './salaryZonedWallClock'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import type { Json } from '../types/database'
 
 export type MoneyfillQueueKey =
   | 'bank-transfers'
@@ -125,10 +129,84 @@ export function noncardWeekQueueCount(
   return { key: 'bank-transfers', label: MONEYFILL_QUEUE_LABELS['bank-transfers'], count: week.length, dollars }
 }
 
+export type UnsplitCardChargeRow = {
+  txId: string
+  postedAt: string | null
+  counterparty: string | null
+  /** Signed Mercury amount — negative = purchase. */
+  amount: number
+  debitCardId: string
+}
+
+/** Pure: keep card purchases (debit-card raw + negative amount) with no job allocations. */
+export function unsplitCardChargesFromTxs(
+  txs: Array<{ id: string; posted_at: string | null; counterparty_name: string | null; amount: number; raw: Json | null }>,
+  allocatedTxIds: ReadonlySet<string>,
+): UnsplitCardChargeRow[] {
+  const out: UnsplitCardChargeRow[] = []
+  for (const t of txs) {
+    if (allocatedTxIds.has(t.id)) continue
+    if (!(Number(t.amount) < 0)) continue
+    const cardId = mercuryDebitCardIdFromRaw(t.raw)
+    if (!cardId) continue
+    out.push({ txId: t.id, postedAt: t.posted_at, counterparty: t.counterparty_name, amount: Number(t.amount), debitCardId: cardId })
+  }
+  return out
+}
+
+export function cardChargesQueueCount(rows: UnsplitCardChargeRow[] | null): MoneyfillQueueCount {
+  if (rows == null) {
+    return { key: 'card-charges', label: MONEYFILL_QUEUE_LABELS['card-charges'], count: null, dollars: null }
+  }
+  return {
+    key: 'card-charges',
+    label: MONEYFILL_QUEUE_LABELS['card-charges'],
+    count: rows.length,
+    dollars: rows.reduce((s, r) => s + Math.abs(r.amount), 0),
+  }
+}
+
+/** Week UTC bounds for a Central Mon–Sun week (start inclusive, end exclusive). */
+export function weekUtcBounds(weekMondayYmd: string): { startIso: string; endIso: string } | null {
+  const start = salaryZonedWallClockToUtcMs(weekMondayYmd, 0, 0, 0, APP_CALENDAR_TZ)
+  const end = salaryZonedWallClockToUtcMs(addDaysYmd(weekMondayYmd, 7), 0, 0, 0, APP_CALENDAR_TZ)
+  if (start == null || end == null) return null
+  return { startIso: new Date(start).toISOString(), endIso: new Date(end).toISOString() }
+}
+
+/**
+ * Card purchases posted in the close week with no job allocations. Null on
+ * error / ineligibility (mercury RLS is staff-scoped) — callers report partial.
+ */
+export async function fetchUnsplitCardChargesForWeek(weekMondayYmd: string): Promise<UnsplitCardChargeRow[] | null> {
+  const bounds = weekUtcBounds(weekMondayYmd)
+  if (!bounds) return null
+  try {
+    const txRes = await supabase
+      .from('mercury_transactions')
+      .select('id, posted_at, counterparty_name, amount, raw')
+      .gte('posted_at', bounds.startIso)
+      .lt('posted_at', bounds.endIso)
+      .order('posted_at', { ascending: true })
+    if (txRes.error) throw txRes.error
+    const txs = (txRes.data ?? []) as Array<{ id: string; posted_at: string | null; counterparty_name: string | null; amount: number; raw: Json | null }>
+    if (txs.length === 0) return []
+    const allocRes = await supabase
+      .from('mercury_transaction_job_allocations')
+      .select('mercury_transaction_id')
+      .in('mercury_transaction_id', txs.map((t) => t.id))
+    if (allocRes.error) throw allocRes.error
+    const allocated = new Set((allocRes.data ?? []).map((r) => String((r as { mercury_transaction_id: string }).mercury_transaction_id)))
+    return unsplitCardChargesFromTxs(txs, allocated)
+  } catch {
+    return null
+  }
+}
+
 /**
  * Fetch every registered queue count for a close week. Queue fetchers are
  * eligibility-probed and NEVER throw — a failed queue reports count null so
- * both surfaces can say "partial". Registry as of Phase 3a: bank transfers.
+ * both surfaces can say "partial". Registry: bank transfers, card charges.
  */
 export async function fetchWeekCloseCounts(weekMondayYmd: string): Promise<MoneyfillQueueCount[]> {
   const counts: MoneyfillQueueCount[] = []
@@ -143,6 +221,9 @@ export async function fetchWeekCloseCounts(weekMondayYmd: string): Promise<Money
   } catch {
     counts.push(noncardWeekQueueCount(null, weekMondayYmd, false))
   }
+
+  // card-charges — card purchases posted in-week with no job allocations.
+  counts.push(cardChargesQueueCount(await fetchUnsplitCardChargesForWeek(weekMondayYmd)))
 
   return counts
 }

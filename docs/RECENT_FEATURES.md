@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1444)
+last_updated: 2026-08-07 (v2.1445)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1445)
+
+### Moneyfill queue: card charges not split — and the report grows its confidence footer (2026-08-07)
+Queue 3b of the weekly close ([docs/WEEKLY_MONEY_PLAN.md](./WEEKLY_MONEY_PLAN.md)). New Moneyfill section **Card charges not split to jobs**: Mercury debit-card purchases posted in the close week (Central bounds) with no `mercury_transaction_job_allocations` rows — posted/card/counterparty/amount table with per-row **Assign in Banking sorting** (links to the existing fix surface, per the plan's never-a-second-editor rule); ✓ All clear zero-state. Pure helpers + fetcher registered in [`moneyfillWeekClose.ts`](../src/lib/moneyfillWeekClose.ts) (card detection via `mercuryDebitCardIdFromRaw`, negative-amount purchases only; 3 new tests incl. Central→UTC week bounds). The **Weekly Money Movement report now renders its confidence footer** from the same `fetchWeekCloseCounts` + `buildWeekCloseConfidenceLine` lib — e.g. *"$13,624 in bank transfers unattributed · $5,959 in card charges unattributed → work Moneyfill to zero"* (plan invariant #5: report and checklist share one implementation). Client-only.
 
 ## Latest Updates (v2.1444)
 
