@@ -9,7 +9,7 @@ last_updated: 2026-08-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "180 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "181 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 6, 2026
+
+**`20260807013246_gc_statement_recipient_schedule_visibility.sql`** _(apply via `supabase db push` after merge; deployed client unaffected either way)_
+- **Purpose**: standing-copies PR 3 (v2.1432) — `get_my_email_schedule()`'s gc_statement branch also matches rows whose `sent_to` equals the caller's own `users.email`, so internal standing-copy recipients see their weekday chips. Live-body rebuild (v2.1400 rule), semicolon-terminated (v2.1428 lesson).
+- **Security**: unchanged — self-scoped SECURITY DEFINER.
 
 **`20260807001317_email_schedule_gc_statement_stream.sql`** _(apply via `supabase db push` after merge; the deployed client tolerates the old RPC shape)_
 - **Purpose**: Phase 4 of the gc_statement stream (v2.1428) — `get_my_email_schedule()` gains a requester-scoped `gc_statement` one-offs branch (detail "{entity} → {email}"); `get_global_email_schedule()` gains `gc_statement_requests`. Both bodies rebuilt from LIVE prod definitions (pg_get_functiondef, v2.1400 rule).
