@@ -52,6 +52,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 - **Recipient scoping:** `get_my_email_schedule()` lists rows *addressed to* the caller. Streams that can send to **outside email addresses** (no user row — e.g. a GC's AP inbox) list on the **requester's** schedule instead, labeled with the destination address ("→ accounting@example.com").
 - **Audit separately from requests.** Actual sends log to `email_send_log` (best-effort) and any stream-specific audit table (e.g. `gc_statement_emails`); the request row's `sent_at` is the dispatch record.
 - **Internal-only vs external recipients** is a per-stream decision made at the table level: `recipient_user_id` FK for internal-only streams (billed report), a free-text `sent_to` for streams that may leave the company (GC statements).
+- **Standing copies = grouped weekly chains** (v2.1431): a "send to Todd every Mon + Wed" subscription is N repeat_weekly rows (one per weekday), grouped by recipient for display and edited by diffing chains (kernel [`gcStatementStandingCopies.ts`](../src/lib/gcStatementStandingCopies.ts)). No standing-subscription table exists — reuse this pattern before inventing one.
 
 ## Adding a new stream (checklist)
 

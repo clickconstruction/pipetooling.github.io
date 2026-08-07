@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1431',
+    date: '2026-08-06',
+    title: 'GC Review: standing report copies for teammates',
+    kind: 'feature',
+    highlights: [
+      'Devs can now give anyone a standing copy of the whole GC Review report \u2014 pick the person (or an outside email), toggle the weekdays, set the time.',
+      'Mon + Wed for a Master? Two clicks. Each copy rebuilds fresh at send time and runs until you remove it.',
+      'Standing copies show as one line per person with Edit / Remove, in the dialog and in the pending-sends list.',
+    ],
+  },
+  {
     version: 'v2.1430',
     date: '2026-08-06',
     title: 'Groundwork for standing report copies',

@@ -48,6 +48,8 @@ Two centered buttons under the GC Review title handle the entire report at once.
 - **Print / save as PDF** opens the same one-report print that **Print all** makes — choose *Save as PDF* in the print window to download a copy.
 - **Email it from the app** sends every section as one email — each GC with its jobs, bill-sent dates and amounts owed, plus the grand total — to **any address, inside or outside the company**. Same clean table styling and GC-safe wording as the per-GC statement, sent from **team@noreply.pipetooling.com** with your email as the reply-to.
 
+Devs also get a **Standing copies** section in the same dialog: pick a teammate (or type an outside email), toggle the **weekdays** — Mon and Wed for a Master, say — set the time, and hit {{button:blue|Add}}. The report emails itself on those days, rebuilt fresh each send, forever until you **Remove** it. Each standing copy shows as one line with Edit / Remove; the pending-sends list at the top of GC Review shows it grouped the same way.
+
 ## What the GC does *not* change
 
 Billing. Invoices still go to the job's customer. If the GC is actually who pays a particular invoice, use **Bill to** on that invoice in Bill Customer — that's a per-invoice choice and works with or without a GC set here.
