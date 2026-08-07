@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-06 (v2.1432)
+last_updated: 2026-08-06 (v2.1433)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1433)
+
+### GC Review: blue Share all button (2026-08-06)
+The **⇪ Share all** button in GC Review switches from the outlined secondary style to the app's primary blue (`#3b82f6` + white — the saturated action color that stays literal per the theme-token rule), marking it as the primary action beside the outlined **🖨 Print all**. One style change in `JobsGcReviewModal.tsx`. Client-only.
 
 ## Latest Updates (v2.1432)
 

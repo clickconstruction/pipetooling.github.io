@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1433',
+    date: '2026-08-06',
+    title: 'GC Review: Share all stands out',
+    kind: 'fix',
+    highlights: [
+      'The Share all button at the top of GC Review is now blue, marking it as the primary action next to Print all.',
+    ],
+  },
+  {
     version: 'v2.1432',
     date: '2026-08-06',
     title: 'Standing report copies show on the recipient\u2019s email schedule',

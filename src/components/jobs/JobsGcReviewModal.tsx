@@ -459,11 +459,11 @@ export function JobsGcReviewModal({
                 padding: '0.25rem 0.7rem',
                 fontSize: '0.8125rem',
                 fontWeight: 500,
-                border: '1px solid var(--border-strong)',
+                border: 'none',
                 borderRadius: 4,
-                background: 'var(--surface)',
+                background: '#3b82f6',
                 cursor: 'pointer',
-                color: 'var(--text-700)',
+                color: 'white',
               }}
             >
               <span aria-hidden>⇪</span> Share all
