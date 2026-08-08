@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1461)
+last_updated: 2026-08-08 (v2.1462)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1462)
+
+### Tally square gains a "My / Spend" label when tall (2026-08-08)
+Follow-up to the v2.1461 action grid: the tally square gets the same height-aware treatment as Job Report — icon-only at 48px, icon + "My / Spend" label when stretched beside the clocked-in stack. The inline block became `TallySquareLink` in [`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) so the ResizeObserver mounts with the element (the row appears only after `role` loads — a component-body effect would have missed it). Badge and both mounts unchanged.
 
 ## Latest Updates (v2.1461)
 

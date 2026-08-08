@@ -89,6 +89,92 @@ export interface DashboardPinnedQuickRowProps {
   hideBanners?: boolean
 }
 
+
+/**
+ * The tally (Job Parts Tally) square flanking the clock stack. Same
+ * stretch-and-measure behavior as JobReportSquareButton (v2.1461/v2.1462):
+ * icon-only 48px square clocked out; grows with the clocked-in stack and
+ * gains the "My / Spend" label when tall. Badge = unlinked transaction count.
+ */
+function TallySquareLink({ accessibleName, unlinkedCount }: { accessibleName: string; unlinkedCount?: number | null }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [tall, setTall] = useState(false)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setTall(el.getBoundingClientRect().height >= 70)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  return (
+    <div ref={ref} style={{ position: 'relative', width: 48, minHeight: 48, alignSelf: 'stretch', flexShrink: 0 }}>
+      <Link
+        to="/tally"
+        title={accessibleName}
+        aria-label={accessibleName}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: tall ? 6 : 0,
+          width: 48,
+          height: '100%',
+          minHeight: 48,
+          background: '#3b82f6',
+          color: 'white',
+          borderRadius: 8,
+          textDecoration: 'none',
+          boxSizing: 'border-box',
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={tall ? 24 : 28} height={tall ? 24 : 28} fill="currentColor" style={{ display: 'block' }} aria-hidden>
+          <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+        </svg>
+        {tall ? (
+          <span style={{ fontSize: '0.6875rem', fontWeight: 600, lineHeight: 1.2, textAlign: 'center' }}>
+            My
+            <br />
+            Spend
+          </span>
+        ) : null}
+      </Link>
+      {typeof unlinkedCount === 'number' && unlinkedCount > 0 ? (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -4,
+            minWidth: 18,
+            padding: '0 5px',
+            height: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 9999,
+            background: '#f59e0b',
+            color: '#1c1917',
+            fontSize: 10,
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1,
+            boxSizing: 'border-box',
+            pointerEvents: 'none',
+          }}
+        >
+          {unlinkedCount > 99 ? '99+' : unlinkedCount}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * The compact Job Report square flanking the clock stack (v2.1461). Stretches
  * to the stack's height; the label is height-aware (same measure pattern as
@@ -320,59 +406,7 @@ export function DashboardPinnedQuickRow({
   const jobReportRow =
     role != null ? (
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
-        {/* Stretches with the row like the Job Report square (v2.1461) — a 48px
-            square clocked out, full stack height clocked in. */}
-        <div style={{ position: 'relative', width: 48, minHeight: 48, alignSelf: 'stretch', flexShrink: 0 }}>
-          <Link
-            to="/tally"
-            title={tallyLinkAccessibleName}
-            aria-label={tallyLinkAccessibleName}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 48,
-              height: '100%',
-              minHeight: 48,
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              boxSizing: 'border-box',
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={28} height={28} fill="currentColor" style={{ display: 'block' }} aria-hidden>
-              <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-            </svg>
-          </Link>
-          {typeof tallyUnlinkedCount === 'number' && tallyUnlinkedCount > 0 ? (
-            <span
-              aria-hidden
-              style={{
-                position: 'absolute',
-                top: -4,
-                right: -4,
-                minWidth: 18,
-                padding: '0 5px',
-                height: 18,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 9999,
-                background: '#f59e0b',
-                color: '#1c1917',
-                fontSize: 10,
-                fontWeight: 700,
-                fontVariantNumeric: 'tabular-nums',
-                lineHeight: 1,
-                boxSizing: 'border-box',
-                pointerEvents: 'none',
-              }}
-            >
-              {tallyUnlinkedCount > 99 ? '99+' : tallyUnlinkedCount}
-            </span>
-          ) : null}
-        </div>
+        <TallySquareLink accessibleName={tallyLinkAccessibleName} unlinkedCount={tallyUnlinkedCount} />
         {clockSlot != null ? (
           <>
             <div style={{ flex: 1, minWidth: 0 }}>{clockSlot}</div>
