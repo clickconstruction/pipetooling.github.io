@@ -73,6 +73,7 @@ import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
 import { JobFormBreakOffSection, JobFormBreakOffTrack } from './JobFormBreakOffSection'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
+import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormDeleteMigrateModals } from './JobFormDeleteMigrateModals'
 import {
   formatCurrency,
@@ -315,6 +316,8 @@ export default function JobFormModal({
   const [clickNumber, setClickNumber] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
+  const [accountManagerUserId, setAccountManagerUserId] = useState<string | null>(null)
+  const [accountManagerRelationship, setAccountManagerRelationship] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
@@ -647,6 +650,8 @@ export default function JobFormModal({
     projectId: projectId ?? '',
     bidId: bidId ?? '',
     serviceTypeId: formServiceTypeId,
+    accountManagerUserId,
+    accountManagerRelationship,
   }
   const identityFieldsRef = useRef(identityFields)
   identityFieldsRef.current = identityFields
@@ -757,6 +762,14 @@ export default function JobFormModal({
 
   // Team: already-incremental diff writes; short debounce batches rapid toggles.
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
+  // Mirror of the DB team-removal trigger (v2.1466): un-teaming the Account
+  // Man clears the pick immediately in the open form too.
+  useEffect(() => {
+    if (accountManagerUserId && !teamMemberIds.includes(accountManagerUserId)) {
+      setAccountManagerUserId(null)
+      setAccountManagerRelationship(null)
+    }
+  }, [accountManagerUserId, teamMemberIds])
   const teamSliceJson = buildTeamSliceJson(teamMemberIds)
   const autosaveTeamIdsRef = useRef(teamMemberIds)
   autosaveTeamIdsRef.current = teamMemberIds
@@ -875,6 +888,8 @@ export default function JobFormModal({
     setProjectId(s.identity.projectId || null)
     setBidId(s.identity.bidId || null)
     setFormServiceTypeId(s.identity.serviceTypeId)
+    setAccountManagerUserId(s.identity.accountManagerUserId)
+    setAccountManagerRelationship(s.identity.accountManagerRelationship)
     setSelectedSegmentIds(new Set())
     setUndoConfirmOpen(false)
     showToast('Reverted to how the job looked when you opened it — the revert auto-saves.', 'success')
@@ -1308,6 +1323,8 @@ export default function JobFormModal({
     setJobPicturesLinkHighlight(picturesGate)
     setEditing(job)
     setHcpNumber(job.hcp_number ?? '')
+    setAccountManagerUserId(job.account_manager_user_id ?? null)
+    setAccountManagerRelationship(job.account_manager_relationship ?? null)
     setClickNumber(job.click_number ?? '')
     setJobName(job.job_name ?? '')
     setJobAddress(job.job_address ?? '')
@@ -1373,6 +1390,8 @@ export default function JobFormModal({
     setBillViewInvoice(null)
     setEditing(null)
     setHcpNumber('')
+    setAccountManagerUserId(null)
+    setAccountManagerRelationship(null)
     setClickNumber('')
     setJobName('')
     setJobAddress('')
@@ -2779,6 +2798,8 @@ export default function JobFormModal({
           project_id: projectId || null,
           bid_id: bidId || null,
           service_type_id: formServiceTypeId.trim(),
+          account_manager_user_id: accountManagerUserId,
+          account_manager_relationship: accountManagerUserId ? accountManagerRelationship || 'primary' : null,
         })
         .select('id')
         .single()
@@ -3040,6 +3061,14 @@ export default function JobFormModal({
                 if (closed) navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
               })()
             }}
+          />
+          <JobFormAccountManSection
+            users={users}
+            teamMemberIds={teamMemberIds}
+            accountManagerUserId={accountManagerUserId}
+            setAccountManagerUserId={setAccountManagerUserId}
+            accountManagerRelationship={accountManagerRelationship}
+            setAccountManagerRelationship={setAccountManagerRelationship}
           />
           <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>

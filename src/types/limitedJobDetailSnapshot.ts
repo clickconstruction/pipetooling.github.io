@@ -18,6 +18,10 @@ export type LimitedJobDetailSnapshot = {
   development_name: string | null
   last_work_date: string | null
   status: string
+  /** Account Man (v2.1466) via the account_manager_user_id embed. */
+  account_manager_user_id?: string | null
+  account_manager_relationship?: string | null
+  account_manager_name?: string | null
   /** When present from `jobs_ledger` + `service_types` join. */
   service_type_name: string | null
 }

@@ -29,6 +29,7 @@ export type JobsLedgerStagesPrimaryRow = JobsLedgerRow & {
   projects?: { id: string; name: string } | null
   bids?: { id: string; project_name: string | null; bid_number: string | null; service_type_id: string | null } | null
   gc_customer?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
+  account_manager?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
   development?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
   service_types?: { name: string } | null
 }
@@ -81,6 +82,7 @@ export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryR
       bids: bidEmbed,
       gc_customer: gcEmbed,
       development: devEmbed,
+      account_manager: amEmbed,
       service_types: serviceTypeEmbed,
       ...job
     } = row
@@ -99,6 +101,7 @@ export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryR
       project: proj ?? null,
       gcCustomer: oneEmbed(gcEmbed),
       development: oneEmbed(devEmbed),
+      account_manager: oneEmbed(amEmbed),
       linkedBid: bidEmbed
         ? {
             id: bidEmbed.id,
@@ -253,6 +256,7 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
       bids: bidEmbed,
       gc_customer: gcEmbed,
       development: devEmbed,
+      account_manager: amEmbed,
       service_types: serviceTypeEmbed,
       ...job
     } = row
@@ -271,6 +275,7 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
       project: proj ?? null,
       gcCustomer: oneEmbed(gcEmbed),
       development: oneEmbed(devEmbed),
+      account_manager: oneEmbed(amEmbed),
       linkedBid: bidEmbed
         ? {
             id: bidEmbed.id,

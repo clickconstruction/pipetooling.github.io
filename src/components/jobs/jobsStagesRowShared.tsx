@@ -8,6 +8,8 @@ import {
   type StagesUpcomingAppointment,
 } from '../../lib/stagesUpcomingSchedule'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
+import AccountManIcon from '../icons/AccountManIcon'
+import { ACCOUNT_MAN_RELATIONSHIP_LABELS, ACCOUNT_MAN_RELATIONSHIP_SHORT, buildAccountManDisplay, type AccountManDisplay } from '../../lib/jobs/accountMan'
 import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
@@ -417,12 +419,55 @@ function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUse
   return false
 }
 
+/**
+ * Account Man chip (v2.1466): quiet icon+name for primary, amber outline for
+ * preferred, white-on-red for only. Shared by the Pipeline job column (tables
+ * + mobile cards via renderJobCustomerLine) and DetailJobModal.
+ */
+export function renderAccountManChip(display: AccountManDisplay) {
+  const title = `Account Man — ${ACCOUNT_MAN_RELATIONSHIP_LABELS[display.relationship]}`
+  const base: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }
+  if (display.variant === 'only') {
+    return (
+      <span title={title} style={{ ...base, background: '#dc2626', color: '#ffffff', fontWeight: 600, borderRadius: 5, padding: '0.1rem 0.45rem' }}>
+        <AccountManIcon size={13} />
+        <span>{display.name} · only</span>
+      </span>
+    )
+  }
+  if (display.variant === 'preferred') {
+    return (
+      <span title={title} style={{ ...base, border: '1px solid var(--text-amber-800)', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 5, padding: '0.05rem 0.4rem' }}>
+        <AccountManIcon size={13} />
+        <span>{display.name} · {ACCOUNT_MAN_RELATIONSHIP_SHORT[display.relationship]}</span>
+      </span>
+    )
+  }
+  return (
+    <span title={title} style={base}>
+      <AccountManIcon size={13} />
+      <span>{display.name}</span>
+    </span>
+  )
+}
+
+/**
+ * Thin red stripes for 'only communicator' jobs (v2.1466) — spread onto the
+ * job cell/card container so the whole column reads restricted at a glance.
+ */
+export function accountManOnlyStripeStyle(job: JobWithDetails): CSSProperties {
+  return buildAccountManDisplay(job)?.variant === 'only'
+    ? { borderTop: '3px solid #dc2626', borderBottom: '3px solid #dc2626' }
+    : {}
+}
+
 export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { customers, openEditJobAndCreateCustomerFlow } = ctx
   const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
   const gcName = (job.gcCustomer?.name ?? '').trim()
   const developmentName = (job.development?.name ?? '').trim()
-  if (!hasCustomerInfo && !gcName && !developmentName) return null
+  const accountMan = buildAccountManDisplay(job)
+  if (!hasCustomerInfo && !gcName && !developmentName && !accountMan) return null
   const cn = (job.customer_name ?? '').trim()
   const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
   const showNotInCustomersBadge = !job.customer_id && !impliedCustomerLink
@@ -514,6 +559,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
           ) : null}
         </span>
       ) : null}
+      {accountMan ? renderAccountManChip(accountMan) : null}
       {showNotInCustomersBadge ? (
         <button
           type="button"
