@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-07
+last_updated: 2026-08-08
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 8, 2026
+
+**`20260808153737_job_account_manager.sql`** _(apply via `supabase db push` after merge; the UI ships in the follow-up client PR — until then the columns sit unused)_
+- **Purpose**: Account Man on jobs (v2.1465) — `jobs_ledger.account_manager_user_id` (FK users, `ON DELETE SET NULL`) + `account_manager_relationship` (`primary` | `preferred` | `only`, CHECK-constrained). Trigger `clear_job_account_manager_on_team_removal` on `jobs_ledger_team_members` clears the Account Man when that user leaves the team, keeping the "must be a team member" invariant true no matter which surface edits membership.
+- **Security**: rides existing `jobs_ledger` RLS; trigger SECURITY DEFINER like its siblings. Additive columns only — old clients unaffected.
 
 #### August 7, 2026
 

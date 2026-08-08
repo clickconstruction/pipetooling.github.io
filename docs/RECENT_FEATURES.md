@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1464)
+last_updated: 2026-08-08 (v2.1465)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1465)
+
+### Account Man backend — columns + team-invariant trigger (2026-08-08)
+Backend half of the Account Man feature (user-requested; UI in the follow-up PR). Migration `20260808153737` adds `jobs_ledger.account_manager_user_id` + `account_manager_relationship` (`primary`/`preferred`/`only`) and a trigger that clears the Account Man whenever that user is removed from the job's team — the "must be a team member" rule enforced at the data layer, not just the form ([`MIGRATIONS.md`](./MIGRATIONS.md)). Deploy after merge: `supabase db push`, then `gen-types:linked` for the client PR.
 
 ## Latest Updates (v2.1464)
 
