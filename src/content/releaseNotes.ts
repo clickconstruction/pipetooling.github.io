@@ -11,6 +11,13 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1464',
+    date: '2026-08-08',
+    title: 'Dashboard: Job Report label reads better',
+    kind: 'fix',
+    highlights: ['The compact Job Report button stacks its label on two lines so it fits its square neatly.'],
+  },
+  {
     version: 'v2.1463',
     date: '2026-08-08',
     title: 'Dashboard: two small cleanups',

@@ -235,10 +235,12 @@ function JobReportSquareButton({ onClick }: { onClick: () => void }) {
           </span>
         </>
       ) : (
-        // Compact (one-line) state is text-only (v2.1463) — "Job Report" reads
-        // better than a glyph in the 48px square.
-        <span style={{ fontSize: '0.625rem', fontWeight: 600, lineHeight: 1.15, textAlign: 'center' }}>
-          Job Report
+        // Compact state is text-only (v2.1463), stacked like the tall label —
+        // "Job" / "Report" on two lines fills the 48px square better.
+        <span style={{ fontSize: '0.625rem', fontWeight: 600, lineHeight: 1.25, textAlign: 'center' }}>
+          Job
+          <br />
+          Report
         </span>
       )}
     </button>

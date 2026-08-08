@@ -7,15 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1463)
+last_updated: 2026-08-08 (v2.1464)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1464)
+
+### Compact Job Report label stacks on two lines (2026-08-08)
+Tiny follow-up that missed the v2.1463 squash by seconds (the auto-merge landed mid-push): the compact Job Report square's text stacks "Job" / "Report" on two lines, matching the tall state's label shape. Same file, no behavior change.
+
 ## Latest Updates (v2.1463)
 
 ### Dashboard polish: text-only Job Report square + quieter My Time modal (2026-08-08)
-Two user-requested trims. **(1)** The compact (48px, clocked-out) Job Report square drops its icon — just "Job Report" text ([`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx)); the tall clocked-in state keeps icon + "Job"/"Report". **(2)** [`DashboardMyTimeDayEditorModal`](../src/components/DashboardMyTimeDayEditorModal.tsx) hides the "N sessions · Punch start/end cannot be changed with Adjust times…" explainer line in both layouts — it crowded the phone modal; the Visual/Form layout toggle keeps its spot.
+Two user-requested trims. **(1)** The compact (48px, clocked-out) Job Report square drops its icon — just "Job" / "Report" stacked text ([`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx)); the tall clocked-in state keeps icon + "Job"/"Report". **(2)** [`DashboardMyTimeDayEditorModal`](../src/components/DashboardMyTimeDayEditorModal.tsx) hides the "N sessions · Punch start/end cannot be changed with Adjust times…" explainer line in both layouts — it crowded the phone modal; the Visual/Form layout toggle keeps its spot.
 
 ## Latest Updates (v2.1462)
 
