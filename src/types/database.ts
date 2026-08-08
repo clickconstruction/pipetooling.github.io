@@ -13157,7 +13157,9 @@ export type Database = {
           group_key: string
           kind: string
           label: string
+          preview_items: Json
           row_count: number
+          table_counts: Json
           tables: string[]
         }[]
       }
