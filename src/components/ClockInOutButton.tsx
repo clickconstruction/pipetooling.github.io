@@ -146,6 +146,12 @@ type Props = {
   onClockInSuccess?: () => void
   /** After filing a job field report from the clock-out modal (Dashboard assigned-job / Leave Report nag). */
   onFieldReportSaved?: () => void
+  /**
+   * Rendered inside DashboardPinnedQuickRow's action grid (v2.1461): drop the
+   * top row's own bottom margin so the flanking tally / Job Report squares
+   * stretch to exactly the button stack's height.
+   */
+  embedded?: boolean
 }
 
 export default function ClockInOutButton({
@@ -154,6 +160,7 @@ export default function ClockInOutButton({
   onOpenMyTimeDayEditor,
   onClockInSuccess,
   onFieldReportSaved,
+  embedded = false,
 }: Props) {
   const { user: authUser, role } = useAuth()
   const { prefixMap } = useLedgerDisplayPrefixes()
@@ -1611,7 +1618,7 @@ export default function ClockInOutButton({
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} — Clock Out`}
+        {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} Clock Out`}
       </button>
       )}
       <button
@@ -1676,7 +1683,7 @@ export default function ClockInOutButton({
   return (
     <>
     {topRowContent ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%', marginBottom: '1rem' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%', marginBottom: embedded ? 0 : '1rem' }}>
       {topRowContent}
     </div>
     ) : null}

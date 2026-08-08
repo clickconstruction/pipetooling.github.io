@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -60,6 +60,14 @@ export interface DashboardPinnedQuickRowProps {
    * banners keep their original top position.
    */
   jobReportFirst?: boolean
+  /**
+   * Clock button stack (ClockInOutButton, embedded) rendered in the middle of
+   * the action row (v2.1461): [tally square] [clock stack] [Job Report square].
+   * The Job Report square stretches to the stack's height — one row tall when
+   * clocked out, both rows when clocked in. Absent (Job Mode mount): the
+   * classic [tally][wide Job Report] row renders instead.
+   */
+  clockSlot?: ReactNode
   /** Slot rendered directly BELOW the Job Report row (main dashboard: the My Schedule card). */
   afterJobReportRow?: ReactNode
   /**
@@ -82,6 +90,70 @@ export interface DashboardPinnedQuickRowProps {
 }
 
 /**
+ * The compact Job Report square flanking the clock stack (v2.1461). Stretches
+ * to the stack's height; the label is height-aware (same measure pattern as
+ * JobAddressText): one line ("Job Report") in the 48px clocked-out square,
+ * two lines ("Job" / "Report") once the button grows tall alongside the
+ * clocked-in Clock Out + Update Focus stack.
+ */
+function JobReportSquareButton({ onClick }: { onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const [tall, setTall] = useState(false)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setTall(el.getBoundingClientRect().height >= 70)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      title="Job Report"
+      aria-label="Job Report"
+      style={{
+        flexShrink: 0,
+        width: 64,
+        alignSelf: 'stretch',
+        minHeight: 48,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: tall ? 6 : 4,
+        padding: '0.35rem 0.25rem',
+        background: '#3b82f6',
+        color: 'white',
+        borderRadius: 8,
+        border: 'none',
+        boxSizing: 'border-box',
+        cursor: 'pointer',
+      }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={tall ? 26 : 20} height={tall ? 26 : 20} fill="currentColor" aria-hidden>
+        <path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
+      </svg>
+      {tall ? (
+        <span style={{ fontSize: '0.6875rem', fontWeight: 600, lineHeight: 1.2, textAlign: 'center' }}>
+          Job
+          <br />
+          Report
+        </span>
+      ) : (
+        <span style={{ fontSize: '0.625rem', fontWeight: 600, lineHeight: 1.1, textAlign: 'center', whiteSpace: 'nowrap' }}>Job Report</span>
+      )}
+    </button>
+  )
+}
+
+/**
  * Dashboard banners + tally icon + Job Report button + quick actions + pins row
  * (the old `tallyAndPinnedBlock`), rendered at two positions: the Job Mode
  * early return and the main return. Extracted from Dashboard.tsx (v2.723) —
@@ -101,6 +173,7 @@ export function DashboardPinnedQuickRow({
   subLaborDueTotal,
   renderModals,
   jobReportFirst = false,
+  clockSlot,
   afterJobReportRow,
   interstitial,
   bannersOnly = false,
@@ -247,7 +320,9 @@ export function DashboardPinnedQuickRow({
   const jobReportRow =
     role != null ? (
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
-        <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+        {/* Stretches with the row like the Job Report square (v2.1461) — a 48px
+            square clocked out, full stack height clocked in. */}
+        <div style={{ position: 'relative', width: 48, minHeight: 48, alignSelf: 'stretch', flexShrink: 0 }}>
           <Link
             to="/tally"
             title={tallyLinkAccessibleName}
@@ -257,7 +332,8 @@ export function DashboardPinnedQuickRow({
               alignItems: 'center',
               justifyContent: 'center',
               width: 48,
-              height: 48,
+              height: '100%',
+              minHeight: 48,
               background: '#3b82f6',
               color: 'white',
               borderRadius: 8,
@@ -297,27 +373,34 @@ export function DashboardPinnedQuickRow({
             </span>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => setNewReportModalOpen(true)}
-          style={{
-            flex: 1,
-            padding: '0 1.5rem',
-            background: '#3b82f6',
-            color: 'white',
-            borderRadius: 8,
-            border: 'none',
-            fontWeight: 600,
-            fontSize: '1.125rem',
-            textAlign: 'center',
-            minHeight: 48,
-            height: 48,
-            boxSizing: 'border-box',
-            cursor: 'pointer',
-          }}
-        >
-          Job Report
-        </button>
+        {clockSlot != null ? (
+          <>
+            <div style={{ flex: 1, minWidth: 0 }}>{clockSlot}</div>
+            <JobReportSquareButton onClick={() => setNewReportModalOpen(true)} />
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNewReportModalOpen(true)}
+            style={{
+              flex: 1,
+              padding: '0 1.5rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '1.125rem',
+              textAlign: 'center',
+              minHeight: 48,
+              height: 48,
+              boxSizing: 'border-box',
+              cursor: 'pointer',
+            }}
+          >
+            Job Report
+          </button>
+        )}
       </div>
     ) : null
 

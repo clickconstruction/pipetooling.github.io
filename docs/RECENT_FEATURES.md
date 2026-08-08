@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-07 (v2.1460)
+last_updated: 2026-08-08 (v2.1461)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1461)
+
+### Dashboard action grid: squares flank the clock stack (2026-08-08)
+User-requested rearrangement — Job Report wasn't earning its full-width row. The tally wrench (48px, badge kept) and a new compact **Job Report** square now flank the clock stack in one flex row: `[tally] [Clock In / Clock Out + Update Focus] [Job Report]`. The Job Report square (`JobReportSquareButton` in [`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx)) stretches to the stack's height — one row when clocked out, spanning both Clock Out + Update Focus rows when clocked in (pure `align-self: stretch`; no clock-state plumbing) — and its label is height-aware via the JobAddressText measure pattern ("Job Report" one line at 48px, "Job"/"Report" two lines + bigger icon when tall). The tally square stretches the same way (48px square clocked out, full stack height clocked in), and the clocked-in timer drops its em dash ("00:14:07 Clock Out"). Wiring: `DashboardPinnedQuickRow` gains a `clockSlot` prop (main dashboard passes `ClockInOutButton` with the new `embedded` prop, which only drops the outer bottom margin); the Job Mode mount and `DispatchModeHome` keep their existing layouts. Desktop gets the same row (clock buttons sit side-by-side there via the existing flex-wrap).
 
 ## Latest Updates (v2.1460)
 
