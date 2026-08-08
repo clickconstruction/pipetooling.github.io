@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from 'react'
  * "Billing Pipeline" whose stages carry numbered badges connected by a
  * downward arrow rail in the left gutter.
  */
-export function BillingPipelineCard({ children }: { children: ReactNode }) {
+export function BillingPipelineCard({ children, onInfoClick }: { children: ReactNode; onInfoClick?: () => void }) {
   return (
     <div
       // billingPipelineCard declares the container that drives the
@@ -21,7 +21,37 @@ export function BillingPipelineCard({ children }: { children: ReactNode }) {
         marginBottom: '1rem',
       }}
     >
-      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Billing Pipeline</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Billing Pipeline</h2>
+        {onInfoClick ? (
+          <button
+            type="button"
+            onClick={onInfoClick}
+            title="How the Billing Pipeline works"
+            aria-label="How the Billing Pipeline works"
+            style={{
+              width: 20,
+              height: 20,
+              padding: 0,
+              borderRadius: '50%',
+              border: '1.5px solid var(--text-link)',
+              background: 'none',
+              color: 'var(--text-link)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              fontStyle: 'italic',
+              fontFamily: 'Georgia, serif',
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            i
+          </button>
+        ) : null}
+      </div>
       {children}
     </div>
   )

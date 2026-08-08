@@ -27,6 +27,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import DashboardFieldCollectPaymentQueue from './DashboardFieldCollectPaymentQueue'
 import { BillingPipelineCard, BillingPipelineStage } from './BillingPipelineCard'
+import { BillingPipelineInfoModal } from './BillingPipelineInfoModal'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import BilledPaymentConfirmationModal from '../jobs/BilledPaymentConfirmationModal'
 import type { UserRole } from '../../hooks/useAuth'
@@ -163,6 +164,7 @@ export function DashboardBillingPipelineSection({
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const [readyToBillExpanded, setReadyToBillExpanded] = useState(true)
+  const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
   const [markPaidJob, setMarkPaidJob] = useState<JobForDashboard | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceForDashboard | null>(null)
@@ -210,7 +212,7 @@ export function DashboardBillingPipelineSection({
   }, [sendBackInvoice])
   return (
     <>
-          <BillingPipelineCard>
+          <BillingPipelineCard onInfoClick={() => setInfoModalOpen(true)}>
           {authUserId && (
             <BillingPipelineStage step={1} connectToNext>
               <DashboardFieldCollectPaymentQueue
@@ -553,6 +555,7 @@ export function DashboardBillingPipelineSection({
             </BillingPipelineStage>
           )}
           </BillingPipelineCard>
+      <BillingPipelineInfoModal open={infoModalOpen} onClose={() => setInfoModalOpen(false)} />
       <BilledPaymentConfirmationModal
         mode="job"
         invoice={null}
