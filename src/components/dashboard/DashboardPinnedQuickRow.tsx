@@ -320,7 +320,9 @@ export function DashboardPinnedQuickRow({
   const jobReportRow =
     role != null ? (
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
-        <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+        {/* Stretches with the row like the Job Report square (v2.1461) — a 48px
+            square clocked out, full stack height clocked in. */}
+        <div style={{ position: 'relative', width: 48, minHeight: 48, alignSelf: 'stretch', flexShrink: 0 }}>
           <Link
             to="/tally"
             title={tallyLinkAccessibleName}
@@ -330,7 +332,8 @@ export function DashboardPinnedQuickRow({
               alignItems: 'center',
               justifyContent: 'center',
               width: 48,
-              height: 48,
+              height: '100%',
+              minHeight: 48,
               background: '#3b82f6',
               color: 'white',
               borderRadius: 8,

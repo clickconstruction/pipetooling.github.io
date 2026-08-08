@@ -1618,7 +1618,7 @@ export default function ClockInOutButton({
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} — Clock Out`}
+        {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} Clock Out`}
       </button>
       )}
       <button
