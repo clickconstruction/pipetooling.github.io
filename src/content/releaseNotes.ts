@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1467',
+    date: '2026-08-08',
+    title: 'Dashboard: clock section headers stay readable',
+    kind: 'fix',
+    highlights: [
+      'The collapsed "Clocked in today / Jobs worked today" bar no longer squeezes its labels into broken text at certain window sizes.',
+    ],
+  },
+  {
     version: 'v2.1466',
     date: '2026-08-08',
     title: 'Account Man on jobs',
