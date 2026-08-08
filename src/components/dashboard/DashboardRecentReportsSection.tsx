@@ -233,15 +233,18 @@ export function DashboardRecentReportsSection({
             scrollMarginTop: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}>
+          {/* flex-wrap + fit-content title: at narrow widths the actions
+              cluster drops to its own right-aligned line instead of the badge
+              painting over "Mark all opened" (viewport sweep, v2.1469). */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: '0.5rem', rowGap: '0.25rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}>
             <button
               type="button"
               onClick={() => setRecentReportsExpanded((prev) => !prev)}
               aria-expanded={recentReportsExpanded}
-              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flex: 1, minWidth: 0, gap: '0.45rem' }}
+              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flex: '1 1 auto', minWidth: 'fit-content', gap: '0.45rem' }}
             >
               <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{recentReportsExpanded ? '▼' : '▶'}</span>
-              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Recent Reports</h2>
+              <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>Recent Reports</h2>
               {newCount > 0 ? (
                 <span
                   aria-label={`${newCount} new ${newCount === 1 ? 'report' : 'reports'}`}
@@ -251,6 +254,7 @@ export function DashboardRecentReportsSection({
                 </span>
               ) : null}
             </button>
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             {recentReportsExpanded && newCount > 0 ? (
               <button
                 type="button"
@@ -278,6 +282,7 @@ export function DashboardRecentReportsSection({
                 </svg>
               </button>
             )}
+            </span>
           </div>
           {recentReportsExpanded && (
             <>
