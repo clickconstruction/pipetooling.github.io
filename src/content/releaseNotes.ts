@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1461',
+    date: '2026-08-08',
+    title: 'Dashboard: one tidy row of action buttons',
+    kind: 'feature',
+    highlights: [
+      'The tally wrench and a new compact Job Report button now sit on either side of Clock In — one row instead of two.',
+      'While clocked in, Job Report grows to sit alongside both the Clock Out timer and Update Focus, so everything stays one thumb-reach tall.',
+    ],
+  },
+  {
     version: 'v2.1460',
     date: '2026-08-07',
     title: 'Job Detail: tidier action buttons',

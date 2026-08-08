@@ -1203,19 +1203,22 @@ export default function Dashboard() {
           ))}
         </div>
       )}
-      {authUser?.id && (
-        <ClockInOutButton
-          userId={authUser.id}
-          userName={clockDisplayName}
-          onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
-          onClockInSuccess={handleClockInSuccessContractPrompt}
-          onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
-        />
-      )}
       <DashboardPinnedQuickRow
         {...pinnedQuickRowSharedProps}
         renderModals
         jobReportFirst
+        clockSlot={
+          authUser?.id ? (
+            <ClockInOutButton
+              userId={authUser.id}
+              userName={clockDisplayName}
+              onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
+              onClockInSuccess={handleClockInSuccessContractPrompt}
+              onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
+              embedded
+            />
+          ) : undefined
+        }
         afterJobReportRow={myScheduleSection}
         interstitial={
           showFinancials ? (
