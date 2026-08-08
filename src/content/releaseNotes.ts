@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1465',
+    date: '2026-08-08',
+    title: 'infra: groundwork for Account Man on jobs',
+    kind: 'infra',
+    highlights: [
+      'Behind-the-scenes plumbing for assigning an Account Man to a job with a communication level. Nothing changes in the app yet — the feature lands in the next update.',
+    ],
+  },
+  {
     version: 'v2.1464',
     date: '2026-08-08',
     title: 'Dashboard: Job Report label reads better',
