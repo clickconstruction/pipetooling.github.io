@@ -9477,16 +9477,19 @@ export type Database = {
       }
       report_reads: {
         Row: {
+          done_at: string | null
           read_at: string
           report_id: string
           user_id: string
         }
         Insert: {
+          done_at?: string | null
           read_at?: string
           report_id: string
           user_id: string
         }
         Update: {
+          done_at?: string | null
           read_at?: string
           report_id?: string
           user_id?: string

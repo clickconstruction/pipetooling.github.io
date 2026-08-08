@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { recentReportsUnreadCount, recentReportsVisibleRows, type RecentReportRow } from './dashboardRecentReports'
+import {
+  formatReportRowTime,
+  openedNotShownCount,
+  recentReportsNewCount,
+  reportRowState,
+  visibleRecentReports,
+  type RecentReportRow,
+} from './dashboardRecentReports'
 
 const row = (id: string): RecentReportRow => ({
   id,
@@ -10,40 +17,78 @@ const row = (id: string): RecentReportRow => ({
 })
 
 const reports = [row('a'), row('b'), row('c'), row('d')]
+const none = new Set<string>()
 
-describe('recentReportsUnreadCount', () => {
-  it('counts reports that are neither hidden nor read', () => {
-    expect(recentReportsUnreadCount(reports, new Set(['a']), new Set(['b']))).toBe(2)
-  })
-
-  it('is zero when everything is read', () => {
-    expect(recentReportsUnreadCount(reports, new Set(), new Set(['a', 'b', 'c', 'd']))).toBe(0)
-  })
-
-  it('does not double-count a report both hidden and read', () => {
-    expect(recentReportsUnreadCount(reports, new Set(['a']), new Set(['a']))).toBe(3)
+describe('reportRowState', () => {
+  it('maps read/done sets to states, done winning', () => {
+    expect(reportRowState('a', none, none)).toBe('new')
+    expect(reportRowState('a', new Set(['a']), none)).toBe('opened')
+    expect(reportRowState('a', new Set(['a']), new Set(['a']))).toBe('done')
+    expect(reportRowState('a', none, new Set(['a']))).toBe('done')
   })
 })
 
-describe('recentReportsVisibleRows', () => {
-  it('never shows hidden rows, in either view', () => {
-    expect(recentReportsVisibleRows(reports, new Set(['a']), new Set(), 'all', null).map((r) => r.id)).toEqual(['b', 'c', 'd'])
-    expect(recentReportsVisibleRows(reports, new Set(['a']), new Set(), 'unread', null).map((r) => r.id)).toEqual(['b', 'c', 'd'])
+describe('recentReportsNewCount', () => {
+  it('counts only rows with no read state', () => {
+    expect(recentReportsNewCount(reports, new Set(['a']), new Set(['b']))).toBe(2)
+    expect(recentReportsNewCount(reports, none, none)).toBe(4)
+  })
+})
+
+describe('visibleRecentReports', () => {
+  it('always shows new rows, never done rows', () => {
+    const ids = visibleRecentReports(reports, new Set(['b']), new Set(['c']), none, false).map((r) => r.id)
+    expect(ids).toEqual(['a', 'd'])
   })
 
-  it("in 'unread' view, drops read rows", () => {
-    expect(recentReportsVisibleRows(reports, new Set(), new Set(['b']), 'unread', null).map((r) => r.id)).toEqual(['a', 'c', 'd'])
+  it('keeps session-opened rows inline even with the toggle off', () => {
+    const ids = visibleRecentReports(reports, new Set(['b']), none, new Set(['b']), false).map((r) => r.id)
+    expect(ids).toEqual(['a', 'b', 'c', 'd'])
   })
 
-  it("in 'unread' view, keeps a read row while it is expanded", () => {
-    expect(recentReportsVisibleRows(reports, new Set(), new Set(['b']), 'unread', 'b').map((r) => r.id)).toEqual(['a', 'b', 'c', 'd'])
+  it('shows all opened rows when the toggle is on', () => {
+    const ids = visibleRecentReports(reports, new Set(['a', 'b']), none, none, true).map((r) => r.id)
+    expect(ids).toEqual(['a', 'b', 'c', 'd'])
   })
 
-  it("in 'all' view, shows read rows", () => {
-    expect(recentReportsVisibleRows(reports, new Set(), new Set(['a', 'b']), 'all', null)).toHaveLength(4)
+  it('done rows stay hidden even when the toggle is on', () => {
+    const ids = visibleRecentReports(reports, new Set(['a']), new Set(['a']), new Set(['a']), true).map((r) => r.id)
+    expect(ids).toEqual(['b', 'c', 'd'])
+  })
+})
+
+describe('openedNotShownCount', () => {
+  it('counts opened rows hidden behind the footer toggle', () => {
+    expect(openedNotShownCount(reports, new Set(['a', 'b']), new Set(['b']), new Set(['a']))).toBe(0)
+    expect(openedNotShownCount(reports, new Set(['a', 'b']), none, none)).toBe(2)
+  })
+})
+
+describe('formatReportRowTime', () => {
+  // 2026-08-07 19:04 Chicago (CDT, UTC-5) = 2026-08-08T00:04:38Z
+  const createdIso = '2026-08-08T00:04:38Z'
+
+  it('same Chicago day reads today', () => {
+    const now = Date.parse('2026-08-08T01:00:00Z') // still Aug 7 evening in Chicago
+    expect(formatReportRowTime(createdIso, now)).toEqual({ clock: '7:04 PM', day: 'today' })
   })
 
-  it('preserves input order', () => {
-    expect(recentReportsVisibleRows(reports, new Set(), new Set(), 'unread', null).map((r) => r.id)).toEqual(['a', 'b', 'c', 'd'])
+  it('next Chicago day reads yesterday', () => {
+    const now = Date.parse('2026-08-08T17:00:00Z') // Aug 8 midday Chicago
+    expect(formatReportRowTime(createdIso, now)).toEqual({ clock: '7:04 PM', day: 'yesterday' })
+  })
+
+  it('older same-year dates read month + day', () => {
+    const now = Date.parse('2026-08-20T17:00:00Z')
+    expect(formatReportRowTime(createdIso, now)).toEqual({ clock: '7:04 PM', day: 'Aug 7' })
+  })
+
+  it('cross-year dates carry the year', () => {
+    const now = Date.parse('2027-02-01T17:00:00Z')
+    expect(formatReportRowTime(createdIso, now)).toEqual({ clock: '7:04 PM', day: 'Aug 7, 2026' })
+  })
+
+  it('tolerates junk input', () => {
+    expect(formatReportRowTime('not-a-date', Date.now())).toEqual({ clock: '', day: '' })
   })
 })

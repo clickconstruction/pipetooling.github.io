@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1468)
+last_updated: 2026-08-08 (v2.1469)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1469)
+
+### Recent Reports rebuilt as an inbox (2026-08-08)
+Client half of the redesign (backend v2.1468; mock approved in session). [`DashboardRecentReportsSection`](../src/components/dashboard/DashboardRecentReportsSection.tsx) drops the Unread/All tabs, the per-row Hide button, and the "hide reports I've opened, on refresh" checkbox + localStorage machinery. New model over the rewritten kernel ([`dashboardRecentReports.ts`](../src/lib/dashboardRecentReports.ts), tested incl. Chicago-tz compact timestamps): **new** (blue dot, bold), **opened** (dimmed ✓, stays in place — nothing vanishes on collapse; session-opened rows stay inline, older ones behind a "Show N opened" footer link), **done** (`report_reads.done_at` — cleared from the dashboard cross-device; View all unchanged). Header gains the blue "N new" badge + "Mark all opened"; expanded rows get an action chip row (Job detail / Map / Mark unread / ✓ Done). One-time migration converts each device's legacy hidden-ids localStorage into `done_at` so nothing floods back. Help guide `read-field-reports-on-the-dashboard`.
 
 ## Latest Updates (v2.1468)
 
