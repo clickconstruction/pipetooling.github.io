@@ -12,7 +12,7 @@ When a helper is working toward a more advanced license, the plumbing or electri
 Go to **People → Licenses** and click the person's row to expand it. Two buttons appear:
 
 :::example Expanded person row
-{{button:outline|Hours log}} {{button:primary|+ Add license}}
+{{button:outline|Hours log}} {{button:blue|+ Add license}}
 :::
 
 Click {{button:outline|Hours log}}. The modal shows every **approved** clock session the person has, grouped by job and week:
@@ -34,7 +34,7 @@ The fields above the table are printed at the top of the CSV so the export reads
 
 ## Downloading the CSV
 
-Click {{button:primary|Export CSV}}. The file starts with the certification block (employee, registration number, employer, supervising licensee, period, total hours), then one row per job per week:
+Click {{button:blue|Export CSV}}. The file starts with the certification block (employee, registration number, employer, supervising licensee, period, total hours), then one row per job per week:
 
 :::example CSV detail columns
 Week start · Week end · Job # · Job name · Job address · Service type · Sessions · Hours

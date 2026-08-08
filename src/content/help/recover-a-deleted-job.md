@@ -13,8 +13,8 @@ This is dev-only, and it lives in **Settings → Data & migration → Recently d
 
 1. Open **Settings → Data & migration** and expand **Recently deleted (dev)**.
 2. Find the entry. Each one shows what it was (e.g. `J-1042 · Smith Remodel`), who deleted it when, count chips for everything that went with it — money records like {{chip:yellow|3 invoices}} stand out from quieter ones like {{chip:gray|12 line items}} — and the first few lines of what was inside. **What's inside?** still expands the complete contents, with the full raw record one more click down.
-3. Click {{button:secondary|Preview restore}}. Nothing is changed yet — this reports exactly what would come back.
-4. Read the preview, then click {{button:primary|Restore}}.
+3. Click {{button:outline|Preview restore}}. Nothing is changed yet — this reports exactly what would come back.
+4. Read the preview, then click {{button:blue|Restore}}.
 
 :::example The preview is real, not a guess
 The preview actually performs the restore and then rolls it back, so the counts it shows you are the true ones. That is also why **Restore** stays greyed out until you have previewed — you can't commit a restore you haven't looked at.

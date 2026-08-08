@@ -5,7 +5,7 @@
  *
  * Author syntax:
  *   {{button:<variant>|<label>}}   variants: blue green amber red purple gray outline outline-blue outline-amber
- *   {{chip:<variant>|<label>}}     variants: red green yellow blue gray
+ *   {{chip:<variant>|<label>}}     variants: red green yellow blue purple gray
  *   {{icon:<name>}}                names: help gear
  *   {{gif:<filename>|<caption>}}   screen recording from public/help/ (lazy-loaded,
  *                                  NOT precached — needs connectivity, unlike the mocks)
@@ -38,8 +38,17 @@ const CHIP_STYLES: Record<string, string> = {
   green: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;',
   yellow: 'background:#fffbeb;color:#b45309;border:1px solid #fcd34d;',
   blue: 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;',
+  purple: 'background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;',
   gray: 'background:#f3f4f6;color:#4b5563;border:1px solid #e5e7eb;',
 }
+
+/**
+ * Valid token variants, for the guide conformance test — renderButton/renderChip
+ * fall back silently (outline/gray) on unknown variants, so authoring typos are
+ * only catchable by validating the source tokens.
+ */
+export const BUTTON_VARIANTS = Object.keys(BUTTON_STYLES)
+export const CHIP_VARIANTS = Object.keys(CHIP_STYLES)
 
 /** Header icons guides reference (paths copied from Layout.tsx). */
 const ICON_PATHS: Record<string, string> = {

@@ -34,7 +34,7 @@ Search: `Search HCP or job name`
 {{button:outline|Create new job}} &nbsp;·&nbsp; {{button:outline|Not coming in today}}
 :::
 
-Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:orange|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
+Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:yellow|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
 
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.
 
@@ -88,7 +88,7 @@ Jobs tagged {{chip:gray|linked crew}} move for the whole crew — everyone's cop
 
 ## Travel-time hints on the Day view
 
-When two of a person's jobs have known locations, the Day view estimates the drive between them. Locations fill in automatically: opening the Day view maps any scheduled address it doesn't know yet (a small "📍 Mapping…" note shows while it works), and if an address can't be found you'll see an amber note naming it — fix the job's address and the hints appear. By default that's a straight-line minimum (real traffic can only be worse, shown as {{chip:gray|🚗 ≥18m}}); with live routing on, it's a real road estimate (shown as {{chip:gray|🚗 ~22m}}) that quietly falls back to the straight-line number whenever routing is unavailable. Devs control all of this under {{button:secondary|Dispatch Settings}} → **Travel time hints**: turn hints on/off, set the assumed average speed, and enable live routing.
+When two of a person's jobs have known locations, the Day view estimates the drive between them. Locations fill in automatically: opening the Day view maps any scheduled address it doesn't know yet (a small "📍 Mapping…" note shows while it works), and if an address can't be found you'll see an amber note naming it — fix the job's address and the hints appear. By default that's a straight-line minimum (real traffic can only be worse, shown as {{chip:gray|🚗 ≥18m}}); with live routing on, it's a real road estimate (shown as {{chip:gray|🚗 ~22m}}) that quietly falls back to the straight-line number whenever routing is unavailable. Devs control all of this under {{button:outline|Dispatch Settings}} → **Travel time hints**: turn hints on/off, set the assumed average speed, and enable live routing.
 
 - An open gap between jobs shows a 🚗 chip like {{chip:gray|🚗 ≥18m}} — red when the gap is shorter than the drive.
 - Back-to-back jobs that are far apart turn their connecting dot **red**; hover it for the estimate.
@@ -96,7 +96,7 @@ When two of a person's jobs have known locations, the Day view estimates the dri
 
 ## Choosing the Day view's visible hours
 
-On the Dispatch **Day** tab, the {{button:secondary|Visible hours ⚙}} button (right of the day controls) opens a small settings modal. Pick a start and end (within 4 AM–8 PM, at least an hour apart) and the timeline stretches that window across the page — handy when your crew works 7-to-5 and the early/late hours just waste space. The choice saves on your device only; **Reset to full day** puts it back. Jobs outside the window pin to its edge.
+On the Dispatch **Day** tab, the {{button:outline|Visible hours ⚙}} button (right of the day controls) opens a small settings modal. Pick a start and end (within 4 AM–8 PM, at least an hour apart) and the timeline stretches that window across the page — handy when your crew works 7-to-5 and the early/late hours just waste space. The choice saves on your device only; **Reset to full day** puts it back. Jobs outside the window pin to its edge.
 
 ## When someone isn't coming in
 

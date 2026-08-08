@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildHelpGuideRegistry } from './helpGuides'
+import { BUTTON_VARIANTS, CHIP_VARIANTS } from './helpGuideIllustrations'
 
 const CONTENT_DIR = join(__dirname, '../content/help')
 
@@ -29,6 +30,22 @@ describe('help guide content', () => {
     const guides = buildHelpGuideRegistry(loadContent())
     for (const g of guides) {
       expect(/^# /m.test(g.body), `guide "${g.slug}" uses a top-level # heading`).toBe(false)
+    }
+  })
+
+  it('button/chip tokens use known variants (unknown ones silently render as the fallback style)', () => {
+    const guides = buildHelpGuideRegistry(loadContent())
+    for (const g of guides) {
+      for (const m of g.body.matchAll(/\{\{(button|chip):([a-z0-9._-]+)(?:\|[^}]*)?\}\}/gi)) {
+        const kind = m[1]!.toLowerCase()
+        const variant = m[2]!
+        // Style lookup is case-sensitive, so compare the variant as written.
+        const valid = kind === 'button' ? BUTTON_VARIANTS : CHIP_VARIANTS
+        expect(
+          valid.includes(variant),
+          `guide "${g.slug}" uses unknown ${kind} variant "${variant}" (valid: ${valid.join(', ')})`,
+        ).toBe(true)
+      }
     }
   })
 

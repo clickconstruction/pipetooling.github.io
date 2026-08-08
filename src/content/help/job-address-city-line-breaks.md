@@ -13,7 +13,7 @@ The app ships with a list of Central Texas cities (San Antonio, Seguin, New Brau
 
 1. Open {{icon:gear}} **Settings → Jobs &amp; dispatch**.
 2. Expand **Job address city line breaks (dev)**.
-3. Type the missing city names, one per line, and click {{button:primary|Save}}.
+3. Type the missing city names, one per line, and click {{button:blue|Save}}.
 
 :::example "1875 Co Rd 777 Devine TX"
 Without "Devine" on the list this stays glued together. After adding it, the row shows "1875 Co Rd 777" with "Devine TX" on its own line — and lien prefills put "Devine" in the city field.

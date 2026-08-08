@@ -144,7 +144,7 @@ The previews open the exact email in a new tab; **Email me a test** sends the de
 
 ## The "payment made" email
 
-There's a second stream for jobs that aren't finished yet: whenever **any** payment lands on a job — the office marks a payment, a bank deposit is allocated in Accounts Receivable, or a Stripe payment comes in — the app can email a progress version of the same report. Instead of the green banner it leads with an amber **$X (Y%) OF $Z PAID** banner and the payment that just arrived, then the job's **Invoices** table exactly as the office sees it in Edit Job — each bill with its {{chip:amber|Draft}} / {{chip:blue|Billed}} / {{chip:green|Paid}} status, sent date, amount, and how much of it is paid vs still open — followed by the line items. Detailed and Summary versions work like the paid-in-full email.
+There's a second stream for jobs that aren't finished yet: whenever **any** payment lands on a job — the office marks a payment, a bank deposit is allocated in Accounts Receivable, or a Stripe payment comes in — the app can email a progress version of the same report. Instead of the green banner it leads with an amber **$X (Y%) OF $Z PAID** banner and the payment that just arrived, then the job's **Invoices** table exactly as the office sees it in Edit Job — each bill with its {{chip:yellow|Draft}} / {{chip:blue|Billed}} / {{chip:green|Paid}} status, sent date, amount, and how much of it is paid vs still open — followed by the line items. Detailed and Summary versions work like the paid-in-full email.
 
 Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header (same rules: devs and masters open it, devs edit it). When a payment finishes the job, only the paid-in-full email goes out — you never get both for the same payment.
 
@@ -153,9 +153,9 @@ Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** 
 The **Share / Print** button in the same header (devs, masters, controllers, and assistants) emails the Billed Awaiting Payment report to an office teammate — the same customer-grouped report the old Print button made, upgraded for email: phone numbers and emails are tap-to-call / tap-to-write, and **clicking any job opens its Job Detail right in the app**.
 
 :::example Share Billed Awaiting Payment
-Send to: **Taunya** · When: {{button:primary|Send now}} or **Schedule…** a date and time (Central)
+Send to: **Taunya** · When: {{button:blue|Send now}} or **Schedule…** a date and time (Central)
 
-{{button:primary|Send email}} &nbsp; {{button:outline|Preview}} &nbsp; {{button:outline|Email me a test}} &nbsp; {{button:outline|🖨 Print instead}}
+{{button:blue|Send email}} &nbsp; {{button:outline|Preview}} &nbsp; {{button:outline|Email me a test}} &nbsp; {{button:outline|🖨 Print instead}}
 :::
 
 Scheduled sends build the report **fresh at send time** — a Monday 7 AM email shows Monday's numbers, not Friday's — and arrive within about five minutes of the chosen time. Your pending sends are listed in the window with a **Cancel** next to each. **Preview** opens the exact email in a new tab; **Email me a test** sends it to your own address with a `[TEST]` subject; **Print instead** is the old print path, unchanged. Recipients can only be office roles — the report carries amounts due.
@@ -163,7 +163,7 @@ Scheduled sends build the report **fresh at send time** — a Monday 7 AM email 
 There's also a per-job version: on **Job Detail**, the envelope icon in the header (devs and masters only) opens the same email with the preview showing right in the window — a **Detailed | Summary** toggle to flip between the two versions, and the send actions at the top:
 
 :::example Paid-in-full email window
-{{button:primary|Send to me}} &nbsp; {{button:outline|Send to someone…}}
+{{button:blue|Send to me}} &nbsp; {{button:outline|Send to someone…}}
 :::
 
 **Send to me** emails you the `[TEST]` copy; **Send to someone…** opens the people list with the same Detailed or Summary badge per person — picking someone flips the preview so you see exactly what they'll receive before you send it.
