@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1469)
+last_updated: 2026-08-08 (v2.1470)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1470)
+
+### Billing Pipeline ⓘ — in-place stage explainer (2026-08-08)
+User-requested. The Dashboard Billing Pipeline card title gains a round ⓘ ([`BillingPipelineCard.tsx`](../src/components/dashboard/BillingPipelineCard.tsx), optional `onInfoClick` prop) opening [`BillingPipelineInfoModal`](../src/components/dashboard/BillingPipelineInfoModal.tsx) — the ContractsTabHelpModal per-surface pattern. Static content: the card's three numbered stages (same badge style) set inside the full job pipeline (dimmed Waiting/Working above, Paid in Full below), with SUB TAPS / OFFICE TAPS chips per stage — stage 1 documents the subcontractor Collect Payment → office Approve → payment-page handshake. Footer deep-links `/help?g=ready-to-bill-pipeline`; that guide gains a matching section. Card is office-role-only, so the universal view is the right shape (no sub-facing variant needed).
 
 ## Latest Updates (v2.1469)
 

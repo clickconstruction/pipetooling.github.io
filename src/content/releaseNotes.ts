@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1470',
+    date: '2026-08-08',
+    title: 'Billing Pipeline: tap ⓘ to see how it works',
+    kind: 'feature',
+    highlights: [
+      'A little i button next to the Billing Pipeline title opens a map of the whole flow — every stage, who taps what, and how subcontractor Collect Payment requests fit in.',
+    ],
+  },
+  {
     version: 'v2.1469',
     date: '2026-08-08',
     title: 'Recent Reports is now a proper inbox',
