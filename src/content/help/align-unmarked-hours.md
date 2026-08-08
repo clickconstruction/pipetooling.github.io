@@ -24,7 +24,7 @@ Each row shows the person, their clock-in/out times and hours, and what they typ
 - **Scheduled job chips** — the jobs that person was scheduled on that day (from Dispatch). One click links the session to that job. Hover a chip to see the scheduled time windows.
 - {{button:outline|Split by schedule %}} — shows when they were scheduled on two or more jobs. It splits the session across those jobs in proportion to the scheduled time, the same as Apply Schedule % on the clock strip.
 - **recent:** chips — when nothing was scheduled, the person's most recently worked jobs and bids from the same week appear instead.
-- {{button:primary|Assign}} — search for any other job or bid.
+- {{button:blue|Assign}} — search for any other job or bid.
 - {{button:outline|Day editor}} — opens the My Time day editor for that person and day, for anything that needs time changes or a custom split.
 
 Aligned rows turn green and show what they were linked to, with {{button:outline|Undo}} in case you clicked the wrong chip. Splits can't be undone here — use the day editor if a split needs to change.

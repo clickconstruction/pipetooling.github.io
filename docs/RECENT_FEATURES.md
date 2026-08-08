@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1472)
+last_updated: 2026-08-08 (v2.1473)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1473)
+
+### Help guide mock-UI tokens — variant validation + typo sweep (2026-08-08)
+`renderButton`/`renderChip` in [`helpGuideIllustrations.ts`](../src/lib/helpGuideIllustrations.ts) silently fall back to outline/gray on unknown variants, so authoring typos rendered wrong with no signal. New conformance test in [`helpGuideContent.test.ts`](../src/lib/helpGuideContent.test.ts) scans every guide's `{{button:…}}`/`{{chip:…}}` tokens against the exported `BUTTON_VARIANTS`/`CHIP_VARIANTS` and fails CI on any unknown variant. The sweep it forced fixed 42 pre-existing tokens across the guides: `chip:warning`/`chip:amber`/`chip:orange` → `yellow`, `chip:neutral` → `gray`, `button:primary` → `blue`, `button:secondary` → `outline`, `button:danger` → `red`. `chip:purple` was the one case where the intended color didn't exist — CHIP_STYLES gains a purple chip (violet tint matching the purple button) instead of flattening it to blue.
 
 ## Latest Updates (v2.1472)
 

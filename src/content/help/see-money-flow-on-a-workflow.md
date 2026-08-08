@@ -9,7 +9,7 @@ Projections used to live only in the panel at the top of the Workflow page. Now 
 
 ## Anchor a projection to a step
 
-1. On the Workflow page, click {{button:primary|+ Add Projection}} (or **Edit** on an existing one).
+1. On the Workflow page, click {{button:blue|+ Add Projection}} (or **Edit** on an existing one).
 2. Fill the label, memo, and amount as usual.
 3. Under **Attach to step**, pick the step — then choose **Before the step** or **After the step**.
 
@@ -21,7 +21,7 @@ Anchored projections appear as slim **$ marker rows** between the step cards, ri
 
 - the memo and amount,
 - {{chip:blue|projected to here $X}} — every anchored projection from the top of the workflow down to this marker, and
-- {{chip:amber|spent $Y}} — the actual **Line Items For Office** recorded on the steps above this marker.
+- {{chip:yellow|spent $Y}} — the actual **Line Items For Office** recorded on the steps above this marker.
 
 When the blue and amber numbers drift apart, that's where the plan and reality diverge. Click a marker to expand it — edit, delete, or check its placement.
 

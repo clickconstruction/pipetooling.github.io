@@ -23,7 +23,7 @@ Typical setup: one version per GC (e.g. "Turner" and "DPR"), each with its own p
 
 1. On the **Cover Letter** page, tick the versions to include under **Versions in this submission**.
 2. When the included versions point at more than one GC, a **Documents by GC** box appears — one card per GC, showing which versions land in that GC's document.
-3. Click a card to select it: the preview, {{button:primary|Print}}, and copy buttons all follow the selected GC.
+3. Click a card to select it: the preview, {{button:blue|Print}}, and copy buttons all follow the selected GC.
 
 Each GC's document contains **only that GC's versions and pricing**, headed with their name and address. Documents never mix GCs, so one builder can't see what another was quoted.
 

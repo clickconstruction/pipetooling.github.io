@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1473',
+    date: '2026-08-08',
+    title: 'Help guides: little buttons and chips show their true colors',
+    kind: 'fix',
+    highlights: [
+      'A few dozen mock buttons and chips in the help guides were rendering plain gray instead of their intended color — all fixed, and a new check keeps it from happening again.',
+    ],
+  },
+  {
     version: 'v2.1472',
     date: '2026-08-08',
     title: 'Recently deleted shows what died at a glance',
