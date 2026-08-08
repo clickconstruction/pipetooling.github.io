@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1462)
+last_updated: 2026-08-08 (v2.1463)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1463)
+
+### Dashboard polish: text-only Job Report square + quieter My Time modal (2026-08-08)
+Two user-requested trims. **(1)** The compact (48px, clocked-out) Job Report square drops its icon — just "Job Report" text ([`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx)); the tall clocked-in state keeps icon + "Job"/"Report". **(2)** [`DashboardMyTimeDayEditorModal`](../src/components/DashboardMyTimeDayEditorModal.tsx) hides the "N sessions · Punch start/end cannot be changed with Adjust times…" explainer line in both layouts — it crowded the phone modal; the Visual/Form layout toggle keeps its spot.
 
 ## Latest Updates (v2.1462)
 

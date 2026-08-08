@@ -2774,42 +2774,22 @@ export function DashboardMyTimeDayEditorModal({
                 <strong>Save</strong> to commit.
               </p>
             ) : null}
+            {/* The "N sessions · punch-editing explainer" line was hidden in
+                v2.1463 (user request — it crowded the phone modal); the Visual
+                handles remain self-explanatory and the toggle stays. */}
             {myTimeCompactLayout ? (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  justifyContent: 'space-between',
+                  justifyContent: 'flex-end',
                   gap: 8,
                   margin: '0 0 0.5rem 0',
                 }}
               >
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-faint)', flex: 1, minWidth: 0 }}>
-                  {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'}
-                  {clockTimesReadOnly ? (
-                    <>
-                      {' · '}
-                      Punch start/end cannot be changed with Adjust times or Form &quot;Ends at&quot; fields here—use
-                      Visual (blue handles on the strip) to move boundaries between rows. You can split focus, edit
-                      segment notes, assign jobs or bids, and use Save to commit pending changes.
-                    </>
-                  ) : null}
-                </p>
                 {layoutModeToggleEl}
               </div>
-            ) : (
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'}
-                {clockTimesReadOnly ? (
-                  <>
-                    {' · '}
-                    Punch start/end cannot be changed with Adjust times or Form &quot;Ends at&quot; fields here—use
-                    Visual (blue handles on the strip) to move boundaries between rows. You can split focus, edit
-                    segment notes, assign jobs or bids, and use Save to commit pending changes.
-                  </>
-                ) : null}
-              </p>
-            )}
+            ) : null}
             <div
               className="myTimeDayTimelineScroll"
               style={{
