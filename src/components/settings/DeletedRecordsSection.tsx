@@ -15,10 +15,15 @@ import { useDeletedRecordsArchive } from '../../hooks/useDeletedRecordsArchive'
 import { listDeletedRecordRows, type DeletedRecordRow } from '../../lib/deletedRecordsArchive'
 import {
   EMPTY_BUNDLE_FILTERS,
+  buildBundleDigestChips,
+  bundleInAlertWindows,
   distinctValues,
   filterDeletedBundles,
   humanizeArchiveTable,
+  sortBundlesAlertFirst,
   summarizeDeletedRow,
+  summarizePreviewItems,
+  type AlertWindow,
   type DeletedBundleFilters,
 } from '../../lib/deletedRecordContents'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -100,6 +105,9 @@ export default function DeletedRecordsSection() {
   const alertCount = alerts.length
   const worstAlert = alerts[0]
   const showAlertBox = shouldShowBulkDeleteAlert(alertCount, dismissState)
+  // Burst windows of the active alerts: bundles deleted inside one sort first
+  // and get flagged, so the reviewer lands on the deletions the banner is about.
+  const alertWindows: AlertWindow[] = alerts.map((a) => ({ start: a.window_start, end: a.window_end }))
 
   return (
     <div id={RECENTLY_DELETED_ANCHOR_ID} style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
@@ -187,7 +195,7 @@ export default function DeletedRecordsSection() {
           ) : bundles.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Nothing deleted in the last 90 days.</p>
           ) : (() => {
-            const visible = filterDeletedBundles(bundles, filters)
+            const visible = sortBundlesAlertFirst(filterDeletedBundles(bundles, filters), alertWindows)
             const kinds = distinctValues(bundles, (b) => b.kind)
             const deleters = distinctValues(bundles, (b) => b.deleted_by_name)
             const selectStyle = {
@@ -250,12 +258,16 @@ export default function DeletedRecordsSection() {
                 const canRestore = isPreviewed && result?.ok === true && blockers.length === 0
                 const previewing = busy?.groupKey === b.group_key && busy.action === 'preview'
                 const restoring = busy?.groupKey === b.group_key && busy.action === 'restore'
+                const inAlertWindow = bundleInAlertWindows(b.deleted_at, alertWindows)
+                const digestChips = buildBundleDigestChips(b.tables, b.table_counts)
+                const previewLines = summarizePreviewItems(b.preview_items)
 
                 return (
                   <li
                     key={b.group_key}
                     style={{
                       border: '1px solid var(--border)',
+                      borderLeft: inAlertWindow ? '3px solid #f59e0b' : '1px solid var(--border)',
                       borderRadius: 6,
                       padding: '0.75rem',
                       background: 'var(--bg-subtle)',
@@ -266,6 +278,23 @@ export default function DeletedRecordsSection() {
                         <div style={{ fontWeight: 600 }}>
                           {b.label}{' '}
                           <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>({b.kind})</span>
+                          {inAlertWindow && (
+                            <span
+                              style={{
+                                marginLeft: '0.4rem',
+                                padding: '0.05rem 0.4rem',
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                color: 'var(--text-amber-800)',
+                                background: 'var(--bg-orange-tint)',
+                                border: '1px solid #f59e0b',
+                                borderRadius: 999,
+                                verticalAlign: 'middle',
+                              }}
+                            >
+                              in alert window
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                           {b.row_count} row{b.row_count === 1 ? '' : 's'} across {b.tables.length} table
@@ -274,10 +303,44 @@ export default function DeletedRecordsSection() {
                         </div>
                         <div
                           title={b.tables.join(', ')}
-                          style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.15rem', wordBreak: 'break-word' }}
+                          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.3rem' }}
                         >
-                          {b.tables.map(humanizeArchiveTable).join(', ')}
+                          {digestChips.map((chip) => (
+                            <span
+                              key={chip.table}
+                              style={{
+                                padding: '0.05rem 0.45rem',
+                                fontSize: '0.6875rem',
+                                fontWeight: chip.money ? 600 : 400,
+                                color: chip.money ? 'var(--text-amber-800)' : 'var(--text-muted)',
+                                background: chip.money ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                                border: `1px solid ${chip.money ? '#f59e0b' : 'var(--border)'}`,
+                                borderRadius: 999,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {chip.count != null ? `${chip.count} ` : ''}
+                              {chip.label}
+                            </span>
+                          ))}
                         </div>
+                        {previewLines.length > 0 && (
+                          <ul
+                            style={{
+                              listStyle: 'none',
+                              margin: '0.3rem 0 0',
+                              padding: 0,
+                              fontSize: '0.75rem',
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            {previewLines.map((line, i) => (
+                              <li key={`${i}-${line}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {line}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                         <button
                           type="button"
                           onClick={() => void toggleContents(b.group_key)}
