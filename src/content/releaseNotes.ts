@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1462',
+    date: '2026-08-08',
+    title: 'Dashboard: the tally button says what it is',
+    kind: 'fix',
+    highlights: [
+      'While clocked in, the tall wrench button now reads "My Spend" under its icon — matching the Job Report button beside it.',
+    ],
+  },
+  {
     version: 'v2.1461',
     date: '2026-08-08',
     title: 'Dashboard: one tidy row of action buttons',
