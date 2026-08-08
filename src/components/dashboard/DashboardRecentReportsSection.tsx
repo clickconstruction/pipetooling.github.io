@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import type { UserRole } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
 import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import {
   formatReportRowTime,
@@ -356,9 +355,6 @@ export function DashboardRecentReportsSection({
                                   ) : (
                                     <span style={{ fontWeight: isRead ? 400 : 600 }}>{r.job_display_name || 'Unknown job'}</span>
                                   )}
-                                  <span style={{ marginLeft: '0.45rem', fontSize: '0.6875rem', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap' }}>
-                                    {displayReportTemplateName(r.template_name, role)}
-                                  </span>
                                 </span>
                                 <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t.clock}</span>
                               </div>

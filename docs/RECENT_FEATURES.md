@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1470)
+last_updated: 2026-08-08 (v2.1471)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1471)
+
+### Recent Reports rows drop the template chip (2026-08-08)
+User-requested trim: report type doesn't matter to the reader, so the "Status Report" chip is gone from [`DashboardRecentReportsSection`](../src/components/dashboard/DashboardRecentReportsSection.tsx) rows — each row is now just job name · time · author, and long job names stop wrapping. `displayReportTemplateName` import dropped with it.
 
 ## Latest Updates (v2.1470)
 
