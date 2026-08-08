@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1467)
+last_updated: 2026-08-08 (v2.1468)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1468)
+
+### Recent Reports backend — done_at on report_reads (2026-08-08)
+Backend for the Dashboard Recent Reports inbox redesign (user-requested; mock approved in session; UI in the follow-up PR). `report_reads` has tracked per-user READ state since the baseline — migration `20260808163615` adds nullable `done_at` + the missing own-rows UPDATE policy ([`MIGRATIONS.md`](./MIGRATIONS.md)), so "Done" durably clears a report from the dashboard on every device, replacing the section's localStorage hidden/hide-on-refresh machinery. Deploy after merge: `supabase db push`, then `gen-types:linked` for the client PR.
 
 ## Latest Updates (v2.1467)
 

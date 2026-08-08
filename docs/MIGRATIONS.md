@@ -105,6 +105,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 8, 2026
 
+**`20260808163615_report_reads.sql`** _(apply via `supabase db push` after merge; the Dashboard inbox UI ships in the follow-up client PR)_
+- **Purpose**: Recent Reports inbox redesign (v2.1468) — adds nullable `done_at` to the **existing** `report_reads` table (per-user read tracking since the baseline). "Done" durably clears a report from the dashboard section cross-device, replacing the section's localStorage hidden/hide-on-refresh machinery.
+- **Security**: adds the missing own-rows UPDATE policy (the old flow only inserted/deleted); existing select/insert/delete policies untouched. Column-add only — no CREATE TABLE, so no read-only-block calls needed.
+
+
 **`20260808153737_job_account_manager.sql`** _(apply via `supabase db push` after merge; the UI ships in the follow-up client PR — until then the columns sit unused)_
 - **Purpose**: Account Man on jobs (v2.1465) — `jobs_ledger.account_manager_user_id` (FK users, `ON DELETE SET NULL`) + `account_manager_relationship` (`primary` | `preferred` | `only`, CHECK-constrained). Trigger `clear_job_account_manager_on_team_removal` on `jobs_ledger_team_members` clears the Account Man when that user leaves the team, keeping the "must be a team member" invariant true no matter which surface edits membership.
 - **Security**: rides existing `jobs_ledger` RLS; trigger SECURITY DEFINER like its siblings. Additive columns only — old clients unaffected.

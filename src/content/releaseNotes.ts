@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1468',
+    date: '2026-08-08',
+    title: 'infra: groundwork for the Recent Reports redesign',
+    kind: 'infra',
+    highlights: [
+      'Behind-the-scenes plumbing so report read/done state follows you across devices. Nothing changes in the app yet — the new Recent Reports section lands in the next update.',
+    ],
+  },
+  {
     version: 'v2.1467',
     date: '2026-08-08',
     title: 'Dashboard: clock section headers stay readable',
