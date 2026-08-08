@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1469',
+    date: '2026-08-08',
+    title: 'Recent Reports is now a proper inbox',
+    kind: 'feature',
+    highlights: [
+      'New reports show a blue dot and a "N new" badge; opened reports stay in the list, dimmed — nothing disappears until you tap ✓ Done.',
+      'Done clears a report from the dashboard on every device (it stays in View all). Read state now follows you between phone and desktop.',
+      'The Unread/All tabs and the "hide on refresh" checkbox are gone — one Mark all opened button and a Show opened link cover it.',
+    ],
+  },
+  {
     version: 'v2.1468',
     date: '2026-08-08',
     title: 'infra: groundwork for the Recent Reports redesign',
