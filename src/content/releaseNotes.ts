@@ -11,6 +11,13 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1471',
+    date: '2026-08-08',
+    title: 'Recent Reports: leaner rows',
+    kind: 'fix',
+    highlights: ['Report rows no longer show the report type — just the job, time, and who filed it.'],
+  },
+  {
     version: 'v2.1470',
     date: '2026-08-08',
     title: 'Billing Pipeline: tap ⓘ to see how it works',
