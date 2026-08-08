@@ -20,6 +20,8 @@ export type JobWithDetails = JobsLedgerRow & {
   payments: JobsLedgerPayment[]
   invoices: JobsLedgerInvoice[]
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+  /** Embedded Account Man (jobs_ledger.account_manager_user_id → users, v2.1466). */
+  account_manager?: { id: string; name: string | null } | null
   report_count?: number
   project?: { id: string; name: string } | null
   /** Embedded bid when `bid_id` is set (`jobs_ledger.bid_id` → `bids`). */

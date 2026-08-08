@@ -35,6 +35,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { JobCalendarModal } from './JobCalendarModal'
 import { ShareJobButton } from './ShareJobButton'
+import { renderAccountManChip } from './jobsStagesRowShared'
+import { buildAccountManDisplay } from '../../lib/jobs/accountMan'
 import type { JobShareFields } from '../../lib/jobShare'
 import { ScheduleJobModal } from './ScheduleJobModal'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
@@ -513,7 +515,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, gc_customer:gc_customer_id(name), development:development_id(name), service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, account_manager_user_id, account_manager_relationship, account_manager:account_manager_user_id(name), gc_customer:gc_customer_id(name), development:development_id(name), service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -539,13 +541,17 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       development?: { name: string | null } | { name: string | null }[] | null
       service_types?: { name: string } | null
     }
-    const { service_types: st, gc_customer: gcEmbed, development: devEmbed, ...rest } = r
+    const { service_types: st, gc_customer: gcEmbed, development: devEmbed, account_manager: amEmbed, ...rest } = r as typeof r & {
+      account_manager?: { name: string | null } | { name: string | null }[] | null
+    }
     const gcOne = Array.isArray(gcEmbed) ? gcEmbed[0] ?? null : gcEmbed ?? null
     const devOne = Array.isArray(devEmbed) ? devEmbed[0] ?? null : devEmbed ?? null
+    const amOne = Array.isArray(amEmbed) ? amEmbed[0] ?? null : amEmbed ?? null
     return {
       ...rest,
       gc_customer_name: gcOne?.name ?? null,
       development_name: devOne?.name ?? null,
+      account_manager_name: amOne?.name ?? null,
       service_type_name: st?.name ?? null,
     } as LimitedJobDetailSnapshot
   } catch {
@@ -687,6 +693,17 @@ export default function DetailJobModal({
     if (fromJob) return fromJob
     return (prefillAddress ?? '').trim()
   }, [fullJob, limitedJob, prefillAddress])
+
+  const accountManDisplay = useMemo(() => {
+    const data = fullJob ?? limitedJob
+    if (!data) return null
+    const name = fullJob?.account_manager?.name ?? limitedJob?.account_manager_name ?? null
+    return buildAccountManDisplay({
+      account_manager_user_id: data.account_manager_user_id ?? null,
+      account_manager_relationship: data.account_manager_relationship ?? null,
+      account_manager: { name },
+    })
+  }, [fullJob, limitedJob])
 
   const shareFields = useMemo<JobShareFields>(() => {
     const data = fullJob ?? limitedJob
@@ -1095,6 +1112,9 @@ export default function DetailJobModal({
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 560,
+          ...(accountManDisplay?.variant === 'only'
+            ? { borderTop: '3px solid #dc2626', borderBottom: '3px solid #dc2626' }
+            : {}),
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
@@ -1285,6 +1305,9 @@ export default function DetailJobModal({
             </button>
           </div>
         </div>
+        {accountManDisplay ? (
+          <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem' }}>{renderAccountManChip(accountManDisplay)}</div>
+        ) : null}
 
         {showTopBand ? (
           <div

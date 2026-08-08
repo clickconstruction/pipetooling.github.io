@@ -21,6 +21,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRow } from '../../pages/Jobs'
 import {
+  accountManOnlyStripeStyle,
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
   renderStagesExpandedRowPanel,
@@ -411,7 +412,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     </>
                   )}
                 </td>
-                <td style={{ padding: '0.75rem' }}>
+                <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
                   {renderStagesOpenDetailJobName(j)}
                   {renderJobAddressWithMap(j.job_address)}
                   {renderJobCustomerLine(j)}

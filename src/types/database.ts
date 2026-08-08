@@ -4800,6 +4800,8 @@ export type Database = {
       }
       jobs_ledger: {
         Row: {
+          account_manager_relationship: string | null
+          account_manager_user_id: string | null
           bid_id: string | null
           click_number: string
           collections_at: string | null
@@ -4834,6 +4836,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_manager_relationship?: string | null
+          account_manager_user_id?: string | null
           bid_id?: string | null
           click_number?: string
           collections_at?: string | null
@@ -4868,6 +4872,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_manager_relationship?: string | null
+          account_manager_user_id?: string | null
           bid_id?: string | null
           click_number?: string
           collections_at?: string | null
@@ -4902,6 +4908,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_account_manager_user_id_fkey"
+            columns: ["account_manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_bid_id_fkey"
             columns: ["bid_id"]

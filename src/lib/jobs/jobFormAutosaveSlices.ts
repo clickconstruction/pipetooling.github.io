@@ -64,6 +64,10 @@ export interface JobIdentityFormFields {
   projectId: string
   bidId: string
   serviceTypeId: string
+  /** Account Man (v2.1466) — a users row id; must be one of the job's team members. */
+  accountManagerUserId: string | null
+  /** primary | preferred | only; only meaningful while accountManagerUserId is set. */
+  accountManagerRelationship: string | null
 }
 
 export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
@@ -84,6 +88,8 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     pr: fields.projectId,
     bi: fields.bidId,
     st: fields.serviceTypeId.trim(),
+    am: fields.accountManagerUserId,
+    ar: fields.accountManagerUserId ? fields.accountManagerRelationship : null,
   })
 }
 
@@ -197,6 +203,9 @@ export function buildEditJobIdentityUpdatePayload(params: {
     bid_id: fields.bidId || null,
     service_type_id: fields.serviceTypeId.trim(),
     master_user_id: masterUserId,
+    account_manager_user_id: fields.accountManagerUserId || null,
+    // Relationship defaults to primary while a manager is set; both clear together.
+    account_manager_relationship: fields.accountManagerUserId ? fields.accountManagerRelationship || 'primary' : null,
   }
 }
 

@@ -41,6 +41,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import {
+  accountManOnlyStripeStyle,
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
   renderStagesJobColumnEstimateFooter,
@@ -754,6 +755,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
             data-stages-job-id={j.id}
             style={{
               ...cardStyle,
+              ...accountManOnlyStripeStyle(j),
               ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
               ...(stagesJobFlashId === j.id
                 ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2 }
@@ -967,6 +969,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
             data-stages-invoice-id={inv?.id}
             style={{
               ...cardStyle,
+              ...accountManOnlyStripeStyle(j),
               ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
               ...(flash ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2 } : {}),
             }}

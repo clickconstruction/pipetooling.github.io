@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-08-03
+last_updated: 2026-08-08
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -128,6 +128,11 @@ Bookkeeper/financial-controller role: acts like an assistant everywhere plus dev
 ---
 
 ## Project Management
+
+### Account Man (job)
+The team member who owns a job's customer relationship (v2.1466), with a communication level: **Primary communicator** (default point of contact, quiet display), **Preferred communicator** (amber chip), or **Only communicator** (white-on-red chip plus thin red stripes on the job's Pipeline cell/card and Job Detail window — nobody but the Account Man talks to this customer). Set on Edit Job (picker restricted to the job's Team); removing them from the team clears the assignment (DB trigger). Distinct from the Bids-side "Estimator / Account Man" placement.
+
+**Database**: `jobs_ledger.account_manager_user_id`, `jobs_ledger.account_manager_relationship`
 
 ### Customer
 A client or General Contractor (GC) who provides work. Customers have an owner (`master_user_id`) and can have multiple projects. In the Bids context, customers are also called "GC/Builder".

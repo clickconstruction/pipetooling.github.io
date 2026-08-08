@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1465)
+last_updated: 2026-08-08 (v2.1466)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1466)
+
+### Account Man UI — Edit Job picker + relationship displays (2026-08-08)
+Client half of Account Man (backend v2.1465). **Edit Job** gains an Account Man section between Job Address and Team ([`JobFormAccountManSection.tsx`](../src/components/jobs/JobFormAccountManSection.tsx)): Who (team members only; empty-team hint) + Relationship (Primary/Preferred/Only communicator, defaulting to primary on pick); wired through the identity autosave slice ([`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts)), undo snapshots, and the create payload, with a client-side mirror of the team-removal trigger. **Displays**: [`renderAccountManChip`](../src/components/jobs/jobsStagesRowShared.tsx) renders in the Pipeline job column (tables + mobile cards via the shared customer line) and under the DetailJobModal title — quiet icon+name (primary), amber outline chip (preferred), white-on-red chip (only). `accountManOnlyStripeStyle` puts 3px red stripes on the job cell/card and the Detail modal panel for 'only'. Kernel [`accountMan.ts`](../src/lib/jobs/accountMan.ts) (tested); `database.ts` regenerated; embeds added to both jobs selects. Help guide `set-an-account-man-on-a-job`; GLOSSARY entry.
 
 ## Latest Updates (v2.1465)
 

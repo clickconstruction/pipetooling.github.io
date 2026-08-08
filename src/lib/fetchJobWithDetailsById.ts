@@ -31,6 +31,7 @@ function mapRowToJobWithDetails(
       customers?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
     } | null
     gc_customer?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
+    account_manager?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
     development?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
     service_types?: { name: string } | null
   },
@@ -46,6 +47,7 @@ function mapRowToJobWithDetails(
     bids: bidEmbed,
     gc_customer: gcEmbed,
     development: devEmbed,
+    account_manager: amEmbed,
     service_types: serviceTypeEmbed,
     ...job
   } = row
@@ -64,6 +66,7 @@ function mapRowToJobWithDetails(
     linkedBid: bidEmbed ? { ...bidEmbed, customers: one(bidEmbed.customers) } : null,
     gcCustomer: one(gcEmbed),
     development: one(devEmbed),
+    account_manager: one(amEmbed),
     last_schedule_work_date: null,
   }
 }

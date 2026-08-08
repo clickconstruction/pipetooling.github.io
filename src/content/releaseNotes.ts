@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1466',
+    date: '2026-08-08',
+    title: 'Account Man on jobs',
+    kind: 'feature',
+    highlights: [
+      'Edit Job gains an Account Man section: pick a team member and their communication level — Primary, Preferred, or Only communicator.',
+      'The Account Man shows on Pipeline rows and Job Detail. "Only communicator" turns red with stripes across the job so everyone knows just the Account Man talks to that customer.',
+      'The Account Man must be on the job’s team — removing them from the team clears the assignment automatically.',
+    ],
+  },
+  {
     version: 'v2.1465',
     date: '2026-08-08',
     title: 'infra: groundwork for Account Man on jobs',
