@@ -353,6 +353,15 @@ const stripOrangeHeaderTitleButton: CSSProperties = {
   padding: 0,
   margin: 0,
   cursor: 'pointer',
+  // Section titles wrap as whole units in their flex cluster, never mid-word
+  // ("Job wor / tod:" at mid viewports, v2.1467).
+  whiteSpace: 'nowrap',
+}
+
+/** Merged-header plain section title — same nowrap rule as the title buttons (v2.1467). */
+const stripOrangeHeaderTitleNoWrap: CSSProperties = {
+  ...stripOrangeHeaderTypography,
+  whiteSpace: 'nowrap',
 }
 
 /** Hours total in Currently In “Today” cell and Clocked “Today | First clock-in”. */
@@ -1242,6 +1251,12 @@ export function DashboardTeamActiveClockStrip({
                 : 'clamp(6.5rem, 18vw, 11rem)',
             }
           : {}
+  // The floating controls land on the FIRST orange header — Currently In when
+  // it renders. The Clocked-in-today / merged header below then keeps its full
+  // width: paying the reserve there crushed the collapsed titles at mid
+  // viewports (v2.1467).
+  const clockedInHeaderReserve: CSSProperties =
+    chromeOverlaysHeaderBar && !showCurrentlyInTable ? stripTopRightHeaderReserve : {}
   const mergeClockedInHeaderIntoJobs =
     clockedInTodayExpandMode === 'collapsed' &&
     clockedInTodayRows.length > 0 &&
@@ -1852,7 +1867,7 @@ export function DashboardTeamActiveClockStrip({
                         scope="col"
                         style={{
                           ...stripSectionTh,
-                          ...stripTopRightHeaderReserve,
+                          ...clockedInHeaderReserve,
                         }}
                       >
                         {clockedInTodaySectionOpen ? 'Today | First clock-in' : ''}
@@ -1963,7 +1978,7 @@ export function DashboardTeamActiveClockStrip({
                             ...clockedInTodayRowTd,
                             textAlign: 'left',
                             whiteSpace: 'nowrap' as const,
-                            ...stripTopRightHeaderReserve,
+                            ...clockedInHeaderReserve,
                           }}
                         >
                           {onOpenStripMyTimeEditor ? (
@@ -2405,7 +2420,7 @@ export function DashboardTeamActiveClockStrip({
                       style={{
                         ...stripSectionTh,
                         ...(mergeClockedInHeaderIntoJobs ? { minWidth: 0 } : {}),
-                        ...stripTopRightHeaderReserve,
+                        ...clockedInHeaderReserve,
                       }}
                     >
                       {mergeClockedInHeaderIntoJobs ? (
@@ -2415,7 +2430,7 @@ export function DashboardTeamActiveClockStrip({
                               <span style={srOnly}>{'Expand session rows. '}</span>
                               {citExpandModeTitleButton}
                               <span style={srOnly}>{' '}</span>
-                              <span style={stripOrangeHeaderTypography}>
+                              <span style={stripOrangeHeaderTitleNoWrap}>
                                 Jobs worked today ({jobsWorkedTodayRows.length})
                               </span>
                             </>,
@@ -2424,7 +2439,7 @@ export function DashboardTeamActiveClockStrip({
                           wrapMergedJobsHeaderTitles(
                             <>
                               <span style={srOnly}>{'Expand session rows. '}</span>
-                              <span style={stripOrangeHeaderTypography}>
+                              <span style={stripOrangeHeaderTitleNoWrap}>
                                 Clocked in today ({clockedInTodayRows.length})
                               </span>
                               {jobsExpandModeTitleButton}
@@ -2492,7 +2507,7 @@ export function DashboardTeamActiveClockStrip({
                             <td
                             style={{
                               ...clockedInTodayRowTd,
-                              ...stripTopRightHeaderReserve,
+                              ...clockedInHeaderReserve,
                             }}
                           >
                             <div

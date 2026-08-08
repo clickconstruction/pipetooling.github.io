@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1466)
+last_updated: 2026-08-08 (v2.1467)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1467)
+
+### Clock strip: collapsed merged header no longer crushed at mid viewports (2026-08-08)
+User-reported: with both sections collapsed, the "Clocked in today / Jobs worked today" merged header wrapped mid-word ("Job wor / tod:") at viewports just above the 640px phone breakpoint. Two causes in [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx): **(1)** the header paid `stripTopRightHeaderReserve` (up to 44vw right padding for the floating Mail/scope controls) even when those controls actually land on the Currently In header above — new `clockedInHeaderReserve` applies the reserve only when the clocked-in header is the actual host (its body cells follow for alignment); **(2)** section titles could break mid-word — title buttons and the merged header's plain titles are now `white-space: nowrap`, wrapping as whole units in their flex cluster (the ≤640px nowrap+scroll path is unchanged).
 
 ## Latest Updates (v2.1466)
 
