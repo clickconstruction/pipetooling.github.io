@@ -12,6 +12,10 @@ export type DeletedRecordBundle = {
   deleted_by: string | null
   deleted_by_name: string | null
   deleted_at: string
+  /** { table_name: rows } — absent until the digest migration is applied; fall back to `tables`. */
+  table_counts?: Record<string, number> | null
+  /** Up to 5 trimmed rows (money tables first, head row excluded); absent pre-migration. */
+  preview_items?: { table_name: string; fields: Record<string, unknown> }[] | null
 }
 
 /** Envelope returned by restore_deleted_records (dry-run and real runs share the shape). */

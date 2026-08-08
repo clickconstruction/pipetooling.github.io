@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 8, 2026
 
+**`20260808173225_recently_deleted_contents_digest.sql`** _(apply via `supabase db push` after merge — the client in the same PR tolerates the old shape until then, so client-first deploy order is safe)_
+- **Purpose**: Recently deleted contents digest (v2.1472) — `list_deleted_records()` gains `table_counts` jsonb (`{table: rows}`) and `preview_items` jsonb (≤5 trimmed rows per bundle, money tables first, head row excluded; only the summary-field whitelist mirrored from `src/lib/deletedRecordContents.ts`, never full rows), so the Settings cards can show what a deletion contained without a per-bundle fetch.
+- **Mechanics**: RETURNS TABLE gains columns, which `CREATE OR REPLACE` cannot do → `DROP FUNCTION` + recreate in one transaction, `GRANT EXECUTE … TO authenticated` re-issued. Old clients ignore the extra columns. Function-only — no table DDL, so no read-only-block calls needed.
+
 **`20260808163615_report_reads.sql`** _(apply via `supabase db push` after merge; the Dashboard inbox UI ships in the follow-up client PR)_
 - **Purpose**: Recent Reports inbox redesign (v2.1468) — adds nullable `done_at` to the **existing** `report_reads` table (per-user read tracking since the baseline). "Done" durably clears a report from the dashboard section cross-device, replacing the section's localStorage hidden/hide-on-refresh machinery.
 - **Security**: adds the missing own-rows UPDATE policy (the old flow only inserted/deleted); existing select/insert/delete policies untouched. Column-add only — no CREATE TABLE, so no read-only-block calls needed.

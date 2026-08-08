@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1472',
+    date: '2026-08-08',
+    title: 'Recently deleted shows what died at a glance',
+    kind: 'feature',
+    highlights: [
+      'Every deletion now carries count chips — invoices and payments highlighted — plus the first few lines of what was inside, with no clicking.',
+      'While a bulk-deletion alert is active, the deletions from that burst jump to the top with an amber stripe.',
+    ],
+  },
+  {
     version: 'v2.1471',
     date: '2026-08-08',
     title: 'Recent Reports: leaner rows',

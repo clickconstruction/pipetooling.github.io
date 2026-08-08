@@ -12,7 +12,7 @@ This is dev-only, and it lives in **Settings → Data & migration → Recently d
 ## Put a deleted job or bid back
 
 1. Open **Settings → Data & migration** and expand **Recently deleted (dev)**.
-2. Find the entry. Each one shows what it was (e.g. `J-1042 · Smith Remodel`), how many rows go with it, which tables they came from, and who deleted it when.
+2. Find the entry. Each one shows what it was (e.g. `J-1042 · Smith Remodel`), who deleted it when, count chips for everything that went with it — money records like {{chip:yellow|3 invoices}} stand out from quieter ones like {{chip:gray|12 line items}} — and the first few lines of what was inside. **What's inside?** still expands the complete contents, with the full raw record one more click down.
 3. Click {{button:secondary|Preview restore}}. Nothing is changed yet — this reports exactly what would come back.
 4. Read the preview, then click {{button:primary|Restore}}.
 
@@ -24,9 +24,9 @@ The preview actually performs the restore and then rolls it back, so the counts 
 
 **A normal preview** lists each table and how many rows would return. Restore is enabled.
 
-**A warning** {{chip:warning|⚠️}} means the row comes back, but with a small gap. The usual case is that something it pointed at was itself deleted later — for example the job's customer. The job returns with the customer field cleared, and you re-link it by hand. Everything else is intact.
+**A warning** {{chip:yellow|⚠️}} means the row comes back, but with a small gap. The usual case is that something it pointed at was itself deleted later — for example the job's customer. The job returns with the customer field cleared, and you re-link it by hand. Everything else is intact.
 
-**A blocker** {{chip:danger|Cannot restore}} means it can't come back yet, and **nothing was changed**. The most common reason is that the job's master account was deleted — a job must belong to a master, so there is nothing valid to attach it to. Restore the account first (Settings → People & accounts → Archived users), then try again.
+**A blocker** {{chip:red|Cannot restore}} means it can't come back yet, and **nothing was changed**. The most common reason is that the job's master account was deleted — a job must belong to a master, so there is nothing valid to attach it to. Restore the account first (Settings → People & accounts → Archived users), then try again.
 
 ## Things worth knowing
 

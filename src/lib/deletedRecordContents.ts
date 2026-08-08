@@ -110,6 +110,89 @@ export function summarizeDeletedRow(rowData: Record<string, unknown>): string {
   return id ? `id ${id.slice(0, 8)}` : 'row'
 }
 
+/** Archive tables whose loss is the first thing a bulk-delete reviewer checks. */
+const MONEY_ARCHIVE_TABLES = new Set([
+  'invoices',
+  'payments_made',
+  'pay_stubs',
+  'supply_house_invoices',
+  'purchase_orders',
+])
+
+export type BundleDigestChip = {
+  table: string
+  label: string
+  /** Row count when the digest RPC fields are present; null pre-migration (label-only chip). */
+  count: number | null
+  money: boolean
+}
+
+/**
+ * Per-table chips for a bundle card, money tables first, then by count desc.
+ * `tableCounts` comes from the digest migration; when absent (old RPC shape)
+ * every table still gets a label-only chip, so the card never regresses.
+ */
+export function buildBundleDigestChips(
+  tables: string[],
+  tableCounts: Record<string, number> | null | undefined,
+): BundleDigestChip[] {
+  const chips = tables.map((table) => {
+    const n = tableCounts?.[table]
+    return {
+      table,
+      label: humanizeArchiveTable(table),
+      count: typeof n === 'number' && Number.isFinite(n) ? n : null,
+      money: MONEY_ARCHIVE_TABLES.has(table),
+    }
+  })
+  return chips.sort(
+    (a, b) => Number(b.money) - Number(a.money) || (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label),
+  )
+}
+
+export type DeletedBundlePreviewItem = { table_name: string; fields: Record<string, unknown> }
+
+function isPreviewItem(v: unknown): v is DeletedBundlePreviewItem {
+  if (typeof v !== 'object' || v === null) return false
+  const item = v as Record<string, unknown>
+  return typeof item.table_name === 'string' && typeof item.fields === 'object' && item.fields !== null
+}
+
+/**
+ * "invoices: #1042 · $4,520.00" lines for the always-visible card preview.
+ * Tolerates any malformed/absent RPC payload (old function shape) by
+ * returning [] — the card simply shows no preview lines then.
+ */
+export function summarizePreviewItems(previewItems: unknown, limit = 3): string[] {
+  if (!Array.isArray(previewItems)) return []
+  return previewItems
+    .filter(isPreviewItem)
+    .slice(0, Math.max(0, limit))
+    .map((item) => `${humanizeArchiveTable(item.table_name)}: ${summarizeDeletedRow(item.fields)}`)
+}
+
+export type AlertWindow = { start: string; end: string }
+
+/** True when the bundle's deleted_at falls inside any active alert burst window (inclusive). */
+export function bundleInAlertWindows(deletedAt: string, windows: AlertWindow[]): boolean {
+  const t = Date.parse(deletedAt)
+  if (Number.isNaN(t)) return false
+  return windows.some((w) => {
+    const start = Date.parse(w.start)
+    const end = Date.parse(w.end)
+    return !Number.isNaN(start) && !Number.isNaN(end) && t >= start && t <= end
+  })
+}
+
+/** Stable partition: alert-window bundles first, original order preserved within each half. */
+export function sortBundlesAlertFirst<T extends { deleted_at: string }>(bundles: T[], windows: AlertWindow[]): T[] {
+  if (windows.length === 0) return bundles
+  const flagged: T[] = []
+  const rest: T[] = []
+  for (const b of bundles) (bundleInAlertWindows(b.deleted_at, windows) ? flagged : rest).push(b)
+  return [...flagged, ...rest]
+}
+
 export type DeletedBundleFilters = {
   /** Exact kind match; '' = all. */
   kind: string

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1471)
+last_updated: 2026-08-08 (v2.1472)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1472)
+
+### Recently deleted — contents digest upfront + alert-window sorting (2026-08-08)
+User-requested: after a **Bulk deletion detected** banner, the Recently deleted cards all read "N rows across M tables" and answering *what actually died?* meant clicking **What's inside?** per bundle. Migration `20260808173225` extends `list_deleted_records()` with `table_counts` jsonb + `preview_items` jsonb — up to 5 trimmed rows per bundle (summary-field whitelist only, money tables first, head row excluded), DROP + recreate since RETURNS TABLE gains columns ([`MIGRATIONS.md`](./MIGRATIONS.md)). Cards now always show per-table count chips (money tables amber-emphasized: invoices, payments, pay stubs, supply house invoices, POs) plus up to 3 "table: summary" preview lines through the existing summarize kernel; while a bulk-delete alert is active, bundles inside a burst window sort first with an amber stripe and an "in alert window" chip. New kernels `buildBundleDigestChips` / `summarizePreviewItems` / `bundleInAlertWindows` / `sortBundlesAlertFirst` in [`deletedRecordContents.ts`](../src/lib/deletedRecordContents.ts) (tested); UI in [`DeletedRecordsSection.tsx`](../src/components/settings/DeletedRecordsSection.tsx). The client tolerates the old RPC shape (chips degrade to label-only, no preview lines), so deploy stays client-first → `supabase db push`. Help guides `recover-a-deleted-job` + `bulk-deletion-alert` updated.
 
 ## Latest Updates (v2.1471)
 
