@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1484)
+last_updated: 2026-08-09 (v2.1485)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1485)
+
+### Sign-in — no more flash of the wrong dashboard (2026-08-09)
+User-reported: right after sign-in (and on cold loads) the dashboard briefly rendered with the wrong pinned tabs, then reflowed. Root cause: [`useAuth`](../src/hooks/useAuth.ts) set `user` and dropped `loading` as soon as the session resolved, while `role` arrived from a separate async `users` query — in that window the app rendered signed-in with `role=null`, which `filterPinnedByRole` maps to the **primary** pin set and which hides every role-gated section, so the real (dev/master) dashboard popped in a round-trip later. Fix: a `roleResolved` gate — the exported `loading` now stays true until the signed-in user's role row settles, with two guards: a 4s watchdog (mirroring the v2.1051 `getSession` watchdog) so a hung role query can't hold the app on "Loading…", and a per-user ref so token-refresh auth events for the same user refetch in the background without re-raising the gate mid-session. Every `loading` consumer (ProtectedRoute, Jobs, Map, ScheduleDispatch, …) inherits the fix. Regression test `useAuth.render.test.tsx` pins the ordering: session resolved → still loading → role lands → gate drops → same-user refresh doesn't flash. Client-only.
 
 ## Latest Updates (v2.1484)
 

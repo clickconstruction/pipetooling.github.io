@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1485',
+    date: '2026-08-09',
+    title: 'Sign-in: no more dashboard flicker',
+    kind: 'fix',
+    highlights: [
+      'Right after signing in, the app briefly showed the wrong set of pinned tabs and a half-empty dashboard, then jumped to the real one. It now waits the extra beat for your role and renders once, correctly.',
+    ],
+  },
+  {
     version: 'v2.1484',
     date: '2026-08-09',
     title: 'Money cards: better on desktop too',
