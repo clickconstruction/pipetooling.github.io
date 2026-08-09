@@ -53,6 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [teamProspectsAccess, setTeamProspectsAccess] = useState(false)
   const [readOnly, setReadOnly] = useState(false)
   const [loading, setLoading] = useState(true)
+  /**
+   * False while a signed-in user's role row is still in flight (v2.1485). The
+   * exported `loading` stays true until the role settles, so the app never
+   * renders a signed-in frame with role=null — that window made the dashboard
+   * flash the primary-role pin set and a section-less layout right after
+   * sign-in, then reflow when the real role landed a round-trip later.
+   */
+  const [roleResolved, setRoleResolved] = useState(false)
+  /** User id whose role we already resolved — token refreshes for the same user must not re-raise the gate. */
+  const roleResolvedForUserIdRef = useRef<string | null>(null)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
   const warningShownRef = useRef(false)
   const lastActivityRef = useRef(Date.now())
@@ -118,12 +128,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session?.user ?? null)
     setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
     if (session?.user?.id) {
+      const userId = session.user.id
+      // Raise the role gate only for a user we haven't resolved yet — auth
+      // events for the same user (token refresh, tab focus) refetch in the
+      // background without flashing the loading screen mid-session.
+      if (roleResolvedForUserIdRef.current !== userId) {
+        setRoleResolved(false)
+      }
+      const settleRole = () => {
+        roleResolvedForUserIdRef.current = userId
+        setRoleResolved(true)
+      }
+      // Watchdog (mirrors the v2.1051 getSession watchdog): a hung role query
+      // must not hold the whole app on "Loading…" — give up gating after 4s
+      // and let the null-role experience render until the query resolves.
+      const roleGateTimer = setTimeout(settleRole, 4000)
       supabase
         .from('users')
         .select('name, role, estimator_prospects_access, team_prospects_access, read_only')
-        .eq('id', session.user.id)
+        .eq('id', userId)
         .single()
         .then(({ data, error: rowError }) => {
+          clearTimeout(roleGateTimer)
+          settleRole()
           if (rowError || !data) {
             setRole(null)
             setEstimatorProspectsAccess(false)
@@ -147,6 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEstimatorProspectsAccess(false)
       setTeamProspectsAccess(false)
       setReadOnly(false)
+      // Signed out: nothing to resolve — never hold the gate.
+      roleResolvedForUserIdRef.current = null
+      setRoleResolved(true)
     }
   }
 
@@ -260,7 +290,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     estimatorProspectsAccess,
     teamProspectsAccess,
     readOnly,
-    loading,
+    // "Auth not ready" = session pending, OR a signed-in user whose role row
+    // is still in flight (v2.1485) — consumers must never see user && role=null
+    // during the initial round-trip.
+    loading: loading || (user != null && !roleResolved),
     checkSession,
     sessionExpiresAt,
   }
