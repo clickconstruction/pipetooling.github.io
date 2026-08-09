@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1490)
+last_updated: 2026-08-09 (v2.1491)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1491)
+
+### Help — Schedule Dispatch add-a-block screen recording (2026-08-09)
+Second capture from [`HELP_MEDIA_PLAN.md`](HELP_MEDIA_PLAN.md): `public/help/schedule-dispatch.gif` (~1.4 MB, 7 frames, desktop width) shows the People-grid cell **+** → Add job to schedule picker → Add schedule block editor with the time slider — ending before Save (verified in code: only Save writes; the take was cancelled after export). Wired into [`schedule-dispatch.md`](../src/content/help/schedule-dispatch.md) under "Assigning someone to a job". Plan updated: this entry re-scoped from the original drag/move script (those need placed blocks, i.e. real writes — sandbox required), and the three remaining shortlist entries now carry explicit **write warnings** (Bill Customer's open-time draft-invoice insert; Job Mode's session/report writes; Takeoff autosave) so future captures don't mutate live data. Content-only.
 
 ## Latest Updates (v2.1490)
 
