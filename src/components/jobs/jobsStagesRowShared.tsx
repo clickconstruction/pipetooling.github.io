@@ -637,9 +637,13 @@ export function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobI
 
 /** The "N Report(s)" pill — normally the Activity cell's footer; billed merged
  * rows render it in the Job column instead (v2.1155), where the redundant
- * "Billed line: $X open" text used to sit. */
+ * "Billed line: $X open" text used to sit. At zero reports it demotes to
+ * quiet borderless "Reports" text (v2.1475): a bordered pill in an otherwise
+ * empty Activity cell was the loudest element on the row while advertising
+ * nothing, and the contrast is what lets rows with real field activity pop. */
 export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const cellReportCount = job.report_count ?? 0
+  const hasReports = cellReportCount > 0
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
       <button
@@ -650,14 +654,14 @@ export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: 
           padding: '0.2rem 0.5rem',
           fontSize: '0.75rem',
           background: 'none',
-          color: 'var(--text-link)',
-          border: '1px solid #2563eb',
+          color: hasReports ? 'var(--text-link)' : 'var(--text-faint)',
+          border: hasReports ? '1px solid #2563eb' : '1px solid transparent',
           borderRadius: 4,
           cursor: 'pointer',
           whiteSpace: 'nowrap',
         }}
       >
-        {cellReportCount} Report{cellReportCount !== 1 ? 's' : ''}
+        {hasReports ? `${cellReportCount} Report${cellReportCount !== 1 ? 's' : ''}` : 'Reports'}
       </button>
     </div>
   )
