@@ -108,6 +108,8 @@ The Edit Job modal's **Break off invoice** slider is the other way to do the sam
 
 Press {{button:blue|Bill Customer}}. The modal shows the job and the RTB amount, with three method tabs:
 
+{{gif:ready-to-bill-pipeline.gif|Bill Customer from the Ready to Bill queue: the three method tabs and the physical-invoice preview}}
+
 :::example Bill Customer — method tabs
 {{button:blue|Stripe bill}} &nbsp; {{button:outline|HouseCall Pro}} &nbsp; {{button:outline|Physical invoice}}
 :::
