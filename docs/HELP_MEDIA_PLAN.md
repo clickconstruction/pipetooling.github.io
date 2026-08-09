@@ -53,6 +53,6 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Schedule Dispatch add-a-block | ✅ 2026-08-09 | ✅ |
 | Dispatch Mode assign work | ✅ 2026-08-09 | ✅ |
 | Job Mode clock + report | ☐ | ☐ |
-| Takeoff assembly | ☐ | ☐ |
+| Takeoff assembly | ✅ 2026-08-09 | ✅ |
 
 (The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)
