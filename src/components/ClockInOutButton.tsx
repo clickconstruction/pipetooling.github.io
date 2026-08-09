@@ -1701,7 +1701,10 @@ export default function ClockInOutButton({
           <div
             id="clock-in-modal"
             style={{
-              background: '#fefcfb',
+              // var(--surface), not the old hardcoded #fefcfb: in dark mode the
+              // headings inherit near-white text, which vanished on a fixed
+              // light panel (v2.1482, user-reported on mobile).
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 12,
               maxWidth: 480,

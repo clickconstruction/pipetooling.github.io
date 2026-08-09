@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1482',
+    date: '2026-08-09',
+    title: 'Clock In: readable in dark mode',
+    kind: 'fix',
+    highlights: [
+      'The "Ready to clock in?" popup no longer shows white text on a white card in dark mode — it now follows your theme.',
+    ],
+  },
+  {
     version: 'v2.1481',
     date: '2026-08-09',
     title: 'Dashboard: even spacing around My Schedule',

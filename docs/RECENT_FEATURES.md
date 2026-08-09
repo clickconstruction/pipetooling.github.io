@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1481)
+last_updated: 2026-08-09 (v2.1482)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1482)
+
+### Clock In modal — readable in dark mode (2026-08-09)
+User-reported on mobile: the clock-in modal panel was hardcoded `#fefcfb` while its headings/labels inherit the app text color — near-white in dark mode, so "Ready to clock in?" and both prompts vanished on the light panel (the tokenized textarea/search inputs stayed dark, making it look half-inverted). Fix: the panel is now `var(--surface)` ([`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx)); every control inside already used tokens, so dark mode gets a dark panel with light text and light mode is unchanged apart from losing the slight cream tint. Client-only.
 
 ## Latest Updates (v2.1481)
 
