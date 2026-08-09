@@ -5,7 +5,11 @@ import type { Database, Json } from '../types/database'
 import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocationsModal'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from './pay/PersonOffsetFormModal'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
-import { isUnlinkedMercuryRowStaleForTallyStaffFollowUp } from '../lib/tallyStaleMinAgeDays'
+import {
+  isUnlinkedMercuryRowStaleForTallyStaffFollowUp,
+  unlinkedMercuryRowCalendarAgeDays,
+} from '../lib/tallyStaleMinAgeDays'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
 import { useToastContext } from '../contexts/ToastContext'
 import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
@@ -48,6 +52,28 @@ function mercuryTxRowFromStaffListRow(row: StaleStaffRow): MercuryTxRow {
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+}
+
+/** Phone card date: short month + day + time in app calendar TZ (e.g. Apr 16 · 3:45 PM). */
+function formatPostedMobile(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    const tz = APP_CALENDAR_TZ
+    const month = d.toLocaleString('en-US', { month: 'short', timeZone: tz })
+    const day = d.toLocaleString('en-US', { day: 'numeric', timeZone: tz })
+    const timePart = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz })
+    return `${month} ${day} · ${timePart}`
+  } catch {
+    return iso
+  }
+}
+
+function formatAgeDaysLabel(ageDays: number | null): string | null {
+  if (ageDays == null || ageDays < 0) return null
+  if (ageDays === 0) return 'today'
+  return `${ageDays}d old`
 }
 
 /** Posted column: date + weekday + local time in app calendar TZ (e.g. April 16 (Thu) · 3:45 PM). */
@@ -112,6 +138,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
 }: DashboardStaleTallyStaffFollowUpModalProps) {
   const { showToast } = useToastContext()
   const { user: authUser, role } = useAuth()
+  const isNarrow = useNarrowViewport640()
   const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<StaleStaffRow[]>([])
@@ -120,7 +147,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
   const [personOffsetNameOptions, setPersonOffsetNameOptions] = useState<string[] | null>(null)
   const [personOffsetCreateDraft, setPersonOffsetCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [backchargeBusyTxId, setBackchargeBusyTxId] = useState<string | null>(null)
-  const [showAllUnlinked, setShowAllUnlinked] = useState(true)
+  // Always fetch the full unlinked set; "stale only" is a client-side filter so toggling is instant.
+  const [staleOnly, setStaleOnly] = useState(false)
   // Org-wide "hide dev-role transactions" flag (app_settings). The RPC reads the same flag, so
   // this just mirrors the stored value for the dev-only toggle button.
   const [hideDevTransactions, setHideDevTransactions] = useState(false)
@@ -134,7 +162,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
           async () =>
             supabase.rpc('list_stale_unlinked_mercury_transactions_for_tally_staff', {
               min_age_days: minAgeDays,
-              include_all_unlinked: showAllUnlinked,
+              include_all_unlinked: true,
             }),
           'list stale unlinked mercury transactions for tally staff',
         ),
@@ -148,7 +176,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
     } finally {
       setLoading(false)
     }
-  }, [minAgeDays, showAllUnlinked, showToast])
+  }, [minAgeDays, showToast])
 
   const toggleHideDevTransactions = useCallback(async () => {
     if (hideDevBusy) return
@@ -172,7 +200,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
       setPersonOffsetNameOptions(null)
       setPersonOffsetCreateDraft(null)
       setBackchargeBusyTxId(null)
-      setShowAllUnlinked(true)
+      setStaleOnly(false)
       return
     }
     void load()
@@ -259,6 +287,23 @@ export function DashboardStaleTallyStaffFollowUpModal({
     return [...map.values()].sort((a, b) => a.target_name.localeCompare(b.target_name))
   }, [rows])
 
+  const staleCount = useMemo(
+    () => rows.filter((r) => isUnlinkedMercuryRowStaleForTallyStaffFollowUp(r.posted_at, minAgeDays)).length,
+    [rows, minAgeDays],
+  )
+
+  const visibleGroups = useMemo(() => {
+    if (!staleOnly) return groups
+    return groups
+      .map((g) => ({
+        ...g,
+        rows: g.rows.filter((r) => isUnlinkedMercuryRowStaleForTallyStaffFollowUp(r.posted_at, minAgeDays)),
+      }))
+      .filter((g) => g.rows.length > 0)
+  }, [groups, staleOnly, minAgeDays])
+
+  const visibleTxCount = staleOnly ? staleCount : rows.length
+
   useEffect(() => {
     if (!open) return
     function onKeyDown(e: KeyboardEvent) {
@@ -303,93 +348,119 @@ export function DashboardStaleTallyStaffFollowUpModal({
             borderRadius: 8,
             width: 'min(920px, calc(100vw - 2rem))',
             maxHeight: 'min(90vh, 900px)',
-            overflow: 'auto',
-            padding: '1rem 1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
             boxSizing: 'border-box',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-            <h2 id="stale-tally-staff-followup-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-              Stale tally follow-up
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '0.35rem 0.65rem',
-                border: '1px solid var(--border-strong)',
-                background: 'var(--surface)',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
-            >
-              Close
-            </button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-            {role === 'dev' ? (
+          <div style={{ padding: isNarrow ? '0.75rem 0.85rem 0.65rem' : '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <h2 id="stale-tally-staff-followup-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+                Stale tally follow-up
+                {!loading && visibleTxCount > 0 ? (
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.9375rem' }}> · {visibleTxCount} to sort</span>
+                ) : null}
+              </h2>
               <button
                 type="button"
-                onClick={() => void toggleHideDevTransactions()}
-                disabled={hideDevBusy}
-                title="Org-wide: hides dev-role staff transactions in the Stale tally follow-up (list and banner count) for everyone"
+                onClick={onClose}
                 style={{
-                  padding: '0.4rem 0.9rem',
+                  padding: '0.45rem 0.85rem',
                   border: '1px solid var(--border-strong)',
-                  background: hideDevTransactions ? 'var(--bg-slate-100)' : 'var(--surface)',
+                  background: 'var(--surface)',
                   borderRadius: 6,
-                  cursor: hideDevBusy ? 'wait' : 'pointer',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  color: 'var(--text-slate-600)',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
                   fontFamily: 'inherit',
-                  opacity: hideDevBusy ? 0.6 : 1,
                 }}
               >
-                {hideDevTransactions ? 'Show dev transactions' : 'Hide dev transactions'}
+                Close
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setShowAllUnlinked((v) => !v)}
-              style={{
-                padding: '0.4rem 0.9rem',
-                border: '1px solid var(--border-strong)',
-                background: showAllUnlinked ? 'var(--bg-slate-100)' : 'var(--surface)',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: 'var(--text-slate-600)',
-                fontFamily: 'inherit',
-              }}
-            >
-              {showAllUnlinked ? 'Show stale only' : 'Show all'}
-            </button>
-          </div>
-          <p style={{ margin: '0.75rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            {showAllUnlinked ? (
-              <>
-                All unlinked Mercury transactions linked via debit card to persons. Open <strong>Assign</strong> to split to
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+              <div
+                role="group"
+                aria-label="Filter transactions"
+                style={{
+                  display: 'flex',
+                  flex: isNarrow ? 1 : undefined,
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                {([
+                  { stale: false, label: loading ? 'All' : `All (${rows.length})` },
+                  { stale: true, label: loading ? 'Stale' : `Stale (${staleCount})` },
+                ] as const).map((opt) => {
+                  const active = staleOnly === opt.stale
+                  return (
+                    <button
+                      key={String(opt.stale)}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setStaleOnly(opt.stale)}
+                      style={{
+                        flex: 1,
+                        padding: isNarrow ? '0.45rem 0.4rem' : '0.45rem 1rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        fontFamily: 'inherit',
+                        background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        color: active ? 'var(--text-blue-700)' : 'var(--text-slate-600)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {role === 'dev' ? (
+                <button
+                  type="button"
+                  onClick={() => void toggleHideDevTransactions()}
+                  disabled={hideDevBusy}
+                  title="Org-wide: hides dev-role staff transactions in the Stale tally follow-up (list and banner count) for everyone"
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    border: '1px solid var(--border-strong)',
+                    background: hideDevTransactions ? 'var(--bg-slate-100)' : 'var(--surface)',
+                    borderRadius: 6,
+                    cursor: hideDevBusy ? 'wait' : 'pointer',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    color: 'var(--text-slate-600)',
+                    fontFamily: 'inherit',
+                    opacity: hideDevBusy ? 0.6 : 1,
+                  }}
+                >
+                  {hideDevTransactions ? 'Show dev transactions' : 'Hide dev transactions'}
+                </button>
+              ) : null}
+            </div>
+            {!isNarrow ? (
+              <p style={{ margin: '0.6rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Unlinked Mercury transactions linked via debit card to persons. Open <strong>Assign</strong> to split to
                 jobs. Use <strong>Backcharge</strong> to record a pending person offset.
-              </>
-            ) : (
-              <>
-                Unlinked Mercury transactions, by person, more than {minAgeDays} calendar days old. Open <strong>Assign</strong>{' '}
-                to split to jobs. Use <strong>Backcharge</strong> to assign the full amount to record an offset.
-              </>
-            )}
-          </p>
+              </p>
+            ) : null}
+          </div>
+          <div style={{ overflowY: 'auto', padding: isNarrow ? '0.65rem 0.65rem 1rem' : '0.85rem 1.25rem 1.25rem' }}>
           {loading ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>
-          ) : groups.length === 0 ? (
+          ) : visibleGroups.length === 0 ? (
             <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
-              No stale unlinked transactions for people you can follow up with.
+              {staleOnly && rows.length > 0
+                ? 'No stale transactions — everything left is newer than the stale cutoff.'
+                : 'No stale unlinked transactions for people you can follow up with.'}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {groups.map((g) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isNarrow ? '0.85rem' : '1.25rem' }}>
+              {visibleGroups.map((g) => (
                 <section
                   key={g.target_user_id}
                   style={{
@@ -425,7 +496,97 @@ export function DashboardStaleTallyStaffFollowUpModal({
                         )}
                       </span>
                     )}
+                    <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {g.rows.length} {g.rows.length === 1 ? 'transaction' : 'transactions'}
+                    </span>
                   </div>
+                  {isNarrow ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.6rem' }}>
+                      {g.rows.map((r) => {
+                        const rowStale = isUnlinkedMercuryRowStaleForTallyStaffFollowUp(r.posted_at, minAgeDays)
+                        const bankDescription = mercuryBankDescriptionFromRaw(r.raw)
+                        const ageLabel = formatAgeDaysLabel(unlinkedMercuryRowCalendarAgeDays(r.posted_at))
+                        const busy = backchargeBusyTxId === r.mercury_transaction_id
+                        return (
+                          <div
+                            key={r.mercury_transaction_id}
+                            style={{
+                              border: '1px solid var(--border)',
+                              borderRadius: 10,
+                              padding: '0.6rem 0.7rem',
+                              background: rowStale ? 'var(--bg-red-tint)' : 'var(--surface)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
+                              <div
+                                style={{ fontWeight: 600, fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                title={r.counterparty_name ?? ''}
+                              >
+                                {r.counterparty_name ?? '—'}
+                              </div>
+                              <div style={{ fontWeight: 600, fontSize: '0.9375rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                {formatCurrency(Number(r.amount))}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.15rem' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {formatPostedMobile(r.posted_at)}
+                                {bankDescription ? ` · ${bankDescription}` : ''}
+                              </div>
+                              {ageLabel ? (
+                                <span style={{ fontSize: '0.7rem', fontWeight: 600, whiteSpace: 'nowrap', color: rowStale ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                                  {ageLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                            {r.note?.trim() ? (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem', wordBreak: 'break-word' }}>{r.note}</div>
+                            ) : null}
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setAllocRow(r)}
+                                style={{
+                                  flex: 1,
+                                  padding: '0.55rem 0',
+                                  borderRadius: 8,
+                                  border: '1px solid #2563eb',
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-blue-700)',
+                                  fontWeight: 600,
+                                  fontSize: '0.875rem',
+                                  cursor: 'pointer',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                Assign
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void openBackcharge(g, r)}
+                                style={{
+                                  flex: 1,
+                                  padding: '0.55rem 0',
+                                  borderRadius: 8,
+                                  border: '1px solid #b45309',
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-amber-700)',
+                                  fontWeight: 600,
+                                  fontSize: '0.875rem',
+                                  cursor: busy ? 'wait' : 'pointer',
+                                  fontFamily: 'inherit',
+                                  opacity: busy ? 0.7 : 1,
+                                }}
+                              >
+                                {busy ? '…' : 'Backcharge'}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table
                       style={{
@@ -466,7 +627,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                               }}
                             >
                             <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{formatPostedShort(r.posted_at)}</td>
-                            <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                            <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                               {formatCurrency(Number(r.amount))}
                             </td>
                             <td style={{ padding: '0.45rem 0.65rem', maxWidth: 200 }}>
@@ -552,10 +713,12 @@ export function DashboardStaleTallyStaffFollowUpModal({
                       </tbody>
                     </table>
                   </div>
+                  )}
                 </section>
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
 

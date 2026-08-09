@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1487',
+    date: '2026-08-09',
+    title: 'Stale tally follow-up: easier on your phone',
+    kind: 'feature',
+    highlights: [
+      'On phones, each transaction is now a card with big Assign and Backcharge buttons — no more sideways scrolling to reach them.',
+      'New All / Stale filter with counts, a "N to sort" tally in the title, and an age tag on each transaction so you can see what\'s oldest at a glance.',
+      'The header and filters stay put while you scroll the list.',
+    ],
+  },
+  {
     version: 'v2.1486',
     date: '2026-08-09',
     title: 'Assign work: the gray button explains itself',

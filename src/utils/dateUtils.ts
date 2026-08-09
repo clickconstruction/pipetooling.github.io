@@ -214,14 +214,18 @@ export function getThisAndLastWeekRange(): { start: string; end: string } {
   return { start: lastSun, end: thisSat }
 }
 
-/** YYYY-MM-DD in company calendar (America/Chicago) for an instant (en-CA). */
+/** YYYY-MM-DD in company calendar (America/Chicago) for an instant. */
 export function denverCalendarDayKey(ms: number): string {
-  return new Intl.DateTimeFormat('en-CA', {
+  // formatToParts (not format) so the key is locale-data-proof: runtimes whose 'en-CA'
+  // falls back to MM/DD/YYYY ordering still yield labeled year/month/day parts.
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(new Date(ms))
+  }).formatToParts(new Date(ms))
+  const get = (type: 'year' | 'month' | 'day') => parts.find((p) => p.type === type)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
 }
 
 function utcMsFromCalendarYmd(ymd: string): number {
