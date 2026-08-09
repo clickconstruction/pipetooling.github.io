@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1493',
+    date: '2026-08-09',
+    title: 'Help: watch Bill Customer in action',
+    kind: 'feature',
+    highlights: [
+      'The billing guide now has a screen recording of the Bill Customer modal — the Ready to Bill queue, the three billing method tabs, and the invoice preview.',
+    ],
+  },
+  {
     version: 'v2.1492',
     date: '2026-08-09',
     title: 'Help: watch Save as Assembly in action',

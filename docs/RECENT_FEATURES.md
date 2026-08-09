@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1492)
+last_updated: 2026-08-09 (v2.1493)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1493)
+
+### Help — Bill Customer screen recording (2026-08-09)
+Fourth capture from [`HELP_MEDIA_PLAN.md`](HELP_MEDIA_PLAN.md), sandbox strategy: test job 959 "ZZ TEST" ($100 line item) walked Working → Ready to Bill, customer created via Create-customer-from-job (the modal refuses to open without a linked customer — discovered on the first take), then Bill Customer recorded: the queue row, the modal with its three method tabs, the Physical-invoice PDF preview (Send email disabled — no customer email existed, a second guarantee nothing could send), ending on the HouseCall Pro record channel unsaved. The open-time draft-invoice insert landed on the test job only. Cleanup: modal cancelled, job deleted (archives the draft invoice; Recently-deleted restorable), ZZ Test Customer deleted via typed-name confirm — board and customer list verified clean. `public/help/ready-to-bill-pipeline.gif` (~2.5 MB, 11 frames) wired into [`ready-to-bill-pipeline.md`](../src/content/help/ready-to-bill-pipeline.md). Content-only.
 
 ## Latest Updates (v2.1492)
 
