@@ -38,6 +38,13 @@ describe('JobsStagesHideGroupsModal', () => {
     expect(screen.getByText('Gun Dog')).toBeTruthy()
     expect(screen.getByText('Heron Construction Group')).toBeTruthy()
     expect(screen.getByText('Trace')).toBeTruthy()
+    // Section order is a user choice (v2.1478): Account Man, then Development, then GC.
+    const sectionOrder = [screen.getByText('Account Man'), screen.getByText('Development'), screen.getByText('GC / Builder')]
+    for (let i = 1; i < sectionOrder.length; i++) {
+      const prev = sectionOrder[i - 1]
+      const cur = sectionOrder[i]
+      expect(prev && cur && prev.compareDocumentPosition(cur) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
     fireEvent.click(screen.getByText('Gun Dog'))
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_STAGES_EXCLUDE_FILTERS, development: ['dev-1'] })
   })

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1477)
+last_updated: 2026-08-09 (v2.1478)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1478)
+
+### Pipeline — "Hide groups…" sections reordered: Account Man first (2026-08-09)
+User-chosen order: the modal now lists **Account Man, then Development, then GC/Builder** (was the inverse). One-line change — the order lives in `STAGES_EXCLUDE_DIMENSIONS` ([`jobsStagesExcludeFilters.ts`](../src/lib/jobsStagesExcludeFilters.ts)), whose only order-sensitive consumer is the modal; a render-test assertion now pins the order so it can't silently flip back. Help guide wording updated to match. Client-only.
 
 ## Latest Updates (v2.1477)
 

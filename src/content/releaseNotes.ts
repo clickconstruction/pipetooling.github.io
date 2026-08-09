@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1478',
+    date: '2026-08-09',
+    title: 'Pipeline: Hide groups lists Account Man first',
+    kind: 'fix',
+    highlights: [
+      'The Hide groups list now runs Account Man, then Development, then GC/Builder.',
+    ],
+  },
+  {
     version: 'v2.1477',
     date: '2026-08-09',
     title: 'Pipeline: filter by Account Man',
