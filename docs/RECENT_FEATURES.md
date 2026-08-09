@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1483)
+last_updated: 2026-08-09 (v2.1484)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1484)
+
+### Dashboard money cards — desktop drill-downs catch up (2026-08-09)
+Follow-up to v2.1483, user-approved proposal: the desktop table borrows the phone sheet's controls and fixes its own scroll behavior. `ItemsModal` ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)) desktop layout: dialog widened 640→min(880px, 94vw); header/controls/total footer pinned with only the rows scrolling (sticky `thead` inside the scrollbox); search + Biggest/Oldest pills on all three modals (replacing the AR-only column-header sort); "(+34)" and the old 60d AP chip replaced by the shared 15/30-day aging chips; the mostly-"—" % Complete column folded under Amount; every titled section collapsible (previously AP + Collections only); AP's Upcoming-payroll estimate merged in as a real section so search/sort/collapse treat it uniformly. New: the **aging strip** — three clickable band totals (0–14d / 15–30d / 30d+) that filter the list, powered by `financeAgingBuckets` in the shared kernel ([`dashboardFinanceModalRows.ts`](../src/lib/dashboardFinanceModalRows.ts), renamed exports `FinanceDrillSort`/`sortFinanceItems` + date-resolver param so AP sorts by due date; 7 tests). Mobile sheet now consumes the same hoisted computations (no behavior change). Help guide updated. Client-only.
 
 ## Latest Updates (v2.1483)
 

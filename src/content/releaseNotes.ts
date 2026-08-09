@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1484',
+    date: '2026-08-09',
+    title: 'Money cards: better on desktop too',
+    kind: 'feature',
+    highlights: [
+      'The drill-downs are wider, keep the title and total pinned while you scroll, and get the same search, Biggest/Oldest sorting, and aging chips as the phone version.',
+      'New aging strip up top — 0–14d, 15–30d, and 30d+ totals you can click to see just that money.',
+      'Every section collapses now, and estimated upcoming payroll folds in with the rest.',
+    ],
+  },
+  {
     version: 'v2.1483',
     date: '2026-08-09',
     title: 'Money cards: built for your phone',

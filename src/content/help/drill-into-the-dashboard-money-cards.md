@@ -20,7 +20,9 @@ The drill-down opens as a full-height sheet built for one-hand use:
 
 ## On a computer
 
-The drill-downs keep their table layout, with sortable Date/Amount columns on Accounts Receivable and collapsible sections on Accounts Payable.
+The drill-downs keep their table layout, now wider and with the same controls as the phone: search, the {{button:blue|Biggest}} / {{button:outline|Oldest}} sort buttons, aging chips on every row, and collapsible sections everywhere. The title, controls, and total stay pinned while the rows scroll.
+
+Next to the sort buttons sits the **aging strip** — three colored totals like {{chip:green|0–14d $12k}} {{chip:yellow|15–30d $31k}} {{chip:red|30d+ $165k}}. It answers "how much of this is old?" at a glance, and clicking a band filters the list to just that money; click again to clear.
 
 ## Good to know
 

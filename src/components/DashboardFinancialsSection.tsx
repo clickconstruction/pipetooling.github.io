@@ -13,10 +13,12 @@ import { daysPastDue } from '../lib/supplyHouseAging'
 import { useIsMobile } from '../hooks/useIsMobile'
 import {
   filterFinanceItems,
+  financeAgingBuckets,
   financeAgingDays,
   financeAgingTone,
-  sortFinanceItemsMobile,
-  type FinanceMobileSort,
+  sortFinanceItems,
+  type FinanceAgingTone,
+  type FinanceDrillSort,
 } from '../lib/dashboardFinanceModalRows'
 import { googleDrivePreviewEmbedUrl } from '../lib/estimateCustomerAttachment'
 import type { FinancialBucket, FinancialItem, UpcomingPayrollApSection } from '../lib/dashboardFinancials'
@@ -458,141 +460,97 @@ function ItemsModal({
               { title: 'Collections', items: arCollectionsSection.items, noun: 'bill' },
             ]
           : [{ title: null, items: bucket.items }]
-  // AR: sortable by date or amount via the column headers; null = incoming order (amount desc).
-  const [arSort, setArSort] = useState<{ key: 'date' | 'amount'; dir: 'asc' | 'desc' } | null>(null)
-  const sortedSections =
-    cardKey === 'ar' && arSort
-      ? sections.map((sec) => ({
-          ...sec,
-          items: [...sec.items].sort((a, b) => {
-            const dir = arSort.dir === 'asc' ? 1 : -1
-            if (arSort.key === 'amount') return (a.amount - b.amount) * dir
-            // Missing dates always sort last regardless of direction.
-            if (!a.dateYmd && !b.dateYmd) return 0
-            if (!a.dateYmd) return 1
-            if (!b.dateYmd) return -1
-            return a.dateYmd.localeCompare(b.dateYmd) * dir
-          }),
-        }))
-      : sections
-  const toggleArSort = (key: 'date' | 'amount') =>
-    setArSort((prev) => ({ key, dir: prev?.key === key && prev.dir === 'desc' ? 'asc' : 'desc' }))
-  const arSortIndicator = (key: 'date' | 'amount') =>
-    arSort?.key === key ? (arSort.dir === 'desc' ? ' ▼' : ' ▲') : ''
-  // Unbilled rows carry the Stages % complete (jobs_ledger.pct_complete) — its own column.
+  // Search + sort + aging state shared by the phone sheet and the desktop
+  // table (v2.1483 / v2.1484). The AR column-header sort was replaced by the
+  // Biggest/Oldest pills so all three drill-downs sort the same way.
+  const isMobile = useIsMobile()
+  const [drillQuery, setDrillQuery] = useState('')
+  const [drillSort, setDrillSort] = useState<FinanceDrillSort>('amount')
+  /** Desktop aging-strip filter: only rows in this aging bucket; null = all. */
+  const [agingFilter, setAgingFilter] = useState<FinanceAgingTone | null>(null)
+  // Unbilled/AR rows carry the Stages % complete — shown under the amount.
   const showPctComplete = cardKey === 'unbilled' || cardKey === 'ar'
-  const columnCount = 3 + (showPctComplete ? 1 : 0) + (onSendToDispatch ? 1 : 0)
-  // AP sections (Payroll due / Upcoming payroll / Supplies) and the AR Collections section are
-  // collapsible; expanded on open.
+  const columnCount = 3 + (onSendToDispatch ? 1 : 0)
+  // Every titled section is collapsible (v2.1484 — previously AP + Collections only); expanded on open.
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
-  const collapsible = cardKey === 'ap' || sections.some((s) => s.title === 'Collections')
-  const isCollapsed = (title: string) => collapsible && (collapsedSections[title] ?? false)
   const toggleSection = (title: string) =>
     setCollapsedSections((prev) => ({ ...prev, [title]: !(prev[title] ?? false) }))
-  // Mobile sheet state (v2.1483): search + sort pills replace the desktop
-  // table's column-header sort; every titled section collapses on mobile.
-  const isMobile = useIsMobile()
-  const [mobileQuery, setMobileQuery] = useState('')
-  const [mobileSort, setMobileSort] = useState<FinanceMobileSort>('amount')
-  const sectionChevron = (title: string) => (
-    <span aria-hidden style={{ display: 'inline-block', width: '1rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-      {isCollapsed(title) ? '▶' : '▼'}
-    </span>
+  const todayYmd = new Date().toLocaleDateString('en-CA')
+  /** AP supply rows age by the bill's DUE date; everything else by the row date. */
+  const itemDateYmd = (item: FinancialItem): string | null => apBills?.[item.key]?.dueDateYmd ?? item.dateYmd
+  // AP's upcoming-payroll estimate joins as a real section so search / sort /
+  // collapse / the aging strip treat it like the rest (it already counts into
+  // the bucket total upstream).
+  const drillSections: ModalSection[] = (() => {
+    const base = [...sections]
+    if (upcomingSection && upcomingSection.count > 0) {
+      const upSec: ModalSection = { title: 'Upcoming payroll (estimate)', items: upcomingSection.items, noun: 'person-week' }
+      const payrollIdx = base.findIndex((sec) => sec.title === 'Payroll due')
+      if (payrollIdx >= 0) base.splice(payrollIdx + 1, 0, upSec)
+      else base.push(upSec)
+    }
+    return base
+  })()
+  const q = drillQuery.trim()
+  const bucketMatches = (item: FinancialItem) => {
+    if (!agingFilter) return true
+    const days = financeAgingDays(itemDateYmd(item), todayYmd)
+    return days != null && financeAgingTone(days) === agingFilter
+  }
+  const shownSections = drillSections.map((sec) => ({
+    ...sec,
+    shown: sortFinanceItems(filterFinanceItems(sec.items, drillQuery).filter(bucketMatches), drillSort, itemDateYmd),
+  }))
+  const filtersActive = q !== '' || agingFilter != null
+  const isCollapsed = (title: string | null) => title != null && !filtersActive && (collapsedSections[title] ?? false)
+  const shownCount = shownSections.reduce((sum, sec) => sum + sec.shown.length, 0)
+  const shownTotal = shownSections.reduce((sum, sec) => sum + sec.shown.reduce((t, i) => t + i.amount, 0), 0)
+  const totalItemCount = drillSections.reduce((sum, sec) => sum + sec.items.length, 0)
+  const agingBuckets = financeAgingBuckets(
+    drillSections.flatMap((sec) => sec.items.map((i) => ({ amount: i.amount, ymd: itemDateYmd(i) }))),
+    todayYmd,
   )
-  /** AP: estimated upcoming payroll rows — rendered between Payroll due and Supplies. */
-  const upcomingPayrollRows = upcomingSection && upcomingSection.count > 0 ? (
-                <Fragment>
-                  <tr
-                    style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)', cursor: collapsible ? 'pointer' : undefined }}
-                    onClick={collapsible ? () => toggleSection('Upcoming payroll (estimate)') : undefined}
-                    aria-expanded={collapsible ? !isCollapsed('Upcoming payroll (estimate)') : undefined}
-                  >
-                    <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
-                      {collapsible ? sectionChevron('Upcoming payroll (estimate)') : null}
-                      <span style={{ fontWeight: 600 }}>Upcoming payroll (estimate)</span>
-                      <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
-                        {upcomingSection.count} person-week{upcomingSection.count === 1 ? '' : 's'} · $
-                        {formatCurrency(upcomingSection.total)}
-                      </span>
-                    </td>
-                  </tr>
-                  {(isCollapsed('Upcoming payroll (estimate)') ? [] : upcomingSection.items).map((item) => (
-                    <tr key={item.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                      <td style={{ padding: '0.45rem 0.65rem' }}>
-                        {item.label}
-                        {item.sublabel ? (
-                          <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · {item.sublabel}</span>
-                        ) : null}
-                      </td>
-                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
-                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                        ${formatCurrency(item.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ) : null
+  const agingChip = (item: FinancialItem) => {
+    const days = financeAgingDays(itemDateYmd(item), todayYmd)
+    if (days == null) return null
+    const tone = financeAgingTone(days)
+    const bg = tone === 'late' ? 'var(--bg-red-100)' : tone === 'warn' ? 'var(--bg-orange-100)' : 'var(--bg-green-100)'
+    const fg = tone === 'late' ? 'var(--text-red-800)' : tone === 'warn' ? 'var(--text-orange-800)' : 'var(--text-green-800)'
+    return (
+      <span
+        title={`${days} day${days === 1 ? '' : 's'} since ${cardKey === 'ap' ? 'due date' : cardKey === 'ar' ? 'billing' : 'last work'}`}
+        style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: bg, color: fg, whiteSpace: 'nowrap' }}
+      >
+        {days}d
+      </span>
+    )
+  }
+  const footerTotalLabel =
+    upcomingSection && upcomingSection.count > 0
+      ? 'Total (incl. estimate)'
+      : sections.some((sec) => sec.title === 'Collections')
+        ? 'Total (excl. Collections)'
+        : 'Total'
+  const pillStyle = (on: boolean): CSSProperties => ({
+    padding: '0.4rem 0.7rem',
+    borderRadius: 999,
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
+    border: on ? '1px solid var(--text-link)' : '1px solid var(--border-strong)',
+    background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+    color: on ? 'var(--text-link)' : 'var(--text-muted)',
+  })
 
   if (isMobile) {
     // ── Mobile: full-height sheet with card rows (v2.1483) ──────────────
     // The desktop table overflowed sideways at phone widths (AR/Not Billed
     // hid the Amount column and the → action); cards keep name + money always
     // visible, aging becomes a color chip, and search/sort get thumb targets.
-    const todayYmd = new Date().toLocaleDateString('en-CA')
-    const q = mobileQuery.trim()
-    type MobileSection = { title: string | null; items: FinancialItem[]; hideSublabels?: boolean; noun?: string }
-    const mobileSections: MobileSection[] = [...sections]
-    if (upcomingSection && upcomingSection.count > 0) {
-      const upSec: MobileSection = {
-        title: 'Upcoming payroll (estimate)',
-        items: upcomingSection.items,
-        noun: 'person-week',
-      }
-      const payrollIdx = mobileSections.findIndex((s) => s.title === 'Payroll due')
-      if (payrollIdx >= 0) mobileSections.splice(payrollIdx + 1, 0, upSec)
-      else mobileSections.push(upSec)
-    }
-    const visibleSections = mobileSections.map((sec) => ({
-      ...sec,
-      shown: sortFinanceItemsMobile(filterFinanceItems(sec.items, mobileQuery), mobileSort),
-    }))
-    const shownCount = visibleSections.reduce((s, sec) => s + sec.shown.length, 0)
-    const shownTotal = visibleSections.reduce((s, sec) => s + sec.shown.reduce((t, i) => t + i.amount, 0), 0)
-    const totalItemCount = mobileSections.reduce((s, sec) => s + sec.items.length, 0)
-    const mobileIsCollapsed = (title: string | null) => title != null && q === '' && (collapsedSections[title] ?? false)
-    const agingChip = (item: FinancialItem) => {
-      const ymd = apBills?.[item.key]?.dueDateYmd ?? item.dateYmd
-      const days = financeAgingDays(ymd, todayYmd)
-      if (days == null) return null
-      const tone = financeAgingTone(days)
-      const bg = tone === 'late' ? 'var(--bg-red-100)' : tone === 'warn' ? 'var(--bg-orange-100)' : 'var(--bg-green-100)'
-      const fg = tone === 'late' ? 'var(--text-red-800)' : tone === 'warn' ? 'var(--text-orange-800)' : 'var(--text-green-800)'
-      return (
-        <span
-          title={`${days} day${days === 1 ? '' : 's'} since ${cardKey === 'ap' ? 'due date' : cardKey === 'ar' ? 'billing' : 'last work'}`}
-          style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: bg, color: fg, whiteSpace: 'nowrap' }}
-        >
-          {days}d
-        </span>
-      )
-    }
-    const footerTotalLabel =
-      upcomingSection && upcomingSection.count > 0
-        ? 'Total (incl. estimate)'
-        : sections.some((s) => s.title === 'Collections')
-          ? 'Total (excl. Collections)'
-          : 'Total'
-    const pillStyle = (on: boolean): CSSProperties => ({
-      padding: '0.4rem 0.7rem',
-      borderRadius: 999,
-      fontSize: '0.75rem',
-      fontWeight: 600,
-      whiteSpace: 'nowrap',
-      cursor: 'pointer',
-      border: on ? '1px solid var(--text-link)' : '1px solid var(--border-strong)',
-      background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-      color: on ? 'var(--text-link)' : 'var(--text-muted)',
-    })
+    // All list computations live in the shared block above (v2.1484).
+    const visibleSections = shownSections
+    const mobileIsCollapsed = isCollapsed
     return (
       <div
         role="presentation"
@@ -648,8 +606,8 @@ function ItemsModal({
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', padding: '0.55rem 1rem', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <input
               type="search"
-              value={mobileQuery}
-              onChange={(e) => setMobileQuery(e.target.value)}
+              value={drillQuery}
+              onChange={(e) => setDrillQuery(e.target.value)}
               placeholder={`Search ${bucket.count} items…`}
               aria-label="Search items"
               style={{
@@ -664,10 +622,10 @@ function ItemsModal({
                 fontSize: '0.875rem',
               }}
             />
-            <button type="button" aria-pressed={mobileSort === 'amount'} onClick={() => setMobileSort('amount')} style={pillStyle(mobileSort === 'amount')}>
+            <button type="button" aria-pressed={drillSort === 'amount'} onClick={() => setDrillSort('amount')} style={pillStyle(drillSort === 'amount')}>
               Biggest
             </button>
-            <button type="button" aria-pressed={mobileSort === 'oldest'} onClick={() => setMobileSort('oldest')} style={pillStyle(mobileSort === 'oldest')}>
+            <button type="button" aria-pressed={drillSort === 'oldest'} onClick={() => setDrillSort('oldest')} style={pillStyle(drillSort === 'oldest')}>
               Oldest
             </button>
           </div>
@@ -819,6 +777,38 @@ function ItemsModal({
     )
   }
 
+  // ── Desktop: widened dialog, pinned header/controls/footer, aging strip (v2.1484) ──
+  const agingStripMeta: Array<{ tone: FinanceAgingTone; label: string }> = [
+    { tone: 'ok', label: '0–14d' },
+    { tone: 'warn', label: '15–30d' },
+    { tone: 'late', label: '30d+' },
+  ]
+  const toneColors = (tone: FinanceAgingTone, on: boolean): CSSProperties => {
+    const bg = tone === 'late' ? 'var(--bg-red-100)' : tone === 'warn' ? 'var(--bg-orange-100)' : 'var(--bg-green-100)'
+    const fg = tone === 'late' ? 'var(--text-red-800)' : tone === 'warn' ? 'var(--text-orange-800)' : 'var(--text-green-800)'
+    return {
+      padding: '0.3rem 0.6rem',
+      borderRadius: 999,
+      fontSize: '0.75rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+      cursor: 'pointer',
+      fontVariantNumeric: 'tabular-nums',
+      border: on ? `1px solid ${'currentColor'}` : '1px solid transparent',
+      background: bg,
+      color: fg,
+      opacity: agingFilter != null && !on ? 0.45 : 1,
+    }
+  }
+  const thStyle: CSSProperties = {
+    padding: '0.5rem 0.65rem',
+    textAlign: 'left',
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    background: 'var(--bg-subtle)',
+    borderBottom: '1px solid var(--border)',
+  }
   return (
     <div
       role="presentation"
@@ -848,14 +838,16 @@ function ItemsModal({
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
-          maxWidth: 640,
+          maxWidth: 'min(880px, 94vw)',
           width: '100%',
           maxHeight: '85vh',
-          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1, minWidth: 200 }}>
               {meta.title} — ${formatCurrency(bucket.total)}{' '}
@@ -871,264 +863,235 @@ function ItemsModal({
               onClick={onClose}
               title="Close"
               aria-label="Close"
-              style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', color: 'inherit' }}
             >
               ×
             </button>
           </div>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{meta.hint}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+            <input
+              type="search"
+              value={drillQuery}
+              onChange={(e) => setDrillQuery(e.target.value)}
+              placeholder={`Search ${bucket.count} items…`}
+              aria-label="Search items"
+              style={{
+                flex: '1 1 12rem',
+                minWidth: '9rem',
+                maxWidth: '20rem',
+                padding: '0.4rem 0.6rem',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                background: 'var(--bg-subtle)',
+                color: 'inherit',
+                font: 'inherit',
+                fontSize: '0.875rem',
+              }}
+            />
+            <button type="button" aria-pressed={drillSort === 'amount'} onClick={() => setDrillSort('amount')} style={pillStyle(drillSort === 'amount')}>
+              Biggest
+            </button>
+            <button type="button" aria-pressed={drillSort === 'oldest'} onClick={() => setDrillSort('oldest')} style={pillStyle(drillSort === 'oldest')}>
+              Oldest
+            </button>
+            <span aria-hidden style={{ width: 1, height: '1.25rem', background: 'var(--border)', margin: '0 0.2rem' }} />
+            {/* Aging strip: how much money sits in each age band; click to filter. */}
+            {agingStripMeta.map(({ tone, label }) => {
+              const b = agingBuckets[tone]
+              const on = agingFilter === tone
+              return (
+                <button
+                  key={tone}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={b.count === 0}
+                  onClick={() => setAgingFilter((prev) => (prev === tone ? null : tone))}
+                  title={`${b.count} item${b.count === 1 ? '' : 's'} aged ${label} — click to ${on ? 'clear the filter' : 'show only these'}`}
+                  style={{ ...toneColors(tone, on), ...(b.count === 0 ? { opacity: 0.3, cursor: 'default' } : null) }}
+                >
+                  {label} ${formatMoneyShortK(b.total)}
+                </button>
+              )
+            })}
+          </div>
         </div>
-        <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 1.25rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
-              <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
-                {showPctComplete ? (
-                  <th
-                    title="% complete from Jobs → Pipeline"
-                    style={{ padding: '0.5rem 0.65rem', textAlign: 'center', whiteSpace: 'nowrap' }}
-                  >
-                    % Complete
-                  </th>
-                ) : null}
-                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>
-                  {cardKey === 'ar' ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleArSort('date')}
-                      title="Sort by date"
-                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 'inherit', cursor: 'pointer' }}
-                    >
-                      Date{arSortIndicator('date')}
-                    </button>
-                  ) : cardKey === 'ap' ? (
-                    'Due'
-                  ) : (
-                    'Date'
-                  )}
-                </th>
-                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>
-                  {cardKey === 'ar' ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleArSort('amount')}
-                      title="Sort by amount"
-                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 'inherit', cursor: 'pointer' }}
-                    >
-                      Amount{arSortIndicator('amount')}
-                    </button>
-                  ) : (
-                    'Amount'
-                  )}
-                </th>
-                {onSendToDispatch ? <th style={{ padding: '0.5rem 0.35rem', width: '1%' }} aria-label="Send to Dispatch" /> : null}
+              <tr>
+                <th style={thStyle}>Item</th>
+                <th style={thStyle}>{cardKey === 'ap' ? 'Due' : 'Date'}</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Amount</th>
+                {onSendToDispatch ? <th style={{ ...thStyle, padding: '0.5rem 0.35rem', width: '1%' }} aria-label="Send to Dispatch" /> : null}
               </tr>
             </thead>
             <tbody>
-              {sortedSections.map((section) => (
-                <Fragment key={section.title ?? 'all'}>
-                  {section.title ? (
-                    <tr
-                      style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)', cursor: collapsible ? 'pointer' : undefined }}
-                      onClick={collapsible ? () => toggleSection(section.title!) : undefined}
-                      aria-expanded={collapsible ? !isCollapsed(section.title) : undefined}
-                    >
-                      <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
-                        {collapsible ? sectionChevron(section.title) : null}
-                        {STAGES_SECTION_LINKS[section.title] ? (
-                          <Link
-                            to={STAGES_SECTION_LINKS[section.title]!}
-                            title={`Open Jobs Pipeline at ${section.title}`}
-                            style={{
-                              fontWeight: 600,
-                              color: 'var(--text-blue-700)',
-                              textDecoration: 'underline',
-                              textUnderlineOffset: '2px',
-                            }}
-                          >
-                            {section.title}
-                          </Link>
-                        ) : (
-                          <span style={{ fontWeight: 600 }}>{section.title}</span>
-                        )}
-                        <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
-                          {section.items.length} {section.noun ?? 'item'}
-                          {section.items.length === 1 ? '' : 's'} · $
-                          {formatCurrency(section.items.reduce((s, i) => s + i.amount, 0))}
-                        </span>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {(section.title && isCollapsed(section.title) ? [] : section.items).map((item: FinancialItem) => (
-                <tr key={item.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                  <td style={{ padding: '0.45rem 0.65rem' }}>
-                    {item.jobId && onOpenJob ? (
-                      <button
-                        type="button"
-                        onClick={() => onOpenJob(item)}
-                        title="Open this job"
-                        aria-label={`Open job ${item.label}`}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          margin: 0,
-                          font: 'inherit',
-                          color: 'var(--text-link)',
-                          textDecoration: 'underline dotted',
-                          textUnderlineOffset: '2px',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ) : onOpenApBill && item.key.startsWith('supply:') ? (
-                      <button
-                        type="button"
-                        onClick={() => onOpenApBill(item)}
-                        title="Open this bill"
-                        aria-label={`Open bill from ${item.label}`}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          margin: 0,
-                          font: 'inherit',
-                          color: 'var(--text-link)',
-                          textDecoration: 'underline dotted',
-                          textUnderlineOffset: '2px',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ) : (
-                      item.label
-                    )}
-                    {item.sublabel && !section.hideSublabels ? (
-                      <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · {item.sublabel}</span>
-                    ) : null}
-                    {item.address ? (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
-                    ) : null}
-                    {(() => {
-                      const bill = apBills?.[item.key]
-                      if (!bill || bill.jobs.length === 0) return null
-                      return (
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
-                          {bill.jobs.map((j) => `${j.label} (${j.pct}%)`).join(', ')}
-                        </div>
-                      )
-                    })()}
+              {filtersActive && shownCount === 0 ? (
+                <tr>
+                  <td colSpan={columnCount} style={{ padding: '1.25rem 0.65rem', textAlign: 'center', color: 'var(--text-faint)' }}>
+                    Nothing matches{q !== '' ? ` \u201c${q}\u201d` : ' this age band'}.
                   </td>
-                  {showPctComplete ? (
-                    <td
-                      style={{
-                        padding: '0.45rem 0.65rem',
-                        textAlign: 'center',
-                        fontVariantNumeric: 'tabular-nums',
-                        whiteSpace: 'nowrap',
-                        color: item.pctComplete != null ? undefined : 'var(--text-faint)',
-                      }}
-                    >
-                      {item.pctComplete != null ? `${item.pctComplete}%` : '—'}
-                    </td>
-                  ) : null}
-                  <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
-                    {(() => {
-                      const bill = apBills?.[item.key]
-                      if (!bill) {
-                        // AR: age the billed date — "2/9/26 (+45)" = days since the bill went out.
-                        if (cardKey === 'ar' && item.dateYmd) {
-                          const age = daysPastDue(item.dateYmd, new Date().toLocaleDateString('en-CA'))
-                          return (
-                            <>
-                              {shortDate(item.dateYmd)}
-                              {age !== null && age > 0 ? (
-                                <span style={{ color: 'var(--text-muted)' }}> (+{age})</span>
-                              ) : null}
-                            </>
-                          )
-                        }
-                        return shortDate(item.dateYmd)
-                      }
-                      const days = bill.dueDateYmd
-                        ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA'))
-                        : null
-                      return (
-                        <>
-                          {shortDate(bill.dueDateYmd)}
-                          {days !== null && days > 0 ? (
-                            <span
-                              style={{
-                                marginLeft: '0.35rem',
-                                padding: '0.05rem 0.35rem',
-                                borderRadius: 999,
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
-                                color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
-                              }}
-                            >
-                              {days}d
-                            </span>
-                          ) : null}
-                        </>
-                      )
-                    })()}
-                  </td>
-                  <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    ${formatCurrency(item.amount)}
-                  </td>
-                  {onSendToDispatch ? (
-                    <td style={{ padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' }}>
-                      {item.jobId ? (
-                        <button
-                          type="button"
-                          onClick={() => onSendToDispatch(item)}
-                          title="Send a note about billing this job to the Task Dispatch inbox"
-                          aria-label={`Send ${item.label} to Dispatch`}
-                          style={{
-                            padding: '0.15rem 0.5rem',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border-strong)',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            color: 'var(--text-link)',
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          →
-                        </button>
-                      ) : null}
-                    </td>
-                  ) : null}
                 </tr>
-                  ))}
-                  {section.title === 'Payroll due' ? upcomingPayrollRows : null}
-                </Fragment>
-              ))}
-              {sortedSections.some((sec) => sec.title === 'Payroll due') ? null : upcomingPayrollRows}
+              ) : (
+                shownSections.map((section) => {
+                  if (filtersActive && section.shown.length === 0) return null
+                  const collapsed = isCollapsed(section.title)
+                  return (
+                    <Fragment key={section.title ?? 'all'}>
+                      {section.title ? (
+                        <tr
+                          style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                          onClick={() => toggleSection(section.title!)}
+                          aria-expanded={!collapsed}
+                        >
+                          <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
+                            <span aria-hidden style={{ display: 'inline-block', width: '1rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {collapsed ? '\u25B6' : '\u25BC'}
+                            </span>
+                            {STAGES_SECTION_LINKS[section.title] ? (
+                              <Link
+                                to={STAGES_SECTION_LINKS[section.title]!}
+                                title={`Open Jobs Pipeline at ${section.title}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  fontWeight: 600,
+                                  color: 'var(--text-blue-700)',
+                                  textDecoration: 'underline',
+                                  textUnderlineOffset: '2px',
+                                }}
+                              >
+                                {section.title}
+                              </Link>
+                            ) : (
+                              <span style={{ fontWeight: 600 }}>{section.title}</span>
+                            )}
+                            <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
+                              {section.items.length} {section.noun ?? 'item'}
+                              {section.items.length === 1 ? '' : 's'} · $
+                              {formatCurrency(section.items.reduce((sum, i) => sum + i.amount, 0))}
+                            </span>
+                          </td>
+                        </tr>
+                      ) : null}
+                      {(collapsed ? [] : section.shown).map((item: FinancialItem) => (
+                        <tr key={item.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
+                          <td style={{ padding: '0.45rem 0.65rem' }}>
+                            {item.jobId && onOpenJob ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenJob(item)}
+                                title="Open this job"
+                                aria-label={`Open job ${item.label}`}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  margin: 0,
+                                  font: 'inherit',
+                                  color: 'var(--text-link)',
+                                  textDecoration: 'underline dotted',
+                                  textUnderlineOffset: '2px',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {item.label}
+                              </button>
+                            ) : onOpenApBill && item.key.startsWith('supply:') ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenApBill(item)}
+                                title="Open this bill"
+                                aria-label={`Open bill from ${item.label}`}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  margin: 0,
+                                  font: 'inherit',
+                                  color: 'var(--text-link)',
+                                  textDecoration: 'underline dotted',
+                                  textUnderlineOffset: '2px',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {item.label}
+                              </button>
+                            ) : (
+                              item.label
+                            )}
+                            {item.sublabel && !section.hideSublabels ? (
+                              <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · {item.sublabel}</span>
+                            ) : null}
+                            {item.address ? (
+                              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
+                            ) : null}
+                            {(() => {
+                              const bill = apBills?.[item.key]
+                              if (!bill || bill.jobs.length === 0) return null
+                              return (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
+                                  {bill.jobs.map((j) => `${j.label} (${j.pct}%)`).join(', ')}
+                                </div>
+                              )
+                            })()}
+                          </td>
+                          <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
+                            {shortDate(itemDateYmd(item))}
+                            <span style={{ marginLeft: '0.35rem' }}>{agingChip(item)}</span>
+                          </td>
+                          <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                            ${formatCurrency(item.amount)}
+                            {showPctComplete && item.pctComplete != null ? (
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.1rem' }}>{item.pctComplete}% done</div>
+                            ) : null}
+                          </td>
+                          {onSendToDispatch ? (
+                            <td style={{ padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' }}>
+                              {item.jobId ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onSendToDispatch(item)}
+                                  title="Send a note about billing this job to the Task Dispatch inbox"
+                                  aria-label={`Send ${item.label} to Dispatch`}
+                                  style={{
+                                    padding: '0.15rem 0.5rem',
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border-strong)',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    color: 'var(--text-link)',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  →
+                                </button>
+                              ) : null}
+                            </td>
+                          ) : null}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  )
+                })
+              )}
             </tbody>
-            <tfoot>
-              <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
-                <td style={{ padding: '0.5rem 0.65rem' }} colSpan={showPctComplete ? 3 : 2}>
-                  {upcomingSection && upcomingSection.count > 0
-                    ? 'Total (incl. estimate)'
-                    : sections.some((s) => s.title === 'Collections')
-                      ? 'Total (excl. Collections)'
-                      : 'Total'}
-                </td>
-                <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  ${formatCurrency(bucket.total)}
-                </td>
-                {onSendToDispatch ? <td /> : null}
-              </tr>
-            </tfoot>
           </table>
+        </div>
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 1.25rem', borderTop: '2px solid var(--border)', fontSize: '0.875rem' }}>
+          {filtersActive ? (
+            <span style={{ color: 'var(--text-muted)' }}>
+              Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(shownTotal)}</span>
+            </span>
+          ) : (
+            <span style={{ fontWeight: 600 }}>{footerTotalLabel}</span>
+          )}
+          {!filtersActive ? (
+            <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>
+          ) : null}
         </div>
       </div>
     </div>
