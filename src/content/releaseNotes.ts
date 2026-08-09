@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1494',
+    date: '2026-08-09',
+    title: 'Job Mode: Clock In works again',
+    kind: 'fix',
+    highlights: [
+      'In Job Mode, the card\'s Clock In and Start First Job buttons were silently doing nothing. Both work again.',
+      'The Job Mode guide gained a screen recording of starting your day — the Ready to start card through to clocked in.',
+    ],
+  },
+  {
     version: 'v2.1493',
     date: '2026-08-09',
     title: 'Help: watch Bill Customer in action',

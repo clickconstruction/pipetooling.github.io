@@ -52,7 +52,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Ready to Bill pipeline | ✅ 2026-08-09 | ✅ |
 | Schedule Dispatch add-a-block | ✅ 2026-08-09 | ✅ |
 | Dispatch Mode assign work | ✅ 2026-08-09 | ✅ |
-| Job Mode clock + report | ☐ | ☐ |
+| Job Mode clock + report | ✅ 2026-08-09 (clock flow; report flow not recorded — send would email) | ✅ |
 | Takeoff assembly | ✅ 2026-08-09 | ✅ |
 
 (The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)
