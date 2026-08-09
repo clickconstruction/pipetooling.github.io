@@ -163,7 +163,10 @@ export function DashboardBillingPipelineSection({
 }: DashboardBillingPipelineSectionProps) {
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
-  const [readyToBillExpanded, setReadyToBillExpanded] = useState(true)
+  // All three pipeline stages start collapsed (v2.1480, user-chosen): the
+  // dashboard leads with the stage headlines + counts, and you expand what
+  // you're working. Stage 1's default lives in DashboardFieldCollectPaymentQueue.
+  const [readyToBillExpanded, setReadyToBillExpanded] = useState(false)
   const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
   const [markPaidJob, setMarkPaidJob] = useState<JobForDashboard | null>(null)

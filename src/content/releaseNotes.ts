@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1480',
+    date: '2026-08-09',
+    title: 'Dashboard: Billing Pipeline starts collapsed',
+    kind: 'fix',
+    highlights: [
+      'All three pipeline stages now load closed — you see the counts at a glance and open just the stage you\'re working.',
+    ],
+  },
+  {
     version: 'v2.1479',
     date: '2026-08-09',
     title: 'Dashboard: bigger Job Report button text',
