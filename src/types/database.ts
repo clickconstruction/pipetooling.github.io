@@ -12512,6 +12512,7 @@ export type Database = {
         Args: { p_roadmap_id: string }
         Returns: boolean
       }
+      can_view_inspection_portal_credentials: { Args: never; Returns: boolean }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
       checklist_instance_parent_item_created_by_auth_user: {
         Args: { p_instance_id: string }
