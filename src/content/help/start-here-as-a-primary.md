@@ -11,6 +11,12 @@ You have a client-side view: your jobs, their money, and the estimates and bids 
 
 - **Dashboard** — today at a glance: what's scheduled, what's ready to bill, recent activity.
 - **Jobs** — the job list with billing state on every row. Open a job for its full detail: line items, invoices, payments, reports.
+
+:::example A row in your job list
+**1482 · 210 Oak Bend Dr** — Water heater replacement {{chip:blue|Billed}} `$3,850`
+
+The chip is the billing state: {{chip:gray|Waiting}} {{chip:yellow|Working}} {{chip:purple|Ready to Bill}} {{chip:blue|Billed}} {{chip:green|Paid}}
+:::
 - **Estimates** — proposals out for acceptance, and what's been accepted.
 - **Bids** — pricing work in progress.
 - **Calendar** and **Job Parts Tally** — schedule and parts logging.

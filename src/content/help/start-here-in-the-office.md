@@ -9,6 +9,14 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 
 ## Your day
 
+:::example A typical morning's dashboard flags
+{{chip:red|45}} **Stale tally transactions** — card purchases waiting to be sorted to jobs
+
+{{chip:yellow|2}} **Unallocated bank deposits** — money in the bank not yet applied to a job
+
+{{chip:blue|3}} **Dispatch inbox** — field requests waiting on an answer
+:::
+
 1. **Dashboard** — clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight.
 2. **Jobs → Pipeline** — the busiest board in the app: every job by billing state, with search, GC and development filters, and print. Set progress, bill, and collect from here.
 3. **Schedule** — who is where, day by day. See [dispatch mode](?g=dispatch-mode) and [scheduling people onto jobs](?g=schedule-dispatch).

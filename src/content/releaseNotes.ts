@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1489',
+    date: '2026-08-09',
+    title: 'Help guides: more visual',
+    kind: 'feature',
+    highlights: [
+      'The role "start here" guides and a few others gained illustrated example panels — pipeline states, attention pills, aging chips, and the Dispatch Mode tab bar drawn right in the guide.',
+      'Screen recordings for the trickiest flows are planned next.',
+    ],
+  },
+  {
     version: 'v2.1488',
     date: '2026-08-09',
     title: 'Inspections: permit portals with sign-ins built in',

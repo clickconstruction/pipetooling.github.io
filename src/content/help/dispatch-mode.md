@@ -7,6 +7,12 @@ order: 30
 ---
 Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers** (plus **PO** if you turn it on).
 
+:::example The pinned tab bar
+{{button:blue|Dashboard}} {{button:outline|Schedule}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|Customers}} {{button:outline|PO}}
+
+The red badge on Inbox counts open dispatch and estimator requests.
+:::
+
 ## Turning Dispatch Mode on
 
 1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.

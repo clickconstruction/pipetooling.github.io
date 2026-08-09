@@ -9,6 +9,10 @@ You see everything: customers, projects, jobs, money, people, and payroll. This 
 
 ## The four surfaces you'll live in
 
+:::example Where a dollar lives at each stage
+{{button:blue|Bids}} price the work → {{button:blue|Projects}} run the work → {{button:blue|Jobs}} bill the work → {{button:blue|People}} pay the people
+:::
+
 1. **Jobs → Pipeline** — the busiest board: every job by billing state, from Ready to Bill through Collections.
 2. **Projects** — long-running work as step chains, with attention pills for whatever is stuck. See [project status at a glance](?g=see-project-status-at-a-glance).
 3. **Bids** — estimating, from takeoff to submitted proposal.
