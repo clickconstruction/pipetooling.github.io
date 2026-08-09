@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1486)
+last_updated: 2026-08-09 (v2.1487)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1487)
+
+### Stale tally follow-up — phone-native cards, stale filter with counts (2026-08-09)
+User-requested: the Dashboard/Quickfill "Stale tally follow-up" modal ([`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)) was a five-column desktop table squeezed onto phones — the Assign/Backcharge buttons sat off-screen behind horizontal scroll on every row. Under 640px (`useNarrowViewport640`, matching the v2.1483 phone-native pattern) each transaction now renders as a card: counterparty + bold no-wrap amount, short date (`Aug 5 · 11:41 AM`) + bank descriptor + an age chip (`4d old`, red when stale) from the new kernel export `unlinkedMercuryRowCalendarAgeDays` ([`tallyStaleMinAgeDays.ts`](../src/lib/tallyStaleMinAgeDays.ts), first tests for that kernel), and two full-width Assign/Backcharge tap targets. Both layouts: header (title + "N to sort" + Close + filters) is now fixed with only the list scrolling, and the old "Show stale only"/"Show all" toggle became an **All (n) / Stale (n)** segmented control — the RPC now always fetches the full unlinked set (`include_all_unlinked: true`) and staleness filters client-side, so flipping is instant. Desktop keeps the table (amount cells gain `white-space: nowrap`; group headers gain a transaction count). Supporting fix: `denverCalendarDayKey` ([`dateUtils.ts`](../src/utils/dateUtils.ts)) now builds its `YYYY-MM-DD` key via `formatToParts` instead of trusting `en-CA`'s locale pattern — identical output in browsers, but proof against runtimes whose `en-CA` data falls back to `MM/DD/YYYY` (this Node 20.0.0 did, which is why the kernel had no tests). Client-only.
 
 ## Latest Updates (v2.1486)
 

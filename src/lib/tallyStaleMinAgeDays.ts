@@ -27,13 +27,20 @@ export function isUnlinkedMercuryRowStaleForTallyStaffFollowUp(
   minAgeDays: number,
   nowMs: number = Date.now(),
 ): boolean {
-  if (postedAt == null || postedAt === '') return false
+  const diffDays = unlinkedMercuryRowCalendarAgeDays(postedAt, nowMs)
+  if (diffDays == null) return false
+  return diffDays > Math.max(0, Math.floor(minAgeDays))
+}
+
+/** Calendar-day age of a posted timestamp (same civil-date math as the stale check); null when unparsable. */
+export function unlinkedMercuryRowCalendarAgeDays(
+  postedAt: string | null,
+  nowMs: number = Date.now(),
+): number | null {
+  if (postedAt == null || postedAt === '') return null
   const postedMs = new Date(postedAt).getTime()
-  if (!Number.isFinite(postedMs)) return false
-  const ageInt = Math.max(0, Math.floor(minAgeDays))
+  if (!Number.isFinite(postedMs)) return null
   const postedYmd = denverCalendarDayKey(postedMs)
   const todayYmd = denverCalendarDayKey(nowMs)
-  const diffDays = chicagoYmdCalendarDaysBetween(postedYmd, todayYmd)
-  if (diffDays == null) return false
-  return diffDays > ageInt
+  return chicagoYmdCalendarDaysBetween(postedYmd, todayYmd)
 }
