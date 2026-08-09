@@ -18,6 +18,7 @@ import {
   type DispatchSwimLanesData,
 } from '../../lib/dispatchSwimLanes'
 import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
+import { quickAssignDisabledReason } from '../../lib/dispatchQuickAssignDisabledReason'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
 import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
@@ -738,8 +739,23 @@ export default function QuickAssignSheet({
               </label>
               <button
                 type="button"
-                disabled={!canSchedule}
-                onClick={() => void handleSchedule()}
+                // Not `disabled` (v2.1486): a disabled button swallows the tap
+                // silently. Keep it tappable and toast WHY it can't schedule
+                // yet; aria-disabled keeps the state honest for assistive tech.
+                aria-disabled={!canSchedule}
+                onClick={() => {
+                  if (canSchedule) {
+                    void handleSchedule()
+                    return
+                  }
+                  const reason = quickAssignDisabledReason({
+                    hasJob: job != null,
+                    peopleCount: selected.size,
+                    hasWindow: effectiveWindow != null,
+                    saving,
+                  })
+                  if (reason) showToast(reason, 'info', 4500)
+                }}
                 style={{
                   flex: 1,
                   padding: '0.6rem',
