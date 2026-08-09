@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1475)
+last_updated: 2026-08-08 (v2.1476)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1476)
+
+### Pipeline — hide groups from the board (2026-08-08)
+User-requested (mockup-first): now that jobs carry GCs, Developments, and Account Men, the board can *exclude* any mix of them — the inverse of the v2.1183/v2.1232 include-filters, and the two compose (exclusions apply first, then include filter, then search). New kernel [`jobsStagesExcludeFilters.ts`](../src/lib/jobsStagesExcludeFilters.ts) (tested): per-dimension option lists with counts (+ a `none` pseudo-value so untagged jobs are hideable, and ghost rows for excluded ids no longer on the board so filters can't get stuck invisible), pure toggle, per-device localStorage persistence (`jobs-stages-exclude-filters`, malformed → no exclusions). UI: **⋯ tools menu → "Hide groups…"** opens [`JobsStagesHideGroupsModal.tsx`](../src/components/jobs/JobsStagesHideGroupsModal.tsx) (three sections, click-to-hide rows with counts, "Show everything"); while anything is hidden the command bar shows a red **"Hiding N groups"** chip that opens the modal (tap-to-manage rather than tap-to-clear — several hides shouldn't vanish on one accidental tap), per the v2.1232 "the bar only shows an APPLIED filter" rule, and the ⋯ button keeps its active tint. Wired in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) ahead of the include-filters in the board-lists memo. Render smokes for the modal. New help guide `hide-groups-from-the-pipeline`. Client-only.
 
 ## Latest Updates (v2.1475)
 

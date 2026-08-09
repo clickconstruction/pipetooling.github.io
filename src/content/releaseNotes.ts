@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1476',
+    date: '2026-08-08',
+    title: 'Pipeline: hide groups of jobs from the board',
+    kind: 'feature',
+    highlights: [
+      'New in the Pipeline ⋯ menu: Hide groups… — hide any mix of GCs, Developments, or Account Men, and the board recounts as if they weren\'t there.',
+      'A red "Hiding N groups" chip in the search bar keeps the filtered view honest; tap it to review or clear.',
+      'Hides are per device and purely visual — nothing on the jobs changes.',
+    ],
+  },
+  {
     version: 'v2.1475',
     date: '2026-08-08',
     title: 'Pipeline: quiet "Reports" on jobs with none',
