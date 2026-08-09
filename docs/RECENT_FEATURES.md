@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1480)
+last_updated: 2026-08-09 (v2.1481)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1481)
+
+### Dashboard — even spacing around the My Schedule card (2026-08-09)
+User-reported on mobile: the gap between the Clock In stack and My Schedule (~32px: the quick row's 16px bottom margin + the card's own `marginTop: 1rem`, non-collapsing) was twice the gap between My Schedule and the finance tiles (the card's 16px `marginBottom` alone). Fix: drop the card's `marginTop` in [`DashboardMyScheduleSection.tsx`](../src/components/dashboard/DashboardMyScheduleSection.tsx) — both gaps are now the single 1rem. The no-pipeline mount keeps its own 0.75rem wrapper (Dashboard.tsx), which also reads tighter/consistent without the stacked margin. Client-only.
 
 ## Latest Updates (v2.1480)
 
