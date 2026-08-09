@@ -111,6 +111,14 @@ import {
   buildCapableToBillBreakdownRows,
   capableToBillTotalFromWorking,
 } from '../../lib/jobsStagesBoard'
+import {
+  countStagesExclusions,
+  filterJobsByExclusions,
+  loadStagesExcludeFilters,
+  saveStagesExcludeFilters,
+  type StagesExcludeFilters,
+} from '../../lib/jobsStagesExcludeFilters'
+import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
@@ -681,14 +689,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Stages development filter: '' = all, STAGES_DEVELOPMENT_FILTER_NONE = jobs without one, else development id. */
   const [stagesDevelopmentFilter, setStagesDevelopmentFilter] = useState('')
   const stagesDevelopmentFilterOptions = useMemo(() => developmentFilterOptionsFromJobs(jobs), [jobs])
+  /** "Hide groups" exclusions (v2.1476): per-device; applied before the include filters and search. */
+  const [stagesExcludeFilters, setStagesExcludeFiltersState] = useState<StagesExcludeFilters>(() => loadStagesExcludeFilters())
+  const [stagesHideGroupsModalOpen, setStagesHideGroupsModalOpen] = useState(false)
+  const setStagesExcludeFilters = useCallback((next: StagesExcludeFilters) => {
+    setStagesExcludeFiltersState(next)
+    saveStagesExcludeFilters(next)
+  }, [])
+  const stagesExclusionCount = countStagesExclusions(stagesExcludeFilters)
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByDevelopment(filterJobsByGcCustomer(jobs, stagesGcFilter || null), stagesDevelopmentFilter || null),
+        filterJobsByDevelopment(
+          filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
+          stagesDevelopmentFilter || null,
+        ),
         stagesSearchQuery,
         stagesSearchExtraJobIds,
       ),
-    [jobs, stagesGcFilter, stagesDevelopmentFilter, stagesSearchQuery, stagesSearchExtraJobIds],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesSearchQuery, stagesSearchExtraJobIds],
   )
 
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
@@ -1444,6 +1463,27 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </span>
                 </button>
               ) : null}
+              {stagesExclusionCount > 0 ? (
+                // Hidden-groups chip (v2.1476): same "the bar only shows an APPLIED
+                // filter" rule as the GC/development chips above. Tap opens the
+                // manage modal rather than clearing — several hides shouldn't
+                // vanish on one accidental tap; "Show everything" lives inside.
+                <button
+                  type="button"
+                  onClick={() => setStagesHideGroupsModalOpen(true)}
+                  title="Some groups are hidden from this board — tap to review"
+                  aria-label={`${stagesExclusionCount} group${stagesExclusionCount === 1 ? '' : 's'} hidden from the board — review`}
+                  style={{
+                    ...stagesActiveFilterChipStyle,
+                    background: 'var(--bg-red-tint)',
+                    color: 'var(--text-red-700)',
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                    Hiding {stagesExclusionCount} group{stagesExclusionCount === 1 ? '' : 's'}
+                  </span>
+                </button>
+              ) : null}
               <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
               <div style={{ position: 'relative', flexShrink: 0 }}>
               <button
@@ -1463,12 +1503,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   border: 'none',
                   borderRadius: 8,
                   background:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesExclusionCount > 0
                       ? 'var(--bg-blue-tint)'
                       : 'transparent',
                   cursor: 'pointer',
                   color:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesExclusionCount > 0
                       ? 'var(--text-link)'
                       : 'var(--text-muted)',
                   fontSize: '1.2rem',
@@ -1560,6 +1600,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
                       </>
                     ) : null}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setStagesToolsMenuOpen(false)
+                        setStagesHideGroupsModalOpen(true)
+                      }}
+                      title="Hide chosen GCs, developments, or Account Men from the board"
+                      style={stagesToolsMenuItemStyle}
+                    >
+                      <span>Hide groups…</span>
+                      {stagesExclusionCount > 0 ? (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-700)' }}>
+                          {stagesExclusionCount} hidden
+                        </span>
+                      ) : null}
+                    </button>
                     {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
                       (r) => r === authRole || r === myRole,
                     ) ? (
@@ -3433,6 +3490,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         open={jobBookModalOpen}
         onClose={() => setJobBookModalOpen(false)}
         onDbError={(msg) => showToast(msg, 'error')}
+      />
+      <JobsStagesHideGroupsModal
+        open={stagesHideGroupsModalOpen}
+        onClose={() => setStagesHideGroupsModalOpen(false)}
+        jobs={jobs}
+        filters={stagesExcludeFilters}
+        onChange={setStagesExcludeFilters}
       />
       <JobsCombineSeparateModal
         open={combineSeparateModalOpen}
