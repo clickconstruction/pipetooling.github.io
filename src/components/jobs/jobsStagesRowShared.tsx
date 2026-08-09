@@ -495,7 +495,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         }}
         title={job.customer_id ? 'Open customer profile' : 'Link or create this customer'}
         aria-label={job.customer_id ? `Open customer profile for ${cn || 'customer'}` : `Link or create customer ${cn || ''}`.trim()}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -545,6 +545,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
                   fontFamily: 'inherit',
                   textDecoration: 'underline dotted',
                   textUnderlineOffset: '2px',
+                  textAlign: 'left',
                 }}
               >
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
