@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1485)
+last_updated: 2026-08-09 (v2.1486)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1486)
+
+### Quick Assign — tapping the gray Schedule button now says what's missing (2026-08-09)
+User-requested: the Assign Work sheet's schedule button sat disabled ("Pick people and a time") and swallowed taps with no explanation — in the reported case people were selected but no time window was chosen (the sliders are only a preview until a suggested window or Custom is picked). The button ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx), mounted by Dispatch Mode and both ScheduleDispatchHub composers) drops `disabled` for `aria-disabled` + an onClick that toasts the precise blocker via the new tested kernel [`dispatchQuickAssignDisabledReason.ts`](../src/lib/dispatchQuickAssignDisabledReason.ts): still scheduling / no job / no people / no window / both, e.g. "Choose a time window — tap a suggested window or set a Custom time." Visual styling unchanged. Client-only.
 
 ## Latest Updates (v2.1485)
 

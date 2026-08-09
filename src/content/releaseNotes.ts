@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1486',
+    date: '2026-08-09',
+    title: 'Assign work: the gray button explains itself',
+    kind: 'fix',
+    highlights: [
+      'Tapping the disabled Schedule button now tells you exactly what\'s missing — like "Choose a time window — tap a suggested window or set a Custom time" — instead of doing nothing.',
+    ],
+  },
+  {
     version: 'v2.1485',
     date: '2026-08-09',
     title: 'Sign-in: no more dashboard flicker',
