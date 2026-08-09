@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1482)
+last_updated: 2026-08-09 (v2.1483)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1483)
+
+### Dashboard money cards — phone-native drill-downs (2026-08-09)
+User-requested (mockup-approved): the AR / AP / Not Billed Out drill-downs shared one desktop table that broke on phones — AR/Not Billed rendered ~420px wide in a 343px viewport (the Amount column and Not Billed's → dispatch action sat off-screen), and AP's ~90px Item column wrapped each of 254 rows to six lines. `ItemsModal` ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)) now forks on the existing `useIsMobile`: phones get a full-height sheet — pinned total/count header, search box filtering all sections at once (honest footer: "Showing N of M · $X"), Biggest/Oldest sort pills, card rows with the amount always visible top-right and color-coded aging chips (<15d green / 15–30d amber / >30d red, replacing "(+34)"), sticky collapsible section headers with subtotals on all three modals (incl. AP's Upcoming-payroll estimate section), and Not Billed's → as a 40px button. Desktop table unchanged. Search/sort/aging logic lives in the new tested kernel [`dashboardFinanceModalRows.ts`](../src/lib/dashboardFinanceModalRows.ts). New help guide `drill-into-the-dashboard-money-cards`. Client-only.
 
 ## Latest Updates (v2.1482)
 

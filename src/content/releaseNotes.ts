@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1483',
+    date: '2026-08-09',
+    title: 'Money cards: built for your phone',
+    kind: 'feature',
+    highlights: [
+      'Accounts Receivable, Accounts Payable, and Not Billed Out now open as full-screen sheets on phones — the dollar amounts are always visible instead of hiding off the side of a table.',
+      'Search all the items at once, sort by Biggest or Oldest with one tap, and read aging as color chips — green under 2 weeks, amber to a month, red past it.',
+      'Sections stick while you scroll and collapse with a tap, with counts and subtotals on the header. Computers keep the full table view.',
+    ],
+  },
+  {
     version: 'v2.1482',
     date: '2026-08-09',
     title: 'Clock In: readable in dark mode',
