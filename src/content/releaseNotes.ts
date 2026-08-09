@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1492',
+    date: '2026-08-09',
+    title: 'Help: watch Save as Assembly in action',
+    kind: 'feature',
+    highlights: [
+      'The takeoff assembly guide now has a screen recording — Save as Assembly from a fixture\'s part lines, adding an item with the one-box search, and saving to the shared book.',
+    ],
+  },
+  {
     version: 'v2.1491',
     date: '2026-08-09',
     title: 'Help: watch scheduling in action',

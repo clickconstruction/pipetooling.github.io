@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1491)
+last_updated: 2026-08-09 (v2.1492)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1492)
+
+### Help — Takeoff Save-as-Assembly screen recording (2026-08-09)
+Third capture from [`HELP_MEDIA_PLAN.md`](HELP_MEDIA_PLAN.md), recorded via the sandbox strategy (owner-approved): scratch bid BP374 "ZZ TEST" with two counts and part lines, the **Save as Assembly** flow captured end-to-end (form pre-loaded from part lines, rename, one-search item add, Save into the shared catalog), then everything deleted — the ZZ TEST assembly from the Assembly Book and the bid via typed-name delete; catalog and board verified clean. `public/help/create-an-assembly-while-doing-a-takeoff.gif` (~2.7 MB, 18 frames, desktop) wired into [`create-an-assembly-while-doing-a-takeoff.md`](../src/content/help/create-an-assembly-while-doing-a-takeoff.md). Ops note: the Assembly Book's Edit→Delete uses a **native confirm()**, which freezes browser automation — the one human click of the session. Content-only.
 
 ## Latest Updates (v2.1491)
 

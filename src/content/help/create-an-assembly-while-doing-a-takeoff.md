@@ -12,6 +12,8 @@ When a fixture needs an assembly that doesn't exist yet, you can create one with
 
 Both open the same **Add Assembly** form. It also maintains the shared catalog, so anything you create here appears in Materials → Assembly Book too.
 
+{{gif:create-an-assembly-while-doing-a-takeoff.gif|Save as Assembly: the form opens pre-loaded with the fixture's parts, one search adds more, Save creates it in the shared book}}
+
 ## Build the item list with one search
 
 There's a single search box for items — it looks through **parts and assemblies at the same time**, with results grouped under those two headers. Parts show their manufacturer and part type; assemblies can be nested inside your new one.
