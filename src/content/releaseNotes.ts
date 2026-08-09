@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1490',
+    date: '2026-08-09',
+    title: 'Help: watch Assign work in action',
+    kind: 'feature',
+    highlights: [
+      'The Dispatch Mode guide now has a short screen recording of the Assign work flow — job, day, people, and a suggested time window, start to finish.',
+    ],
+  },
+  {
     version: 'v2.1489',
     date: '2026-08-09',
     title: 'Help guides: more visual',

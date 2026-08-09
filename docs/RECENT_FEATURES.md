@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1489)
+last_updated: 2026-08-09 (v2.1490)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1490)
+
+### Help — Dispatch Mode assign-work screen recording (2026-08-09)
+First capture from the [`HELP_MEDIA_PLAN.md`](HELP_MEDIA_PLAN.md) shortlist: `public/help/dispatch-mode.gif` (~1 MB, 15 frames, phone width, light theme) walks the Assign work flow — blue **+** → job picker → day → crew tap (free-time ribbons) → suggested window — ending on the armed "Schedule 2 people" state **without submitting** (recorded live against prod with zero writes). Wired into [`dispatch-mode.md`](../src/content/help/dispatch-mode.md) via `{{gif:}}` under the tab-bar example panel; plan status table ticked. Content-only.
 
 ## Latest Updates (v2.1489)
 
