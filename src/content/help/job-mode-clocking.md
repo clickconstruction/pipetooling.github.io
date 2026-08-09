@@ -43,6 +43,8 @@ While you're clocked into a job, the card keeps going below the buttons:
 
 ## Clocking in and out
 
+{{gif:job-mode-clocking.gif|Starting the day: the Ready to start card, Start First Job with intent notes, and the clocked-in card}}
+
 - Tap {{button:green|Clock In}} to start your day. If you have a schedule, the card offers your scheduled job; otherwise you can pick a job manually.
 - Moving on? Tap {{button:green|Next Job}} — you'll be asked for brief notes about the job you're leaving, then your clock switches to the new job in one step.
 - Your location is captured when you punch, and your hours flow to the office automatically for approval.

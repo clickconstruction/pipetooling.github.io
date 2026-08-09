@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1493)
+last_updated: 2026-08-09 (v2.1494)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1494)
+
+### Job Mode — Clock In / Start First Job un-broken + clocking screen recording (2026-08-09)
+**Bug found while capturing the final [`HELP_MEDIA_PLAN.md`](HELP_MEDIA_PLAN.md) recording**: in Job Mode, BOTH card clock actions silently no-oped — manual **Clock In** did nothing and **Start First Job** errored "Update focus is not available right now." Root cause: the Job Mode early return in [`Dashboard.tsx`](../src/pages/Dashboard.tsx) renders `DashboardPinnedQuickRow` without `clockSlot`, so [`ClockInOutButton`](../src/components/ClockInOutButton.tsx) never mounts there — and it's the sole registrant of the `UpdateFocusOpenerBridge` opener/apply functions the card's actions call (both are ungated optional-chain/fallback paths, so nothing surfaced). Likely regressed at the v2.723 pins extraction, which replaced the old `tallyAndPinnedBlock` (clock included) with the slot-less quick row. Fix: a **visually-hidden ClockInOutButton mount** in the Job Mode branch (absolute 0×0 overflow-hidden wrapper — deliberately not `display:none`, which would suppress its position-fixed modals; fixed-position children escape a zero-size untransformed ancestor). Verified live: Start First Job on a sandbox job punched in, card flipped to the clocked-in state. That verified flow is the new recording `public/help/job-mode-clocking.gif` (~1 MB, phone width) wired into [`job-mode-clocking.md`](../src/content/help/job-mode-clocking.md) — completing all five plan captures. Sandbox (job 959, schedule block) deleted after; one 4-minute pending clock session (3:47–3:50 PM, "Rough-in walkthrough") left for the office to reject in hours review. Client-only.
 
 ## Latest Updates (v2.1493)
 

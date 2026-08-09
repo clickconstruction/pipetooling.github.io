@@ -1074,6 +1074,24 @@ export default function Dashboard() {
         {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
             hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917). */}
         <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners />
+        {/* Visually-hidden clock mount: DashboardJobModeCard's Clock In / Start First Job actions
+            run through the UpdateFocusOpenerBridge, whose opener/apply functions only exist while
+            ClockInOutButton is mounted — without this, both card buttons silently no-op ("Update
+            focus is not available right now"). The wrapper must NOT be display:none (that would
+            suppress the clock modals, which are position:fixed and render fine from a zero-size
+            untransformed ancestor). */}
+        {authUser?.id ? (
+          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+            <ClockInOutButton
+              userId={authUser.id}
+              userName={clockDisplayName}
+              onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
+              onClockInSuccess={handleClockInSuccessContractPrompt}
+              onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
+              embedded
+            />
+          </div>
+        ) : null}
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
