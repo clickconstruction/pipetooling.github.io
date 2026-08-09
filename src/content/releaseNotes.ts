@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1475',
+    date: '2026-08-08',
+    title: 'Pipeline: quiet "Reports" on jobs with none',
+    kind: 'fix',
+    highlights: [
+      'Jobs with no field reports show a muted "Reports" link instead of a bordered "0 Reports" button — jobs that do have reports now stand out at a glance.',
+    ],
+  },
+  {
     version: 'v2.1474',
     date: '2026-08-08',
     title: 'Pipeline: long customer names line up properly',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1474)
+last_updated: 2026-08-08 (v2.1475)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1475)
+
+### Pipeline board — "0 Reports" pill goes quiet (2026-08-08)
+User-requested: on report-less rows (most of Waiting), the bordered blue "0 Reports" pill was the loudest element in an otherwise empty Activity cell while advertising nothing. `renderStagesViewReportsButton` ([`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)) now branches on count: N ≥ 1 keeps the blue-bordered "N Report(s)" pill exactly as before (both placements — Activity footer and the billed-merged-row Job column spot from v2.1155); N = 0 demotes to borderless `--text-faint` "Reports" text (transparent border keeps geometry identical), still clickable through to the full-screen activity view since that view also carries notes and status history. Rows with real field activity now pop against quiet ones. Client-only.
 
 ## Latest Updates (v2.1474)
 
