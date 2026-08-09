@@ -94,7 +94,9 @@ export function DashboardMyScheduleSection({
         borderRadius: 8,
         background: 'var(--surface)',
         padding: '0.85rem 1rem 1rem',
-        marginTop: '1rem',
+        // No marginTop (v2.1481): the quick row above already carries a 16px
+        // bottom margin, and stacking 1rem on top of it made the gap above
+        // this card ~2× the 1rem gap below it (user-reported on mobile).
         marginBottom: '1rem',
         scrollMarginTop: 8,
       }}

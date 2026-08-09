@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1481',
+    date: '2026-08-09',
+    title: 'Dashboard: even spacing around My Schedule',
+    kind: 'fix',
+    highlights: [
+      'The gap above the My Schedule card now matches the gap below it — the space between Clock In and My Schedule was about double.',
+    ],
+  },
+  {
     version: 'v2.1480',
     date: '2026-08-09',
     title: 'Dashboard: Billing Pipeline starts collapsed',
