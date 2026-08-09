@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1491',
+    date: '2026-08-09',
+    title: 'Help: watch scheduling in action',
+    kind: 'feature',
+    highlights: [
+      'The scheduling guide now has a screen recording of adding a block on the People grid — the day cell, the job picker, and the time slider.',
+    ],
+  },
+  {
     version: 'v2.1490',
     date: '2026-08-09',
     title: 'Help: watch Assign work in action',

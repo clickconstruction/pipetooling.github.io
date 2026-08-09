@@ -34,6 +34,8 @@ Search: `Search HCP or job name`
 {{button:outline|Create new job}} &nbsp;·&nbsp; {{button:outline|Not coming in today}}
 :::
 
+{{gif:schedule-dispatch.gif|Adding a block from a day cell: the + control, the job picker, then times on the slider}}
+
 Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:yellow|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
 
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.

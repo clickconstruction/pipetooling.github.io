@@ -20,12 +20,13 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 ### 1. Bill a customer from the Pipeline
 - **Guide**: `ready-to-bill-pipeline.md` · desktop width
 - **Script**: Jobs → Pipeline → a job in Ready to Bill → Bill Customer → walk the modal to the (unsent) preview → close.
+- **Write warning**: merely OPENING Bill Customer runs `ensure_single_ready_to_bill_invoice_for_job` and can insert the draft invoice row — record against an owner-designated test job (the HCP record-only channel is the safe one), never a live customer job.
 - **Paste when captured**: `{{gif:ready-to-bill-pipeline.gif|Billing a Ready to Bill job from the Pipeline}}`
 
-### 2. Drag-assign on Schedule Dispatch
+### 2. Add a block on Schedule Dispatch
 - **Guide**: `schedule-dispatch.md` · desktop width
-- **Script**: Schedule → place a job card onto a person's day, show the linked-crew highlight, then move it to another day.
-- **Paste when captured**: `{{gif:schedule-dispatch.gif|Placing and moving a job on the dispatch board}}`
+- **Script**: People grid → a day cell's **+** → job picker → block editor (slider/times) — ending before Save so nothing writes.
+- **Captured 2026-08-09** as exactly that scope. The originally-planned extras (linked-crew highlight, moving a block to another day) need a placed block, i.e. real writes — re-record against a sandbox job if that footage is ever wanted.
 
 ### 3. Assign work from Dispatch Mode
 - **Guide**: `dispatch-mode.md` · phone width
@@ -35,11 +36,13 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 ### 4. Clock in and file a report in Job Mode
 - **Guide**: `job-mode-clocking.md` · phone width
 - **Script**: Dashboard in Job Mode → Clock In (pick the job) → Job Report button → photo + note → send.
+- **Write warning**: clock-in writes a real session and the report emails people — this one genuinely needs the read-only training account (whose writes are blocked; end the take on the filled report, pre-send).
 - **Paste when captured**: `{{gif:job-mode-clocking.gif|Clocking in and filing a job report from the field}}`
 
 ### 5. Takeoff: counts to assembly
 - **Guide**: `create-an-assembly-while-doing-a-takeoff.md` · desktop width
 - **Script**: Bids → Takeoffs → add a count with the numpad → open assembly authoring → save → show it applied.
+- **Write warning**: counts and assemblies autosave to the bid (fire-and-forget persistence) — record on a scratch bid created for the purpose, then archive it.
 - **Paste when captured**: `{{gif:create-an-assembly-while-doing-a-takeoff.gif|Counting a fixture and saving an assembly mid-takeoff}}`
 
 ## Status
@@ -47,7 +50,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Recording | Captured | Wired into guide |
 |---|---|---|
 | Ready to Bill pipeline | ☐ | ☐ |
-| Schedule Dispatch drag-assign | ☐ | ☐ |
+| Schedule Dispatch add-a-block | ✅ 2026-08-09 | ✅ |
 | Dispatch Mode assign work | ✅ 2026-08-09 | ✅ |
 | Job Mode clock + report | ☐ | ☐ |
 | Takeoff assembly | ☐ | ☐ |
