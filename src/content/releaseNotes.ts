@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1488',
+    date: '2026-08-09',
+    title: 'Inspections: permit portals with sign-ins built in',
+    kind: 'feature',
+    highlights: [
+      'Quick Links are now Permit Portal cards — search by city, open the portal, and copy the shared username and password right from the card.',
+      'Scheduled inspections show an "Open portal" button with copy-sign-in shortcuts when the address matches a city a portal serves.',
+      'Edit Portals now stores the cities each portal covers, the shared sign-in, and a note.',
+    ],
+  },
+  {
     version: 'v2.1487',
     date: '2026-08-09',
     title: 'Stale tally follow-up: easier on your phone',

@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-08
+last_updated: 2026-08-09
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 9, 2026
+
+**`20260809181551_inspection_portal_credentials.sql`** _(apply via `supabase db push` after merge — the client in the same PR falls back to the legacy column set until then, so client-first deploy order is safe)_
+- **Purpose**: Permit portal upgrade on Jobs → Inspections (v2.1488) — `inspection_quick_links` gains `cities text[]` (drives the city search and matches scheduled inspections to their portal by address) and `notes text`; new `inspection_portal_credentials` table (`quick_link_id` PK/FK `ON DELETE CASCADE`, `username`, `password`) holds each portal's shared sign-in.
+- **Security**: the parent table stays all-authenticated-readable (baseline policy), so credentials live in the new table gated by new SECURITY DEFINER helper `can_view_inspection_portal_credentials()` — dev/master_technician/assistant/controller/primary, i.e. the Inspections-tab audience; note `can_manage_inspection_types()` predates controller and was left untouched. CREATE TABLE → ends with both read-only training-mode blocks.
 
 #### August 8, 2026
 

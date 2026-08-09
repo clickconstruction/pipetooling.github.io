@@ -4186,27 +4186,65 @@ export type Database = {
         }
         Relationships: []
       }
+      inspection_portal_credentials: {
+        Row: {
+          created_at: string
+          password: string | null
+          quick_link_id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          password?: string | null
+          quick_link_id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          password?: string | null
+          quick_link_id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_portal_credentials_quick_link_id_fkey"
+            columns: ["quick_link_id"]
+            isOneToOne: true
+            referencedRelation: "inspection_quick_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspection_quick_links: {
         Row: {
+          cities: string[]
           created_at: string | null
           id: string
           label: string
+          notes: string | null
           sequence_order: number
           updated_at: string | null
           url: string
         }
         Insert: {
+          cities?: string[]
           created_at?: string | null
           id?: string
           label: string
+          notes?: string | null
           sequence_order?: number
           updated_at?: string | null
           url: string
         }
         Update: {
+          cities?: string[]
           created_at?: string | null
           id?: string
           label?: string
+          notes?: string | null
           sequence_order?: number
           updated_at?: string | null
           url?: string
