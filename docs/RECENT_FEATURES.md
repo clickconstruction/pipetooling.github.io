@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1487)
+last_updated: 2026-08-09 (v2.1488)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1488)
+
+### Inspections — Permit Portals with sign-ins, city search, and per-inspection jump-in (2026-08-09)
+User-requested: getting into a city permit site meant knowing which portal serves the city, then digging the shared login out of loose notes. The Inspections tab's flat Quick Links grid ([`JobsInspectionsTab.tsx`](../src/components/jobs/JobsInspectionsTab.tsx)) becomes **Permit Portals**: a city search box over portal cards (label, city chips with match highlighting, Open portal, notes line) with the shared sign-in on the card — username + masked password with Show/Copy buttons (clipboard + toast). One portal serves many cities (e.g. MGO Connect), so the eight per-city links can collapse into one card. **Scheduled inspections jump straight in**: Upcoming rows and the calendar day popup match the inspection's address against portal cities (new tested kernel [`inspectionPortalSearch.ts`](../src/lib/inspectionPortalSearch.ts): filter/highlight/parse + `matchPortalForInspectionAddress`, longest-city-wins) and render an Open-portal + Copy user/password strip. Edit Portals gains Cities served / Sign-in user / Sign-in password / Notes fields; usernames stored clean (no `mailto:` artifacts). **Migration [`20260809181551_inspection_portal_credentials.sql`](../supabase/migrations/20260809181551_inspection_portal_credentials.sql)** (needs `supabase db push` after merge): `cities`/`notes` columns + `inspection_portal_credentials` table RLS-gated to dev/master/assistant/controller/primary via new `can_view_inspection_portal_credentials()` — deliberately NOT on the all-authenticated `inspection_quick_links` table. Client tolerates the pre-push schema (legacy column fallback; credentials load failure → empty map). New help guide [`permit-portals.md`](../src/content/help/permit-portals.md). Passwords are entered by the office via Edit Portals, not seeded in code.
 
 ## Latest Updates (v2.1487)
 

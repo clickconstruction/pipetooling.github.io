@@ -2,9 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import AddInspectionModal from '../AddInspectionModal'
+import { useToastContext } from '../../contexts/ToastContext'
+import { cityMatchesQuery, filterPortalsByQuery, formatCitiesInput, matchPortalForInspectionAddress, parseCitiesInput } from '../../lib/inspectionPortalSearch'
 import type { Database } from '../../types/database'
 
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
+
+type QuickLinkRow = { id: string; label: string; url: string; sequence_order: number; cities: string[]; notes: string | null }
+type PortalCredential = { username: string | null; password: string | null }
 
 export type JobsInspectionsTabProps = {
   authUserId: string | null
@@ -30,14 +35,34 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
   const [inspectionTypeSaving, setInspectionTypeSaving] = useState(false)
   const [inspectionTypeDeletingName, setInspectionTypeDeletingName] = useState<string | null>(null)
   const [quickLinksModalOpen, setQuickLinksModalOpen] = useState(false)
-  const [quickLinksList, setQuickLinksList] = useState<Array<{ id: string; label: string; url: string; sequence_order: number }>>([])
+  const [quickLinksList, setQuickLinksList] = useState<QuickLinkRow[]>([])
   const [quickLinksLoading, setQuickLinksLoading] = useState(false)
   const [quickLinkFormOpen, setQuickLinkFormOpen] = useState(false)
   const [editingQuickLinkId, setEditingQuickLinkId] = useState<string | null>(null)
   const [newQuickLinkLabel, setNewQuickLinkLabel] = useState('')
   const [newQuickLinkUrl, setNewQuickLinkUrl] = useState('')
+  const [newQuickLinkCities, setNewQuickLinkCities] = useState('')
+  const [newQuickLinkNotes, setNewQuickLinkNotes] = useState('')
+  const [newQuickLinkUsername, setNewQuickLinkUsername] = useState('')
+  const [newQuickLinkPassword, setNewQuickLinkPassword] = useState('')
   const [quickLinkSaving, setQuickLinkSaving] = useState(false)
   const [quickLinkDeletingId, setQuickLinkDeletingId] = useState<string | null>(null)
+  // Credentials live in inspection_portal_credentials (RLS: Inspections-tab roles only).
+  // Loaded separately and tolerated as absent — the table may not exist yet while the
+  // client deploy precedes the migration push, and hidden roles just get an empty map.
+  const [portalCredentials, setPortalCredentials] = useState<Record<string, PortalCredential>>({})
+  const [portalSearch, setPortalSearch] = useState('')
+  const [revealedPasswordLinkId, setRevealedPasswordLinkId] = useState<string | null>(null)
+  const { showToast } = useToastContext()
+
+  async function copyToClipboard(text: string, what: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      showToast(`${what} copied`, 'success')
+    } catch {
+      showToast(`Could not copy ${what.toLowerCase()}`, 'error')
+    }
+  }
 
   async function loadInspections(month?: Date) {
     if (!authUserId) return
@@ -140,12 +165,37 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
 
   async function loadQuickLinks() {
     setQuickLinksLoading(true)
-    const { data, error: err } = await supabase.from('inspection_quick_links').select('id, label, url, sequence_order').order('sequence_order')
+    const { data, error: err } = await supabase
+      .from('inspection_quick_links')
+      .select('id, label, url, sequence_order, cities, notes')
+      .order('sequence_order')
     if (err) {
-      onError(`Failed to load quick links: ${err.message}`)
-      setQuickLinksList([])
+      // Fallback for the client-deploys-first window before the cities/notes migration is pushed.
+      const legacy = await supabase.from('inspection_quick_links').select('id, label, url, sequence_order').order('sequence_order')
+      if (legacy.error) {
+        onError(`Failed to load quick links: ${legacy.error.message}`)
+        setQuickLinksList([])
+      } else {
+        setQuickLinksList(((legacy.data ?? []) as Array<{ id: string; label: string; url: string; sequence_order: number }>).map((l) => ({ ...l, cities: [], notes: null })))
+      }
     } else {
-      setQuickLinksList((data as Array<{ id: string; label: string; url: string; sequence_order: number }>) ?? [])
+      setQuickLinksList(
+        ((data ?? []) as Array<{ id: string; label: string; url: string; sequence_order: number; cities: string[] | null; notes: string | null }>).map(
+          (l) => ({ ...l, cities: l.cities ?? [], notes: l.notes ?? null }),
+        ),
+      )
+    }
+    // Credentials are separate and optional: table may not exist yet (pre-push) and
+    // RLS hides it from non-office roles — both just mean an empty map, not an error.
+    const cred = await supabase.from('inspection_portal_credentials').select('quick_link_id, username, password')
+    if (!cred.error && Array.isArray(cred.data)) {
+      const map: Record<string, PortalCredential> = {}
+      for (const row of cred.data as Array<{ quick_link_id: string; username: string | null; password: string | null }>) {
+        map[row.quick_link_id] = { username: row.username, password: row.password }
+      }
+      setPortalCredentials(map)
+    } else {
+      setPortalCredentials({})
     }
     setQuickLinksLoading(false)
   }
@@ -161,13 +211,22 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
     setEditingQuickLinkId(null)
     setNewQuickLinkLabel('')
     setNewQuickLinkUrl('')
+    setNewQuickLinkCities('')
+    setNewQuickLinkNotes('')
+    setNewQuickLinkUsername('')
+    setNewQuickLinkPassword('')
     setQuickLinkFormOpen(true)
   }
 
-  function openEditQuickLink(link: { id: string; label: string; url: string; sequence_order: number }) {
+  function openEditQuickLink(link: QuickLinkRow) {
     setEditingQuickLinkId(link.id)
     setNewQuickLinkLabel(link.label)
     setNewQuickLinkUrl(link.url)
+    setNewQuickLinkCities(formatCitiesInput(link.cities))
+    setNewQuickLinkNotes(link.notes ?? '')
+    const cred = portalCredentials[link.id]
+    setNewQuickLinkUsername(cred?.username ?? '')
+    setNewQuickLinkPassword(cred?.password ?? '')
     setQuickLinkFormOpen(true)
   }
 
@@ -183,18 +242,40 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
     if (!label || !url) return
     setQuickLinkSaving(true)
     onError(null)
+    const cities = parseCitiesInput(newQuickLinkCities)
+    const notes = newQuickLinkNotes.trim() || null
+    let linkId = editingQuickLinkId
     if (editingQuickLinkId) {
-      const { error: err } = await supabase.from('inspection_quick_links').update({ label, url }).eq('id', editingQuickLinkId)
+      const { error: err } = await supabase.from('inspection_quick_links').update({ label, url, cities, notes }).eq('id', editingQuickLinkId)
       if (err) {
         onError(err.message)
         setQuickLinkSaving(false)
         return
       }
     } else {
-      const { error: err } = await supabase.from('inspection_quick_links').insert({ label, url, sequence_order: quickLinksList.length })
+      const { data, error: err } = await supabase
+        .from('inspection_quick_links')
+        .insert({ label, url, cities, notes, sequence_order: quickLinksList.length })
+        .select('id')
+        .single()
       if (err) {
         onError(err.message)
         setQuickLinkSaving(false)
+        return
+      }
+      linkId = (data as { id: string } | null)?.id ?? null
+    }
+    if (linkId) {
+      const username = newQuickLinkUsername.trim() || null
+      const password = newQuickLinkPassword.trim() || null
+      const credErr =
+        username || password
+          ? (await supabase.from('inspection_portal_credentials').upsert({ quick_link_id: linkId, username, password, updated_at: new Date().toISOString() })).error
+          : (await supabase.from('inspection_portal_credentials').delete().eq('quick_link_id', linkId)).error
+      if (credErr) {
+        onError(`Portal saved, but sign-in info did not save: ${credErr.message}`)
+        setQuickLinkSaving(false)
+        await loadQuickLinks()
         return
       }
     }
@@ -227,6 +308,44 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId, inspectionsMonth])
 
+  /** Sign-in strip under an inspection row: the portal matched from the address city, with open/copy actions. */
+  function renderInspectionPortalStrip(address: string | null) {
+    const portal = matchPortalForInspectionAddress(quickLinksList, address)
+    if (!portal) return null
+    const cred = portalCredentials[portal.id]
+    const btn = {
+      padding: '0.3rem 0.65rem',
+      borderRadius: 6,
+      border: '1px solid var(--border-strong)',
+      background: 'var(--surface)',
+      fontSize: '0.75rem',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      whiteSpace: 'nowrap',
+    } as const
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.4rem' }}>
+        <button
+          type="button"
+          onClick={() => openInExternalBrowser(portal.url)}
+          style={{ ...btn, border: '1px solid #2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }}
+        >
+          Open {portal.label} ↗
+        </button>
+        {cred?.username && (
+          <button type="button" onClick={() => void copyToClipboard(cred.username ?? '', 'Username')} style={btn}>
+            Copy user
+          </button>
+        )}
+        {cred?.password && (
+          <button type="button" onClick={() => void copyToClipboard(cred.password ?? '', 'Password')} style={btn}>
+            Copy password
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <>
       <div>
@@ -248,33 +367,118 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
           </button>
         </div>
         <section style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Quick Links</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Permit Portals</h3>
             <button
               type="button"
               onClick={openQuickLinksModal}
               style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
-              Edit Quick Inspection Links
+              Edit Portals
             </button>
           </div>
+          <input
+            type="search"
+            value={portalSearch}
+            onChange={(e) => setPortalSearch(e.target.value)}
+            placeholder="Find your city — e.g. Buda"
+            aria-label="Find your city"
+            style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, marginBottom: '0.6rem', fontSize: '0.875rem', boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}
+          />
           {quickLinksLoading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
-              {quickLinksList.map(({ id, label, url }) => (
-                <a
-                  key={id}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => { e.preventDefault(); openInExternalBrowser(url) }}
-                  style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-link)', textDecoration: 'none', fontSize: '0.875rem' }}
-                >
-                  {label}
-                </a>
-              ))}
-            </div>
+            (() => {
+              const filtered = filterPortalsByQuery(quickLinksList, portalSearch)
+              return filtered.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  {quickLinksList.length === 0 ? 'No permit portals yet — add one with Edit Portals.' : `No portal matches “${portalSearch}”.`}
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.6rem' }}>
+                  {filtered.map((link) => {
+                    const cred = portalCredentials[link.id]
+                    const revealed = revealedPasswordLinkId === link.id
+                    return (
+                      <div key={link.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.8rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => openInExternalBrowser(link.url)}
+                            style={{ padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid #2563eb', background: 'var(--surface)', color: 'var(--text-blue-700)', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                          >
+                            Open portal ↗
+                          </button>
+                        </div>
+                        {link.cities.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                            {link.cities.map((city) => {
+                              const hit = cityMatchesQuery(city, portalSearch)
+                              return (
+                                <span
+                                  key={city}
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    padding: '0.1rem 0.5rem',
+                                    borderRadius: 999,
+                                    background: hit ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
+                                    color: hit ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                                    fontWeight: hit ? 600 : 400,
+                                  }}
+                                >
+                                  {city}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {link.notes?.trim() ? (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{link.notes}</div>
+                        ) : null}
+                        {(cred?.username || cred?.password) && (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.45rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            {cred?.username && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-600)' }}>{cred.username}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => void copyToClipboard(cred.username ?? '', 'Username')}
+                                  style={{ marginLeft: 'auto', padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                                >
+                                  Copy user
+                                </button>
+                              </div>
+                            )}
+                            {cred?.password && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
+                                <span style={{ fontFamily: 'monospace', letterSpacing: revealed ? 'normal' : '2px', color: 'var(--text-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {revealed ? cred.password : '••••••••'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setRevealedPasswordLinkId(revealed ? null : link.id)}
+                                  style={{ marginLeft: 'auto', padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                                >
+                                  {revealed ? 'Hide' : 'Show'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void copyToClipboard(cred.password ?? '', 'Password')}
+                                  style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                                >
+                                  Copy password
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()
           )}
         </section>
         <section style={{ marginBottom: '1.5rem' }}>
@@ -325,6 +529,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                             </a>
                           )}
                         </div>
+                        {renderInspectionPortalStrip(i.address)}
                       </li>
                     )
                   })}
@@ -422,6 +627,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                       <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4 }}>
                         <div style={{ fontWeight: 500 }}>{i.address}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{i.inspection_type}</div>
+                        {renderInspectionPortalStrip(i.address)}
                       </li>
                     ))}
                   </ul>
@@ -483,15 +689,33 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
             <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
               {quickLinkFormOpen ? (
                 <>
-                  <h3 style={{ margin: '0 0 1rem 0' }}>{editingQuickLinkId ? 'Edit quick link' : 'Add quick link'}</h3>
+                  <h3 style={{ margin: '0 0 1rem 0' }}>{editingQuickLinkId ? 'Edit portal' : 'Add portal'}</h3>
                   <form onSubmit={saveQuickLink}>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Label *</label>
-                      <input type="text" value={newQuickLinkLabel} onChange={(e) => setNewQuickLinkLabel(e.target.value)} required placeholder="e.g. City of New Braunfels" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <input type="text" value={newQuickLinkLabel} onChange={(e) => setNewQuickLinkLabel(e.target.value)} required placeholder="e.g. MGO Connect" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>URL *</label>
                       <input type="url" value={newQuickLinkUrl} onChange={(e) => setNewQuickLinkUrl(e.target.value)} required placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Cities served</label>
+                      <input type="text" value={newQuickLinkCities} onChange={(e) => setNewQuickLinkCities(e.target.value)} placeholder="Buda, Cibolo, San Marcos…" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Comma-separated. Powers the city search and matches scheduled inspections to this portal by address.</div>
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Sign-in user</label>
+                      <input type="text" value={newQuickLinkUsername} onChange={(e) => setNewQuickLinkUsername(e.target.value)} autoComplete="off" placeholder="office@clickplumbing.com" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Sign-in password</label>
+                      <input type="text" value={newQuickLinkPassword} onChange={(e) => setNewQuickLinkPassword(e.target.value)} autoComplete="off" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Visible to everyone who can open the Inspections tab.</div>
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Notes</label>
+                      <textarea value={newQuickLinkNotes} onChange={(e) => setNewQuickLinkNotes(e.target.value)} rows={2} placeholder="Anything the office should know about this portal" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -507,14 +731,14 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
               ) : (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0 }}>Quick Inspection Links</h3>
+                    <h3 style={{ margin: 0 }}>Permit Portals</h3>
                     <button type="button" onClick={() => setQuickLinksModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
                   </div>
-                  <button type="button" onClick={openAddQuickLink} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add link</button>
+                  <button type="button" onClick={openAddQuickLink} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add portal</button>
                   {quickLinksLoading ? (
                     <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
                   ) : quickLinksList.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)' }}>No quick links yet.</p>
+                    <p style={{ color: 'var(--text-muted)' }}>No portals yet.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {quickLinksList.map((link) => (
