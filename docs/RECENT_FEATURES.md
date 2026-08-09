@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1478)
+last_updated: 2026-08-09 (v2.1479)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1479)
+
+### Dashboard — Job Report button label enlarged (2026-08-09)
+User-requested: the Job Report square beside the Clock In stack rendered its label at 0.625rem (compact 48px state) / 0.6875rem (tall clocked-in state) — too small to read at a glance. Both states now use 0.8125rem ([`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) `JobReportSquareButton`); "Report" at 13px still fits the fixed 64px square in both layouts, icon and height-aware two-line stacking unchanged. Client-only.
 
 ## Latest Updates (v2.1478)
 

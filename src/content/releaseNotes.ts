@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1479',
+    date: '2026-08-09',
+    title: 'Dashboard: bigger Job Report button text',
+    kind: 'fix',
+    highlights: [
+      'The Job Report button next to Clock In is now easier to read — its label got a size bump in both the compact and clocked-in layouts.',
+    ],
+  },
+  {
     version: 'v2.1478',
     date: '2026-08-09',
     title: 'Pipeline: Hide groups lists Account Man first',
