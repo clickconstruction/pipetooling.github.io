@@ -9,8 +9,11 @@ import {
   buildReadyToBillStageRows,
   clampPartialInvoiceCentsToUnallocated,
   filterJobsByStagesSearch,
+  accountManFilterOptionsFromJobs,
+  filterJobsByAccountMan,
   filterJobsByGcCustomer,
   gcFilterOptionsFromJobs,
+  STAGES_ACCOUNT_MAN_FILTER_NONE,
   STAGES_GC_FILTER_NO_GC,
   developmentFilterOptionsFromJobs,
   filterJobsByDevelopment,
@@ -387,6 +390,21 @@ describe('filterJobsByStagesSearch', () => {
     expect(filterJobsByGcCustomer(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
     expect(filterJobsByGcCustomer(jobsList, 'gc-k').map((j) => j.id)).toEqual(['j1', 'j2'])
     expect(filterJobsByGcCustomer(jobsList, STAGES_GC_FILTER_NO_GC).map((j) => j.id)).toEqual(['j4'])
+  })
+
+  it('Account Man filter: options are distinct + name-sorted; filter matches user id or the no-AM sentinel (v2.1477)', () => {
+    const t1 = jobStub({ id: 'j1', invoices: [], account_manager_user_id: 'u-t', account_manager: { id: 'u-t', name: 'Trace' } })
+    const t2 = jobStub({ id: 'j2', invoices: [], account_manager_user_id: 'u-t', account_manager: { id: 'u-t', name: 'Trace' } })
+    const m = jobStub({ id: 'j3', invoices: [], account_manager_user_id: 'u-m', account_manager: { id: 'u-m', name: 'malachi' } })
+    const none = jobStub({ id: 'j4', invoices: [] })
+    const jobsList = [t1, t2, m, none]
+    expect(accountManFilterOptionsFromJobs(jobsList)).toEqual([
+      { id: 'u-m', name: 'malachi' },
+      { id: 'u-t', name: 'Trace' },
+    ])
+    expect(filterJobsByAccountMan(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
+    expect(filterJobsByAccountMan(jobsList, 'u-t').map((j) => j.id)).toEqual(['j1', 'j2'])
+    expect(filterJobsByAccountMan(jobsList, STAGES_ACCOUNT_MAN_FILTER_NONE).map((j) => j.id)).toEqual(['j4'])
   })
 
   it('matches a job by its GC name (v2.1178)', () => {

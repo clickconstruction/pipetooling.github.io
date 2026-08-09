@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1477',
+    date: '2026-08-09',
+    title: 'Pipeline: filter by Account Man',
+    kind: 'feature',
+    highlights: [
+      'The ⋯ Filters group gains an "All Account Men" dropdown — zoom the board to one Account Man, or to jobs that have none.',
+      'Hide groups… now sits right under the filter dropdowns, so everything that narrows the board lives in one place.',
+    ],
+  },
+  {
     version: 'v2.1476',
     date: '2026-08-08',
     title: 'Pipeline: hide groups of jobs from the board',

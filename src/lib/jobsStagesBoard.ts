@@ -331,6 +331,28 @@ export function filterJobsByDevelopment(jobs: JobWithDetails[], developmentFilte
   return jobs.filter((j) => j.development?.id === developmentFilter)
 }
 
+/** Sentinel for the Stages Account Man filter: only jobs WITHOUT an Account Man (the assign-them worklist). */
+export const STAGES_ACCOUNT_MAN_FILTER_NONE = 'no-account-man'
+
+/** Distinct Account Men among loaded jobs, name-sorted, for the Stages filter dropdown (v2.1477). */
+export function accountManFilterOptionsFromJobs(jobs: JobWithDetails[]): Array<{ id: string; name: string }> {
+  const byId = new Map<string, string>()
+  for (const j of jobs) {
+    const id = j.account_manager_user_id
+    if (id && !byId.has(id)) byId.set(id, (j.account_manager?.name ?? '').trim() || '—')
+  }
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+}
+
+/** '' / null = all jobs; STAGES_ACCOUNT_MAN_FILTER_NONE = jobs without an Account Man; else exact user id. */
+export function filterJobsByAccountMan(jobs: JobWithDetails[], accountManFilter: string | null): JobWithDetails[] {
+  if (!accountManFilter) return jobs
+  if (accountManFilter === STAGES_ACCOUNT_MAN_FILTER_NONE) return jobs.filter((j) => !j.account_manager_user_id)
+  return jobs.filter((j) => j.account_manager_user_id === accountManFilter)
+}
+
 export function filterJobsByStagesSearch(
   jobs: JobWithDetails[],
   stagesSearchQuery: string,

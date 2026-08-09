@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1476)
+last_updated: 2026-08-09 (v2.1477)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1477)
+
+### Pipeline — Account Man filter + "Hide groups…" joins the Filters group (2026-08-09)
+User-reported the moment v2.1476 shipped: the ⋯ Filters group showed GC and Development dropdowns but nothing for Account Man, and the new "Hide groups…" entry sat below the divider where nobody looking at "Filters" would find it. (1) New include-filter, symmetric with v2.1183's GC pattern: `accountManFilterOptionsFromJobs` / `filterJobsByAccountMan` / `STAGES_ACCOUNT_MAN_FILTER_NONE` in [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (tested), an "All Account Men" dropdown in the ⋯ Filters group (with a "No Account Man" worklist option), a tap-to-clear applied chip in the command bar, and the ⋯ active tint keys off it. (2) The Filters group now renders unconditionally and **"Hide groups…" moved inside it**, directly under the three dropdowns — one home for everything that narrows the board. Help guide `hide-groups-from-the-pipeline` updated. Client-only.
 
 ## Latest Updates (v2.1476)
 
