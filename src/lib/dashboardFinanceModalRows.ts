@@ -1,14 +1,15 @@
 /**
- * Mobile layout kernel for the dashboard finance drill-downs (v2.1483):
- * search, sort, and aging-chip logic shared by the AR / AP / Not Billed Out
- * ItemsModal card layout on phones. The desktop table keeps its own column
- * sort (AR header clicks); these helpers power the mobile sheet's search box,
- * "Biggest / Oldest" pills, and the color-coded aging chips that replace the
- * "(+34)" suffixes.
+ * Layout kernel for the dashboard finance drill-downs (v2.1483 mobile,
+ * v2.1484 desktop):
+ * search, sort, aging-chip, and aging-bucket logic shared by the AR / AP /
+ * Not Billed Out ItemsModal on every screen size: the mobile sheet's and
+ * desktop table's search box, "Biggest / Oldest" pills, the color-coded
+ * aging chips that replaced the "(+34)" suffixes, and the desktop aging
+ * summary strip ("0–14d $X · 15–30d $Y · 30d+ $Z").
  */
 import { daysPastDue } from './supplyHouseAging'
 
-export type FinanceMobileSort = 'amount' | 'oldest'
+export type FinanceDrillSort = 'amount' | 'oldest'
 
 export type FinanceAgingTone = 'ok' | 'warn' | 'late'
 
@@ -40,13 +41,47 @@ type SortableItem = { amount: number; dateYmd: string | null }
  * date first with undated items last — amount desc breaks ties in both modes
  * so the order is stable and money-first within a day.
  */
-export function sortFinanceItemsMobile<T extends SortableItem>(items: T[], mode: FinanceMobileSort): T[] {
+export function sortFinanceItems<T extends SortableItem>(
+  items: T[],
+  mode: FinanceDrillSort,
+  /** Override the date used for 'oldest' — AP rows age by the bill's DUE date, not the row date. */
+  getYmd?: (item: T) => string | null,
+): T[] {
   const out = [...items]
   if (mode === 'amount') return out.sort((a, b) => b.amount - a.amount)
+  const ymd = (i: T) => (getYmd ? getYmd(i) : i.dateYmd)
   return out.sort((a, b) => {
-    if (!a.dateYmd && !b.dateYmd) return b.amount - a.amount
-    if (!a.dateYmd) return 1
-    if (!b.dateYmd) return -1
-    return a.dateYmd.localeCompare(b.dateYmd) || b.amount - a.amount
+    const ay = ymd(a)
+    const by = ymd(b)
+    if (!ay && !by) return b.amount - a.amount
+    if (!ay) return 1
+    if (!by) return -1
+    return ay.localeCompare(by) || b.amount - a.amount
   })
+}
+
+export type FinanceAgingBuckets = Record<FinanceAgingTone, { count: number; total: number }>
+
+/**
+ * Totals per aging tone for the desktop summary strip. Items with no date or
+ * not yet past it carry no age and land in no bucket — the strip answers
+ * "how much is old?", and fresh money isn't old.
+ */
+export function financeAgingBuckets(
+  items: Array<{ amount: number; ymd: string | null }>,
+  todayYmd: string,
+): FinanceAgingBuckets {
+  const out: FinanceAgingBuckets = {
+    ok: { count: 0, total: 0 },
+    warn: { count: 0, total: 0 },
+    late: { count: 0, total: 0 },
+  }
+  for (const item of items) {
+    const days = financeAgingDays(item.ymd, todayYmd)
+    if (days == null) continue
+    const tone = financeAgingTone(days)
+    out[tone].count++
+    out[tone].total += item.amount
+  }
+  return out
 }
