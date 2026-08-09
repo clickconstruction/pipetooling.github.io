@@ -14,7 +14,8 @@
  */
 import type { JobWithDetails } from '../types/jobWithDetails'
 
-export const STAGES_EXCLUDE_DIMENSIONS = ['gc', 'development', 'accountMan'] as const
+/** Order = the "Hide groups…" modal's section order (user-chosen, v2.1478): Account Man first. */
+export const STAGES_EXCLUDE_DIMENSIONS = ['accountMan', 'development', 'gc'] as const
 export type StagesExcludeDimension = (typeof STAGES_EXCLUDE_DIMENSIONS)[number]
 
 /** Pseudo-value: jobs with NO value in the dimension ("No GC", "No development", "No Account Man"). */

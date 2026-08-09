@@ -14,7 +14,7 @@ When one account or builder floods the board, you can hide it and work with what
 3. Click {{button:outline|Done}}. The board now shows everything except the hidden groups.
 
 :::example "None" is a group too
-Each section ends with a **No GC set / No development set / No Account Man** row. Hiding it removes the untagged jobs — handy when you want to review only organized work. It works the other way as well: hide every named group and the untagged worklist is all that remains.
+Each section ends with a **No Account Man / No development set / No GC set** row. Hiding it removes the untagged jobs — handy when you want to review only organized work. It works the other way as well: hide every named group and the untagged worklist is all that remains.
 :::
 
 ## Know the board is filtered
