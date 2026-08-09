@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1474',
+    date: '2026-08-08',
+    title: 'Pipeline: long customer names line up properly',
+    kind: 'fix',
+    highlights: [
+      'A customer or development name long enough to wrap onto two lines in the job column was showing centered — it now stays left-aligned like everything around it.',
+    ],
+  },
+  {
     version: 'v2.1473',
     date: '2026-08-08',
     title: 'Help guides: little buttons and chips show their true colors',

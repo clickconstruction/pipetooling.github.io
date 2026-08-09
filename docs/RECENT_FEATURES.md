@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-08 (v2.1473)
+last_updated: 2026-08-08 (v2.1474)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1474)
+
+### Pipeline board — wrapped customer/development names no longer center (2026-08-08)
+User-reported: a long job-level customer name ("DSI (Diamondback Solutions International)") wrapped to two lines on the Pipeline job column and rendered center-aligned, unlike every neighboring left-aligned line. Cause: the customer-name and development-filter controls in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) `renderJobCustomerLine` are `<button>`s, and the UA default `text-align: center` survives the style reset — invisible on one line, centered on wrap. The neighboring "not in customers" badge button already carried `textAlign: 'left'` from an earlier hit of the same class. Fix: `textAlign: 'left'` on both buttons. No behavior change.
 
 ## Latest Updates (v2.1473)
 
