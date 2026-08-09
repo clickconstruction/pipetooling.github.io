@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1479)
+last_updated: 2026-08-09 (v2.1480)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1480)
+
+### Dashboard — Billing Pipeline stages start collapsed (2026-08-09)
+User-chosen: all three pipeline stages now load collapsed, so the dashboard leads with the stage headlines + counts and you expand what you're working. Two one-line default flips: `readyToBillExpanded` `true`→`false` in [`DashboardBillingPipelineSection.tsx`](../src/components/dashboard/DashboardBillingPipelineSection.tsx) and the stage-1 queue's `expanded` `true`→`false` in [`DashboardFieldCollectPaymentQueue.tsx`](../src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx) (only mounted by the pipeline section); Billed Waiting for Payment already defaulted collapsed. Session-only state, no persistence change. Client-only.
 
 ## Latest Updates (v2.1479)
 

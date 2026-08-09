@@ -404,7 +404,8 @@ export default function DashboardFieldCollectPaymentQueue({
   const { role: authRole } = useAuth()
   const jobFormModal = useJobFormModal()
   const jobDetailModal = useJobDetailModal()
-  const [expanded, setExpanded] = useState(true)
+  // Collapsed by default like the other two pipeline stages (v2.1480).
+  const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<FlowRow[]>([])
   const [invoicesByJob, setInvoicesByJob] = useState<Record<string, BilledInvRow[]>>({})
