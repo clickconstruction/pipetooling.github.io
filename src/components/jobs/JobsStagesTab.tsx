@@ -29,6 +29,7 @@ import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import AccountManIcon from '../icons/AccountManIcon'
 import {
   billedStageRowAgingBucket,
   buildBilledAgingBuckets,
@@ -97,6 +98,9 @@ import {
   developmentFilterOptionsFromJobs,
   filterJobsByDevelopment,
   STAGES_DEVELOPMENT_FILTER_NONE,
+  accountManFilterOptionsFromJobs,
+  filterJobsByAccountMan,
+  STAGES_ACCOUNT_MAN_FILTER_NONE,
   clampPartialInvoiceCentsToUnallocated,
   jobBillingUnallocatedDollars,
   locateStagesInvoiceSection,
@@ -689,6 +693,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Stages development filter: '' = all, STAGES_DEVELOPMENT_FILTER_NONE = jobs without one, else development id. */
   const [stagesDevelopmentFilter, setStagesDevelopmentFilter] = useState('')
   const stagesDevelopmentFilterOptions = useMemo(() => developmentFilterOptionsFromJobs(jobs), [jobs])
+  /** Stages Account Man filter (v2.1477): '' = all, STAGES_ACCOUNT_MAN_FILTER_NONE = jobs without one, else user id. */
+  const [stagesAccountManFilter, setStagesAccountManFilter] = useState('')
+  const stagesAccountManFilterOptions = useMemo(() => accountManFilterOptionsFromJobs(jobs), [jobs])
   /** "Hide groups" exclusions (v2.1476): per-device; applied before the include filters and search. */
   const [stagesExcludeFilters, setStagesExcludeFiltersState] = useState<StagesExcludeFilters>(() => loadStagesExcludeFilters())
   const [stagesHideGroupsModalOpen, setStagesHideGroupsModalOpen] = useState(false)
@@ -700,14 +707,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByDevelopment(
-          filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
-          stagesDevelopmentFilter || null,
+        filterJobsByAccountMan(
+          filterJobsByDevelopment(
+            filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
+            stagesDevelopmentFilter || null,
+          ),
+          stagesAccountManFilter || null,
         ),
         stagesSearchQuery,
         stagesSearchExtraJobIds,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesSearchQuery, stagesSearchExtraJobIds],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesSearchExtraJobIds],
   )
 
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
@@ -1463,6 +1473,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </span>
                 </button>
               ) : null}
+              {stagesAccountManFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setStagesAccountManFilter('')}
+                  title="Filtered by Account Man — tap to clear"
+                  aria-label={`Clear Account Man filter: ${
+                    stagesAccountManFilter === STAGES_ACCOUNT_MAN_FILTER_NONE
+                      ? 'No Account Man'
+                      : stagesAccountManFilterOptions.find((o) => o.id === stagesAccountManFilter)?.name ?? 'Account Man'
+                  }`}
+                  style={stagesActiveFilterChipStyle}
+                >
+                  <span aria-hidden style={{ display: 'inline-flex', flexShrink: 0 }}>
+                    <AccountManIcon size={13} />
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                    {stagesAccountManFilter === STAGES_ACCOUNT_MAN_FILTER_NONE
+                      ? 'No Account Man'
+                      : stagesAccountManFilterOptions.find((o) => o.id === stagesAccountManFilter)?.name ?? 'Account Man'}
+                  </span>
+                  <span aria-hidden style={{ flexShrink: 0 }}>
+                    ×
+                  </span>
+                </button>
+              ) : null}
               {stagesExclusionCount > 0 ? (
                 // Hidden-groups chip (v2.1476): same "the bar only shows an APPLIED
                 // filter" rule as the GC/development chips above. Tap opens the
@@ -1503,12 +1538,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   border: 'none',
                   borderRadius: 8,
                   background:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesExclusionCount > 0
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0
                       ? 'var(--bg-blue-tint)'
                       : 'transparent',
                   cursor: 'pointer',
                   color:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesExclusionCount > 0
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0
                       ? 'var(--text-link)'
                       : 'var(--text-muted)',
                   fontSize: '1.2rem',
@@ -1542,13 +1577,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       gap: 2,
                     }}
                   >
-                    {stagesGcFilterOptions.length > 0 || stagesDevelopmentFilterOptions.length > 0 ? (
-                      <>
-                        {/* Filters group (v2.1232) — moved out of the search bar.
-                            Selecting keeps the menu open so both can be set at once. */}
-                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
-                          Filters
-                        </div>
+                    {/* Filters group (v2.1232) — moved out of the search bar.
+                        Selecting keeps the menu open so several can be set at once.
+                        Always rendered since v2.1477 so "Hide groups…" has a stable home. */}
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
+                      Filters
+                    </div>
                         {stagesGcFilterOptions.length > 0 ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
                             <GcHardHatIcon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -1597,8 +1631,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             </select>
                           </div>
                         ) : null}
-                        <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
-                      </>
+                    {stagesAccountManFilterOptions.length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem 0.35rem' }}>
+                        <span aria-hidden style={{ display: 'inline-flex', color: 'var(--text-muted)', flexShrink: 0 }}>
+                          <AccountManIcon size={15} />
+                        </span>
+                        <select
+                          value={stagesAccountManFilter}
+                          onChange={(e) => setStagesAccountManFilter(e.target.value)}
+                          aria-label="Filter the Pipeline board by Account Man"
+                          title="Filter the Pipeline board by Account Man"
+                          style={{
+                            ...stagesToolsMenuFilterSelectStyle,
+                            background: stagesAccountManFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            color: stagesAccountManFilter ? 'var(--text-link)' : 'inherit',
+                          }}
+                        >
+                          <option value="">All Account Men</option>
+                          {stagesAccountManFilterOptions.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}
+                            </option>
+                          ))}
+                          <option value={STAGES_ACCOUNT_MAN_FILTER_NONE}>No Account Man</option>
+                        </select>
+                      </div>
                     ) : null}
                     <button
                       type="button"
@@ -1617,6 +1674,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         </span>
                       ) : null}
                     </button>
+                    <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
                     {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
                       (r) => r === authRole || r === myRole,
                     ) ? (

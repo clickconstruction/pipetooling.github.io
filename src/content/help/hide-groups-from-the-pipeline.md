@@ -9,7 +9,7 @@ When one account or builder floods the board, you can hide it and work with what
 
 ## Hide a group
 
-1. On **Jobs → Pipeline**, open the {{button:outline|⋯}} tools menu and choose **Hide groups…**
+1. On **Jobs → Pipeline**, open the {{button:outline|⋯}} tools menu — **Hide groups…** sits right under the Filters dropdowns.
 2. Each section lists what's on your board with a job count. Click a row to hide it — the button flips to {{chip:red|Hidden}}. Hide as many as you like across all three sections.
 3. Click {{button:outline|Done}}. The board now shows everything except the hidden groups.
 
@@ -24,6 +24,6 @@ While anything is hidden, a red {{chip:red|Hiding 2 groups}} chip sits in the se
 ## Good to know
 
 - **Hides are per device**, like your other board preferences. Hiding a GC on your laptop doesn't touch anyone else's board or your phone.
-- **They stack with the other filters.** The GC / development filters in the tools menu still zoom the board *to* one group, and search works within whatever is visible.
+- **They stack with the other filters.** The GC / development / Account Man dropdowns in the tools menu still zoom the board *to* one group (each also has a "No …" option for the untagged worklist), and search works within whatever is visible.
 - **Nothing changes on the jobs.** Hiding is a view preference — billing, aging, and dashboards are unaffected.
 - If a hidden group's last job leaves the board, the row shows as *(no longer on the board)* so you can un-hide it rather than it becoming a stuck invisible filter.
