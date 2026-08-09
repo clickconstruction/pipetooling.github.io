@@ -13,6 +13,8 @@ Dispatch Mode is a phone-first shell for whoever's running the day — the offic
 The red badge on Inbox counts open dispatch and estimator requests.
 :::
 
+{{gif:dispatch-mode.gif|Assign work in Dispatch Mode: pick the job, tap a day, tap people, take a suggested window}}
+
 ## Turning Dispatch Mode on
 
 1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.

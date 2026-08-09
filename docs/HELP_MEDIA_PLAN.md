@@ -48,7 +48,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 |---|---|---|
 | Ready to Bill pipeline | ☐ | ☐ |
 | Schedule Dispatch drag-assign | ☐ | ☐ |
-| Dispatch Mode assign work | ☐ | ☐ |
+| Dispatch Mode assign work | ✅ 2026-08-09 | ✅ |
 | Job Mode clock + report | ☐ | ☐ |
 | Takeoff assembly | ☐ | ☐ |
 
