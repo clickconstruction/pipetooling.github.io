@@ -7,6 +7,16 @@ order: 76
 ---
 The three money cards on the Dashboard — **Accounts Receivable**, **Accounts Payable**, and **Not Billed Out** — each open a drill-down listing every item behind the number. Tap any row to open the job or bill it comes from.
 
+:::example Rows in the Accounts Receivable drill-down
+{{chip:green|8d}} **1471 · Hillcrest Ave** — Garcia `$2,300`
+
+{{chip:yellow|21d}} **1458 · Cypress Bend** — Delta Homes `$6,540`
+
+{{chip:red|146d}} **1390 · Marbach Rd** — TNR Builders `$4,050`
+
+The aging strip above the list totals each band: {{chip:green|0–14d $12k}} {{chip:yellow|15–30d $31k}} {{chip:red|30d+ $165k}} — click a band to see just that money.
+:::
+
 ## On your phone
 
 The drill-down opens as a full-height sheet built for one-hand use:

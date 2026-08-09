@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1488)
+last_updated: 2026-08-09 (v2.1489)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1489)
+
+### Help guides — example panels for the visual-gap guides + screen-recording plan (2026-08-09)
+User-approved proposal from the help-system review (89 guides; 81 had `:::example` panels, 1 had a recording): rather than a static-screenshot pass (rejected: rot at shipping speed, real prod data in every capture with no staging, no dark-theme adaptation), the eight guides with no illustrative panel each gained a token-drawn `:::example` — the five role "start here" guides (office morning flags, master surface flow, primary job-row anatomy, superintendent attention pills, estimator bid-board life), plus `company-documents.md` (document list), `dispatch-mode.md` (pinned tab bar), and `drill-into-the-dashboard-money-cards.md` (aging-chip rows + aging strip). New [`docs/HELP_MEDIA_PLAN.md`](HELP_MEDIA_PLAN.md) (indexed in `docs/README.md`) codifies the media conventions — recordings not screenshots, captured on the read-only training account in light theme, re-record when the surface changes, `public/help/` naming, ~3 MB cap — and shortlists five recordings (Pipeline billing, Schedule Dispatch drag-assign, Dispatch Mode assign work, Job Mode clock+report, Takeoff assembly) with capture scripts and ready-to-paste `{{gif:}}` lines. Content + docs only; no code changes.
 
 ## Latest Updates (v2.1488)
 
