@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1540',
+    date: '2026-08-10',
+    title: 'Pipeline: week-dispatch shortcut hides when unusable',
+    kind: 'feature',
+    highlights: [
+      'The blue week-dispatch shortcut on Pipeline rows only appears when the job has team members — before, jobs without a team showed it grayed out with a tooltip.',
+      'The green Assign work shortcut stays on every row either way, since it can schedule anyone.',
+    ],
+  },
+  {
     version: 'v2.1539',
     date: '2026-08-10',
     title: 'Timeline guide lines + report reminder moves down',

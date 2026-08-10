@@ -734,20 +734,20 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
             </svg>
           </button>
         ) : null}
-        {canOpenJobScheduleModal ? (
+        {/* Hidden (not grayed) when the job has no team — week dispatch is team-scoped (v2.1540). */}
+        {canOpenJobScheduleModal && !scheduleNoTeam ? (
           <button
             type="button"
             onClick={() => {
               const week = getDefaultWeekRange().start
               navigate(`/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`)
             }}
-            disabled={scheduleNoTeam}
-            title={scheduleNoTeam ? 'Assign team members to open week dispatch' : 'Open week dispatch'}
-            aria-label={scheduleNoTeam ? 'Week dispatch: assign team members first' : 'Open week dispatch'}
+            title="Open week dispatch"
+            aria-label="Open week dispatch"
             style={{
               ...quickIconButtonStyle,
-              cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-              color: scheduleNoTeam ? 'var(--text-faint)' : 'var(--text-link)',
+              cursor: 'pointer',
+              color: 'var(--text-link)',
             }}
           >
             <svg

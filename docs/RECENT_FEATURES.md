@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1539)
+last_updated: 2026-08-10 (v2.1540)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1540)
+
+### Pipeline: team-less jobs hide the week-dispatch shortcut instead of graying it (2026-08-10)
+Owner-requested: the blue week-dispatch quick action was disabled with "Assign team members to open week dispatch" when a job had no team; it should simply not render. Both the desktop quick-action stack ([`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)) and the mobile card icon row ([`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx)) now gate the button on `canOpenJobScheduleModal && !scheduleNoTeam` and drop the disabled/tooltip branches (the card ⋯ menu already hid its Week dispatch item this way). The green Assign work action still renders on every row — since v2.1536 it schedules from the whole roster, so it has no team requirement. The expanded thread panel's schedule-dispatch button keeps its existing disabled state (different surface). Verified live: 0 disabled week-dispatch buttons on the board; 18 team-less rows hide the icon, 100 teamed rows keep it. Client-only — no migration.
 
 ## Latest Updates (v2.1539)
 

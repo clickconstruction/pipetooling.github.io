@@ -398,7 +398,8 @@ function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails, openDe
           </svg>
         </button>
       ) : null}
-      {ctx.canOpenJobScheduleModal ? (
+      {/* Hidden (not grayed) when the job has no team — week dispatch is team-scoped (v2.1540). */}
+      {ctx.canOpenJobScheduleModal && !scheduleNoTeam ? (
         <button
           type="button"
           onClick={(e) => {
@@ -406,10 +407,9 @@ function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails, openDe
             const week = getDefaultWeekRange().start
             ctx.navigate(`/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`)
           }}
-          disabled={scheduleNoTeam}
-          title={scheduleNoTeam ? 'Assign team members to open week dispatch' : 'Open week dispatch'}
-          aria-label={scheduleNoTeam ? 'Week dispatch: assign team members first' : 'Open week dispatch'}
-          style={{ ...cardQuickIconStyle, cursor: scheduleNoTeam ? 'not-allowed' : 'pointer', color: scheduleNoTeam ? 'var(--text-faint)' : 'var(--text-link)' }}
+          title="Open week dispatch"
+          aria-label="Open week dispatch"
+          style={{ ...cardQuickIconStyle, cursor: 'pointer', color: 'var(--text-link)' }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
             <path d="M128 96L512 96C547.3 96 576 124.7 576 160L576 480C576 515.3 547.3 544 512 544L128 544C92.7 544 64 515.3 64 480L64 160C64 124.7 92.7 96 128 96zM128 192L128 480L232 480L232 192L128 192zM280 192L280 480L360 480L360 192L280 192zM408 192L408 480L512 480L512 192L408 192z" />
