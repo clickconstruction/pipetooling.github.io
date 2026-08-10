@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1502)
+last_updated: 2026-08-09 (v2.1503)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1503)
+
+### Header search — evidence inline on job AND bid rows (2026-08-09)
+Owner-directed (explicitly *inline*, not the proposed side-by-side columns): [`HeaderGlobalSearch`](../src/components/HeaderGlobalSearch.tsx) rows in the unified list gain right-aligned evidence. **Jobs**: `$revenue` + green "paid X ago"/amber "unpaid", with the line-names summary as a second muted line (reuses `fetchJobSearchEvidence`, always money mode — the search's `enabled` prop *is* the office-role gate). **Bids**: new kernel pieces in [`jobSearchEvidence.ts`](../src/lib/jobSearchEvidence.ts) — `fetchBidSearchEvidence` (batched `bids` select) + `bidSearchStatusChip` (Won green / Started blue / Lost red / Pending amber via `bid_date_sent` / Unsent gray; the outcome column is `bids.outcome`, NOT `win_loss` — first attempt used the wrong name and the typed client caught it) — rendering chip · `$bid_value` · "due M/D" (pending only) or "sent M/D". Evidence loads in one debounced pass per settled query (top 20 jobs + 20 bids, accumulate-cached in the provider so both strip/toolbar views share it). Estimates/customers rows unchanged. Verified live ("heron"): five job rows with paid-recency spread and three bids — Won/sent 2/7, Unsent/due 5/5, Lost/$38,600.
 
 ## Latest Updates (v2.1502)
 

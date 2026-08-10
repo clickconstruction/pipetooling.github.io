@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1503',
+    date: '2026-08-09',
+    title: 'Search: jobs and bids show their numbers right in the results',
+    kind: 'feature',
+    highlights: [
+      'Job results in the header search show the job total, paid recency, and work lines inline.',
+      'Bid results show their outcome — Won, Lost, Pending, Started, or Unsent — with the bid value and due or sent date.',
+    ],
+  },
+  {
     version: 'v2.1502',
     date: '2026-08-09',
     title: 'Combine jobs: search results show the money too',
