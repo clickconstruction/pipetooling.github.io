@@ -46,6 +46,12 @@ type ServiceTypeOption = { id: string; name: string }
 type JobFormIdentityFieldsProps = {
   hcpNumber: string
   setHcpNumber: (v: string) => void
+  /**
+   * v2.1533: hide the legacy HCP entry field (Settings → Jobs & dispatch flag).
+   * The shell decides per open — jobs that already carry an HCP number always
+   * keep the field so the value stays visible and editable.
+   */
+  hideHcpNumberField?: boolean
   clickNumber: string
   setClickNumber: (v: string) => void
   jobName: string
@@ -72,6 +78,7 @@ type JobFormIdentityFieldsProps = {
 export function JobFormIdentityFields({
   hcpNumber,
   setHcpNumber,
+  hideHcpNumberField = false,
   clickNumber,
   setClickNumber,
   jobName,
@@ -93,16 +100,18 @@ export function JobFormIdentityFields({
           The number fields shrink three times as fast (flex-shrink 3) so the Service type
           column keeps room for its one-line label + trade pill at 375px. */}
       <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <div style={{ flex: '0 3 90px', minWidth: 52 }}>
-          <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
-          <input
-            type="text"
-            value={hcpNumber}
-            onChange={(e) => setHcpNumber(e.target.value)}
-            placeholder="HCP"
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-          />
-        </div>
+        {hideHcpNumberField ? null : (
+          <div style={{ flex: '0 3 90px', minWidth: 52 }}>
+            <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
+            <input
+              type="text"
+              value={hcpNumber}
+              onChange={(e) => setHcpNumber(e.target.value)}
+              placeholder="HCP"
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+            />
+          </div>
+        )}
         <div style={{ flex: '0 3 90px', minWidth: 52 }}>
           <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>C#</label>
           <input

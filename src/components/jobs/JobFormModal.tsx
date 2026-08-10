@@ -119,6 +119,11 @@ import {
   stripeBillInvoiceForPaymentRow,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
+import {
+  getHideHcpFieldCached,
+  refreshHideHcpFieldCache,
+  shouldHideHcpEntryField,
+} from '../../lib/hideHcpFieldSetting'
 import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
@@ -317,6 +322,14 @@ export default function JobFormModal({
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
   const [accountManagerUserId, setAccountManagerUserId] = useState<string | null>(null)
+  /** Hide the legacy HCP entry field (v2.1533) — decided per open; edit-mode hydrate re-decides with the job's value. */
+  const [hideHcpEntryField, setHideHcpEntryField] = useState<boolean>(() =>
+    shouldHideHcpEntryField(getHideHcpFieldCached(), ''),
+  )
+  useEffect(() => {
+    // Refresh the localStorage mirror for NEXT open; this open uses the cache.
+    void refreshHideHcpFieldCache(supabase)
+  }, [])
   const [accountManagerRelationship, setAccountManagerRelationship] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
@@ -1323,6 +1336,9 @@ export default function JobFormModal({
     setJobPicturesLinkHighlight(picturesGate)
     setEditing(job)
     setHcpNumber(job.hcp_number ?? '')
+    // Per modal-open decision (v2.1533): never re-evaluated mid-edit, so the
+    // field can't vanish while someone is typing in it.
+    setHideHcpEntryField(shouldHideHcpEntryField(getHideHcpFieldCached(), job.hcp_number))
     setAccountManagerUserId(job.account_manager_user_id ?? null)
     setAccountManagerRelationship(job.account_manager_relationship ?? null)
     setClickNumber(job.click_number ?? '')
@@ -3051,6 +3067,7 @@ export default function JobFormModal({
           <JobFormIdentityFields
             hcpNumber={hcpNumber}
             setHcpNumber={setHcpNumber}
+            hideHcpNumberField={hideHcpEntryField}
             clickNumber={clickNumber}
             setClickNumber={setClickNumber}
             jobName={jobName}
