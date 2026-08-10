@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1501)
+last_updated: 2026-08-09 (v2.1502)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1502)
+
+### Combine / Separate — search candidates get the money rail (2026-08-09)
+Wave 2 of the design-D rows: all three job searches in [`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx) (Combine source, Combine target, Separate source) render the shared evidence row — line names under the address and the boxed rail (revenue + paid recency for money-mode roles; the modal deduplicated its three copy-pasted candidate bodies into one `renderCandidateBody`). Same `jobSearchEvidence` kernel and lazy pattern as the schedule picker: one debounced accumulate-cache effect over all three candidate lists, failure-silent. Verified live: Combine source "mike holub" → 737 with "pinpoint" + $450/unpaid rail. Content of v2.1501's kernel unchanged; header-search bids treatment (P1 split columns / P2 sectioned / P3 customer-paired) proposed and pending owner pick.
 
 ## Latest Updates (v2.1501)
 

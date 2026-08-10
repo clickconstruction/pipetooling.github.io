@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1502',
+    date: '2026-08-09',
+    title: 'Combine jobs: search results show the money too',
+    kind: 'feature',
+    highlights: [
+      'Searching for a source or target job now shows each result\'s work lines, job total, and paid recency — the same summary box as the schedule picker.',
+    ],
+  },
+  {
     version: 'v2.1501',
     date: '2026-08-09',
     title: 'Schedule: job search shows the money at a glance',
