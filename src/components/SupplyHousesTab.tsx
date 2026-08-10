@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -6,6 +6,9 @@ import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import {
   AGING_BUCKETS,
@@ -124,7 +127,14 @@ export function SupplyHousesTab({
   const [invoiceJobAllocations, setInvoiceJobAllocations] = useState<InvoiceJobAllocation[]>([])
   const [invoiceJobSearchModal, setInvoiceJobSearchModal] = useState(false)
   const [invoiceJobSearchText, setInvoiceJobSearchText] = useState('')
-  const [invoiceJobSearchResults, setInvoiceJobSearchResults] = useState<Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>>([])
+  const [invoiceJobSearchResults, setInvoiceJobSearchResults] = useState<Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; service_type_id?: string | null; service_type_name?: string | null }>>([])
+  const invoiceJobPrefixMap = useLedgerPrefixMap()
+  const invoiceJobResultsUnified = useMemo(
+    () => invoiceJobSearchResults.map((j) => ({ source: 'job' as const, ...j })),
+    [invoiceJobSearchResults],
+  )
+  const { jobEvidence: invoiceJobEvidence, evidenceMode: invoiceJobEvidenceMode } =
+    useJobBidSearchEvidence(invoiceJobResultsUnified)
   const [invoiceJobDetailsMap, setInvoiceJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }>>({})
   const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string }>>({})
   const [savingInvoice, setSavingInvoice] = useState(false)
@@ -1285,8 +1295,12 @@ export function SupplyHousesTab({
                   }}
                   style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                 >
-                  <div style={{ fontWeight: 500 }}>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}</div>
-                  {j.job_address && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address}</div>}
+                  <UnifiedSearchResultRow
+                    result={{ source: 'job', ...j }}
+                    prefixMap={invoiceJobPrefixMap}
+                    jobEvidence={invoiceJobEvidence.get(j.id)}
+                    evidenceMode={invoiceJobEvidenceMode}
+                  />
                 </button>
               ))}
             </div>

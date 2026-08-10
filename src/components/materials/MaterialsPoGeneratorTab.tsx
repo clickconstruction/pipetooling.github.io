@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -15,6 +18,7 @@ type PoGeneratorJobPick = {
   job_name: string
   job_address: string
   service_type_id: string
+  service_type_name?: string | null
 }
 
 type PoGeneratorUserPick = {
@@ -67,6 +71,12 @@ export function MaterialsPoGeneratorTab({
 
   const [poGenJobSearch, setPoGenJobSearch] = useState('')
   const [poGenJobResults, setPoGenJobResults] = useState<PoGeneratorJobPick[]>([])
+  const prefixMap = useLedgerPrefixMap()
+  const poGenJobResultsUnified = useMemo(
+    () => poGenJobResults.map((j) => ({ source: 'job' as const, ...j })),
+    [poGenJobResults],
+  )
+  const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(poGenJobResultsUnified)
   const [poGenJobSearchLoading, setPoGenJobSearchLoading] = useState(false)
   const [poGenSelectedJob, setPoGenSelectedJob] = useState<PoGeneratorJobPick | null>(null)
   const [poGenUserSearch, setPoGenUserSearch] = useState('')
@@ -157,6 +167,7 @@ export function MaterialsPoGeneratorTab({
             click_number: string | null
             job_name: string
             job_address: string
+            service_type_name?: string | null
           }>
           if (jobs.length === 0) {
             setPoGenJobResults([])
@@ -376,8 +387,12 @@ export function MaterialsPoGeneratorTab({
                             fontSize: '0.875rem',
                           }}
                         >
-                          <span style={{ fontWeight: 600 }}>J{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name?.trim() || '—'}</span>
-                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{j.job_address?.trim() || '—'}</span>
+                          <UnifiedSearchResultRow
+                            result={{ source: 'job', ...j }}
+                            prefixMap={prefixMap}
+                            jobEvidence={jobEvidence.get(j.id)}
+                            evidenceMode={evidenceMode}
+                          />
                         </button>
                       </li>
                     ))}

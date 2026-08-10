@@ -6,6 +6,9 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { fetchDispatchModeDayBlocks, type DispatchModeAgendaBlock } from '../../lib/dispatchModeSchedule'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import SwipeToConfirm from '../shared/SwipeToConfirm'
 import { PO_LONG_PRESS_MS, applyOtherMoveLocally, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
@@ -26,6 +29,7 @@ type PoJobPick = {
   jobName: string
   jobAddress: string
   customerName: string
+  serviceTypeId?: string | null
   serviceTypeName: string | null
 }
 
@@ -98,6 +102,22 @@ export default function DispatchModePo() {
   const [jobSearch, setJobSearch] = useState('')
   const [jobResults, setJobResults] = useState<PoJobPick[]>([])
   const [jobSearching, setJobSearching] = useState(false)
+  const prefixMap = useLedgerPrefixMap()
+  const jobResultsUnified = useMemo(
+    () =>
+      jobResults.map((j) => ({
+        source: 'job' as const,
+        id: j.id,
+        hcp_number: j.hcpNumber ?? '',
+        click_number: j.clickNumber,
+        job_name: j.jobName,
+        job_address: j.jobAddress,
+        service_type_id: j.serviceTypeId ?? null,
+        service_type_name: j.serviceTypeName,
+      })),
+    [jobResults],
+  )
+  const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(jobResultsUnified)
   const [person, setPerson] = useState<PoPersonPick | null>(null)
   const [people, setPeople] = useState<PoPersonPick[]>([])
   const [supplyHouse, setSupplyHouse] = useState<PoSupplyHousePick | null>(null)
@@ -263,7 +283,7 @@ export default function DispatchModePo() {
     const t = setTimeout(() => {
       void withSupabaseRetry(() => supabase.rpc('search_jobs_ledger', { search_text: q }), 'dispatch po job search')
         .then(async (jobRows) => {
-          const jobs = (jobRows ?? []) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null }>
+          const jobs = (jobRows ?? []) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; service_type_id?: string | null; service_type_name?: string | null }>
           const ids = jobs.map((j) => j.id)
           const meta = ids.length
             ? await withSupabaseRetry(
@@ -286,7 +306,8 @@ export default function DispatchModePo() {
               jobName: (j.job_name ?? '').trim() || '—',
               jobAddress: (j.job_address ?? '').trim(),
               customerName: (metaById.get(j.id)?.customer_name ?? '').trim(),
-              serviceTypeName: metaById.get(j.id)?.service_type?.name ?? null,
+              serviceTypeId: j.service_type_id ?? null,
+              serviceTypeName: j.service_type_name ?? metaById.get(j.id)?.service_type?.name ?? null,
             })),
           )
         })
@@ -460,9 +481,23 @@ export default function DispatchModePo() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.4rem' }}>
               {jobResults.map((j) => (
                 <button key={j.id} type="button" onClick={() => { setJob(j); setJobSearch(''); setJobResults([]) }} className="dispatch-po-chip" style={{ ...chipStyle(false), borderRadius: 8, textAlign: 'left' }}>
-                  {effectiveJobLedgerNumber(j.hcpNumber, j.clickNumber) || '—'} · {j.jobName}
+                  <UnifiedSearchResultRow
+                    result={{
+                      source: 'job',
+                      id: j.id,
+                      hcp_number: j.hcpNumber ?? '',
+                      click_number: j.clickNumber,
+                      job_name: j.jobName,
+                      job_address: j.jobAddress,
+                      service_type_id: j.serviceTypeId ?? null,
+                      service_type_name: j.serviceTypeName,
+                    }}
+                    prefixMap={prefixMap}
+                    jobEvidence={jobEvidence.get(j.id)}
+                    evidenceMode={evidenceMode}
+                  />
                   <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                    {[j.customerName, j.jobAddress].filter(Boolean).join(' · ')}
+                    {j.customerName}
                   </span>
                 </button>
               ))}

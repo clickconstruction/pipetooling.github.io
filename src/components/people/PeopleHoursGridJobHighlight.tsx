@@ -1,10 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 
 export type HoursGridJobHighlightPick = { id: string; hcp_number: string; click_number?: string; job_name: string }
 
-type JobSearchResult = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }
+type JobSearchResult = {
+  id: string
+  hcp_number: string
+  click_number?: string
+  job_name: string
+  job_address: string
+  service_type_id?: string | null
+  service_type_name?: string | null
+}
 
 export interface PeopleHoursGridJobHighlightProps {
   selectedJobHighlight: HoursGridJobHighlightPick | null
@@ -16,10 +27,16 @@ export function PeopleHoursGridJobHighlight({
   selectedJobHighlight,
   setSelectedJobHighlight,
 }: PeopleHoursGridJobHighlightProps) {
+  const prefixMap = useLedgerPrefixMap()
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<JobSearchResult[]>([])
   const [listOpen, setListOpen] = useState(false)
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const resultsUnified = useMemo(
+    () => results.map((j) => ({ source: 'job' as const, ...j })),
+    [results],
+  )
+  const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(resultsUnified)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -82,7 +99,7 @@ export function PeopleHoursGridJobHighlight({
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             }}
           >
-            {results.map((j) => (
+            {resultsUnified.map((j) => (
               <button
                 key={j.id}
                 type="button"
@@ -105,12 +122,12 @@ export function PeopleHoursGridJobHighlight({
                   fontSize: '0.875rem',
                 }}
               >
-                <div style={{ fontWeight: 500 }}>
-                  J{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
-                </div>
-                {j.job_address ? (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address}</div>
-                ) : null}
+                <UnifiedSearchResultRow
+                  result={j}
+                  prefixMap={prefixMap}
+                  jobEvidence={jobEvidence.get(j.id)}
+                  evidenceMode={evidenceMode}
+                />
               </button>
             ))}
           </div>
