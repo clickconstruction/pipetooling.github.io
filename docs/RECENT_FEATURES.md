@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1519)
+last_updated: 2026-08-10 (v2.1521)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1521)
+
+### Search rows: identity line never wraps (2026-08-10)
+Owner feedback on the v2.1516 stacked mobile rows: a long title wrapped the identity line, stranding the trade pill ("plum") alone on line 1. [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) identity is now a single non-wrapping line in both stacked and desktop modes — pill `flexShrink: 0`, title span `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` with the full label in `title` for desktop hover. Long addresses trail off with "…" instead of wrapping (the owner's preferred remedy). All ~30 standard-row surfaces inherit it. Render test (+1) pins nowrap/ellipsis/title and the pill sharing the identity line's direct flex parent. Verified live at 375×812 on the "Hol" search from the report. Client-only.
 
 ## Latest Updates (v2.1519)
 
