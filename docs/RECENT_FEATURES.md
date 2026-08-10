@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1517)
+last_updated: 2026-08-10 (v2.1518)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1518)
+
+### Mobile header search respects the iPhone notch (2026-08-10)
+Owner-reported from a phone screenshot: opening the header search on mobile made the input jump up over the iOS status bar (covering the clock) instead of landing on the header row it replaces. Cause: the app draws under the notch (`viewport-fit=cover`), and while `.appNav` pads itself down with `padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top))` (`src/index.css`), the search overlay in [`HeaderGlobalSearch.tsx`](../src/components/HeaderGlobalSearch.tsx) covered the whole `.appNavChrome` with `inset: 0` + `padding: '0 0.25rem'` and vertically centered the input across the full chrome height — safe-area zone included. The overlay dialog now mirrors the nav's vertical padding contract (`max(var(--app-nav-pad-y), env(safe-area-inset-top, 0px))` top, `var(--app-nav-pad-y)` bottom), so the input centers on the same line as the header icons on both notched and non-notched screens. Verified at 375×812: input center exactly matches the header row center (87px = 87px); results panel unaffected. Client-only — no migration.
 
 ## Latest Updates (v2.1517)
 

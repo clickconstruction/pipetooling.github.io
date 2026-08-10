@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1518',
+    date: '2026-08-10',
+    title: 'Mobile search stays out of the status bar',
+    kind: 'fix',
+    highlights: [
+      'On iPhones, opening the header search no longer jumps the search box up over the clock and status bar — it now lands right on the header row, below the notch.',
+    ],
+  },
+  {
     version: 'v2.1517',
     date: '2026-08-10',
     title: 'Dev login: fixed sign-in account',
