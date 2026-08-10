@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1516)
+last_updated: 2026-08-10 (v2.1517)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1517)
+
+### Dev login pinned to robert@douglasmining.com (2026-08-10)
+[`DevLogin.tsx`](../src/pages/DevLogin.tsx) no longer signs in as the matching user for whatever email is typed or passed via `?as=` — the identity is a hardcoded constant, `DEV_LOGIN_EMAIL = 'robert@douglasmining.com'`, exported from the page. The email input is gone (replaced by a read-only Account display); `?as=<anything>&to=/<path>` still auto-fires on load for agent workflows, but the `as` value is ignored — it only triggers the auto-login. Client-only: the `dev-login` Edge Function is untouched (still accepts any email if called directly with the secret; no redeploy needed). New render tests ([`DevLogin.render.test.tsx`](../src/pages/DevLogin.render.test.tsx)) pin the contract: no email input, and both the form submit and the `?as=` auto-fire invoke the function with `DEV_LOGIN_EMAIL`. Docs updated: `AGENTS.md` login section, `EDGE_FUNCTIONS.md` → dev-login, `PROJECT_DOCUMENTATION.md` route list. No migration.
 
 ## Latest Updates (v2.1516)
 

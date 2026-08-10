@@ -15,9 +15,9 @@
 **Need an authenticated session to run, test, or verify the app? Do NOT stop at the email/password screen.** In local dev there is a built-in password-free login:
 
 1. Start the app: `npm run dev` (use the port Vite actually prints — usually `5173`).
-2. Navigate the browser to `http://localhost:<port>/dev-login?as=<existing-email>&to=/<path>`
-   - Example: `http://localhost:5173/dev-login?as=robert@douglasmining.com&to=/settings`
-   - `as=` must be an email that exists in `auth.users`; `to=` is where to land after login (defaults to `/dashboard`).
+2. Navigate the browser to `http://localhost:<port>/dev-login?as=1&to=/<path>`
+   - Example: `http://localhost:5173/dev-login?as=1&to=/settings`
+   - The identity is fixed (v2.1517): dev login **always signs in as `robert@douglasmining.com`** — the `as=` value is ignored; its presence just triggers the auto-login. `to=` is where to land after login (defaults to `/dashboard`).
 3. It auto-fires on page load (no clicks) — mints a magic link via the `dev-login` Edge Function and drops you onto the app authenticated.
 
 **Requirements:** `VITE_DEV_LOGIN_SECRET` in `.env.local` (already set locally) + server-side `DEV_LOGIN_SECRET`.
@@ -104,4 +104,4 @@ The Supabase MCP server (when available) is for **read/inspect operations**: `li
 
 *This file stays minimal — feature detail belongs in `docs/RECENT_FEATURES.md` and the specialist docs.*
 
-last_updated: 2026-08-01
+last_updated: 2026-08-10

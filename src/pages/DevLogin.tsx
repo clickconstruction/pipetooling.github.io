@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+// Dev login always signs in as this account; ?as= / typed emails no longer pick the user.
+export const DEV_LOGIN_EMAIL = 'robert@douglasmining.com'
+
 export default function DevLogin() {
   const [searchParams] = useSearchParams()
-  const [email, setEmail] = useState('')
   const [redirectTo, setRedirectTo] = useState('/dashboard')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -13,8 +15,7 @@ export default function DevLogin() {
   const asParam = searchParams.get('as')
 
   useEffect(() => {
-    if (!asParam || !secret || !import.meta.env.DEV) return
-    setEmail(asParam)
+    if (asParam === null || !secret || !import.meta.env.DEV) return
     const to = searchParams.get('to') ?? '/dashboard'
     setRedirectTo(to)
     setLoading(true)
@@ -24,7 +25,7 @@ export default function DevLogin() {
 
     supabase.functions
       .invoke('dev-login', {
-        body: { email: asParam.trim(), redirectTo: targetRedirect },
+        body: { email: DEV_LOGIN_EMAIL, redirectTo: targetRedirect },
         headers: { 'X-Dev-Login-Secret': secret },
       })
       .then(({ data, error: err }) => {
@@ -55,10 +56,12 @@ export default function DevLogin() {
     return <Navigate to="/sign-in" replace />
   }
 
-  if (asParam && loading) {
+  const autoFiring = asParam !== null
+
+  if (autoFiring && loading) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p>Signing in as {asParam}…</p>
+        <p>Signing in as {DEV_LOGIN_EMAIL}…</p>
       </div>
     )
   }
@@ -80,18 +83,13 @@ export default function DevLogin() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!secret) return
-    const trimmed = email.trim()
-    if (!trimmed) {
-      setError('Enter an email address')
-      return
-    }
     setLoading(true)
     setError(null)
     const baseUrl = window.location.origin
     const targetRedirect = `${baseUrl}${redirectTo.startsWith('/') ? redirectTo : `/${redirectTo}`}`
 
     const { data, error: err } = await supabase.functions.invoke('dev-login', {
-      body: { email: trimmed, redirectTo: targetRedirect },
+      body: { email: DEV_LOGIN_EMAIL, redirectTo: targetRedirect },
       headers: { 'X-Dev-Login-Secret': secret },
     })
 
@@ -112,22 +110,23 @@ export default function DevLogin() {
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '1.5rem' }}>
       <h2 style={{ marginTop: 0 }}>Dev Login</h2>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-        Sign in as any user by email. Only available in development.
+        Signs in as <code>{DEV_LOGIN_EMAIL}</code>. Only available in development.
       </p>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="dev-login-email" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-            Email
-          </label>
-          <input
-            id="dev-login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="user@example.com"
-            disabled={!!asParam}
-            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-          />
+          <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Account</span>
+          <div
+            style={{
+              width: '100%',
+              padding: '0.5rem 0.75rem',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: 'var(--surface)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            {DEV_LOGIN_EMAIL}
+          </div>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="dev-login-redirect" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
@@ -139,7 +138,7 @@ export default function DevLogin() {
             value={redirectTo}
             onChange={(e) => setRedirectTo(e.target.value)}
             placeholder="/dashboard"
-            disabled={!!asParam}
+            disabled={autoFiring}
             style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
           />
         </div>
@@ -148,21 +147,21 @@ export default function DevLogin() {
         )}
         <button
           type="submit"
-          disabled={loading || !!asParam}
+          disabled={loading || autoFiring}
           style={{
             padding: '0.5rem 1rem',
             background: '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: 4,
-            cursor: loading || asParam ? 'not-allowed' : 'pointer',
+            cursor: loading || autoFiring ? 'not-allowed' : 'pointer',
           }}
         >
           {loading ? 'Signing in…' : 'Dev Login'}
         </button>
       </form>
       <p style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Or use <code>?as=user@example.com</code> in the URL.
+        <code>?as=1&to=/path</code> in the URL auto-fires on load (the <code>as</code> value is ignored).
       </p>
     </div>
   )

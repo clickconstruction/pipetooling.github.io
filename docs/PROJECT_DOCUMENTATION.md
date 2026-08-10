@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-08-06
+last_updated: 2026-08-10
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -140,7 +140,7 @@ A Master Plumber can:
 
 **Public Routes**:
 - `/sign-in` - Sign in page
-- `/dev-login` - Dev-only auth bypass (sign in as any user by email; only when `import.meta.env.DEV`; requires `VITE_DEV_LOGIN_SECRET` and Edge Function `DEV_LOGIN_SECRET`). See `EDGE_FUNCTIONS.md` → dev-login.
+- `/dev-login` - Dev-only auth bypass (always signs in as `robert@douglasmining.com` — v2.1517; only when `import.meta.env.DEV`; requires `VITE_DEV_LOGIN_SECRET` and Edge Function `DEV_LOGIN_SECRET`). See `EDGE_FUNCTIONS.md` → dev-login.
 - `/sign-up` - Sign up page
 - `/reset-password` - Request password reset
 - `/reset-password-confirm` - Confirm password reset (from email link)
