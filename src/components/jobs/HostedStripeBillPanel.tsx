@@ -25,6 +25,7 @@ import {
 } from '../../lib/voidStripeInvoiceForRevert'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { SplitBillModal } from './SplitBillModal'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -200,6 +201,7 @@ export function HostedStripeBillPanel({
   const [voidConfirmChecked, setVoidConfirmChecked] = useState(false)
   const [voidConfirmBusy, setVoidConfirmBusy] = useState(false)
   const [voidConfirmError, setVoidConfirmError] = useState<string | null>(null)
+  const [splitBillOpen, setSplitBillOpen] = useState(false)
 
   const inv = invoice
   const job = invoice.job
@@ -617,6 +619,19 @@ export function HostedStripeBillPanel({
               </button>
             </div>
           ) : null}
+          {splitBillOpen && stripeDetail ? (
+            <SplitBillModal
+              open={splitBillOpen}
+              invoice={inv}
+              stripeDetail={stripeDetail}
+              overlayZIndex={voidConfirmOverlayZIndex}
+              onClose={() => setSplitBillOpen(false)}
+              onDone={async () => {
+                setSplitBillOpen(false)
+                await onVoidSuccessRef.current?.()
+              }}
+            />
+          ) : null}
           <UnwindStripeOobPaymentModal
             invoice={unwindOobOpen ? inv : null}
             stripeModeForBilling={stripeModeForBilling}
@@ -839,8 +854,9 @@ export function HostedStripeBillPanel({
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ flex: '1 1 auto', minWidth: '8rem' }}>
+          <div style={{ flex: '1 1 auto', minWidth: '8rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {showVoidStripeHostedButton ? (
+              <>
               <button
                 type="button"
                 onClick={() => {
@@ -861,6 +877,24 @@ export function HostedStripeBillPanel({
               >
                 Void Stripe invoice…
               </button>
+              <button
+                type="button"
+                title="Customer wants to pay with more than one card? Replace this bill with 2–4 smaller bills, each with its own pay link."
+                onClick={() => setSplitBillOpen(true)}
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: 'var(--text-green-800)',
+                  background: 'var(--bg-green-tint)',
+                  border: '1px solid var(--border-green-soft)',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Split bill…
+              </button>
+              </>
             ) : showVoidStripeHostedDisabledWhileLoading ? (
               <button
                 type="button"

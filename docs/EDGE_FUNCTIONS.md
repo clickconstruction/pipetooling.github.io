@@ -2017,6 +2017,8 @@ interface CreateStripeInvoiceBody {
   footer?: string
   /** Optional: Stripe invoice **line item** `description`. Max **500** characters. If set (non-empty), forces a **single** line; omit to allow **multiple** lines from job **Specific Work** (`jobs_ledger_fixtures`) when billable rows exist. */
   line_description?: string
+  /** Optional (v2.1520): Unix ms for the invoice number's HHmm suffix; ignored unless within ±48h of server now. Split-bill parts stagger this a minute apart so same-due-date parts get distinct `<digits>-YYMMDDHHmm` numbers. */
+  issued_at_ms?: number
 }
 ```
 
