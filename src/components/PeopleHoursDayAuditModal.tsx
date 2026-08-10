@@ -10,7 +10,9 @@ import {
   type JobDetails,
   type BidDetails,
 } from '../utils/crewAssignments'
-import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
+import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { ClockSessionEditSplitModal } from './ClockSessionEditSplitModal'
 import { AssignSessionJobPopover } from './clock-sessions/AssignSessionJobPopover'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
@@ -99,29 +101,8 @@ export function PeopleHoursDayAuditModal({
 
   const [jobSearchOpen, setJobSearchOpen] = useState(false)
   const [jobSearchText, setJobSearchText] = useState('')
-  const [jobSearchResults, setJobSearchResults] = useState<
-    Array<
-      | {
-          type: 'job'
-          id: string
-          hcp_number: string
-          click_number: string
-          job_name: string
-          job_address: string
-          service_type_id?: string | null
-          service_type_name?: string | null
-        }
-      | {
-          type: 'bid'
-          id: string
-          bid_number: string
-          project_name: string
-          address: string
-          service_type_name?: string
-          service_type_id?: string | null
-        }
-    >
-  >([])
+  const [jobSearchResults, setJobSearchResults] = useState<UnifiedSearchResult[]>([])
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(jobSearchResults)
 
   const [clockEditSession, setClockEditSession] = useState<ClockSessionRow | null>(null)
   const [clockCreateOpen, setClockCreateOpen] = useState(false)
@@ -312,11 +293,14 @@ export function PeopleHoursDayAuditModal({
             bid_number?: string
             project_name: string
             address: string
+            customer_name?: string
             service_type_name?: string
             service_type_id: string | null
           }>
-          const bids = bidsRaw.map((b) => ({ type: 'bid' as const, ...b, bid_number: b.bid_number ?? '' }))
-          const merged = [...jobs.map((j) => ({ type: 'job' as const, ...j })), ...bids]
+          const merged: UnifiedSearchResult[] = [
+            ...jobs.map((j) => ({ source: 'job' as const, ...j })),
+            ...bidsRaw.map((b) => ({ source: 'bid' as const, ...b, bid_number: b.bid_number ?? '', customer_name: b.customer_name ?? '' })),
+          ]
           setJobSearchResults(merged)
         })
       }
@@ -1097,16 +1081,17 @@ export function PeopleHoursDayAuditModal({
                           <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
                             {jobSearchResults.map((item) => (
                               <button
-                                key={`${item.type}:${item.id}`}
+                                key={`${item.source}:${item.id}`}
                                 type="button"
                                 onClick={() => {
+                                  if (item.source !== 'job' && item.source !== 'bid') return
                                   addAssignmentToDraft(
-                                    item.type === 'job'
+                                    item.source === 'job'
                                       ? {
                                           type: 'job',
                                           id: item.id,
                                           hcp_number: item.hcp_number,
-                                          click_number: item.click_number,
+                                          click_number: item.click_number ?? '',
                                           job_name: item.job_name,
                                           job_address: item.job_address,
                                           service_type_id: item.service_type_id ?? null,
@@ -1126,22 +1111,13 @@ export function PeopleHoursDayAuditModal({
                                 }}
                                 style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                               >
-                                <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  {(() => {
-                                    const t = getBidServiceTypeTag(item.service_type_name)
-                                    return t ? (
-                                      <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                                        [{t.tag}]
-                                      </span>
-                                    ) : null
-                                  })()}
-                                  {item.type === 'job'
-                                    ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name, item.click_number)
-                                    : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
-                                </div>
-                                {(item.type === 'job' ? item.job_address : item.address) ? (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{item.type === 'job' ? item.job_address : item.address}</div>
-                                ) : null}
+                                <UnifiedSearchResultRow
+                                  result={item}
+                                  prefixMap={prefixMap}
+                                  jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
+                                  bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
+                                  evidenceMode={evidenceMode}
+                                />
                               </button>
                             ))}
                           </div>

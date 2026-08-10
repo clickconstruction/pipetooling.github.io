@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1508)
+last_updated: 2026-08-09 (v2.1509)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1509)
+
+### Search standard wave 2 — Hours and crew pickers drop the bespoke two-line rows (2026-08-09)
+The three surfaces that bypassed the unified kernel with a local `{type: 'job'|'bid'}` shape + `format*LedgerShortLine` two-line rows now store `UnifiedSearchResult[]` and render [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) with evidence via `useJobBidSearchEvidence`: [`HoursUnassignedModal`](../src/components/HoursUnassignedModal.tsx) (BOTH its searches — the jobs+bids assignment `+` search and the jobs-only Common Jobs search; the two near-twin modals' pill-rule disagreement dies here), [`PeopleHoursDayAuditModal`](../src/components/PeopleHoursDayAuditModal.tsx), and [`CrewJobsBlock`](../src/components/CrewJobsBlock.tsx)'s add-job-or-bid modal. Selection handlers keep writing the existing `{type}` crew-assignment records (persistence unchanged); recent quick-pick chips and the `%` assignment chips keep their compact `formatAssignmentLabel` form for now. Verified: People → Hours cold-loads with zero console errors; full suite 4,098 green. Campaign: waves 3–6 remain (see v2.1507).
 
 ## Latest Updates (v2.1508)
 

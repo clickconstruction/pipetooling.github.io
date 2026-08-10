@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1509',
+    date: '2026-08-09',
+    title: 'Hours & crew pickers: standard search rows',
+    kind: 'feature',
+    highlights: [
+      'The Hours unassigned-day modal (both its searches), the day-audit modal, and the crew add-job modal now show search results the header-search way — trade tag, plain J/B numbers, Pipeline stage, money, and this-week schedule count on one line.',
+    ],
+  },
+  {
     version: 'v2.1508',
     date: '2026-08-09',
     title: 'Task modals & session pickers: standard search rows',
