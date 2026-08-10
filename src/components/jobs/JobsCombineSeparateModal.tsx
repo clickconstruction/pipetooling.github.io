@@ -12,6 +12,12 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
+import { useAuth } from '../../hooks/useAuth'
+import {
+  fetchJobSearchEvidence,
+  jobSearchEvidenceModeForRole,
+  type JobSearchEvidence,
+} from '../../lib/jobSearchEvidence'
 import {
   buildDupJobEnrichments,
   buildDuplicateJobAddressGroups,
@@ -92,6 +98,7 @@ function dupFinderOpenedLabel(createdAt: string | null | undefined): string | nu
 
 export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess }: JobsCombineSeparateModalProps) {
   const { showToast } = useToastContext()
+  const { role } = useAuth()
   const jobFormModalCtx = useJobFormModal()
 
   const [activeTab, setActiveTab] = useState<'combine' | 'separate'>('combine')
@@ -125,6 +132,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [dupGroups, setDupGroups] = useState<DuplicateAddressGroup<DupFinderJob>[]>([])
   const [dupKeep, setDupKeep] = useState<{ address: string; jobId: string } | null>(null)
   const [dupEnrich, setDupEnrich] = useState<Map<string, DupJobEnrichment>>(() => new Map())
+  /** Money-rail evidence for the search candidate lists (all three), accumulated per job id. */
+  const [searchEvidence, setSearchEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
   const [cLineDetailOpen, setCLineDetailOpen] = useState(false)
 
   /** Auto-open the Line items detail for short lists once both previews resolve; long lists start collapsed. */
@@ -182,6 +191,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     setDupGroups([])
     setDupKeep(null)
     setDupEnrich(new Map())
+    setSearchEvidence(new Map())
 
     setSJobSearch('')
     setSJobCandidates([])
@@ -514,6 +524,94 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
       picked.map((f) => ({ name: f.name, count: f.count, line_unit_price: f.line_unit_price })),
     )
   }, [sFixtures, sFixturePick])
+
+  /** Enrich all three search candidate lists with money-rail evidence (debounced, accumulating, failure-silent). */
+  useEffect(() => {
+    if (!open) return
+    const ids = [
+      ...cSourceCandidates.map((j) => j.id),
+      ...cTargetCandidates.map((j) => j.id),
+      ...sJobCandidates.map((j) => j.id),
+    ]
+    const missing = [...new Set(ids)].filter((id) => !searchEvidence.has(id))
+    if (missing.length === 0) return
+    let cancelled = false
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const got = await fetchJobSearchEvidence(missing, jobSearchEvidenceModeForRole(role))
+          if (cancelled) return
+          setSearchEvidence((prev) => {
+            const next = new Map(prev)
+            for (const [k, v] of got) next.set(k, v)
+            return next
+          })
+        } catch {
+          // Candidates simply render without the rail.
+        }
+      })()
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [open, cSourceCandidates, cTargetCandidates, sJobCandidates, searchEvidence, role])
+
+  /** Shared candidate-row body: identity + address + line names on the left, money rail on the right. */
+  function renderCandidateBody(j: JobSearchRow) {
+    const en = searchEvidence.get(j.id)
+    const mode = jobSearchEvidenceModeForRole(role)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
+          <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+          {en && en.lineCount > 0 ? (
+            <div
+              style={{ color: 'var(--text-600)', fontWeight: 400, fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={en.lineSummary}
+            >
+              {en.lineSummary}
+            </div>
+          ) : null}
+        </div>
+        {en ? (
+          <span
+            style={{
+              flexShrink: 0,
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '0.25rem 0.55rem',
+              textAlign: 'right',
+              display: 'inline-flex',
+              flexDirection: 'column',
+              gap: 1,
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1.25,
+            }}
+          >
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+              {mode === 'money'
+                ? `$${Math.round(en.lineRevenue).toLocaleString('en-US')}`
+                : `${en.lineCount} ${en.lineCount === 1 ? 'line' : 'lines'}`}
+            </span>
+            {mode === 'money' ? (
+              en.lastPaidDaysAgo !== null ? (
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
+                  paid {formatDaysAgoShort(en.lastPaidDaysAgo)}
+                </span>
+              ) : en.lineRevenue > 0 ? (
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
+              ) : (
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>no lines</span>
+              )
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+    )
+  }
 
   async function openDupFinder(): Promise<void> {
     setDupOpen(true)
@@ -895,8 +993,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                        {renderCandidateBody(j)}
                       </button>
                     </li>
                   ))}
@@ -965,8 +1062,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                        {renderCandidateBody(j)}
                       </button>
                     </li>
                   ))}
@@ -1275,8 +1371,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                        {renderCandidateBody(j)}
                       </button>
                     </li>
                   ))}
