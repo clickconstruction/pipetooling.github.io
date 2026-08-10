@@ -2,12 +2,12 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
-  formatUnifiedResult,
-  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
@@ -70,6 +70,7 @@ export function ClockSessionStripActionsModal({
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([])
   const [assignLoading, setAssignLoading] = useState(false)
   const [assignmentSearchExpanded, setAssignmentSearchExpanded] = useState(true)
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(searchResults, { enabled: open })
 
   useEffect(() => {
     if (open && payload) {
@@ -435,26 +436,13 @@ export function ClockSessionStripActionsModal({
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <span style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          {(() => {
-                            const t = serviceTypeTagForUnifiedRow(item)
-                            return t ? (
-                              <span
-                                style={{
-                                  padding: '0.1rem 0.35rem',
-                                  fontSize: '0.65rem',
-                                  fontWeight: 500,
-                                  background: t.color,
-                                  color: '#fff',
-                                  borderRadius: 4,
-                                }}
-                              >
-                                [{t.tag}]
-                              </span>
-                            ) : null
-                          })()}
-                          {formatUnifiedResult(item, prefixMap)}
-                        </span>
+                        <UnifiedSearchResultRow
+                          result={item}
+                          prefixMap={prefixMap}
+                          jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
+                          bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
+                          evidenceMode={evidenceMode}
+                        />
                       </button>
                     ))
                   )

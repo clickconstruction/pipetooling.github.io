@@ -9,11 +9,12 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import {
   formatUnifiedResult,
-  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { isDraftPeopleHoursSessionId } from '../../lib/peopleHoursManualDraftSession'
@@ -136,6 +137,7 @@ export function AssignSessionJobPopover({
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(searchResults, { enabled: open })
   const [popoverRect, setPopoverRect] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -631,66 +633,33 @@ export function AssignSessionJobPopover({
                     No results
                   </div>
                 ) : (
-                  searchResults.map((item) => {
-                    const tradeTag = serviceTypeTagForUnifiedRow(item)
-                    /* Unknown service_type_name: left gutter stays 4px transparent (no gray stripe — avoids implying a trade). */
-                    const stripeColor = tradeTag?.color ?? 'transparent'
-                    return (
-                      <button
-                        key={`${item.source}:${item.id}`}
-                        type="button"
-                        onClick={() => handleSelect(item)}
-                        disabled={loading}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'stretch',
-                          width: '100%',
-                          padding: 0,
-                          border: 'none',
-                          borderBottom: '1px solid var(--border)',
-                          background: 'none',
-                          cursor: loading ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem',
-                          textAlign: 'left',
-                        }}
-                      >
-                        <div
-                          aria-hidden
-                          style={{
-                            width: 4,
-                            flexShrink: 0,
-                            alignSelf: 'stretch',
-                            background: stripeColor,
-                          }}
-                        />
-                        <div
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '0.5rem 0.75rem',
-                          }}
-                        >
-                          <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            {tradeTag ? (
-                              <span
-                                style={{
-                                  padding: '0.1rem 0.35rem',
-                                  fontSize: '0.6875rem',
-                                  fontWeight: 500,
-                                  background: tradeTag.color,
-                                  color: '#fff',
-                                  borderRadius: 4,
-                                }}
-                              >
-                                [{tradeTag.tag}]
-                              </span>
-                            ) : null}
-                            {formatUnifiedResult(item, prefixMap)}
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })
+                  searchResults.map((item) => (
+                    <button
+                      key={`${item.source}:${item.id}`}
+                      type="button"
+                      onClick={() => handleSelect(item)}
+                      disabled={loading}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: 'none',
+                        borderBottom: '1px solid var(--border)',
+                        background: 'none',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <UnifiedSearchResultRow
+                        result={item}
+                        prefixMap={prefixMap}
+                        jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
+                        bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
+                        evidenceMode={evidenceMode}
+                      />
+                    </button>
+                  ))
                 )
               ) : (
                 <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>

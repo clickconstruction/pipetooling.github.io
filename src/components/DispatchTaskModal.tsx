@@ -11,11 +11,12 @@ import { MapPin, Check } from 'lucide-react'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import {
   formatUnifiedResult,
-  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow, UnifiedSearchSelectionLabel } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import type { UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
@@ -40,6 +41,9 @@ export default function DispatchTaskModal() {
   const [locationLat, setLocationLat] = useState<number | null>(null)
   const [locationLng, setLocationLng] = useState<number | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(unifiedSearchResults, {
+    enabled: modal?.isDispatchModalOpen ?? false,
+  })
 
   useEffect(() => {
     if (!modal?.isDispatchModalOpen) return
@@ -317,15 +321,7 @@ export default function DispatchTaskModal() {
                     gap: '0.35rem',
                   }}
                 >
-                  {(() => {
-                    const t = serviceTypeTagForUnifiedRow(selectedReference)
-                    return t ? (
-                      <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                        [{t.tag}]
-                      </span>
-                    ) : null
-                  })()}
-                  {formatUnifiedResult(selectedReference, prefixMap)}
+                  <UnifiedSearchSelectionLabel result={selectedReference} prefixMap={prefixMap} />
                 </span>
                 <button
                   type="button"
@@ -387,15 +383,13 @@ export default function DispatchTaskModal() {
                       fontSize: '0.875rem',
                     }}
                   >
-                    {(() => {
-                      const t = serviceTypeTagForUnifiedRow(r)
-                      return t ? (
-                        <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                          [{t.tag}]
-                        </span>
-                      ) : null
-                    })()}
-                    {formatUnifiedResult(r, prefixMap)}
+                    <UnifiedSearchResultRow
+                      result={r}
+                      prefixMap={prefixMap}
+                      jobEvidence={r.source === 'job' ? jobEvidence.get(r.id) : null}
+                      bidEvidence={r.source === 'bid' ? bidEvidence.get(r.id) : null}
+                      evidenceMode={evidenceMode}
+                    />
                   </button>
                 ))}
               </div>

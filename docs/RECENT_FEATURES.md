@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1507)
+last_updated: 2026-08-09 (v2.1508)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1508)
+
+### Search standard wave 1 — task modals and session pickers adopt the shared row (2026-08-09)
+Five surfaces move onto [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx): [`DispatchTaskModal`](../src/components/DispatchTaskModal.tsx), [`EstimatorTaskModal`](../src/components/EstimatorTaskModal.tsx), [`AssignSessionJobPopover`](../src/components/clock-sessions/AssignSessionJobPopover.tsx) (5 hosts; its 4px trade stripe retires — the pill alone carries the trade), [`ClockSessionStripActionsModal`](../src/components/ClockSessionStripActionsModal.tsx), and [`AssignFocusModal`](../src/components/AssignFocusModal.tsx) (jobs gain the pill they never had). All five drop the bracketed `[plum]` pill + redundant `JP`/`BP` letter for the standard bare pill + plain J/B, and gain the full evidence rail via the new shared [`useJobBidSearchEvidence`](../src/hooks/useJobBidSearchEvidence.ts) hook (header pattern: 200 ms debounce, 20+20 id cap, accumulating, role-gated dollars via `jobSearchEvidenceModeForRole` — field roles see line counts). Selected chips in the two task modals render the new `UnifiedSearchSelectionLabel` (same identity language as the rows); `dispatch_requests.reference_summary` keeps configured prefixes (stored text has no pill). Also: the Stages dispatch-bell presets ([`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx), [`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx)) now pass `service_type_id`/`service_type_name`, so a preset job chip finally shows its trade pill; EstimatorTaskModal's raw `#eff6ff`/`white` selection hexes become theme tokens. Verified live: Dispatch modal "holub" rows render plum · J927 · Working / J737 · Working · $450 · unpaid + pinpoint line summary. Campaign tracker: waves 2–6 remain (see v2.1507).
 
 ## Latest Updates (v2.1507)
 

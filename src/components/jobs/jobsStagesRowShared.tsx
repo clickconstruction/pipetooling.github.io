@@ -975,6 +975,8 @@ export function renderStagesLastActivityCell(
                     click_number: job.click_number ?? null,
                     job_name: job.job_name ?? '',
                     job_address: job.job_address ?? '',
+                    service_type_id: job.service_type_id ?? null,
+                    service_type_name: job.serviceType?.name ?? null,
                   },
                 })
               }
