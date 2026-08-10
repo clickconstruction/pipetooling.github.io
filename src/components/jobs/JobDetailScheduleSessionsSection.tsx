@@ -1,10 +1,14 @@
 import { useMemo } from 'react'
 import type { JobDetailClockSessionRow } from '../../lib/fetchClockSessionsForJobLedger'
-import { formatJobDetailModalDateFromYmd } from '../../lib/formatJobDetailModalDateYmd'
+import { formatJobDetailModalDateWithWeekdayFromYmd } from '../../lib/formatJobDetailModalDateYmd'
 import {
   filterJobDetailClockSessions,
   filterJobDetailScheduleBlocks,
 } from '../../lib/jobDetailScheduleSessionsFilter'
+import {
+  computeJobDetailSessionGroups,
+  formatJobDetailTotalHours,
+} from '../../lib/jobDetailSessionTotals'
 import type { JobScheduleBlockWithAssigneeName } from '../../lib/jobScheduleBlocks'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -80,6 +84,10 @@ export function JobDetailScheduleSessionsSection({
     [clockSessions, filterQuery],
   )
   const filterActive = filterQuery.trim().length > 0
+  const sessionGroups = useMemo(
+    () => computeJobDetailSessionGroups(filteredClockSessions),
+    [filteredClockSessions],
+  )
 
   return (
     <div style={{ marginTop: hideTitle ? 0 : '1rem' }}>
@@ -157,48 +165,120 @@ export function JobDetailScheduleSessionsSection({
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No rows match this filter.</p>
       ) : clockSessions.length > 0 ? (
         <div style={listBoxStyle}>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {filteredClockSessions.map((s) => {
-              const name = (s.users?.name ?? '').trim() || s.user_id
-              const status = sessionStatusLabel(s)
-              const dur = formatDurationHours(s.clocked_in_at, s.clocked_out_at)
-              const workDateLine = formatJobDetailModalDateFromYmd(s.work_date) ?? s.work_date ?? '—'
-              const notes = (s.notes ?? '').trim()
-              const durDisplay = dur ?? '—'
-              const timeStart = formatClockTimeOnlyChicago(s.clocked_in_at)
-              const timeEnd = s.clocked_out_at ? formatClockTimeOnlyChicago(s.clocked_out_at) : '—'
-              return (
-                <li
-                  key={s.id}
-                  style={{
-                    padding: '0.45rem 0.625rem',
-                    borderBottom: '1px solid var(--border)',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  <div style={{ fontWeight: 500 }}>
-                    {name} | {workDateLine}
-                  </div>
-                  <div
-                    style={{
-                      color: 'var(--text-600)',
-                      marginTop: 2,
-                      fontSize: '0.8125rem',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {durDisplay} | {timeStart} to {timeEnd}
-                  </div>
-                  {status ? (
-                    <div style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{status}</div>
-                  ) : null}
-                  {notes ? (
-                    <div style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>{notes}</div>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ul>
+          {sessionGroups.map((g) => (
+            <div key={g.name}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  gap: '0.5rem',
+                  background: 'var(--bg-subtle)',
+                  borderBottom: '1px solid var(--border)',
+                  padding: '0.45rem 0.625rem',
+                  fontWeight: 600,
+                }}
+              >
+                <span>{g.name}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)', fontWeight: 400 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>{formatJobDetailTotalHours(g.totalHours)}</span>
+                  {' · '}
+                  {g.sessions.length} {g.sessions.length === 1 ? 'session' : 'sessions'}
+                  {g.openCount > 0 ? ` · ${g.openCount} open` : ''}
+                </span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {g.sessions.map((s) => {
+                  const status = sessionStatusLabel(s)
+                  const dur = formatDurationHours(s.clocked_in_at, s.clocked_out_at)
+                  const workDateLine = formatJobDetailModalDateWithWeekdayFromYmd(s.work_date) ?? s.work_date ?? '—'
+                  const notes = (s.notes ?? '').trim()
+                  const timeStart = formatClockTimeOnlyChicago(s.clocked_in_at)
+                  const timeEnd = s.clocked_out_at ? formatClockTimeOnlyChicago(s.clocked_out_at) : '—'
+                  return (
+                    <li
+                      key={s.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto',
+                        columnGap: '0.75rem',
+                        rowGap: 2,
+                        alignItems: 'baseline',
+                        padding: '0.45rem 0.625rem',
+                        borderBottom: '1px solid var(--border)',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <div style={{ fontWeight: 500 }}>
+                        {workDateLine}
+                        {status ? (
+                          <span
+                            style={{
+                              marginLeft: '0.45rem',
+                              display: 'inline-block',
+                              fontSize: '0.6875rem',
+                              fontWeight: 600,
+                              borderRadius: 999,
+                              padding: '0.05rem 0.5rem',
+                              verticalAlign: '1px',
+                              background: status === 'Rejected' ? 'var(--bg-red-100)' : 'var(--bg-amber-100)',
+                              color: status === 'Rejected' ? 'var(--text-red-700)' : 'var(--text-amber-800)',
+                            }}
+                          >
+                            {status}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right' }}>
+                        {dur ?? '—'}
+                      </div>
+                      <div
+                        style={{
+                          gridColumn: '1',
+                          color: 'var(--text-600)',
+                          fontSize: '0.8125rem',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {timeStart} – {timeEnd}
+                      </div>
+                      {notes ? (
+                        <div
+                          style={{
+                            gridColumn: '1 / -1',
+                            fontSize: '0.8125rem',
+                            color: 'var(--text-muted)',
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          {notes}
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+          {sessionGroups.length >= 2 ? (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+                background: 'var(--bg-subtle)',
+                padding: '0.45rem 0.625rem',
+                fontSize: '0.8125rem',
+                color: 'var(--text-600)',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              <span>Total recorded</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>
+                {formatJobDetailTotalHours(sessionGroups.reduce((sum, g) => sum + g.totalHours, 0))}
+              </span>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {sessionsTruncated ? (
