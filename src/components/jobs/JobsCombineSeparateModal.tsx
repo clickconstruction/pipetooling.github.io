@@ -52,6 +52,15 @@ export type JobsCombineSeparateModalProps = {
   onAfterSuccess: () => void
 }
 
+type CombinePreview = {
+  partsStyle: number
+  materialsBilled: number
+  teamCost: number
+  teamHours: number
+  lineItemsRevenue: number
+  lineItemsCount: number
+}
+
 export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess }: JobsCombineSeparateModalProps) {
   const { showToast } = useToastContext()
   const jobFormModalCtx = useJobFormModal()
@@ -71,20 +80,10 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [cTargetId, setCTargetId] = useState<string | null>(null)
 
   const [cSourcePreviewLoading, setCSourcePreviewLoading] = useState(false)
-  const [cSourcePreview, setCSourcePreview] = useState<{
-    partsStyle: number
-    materialsBilled: number
-    teamCost: number
-    teamHours: number
-  } | null>(null)
+  const [cSourcePreview, setCSourcePreview] = useState<CombinePreview | null>(null)
 
   const [cTargetPreviewLoading, setCTargetPreviewLoading] = useState(false)
-  const [cTargetPreview, setCTargetPreview] = useState<{
-    partsStyle: number
-    materialsBilled: number
-    teamCost: number
-    teamHours: number
-  } | null>(null)
+  const [cTargetPreview, setCTargetPreview] = useState<CombinePreview | null>(null)
 
   const [cMigrateBusy, setCMigrateBusy] = useState(false)
 
@@ -266,25 +265,30 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     }
   }, [open, activeTab, sJobSearch])
 
-  async function loadCostPreview(jobId: string): Promise<{
-    partsStyle: number
-    materialsBilled: number
-    teamCost: number
-    teamHours: number
-  }> {
-    const [snap, materialsSum, teamRows] = await Promise.all([
+  async function loadCostPreview(jobId: string): Promise<CombinePreview> {
+    const [snap, materialsSum, teamRows, fixtureRows] = await Promise.all([
       fetchJobMaterialsCostSnapshot(jobId),
       fetchMaterialsBilledTotal(jobId),
       loadTeamLaborData(supabase),
+      withSupabaseRetry(
+        async () =>
+          supabase.from('jobs_ledger_fixtures').select('name, count, line_unit_price').eq('job_id', jobId),
+        'combine separate fixtures preview',
+      ),
     ])
     const teamRow = teamRows.find((r: TeamLaborRow) => r.jobId === jobId) ?? null
     const partsStyle =
       snap.supplyInvoiceTotal + tallyPartsTotalFromLines(snap.tallyPartLines) + mercuryCardTotalFromLines(snap.mercuryAllocLines)
+    const fixtures = (fixtureRows ?? []) as Array<Pick<FixtureRow, 'name' | 'count' | 'line_unit_price'>>
     return {
       partsStyle,
       materialsBilled: materialsSum,
       teamCost: teamRow?.jobCost ?? 0,
       teamHours: teamRow?.manHours ?? 0,
+      lineItemsRevenue: revenueDollarsFromFixtures(
+        fixtures.map((f) => ({ name: f.name, count: f.count, line_unit_price: f.line_unit_price })),
+      ),
+      lineItemsCount: fixtures.length,
     }
   }
 
@@ -801,68 +805,82 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>Summary</div>
-                  <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                  <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse', fontVariantNumeric: 'tabular-nums' }}>
                     <thead>
                       <tr>
                         <th style={{ textAlign: 'left', padding: '4px 8px 4px 0', color: 'var(--text-muted)', fontWeight: 600 }} />
                         <th style={{ textAlign: 'right', padding: '4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Source</th>
-                        <th style={{ textAlign: 'right', padding: '4px 0 4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Target</th>
+                        <th style={{ textAlign: 'right', padding: '4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Target</th>
+                        <th
+                          style={{
+                            textAlign: 'right',
+                            padding: '4px 0 4px 10px',
+                            color: 'var(--text-blue-700)',
+                            fontWeight: 700,
+                            borderLeft: '2px solid var(--bg-blue-200)',
+                          }}
+                        >
+                          New
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Parts-style costs</td>
-                        <td style={{ textAlign: 'right', padding: '4px 4px' }}>
-                          {cSourcePreviewLoading
-                            ? '…'
-                            : cSourcePreview
-                              ? `$${formatCurrency(cSourcePreview.partsStyle)}`
-                              : '—'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
-                          {cTargetPreviewLoading
-                            ? '…'
-                            : cTargetPreview
-                              ? `$${formatCurrency(cTargetPreview.partsStyle)}`
-                              : '—'}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Billed materials</td>
-                        <td style={{ textAlign: 'right', padding: '4px 4px' }}>
-                          {cSourcePreviewLoading
-                            ? '…'
-                            : cSourcePreview
-                              ? `$${formatCurrency(cSourcePreview.materialsBilled)}`
-                              : '—'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
-                          {cTargetPreviewLoading
-                            ? '…'
-                            : cTargetPreview
-                              ? `$${formatCurrency(cTargetPreview.materialsBilled)}`
-                              : '—'}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Team labor (est.)</td>
-                        <td style={{ textAlign: 'right', padding: '4px 4px' }}>
-                          {cSourcePreviewLoading
-                            ? '…'
-                            : cSourcePreview
-                              ? `$${formatCurrency(cSourcePreview.teamCost)}`
-                              : '—'}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
-                          {cTargetPreviewLoading
-                            ? '…'
-                            : cTargetPreview
-                              ? `$${formatCurrency(cTargetPreview.teamCost)}`
-                              : '—'}
-                        </td>
-                      </tr>
+                      {(
+                        [
+                          {
+                            label: 'Line items (revenue)',
+                            value: (p: CombinePreview) => `$${formatCurrency(p.lineItemsRevenue)} (${p.lineItemsCount})`,
+                            combined: (s: CombinePreview, t: CombinePreview) =>
+                              `$${formatCurrency(s.lineItemsRevenue + t.lineItemsRevenue)} (${s.lineItemsCount + t.lineItemsCount})`,
+                          },
+                          {
+                            label: 'Parts-style costs',
+                            value: (p: CombinePreview) => `$${formatCurrency(p.partsStyle)}`,
+                            combined: (s: CombinePreview, t: CombinePreview) => `$${formatCurrency(s.partsStyle + t.partsStyle)}`,
+                          },
+                          {
+                            label: 'Billed materials',
+                            value: (p: CombinePreview) => `$${formatCurrency(p.materialsBilled)}`,
+                            combined: (s: CombinePreview, t: CombinePreview) =>
+                              `$${formatCurrency(s.materialsBilled + t.materialsBilled)}`,
+                          },
+                          {
+                            label: 'Team labor (est.)',
+                            value: (p: CombinePreview) => `$${formatCurrency(p.teamCost)}`,
+                            combined: (s: CombinePreview, t: CombinePreview) => `$${formatCurrency(s.teamCost + t.teamCost)}`,
+                          },
+                        ] as const
+                      ).map((row) => (
+                        <tr key={row.label}>
+                          <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>{row.label}</td>
+                          <td style={{ textAlign: 'right', padding: '4px 4px' }}>
+                            {cSourcePreviewLoading ? '…' : cSourcePreview ? row.value(cSourcePreview) : '—'}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '4px 4px' }}>
+                            {cTargetPreviewLoading ? '…' : cTargetPreview ? row.value(cTargetPreview) : '—'}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: 'right',
+                              padding: '4px 0 4px 10px',
+                              fontWeight: 700,
+                              color: 'var(--text-blue-700)',
+                              borderLeft: '2px solid var(--bg-blue-200)',
+                            }}
+                          >
+                            {cSourcePreviewLoading || cTargetPreviewLoading
+                              ? '…'
+                              : cSourcePreview && cTargetPreview
+                                ? row.combined(cSourcePreview, cTargetPreview)
+                                : '—'}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    New = the combined card after migrating the source into the target.
+                  </p>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
