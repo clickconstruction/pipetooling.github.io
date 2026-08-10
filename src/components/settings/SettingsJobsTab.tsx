@@ -17,6 +17,8 @@ export default function SettingsJobsTab({
   users,
   jobOwnerOverrideByUserId,
   setJobOwnerOverrideByUserId,
+  jobOwnerDefaultMasterId,
+  setJobOwnerDefaultMasterId,
   jobOwnerOverridesSaving,
   jobCountByUserId,
   reassignTargetByUserId,
@@ -42,6 +44,8 @@ export default function SettingsJobsTab({
   users: JobsTabUserRow[]
   jobOwnerOverrideByUserId: Record<string, string>
   setJobOwnerOverrideByUserId: Dispatch<SetStateAction<Record<string, string>>>
+  jobOwnerDefaultMasterId: string
+  setJobOwnerDefaultMasterId: Dispatch<SetStateAction<string>>
   jobOwnerOverridesSaving: boolean
   jobCountByUserId: Record<string, number>
   reassignTargetByUserId: Record<string, string>
@@ -92,6 +96,46 @@ export default function SettingsJobsTab({
               When a user creates a job, assign it to another user instead of themselves.
             </p>
             <form onSubmit={saveJobOwnerOverrides}>
+              {/* Org-wide default (v2.1532): the master everyone WITHOUT their own row below
+                  creates jobs as — including users added later. */}
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  background: 'var(--bg-subtle)',
+                  maxWidth: 640,
+                }}
+              >
+                <label
+                  htmlFor="job-owner-default-master"
+                  style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}
+                >
+                  Default job owner — everyone
+                </label>
+                <select
+                  id="job-owner-default-master"
+                  value={jobOwnerDefaultMasterId}
+                  onChange={(e) => setJobOwnerDefaultMasterId(e.target.value)}
+                  disabled={jobOwnerOverridesSaving}
+                  style={{ padding: '0.25rem 0.5rem', minWidth: 220 }}
+                >
+                  <option value="">No default — users create jobs as themselves</option>
+                  {users
+                    .filter((o) => o.role === 'master_technician')
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name || o.email}
+                      </option>
+                    ))}
+                </select>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Applies to every user without their own row below — including people added later. A
+                  user&rsquo;s own &ldquo;Create jobs as&rdquo; choice always wins; pick{' '}
+                  <em>Self — always</em> there to exempt someone from the default.
+                </p>
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
                   <thead>
@@ -120,7 +164,16 @@ export default function SettingsJobsTab({
                               disabled={jobOwnerOverridesSaving}
                               style={{ padding: '0.25rem 0.5rem', minWidth: 160 }}
                             >
-                              <option value="">Self</option>
+                              <option value="">
+                                {jobOwnerDefaultMasterId
+                                  ? `Default (${
+                                      users.find((o) => o.id === jobOwnerDefaultMasterId)?.name || 'set above'
+                                    })`
+                                  : 'Self'}
+                              </option>
+                              {jobOwnerDefaultMasterId && u.id !== jobOwnerDefaultMasterId ? (
+                                <option value={u.id}>Self — always</option>
+                              ) : null}
                               {users
                                 .filter((o) => ['master_technician', 'assistant', 'controller'].includes(o.role) && o.id !== u.id)
                                 .map((o) => (

@@ -30,6 +30,8 @@ export function useSettingsJobsAdmin({
 
   const [jobOwnerOverridesSectionOpen, setJobOwnerOverridesSectionOpen] = useState(false)
   const [jobOwnerOverrideByUserId, setJobOwnerOverrideByUserId] = useState<Record<string, string>>({})
+  /** Org-wide fallback (v2.1532): `job_owner_override_default` — the master every user without their own row creates jobs as. */
+  const [jobOwnerDefaultMasterId, setJobOwnerDefaultMasterId] = useState('')
   const [jobOwnerOverridesSaving, setJobOwnerOverridesSaving] = useState(false)
   const [jobCountByUserId, setJobCountByUserId] = useState<Record<string, number>>({})
   const [reassignTargetByUserId, setReassignTargetByUserId] = useState<Record<string, string>>({})
@@ -55,6 +57,13 @@ export function useSettingsJobsAdmin({
         } else {
           await supabase.from('app_settings').upsert({ key, value_text: selected }, { onConflict: 'key' })
         }
+      }
+      if (!jobOwnerDefaultMasterId) {
+        await supabase.from('app_settings').delete().eq('key', 'job_owner_override_default')
+      } else {
+        await supabase
+          .from('app_settings')
+          .upsert({ key: 'job_owner_override_default', value_text: jobOwnerDefaultMasterId }, { onConflict: 'key' })
       }
       showToast('Job creation overrides saved.', 'success')
     } catch (err) {
@@ -123,11 +132,18 @@ export function useSettingsJobsAdmin({
       setDefaultLaborRate(laborVal != null ? String(laborVal) : '')
 
       const overrides: Record<string, string> = {}
+      let defaultMaster = ''
       for (const row of jobOwnerResult.data ?? []) {
         const userId = row.key.replace(/^job_owner_override_/, '')
+        // The org-wide fallback shares the key prefix (job_owner_override_default).
+        if (userId === 'default') {
+          defaultMaster = row.value_text ?? ''
+          continue
+        }
         if (userId && row.value_text) overrides[userId] = row.value_text
       }
       setJobOwnerOverrideByUserId(overrides)
+      setJobOwnerDefaultMasterId(defaultMaster)
 
       const counts: Record<string, number> = {}
       for (const row of jobCountsResult) {
@@ -142,6 +158,8 @@ export function useSettingsJobsAdmin({
     setJobOwnerOverridesSectionOpen,
     jobOwnerOverrideByUserId,
     setJobOwnerOverrideByUserId,
+    jobOwnerDefaultMasterId,
+    setJobOwnerDefaultMasterId,
     jobOwnerOverridesSaving,
     jobCountByUserId,
     reassignTargetByUserId,
