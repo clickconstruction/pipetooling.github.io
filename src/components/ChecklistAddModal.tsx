@@ -343,7 +343,9 @@ export default function ChecklistAddModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="checklist-add-modal-title"
-      style={{ position: 'fixed', inset: 0, background: overlayBackground, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+      // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
+      // send-as-task buttons can stack this modal over either dialog (v2.1529).
+      style={{ position: 'fixed', inset: 0, background: overlayBackground, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1012 }}
       onClick={() => modalContext.closeModal()}
     >
       <div
