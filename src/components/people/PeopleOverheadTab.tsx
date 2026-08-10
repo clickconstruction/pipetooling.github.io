@@ -9,6 +9,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import {
   bucketOverheadPartsLinesByAccountingLabel,
@@ -223,8 +226,15 @@ export default function PeopleOverheadTab({
   const [overheadOfficeJobModalOpen, setOverheadOfficeJobModalOpen] = useState(false)
   const [overheadJobSearch, setOverheadJobSearch] = useState('')
   const [overheadJobResults, setOverheadJobResults] = useState<
-    Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
+    Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; service_type_id?: string | null; service_type_name?: string | null }>
   >([])
+  const overheadPrefixMap = useLedgerPrefixMap()
+  const overheadJobResultsUnified = useMemo(
+    () => overheadJobResults.map((j) => ({ source: 'job' as const, ...j })),
+    [overheadJobResults],
+  )
+  const { jobEvidence: overheadJobEvidence, evidenceMode: overheadEvidenceMode } =
+    useJobBidSearchEvidence(overheadJobResultsUnified)
   const [overheadJobSaving, setOverheadJobSaving] = useState(false)
   const [overheadOfficePartsDetailByDay, setOverheadOfficePartsDetailByDay] = useState<
     Map<string, OverheadPartsDetailLine[]>
@@ -943,7 +953,15 @@ export default function PeopleOverheadTab({
       }
       void supabase.rpc('search_jobs_ledger', { search_text: q }).then(({ data }) => {
         setOverheadJobResults(
-          (data ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>,
+          (data ?? []) as Array<{
+            id: string
+            hcp_number: string
+            click_number?: string
+            job_name: string
+            job_address: string
+            service_type_id?: string | null
+            service_type_name?: string | null
+          }>,
         )
       })
     }, 300)
@@ -2575,8 +2593,12 @@ export default function PeopleOverheadTab({
                           fontSize: '0.875rem',
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</span>
-                        <span style={{ color: 'var(--text-muted)' }}> — {j.job_name}</span>
+                        <UnifiedSearchResultRow
+                          result={{ source: 'job', ...j }}
+                          prefixMap={overheadPrefixMap}
+                          jobEvidence={overheadJobEvidence.get(j.id)}
+                          evidenceMode={overheadEvidenceMode}
+                        />
                       </button>
                     </li>
                   ))}

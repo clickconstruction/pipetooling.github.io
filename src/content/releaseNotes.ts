@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1511',
+    date: '2026-08-10',
+    title: 'Seven more pickers: standard search rows',
+    kind: 'feature',
+    highlights: [
+      'Job pickers in Dispatch Mode PO, Materials PO Generator, the paid-email preview, the Hours grid highlight, the Overhead office-job chooser, supply-house invoice allocation, and Create-job-from-estimate all adopt the standard search rows — trade tag, plain J number, Pipeline stage, money, and this-week count.',
+      'The Overhead picker finally shows addresses, and three pickers that hardcoded the letter J now respect your configured prefixes.',
+    ],
+  },
+  {
     version: 'v2.1510',
     date: '2026-08-10',
     title: 'Money modals: standard search rows with evidence',

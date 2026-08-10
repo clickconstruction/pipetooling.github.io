@@ -16,8 +16,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
-import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobSearchResult } from '../../utils/unifiedJobBidSearch'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow, UnifiedSearchSelectionLabel } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -104,6 +106,13 @@ export default function CreateJobFromEstimateModal({
   const [linking, setLinking] = useState(false)
   const [jobLinkSearchQuery, setJobLinkSearchQuery] = useState('')
   const [jobLinkResults, setJobLinkResults] = useState<JobSearchResult[]>([])
+  const linkPrefixMap = useLedgerPrefixMap()
+  const jobLinkResultsUnified = useMemo(
+    () => jobLinkResults.map((j) => ({ source: 'job' as const, ...j })),
+    [jobLinkResults],
+  )
+  const { jobEvidence: linkJobEvidence, evidenceMode: linkEvidenceMode } =
+    useJobBidSearchEvidence(jobLinkResultsUnified)
   const [jobLinkSearchLoading, setJobLinkSearchLoading] = useState(false)
   const [customersForPayload, setCustomersForPayload] = useState<JobPayloadCustomerRow[]>([])
   const [customersLoading, setCustomersLoading] = useState(false)
@@ -569,7 +578,6 @@ export default function CreateJobFromEstimateModal({
                   ) : (
                     jobLinkResults.map((row, index) => {
                       const isSelected = row.id === linkJobLedgerId.trim()
-                      const hcp = effectiveJobLedgerNumber(row.hcp_number, row.click_number)
                       return (
                         <button
                           key={row.id}
@@ -595,12 +603,12 @@ export default function CreateJobFromEstimateModal({
                             boxSizing: 'border-box',
                           }}
                         >
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                            J{hcp || '—'} · {row.job_name?.trim() || '—'}
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                            {row.job_address?.trim() || '—'}
-                          </div>
+                          <UnifiedSearchResultRow
+                            result={{ source: 'job', ...row }}
+                            prefixMap={linkPrefixMap}
+                            jobEvidence={linkJobEvidence.get(row.id)}
+                            evidenceMode={linkEvidenceMode}
+                          />
                         </button>
                       )
                     })
@@ -609,9 +617,9 @@ export default function CreateJobFromEstimateModal({
               )
             })()}
             {selectedJobPick ? (
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#15803d' }}>
-                Selected: J{effectiveJobLedgerNumber(selectedJobPick.hcp_number, selectedJobPick.click_number) || '—'} ·{' '}
-                {selectedJobPick.job_name?.trim() || '—'}
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-green-800)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                Selected:{' '}
+                <UnifiedSearchSelectionLabel result={{ source: 'job', ...selectedJobPick }} prefixMap={linkPrefixMap} />
               </p>
             ) : null}
             <div

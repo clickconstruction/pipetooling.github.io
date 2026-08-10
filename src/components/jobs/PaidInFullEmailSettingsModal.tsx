@@ -4,6 +4,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import {
   paidEmailVariantForRole,
   parsePaidJobEmailRecipients,
@@ -42,6 +45,15 @@ type JobPick = {
   id: string
   label: string
   address: string
+  row: {
+    id: string
+    hcp_number: string | null
+    click_number: string | null
+    job_name: string | null
+    job_address: string | null
+    service_type_id?: string | null
+    service_type_name?: string | null
+  }
 }
 
 /** Office-capable roles offered as recipients (mirrors the AR-button office set on this board). */
@@ -97,6 +109,19 @@ export default function PaidInFullEmailSettingsModal({
   const [jobSearching, setJobSearching] = useState(false)
   const [jobResults, setJobResults] = useState<JobPick[]>([])
   const [pickedJob, setPickedJob] = useState<JobPick | null>(null)
+  const prefixMap = useLedgerPrefixMap()
+  const jobResultsUnified = useMemo(
+    () =>
+      jobResults.map((j) => ({
+        source: 'job' as const,
+        ...j.row,
+        hcp_number: j.row.hcp_number ?? '',
+        job_name: j.row.job_name ?? '',
+        job_address: j.row.job_address ?? '',
+      })),
+    [jobResults],
+  )
+  const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(jobResultsUnified)
   const [previewBusy, setPreviewBusy] = useState<'detailed' | 'summary' | 'test' | null>(null)
 
   useEffect(() => {
@@ -158,12 +183,15 @@ export default function PaidInFullEmailSettingsModal({
             click_number: string | null
             job_name: string | null
             job_address: string | null
+            service_type_id?: string | null
+            service_type_name?: string | null
           }>
           setJobResults(
             jobs.slice(0, 8).map((j) => ({
               id: j.id,
               label: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`,
               address: (j.job_address ?? '').trim(),
+              row: j,
             })),
           )
         })
@@ -402,11 +430,11 @@ export default function PaidInFullEmailSettingsModal({
         )}
         {!pickedJob && jobResults.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: '0.5rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem', maxHeight: 180, overflow: 'auto' }}>
-            {jobResults.map((j) => (
+            {jobResultsUnified.map((u, i) => (
               <button
-                key={j.id}
+                key={u.id}
                 type="button"
-                onClick={() => setPickedJob(j)}
+                onClick={() => setPickedJob(jobResults[i] ?? null)}
                 style={{
                   textAlign: 'left',
                   border: 'none',
@@ -418,8 +446,12 @@ export default function PaidInFullEmailSettingsModal({
                   color: 'inherit',
                 }}
               >
-                <div>{j.label}</div>
-                {j.address && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{j.address}</div>}
+                <UnifiedSearchResultRow
+                  result={u}
+                  prefixMap={prefixMap}
+                  jobEvidence={jobEvidence.get(u.id)}
+                  evidenceMode={evidenceMode}
+                />
               </button>
             ))}
           </div>

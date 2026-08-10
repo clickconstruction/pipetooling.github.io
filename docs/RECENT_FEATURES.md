@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1510)
+last_updated: 2026-08-10 (v2.1511)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1511)
+
+### Search standard wave 4 — seven simple RPC pickers (2026-08-10)
+[`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) (label no longer frozen at fetch — raw row kept), [`DispatchModePo`](../src/components/dispatchMode/DispatchModePo.tsx) (trade was fetched but never shown on rows; service type now comes straight off the search RPC), [`MaterialsPoGeneratorTab`](../src/components/materials/MaterialsPoGeneratorTab.tsx), [`PeopleHoursGridJobHighlight`](../src/components/people/PeopleHoursGridJobHighlight.tsx), [`PeopleOverheadTab`](../src/components/people/PeopleOverheadTab.tsx) (the audit's thinnest row — no address at all — now full standard), [`SupplyHousesTab`](../src/components/SupplyHousesTab.tsx) invoice job picker, and [`CreateJobFromEstimateModal`](../src/components/estimates/CreateJobFromEstimateModal.tsx) (selected line becomes `UnifiedSearchSelectionLabel`; green hex → token) all render [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) + `useJobBidSearchEvidence`. The three hardcoded-`'J'` string concatenations (PO Generator, grid highlight, create-from-estimate) die — plain-prefix rendering now goes through the kernel. Deferred to the next wave: the Dispatch Settings job-chips picker (its generic `ChipsWithSearchPicker` needs a `renderOption` prop first). Full suite 4,098 green. Campaign: bid pickers, Schedule/Combine alignment, and tier-2 tables remain (see v2.1507).
 
 ## Latest Updates (v2.1510)
 
