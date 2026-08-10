@@ -9,6 +9,19 @@ export type MinuteInterval = { startMin: number; endMin: number }
 /** Working day the ribbons + suggestions cover. */
 export const QUICK_ASSIGN_DAY_START_MIN = 6 * 60
 export const QUICK_ASSIGN_DAY_END_MIN = 18 * 60
+/** Vertical guide ticks drawn on day ribbons/timelines: 8 AM, 12 PM, 4 PM. */
+export const RIBBON_GUIDE_TICK_MINUTES: readonly number[] = [8 * 60, 12 * 60, 16 * 60]
+
+/** Left percentage for a single minute-of-day mark on a day ribbon; null when off the ribbon. */
+export function ribbonTickLeftPct(
+  minuteOfDay: number,
+  dayStartMin = QUICK_ASSIGN_DAY_START_MIN,
+  dayEndMin = QUICK_ASSIGN_DAY_END_MIN,
+): number | null {
+  const total = dayEndMin - dayStartMin
+  if (total <= 0 || minuteOfDay <= dayStartMin || minuteOfDay >= dayEndMin) return null
+  return ((minuteOfDay - dayStartMin) / total) * 100
+}
 /** Suggested windows shorter than this are noise. */
 export const QUICK_ASSIGN_MIN_WINDOW_MIN = 30
 

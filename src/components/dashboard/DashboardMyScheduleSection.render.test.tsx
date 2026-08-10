@@ -126,4 +126,19 @@ describe('DashboardMyScheduleSection pictures link', () => {
     })
     expect(screen.getByLabelText('Open customer pictures')).toBeTruthy()
   })
+
+  it('the not-filed-a-report reminder renders BELOW the job list (v2.1539)', () => {
+    renderSection({
+      role: 'helpers',
+      leaveReportReminderForJobRow: () => true,
+      assignedJobs: [
+        { id: JOB_ID, my_last_report_at: null } as unknown as DashboardMyScheduleSectionProps['assignedJobs'][number],
+      ],
+    })
+    const reminder = screen.getByText(/You haven't filed a report yet/)
+    const list = document.querySelector('ul')
+    expect(list).toBeTruthy()
+    // The reminder paragraph must come after the job list in document order.
+    expect(list!.compareDocumentPosition(reminder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

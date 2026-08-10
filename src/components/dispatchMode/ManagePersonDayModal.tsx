@@ -11,7 +11,7 @@ import {
   timeInputToMinutesSafe,
   dispatchMinutesToHHmm,
 } from '../../lib/dispatchAddBlockTime'
-import { ribbonSpanPct } from '../../lib/quickAssignFreeWindows'
+import { RIBBON_GUIDE_TICK_MINUTES, ribbonSpanPct, ribbonTickLeftPct } from '../../lib/quickAssignFreeWindows'
 import { computeManageDaySummary } from '../../lib/dispatchManagePersonDay'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
 import { deleteJobScheduleBlock, updateJobScheduleBlock } from '../../lib/jobScheduleBlocks'
@@ -281,6 +281,23 @@ export default function ManagePersonDayModal({
               overflow: 'hidden',
             }}
           >
+            {/* 4-hour guide ticks (8a · 12p · 4p) — under the block fills. */}
+            {RIBBON_GUIDE_TICK_MINUTES.map((m) => {
+              const left = ribbonTickLeftPct(m)
+              return left != null ? (
+                <span
+                  key={m}
+                  style={{
+                    position: 'absolute',
+                    left: `${left}%`,
+                    top: 0,
+                    bottom: 0,
+                    width: 1,
+                    background: 'var(--border-strong)',
+                  }}
+                />
+              ) : null
+            })}
             {blocks.map((b) => {
               const span = ribbonSpanPct({
                 startMin: timeInputToMinutesSafe(b.timeStart),

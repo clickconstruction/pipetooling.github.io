@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  RIBBON_GUIDE_TICK_MINUTES,
   freeGapsForDay,
   intersectGapLists,
   mergeBusyIntervals,
   ribbonSpanPct,
+  ribbonTickLeftPct,
   suggestCommonWindows,
   windowOverlapsBusy,
 } from './quickAssignFreeWindows'
@@ -79,5 +81,20 @@ describe('ribbonSpanPct', () => {
   it('maps intervals to percentages of the 6a–6p ribbon', () => {
     expect(ribbonSpanPct(I(360, 720))).toEqual({ leftPct: 0, widthPct: 50 })
     expect(ribbonSpanPct(I(1080, 1200))).toBeNull()
+  })
+})
+
+describe('ribbonTickLeftPct', () => {
+  it('places the 8a/12p/4p guide ticks on the 6a-6p ribbon', () => {
+    const pcts = RIBBON_GUIDE_TICK_MINUTES.map((m) => ribbonTickLeftPct(m))
+    expect(pcts[0]).toBeCloseTo(16.667, 2)
+    expect(pcts[1]).toBeCloseTo(50, 5)
+    expect(pcts[2]).toBeCloseTo(83.333, 2)
+  })
+
+  it('returns null at or beyond the ribbon edges', () => {
+    expect(ribbonTickLeftPct(6 * 60)).toBeNull()
+    expect(ribbonTickLeftPct(18 * 60)).toBeNull()
+    expect(ribbonTickLeftPct(5 * 60)).toBeNull()
   })
 })
