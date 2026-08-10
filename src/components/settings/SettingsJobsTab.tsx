@@ -5,6 +5,7 @@
  * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent. */
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
+import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
 import DevelopmentsSettingsBlock from './DevelopmentsSettingsBlock'
 
@@ -67,6 +68,7 @@ export default function SettingsJobsTab({
 }) {
   return (
     <>
+      <HideHcpFieldSettingsBlock />
       {/* Job creation overrides */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button
