@@ -63,6 +63,11 @@ import {
   sortJobPickerRowsFinishedLast,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import {
+  fetchJobSearchEvidence,
+  jobSearchEvidenceModeForRole,
+  type JobSearchEvidence,
+} from '../../lib/jobSearchEvidence'
 import { HUB_EXPECTED_MANPOWER_ALL_WEEK } from '../../lib/scheduleDispatchExpectedManpower'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -823,6 +828,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubAssignJobPlacement, setHubAssignJobPlacement] = useState<HubAssignJobPlacementState | null>(null)
   const [hubAssignJobPickerOpen, setHubAssignJobPickerOpen] = useState(false)
   const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
+  /** Money-rail evidence for picker rows, accumulated per job id (fetched only for short result lists). */
+  const [hubJobEvidence, setHubJobEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
   const [hubAssignJobPickerNumberQuery, setHubAssignJobPickerNumberQuery] = useState('')
   const [hubCellAddContext, setHubCellAddContext] = useState<HubCellAddContextState | null>(null)
   const [hubAssignJobPickerIntent, setHubAssignJobPickerIntent] = useState<HubAssignJobPickerIntent>('toolbar')
@@ -1330,6 +1337,34 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     }
     return sortJobPickerRowsFinishedLast([...list].sort(compareJobsByCreatedAtDesc))
   }, [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
+
+  /** Enrich visible picker rows with money-rail evidence — short lists only, debounced, accumulating, failure-silent. */
+  useEffect(() => {
+    if (!hubAssignJobPickerOpen) return
+    if (hubAssignJobPickerRows.length === 0 || hubAssignJobPickerRows.length > 30) return
+    const missing = hubAssignJobPickerRows.filter((r) => !hubJobEvidence.has(r.id)).map((r) => r.id)
+    if (missing.length === 0) return
+    let cancelled = false
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const got = await fetchJobSearchEvidence(missing, jobSearchEvidenceModeForRole(role))
+          if (cancelled) return
+          setHubJobEvidence((prev) => {
+            const next = new Map(prev)
+            for (const [k, v] of got) next.set(k, v)
+            return next
+          })
+        } catch {
+          // Rows simply render without the rail.
+        }
+      })()
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [hubAssignJobPickerOpen, hubAssignJobPickerRows, hubJobEvidence, role])
 
   /** Same-address ambiguity warning — only while a search narrows the list (the full ledger always has repeats). */
   const hubAssignJobPickerDuplicateAddressNotice = useMemo(() => {
@@ -2286,8 +2321,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             subline: hubJobPickerSubline(r),
             status: r.status ?? null,
             blocksThisWeek: r.totalBlocks,
+            evidence: hubJobEvidence.get(r.id) ?? null,
           }))}
           duplicateAddressNotice={hubAssignJobPickerDuplicateAddressNotice}
+          evidenceMode={jobSearchEvidenceModeForRole(role)}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
           numberQuery={hubAssignJobPickerNumberQuery}

@@ -1,6 +1,12 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { isFinishedJobPickerStatus, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
+import { formatDaysAgoShort } from '../../lib/duplicateJobAddressGroups'
+import type { JobSearchEvidence, JobSearchEvidenceMode } from '../../lib/jobSearchEvidence'
+
+function railDollars(n: number): string {
+  return `$${Math.round(n).toLocaleString('en-US')}`
+}
 import { splitTextForQueryHighlight } from '../../lib/assignJobPickerHighlight'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
@@ -45,6 +51,9 @@ export type ScheduleDispatchAssignJobPickerRow = {
   status?: string | null
   /** Schedule blocks this hub week — renders "N this wk" on active rows. */
   blocksThisWeek?: number
+  /** Evidence for the money rail (line items + payments). undefined = host doesn't enrich;
+   * null = enrichment pending/unavailable for this row (renders the legacy compact row). */
+  evidence?: JobSearchEvidence | null
   /** When set, show a muted hint (e.g. Quickfill: clocked on this job today). */
   sessionToday?: boolean
 }
@@ -63,6 +72,7 @@ export function ScheduleDispatchAssignJobPickerModal({
   onCreateNewJob,
   searchPlaceholder = 'Search HCP or job name',
   duplicateAddressNotice,
+  evidenceMode = 'lines-only',
   notComingIn,
 }: {
   open: boolean
@@ -83,6 +93,8 @@ export function ScheduleDispatchAssignJobPickerModal({
   searchPlaceholder?: string
   /** Same-address ambiguity warning shown under the search box (e.g. "2 jobs at 109 Tuscarora Trail…"). */
   duplicateAddressNotice?: string | null
+  /** Money rail mode: 'money' shows revenue + payment recency, 'lines-only' hides all dollars. */
+  evidenceMode?: JobSearchEvidenceMode
   /**
    * When provided, the footer offers a "Not coming in today" action with an inline confirm step.
    * Only meaningful when the picker is being opened for a single person on a single day
@@ -523,8 +535,57 @@ export function ScheduleDispatchAssignJobPickerModal({
                           <HighlightedText text={r.subline} query={highlightQuery} />
                         </span>
                       ) : null}
+                      {r.evidence && r.evidence.lineCount > 0 ? (
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-600)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={r.evidence.lineSummary}
+                        >
+                          {r.evidence.lineSummary}
+                        </span>
+                      ) : null}
                     </span>
-                    {typeof r.blocksThisWeek === 'number' && r.blocksThisWeek > 0 && !rowFinished ? (
+                    {r.evidence ? (
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          alignSelf: 'center',
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          padding: '0.25rem 0.55rem',
+                          textAlign: 'right',
+                          display: 'inline-flex',
+                          flexDirection: 'column',
+                          gap: 1,
+                          fontVariantNumeric: 'tabular-nums',
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+                          {evidenceMode === 'money' ? railDollars(r.evidence.lineRevenue) : `${r.evidence.lineCount} ${r.evidence.lineCount === 1 ? 'line' : 'lines'}`}
+                        </span>
+                        {evidenceMode === 'money' ? (
+                          r.evidence.lastPaidDaysAgo !== null ? (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
+                              paid {formatDaysAgoShort(r.evidence.lastPaidDaysAgo)}
+                            </span>
+                          ) : r.evidence.lineRevenue > 0 ? (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
+                          ) : (
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>no lines</span>
+                          )
+                        ) : null}
+                        {typeof r.blocksThisWeek === 'number' && r.blocksThisWeek > 0 ? (
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{r.blocksThisWeek} this wk</span>
+                        ) : null}
+                      </span>
+                    ) : typeof r.blocksThisWeek === 'number' && r.blocksThisWeek > 0 && !rowFinished ? (
                       <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         {r.blocksThisWeek} this wk
                       </span>
