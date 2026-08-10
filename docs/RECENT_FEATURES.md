@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1531)
+last_updated: 2026-08-10 (v2.1532)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1532)
+
+### Dev settings: org-wide default job-creation owner (2026-08-10)
+Owner-requested after today's Tyler Moore GC diagnosis (Job 960 landed mastered to its assistant creator because she had no personal `job_owner_override_*` row): Settings → Jobs & dispatch → **Job creation overrides** gains a **"Default job owner — everyone"** select at the top (masters only; saved by the same Save button as new `app_settings` key **`job_owner_override_default`**, delete-when-empty). Resolution order for NEW jobs is now: linked project's owner → the user's own `job_owner_override_<uid>` row → **the org default** → the user themselves. With a default set, each per-user row's blank option reads `Default (<name>)` and a new **"Self — always"** option pins a user to themselves (a personal row pointing at the user, honored by the resolver — that's the exemption mechanism); the default master's own row hides the pin (inherit already resolves to them). Client resolver [`resolveEffectiveJobMasterUserId.ts`](../src/lib/resolveEffectiveJobMasterUserId.ts) now fetches both keys in ONE query via new pure kernel `chooseJobOwnerFromOverrideRows` (+6 unit tests); covers the New Job modal, Import→estimate/bid, and `createJobFromEstimateSubmit`. The SQL path gets the same fallback: migration [`20260810200050_job_owner_override_default_fallback.sql`](../supabase/migrations/20260810200050_job_owner_override_default_fallback.sql) re-creates both `create_job_from_estimate` overloads with the default read (see `MIGRATIONS.md`). Settings load filters the `default` pseudo-row out of the per-user map ([`useSettingsJobsAdmin`](../src/hooks/useSettingsJobsAdmin.ts)). Verified live in Settings (labels flip reactively; nothing saved). **Migration pending `supabase db push` after merge** — client-first order safe.
 
 ## Latest Updates (v2.1531)
 

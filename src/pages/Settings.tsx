@@ -360,6 +360,8 @@ export default function Settings() {
     setJobOwnerOverridesSectionOpen,
     jobOwnerOverrideByUserId,
     setJobOwnerOverrideByUserId,
+    jobOwnerDefaultMasterId,
+    setJobOwnerDefaultMasterId,
     jobOwnerOverridesSaving,
     jobCountByUserId,
     reassignTargetByUserId,
@@ -1410,6 +1412,8 @@ export default function Settings() {
           users={users}
           jobOwnerOverrideByUserId={jobOwnerOverrideByUserId}
           setJobOwnerOverrideByUserId={setJobOwnerOverrideByUserId}
+          jobOwnerDefaultMasterId={jobOwnerDefaultMasterId}
+          setJobOwnerDefaultMasterId={setJobOwnerDefaultMasterId}
           jobOwnerOverridesSaving={jobOwnerOverridesSaving}
           jobCountByUserId={jobCountByUserId}
           reassignTargetByUserId={reassignTargetByUserId}

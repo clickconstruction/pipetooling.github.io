@@ -103,6 +103,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### August 2026
 
+#### August 10, 2026
+
+**`20260810200050_job_owner_override_default_fallback.sql`** _(apply via `supabase db push` after merge — pure `CREATE OR REPLACE` of both `create_job_from_estimate` overloads; until pushed, the SQL path simply ignores the new default, so client-first deploy order is safe)_
+- **Purpose**: Org-wide default job owner (v2.1532) — both `create_job_from_estimate` overloads (6-arg and 7-arg/p_fixtures) extend their owner resolution with a fallback read of `app_settings.job_owner_override_default` between the personal `job_owner_override_<uid>` row and self-ownership, mirroring the client resolver (`src/lib/resolveEffectiveJobMasterUserId.ts`). Bodies re-created verbatim from the baseline with only the override block extended; no schema changes, no new tables.
+
 #### August 9, 2026
 
 **`20260809181551_inspection_portal_credentials.sql`** _(apply via `supabase db push` after merge — the client in the same PR falls back to the legacy column set until then, so client-first deploy order is safe)_
