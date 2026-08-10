@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1498',
+    date: '2026-08-09',
+    title: 'Combine jobs: a tidier modal',
+    kind: 'feature',
+    highlights: [
+      'The long explanation of what Combine does now sits behind an ⓘ info link — the searches, summary, and buttons fit on screen without scrolling.',
+    ],
+  },
+  {
     version: 'v2.1497',
     date: '2026-08-09',
     title: 'Combine jobs: see every line item before you merge',
