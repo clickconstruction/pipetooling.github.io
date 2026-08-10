@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
+import { PersonalTimeOffModal } from './PersonalTimeOffModal'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 
@@ -272,6 +273,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
   const [rawSessionsThisWeek, setRawSessionsThisWeek] = useState<SessionRow[]>([])
   const [rawSessionsLastWeek, setRawSessionsLastWeek] = useState<SessionRow[]>([])
   const [editorDate, setEditorDate] = useState<string | null>(null)
+  const [timeOffModalOpen, setTimeOffModalOpen] = useState(false)
   const [myTimeJobLabels, setMyTimeJobLabels] = useState<Record<string, string>>({})
   const [myTimeBidLabels, setMyTimeBidLabels] = useState<Record<string, string>>({})
 
@@ -764,6 +766,26 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
       {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No time logged this week.</p>
       )}
+      {/* Personal Time Off moved here from Settings → Your account (v2.1544). */}
+      <button
+        type="button"
+        onClick={() => setTimeOffModalOpen(true)}
+        style={{
+          display: 'block',
+          margin: '1rem auto 0',
+          padding: '0.45rem 1rem',
+          background: 'var(--surface)',
+          border: '1px solid var(--border-strong)',
+          borderRadius: 6,
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: 'var(--text-700)',
+          cursor: 'pointer',
+        }}
+      >
+        Personal Time Off…
+      </button>
+      <PersonalTimeOffModal open={timeOffModalOpen} userId={userId} onClose={() => setTimeOffModalOpen(false)} />
       {editorDate && !disableDayEditor && (
         <DashboardMyTimeDayEditorModal
           dateStr={editorDate}

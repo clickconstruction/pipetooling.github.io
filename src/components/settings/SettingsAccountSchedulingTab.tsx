@@ -7,7 +7,6 @@ import type { UserRole } from '../../hooks/useAuth'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { SalariedWorkdayPickerRow } from '../../lib/buildSalariedWorkdayPickerRows'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
-import { TimeOffSettings } from '../TimeOffSettings'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type SettingsAccountSchedulingTabProps = {
@@ -27,8 +26,6 @@ type SettingsAccountSchedulingTabProps = {
   setAllSalariedDevSectionOpen: Dispatch<SetStateAction<boolean>>
   setDevSalariedSelectedUserId: Dispatch<SetStateAction<string | null>>
   setSalaryWorkdaySectionOpen: Dispatch<SetStateAction<boolean>>
-  setTimeOffSectionOpen: Dispatch<SetStateAction<boolean>>
-  timeOffSectionOpen: boolean
 }
 
 export default function SettingsAccountSchedulingTab({
@@ -48,8 +45,6 @@ export default function SettingsAccountSchedulingTab({
   setAllSalariedDevSectionOpen,
   setDevSalariedSelectedUserId,
   setSalaryWorkdaySectionOpen,
-  setTimeOffSectionOpen,
-  timeOffSectionOpen,
 }: SettingsAccountSchedulingTabProps) {
   return (
     <>
@@ -278,46 +273,6 @@ export default function SettingsAccountSchedulingTab({
           )}
         </section>
       )}
-        <section
-          id="settings-time-off"
-          aria-labelledby="settings-time-off-heading"
-          style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}
-        >
-          <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
-            <button
-              type="button"
-              id="settings-time-off-heading"
-              aria-expanded={timeOffSectionOpen}
-              aria-controls="settings-time-off-panel"
-              onClick={() => setTimeOffSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                color: 'var(--text-strong)',
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }} aria-hidden>
-                {timeOffSectionOpen ? '▼' : '▶'}
-              </span>
-              Personal Time Off
-            </button>
-            {timeOffSectionOpen && (
-              <div id="settings-time-off-panel" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
-                <TimeOffSettings userId={authUser.id} />
-              </div>
-            )}
-          </div>
-        </section>
     </>
   )
 }
