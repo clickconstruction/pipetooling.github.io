@@ -34,6 +34,39 @@ describe('formatUnifiedResult — customer branch', () => {
   })
 })
 
+describe('formatUnifiedResult — plainTradePrefixes', () => {
+  const prefixMap = { plum: { job: 'JP', bid: 'BP' } } as Parameters<typeof formatUnifiedResult>[1]
+  const job: UnifiedSearchResult = {
+    source: 'job',
+    id: 'j1',
+    hcp_number: '870',
+    job_name: 'Heron',
+    job_address: '105 Dover Rd',
+    service_type_id: 'plum',
+  }
+  const bid: UnifiedSearchResult = {
+    source: 'bid',
+    id: 'b1',
+    bid_number: '356',
+    project_name: '105 DOVER',
+    address: '105 Dover Rd',
+    customer_name: 'Heron',
+    service_type_id: 'plum',
+  }
+
+  it('uses the configured per-service prefixes by default', () => {
+    expect(formatUnifiedResult(job, prefixMap)).toContain('JP870')
+    expect(formatUnifiedResult(bid, prefixMap)).toContain('BP356')
+  })
+
+  it('drops the trade letter when plainTradePrefixes is set (the trade pill already says it)', () => {
+    expect(formatUnifiedResult(job, prefixMap, { plainTradePrefixes: true })).toContain('J870')
+    expect(formatUnifiedResult(job, prefixMap, { plainTradePrefixes: true })).not.toContain('JP870')
+    expect(formatUnifiedResult(bid, prefixMap, { plainTradePrefixes: true })).toContain('B356')
+    expect(formatUnifiedResult(bid, prefixMap, { plainTradePrefixes: true })).not.toContain('BP356')
+  })
+})
+
 describe('customerTypePillForUnifiedRow', () => {
   it('maps commercial and commercial_default to "com"', () => {
     expect(customerTypePillForUnifiedRow(customer({ customer_type: 'commercial' }))?.tag).toBe('com')

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1504',
+    date: '2026-08-09',
+    title: 'Search: cleaner job and bid numbers',
+    kind: 'feature',
+    highlights: [
+      'Since search results already show the trade tag, numbers now read J870 and B356 instead of JP870 and BP356.',
+    ],
+  },
+  {
     version: 'v2.1503',
     date: '2026-08-09',
     title: 'Search: jobs and bids show their numbers right in the results',
