@@ -1209,6 +1209,51 @@ export default function Dashboard() {
     />
   )
 
+  /** ClockedIn dock anchor + clock activity strip; placement varies by role —
+      helpers get it just above My Time at the bottom (owner request, v2.1541). */
+  const clockActivityStripBlock =
+    authUser?.id && showClockActivityStrip ? (
+      <>
+        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
+        <DashboardTeamActiveClockStrip
+            sessions={sessionsForStrip}
+            hoursTodayByUserId={hoursTodayForStrip}
+            clockedInTodayRows={myTeam.clockedInTodayStripRows}
+            jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
+            jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
+            jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
+            jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
+            showScopeToggle={showClockStripScopeToggle}
+            clockStripScope={clockStripScope}
+            onClockStripScopeChange={setClockStripScopePersist}
+            showJobBidColumn={showClockStripScopeToggle}
+            onJobBidSaved={(patch) => {
+              myTeam.applyOptimisticClockSessionAssign(patch)
+              void myTeam.loadPending({ silent: true })
+            }}
+            onJobBidAssignError={(msg) => showToast(msg, 'error')}
+            onApplyScheduleProportionsForSession={applySchedule.requestApply}
+            onOpenStripMyTimeEditor={
+              showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
+            }
+            authUserId={authUser.id}
+            canApproveClockSessions={showClockStripScopeToggle}
+            onClockSessionsMutated={() => {
+              void myTeam.loadPending({ silent: true })
+            }}
+            onMaterializeSalarySession={
+              showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
+            }
+            enableCopyDayJobMix={showClockStripScopeToggle}
+            enableScheduleDayEmail={showClockStripScopeToggle}
+            clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
+            enableCurrentlyInDispatchIcon={
+              role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
+            }
+        />
+      </>
+    ) : null
+
   return (
     <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
@@ -1283,47 +1328,7 @@ export default function Dashboard() {
         onClose={() => setContractSigningPromptOpen(false)}
         onOpenSigningPage={openContractSigningPageForDoc}
       />
-      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <DashboardTeamActiveClockStrip
-          sessions={sessionsForStrip}
-          hoursTodayByUserId={hoursTodayForStrip}
-          clockedInTodayRows={myTeam.clockedInTodayStripRows}
-          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
-          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
-          jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
-          jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
-          showScopeToggle={showClockStripScopeToggle}
-          clockStripScope={clockStripScope}
-          onClockStripScopeChange={setClockStripScopePersist}
-          showJobBidColumn={showClockStripScopeToggle}
-          onJobBidSaved={(patch) => {
-            myTeam.applyOptimisticClockSessionAssign(patch)
-            void myTeam.loadPending({ silent: true })
-          }}
-          onJobBidAssignError={(msg) => showToast(msg, 'error')}
-          onApplyScheduleProportionsForSession={applySchedule.requestApply}
-          onOpenStripMyTimeEditor={
-            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
-          }
-          authUserId={authUser.id}
-          canApproveClockSessions={showClockStripScopeToggle}
-          onClockSessionsMutated={() => {
-            void myTeam.loadPending({ silent: true })
-          }}
-          onMaterializeSalarySession={
-            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
-          }
-          enableCopyDayJobMix={showClockStripScopeToggle}
-          enableScheduleDayEmail={showClockStripScopeToggle}
-          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
-          enableCurrentlyInDispatchIcon={
-            role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
-          }
-        />
-      )}
+      {isAssistantLike(role) && clockActivityStripBlock}
       {isAssistantLike(role) && authUser?.id && (
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
@@ -1350,47 +1355,7 @@ export default function Dashboard() {
           )}
         </>
       )}
-      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <DashboardTeamActiveClockStrip
-          sessions={sessionsForStrip}
-          hoursTodayByUserId={hoursTodayForStrip}
-          clockedInTodayRows={myTeam.clockedInTodayStripRows}
-          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
-          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
-          jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
-          jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
-          showScopeToggle={showClockStripScopeToggle}
-          clockStripScope={clockStripScope}
-          onClockStripScopeChange={setClockStripScopePersist}
-          showJobBidColumn={showClockStripScopeToggle}
-          onJobBidSaved={(patch) => {
-            myTeam.applyOptimisticClockSessionAssign(patch)
-            void myTeam.loadPending({ silent: true })
-          }}
-          onJobBidAssignError={(msg) => showToast(msg, 'error')}
-          onApplyScheduleProportionsForSession={applySchedule.requestApply}
-          onOpenStripMyTimeEditor={
-            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
-          }
-          authUserId={authUser.id}
-          canApproveClockSessions={showClockStripScopeToggle}
-          onClockSessionsMutated={() => {
-            void myTeam.loadPending({ silent: true })
-          }}
-          onMaterializeSalarySession={
-            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
-          }
-          enableCopyDayJobMix={showClockStripScopeToggle}
-          enableScheduleDayEmail={showClockStripScopeToggle}
-          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
-          enableCurrentlyInDispatchIcon={
-            role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
-          }
-        />
-      )}
+      {!isAssistantLike(role) && role !== 'helpers' && clockActivityStripBlock}
       {(role === 'dev' || role === 'master_technician') && authUser?.id && (
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
@@ -1576,6 +1541,7 @@ export default function Dashboard() {
         </Suspense>
       )}
 
+      {role === 'helpers' && clockActivityStripBlock}
       {authUser?.id && <div id="dash-me" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && (
         <DashboardMyTimeSection
