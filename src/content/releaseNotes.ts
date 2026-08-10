@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1532',
+    date: '2026-08-10',
+    title: 'Pick a default owner for all new jobs',
+    kind: 'feature',
+    highlights: [
+      'In Settings → Jobs & dispatch → Job creation overrides, devs can now set a default job owner for everyone: any user without their own override — including people added later — creates jobs under that master instead of themselves.',
+      'Individual overrides still win, and a new "Self — always" choice exempts a specific person from the default.',
+    ],
+  },
+  {
     version: 'v2.1531',
     date: '2026-08-10',
     title: 'Bill Customer leads with Stripe',
