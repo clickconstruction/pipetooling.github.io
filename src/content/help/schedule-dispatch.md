@@ -36,6 +36,16 @@ Search: `Search HCP or job name`
 
 {{gif:schedule-dispatch.gif|Adding a block from a day cell: the + control, the job picker, then times on the slider}}
 
+Every result carries its billing state — {{chip:gray|Waiting}} {{chip:yellow|Working}} {{chip:purple|Ready to Bill}} {{chip:blue|Billed}} {{chip:green|Paid}} — with active jobs listed first and billed/paid ones greyed under a **Finished jobs** divider (still pickable for warranty callbacks, just never by accident). Active rows also show how many blocks the job already has this week. And when a search turns up **two jobs at the same address** — the classic repeat-customer trap — a warning banner says so, so you check the status chips before picking.
+
+:::example Two jobs, one address
+⚠ 2 jobs at 109 Tuscarora Trail — check the status before picking
+
+**473 · Mike Holub** {{chip:yellow|Working}} ← the live one
+
+**346 · Mike Holub** {{chip:blue|Billed}} — greyed, under Finished jobs
+:::
+
 Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:yellow|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
 
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.

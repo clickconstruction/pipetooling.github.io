@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1495',
+    date: '2026-08-09',
+    title: 'Schedule: the job picker tells you which job is the live one',
+    kind: 'feature',
+    highlights: [
+      'Add job to schedule now shows each job\'s billing state — Waiting, Working, Ready to Bill, Billed, or Paid — right on the row.',
+      'Finished (billed/paid) jobs drop below a divider and grey out, so the active job is always the obvious pick.',
+      'Searching up two jobs at the same address shows a warning so repeat customers don\'t trip you up.',
+    ],
+  },
+  {
     version: 'v2.1494',
     date: '2026-08-09',
     title: 'Job Mode: Clock In works again',

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { isFinishedJobPickerStatus, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { splitTextForQueryHighlight } from '../../lib/assignJobPickerHighlight'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
@@ -39,6 +40,11 @@ export type ScheduleDispatchAssignJobPickerRow = {
   serviceTypeName?: string | null
   /** Muted second line under the title (e.g. "07/14/26 | 123 Main St" — date added | address). */
   subline?: string
+  /** Pipeline state (waiting/working/ready_to_bill/billed/paid) — renders a status chip; billed/paid rows
+   * are greyed under a "Finished jobs" divider (caller sorts them last via sortJobPickerRowsFinishedLast). */
+  status?: string | null
+  /** Schedule blocks this hub week — renders "N this wk" on active rows. */
+  blocksThisWeek?: number
   /** When set, show a muted hint (e.g. Quickfill: clocked on this job today). */
   sessionToday?: boolean
 }
@@ -56,6 +62,7 @@ export function ScheduleDispatchAssignJobPickerModal({
   onOpenJobDetail,
   onCreateNewJob,
   searchPlaceholder = 'Search HCP or job name',
+  duplicateAddressNotice,
   notComingIn,
 }: {
   open: boolean
@@ -74,6 +81,8 @@ export function ScheduleDispatchAssignJobPickerModal({
   onOpenJobDetail?: (jobId: string) => void
   onCreateNewJob?: () => void
   searchPlaceholder?: string
+  /** Same-address ambiguity warning shown under the search box (e.g. "2 jobs at 109 Tuscarora Trail…"). */
+  duplicateAddressNotice?: string | null
   /**
    * When provided, the footer offers a "Not coming in today" action with an inline confirm step.
    * Only meaningful when the picker is being opened for a single person on a single day
@@ -363,14 +372,53 @@ export function ScheduleDispatchAssignJobPickerModal({
           )
         ) : null}
         </div>
-        <div style={{ overflowY: 'auto', flex: 1, border: '1px solid var(--border)', borderRadius: 6 }}>
+        {duplicateAddressNotice ? (
+          <div
+            role="note"
+            style={{
+              margin: '0.4rem 0 0',
+              padding: '0.35rem 0.6rem',
+              borderRadius: 6,
+              background: 'var(--bg-amber-tint)',
+              color: 'var(--text-amber-800)',
+              fontSize: '0.75rem',
+            }}
+          >
+            ⚠ {duplicateAddressNotice}
+          </div>
+        ) : null}
+        <div style={{ overflowY: 'auto', flex: 1, border: '1px solid var(--border)', borderRadius: 6, marginTop: duplicateAddressNotice ? '0.4rem' : undefined }}>
           {jobRows.length === 0 ? (
             <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No jobs match.</div>
           ) : (
             <ul id="assign-job-picker-results" role="listbox" aria-label="Matching jobs" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {jobRows.map((r, idx) => (
+              {jobRows.map((r, idx) => {
+                const rowFinished = isFinishedJobPickerStatus(r.status)
+                const firstFinished =
+                  rowFinished && idx > 0 && !isFinishedJobPickerStatus(jobRows[idx - 1]?.status)
+                return (
+                <Fragment key={r.id}>
+                {firstFinished ? (
+                  <li
+                    aria-hidden="true"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.35rem 0.75rem 0.2rem',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      color: 'var(--text-muted)',
+                      background: 'var(--bg-subtle)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    Finished jobs
+                  </li>
+                ) : null}
                 <li
-                  key={r.id}
                   id={`assign-job-picker-option-${idx}`}
                   role="option"
                   aria-selected={idx === activeIndex}
@@ -379,6 +427,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                     display: 'flex',
                     alignItems: 'stretch',
                     background: r.sessionToday ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    opacity: rowFinished ? 0.6 : undefined,
                   }}
                 >
                   {onOpenJobDetail ? (
@@ -442,6 +491,24 @@ export function ScheduleDispatchAssignJobPickerModal({
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           <HighlightedText text={r.displayTitle} query={highlightQuery} />
                         </span>
+                        {(() => {
+                          const chip = jobPickerStatusChip(r.status)
+                          return chip ? (
+                            <span
+                              style={{
+                                flexShrink: 0,
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                padding: '0.06rem 0.5rem',
+                                borderRadius: 999,
+                                background: chip.background,
+                                color: chip.color,
+                              }}
+                            >
+                              {chip.label}
+                            </span>
+                          ) : null
+                        })()}
                       </span>
                       {r.subline ? (
                         <span
@@ -457,6 +524,11 @@ export function ScheduleDispatchAssignJobPickerModal({
                         </span>
                       ) : null}
                     </span>
+                    {typeof r.blocksThisWeek === 'number' && r.blocksThisWeek > 0 && !rowFinished ? (
+                      <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {r.blocksThisWeek} this wk
+                      </span>
+                    ) : null}
                     {r.sessionToday ? (
                       <span
                         style={{
@@ -474,7 +546,9 @@ export function ScheduleDispatchAssignJobPickerModal({
                     ) : null}
                   </button>
                 </li>
-              ))}
+                </Fragment>
+                )
+              })}
             </ul>
           )}
         </div>
