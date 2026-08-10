@@ -17,6 +17,17 @@ The magnifier {{icon:help|gear}} in the header opens a search box that looks acr
 From the Dashboard, press {{chip:blue|S}}, type part of the job name or HCP number, and click the result — the job detail opens on the spot.
 :::
 
+## What each result row tells you
+
+Job and bid rows carry evidence on the right side so you can tell lookalike jobs apart without opening them:
+
+- **Jobs** — the Pipeline stage ({{chip:yellow|Working}}, {{chip:blue|Billed}}, {{chip:green|Paid}}, …), the billed total, how recently the customer paid (or {{chip:yellow|unpaid}}), and how many schedule blocks the job has this week (e.g. **2 this wk**). The line items appear in small print underneath.
+- **Bids** — the outcome ({{chip:green|Won}}, {{chip:yellow|Pending}}, {{chip:red|Lost}}, …), the bid value, and the sent or due date.
+
+:::example two jobs, same customer
+Searching a customer name shows every job at once — the one marked {{chip:blue|Billed}} with "1 this wk" is the live one; the {{chip:green|Paid}} one from last spring is finished.
+:::
+
 ## What happens when you pick a result
 
 - **Job** — opens the Job Detail view.

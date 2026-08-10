@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { buildDupJobEnrichments, type DupJobEnrichment } from './duplicateJobAddressGroups'
+import { getDefaultWeekRange } from '../utils/dateUtils'
 
 /**
  * Evidence detail shown on enriched job-search rows (the "money rail").
@@ -10,7 +11,12 @@ import { buildDupJobEnrichments, type DupJobEnrichment } from './duplicateJobAdd
  */
 export type JobSearchEvidenceMode = 'money' | 'lines-only'
 
-export type JobSearchEvidence = DupJobEnrichment
+export type JobSearchEvidence = DupJobEnrichment & {
+  /** jobs_ledger.status — Pipeline chip via jobPickerStatusChip(); null when unknown/unreadable. */
+  status: string | null
+  /** Schedule blocks in the current company week (Sun–Sat Central) the caller can see. */
+  blocksThisWeek: number
+}
 
 const OFFICE_MONEY_ROLES: ReadonlySet<string> = new Set([
   'dev',
@@ -38,9 +44,41 @@ async function chunkedIn<T>(
 }
 
 /**
- * Batched evidence for a set of job ids. Two queries in money mode, one in
- * lines-only mode (and that one omits price columns entirely). Throws only via
- * the underlying retry helper — callers typically catch and render plain rows.
+ * Merge the money/lines enrichments with status + schedule-block rows into the
+ * full per-job evidence map. Pure — exported for tests. Every id in `jobIds`
+ * that has ANY signal (lines, payments, status, or blocks) gets an entry.
+ */
+export function mergeJobSearchEvidence(
+  jobIds: string[],
+  enrichments: Map<string, DupJobEnrichment>,
+  statusRows: Array<{ id: string; status: string | null }>,
+  scheduleBlockRows: Array<{ job_id: string }>,
+): Map<string, JobSearchEvidence> {
+  const statusById = new Map(statusRows.map((r) => [r.id, (r.status ?? '').trim() || null]))
+  const blocksById = new Map<string, number>()
+  for (const b of scheduleBlockRows) blocksById.set(b.job_id, (blocksById.get(b.job_id) ?? 0) + 1)
+
+  const out = new Map<string, JobSearchEvidence>()
+  for (const id of jobIds) {
+    const e = enrichments.get(id)
+    const status = statusById.get(id) ?? null
+    const blocksThisWeek = blocksById.get(id) ?? 0
+    if (!e && status === null && blocksThisWeek === 0) continue
+    out.set(id, {
+      ...(e ?? { lineCount: 0, lineRevenue: 0, lineSummary: '', paidTotal: 0, lastPaidDaysAgo: null }),
+      status,
+      blocksThisWeek,
+    })
+  }
+  return out
+}
+
+/**
+ * Batched evidence for a set of job ids: line items (+ payments in money mode),
+ * jobs_ledger.status for the Pipeline chip, and current-company-week schedule
+ * block counts. Status/blocks failures degrade to money-only rows (and vice
+ * versa the lines/payments queries throw via the retry helper — callers
+ * typically catch and render plain rows).
  */
 export async function fetchJobSearchEvidence(
   jobIds: string[],
@@ -50,7 +88,8 @@ export async function fetchJobSearchEvidence(
   if (ids.length === 0) return new Map()
 
   const fixtureSelect = mode === 'money' ? 'job_id, name, count, line_unit_price' : 'job_id, name, count'
-  const [fixtures, payments] = await Promise.all([
+  const week = getDefaultWeekRange()
+  const [fixtures, payments, statusRows, blockRows] = await Promise.all([
     chunkedIn(ids, async (slice) => {
       const rows = await withSupabaseRetry(
         () => supabase.from('jobs_ledger_fixtures').select(fixtureSelect).in('job_id', slice),
@@ -72,13 +111,36 @@ export async function fetchJobSearchEvidence(
           return (rows ?? []) as Array<{ job_id: string; amount: number | null; paid_on: string | null; created_at: string | null }>
         })
       : Promise.resolve([]),
+    // Status + schedule blocks are best-effort extras: an RLS gap or failure
+    // here must not take down the money rail, so each falls back to [].
+    chunkedIn(ids, async (slice) => {
+      const rows = await withSupabaseRetry(
+        () => supabase.from('jobs_ledger').select('id, status').in('id', slice),
+        'job search evidence status',
+      )
+      return (rows ?? []) as Array<{ id: string; status: string | null }>
+    }).catch(() => [] as Array<{ id: string; status: string | null }>),
+    chunkedIn(ids, async (slice) => {
+      const rows = await withSupabaseRetry(
+        () =>
+          supabase
+            .from('job_schedule_blocks')
+            .select('job_id')
+            .in('job_id', slice)
+            .gte('work_date', week.start)
+            .lte('work_date', week.end),
+        'job search evidence schedule blocks',
+      )
+      return (rows ?? []) as Array<{ job_id: string }>
+    }).catch(() => [] as Array<{ job_id: string }>),
   ])
 
-  return buildDupJobEnrichments(
+  const enrichments = buildDupJobEnrichments(
     fixtures.map((f) => ({ job_id: f.job_id, name: f.name, count: f.count, line_unit_price: f.line_unit_price ?? 0 })),
     payments,
     Date.now(),
   )
+  return mergeJobSearchEvidence(ids, enrichments, statusRows, blockRows)
 }
 
 /** Evidence for a bid search row: value, outcome, and the dates that give it context. */

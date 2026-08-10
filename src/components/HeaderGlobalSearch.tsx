@@ -19,10 +19,7 @@ import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import type { UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import {
-  customerTypePillForUnifiedRow,
   escapeLike,
-  formatUnifiedResult,
-  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type CustomerSearchResult,
@@ -31,13 +28,12 @@ import {
 } from '../utils/unifiedJobBidSearch'
 import { CustomerSnapshotModal } from './customers/CustomerSnapshotModal'
 import {
-  bidSearchStatusChip,
   fetchBidSearchEvidence,
   fetchJobSearchEvidence,
   type BidSearchEvidence,
   type JobSearchEvidence,
 } from '../lib/jobSearchEvidence'
-import { formatDaysAgoShort } from '../lib/duplicateJobAddressGroups'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
@@ -58,23 +54,6 @@ function isTypingSurface(target: EventTarget | null): boolean {
 }
 
 type Placement = 'strip' | 'toolbar'
-
-/** "due 5/5" for pending bids with a due date, else "sent 3/2" — null when neither date exists. */
-function headerSearchBidDateLabel(be: BidSearchEvidence): string | null {
-  const short = (d: string | null): string | null => {
-    if (!d) return null
-    const dt = new Date(d.includes('T') ? d : `${d}T12:00:00`)
-    if (Number.isNaN(dt.getTime())) return null
-    return `${dt.getMonth() + 1}/${dt.getDate()}`
-  }
-  const wl = (be.winLoss ?? '').trim().toLowerCase()
-  if (wl !== 'won' && wl !== 'lost' && wl !== 'started_or_complete') {
-    const due = short(be.dueDate)
-    if (due) return `due ${due}`
-  }
-  const sent = short(be.dateSent)
-  return sent ? `sent ${sent}` : null
-}
 
 type HeaderGlobalSearchContextValue = {
   open: boolean
@@ -590,8 +569,6 @@ export function HeaderGlobalSearchNavLayer() {
             }}
           >
             {ctx.results.map((r, idx) => {
-              const tradePill = serviceTypeTagForUnifiedRow(r)
-              const pill = tradePill ?? customerTypePillForUnifiedRow(r)
               const isActive = idx === ctx.activeResultIndex
               return (
                 <li
@@ -617,102 +594,12 @@ export function HeaderGlobalSearchNavLayer() {
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
-                        {pill ? (
-                          <span
-                            style={{
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              padding: '0.1rem 0.28rem',
-                              borderRadius: 3,
-                              background: pill.color,
-                              // Trade tags: white text on the bright solid bg (matches the Clock In
-                              // pills); customer pills flip with their bg token via text-strong.
-                              color: tradePill ? '#fff' : 'var(--text-strong)',
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            {pill.tag}
-                          </span>
-                        ) : null}
-                        {/* Plain J/B prefixes: the trade pill beside the number already says PLUM/ELEC/…,
-                            so the per-service-type letter (JP → J, BP → B) would repeat it. */}
-                        <span>{formatUnifiedResult(r, ctx.prefixMap, { plainTradePrefixes: true })}</span>
-                      </span>
-                      {(() => {
-                        if (r.source === 'job') {
-                          const je = ctx.jobEvidence.get(r.id)
-                          if (!je) return null
-                          return (
-                            <span style={{ flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
-                              <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
-                                ${Math.round(je.lineRevenue).toLocaleString('en-US')}
-                              </span>{' '}
-                              {je.lastPaidDaysAgo !== null ? (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
-                                  paid {formatDaysAgoShort(je.lastPaidDaysAgo)}
-                                </span>
-                              ) : je.lineRevenue > 0 ? (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
-                              ) : null}
-                            </span>
-                          )
-                        }
-                        if (r.source === 'bid') {
-                          const be = ctx.bidEvidence.get(r.id)
-                          if (!be) return null
-                          const chip = bidSearchStatusChip(be.winLoss, be.dateSent)
-                          const dateLabel = headerSearchBidDateLabel(be)
-                          return (
-                            <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontVariantNumeric: 'tabular-nums' }}>
-                              <span
-                                style={{
-                                  fontSize: '0.65rem',
-                                  fontWeight: 600,
-                                  padding: '0.06rem 0.45rem',
-                                  borderRadius: 999,
-                                  background: chip.background,
-                                  color: chip.color,
-                                }}
-                              >
-                                {chip.label}
-                              </span>
-                              {be.bidValue !== null ? (
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
-                                  ${Math.round(be.bidValue).toLocaleString('en-US')}
-                                </span>
-                              ) : null}
-                              {dateLabel ? (
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{dateLabel}</span>
-                              ) : null}
-                            </span>
-                          )
-                        }
-                        return null
-                      })()}
-                    </span>
-                    {r.source === 'job'
-                      ? (() => {
-                          const je = ctx.jobEvidence.get(r.id)
-                          return je && je.lineCount > 0 ? (
-                            <span
-                              style={{
-                                display: 'block',
-                                fontSize: '0.7rem',
-                                color: 'var(--text-muted)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                marginTop: 1,
-                              }}
-                              title={je.lineSummary}
-                            >
-                              {je.lineSummary}
-                            </span>
-                          ) : null
-                        })()
-                      : null}
+                    <UnifiedSearchResultRow
+                      result={r}
+                      prefixMap={ctx.prefixMap}
+                      jobEvidence={r.source === 'job' ? ctx.jobEvidence.get(r.id) : null}
+                      bidEvidence={r.source === 'bid' ? ctx.bidEvidence.get(r.id) : null}
+                    />
                   </button>
                 </li>
               )

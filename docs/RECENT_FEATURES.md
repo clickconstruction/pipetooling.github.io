@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1506)
+last_updated: 2026-08-09 (v2.1507)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1507)
+
+### Unified search row standard — shared component, status chip, this-week count (2026-08-09)
+Wave 0 of the search-presentation standardization (owner-directed after the 35-surface audit: every picker adopts the header presentation; job rows gain "Ready to Bill" and "N this wk"). (1) The header row body is extracted to the shared [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) — trade pill + plain-J/B `formatUnifiedResult` label + evidence rail + line-summary second line; `headerSearchBidDateLabel` moved there as `bidSearchDateLabel`. It takes `evidenceMode` ('money' office / 'lines-only' field — dollars swap for a line count), so non-header adopters are role-safe. (2) [`jobSearchEvidence.ts`](../src/lib/jobSearchEvidence.ts) evidence gains `status` + `blocksThisWeek` via two extra best-effort batched selects (`jobs_ledger(id,status)`, current company-week `job_schedule_blocks`) merged by the new tested kernel `mergeJobSearchEvidence` (lineless jobs with status/blocks now get evidence entries; each extra select degrades to `[]` on failure so it can never take down the money rail). The rail renders the Pipeline chip (`jobPickerStatusChip`, shared from the v2.1495 schedule picker) before the money, and a muted "N this wk" when scheduled; the amber "unpaid" marker is suppressed when the chip already says Paid (contradiction found live on J544). 3 new kernel tests + 5 render tests ([`UnifiedSearchResultRow.render.test.tsx`](../src/components/search/UnifiedSearchResultRow.render.test.tsx)). Verified live: J346 renders plum · J346 · Billed · $252 · unpaid · "1 this wk" + line summary; B346 renders Pending · due 7/17. Guide [`global-search.md`](../src/content/help/global-search.md) documents the evidence row. No DB changes. Next waves migrate the ~30 non-standard pickers onto this component.
 
 ## Latest Updates (v2.1506)
 
