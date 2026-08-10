@@ -20,6 +20,7 @@ import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHh
 import { formatAddressTwoLines, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { JobAddressText } from './JobAddressText'
 import { invoiceOpenRemainingOnJob, jobStagesInvoiceJumpChipTargets } from '../../lib/jobs/invoiceBilling'
+import { computeStagesActivityFeedItems } from '../../lib/stagesActivityFeed'
 import {
   formatDispatchNoteDaysAgoShort,
   formatDispatchNoteDaysAgoShortPhrase,
@@ -890,8 +891,44 @@ export function renderStagesLastActivityCell(
   const titleWithNotes = titleParts.length > 0 ? titleParts.join(' · ') : titleForEmpty
   const expanded = expandedJobThreadId === jobId
 
-  // "NEXT · Abraham" over "Fri Jul 31 8:00–9:30 AM" — the job's next upcoming
-  // schedule appointment (who first, when below); click opens the Job Calendar.
+  // Mini-feed rows (Option A of the "Pipeline Activity column — presentation
+  // options" mockup): every line in the cell is [kind tag] [one-line body] [age],
+  // so the latest note, latest report, and next appointment scan as a feed. The
+  // fixed-width tag column keeps the bodies left-aligned across rows.
+  const feedRowStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '0.4rem',
+    minWidth: 0,
+  }
+  const feedTagBaseStyle: CSSProperties = {
+    flexShrink: 0,
+    width: '2.9rem',
+    fontSize: '0.6rem',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    lineHeight: 1.2,
+  }
+  const feedBodyStyle: CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: '0.8125rem',
+    color: 'var(--text-700)',
+    lineHeight: 1.35,
+  }
+  const feedWhenStyle: CSSProperties = {
+    flexShrink: 0,
+    fontSize: '0.6875rem',
+    color: 'var(--text-muted)',
+    fontVariantNumeric: 'tabular-nums',
+  }
+
+  // "Next · Abraham — Wed Aug 12 8 AM–12 PM" — the job's next upcoming schedule
+  // appointment as a feed row; click opens the Job Calendar.
   function renderStagesUpcomingScheduleLine() {
     const up = stagesUpcomingByJobId[jobId]
     if (!up) return null
@@ -909,11 +946,10 @@ export function renderStagesLastActivityCell(
         title={`Next scheduled: ${headline}${up.note ? ` — ${up.note}` : ''}. Click to open the job calendar.`}
         aria-label={`Next scheduled appointment ${headline}. Open the job calendar.`}
         style={{
-          display: 'block',
+          ...feedRowStyle,
           width: '100%',
-          padding: '0.15rem 0 0.15rem 0.5rem',
+          padding: 0,
           border: 'none',
-          borderLeft: '3px solid var(--border-green)',
           background: 'transparent',
           cursor: 'pointer',
           textAlign: 'left',
@@ -921,32 +957,17 @@ export function renderStagesLastActivityCell(
           flexShrink: 0,
         }}
       >
-        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d' }}>
-            Next
+        <span style={{ ...feedTagBaseStyle, color: '#15803d' }} aria-hidden>
+          Next
+        </span>
+        <span style={feedBodyStyle}>
+          <span style={{ fontWeight: 600 }}>{who}</span>
+          <span style={{ color: 'var(--text-muted)' }}>
+            {' '}
+            — {dateLabel} {windowLabel}
+            {up.note ? ` · ${up.note}` : ''}
           </span>
-          <span style={{ margin: '0 0.35rem' }}>·</span>
-          {up.assigneeNames.join(', ')}
-        </div>
-        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-          {dateLabel} {windowLabel}
-        </div>
-        {up.note ? (
-          <div
-            style={{
-              fontSize: '0.75rem',
-              color: 'var(--text-700)',
-              lineHeight: 1.3,
-              wordBreak: 'break-word',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {up.note}
-          </div>
-        ) : null}
+        </span>
       </button>
     )
   }
@@ -1176,47 +1197,51 @@ export function renderStagesLastActivityCell(
       </>,
     )
   }
-  const useReport = tReport != null && (tNote == null || tReport > tNote)
-  const atIso = useReport ? stat.last_report_at! : stat.last_note_at!
-  const author = useReport
-    ? stat.last_report_author_name?.trim() || ''
-    : stat.last_note_author_name?.trim() || lastChronologicalNoteAuthor || ''
-  // Reports show just their preview text like notes do (v2.1044) — the
-  // "Report: <template>" label only fills in when there is no preview.
-  const body = useReport
-    ? (() => {
-        const tmpl = (stat.last_report_template_name ?? '').trim() || 'Report'
-        const prev = (stat.last_report_preview ?? '').trim()
-        return prev || `Report: ${tmpl}`
-      })()
-    : (stat.last_note_body ?? '').trim() || fromThreadBody
+  // Mini-feed (Option A): the latest note and latest report each get one
+  // truncated line, newest first — built from the stats the board already
+  // loads, no new queries. The full text lives in the row tooltip and the
+  // expandable thread.
+  const feedItems = computeStagesActivityFeedItems({
+    lastNoteAt: stat.last_note_at,
+    lastNoteAuthorName: stat.last_note_author_name,
+    lastNoteBody: stat.last_note_body,
+    fallbackNoteAuthorName: lastChronologicalNoteAuthor ?? null,
+    fallbackNoteBody: fromThreadBody || null,
+    lastReportAt: stat.last_report_at,
+    lastReportAuthorName: stat.last_report_author_name,
+    lastReportPreview: stat.last_report_preview,
+    lastReportTemplateName: stat.last_report_template_name,
+  })
   return shell(
     <>
       <div style={lastActivityMainColumnStyle}>
         <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-            {author ? <span>{author}</span> : null}
-            {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
-            <span>{formatDispatchNoteWeekdayShortTimeChicago(atIso)}</span>
-            {/* nowrap glue: the "(ago)" phrase and the chevron/count wrap together —
-                never a lone "▼ 2" line under the header (Option C wrap fix). */}
-            <span style={{ marginLeft: '0.35rem', whiteSpace: 'nowrap' }}>
-              ({formatDispatchNoteDaysAgoShortPhrase(atIso)})
-              {renderStagesThreadExpandButton(ctx, jobId)}
-            </span>
-          </div>
-          <div
-            style={{
-              fontSize: '0.8125rem',
-              color: 'var(--text-700)',
-              lineHeight: 1.35,
-              wordBreak: 'break-word',
-              whiteSpace: 'pre-wrap',
-              maxHeight: '4.2em',
-              overflow: 'hidden',
-            }}
-          >
-            {body || '—'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            {feedItems.map((item, idx) => (
+              <div
+                key={item.kind}
+                style={feedRowStyle}
+                title={`${item.author ? `${item.author} · ` : ''}${formatDispatchNoteWeekdayShortTimeChicago(item.atIso)} (${formatDispatchNoteDaysAgoShortPhrase(item.atIso)})${item.body ? ` — ${item.body}` : ''}`}
+              >
+                <span
+                  style={{ ...feedTagBaseStyle, color: item.kind === 'note' ? 'var(--text-link)' : '#7c3aed' }}
+                  aria-hidden
+                >
+                  {item.kind === 'note' ? 'Note' : 'Report'}
+                </span>
+                <span style={feedBodyStyle}>
+                  {item.author ? <span style={{ fontWeight: 600 }}>{item.author}</span> : null}
+                  {item.author && item.body ? ' — ' : null}
+                  {item.body || (item.author ? '' : '—')}
+                </span>
+                {/* nowrap glue: age and the chevron/count share the row's fixed
+                    right slot; the chevron rides the first (newest) row only. */}
+                <span style={{ ...feedWhenStyle, whiteSpace: 'nowrap' }}>
+                  {formatDispatchNoteDaysAgoShort(item.atIso)}
+                  {idx === 0 ? renderStagesThreadExpandButton(ctx, jobId) : null}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
         {renderStagesUpcomingScheduleLine()}

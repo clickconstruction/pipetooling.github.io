@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1535',
+    date: '2026-08-10',
+    title: 'Pipeline: Activity is now a mini-feed',
+    kind: 'feature',
+    highlights: [
+      'Each Pipeline row now shows its latest note AND latest field report as separate one-line entries — tagged Note or Report, newest first, with the age on the right.',
+      'The green Next line joins the feed in the same style: who, then the date and time window, on one line. It still opens the job calendar.',
+      'Hover any line for the full text; clicking still expands the whole notes thread like before.',
+    ],
+  },
+  {
     version: 'v2.1534',
     date: '2026-08-10',
     title: 'Pipeline: Activity column uses the whole screen',
