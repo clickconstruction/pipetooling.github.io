@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1538',
+    date: '2026-08-10',
+    title: 'Pipeline: "Send back" is now "Mark Waiting" on Working jobs',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Pipeline, the button that moves a Working job back to Waiting now says exactly that — Mark Waiting instead of the generic Send back.',
+      'Send back keeps its name in the later sections (Ready to Bill, Billed, Collections), where it still means one step backward.',
+    ],
+  },
+  {
     version: 'v2.1537',
     date: '2026-08-10',
     title: 'Assign work: tap a name to manage their day',
