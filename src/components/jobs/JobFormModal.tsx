@@ -2669,17 +2669,9 @@ export default function JobFormModal({
   }
 
   async function handleLinkToSimilarCustomer(c: CustomerRow) {
-    setCustomerId(c.id)
-    setCustomerSearch(getCustomerDisplay(c))
-    setCustomerName(c.name ?? '')
-    setCustomerEmail(extractContactFromCustomer(c).email)
-    setCustomerPhone(extractContactFromCustomer(c).phone)
-    setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
-    if (!jobAddress.trim()) setJobAddress(c.address ?? '')
-    setCustomers((prev) => {
-      if (prev.some((x) => x.id === c.id)) return prev
-      return [...prev, c].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    })
+    // Edit mode: persist the link FIRST — if the DB rejects it (e.g. the
+    // customer↔master backstop trigger), the form state stays untouched instead
+    // of diverging from the row.
     if (editing) {
       const { error: updErr } = await supabase.from('jobs_ledger').update({ customer_id: c.id }).eq('id', editing.id)
       if (updErr) {
@@ -2687,6 +2679,22 @@ export default function JobFormModal({
         showToast(m.split('\n')[0] ?? m, 'error')
         return
       }
+    }
+    setCustomerId(c.id)
+    setCustomerSearch(getCustomerDisplay(c))
+    setCustomerName(c.name ?? '')
+    const contact = extractContactFromCustomer(c)
+    // A linked customer with no email/phone on file must not wipe what's
+    // already typed on the job — keep the job's value as the fallback.
+    setCustomerEmail((prev) => contact.email || prev)
+    setCustomerPhone((prev) => contact.phone || prev)
+    setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
+    if (!jobAddress.trim()) setJobAddress(c.address ?? '')
+    setCustomers((prev) => {
+      if (prev.some((x) => x.id === c.id)) return prev
+      return [...prev, c].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    })
+    if (editing) {
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) setEditing(found)
       onSavedRef.current?.()
@@ -4051,6 +4059,17 @@ export default function JobFormModal({
         creatingCustomerFromJob={creatingCustomerFromJob}
         onCreate={(t) => void handleCreateCustomerFromJob(t)}
         onLinkSimilar={(c) => void handleLinkToSimilarCustomer(c)}
+        resolveJobMasterUserId={async () => {
+          if (editing) {
+            return resolveEditJobMasterUserId({
+              projectId,
+              projectMasterUserId: projectId ? (projects.find((p) => p.id === projectId)?.master_user_id ?? null) : null,
+              existingJobMasterUserId: editing.master_user_id,
+            })
+          }
+          if (!authUser?.id) return null
+          return resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
+        }}
         overlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
       />
     </div>

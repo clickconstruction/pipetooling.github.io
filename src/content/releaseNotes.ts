@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1522',
+    date: '2026-08-10',
+    title: 'Linking a matched customer works again',
+    kind: 'fix',
+    highlights: [
+      'In the Edit Job create-customer dialog, the "Possible matches – link instead?" list only offers customers the job\'s owner actually owns — clicking a match now links it instead of silently failing.',
+      'Linking a customer who has no email or phone on file no longer erases the contact info already typed on the job.',
+    ],
+  },
+  {
     version: 'v2.1521',
     date: '2026-08-10',
     title: 'Search results: tidier one-line titles',

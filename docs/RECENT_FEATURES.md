@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1521)
+last_updated: 2026-08-10 (v2.1522)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1522)
+
+### Link-instead matches only offer the job master's customers (2026-08-10)
+Owner-reported dead click (2026-08-10): in the Edit Job "Create customer from job" modal, clicking a "Possible matches – link instead?" row appeared to do nothing. The click actually fired — the row offered a customer owned by a **different master**, the `jobs_ledger_customer_master_match` backstop trigger (migration `20260630200000`) rejected the `jobs_ledger.customer_id` update, and the only evidence was a fleeting error toast ("Job linked customer must belong to the job master…") before the modal sat back unchanged. Same bug class as the create-path fix already noted in `handleCreateCustomerFromJob`. The similarity list now filters to the JOB's master: new pure kernel [`computeSimilarCustomersForCreate`](../src/lib/jobs/similarCustomersForCreate.ts) (similarity ≥ 0.7 or substring, sorted, cap 10, master filter; unnamed rows no longer match everything via `includes('')`), with [`JobFormCreateCustomerModal`](../src/components/jobs/JobFormCreateCustomerModal.tsx) resolving the master through a new `resolveJobMasterUserId` prop (edit: `resolveEditJobMasterUserId`; new job: `resolveEffectiveJobMasterUserId`). Two hardening fixes in [`handleLinkToSimilarCustomer`](../src/components/jobs/JobFormModal.tsx): the edit-mode DB write now runs BEFORE the form-state mutations (a rejected link leaves the form untouched instead of diverging), and linking a customer with no email/phone on file preserves the job's typed contact fields instead of blanking them. Kernel unit tests + a new render test pin the row-click wiring and the cross-master filter. Client-only.
 
 ## Latest Updates (v2.1521)
 

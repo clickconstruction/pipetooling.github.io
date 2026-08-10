@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { nameSimilarity } from '../../utils/nameSimilarity'
+import { computeSimilarCustomersForCreate } from '../../lib/jobs/similarCustomersForCreate'
 import type { Database } from '../../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -20,6 +20,13 @@ type JobFormCreateCustomerModalProps = {
   onCreate: (customerType: 'residential' | 'commercial') => void
   /** Shell handler: links the picked existing customer (immediate DB write in edit mode), closes the modal. */
   onLinkSimilar: (c: CustomerRow) => void
+  /**
+   * Shell resolver for the JOB's master (edit: resolveEditJobMasterUserId; new:
+   * resolveEffectiveJobMasterUserId). The match list only offers that master's
+   * customers — the jobs_ledger_customer_master_match trigger rejects any other
+   * pick at link time. Null skips the filter.
+   */
+  resolveJobMasterUserId: () => Promise<string | null>
   overlayZIndex: number
 }
 
@@ -40,36 +47,35 @@ export function JobFormCreateCustomerModal({
   creatingCustomerFromJob,
   onCreate,
   onLinkSimilar,
+  resolveJobMasterUserId,
   overlayZIndex,
 }: JobFormCreateCustomerModalProps) {
   const { user: authUser } = useAuth()
   const [createCustomerFromJobType, setCreateCustomerFromJobType] = useState<'residential' | 'commercial'>('residential')
   const [similarCustomersForCreate, setSimilarCustomersForCreate] = useState<CustomerRow[]>([])
   const [createCustomerFromJobModalLoading, setCreateCustomerFromJobModalLoading] = useState(false)
+  const resolveJobMasterUserIdRef = useRef(resolveJobMasterUserId)
+  resolveJobMasterUserIdRef.current = resolveJobMasterUserId
 
   useEffect(() => {
     if (!open || !authUser?.id) return
     setCreateCustomerFromJobModalLoading(true)
     ;(async () => {
-      const { data } = await supabase
-        .from('customers')
-        .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
-        .order('name')
-      const all = (data as CustomerRow[]) ?? []
       const name = customerName.trim()
       if (!name) {
         setSimilarCustomersForCreate([])
         setCreateCustomerFromJobModalLoading(false)
         return
       }
-      const nameLower = name.toLowerCase()
-      const withSimilarity = all
-        .map((c) => ({ c, sim: nameSimilarity(name, c.name ?? '') }))
-        .filter(({ c, sim }) => sim >= 0.7 || (c.name ?? '').toLowerCase().includes(nameLower) || nameLower.includes((c.name ?? '').toLowerCase()))
-        .sort((a, b) => b.sim - a.sim)
-        .slice(0, 10)
-        .map(({ c }) => c)
-      setSimilarCustomersForCreate(withSimilarity)
+      const [{ data }, jobMasterUserId] = await Promise.all([
+        supabase
+          .from('customers')
+          .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
+          .order('name'),
+        resolveJobMasterUserIdRef.current(),
+      ])
+      const all = (data as CustomerRow[]) ?? []
+      setSimilarCustomersForCreate(computeSimilarCustomersForCreate(all, name, jobMasterUserId))
       setCreateCustomerFromJobModalLoading(false)
     })()
   }, [open, authUser?.id, customerName])
