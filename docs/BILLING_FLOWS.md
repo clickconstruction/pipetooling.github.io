@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-08-01
+last_updated: 2026-08-10
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -129,6 +129,8 @@ Source tables: `jobs_ledger_fixtures` (Specific Work: `name`, `count`, `line_uni
 
 Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing the remainder = `kind:'job'` (ensure → primary). `resolveReadyToBillBillCustomerTarget` (`src/lib/buildReadyToBillDashboardUnits.ts`) keeps the Field queue and Dashboard pointing at the same target.
 
+- **Split bill for multiple cards (v2.1520)**: "Split bill…" on `HostedStripeBillPanel` (billed + Stripe-hosted + zero payments) → `SplitBillModal` voids the current Stripe bill (send-back path), inserts 2–4 non-primary RTB rows (kernel `src/lib/splitBillParts.ts`; memo "… — part n of m"), creates a hosted Stripe bill per row (`issued_at_ms` staggered a minute per part so the `<digits>-YYMMDDHHmm` numbers never collide), then re-promotes the job to billed. Mid-flight failure leaves recoverable RTB drafts. Guide: `split-a-bill-so-a-customer-can-pay-with-multiple-cards`.
+
 ### Loaders
 
 - `src/hooks/useDashboardBillingInvoices.ts` — dashboard engine: `jobs_ledger_invoices.select(DASHBOARD_INVOICES_JOBS_LEDGER_SELECT)` per status + RPC `get_jobs_ledger_by_status` + `jobs_ledger_payments.select('*')` for billed jobs. The select constant + flattener live in `src/lib/dashboardBillingInvoiceUnits.ts` (drift-guarded by its test; `dashboardInvoiceToPaymentModal` strips flattened fields — the v2.734 leak fix).
@@ -199,7 +201,7 @@ flowchart LR
 
 | Function | Stripe calls | DB writes | Notes |
 |---|---|---|---|
-| `create-stripe-invoice` | customer upsert, invoice create+finalize, invoice items | invoice row → billed/stripe fields incl. `stripe_mode`; mode-appropriate `customers.stripe_customer_id`/`_test` | idempotent; no email |
+| `create-stripe-invoice` | customer upsert, invoice create+finalize, invoice items | invoice row → billed/stripe fields incl. `stripe_mode`; mode-appropriate `customers.stripe_customer_id`/`_test` | idempotent; no email; optional `issued_at_ms` (±48h clamp, v2.1520) sets the number's HHmm — split-bill parts stagger it to dodge same-minute duplicates |
 | `preview-stripe-invoice` | createPreview (+ ephemeral customer create/delete when no saved id for the mode) | none | debounced from the modal |
 | `send-stripe-invoice` | `invoices.sendInvoice` — **emails customer** | `sent_to_customer_at`, send-log row | row-mode authoritative; sub/helpers allowed via collect-flow gate |
 | `get-stripe-invoice-details` | retrieve + lines + account | memo/footer backfill | row-mode authoritative; used by panels/queues |

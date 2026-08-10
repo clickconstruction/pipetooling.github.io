@@ -20,6 +20,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1520',
+    date: '2026-08-10',
+    title: 'Split a bill for multiple credit cards',
+    kind: 'feature',
+    highlights: [
+      'When a customer wants to pay one bill with two (or up to four) cards, open the bill and click "Split bill…" — the original Stripe bill is voided and replaced by smaller bills, each with its own pay link.',
+      'Type the first part and the last part fills in automatically; every part flips to Paid on its own, and the job goes to Paid in Full when the last part clears.',
+      'New guide: "How do I split a bill so a customer can pay with multiple cards".',
+    ],
+  },
+  {
     version: 'v2.1519',
     date: '2026-08-10',
     title: 'Dispatch mode: richer job picker',

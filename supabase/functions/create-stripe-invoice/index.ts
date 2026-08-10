@@ -48,6 +48,12 @@ interface CreateStripeInvoiceBody {
   extra_line_items?: Array<{ amount_cents: number; description: string }>
   /** Optional: `test` | `live`. Omit to use server default (legacy / non-UI callers). */
   stripe_mode?: StripeBillingMode
+  /**
+   * Optional instant (Unix ms) for the invoice number's HHmm suffix (v2.1520 split
+   * bills — parts created in the same minute stagger this to avoid duplicate
+   * numbers). Ignored unless within ±48h of server now; omit for `Date.now()`.
+   */
+  issued_at_ms?: number
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -133,6 +139,7 @@ serve(async (req) => {
       footer: footerRaw,
       line_description: lineDescriptionRaw,
       stripe_mode: stripeModeRaw,
+      issued_at_ms: issuedAtMsRaw,
     } = body
 
     const footerStr = typeof footerRaw === 'string' ? footerRaw : ''
@@ -270,7 +277,15 @@ serve(async (req) => {
     const effectiveJobNumber =
       ((jobRow.hcp_number ?? '').trim() || (jobRow.click_number ?? '').trim()) || null
 
-    const pipetInvoiceNumber = buildPipetoolingStripeInvoiceNumber(effectiveJobNumber, due_date.trim())
+    const ISSUED_AT_MS_MAX_SKEW = 48 * 60 * 60 * 1000
+    const issuedAtMs =
+      typeof issuedAtMsRaw === 'number' &&
+      Number.isFinite(issuedAtMsRaw) &&
+      Math.abs(issuedAtMsRaw - Date.now()) <= ISSUED_AT_MS_MAX_SKEW
+        ? issuedAtMsRaw
+        : Date.now()
+
+    const pipetInvoiceNumber = buildPipetoolingStripeInvoiceNumber(effectiveJobNumber, due_date.trim(), issuedAtMs)
     if (!pipetInvoiceNumber.ok) {
       return jsonResponse({ error: pipetInvoiceNumber.error }, 400)
     }
