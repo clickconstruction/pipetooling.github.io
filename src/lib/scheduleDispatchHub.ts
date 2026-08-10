@@ -39,8 +39,7 @@ export function jobPickerStatusChip(
     case 'working':
       return { label: 'Working', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }
     case 'ready_to_bill':
-      // Saturated purple stays literal — no purple theme tokens exist (matches the guide chips).
-      return { label: 'Ready to Bill', background: '#f5f3ff', color: '#6d28d9' }
+      return { label: 'Ready to Bill', background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)' }
     case 'billed':
       return { label: 'Billed', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
     case 'paid':
