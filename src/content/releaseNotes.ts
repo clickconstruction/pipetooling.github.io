@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1530',
+    date: '2026-08-10',
+    title: 'Pipeline shortcut icons moved to the start of each row',
+    kind: 'feature',
+    highlights: [
+      'The little column of shortcut icons on each Pipeline row (schedule, week dispatch, call, send to Dispatch, send as task) now sits at the far left of the row, next to Crew & Dates, instead of beside Activity.',
+    ],
+  },
+  {
     version: 'v2.1529',
     date: '2026-08-10',
     title: 'Job Detail gets a cleaner top with a photo header',

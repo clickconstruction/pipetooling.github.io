@@ -43,6 +43,7 @@ import {
   renderStagesJobHcpSubline,
   renderStagesThreadFullscreenJobHeader,
   renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
+  renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   renderStagesViewReportsButton,
   renderStagesProjectBannerRow,
   shouldSuppressStagesRowJobThreadToggle,
@@ -278,6 +279,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     opts?: { hideReportsButton?: boolean },
   ) => renderStagesLastActivityCellWithCtx(stagesRowSharedCtx, job, billingLineForStripeHint, opts)
 
+  const renderStagesQuickActionsStack = (job: JobWithDetails) =>
+    renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
+
   const renderJobNoteLine = (j: JobWithDetails) => {
     const note = jobNoteLine?.(j)
     if (!note) return null
@@ -427,6 +431,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       }}
                     >
                       {stagesEditMode ? renderStagesEditModeRail(j, openEdit) : null}
+                      {/* v2.1530: the quick-action stack moved here from the Activity cell. */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                      {renderStagesQuickActionsStack(j)}
+                      <div style={{ flex: 1, minWidth: 0 }}>
                       {stagesHamMode ? (
                         <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -544,6 +552,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           {renderStagesFieldAndBillingLines(j)}
                         </>
                       )}
+                      </div>
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
                       {renderStagesOpenDetailJobName(j)}
@@ -1030,6 +1040,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       }}
                     >
                       {stagesEditMode ? renderStagesEditModeRail(job, openEdit) : null}
+                      {/* v2.1530: the quick-action stack moved here from the Activity cell. */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                      {renderStagesQuickActionsStack(job)}
+                      <div style={{ flex: 1, minWidth: 0 }}>
                       <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                       {stagesInvoiceHcpTrimmed ? (
                         <div style={{ marginTop: '0.15rem' }}>
@@ -1130,6 +1144,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           </>
                         )
                       })()}
+                      </div>
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(job) }}>
                       {(() => {

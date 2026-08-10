@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1529)
+last_updated: 2026-08-10 (v2.1530)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1530)
+
+### Pipeline: quick-action icon stack moves to the left edge of Crew & Dates (2026-08-10)
+Owner-requested (screenshot report): the vertical quick-action stack — schedule (green), week dispatch (blue), call customer (teal), send to Dispatch (sky), send-as-task (purple) — sat at the left edge of the **Activity** cell; it now leads the row at the left edge of **Crew & Dates**. The stack's inner closure in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) is extracted to an exported **`renderStagesQuickActionsStack(ctx, job)`** (markup unchanged); `renderStagesLastActivityCell` no longer renders it (all three branches). Both Stages tables wrap their first cell's content in a stack + `flex:1` column: [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) (Waiting/Working/Paid rows, ham-mode editor included) and [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (both row kinds — job rows AND bare invoice rows in Ready to Bill/Billed). The mobile card list keeps its own shortcut row (untouched). Verified live: all 124 rendered board rows have the stack in the first cell and none in the Activity cell. Client-only — no migration.
 
 ## Latest Updates (v2.1529)
 
