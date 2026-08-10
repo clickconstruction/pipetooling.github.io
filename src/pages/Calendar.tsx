@@ -8,6 +8,7 @@ import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { PersonalTimeOffModal } from '../components/PersonalTimeOffModal'
 import { aggregateCalendarClockedHoursByDate } from '../lib/calendarClockedHoursByDate'
 import { CLOCK_SESSION_CALENDAR_SELECT } from '../lib/clockSessionSelect'
 import {
@@ -291,6 +292,8 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<Date | null>(null)
+  /** Personal Time Off modal (v2.1544) — opened from the calendar's time-off chips. */
+  const [personalTimeOffOpen, setPersonalTimeOffOpen] = useState(false)
   const [showMyWorkday, setShowMyWorkday] = useState(false)
   const [showRecordedTime, setShowRecordedTime] = useState(false)
   // Default off on mobile, on on desktop. Overridden by stored value once the user toggles.
@@ -1242,25 +1245,33 @@ export default function Calendar() {
                         const wd = getWorkdayResolutionForDate(day)
                         if (wd.kind === 'none') return null
                         if (wd.kind === 'time_off') {
+                          // Opens the Personal Time Off modal in place (v2.1544) — the
+                          // Settings section it used to deep-link to moved to a modal.
                           return (
-                            <Link
+                            <button
                               key="workday-timeoff"
-                              to="/settings#settings-time-off"
-                              onClick={(e) => e.stopPropagation()}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPersonalTimeOffOpen(true)
+                              }}
                               style={{
                                 fontSize: '0.75rem',
                                 padding: '2px 4px',
                                 background: '#f3e8ff',
                                 color: '#6b21a8',
-                                textDecoration: 'none',
+                                border: 'none',
                                 borderRadius: 3,
                                 overflow: 'hidden',
                                 fontWeight: 500,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontFamily: 'inherit',
                               }}
                               title={wd.note ?? wd.kindLabel}
                             >
                               {wd.kindLabel}
-                            </Link>
+                            </button>
                           )
                         }
                         const dayKey = formatDateKey(day)
@@ -1572,23 +1583,30 @@ export default function Calendar() {
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {modalWorkday.kind === 'time_off' && (
                         <li style={{ marginBottom: '0.5rem' }}>
-                          <Link
-                            to="/settings#settings-time-off"
-                            onClick={() => setSelectedDayForModal(null)}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDayForModal(null)
+                              setPersonalTimeOffOpen(true)
+                            }}
                             style={{
                               display: 'block',
+                              width: '100%',
+                              textAlign: 'left',
                               padding: '0.5rem 0.75rem',
                               background: '#f3e8ff',
                               color: '#6b21a8',
-                              textDecoration: 'none',
                               borderRadius: 4,
                               border: '1px solid #e9d5ff',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                              fontSize: 'inherit',
                             }}
                           >
                             <div style={{ fontWeight: 600 }}>{modalWorkday.kindLabel}</div>
                             {modalWorkday.note ? <div style={{ fontSize: '0.875rem', marginTop: 4 }}>{modalWorkday.note}</div> : null}
-                            <div style={{ fontSize: '0.8125rem', marginTop: 4, color: '#7c3aed' }}>Unpaid time off — Settings</div>
-                          </Link>
+                            <div style={{ fontSize: '0.8125rem', marginTop: 4, color: '#7c3aed' }}>Unpaid time off — manage</div>
+                          </button>
                         </li>
                       )}
                       {modalWorkday.kind === 'scheduled' && showModalScheduled && (
@@ -1976,6 +1994,13 @@ export default function Calendar() {
           steps={steps}
           authUserId={authUser?.id}
           showJobsDeepLink={!isSubcontractorLikeRole(authRole)}
+        />
+      ) : null}
+      {authUser?.id ? (
+        <PersonalTimeOffModal
+          open={personalTimeOffOpen}
+          userId={authUser.id}
+          onClose={() => setPersonalTimeOffOpen(false)}
         />
       ) : null}
     </div>

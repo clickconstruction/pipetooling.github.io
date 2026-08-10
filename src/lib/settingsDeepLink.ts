@@ -4,7 +4,10 @@
  * Inbound links that must keep working (see docs/SETTINGS_TABS_ARCHITECTURE.md):
  * - /settings?tab=settings-data        (DashboardBulkDeleteAlertBanner)
  * - /settings?tab=settings-people      (DashboardClaimDevAttemptsBanner)
- * - /settings#settings-time-off        (Calendar ×3)
+ * - /settings#settings-time-off        (legacy bookmarks only — the section moved to the
+ *                                       Dashboard My Time "Personal Time Off…" modal in
+ *                                       v2.1544; the mapping stays so old links still land
+ *                                       on the account tab)
  * - /settings#settings-salary-workday  (Calendar ×3)
  *
  * `?tab=` values are settings tab/group ids (e.g. `settings-data`). Hashes are

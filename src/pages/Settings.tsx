@@ -587,8 +587,6 @@ export default function Settings() {
     setDevSalariedSelectedUserId,
     devSalariedPickerRows,
     devSalariedSelectedPayName,
-    timeOffSectionOpen,
-    setTimeOffSectionOpen,
     handleTestNotification,
     handleEnableLocation,
     saveMyProfile,
@@ -1185,8 +1183,6 @@ export default function Settings() {
           setAllSalariedDevSectionOpen={setAllSalariedDevSectionOpen}
           setDevSalariedSelectedUserId={setDevSalariedSelectedUserId}
           setSalaryWorkdaySectionOpen={setSalaryWorkdaySectionOpen}
-          setTimeOffSectionOpen={setTimeOffSectionOpen}
-          timeOffSectionOpen={timeOffSectionOpen}
         />
       )}
       {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}

@@ -57,7 +57,6 @@ export function useSettingsAccount({
   const [devPayConfigForSalaried, setDevPayConfigForSalaried] = useState<Record<string, PayConfigRow> | null>(null)
   const [devPayConfigLoading, setDevPayConfigLoading] = useState(false)
   const [devSalariedSelectedUserId, setDevSalariedSelectedUserId] = useState<string | null>(null)
-  const [timeOffSectionOpen, setTimeOffSectionOpen] = useState(true)
 
   /** Hydrate the profile form from the users row loadData already fetched. */
   function applyProfileRow(row: { name?: string; email?: string; phone?: string | null } | null) {
@@ -396,8 +395,6 @@ export function useSettingsAccount({
     setDevSalariedSelectedUserId,
     devSalariedPickerRows,
     devSalariedSelectedPayName,
-    timeOffSectionOpen,
-    setTimeOffSectionOpen,
     handleTestNotification,
     handleEnableLocation,
     checkDuplicateName,

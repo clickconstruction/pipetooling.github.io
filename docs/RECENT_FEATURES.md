@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1543)
+last_updated: 2026-08-10 (v2.1544)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1544)
+
+### Personal Time Off moves from Settings to a My Time modal (2026-08-10)
+Owner-requested (built from an approved inline mockup): the "▼ Personal Time Off" collapsible under Settings → Your account → Scheduling moves to the bottom of the Dashboard's **My Time** section behind a single button. New thin wrapper [`PersonalTimeOffModal`](../src/components/PersonalTimeOffModal.tsx) hosts the **unchanged** [`TimeOffSettings`](../src/components/TimeOffSettings.tsx) component (entries list, "Not coming in today", add form, salary-session sync). [`DashboardMyTimeSection`](../src/components/DashboardMyTimeSection.tsx) renders a centered outline **"Personal Time Off…"** button under the week grid. The **Calendar's two purple time-off chips** (day cell + day modal) swap their `/settings#settings-time-off` links for buttons opening the same modal in place (footer copy "Unpaid time off — Settings" → "— manage"). Settings removals: the section, its `timeOffSectionOpen` state ([`useSettingsAccount`](../src/hooks/useSettingsAccount.ts)), and prop threading through [`Settings.tsx`](../src/pages/Settings.tsx) / [`SettingsAccountSchedulingTab`](../src/components/settings/SettingsAccountSchedulingTab.tsx) are deleted; the `settings-time-off` deep-link mapping in [`settingsDeepLink.ts`](../src/lib/settingsDeepLink.ts) is **retained** so legacy bookmarks still land on the account tab (comment + `SETTINGS_TABS_ARCHITECTURE.md` updated). Render tests +2 for the modal. Verified live as Helper Paige at 375px: the button opens the modal with her three real "Not coming in" entries; Settings → Your account no longer shows the section. Client-only — no migration.
 
 ## Latest Updates (v2.1543)
 

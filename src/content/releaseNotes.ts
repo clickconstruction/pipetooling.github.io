@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1544',
+    date: '2026-08-10',
+    title: 'Personal Time Off moves to My Time',
+    kind: 'feature',
+    highlights: [
+      'Personal Time Off now lives where you check your hours: a single "Personal Time Off…" button at the bottom of the Dashboard\'s My Time section opens it in a window — same entries list, "Not coming in today" shortcut, and add form as before.',
+      'The purple time-off chips on the Calendar open the same window in place instead of jumping to Settings.',
+      'The old section under Settings → Your account is gone; old bookmarks still land on the account tab.',
+    ],
+  },
+  {
     version: 'v2.1543',
     date: '2026-08-10',
     title: 'Job notes panel: Schedule uses Assign work',
