@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1498)
+last_updated: 2026-08-09 (v2.1499)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1499)
+
+### Combine jobs — duplicate-address finder (2026-08-09)
+Owner-requested capstone of the Combine work: a **Find duplicates…** button on the Combine tab opens **Same address, multiple jobs** — a stacked overlay in [`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx) that scans the whole ledger (reuses `fetchJobsLedgerForScheduleDispatchHub`) and lists every normalized-address group with 2+ jobs: each row shows number · name, the Pipeline **status chip** (shared `jobPickerStatusChip`), and opened date. **Nothing merges from the list** — "Keep this one" stages the pair into the Combine tab (keeper = target, other = source; new "Target selected:" line mirrors the source's since staged targets aren't in the search list), where the Source/Target/New summary + red confirm still gate the irreversible migrate. Groups of 3+ use a two-tap keep→"Merge into kept" flow, one pair per pass. New tested kernel [`duplicateJobAddressGroups.ts`](../src/lib/duplicateJobAddressGroups.ts): jobs sort active-first/newest-first; groups sort has-active first, then **smallest first** — live data flipped this design: the biggest group was a 29-job intentional staging address (Gun Dog Trail), so pairs (the real duplicates: Heron 931/873, Holub 473/346, Dudley Mason 305/724) lead and staging addresses sink. Verified live end-to-end: finder → Keep 473 → Combine staged 346→473 with summary and line detail populated.
 
 ## Latest Updates (v2.1498)
 

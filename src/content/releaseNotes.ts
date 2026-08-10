@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1499',
+    date: '2026-08-09',
+    title: 'Combine jobs: find duplicate addresses',
+    kind: 'feature',
+    highlights: [
+      'A new Find duplicates button lists every address with more than one job, each with its billing-state chip — likely duplicates (pairs) first.',
+      '"Keep this one" stages the pair on the Combine tab with the full summary; nothing merges until you confirm there.',
+    ],
+  },
+  {
     version: 'v2.1498',
     date: '2026-08-09',
     title: 'Combine jobs: a tidier modal',

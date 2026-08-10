@@ -11,6 +11,12 @@ import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
+import {
+  buildDuplicateJobAddressGroups,
+  type DuplicateAddressGroup,
+  type DuplicateAddressJob,
+} from '../../lib/duplicateJobAddressGroups'
 import type { Database } from '../../types/database'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
@@ -72,6 +78,15 @@ type CombinePreview = {
 /** Combined-lines threshold above which the Line items detail starts collapsed (the modal is tall already). */
 const COMBINE_LINE_DETAIL_OPEN_MAX = 8
 
+type DupFinderJob = DuplicateAddressJob & { job_address?: string | null }
+
+function dupFinderOpenedLabel(createdAt: string | null | undefined): string | null {
+  if (!createdAt) return null
+  const d = new Date(createdAt)
+  if (Number.isNaN(d.getTime())) return null
+  return `opened ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+}
+
 export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess }: JobsCombineSeparateModalProps) {
   const { showToast } = useToastContext()
   const jobFormModalCtx = useJobFormModal()
@@ -99,6 +114,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
   const [cMigrateBusy, setCMigrateBusy] = useState(false)
   const [cInfoOpen, setCInfoOpen] = useState(false)
+
+  /** Duplicate-address finder (stages a pair into the Combine tab; never merges itself). */
+  const [dupOpen, setDupOpen] = useState(false)
+  const [dupLoading, setDupLoading] = useState(false)
+  const [dupError, setDupError] = useState<string | null>(null)
+  const [dupGroups, setDupGroups] = useState<DuplicateAddressGroup<DupFinderJob>[]>([])
+  const [dupKeep, setDupKeep] = useState<{ address: string; jobId: string } | null>(null)
   const [cLineDetailOpen, setCLineDetailOpen] = useState(false)
 
   /** Auto-open the Line items detail for short lists once both previews resolve; long lists start collapsed. */
@@ -150,6 +172,11 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     setCMigrateBusy(false)
     setCInfoOpen(false)
     setCLineDetailOpen(false)
+    setDupOpen(false)
+    setDupLoading(false)
+    setDupError(null)
+    setDupGroups([])
+    setDupKeep(null)
 
     setSJobSearch('')
     setSJobCandidates([])
@@ -483,6 +510,38 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     )
   }, [sFixtures, sFixturePick])
 
+  async function openDupFinder(): Promise<void> {
+    setDupOpen(true)
+    setDupKeep(null)
+    setDupLoading(true)
+    setDupError(null)
+    const res = await fetchJobsLedgerForScheduleDispatchHub()
+    if (res.error) {
+      setDupError(res.error)
+      setDupGroups([])
+    } else {
+      setDupGroups(buildDuplicateJobAddressGroups(res.data as DupFinderJob[]))
+    }
+    setDupLoading(false)
+  }
+
+  /** Stage a duplicate pair into the Combine tab — selection only; the red confirm still decides. */
+  function stageDupPair(target: DupFinderJob, source: DupFinderJob): void {
+    const toSearchRow = (j: DupFinderJob): JobSearchRow => ({
+      id: j.id,
+      hcp_number: j.hcp_number ?? '',
+      job_name: j.job_name ?? '',
+      job_address: j.job_address ?? '',
+      click_number: j.click_number ?? undefined,
+    })
+    setCTargetId(target.id)
+    setCTargetRow(toSearchRow(target))
+    setCSourceId(source.id)
+    setCSourceRow(toSearchRow(source))
+    setDupOpen(false)
+    setDupKeep(null)
+  }
+
   async function runCombineMigrate(): Promise<void> {
     if (!cSourceId || !cTargetId || cSourceId === cTargetId) return
     setCMigrateBusy(true)
@@ -695,7 +754,25 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
             {activeTab === 'combine' ? (
               <div>
                 <div style={{ margin: '0 0 1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => void openDupFinder()}
+                      disabled={cMigrateBusy}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        cursor: cMigrateBusy ? 'not-allowed' : 'pointer',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        color: 'var(--text-700)',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Find duplicates…
+                    </button>
                     <button
                       type="button"
                       onClick={() => setCInfoOpen((v) => !v)}
@@ -858,6 +935,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     </li>
                   ))}
                 </ul>
+
+                {cTargetRow ? (
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                    <strong>Target selected:</strong> {effectiveJobLedgerNumber(cTargetRow.hcp_number, cTargetRow.click_number) || '—'} —{' '}
+                    {(cTargetRow.job_name ?? '').trim() || '—'}
+                  </p>
+                ) : null}
 
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>Summary</div>
@@ -1389,6 +1473,215 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
           </>
         )}
       </div>
+      {dupOpen ? (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            e.stopPropagation()
+            setDupOpen(false)
+            setDupKeep(null)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX + 10,
+            padding: '1rem',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dup-address-finder-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)',
+              padding: '1.25rem',
+              borderRadius: 8,
+              maxWidth: 620,
+              width: '100%',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.35rem' }}>
+              <h3 id="dup-address-finder-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                Same address, multiple jobs
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setDupOpen(false)
+                  setDupKeep(null)
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+              Nothing merges from this list. <strong>Keep this one</strong> stages the pair on the Combine tab, where you
+              review the Source / Target / New summary and confirm.
+            </p>
+            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              {dupLoading ? (
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Scanning addresses…</p>
+              ) : dupError ? (
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{dupError}</p>
+              ) : dupGroups.length === 0 ? (
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  No addresses with more than one job.
+                </p>
+              ) : (
+                dupGroups.map((g) => {
+                  const keptId = dupKeep && dupKeep.address === g.address ? dupKeep.jobId : null
+                  const kept = keptId ? g.jobs.find((j) => j.id === keptId) ?? null : null
+                  return (
+                    <section
+                      key={g.address}
+                      style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '0.75rem', overflow: 'hidden' }}
+                    >
+                      <div
+                        style={{
+                          padding: '0.4rem 0.75rem',
+                          background: 'var(--bg-subtle)',
+                          borderBottom: '1px solid var(--border)',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          color: 'var(--text-strong)',
+                        }}
+                      >
+                        {g.address} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {g.jobs.length} jobs</span>
+                      </div>
+                      {g.jobs.map((j) => {
+                        const chip = jobPickerStatusChip(j.status)
+                        const opened = dupFinderOpenedLabel(j.created_at)
+                        const isKept = keptId === j.id
+                        return (
+                          <div
+                            key={j.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.45rem 0.75rem',
+                              borderBottom: '1px solid var(--border)',
+                              fontSize: '0.8125rem',
+                              background: isKept ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {(j.job_name ?? '').trim() || '—'}
+                            </span>
+                            {chip ? (
+                              <span
+                                style={{
+                                  flexShrink: 0,
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  padding: '0.06rem 0.5rem',
+                                  borderRadius: 999,
+                                  background: chip.background,
+                                  color: chip.color,
+                                }}
+                              >
+                                {chip.label}
+                              </span>
+                            ) : null}
+                            {opened ? (
+                              <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{opened}</span>
+                            ) : null}
+                            <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                              {g.jobs.length === 2 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const other = g.jobs.find((x) => x.id !== j.id)
+                                    if (other) stageDupPair(j, other)
+                                  }}
+                                  style={{
+                                    padding: '0.3rem 0.7rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #2563eb',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-blue-700)',
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  Keep this one
+                                </button>
+                              ) : isKept ? (
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-blue-700)' }}>Keeping ✓</span>
+                              ) : kept ? (
+                                <button
+                                  type="button"
+                                  onClick={() => stageDupPair(kept, j)}
+                                  style={{
+                                    padding: '0.3rem 0.7rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #b45309',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-amber-700)',
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  Merge into kept
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setDupKeep({ address: g.address, jobId: j.id })}
+                                  style={{
+                                    padding: '0.3rem 0.7rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #2563eb',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-blue-700)',
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  Keep this one
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                        )
+                      })}
+                      {g.jobs.length > 2 ? (
+                        <div style={{ padding: '0.35rem 0.75rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          Groups of 3+ merge one pair at a time — the address stays listed until one job remains.
+                        </div>
+                      ) : null}
+                    </section>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
