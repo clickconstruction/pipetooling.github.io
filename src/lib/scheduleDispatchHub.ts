@@ -18,7 +18,67 @@ export type ScheduleDispatchHubJobRow = {
   created_at?: string | null
   job_address?: string | null
   customer_name?: string | null
+  status?: string | null
   service_type?: { name: string | null } | null
+}
+
+/** Billing states a dispatcher almost never wants to schedule onto — demoted in the job picker. */
+export const FINISHED_JOB_PICKER_STATUSES: ReadonlySet<string> = new Set(['billed', 'paid'])
+
+export function isFinishedJobPickerStatus(status: string | null | undefined): boolean {
+  return FINISHED_JOB_PICKER_STATUSES.has((status ?? '').trim())
+}
+
+/** Pipeline-state chip for a job picker row; null hides the chip (unknown/missing status). */
+export function jobPickerStatusChip(
+  status: string | null | undefined,
+): { label: string; background: string; color: string } | null {
+  switch ((status ?? '').trim()) {
+    case 'waiting':
+      return { label: 'Waiting', background: 'var(--bg-muted)', color: 'var(--text-muted)' }
+    case 'working':
+      return { label: 'Working', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }
+    case 'ready_to_bill':
+      // Saturated purple stays literal — no purple theme tokens exist (matches the guide chips).
+      return { label: 'Ready to Bill', background: '#f5f3ff', color: '#6d28d9' }
+    case 'billed':
+      return { label: 'Billed', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+    case 'paid':
+      return { label: 'Paid', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
+    default:
+      return null
+  }
+}
+
+/** Stable partition for the picker: active jobs keep their order first, billed/paid follow (missing status counts as active). */
+export function sortJobPickerRowsFinishedLast<T extends { status?: string | null }>(rows: T[]): T[] {
+  const active: T[] = []
+  const finished: T[] = []
+  for (const r of rows) (isFinishedJobPickerStatus(r.status) ? finished : active).push(r)
+  return [...active, ...finished]
+}
+
+/**
+ * Largest group of picker rows sharing one normalized address (2+), for the
+ * "N jobs at this address — check the status" banner. Null when every address is unique.
+ */
+export function findDuplicateJobAddress(
+  rows: Array<{ job_address?: string | null }>,
+): { address: string; count: number } | null {
+  const groups = new Map<string, { address: string; count: number }>()
+  for (const r of rows) {
+    const raw = (r.job_address ?? '').trim()
+    if (raw === '') continue
+    const key = raw.toLowerCase().replace(/\s+/g, ' ')
+    const g = groups.get(key)
+    if (g) g.count += 1
+    else groups.set(key, { address: raw, count: 1 })
+  }
+  let best: { address: string; count: number } | null = null
+  for (const g of groups.values()) {
+    if (g.count >= 2 && (best === null || g.count > best.count)) best = g
+  }
+  return best
 }
 
 export function formatScheduleDispatchHubJobTitle(
@@ -38,7 +98,7 @@ export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
       async () =>
         await supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, click_number, job_name, project_id, created_at, job_address, customer_name, service_type:service_types(name)')
+          .select('id, hcp_number, click_number, job_name, project_id, created_at, job_address, customer_name, status, service_type:service_types(name)')
           .order('hcp_number', { ascending: false }),
       'fetchJobsLedgerForScheduleDispatchHub',
     )

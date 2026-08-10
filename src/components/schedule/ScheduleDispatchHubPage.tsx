@@ -57,8 +57,10 @@ import {
   fetchTeamMemberUserIdsForJobIds,
   fetchUserNamesForIds,
   fetchUsersTabRosterForScheduleDispatchHub,
+  findDuplicateJobAddress,
   formatScheduleDispatchHubJobTitle,
   parseHubPersonDayKey,
+  sortJobPickerRowsFinishedLast,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
 import { HUB_EXPECTED_MANPOWER_ALL_WEEK } from '../../lib/scheduleDispatchExpectedManpower'
@@ -1313,7 +1315,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const hubAssignJobPickerRows = useMemo(() => {
     const digits = hubAssignJobPickerNumberQuery.replace(/\D/g, '')
-    if (digits !== '') return findJobsByNumber(hubMergedRows, digits)
+    if (digits !== '') return sortJobPickerRowsFinishedLast(findJobsByNumber(hubMergedRows, digits))
     const q = hubAssignJobPickerSearch.trim().toLowerCase()
     let list = hubMergedRows
     if (q) {
@@ -1326,8 +1328,17 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           (r.customer_name ?? '').toLowerCase().includes(q),
       )
     }
-    return [...list].sort(compareJobsByCreatedAtDesc)
+    return sortJobPickerRowsFinishedLast([...list].sort(compareJobsByCreatedAtDesc))
   }, [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
+
+  /** Same-address ambiguity warning — only while a search narrows the list (the full ledger always has repeats). */
+  const hubAssignJobPickerDuplicateAddressNotice = useMemo(() => {
+    const searching =
+      hubAssignJobPickerSearch.trim() !== '' || hubAssignJobPickerNumberQuery.replace(/\D/g, '') !== ''
+    if (!searching || hubAssignJobPickerRows.length > 8) return null
+    const dup = findDuplicateJobAddress(hubAssignJobPickerRows)
+    return dup ? `${dup.count} jobs at ${dup.address} — check the status before picking` : null
+  }, [hubAssignJobPickerRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
 
   const hubEmptyCellChoiceSubtitle = useMemo(() => {
     if (!hubCellAddContext) return ''
@@ -2268,7 +2279,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           open={hubAssignJobPickerOpen}
           onClose={closeHubAssignJobPicker}
           subtitle={hubAssignJobPickerSubtitle}
-          jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, serviceTypeName: r.service_type?.name ?? null, subline: hubJobPickerSubline(r) }))}
+          jobRows={hubAssignJobPickerRows.map((r) => ({
+            id: r.id,
+            displayTitle: r.displayTitle,
+            serviceTypeName: r.service_type?.name ?? null,
+            subline: hubJobPickerSubline(r),
+            status: r.status ?? null,
+            blocksThisWeek: r.totalBlocks,
+          }))}
+          duplicateAddressNotice={hubAssignJobPickerDuplicateAddressNotice}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
           numberQuery={hubAssignJobPickerNumberQuery}

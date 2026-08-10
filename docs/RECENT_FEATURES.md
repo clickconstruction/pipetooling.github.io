@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1494)
+last_updated: 2026-08-09 (v2.1495)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1495)
+
+### Schedule — Add-job picker shows billing state, demotes finished jobs, flags same-address twins (2026-08-09)
+Owner-reported: two jobs for the same customer at the same address looked identical in the **Add job to schedule** picker (rows only showed number, name, created date, address — a job's *birthday*, not whether it's alive). Verified live: the exact reported pair (346/473 · Mike Holub, 109 Tuscarora) had the **billed** one on the schedule. Now: (1) every row carries its Pipeline **status chip** — new `status` column in [`fetchJobsLedgerForScheduleDispatchHub`](../src/lib/scheduleDispatchHub.ts); (2) **active first, finished demoted** — new kernel `sortJobPickerRowsFinishedLast` (stable; billed/paid last; missing status counts active) + a greyed "Finished jobs" divider in [`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx); (3) **same-address banner** — `findDuplicateJobAddress` (normalized largest group ≥2), shown only while searching with ≤8 results; (4) active rows show "**N this wk**" from the already-computed block totals. Kernel gets its first test file (7 tests). Sorting/notice wired in `ScheduleDispatchHubPage` only — the modal's other three hosts (Quickfill, Quick Assign, user-day) pass no `status` and render exactly as before. Ready-to-Bill chip uses literal saturated purple (no purple theme tokens exist). Guide [`schedule-dispatch.md`](../src/content/help/schedule-dispatch.md) updated.
 
 ## Latest Updates (v2.1494)
 
