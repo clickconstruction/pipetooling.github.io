@@ -11,7 +11,9 @@ import {
   type JobDetails,
   type BidDetails,
 } from '../utils/crewAssignments'
-import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
+import { getBidServiceTypeTag, type UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
@@ -137,20 +139,7 @@ export function HoursUnassignedModal({
   const [draft, setDraft] = useState<CrewRow | null>(null)
   const [jobSearchOpen, setJobSearchOpen] = useState(false)
   const [jobSearchText, setJobSearchText] = useState('')
-  const [jobSearchResults, setJobSearchResults] = useState<
-    Array<
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null; click_number?: string | null }
-      | {
-          type: 'bid'
-          id: string
-          bid_number: string
-          project_name: string
-          address: string
-          service_type_name?: string
-          service_type_id?: string | null
-        }
-    >
-  >([])
+  const [jobSearchResults, setJobSearchResults] = useState<UnifiedSearchResult[]>([])
   const [commonJobs, setCommonJobs] = useState<
     Array<{
       id: string
@@ -167,8 +156,17 @@ export function HoursUnassignedModal({
   const [commonJobsSearchOpen, setCommonJobsSearchOpen] = useState(false)
   const [commonJobsSearchText, setCommonJobsSearchText] = useState('')
   const [commonJobsSearchResults, setCommonJobsSearchResults] = useState<
-    Array<{ id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null; click_number: string | null }>
+    Array<{ id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null; service_type_name?: string | null; click_number: string | null }>
   >([])
+  const commonJobsSearchUnified = useMemo<UnifiedSearchResult[]>(
+    () => commonJobsSearchResults.map((j) => ({ source: 'job' as const, ...j })),
+    [commonJobsSearchResults],
+  )
+  const evidenceRows = useMemo(
+    () => [...jobSearchResults, ...commonJobsSearchUnified],
+    [jobSearchResults, commonJobsSearchUnified],
+  )
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(evidenceRows)
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, JobDetails>>({})
   const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewRow>>({})
@@ -755,6 +753,7 @@ export function HoursUnassignedModal({
             job_name: string
             job_address: string
             service_type_id: string | null
+            service_type_name?: string | null
             click_number: string
           }>
           const bidsRaw = (bidsRes.data ?? []) as Array<{
@@ -762,13 +761,13 @@ export function HoursUnassignedModal({
             bid_number?: string
             project_name: string
             address: string
+            customer_name?: string
             service_type_name?: string
             service_type_id: string | null
           }>
-          const bids = bidsRaw.map((b) => ({ type: 'bid' as const, ...b, bid_number: b.bid_number ?? '' }))
-          const merged = [
-            ...jobs.map((j) => ({ type: 'job' as const, ...j })),
-            ...bids,
+          const merged: UnifiedSearchResult[] = [
+            ...jobs.map((j) => ({ source: 'job' as const, ...j })),
+            ...bidsRaw.map((b) => ({ source: 'bid' as const, ...b, bid_number: b.bid_number ?? '', customer_name: b.customer_name ?? '' })),
           ]
           setJobSearchResults(merged)
         })
@@ -788,6 +787,7 @@ export function HoursUnassignedModal({
               job_name: string
               job_address: string
               service_type_id: string | null
+              service_type_name?: string | null
               click_number: string | null
             }>,
           )
@@ -1123,7 +1123,10 @@ export function HoursUnassignedModal({
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                               />
                               <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
-                                {commonJobsSearchResults.map((j) => (
+                                {commonJobsSearchUnified.map((u) => {
+                                  if (u.source !== 'job') return null
+                                  const j = u
+                                  return (
                                   <button
                                     key={j.id}
                                     type="button"
@@ -1163,12 +1166,15 @@ export function HoursUnassignedModal({
                                     }}
                                     style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                   >
-                                    <div style={{ fontWeight: 500 }}>
-                                      {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}
-                                    </div>
-                                    {j.job_address && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address}</div>}
+                                    <UnifiedSearchResultRow
+                                      result={u}
+                                      prefixMap={prefixMap}
+                                      jobEvidence={jobEvidence.get(u.id)}
+                                      evidenceMode={evidenceMode}
+                                    />
                                   </button>
-                                ))}
+                                  )
+                                })}
                               </div>
                               <button type="button" onClick={() => { setCommonJobsSearchOpen(false); setCommonJobsSearchText(''); setCommonJobsSearchResults([]) }} style={{ marginTop: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
                                 Cancel
@@ -1328,11 +1334,12 @@ export function HoursUnassignedModal({
                             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
                               {jobSearchResults.map((item) => (
                                 <button
-                                  key={`${item.type}:${item.id}`}
+                                  key={`${item.source}:${item.id}`}
                                   type="button"
                                   onClick={() => {
+                                    if (item.source !== 'job' && item.source !== 'bid') return
                                     addAssignmentToDraft(
-                                      item.type === 'job'
+                                      item.source === 'job'
                                         ? {
                                             type: 'job',
                                             id: item.id,
@@ -1356,35 +1363,13 @@ export function HoursUnassignedModal({
                                   }}
                                   style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                 >
-                                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    {item.type === 'bid' && (() => {
-                                      const t = getBidServiceTypeTag(item.service_type_name)
-                                      return t ? (
-                                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                                          [{t.tag}]
-                                        </span>
-                                      ) : null
-                                    })()}
-                                    {item.type === 'job'
-                                      ? formatJobLedgerShortLine(
-                                          prefixMap,
-                                          item.service_type_id ?? null,
-                                          item.hcp_number,
-                                          item.job_name,
-                                          item.click_number,
-                                        )
-                                      : formatBidLedgerShortLine(
-                                          prefixMap,
-                                          item.service_type_id ?? null,
-                                          item.bid_number,
-                                          item.project_name,
-                                        )}
-                                  </div>
-                                  {(item.type === 'job' ? item.job_address : item.address) && (
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                      {item.type === 'job' ? item.job_address : item.address}
-                                    </div>
-                                  )}
+                                  <UnifiedSearchResultRow
+                                    result={item}
+                                    prefixMap={prefixMap}
+                                    jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
+                                    bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
+                                    evidenceMode={evidenceMode}
+                                  />
                                 </button>
                               ))}
                             </div>

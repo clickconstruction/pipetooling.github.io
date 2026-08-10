@@ -19,9 +19,10 @@ import {
   type JobDetails,
   type BidDetails,
 } from '../utils/crewAssignments'
-import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
+import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
-import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 
@@ -120,20 +121,8 @@ export function CrewJobsBlock({
   const [crewJobsLoading, setCrewJobsLoading] = useState(false)
   const [crewJobSearchModal, setCrewJobSearchModal] = useState<{ personName: string } | null>(null)
   const [crewJobSearchText, setCrewJobSearchText] = useState('')
-  const [crewJobSearchResults, setCrewJobSearchResults] = useState<
-    Array<
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null; click_number?: string | null }
-      | {
-          type: 'bid'
-          id: string
-          bid_number: string
-          project_name: string
-          address: string
-          service_type_name?: string
-          service_type_id?: string | null
-        }
-    >
-  >([])
+  const [crewJobSearchResults, setCrewJobSearchResults] = useState<UnifiedSearchResult[]>([])
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(crewJobSearchResults)
   const [teamLaborSearch, setTeamLaborSearch] = useState('')
   const [breakdownModal, setBreakdownModal] = useState<{
     jobId: string
@@ -600,6 +589,7 @@ export function CrewJobsBlock({
             job_name: string
             job_address: string
             service_type_id: string | null
+            service_type_name?: string | null
             click_number: string
           }>
           const bidsRaw = (bidsRes.data ?? []) as Array<{
@@ -607,13 +597,13 @@ export function CrewJobsBlock({
             bid_number?: string
             project_name: string
             address: string
+            customer_name?: string
             service_type_name?: string
             service_type_id: string | null
           }>
-          const bids = bidsRaw.map((b) => ({ ...b, bid_number: b.bid_number ?? '' }))
-          const merged = [
-            ...jobs.map((j) => ({ type: 'job' as const, ...j })),
-            ...bids.map((b) => ({ type: 'bid' as const, ...b })),
+          const merged: UnifiedSearchResult[] = [
+            ...jobs.map((j) => ({ source: 'job' as const, ...j })),
+            ...bidsRaw.map((b) => ({ source: 'bid' as const, ...b, bid_number: b.bid_number ?? '', customer_name: b.customer_name ?? '' })),
           ]
           setCrewJobSearchResults(merged)
         })
@@ -1078,12 +1068,13 @@ export function CrewJobsBlock({
             <div style={{ maxHeight: 300, overflow: 'auto' }}>
               {crewJobSearchResults.map((item) => (
                 <button
-                  key={`${item.type}:${item.id}`}
+                  key={`${item.source}:${item.id}`}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (item.source !== 'job' && item.source !== 'bid') return
                     addAssignmentToPerson(
                       crewJobSearchModal!.personName,
-                      item.type === 'job'
+                      item.source === 'job'
                         ? {
                             type: 'job',
                             id: item.id,
@@ -1101,7 +1092,7 @@ export function CrewJobsBlock({
                             service_type_id: item.service_type_id ?? null,
                           }
                     )
-                  }
+                  }}
                   style={{
                     display: 'block',
                     width: '100%',
@@ -1114,24 +1105,13 @@ export function CrewJobsBlock({
                     fontSize: '0.875rem',
                   }}
                 >
-                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    {item.type === 'bid' && (() => {
-                      const t = getBidServiceTypeTag(item.service_type_name)
-                      return t ? (
-                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                          [{t.tag}]
-                        </span>
-                      ) : null
-                    })()}
-                    {item.type === 'job'
-                      ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name, item.click_number)
-                      : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
-                  </div>
-                  {(item.type === 'job' ? item.job_address : item.address) && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                      {item.type === 'job' ? item.job_address : item.address}
-                    </div>
-                  )}
+                  <UnifiedSearchResultRow
+                    result={item}
+                    prefixMap={prefixMap}
+                    jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
+                    bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
+                    evidenceMode={evidenceMode}
+                  />
                 </button>
               ))}
             </div>
