@@ -138,7 +138,7 @@ The whole tab lives in [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.ts
 |---|---|---|
 | `followMovedJob(jobId, toStatus)` | `useJobsStagesMutations` input (the page passes `(id, st) => stagesTabRef.current?.followMovedJob(id, st)`) | if follow-moves is on: open destination section + set job focus/flash |
 | `focusSection(key)` | `?stagesSection=` router effect | open + scroll to a section (`focusStagesSection`) |
-| `focusJob(jobId)` | `?stagesJob=` router effect | open the job's status section, scroll + flash the row; toast when the job isn't on the board |
+| `focusJob(jobId)` | `?stagesJob=` router effect; the page's new-job reveal effect (v2.1528, fed by `onCreatedJobId` → `pendingNewJobFocusId`, waits for the job to appear in the refetched cache) | clear the Pipeline search (a live query would hide the row), open the job's status section, scroll + flash the row; toast when the job isn't on the board |
 | `focusInvoice(invoiceId)` | `?stagesInvoice=` router effect | `applyStagesInvoiceFocus` (returns whether the invoice was located) |
 | `openBankPayments()` | `?openBankPayments=` router effect (role gate + param strip stay in the page) | open the AR `BankPaymentsModal` |
 | `showBilledTotalByName()` | `?showBilledTotalByName=` router effect | open the Total by Name modal |

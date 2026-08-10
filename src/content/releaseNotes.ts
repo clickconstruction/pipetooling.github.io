@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1528',
+    date: '2026-08-10',
+    title: 'New jobs show themselves on the Pipeline',
+    kind: 'feature',
+    highlights: [
+      'After you create a job with New Job on Jobs → Pipeline, the board clears whatever you had typed in the search, jumps to the new job, and flashes its row so you can see exactly where it landed.',
+      'The "show this job on the Pipeline" shortcut from Job Detail now also clears an active search instead of quietly failing to find the row.',
+    ],
+  },
+  {
     version: 'v2.1527',
     date: '2026-08-10',
     title: 'Pick people with the keyboard',
