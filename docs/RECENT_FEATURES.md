@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1515)
+last_updated: 2026-08-10 (v2.1516)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1516)
+
+### Search rows stack on narrow viewports (2026-08-10)
+Owner-reported from a phone screenshot: the standard row's side-by-side layout crushed labels into a narrow wrapping column and scattered chips at different heights. [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) now checks `useNarrowViewport640` and, under 640px, stacks: identity line full-width (wraps naturally), evidence rail on its own left-aligned line (`marginTop: 3`, wrap-enabled for long rails), line summary below. Desktop layout byte-identical (the render refactor extracts `identity`/`rail`/`lineSummary` and recomposes per mode). Because every campaign surface renders through this one component, all ~30 pickers inherit the mobile fix at once. New render test pins the stacked contract (chip must NOT share the identity line's flex ancestor) via a matching `matchMedia` installed ahead of the test shim. Verified live at 375×812: J951 label one line, chips in a scannable left column. Client-only.
 
 ## Latest Updates (v2.1515)
 

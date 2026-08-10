@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1516',
+    date: '2026-08-10',
+    title: 'Search results: cleaner rows on phones',
+    kind: 'feature',
+    highlights: [
+      'On phone-width screens, search rows stack: the job or bid name gets the full width, and the stage chip, money, and this-week count sit on their own line below — no more squeezed, wrapping labels.',
+      'Applies to every search in the app automatically; desktop is unchanged.',
+    ],
+  },
+  {
     version: 'v2.1515',
     date: '2026-08-10',
     title: 'Search standard: the final sweep',
