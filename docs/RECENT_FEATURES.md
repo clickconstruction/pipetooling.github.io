@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1503)
+last_updated: 2026-08-09 (v2.1504)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1504)
+
+### Header search — plain J/B numbers beside the trade pill (2026-08-09)
+Owner-requested: header-search rows already lead with the trade pill (PLUM/ELEC/…), so the per-service-type ledger prefixes repeated the trade letter — "PLUM JP870". [`formatUnifiedResult`](../src/utils/unifiedJobBidSearch.ts) gains an opt-in `plainTradePrefixes` flag forcing the `DEFAULT_JOB/BID_LEDGER_PREFIX` (J/B) instead of the configured `service_types.ledger_*_prefix`; [`HeaderGlobalSearch`](../src/components/HeaderGlobalSearch.tsx) is its only caller and passes it. Display-only — `#`-mode number matching (`bidNumberMatchesQuery`) and every other surface keep the configured JP/BP prefixes. 4 new tests. Verified live: "heron" renders PLUM J931 / PLUM B356, zero "JP"/"BP" in the panel.
 
 ## Latest Updates (v2.1503)
 

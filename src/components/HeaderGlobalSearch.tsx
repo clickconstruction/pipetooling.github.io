@@ -637,7 +637,9 @@ export function HeaderGlobalSearchNavLayer() {
                             {pill.tag}
                           </span>
                         ) : null}
-                        <span>{formatUnifiedResult(r, ctx.prefixMap)}</span>
+                        {/* Plain J/B prefixes: the trade pill beside the number already says PLUM/ELEC/…,
+                            so the per-service-type letter (JP → J, BP → B) would repeat it. */}
+                        <span>{formatUnifiedResult(r, ctx.prefixMap, { plainTradePrefixes: true })}</span>
                       </span>
                       {(() => {
                         if (r.source === 'job') {

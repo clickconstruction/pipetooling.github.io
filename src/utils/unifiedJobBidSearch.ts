@@ -1,6 +1,8 @@
 /** Shared types + label for unified job/bid search (Clock In, Task Dispatch reference, etc.) */
 
 import {
+  DEFAULT_BID_LEDGER_PREFIX,
+  DEFAULT_JOB_LEDGER_PREFIX,
   formatBidLedgerNumberLabel,
   formatJobLedgerNumberLabel,
   type LedgerPrefixMap,
@@ -113,14 +115,26 @@ export function escapeLike(s: string): string {
   return s.replace(/[%_,()\\]/g, (m) => '\\' + m)
 }
 
-export function formatUnifiedResult(r: UnifiedSearchResult, prefixMap: LedgerPrefixMap): string {
+export function formatUnifiedResult(
+  r: UnifiedSearchResult,
+  prefixMap: LedgerPrefixMap,
+  opts?: {
+    /** Plain J/B prefixes instead of the per-service-type ones (e.g. JP/BP) — for rows
+     * that already render a trade pill, where the trade letter would be redundant. */
+    plainTradePrefixes?: boolean
+  },
+): string {
   if (r.source === 'job') {
-    const pref = resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
+    const pref = opts?.plainTradePrefixes
+      ? DEFAULT_JOB_LEDGER_PREFIX
+      : resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
     const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
     return `${prefix} · ${r.job_name || '—'} - ${r.job_address || '—'}`
   }
   if (r.source === 'bid') {
-    const pref = resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
+    const pref = opts?.plainTradePrefixes
+      ? DEFAULT_BID_LEDGER_PREFIX
+      : resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
     const prefix = formatBidLedgerNumberLabel(pref, r.bid_number)
     return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
   }
