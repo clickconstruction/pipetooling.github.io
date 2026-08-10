@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1526',
+    date: '2026-08-10',
+    title: 'Developer login works on any local port',
+    kind: 'fix',
+    highlights: [
+      'A development-only fix: the local dev sign-in now works no matter which port the dev server runs on, so several development sessions can run side by side.',
+    ],
+  },
+  {
     version: 'v2.1525',
     date: '2026-08-10',
     title: 'Dispatch schedule updates instantly + Quick Assign upgrades',
