@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1517',
+    date: '2026-08-10',
+    title: 'Dev login: fixed sign-in account',
+    kind: 'infra',
+    highlights: [
+      'The development-only login tool now always signs in as the owner account instead of whatever email was typed or passed in the URL.',
+      'No change for regular users — this tool only exists when running the app in development mode.',
+    ],
+  },
+  {
     version: 'v2.1516',
     date: '2026-08-10',
     title: 'Search results: cleaner rows on phones',

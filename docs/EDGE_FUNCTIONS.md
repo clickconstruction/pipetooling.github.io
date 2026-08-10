@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 61 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-07
+last_updated: 2026-08-10
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -671,7 +671,7 @@ const response = await supabase.functions.invoke('login-as-user', {
 
 ### dev-login
 
-**Purpose**: Sign in as any user by email when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials.
+**Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login. The function itself still accepts any existing user's email if invoked directly with the secret.
 
 **Endpoint**: `POST /functions/v1/dev-login`
 
@@ -709,7 +709,7 @@ const response = await supabase.functions.invoke('dev-login', {
 
 1. Add to `.env.local`: `VITE_DEV_LOGIN_SECRET=your-secret`
 2. Set Edge Function secret: `supabase secrets set DEV_LOGIN_SECRET=your-secret`
-3. Open `http://localhost:5175/dev-login?as=test@example.com` or use the form at `/dev-login`
+3. Open `http://localhost:5175/dev-login?as=1` (auto-fires; always signs in as `robert@douglasmining.com`) or use the form at `/dev-login`
 
 **Note**: The email must exist in `auth.users`. If `user@example.com` or `test@example.com` is not in your database, the Edge Function returns a non-2xx status. Use an existing user email (e.g. `robert@douglasmining.com` in your project) or create the user first via the create-user Edge Function.
 
