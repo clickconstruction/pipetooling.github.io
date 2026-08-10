@@ -50,7 +50,9 @@ import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange
 import ManagePersonDayModal from './ManagePersonDayModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
+  RIBBON_GUIDE_TICK_MINUTES,
   ribbonSpanPct,
+  ribbonTickLeftPct,
   suggestCommonWindows,
   windowOverlapsBusy,
   type MinuteInterval,
@@ -804,6 +806,23 @@ export default function QuickAssignSheet({
                               overflow: 'hidden',
                             }}
                           >
+                            {/* 4-hour guide ticks (8a · 12p · 4p) — under the busy fills. */}
+                            {RIBBON_GUIDE_TICK_MINUTES.map((m) => {
+                              const left = ribbonTickLeftPct(m)
+                              return left != null ? (
+                                <span
+                                  key={m}
+                                  style={{
+                                    position: 'absolute',
+                                    left: `${left}%`,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: 1,
+                                    background: 'var(--border-strong)',
+                                  }}
+                                />
+                              ) : null
+                            })}
                             {busy.map((b, i) => {
                               const span = ribbonSpanPct(b)
                               return span ? (
@@ -852,6 +871,21 @@ export default function QuickAssignSheet({
                   </div>
                 )
               })}
+              {/* One shared tick-label row (8a · 12p · 4p) for all ribbons above; the
+                  left padding mirrors a lane row's rail + padding + name column. */}
+              <div aria-hidden style={{ padding: '0 7px 2px 103px' }}>
+                <span style={{ display: 'block', position: 'relative', height: 12, fontSize: '0.5625rem', color: 'var(--text-faint)' }}>
+                  {RIBBON_GUIDE_TICK_MINUTES.map((m) => {
+                    const left = ribbonTickLeftPct(m)
+                    const label = m === 720 ? '12p' : m < 720 ? `${m / 60}a` : `${(m - 720) / 60}p`
+                    return left != null ? (
+                      <span key={m} style={{ position: 'absolute', left: `${left}%`, transform: 'translateX(-50%)' }}>
+                        {label}
+                      </span>
+                    ) : null
+                  })}
+                </span>
+              </div>
             </div>
 
             {/* Time suggestions */}

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1538)
+last_updated: 2026-08-10 (v2.1539)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1539)
+
+### Assign work timeline guide ticks + dashboard report reminder below the jobs (2026-08-10)
+Two small owner requests in one pass. **(1) 4-hour guide ticks:** the Assign work sheet's per-person availability ribbons and the Manage day modal's timeline strip now draw faint 1px vertical lines at **8 AM, 12 PM, and 4 PM** (approved via an inline mockup). New pure helpers in [`quickAssignFreeWindows.ts`](../src/lib/quickAssignFreeWindows.ts) — `RIBBON_GUIDE_TICK_MINUTES` + `ribbonTickLeftPct` (null outside the 6 AM–6 PM ribbon; +2 unit tests) — feed both surfaces; ticks render **under** the busy/block fills (`var(--border-strong)`), so solid blocks stay clean while the marks show through tints and free space. One shared **8a · 12p · 4p label row** sits under the whole people list (left-padded to mirror a lane row's rail + name column), not per row. **(2) Dashboard reminder placement:** on the Dashboard's My Schedule section, the "You haven't filed a report yet. File one" nudge ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)) moves from above the day's job list to **below** it — a footer nudge instead of pushing the jobs down (owner request while viewing Helper Paige's dashboard). Render test (+1) pins the reminder's document order after the `<ul>`. Verified live: ticks + label row visible in the sheet (clear on free ribbons, subtle under fills). Client-only — no migration.
 
 ## Latest Updates (v2.1538)
 

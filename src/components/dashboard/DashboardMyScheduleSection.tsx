@@ -166,24 +166,6 @@ export function DashboardMyScheduleSection({
                     {scheduleFormatWeekdayLong(ymd)}
                   </span>
                 </h3>
-                {anyLeaveReportReminderToday && (
-                  <p
-                    role="status"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.375rem',
-                      margin: '0 0 0.5rem 0',
-                      fontSize: '0.8125rem',
-                      color: 'var(--text-muted)',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <LeaveReportReminderIcon size={16} />
-                    You haven't filed a report yet. File one
-                  </p>
-                )}
                 {sorted.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
                 ) : (
@@ -374,6 +356,26 @@ export function DashboardMyScheduleSection({
                       )
                     })}
                   </ul>
+                )}
+                {/* Below the job list (owner request, v2.1539) — it reads as a
+                    footer nudge instead of pushing the day's jobs down. */}
+                {anyLeaveReportReminderToday && (
+                  <p
+                    role="status"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.375rem',
+                      margin: 0,
+                      fontSize: '0.8125rem',
+                      color: 'var(--text-muted)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <LeaveReportReminderIcon size={16} />
+                    You haven't filed a report yet. File one
+                  </p>
                 )}
               </div>
             )

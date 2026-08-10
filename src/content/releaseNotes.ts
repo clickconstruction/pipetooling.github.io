@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1539',
+    date: '2026-08-10',
+    title: 'Timeline guide lines + report reminder moves down',
+    kind: 'feature',
+    highlights: [
+      'Assign work: every availability ribbon (and the Manage day timeline) now shows faint vertical guide lines at 8 AM, 12 PM, and 4 PM, with a small 8a · 12p · 4p label row under the people list — so "free after lunch" is readable at a glance.',
+      'Dashboard: the "You haven\'t filed a report yet. File one" reminder on My Schedule now sits below the day\'s job list instead of above it.',
+    ],
+  },
+  {
     version: 'v2.1538',
     date: '2026-08-10',
     title: 'Pipeline: "Send back" is now "Mark Waiting" on Working jobs',
