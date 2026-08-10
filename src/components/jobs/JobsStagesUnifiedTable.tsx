@@ -983,10 +983,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           onSubmit={() => void submitJobThreadNote(j.id)}
                           scheduleAction={
                             canOpenJobScheduleModal
-                              ? {
-                                  onClick: () => setScheduleModalJob(j),
-                                  disabled: (j.team_members?.length ?? 0) === 0,
-                                }
+                              ? { onClick: () => openQuickAssignForJob(j) }
                               : undefined
                           }
                           scheduleDispatchAction={
@@ -1402,10 +1399,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           onSubmit={() => void submitJobThreadNote(job.id)}
                           scheduleAction={
                             canOpenJobScheduleModal
-                              ? {
-                                  onClick: () => setScheduleModalJob(job),
-                                  disabled: (job.team_members?.length ?? 0) === 0,
-                                }
+                              ? { onClick: () => openQuickAssignForJob(job) }
                               : undefined
                           }
                           scheduleDispatchAction={

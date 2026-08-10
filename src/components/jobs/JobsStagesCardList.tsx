@@ -604,7 +604,7 @@ function renderCardThreadPanel(p: StagesCardThreadProps, ctx: StagesRowRenderCon
         onSubmit={() => void p.submitJobThreadNote(j.id)}
         scheduleAction={
           p.canOpenJobScheduleModal
-            ? { onClick: () => p.setScheduleModalJob(j), disabled: (j.team_members?.length ?? 0) === 0 }
+            ? { onClick: () => ctx.openQuickAssignForJob(j) }
             : undefined
         }
         scheduleDispatchAction={

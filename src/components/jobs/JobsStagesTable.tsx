@@ -644,10 +644,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                       onSubmit={() => void submitJobThreadNote(j.id)}
                       scheduleAction={
                         canOpenJobScheduleModal
-                          ? {
-                              onClick: () => setScheduleModalJob(j),
-                              disabled: (j.team_members?.length ?? 0) === 0,
-                            }
+                          ? // Opens the dispatch Assign work sheet pre-picked to this job (v2.1543);
+                            // no team requirement — the sheet offers the whole roster.
+                            { onClick: () => openQuickAssignForJob(j) }
                           : undefined
                       }
                       scheduleDispatchAction={

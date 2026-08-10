@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1543',
+    date: '2026-08-10',
+    title: 'Job notes panel: Schedule uses Assign work',
+    kind: 'feature',
+    highlights: [
+      'The green Schedule button in a Pipeline row\'s expanded activity/notes panel now opens the same Assign work sheet as the row\'s calendar shortcut — day, people (whole crews in one tap), and time, with the job already picked.',
+      'It also works on jobs with no team members yet — the sheet offers everyone, so the button is never greyed out.',
+    ],
+  },
+  {
     version: 'v2.1542',
     date: '2026-08-10',
     title: 'Tally on your phone: sort purchases like cards',
