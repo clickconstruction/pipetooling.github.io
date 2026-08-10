@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { jobSearchEvidenceModeForRole } from './jobSearchEvidence'
+import { bidSearchStatusChip, jobSearchEvidenceModeForRole } from './jobSearchEvidence'
 
 describe('jobSearchEvidenceModeForRole', () => {
   it('gives office roles money mode', () => {
@@ -12,5 +12,16 @@ describe('jobSearchEvidenceModeForRole', () => {
     for (const r of ['subcontractor', 'helpers', 'superintendent', 'estimator', '', null, undefined, 'nonsense']) {
       expect(jobSearchEvidenceModeForRole(r)).toBe('lines-only')
     }
+  })
+})
+
+describe('bidSearchStatusChip', () => {
+  it('maps outcomes: won, started, lost, sent-pending, unsent', () => {
+    expect(bidSearchStatusChip('won', null).label).toBe('Won')
+    expect(bidSearchStatusChip('started_or_complete', null).label).toBe('Started')
+    expect(bidSearchStatusChip('lost', '2026-03-01').label).toBe('Lost')
+    expect(bidSearchStatusChip(null, '2026-03-01').label).toBe('Pending')
+    expect(bidSearchStatusChip(null, null).label).toBe('Unsent')
+    expect(bidSearchStatusChip('', '  ').label).toBe('Unsent')
   })
 })

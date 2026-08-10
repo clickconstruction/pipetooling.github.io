@@ -80,3 +80,53 @@ export async function fetchJobSearchEvidence(
     Date.now(),
   )
 }
+
+/** Evidence for a bid search row: value, outcome, and the dates that give it context. */
+export type BidSearchEvidence = {
+  bidValue: number | null
+  winLoss: string | null
+  dateSent: string | null
+  dueDate: string | null
+}
+
+/** Bid Board-style outcome chip: Won / Started / Lost / Pending (sent) / Unsent. */
+export function bidSearchStatusChip(
+  outcome: string | null | undefined,
+  dateSent: string | null | undefined,
+): { label: string; background: string; color: string } {
+  const o = (outcome ?? '').trim().toLowerCase()
+  if (o === 'won') return { label: 'Won', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
+  if (o === 'started_or_complete') return { label: 'Started', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
+  if (o === 'lost') return { label: 'Lost', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
+  if ((dateSent ?? '').trim() !== '')
+    return { label: 'Pending', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }
+  return { label: 'Unsent', background: 'var(--bg-muted)', color: 'var(--text-muted)' }
+}
+
+export async function fetchBidSearchEvidence(bidIds: string[]): Promise<Map<string, BidSearchEvidence>> {
+  const ids = [...new Set(bidIds)].filter(Boolean)
+  if (ids.length === 0) return new Map()
+  const rows = await chunkedIn(ids, async (slice) => {
+    const data = await withSupabaseRetry(
+      () => supabase.from('bids').select('id, bid_value, outcome, bid_date_sent, bid_due_date').in('id', slice),
+      'bid search evidence',
+    )
+    return (data ?? []) as Array<{
+      id: string
+      bid_value: number | null
+      outcome: string | null
+      bid_date_sent: string | null
+      bid_due_date: string | null
+    }>
+  })
+  const out = new Map<string, BidSearchEvidence>()
+  for (const r of rows) {
+    out.set(r.id, {
+      bidValue: r.bid_value === null ? null : Number(r.bid_value),
+      winLoss: r.outcome,
+      dateSent: r.bid_date_sent,
+      dueDate: r.bid_due_date,
+    })
+  }
+  return out
+}

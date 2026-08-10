@@ -30,6 +30,14 @@ import {
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
 import { CustomerSnapshotModal } from './customers/CustomerSnapshotModal'
+import {
+  bidSearchStatusChip,
+  fetchBidSearchEvidence,
+  fetchJobSearchEvidence,
+  type BidSearchEvidence,
+  type JobSearchEvidence,
+} from '../lib/jobSearchEvidence'
+import { formatDaysAgoShort } from '../lib/duplicateJobAddressGroups'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
@@ -51,6 +59,23 @@ function isTypingSurface(target: EventTarget | null): boolean {
 
 type Placement = 'strip' | 'toolbar'
 
+/** "due 5/5" for pending bids with a due date, else "sent 3/2" — null when neither date exists. */
+function headerSearchBidDateLabel(be: BidSearchEvidence): string | null {
+  const short = (d: string | null): string | null => {
+    if (!d) return null
+    const dt = new Date(d.includes('T') ? d : `${d}T12:00:00`)
+    if (Number.isNaN(dt.getTime())) return null
+    return `${dt.getMonth() + 1}/${dt.getDate()}`
+  }
+  const wl = (be.winLoss ?? '').trim().toLowerCase()
+  if (wl !== 'won' && wl !== 'lost' && wl !== 'started_or_complete') {
+    const due = short(be.dueDate)
+    if (due) return `due ${due}`
+  }
+  const sent = short(be.dateSent)
+  return sent ? `sent ${sent}` : null
+}
+
 type HeaderGlobalSearchContextValue = {
   open: boolean
   openSearch: (from: Placement) => void
@@ -67,6 +92,9 @@ type HeaderGlobalSearchContextValue = {
   selectResult: (r: UnifiedSearchResult) => void
   navOverlayBackground: string
   prefixMap: LedgerPrefixMap
+  /** Lazy evidence for rich rows (job money rail / bid outcome+value), keyed by row id. */
+  jobEvidence: Map<string, JobSearchEvidence>
+  bidEvidence: Map<string, BidSearchEvidence>
 }
 
 const HeaderGlobalSearchContext = createContext<HeaderGlobalSearchContextValue | null>(null)
@@ -102,6 +130,8 @@ export function HeaderGlobalSearchProvider({
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<UnifiedSearchResult[]>([])
+  const [jobEvidence, setJobEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
+  const [bidEvidence, setBidEvidence] = useState<Map<string, BidSearchEvidence>>(() => new Map())
   const [activeResultIndex, setActiveResultIndex] = useState(-1)
   /** Header-owned customer snapshot; opened on selecting a customer result. Kept out of the context value. */
   const [snapshotCustomerId, setSnapshotCustomerId] = useState<string | null>(null)
@@ -312,6 +342,47 @@ export function HeaderGlobalSearchProvider({
     return () => clearTimeout(t)
   }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds])
 
+  /** Rich-row evidence for job and bid results. `enabled` is already the office gate
+   * (dev/master/assistant-like), so job evidence always uses money mode here. */
+  useEffect(() => {
+    if (!open || results.length === 0) return
+    const jobIds = results.filter((r) => r.source === 'job').slice(0, 20).map((r) => r.id)
+    const bidIds = results.filter((r) => r.source === 'bid').slice(0, 20).map((r) => r.id)
+    const missingJobs = jobIds.filter((id) => !jobEvidence.has(id))
+    const missingBids = bidIds.filter((id) => !bidEvidence.has(id))
+    if (missingJobs.length === 0 && missingBids.length === 0) return
+    let cancelled = false
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const [jobs, bids] = await Promise.all([
+            missingJobs.length > 0 ? fetchJobSearchEvidence(missingJobs, 'money') : Promise.resolve(new Map<string, JobSearchEvidence>()),
+            missingBids.length > 0 ? fetchBidSearchEvidence(missingBids) : Promise.resolve(new Map<string, BidSearchEvidence>()),
+          ])
+          if (cancelled) return
+          if (jobs.size > 0)
+            setJobEvidence((prev) => {
+              const next = new Map(prev)
+              for (const [k, v] of jobs) next.set(k, v)
+              return next
+            })
+          if (bids.size > 0)
+            setBidEvidence((prev) => {
+              const next = new Map(prev)
+              for (const [k, v] of bids) next.set(k, v)
+              return next
+            })
+        } catch {
+          // Rows render without the evidence spans.
+        }
+      })()
+    }, 200)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [open, results, jobEvidence, bidEvidence])
+
   const value = useMemo(
     () =>
       ({
@@ -329,8 +400,10 @@ export function HeaderGlobalSearchProvider({
         selectResult,
         navOverlayBackground,
         prefixMap,
+        jobEvidence,
+        bidEvidence,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, navOverlayBackground, prefixMap],
+    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, navOverlayBackground, prefixMap, jobEvidence, bidEvidence],
   )
 
   return (
@@ -544,27 +617,101 @@ export function HeaderGlobalSearchNavLayer() {
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {pill ? (
-                        <span
-                          style={{
-                            fontSize: '0.65rem',
-                            fontWeight: 700,
-                            padding: '0.1rem 0.28rem',
-                            borderRadius: 3,
-                            background: pill.color,
-                            // Trade tags keep their bright literal bg in both themes, so
-                            // they need theme-invariant dark text; customer pills flip
-                            // with their bg token and text-strong flips with them.
-                            color: tradePill ? 'var(--text-on-bright-solid)' : 'var(--text-strong)',
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {pill.tag}
-                        </span>
-                      ) : null}
-                      <span>{formatUnifiedResult(r, ctx.prefixMap)}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                        {pill ? (
+                          <span
+                            style={{
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              padding: '0.1rem 0.28rem',
+                              borderRadius: 3,
+                              background: pill.color,
+                              // Trade tags keep their bright literal bg in both themes, so
+                              // they need theme-invariant dark text; customer pills flip
+                              // with their bg token and text-strong flips with them.
+                              color: tradePill ? 'var(--text-on-bright-solid)' : 'var(--text-strong)',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {pill.tag}
+                          </span>
+                        ) : null}
+                        <span>{formatUnifiedResult(r, ctx.prefixMap)}</span>
+                      </span>
+                      {(() => {
+                        if (r.source === 'job') {
+                          const je = ctx.jobEvidence.get(r.id)
+                          if (!je) return null
+                          return (
+                            <span style={{ flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+                                ${Math.round(je.lineRevenue).toLocaleString('en-US')}
+                              </span>{' '}
+                              {je.lastPaidDaysAgo !== null ? (
+                                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
+                                  paid {formatDaysAgoShort(je.lastPaidDaysAgo)}
+                                </span>
+                              ) : je.lineRevenue > 0 ? (
+                                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
+                              ) : null}
+                            </span>
+                          )
+                        }
+                        if (r.source === 'bid') {
+                          const be = ctx.bidEvidence.get(r.id)
+                          if (!be) return null
+                          const chip = bidSearchStatusChip(be.winLoss, be.dateSent)
+                          const dateLabel = headerSearchBidDateLabel(be)
+                          return (
+                            <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontVariantNumeric: 'tabular-nums' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
+                                  padding: '0.06rem 0.45rem',
+                                  borderRadius: 999,
+                                  background: chip.background,
+                                  color: chip.color,
+                                }}
+                              >
+                                {chip.label}
+                              </span>
+                              {be.bidValue !== null ? (
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+                                  ${Math.round(be.bidValue).toLocaleString('en-US')}
+                                </span>
+                              ) : null}
+                              {dateLabel ? (
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{dateLabel}</span>
+                              ) : null}
+                            </span>
+                          )
+                        }
+                        return null
+                      })()}
                     </span>
+                    {r.source === 'job'
+                      ? (() => {
+                          const je = ctx.jobEvidence.get(r.id)
+                          return je && je.lineCount > 0 ? (
+                            <span
+                              style={{
+                                display: 'block',
+                                fontSize: '0.7rem',
+                                color: 'var(--text-muted)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                marginTop: 1,
+                              }}
+                              title={je.lineSummary}
+                            >
+                              {je.lineSummary}
+                            </span>
+                          ) : null
+                        })()
+                      : null}
                   </button>
                 </li>
               )
