@@ -111,7 +111,7 @@ serve(async (req) => {
         .select('role')
         .eq('id', user.id)
         .maybeSingle()
-      const r = (profile as { role?: string }).role
+      const r = (profile as { role?: string } | null)?.role
       if (profErr || !profile || (r !== 'subcontractor' && r !== 'helpers')) {
         return jsonResponse({ error: 'Forbidden' }, 403)
       }
@@ -150,11 +150,11 @@ serve(async (req) => {
       if (invErr || !invRow) {
         return jsonResponse({ error: 'Invoice not found' }, 404)
       }
-      const r = invRow as InvoiceRow
-      if (String(r.job_id) !== collectBackJobId) {
+      const collectInv = invRow as InvoiceRow
+      if (String(collectInv.job_id) !== collectBackJobId) {
         return jsonResponse({ error: 'Invoice does not match job' }, 400)
       }
-      row = r
+      row = collectInv
     } else {
       const { data: userRow, error: rowErr } = await userClient
         .from('jobs_ledger_invoices')
