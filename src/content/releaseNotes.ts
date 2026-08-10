@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1510',
+    date: '2026-08-10',
+    title: 'Money modals: standard search rows with evidence',
+    kind: 'feature',
+    highlights: [
+      'Assigning Mercury transactions to jobs, splitting bank transactions in Banking, and picking a Migrate-and-Delete target now use the standard search rows — trade tag, plain J/B numbers, Pipeline stage, revenue, paid recency, and this-week schedule count.',
+      'These money-allocation decisions previously showed no financial evidence at all; the migrate bid picker also gains the outcome chip and bid value.',
+    ],
+  },
+  {
     version: 'v2.1509',
     date: '2026-08-09',
     title: 'Hours & crew pickers: standard search rows',

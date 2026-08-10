@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1509)
+last_updated: 2026-08-10 (v2.1510)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1510)
+
+### Search standard wave 3 — the money-decision modals get the evidence rail (2026-08-10)
+The audit's sharpest irony — money-allocation surfaces with zero money evidence — closes: [`MercuryTransactionAllocationsModal`](../src/components/MercuryTransactionAllocationsModal.tsx) (all three RPC modes incl. tally self-service; evidence via the row-cap'd shared hook), [`banking/TransactionDetailModal`](../src/components/banking/TransactionDetailModal.tsx), and the Migrate-and-Delete pickers ([`JobFormDeleteMigrateModals`](../src/components/jobs/JobFormDeleteMigrateModals.tsx) — BOTH the job list, formerly bare `927 —` rows, and the bid list, formerly `B`-less `356 —` rows with no outcome) now render [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) with `useJobBidSearchEvidence`. Candidate types in [`useJobMigrate`](../src/components/jobs/useJobMigrate.ts) widen to carry `service_type_id`/`service_type_name` (the RPCs already returned them; the casts dropped them). Split-line labels, allocation cards, and the post-selection dry-run preview are unchanged — only the pick rows. Full suite 4,098 green. Campaign: waves 4–6 remain (see v2.1507).
 
 ## Latest Updates (v2.1509)
 

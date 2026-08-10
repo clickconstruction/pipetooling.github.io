@@ -18,6 +18,8 @@ import { useAuth } from '../hooks/useAuth'
 import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../lib/dragSortDefaultLabels'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
@@ -27,6 +29,7 @@ type JobSearchRow = {
   job_name: string
   job_address: string
   service_type_id: string | null
+  service_type_name?: string | null
   click_number: string
 }
 
@@ -306,6 +309,11 @@ export function MercuryTransactionAllocationsModal({
   const [saving, setSaving] = useState(false)
   const [jobSearch, setJobSearch] = useState('')
   const [jobResults, setJobResults] = useState<JobSearchRow[]>([])
+  const jobResultsUnified = useMemo(
+    () => jobResults.map((r) => ({ source: 'job' as const, ...r })),
+    [jobResults],
+  )
+  const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(jobResultsUnified, { enabled: open })
   const [jobSearchLoading, setJobSearchLoading] = useState(false)
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
   const [recentPersonIds, setRecentPersonIds] = useState<string[]>([])
@@ -1114,10 +1122,12 @@ export function MercuryTransactionAllocationsModal({
                   cursor: 'pointer',
                 }}
               >
-                <span style={{ fontWeight: 600 }}>
-                  {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name, r.click_number)}
-                </span>
-                <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
+                <UnifiedSearchResultRow
+                  result={{ source: 'job', ...r }}
+                  prefixMap={ledgerPrefixMap}
+                  jobEvidence={jobEvidence.get(r.id)}
+                  evidenceMode={evidenceMode}
+                />
               </button>
             ))}
           </div>
