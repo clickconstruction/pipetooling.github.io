@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1534',
+    date: '2026-08-10',
+    title: 'Pipeline: Activity column uses the whole screen',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Pipeline, the Activity column is no longer a fixed narrow strip — it now grows with your window, splitting the extra width evenly with the Job column.',
+      'Notes and report previews get roughly double the room on a typical monitor, and even more on wide screens.',
+    ],
+  },
+  {
     version: 'v2.1533',
     date: '2026-08-10',
     title: 'Option to hide the old HCP field',

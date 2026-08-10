@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1533)
+last_updated: 2026-08-10 (v2.1534)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1534)
+
+### Pipeline: Activity column flexes with the page width (2026-08-10)
+Owner-requested: the Activity column on Jobs → Pipeline was pinned at 200px while the Job column absorbed all extra page width; it should "fully expand across the page so it resizes with the page". Both Stages tables' colgroups ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx)) unsize the Activity `<col>` — with `table-layout: fixed`, the two auto columns (Job, Activity) now **split the leftover width equally**, so both grow as the window widens (measured live: 200 → 245 at a 1014px viewport, 538 at 1600px). The `maxWidth: 280` clamp on the populated Activity `<td>` in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) is removed (it predates the v2.830 extraction; it would have frozen cell content while the column grew), and the now-unused `wide` shell param is dropped. `STAGES_TABLE_MIN_WIDTH` stays 940 — at the floor each flexible column gets ~232px (Activity gains 32, Job cedes 32 vs the old fixed split; the sized columns total 476px) and the table still scrolls sideways in its wrapper on phones; the doc comment carries the new math. Mobile cards (`asDiv` path) untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1533)
 
