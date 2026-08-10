@@ -35,6 +35,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { JobCalendarModal } from './JobCalendarModal'
 import { ShareJobButton } from './ShareJobButton'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { renderAccountManChip } from './jobsStagesRowShared'
 import { buildAccountManDisplay } from '../../lib/jobs/accountMan'
 import type { JobShareFields } from '../../lib/jobShare'
@@ -113,10 +114,14 @@ export function splitScheduleDetailRowLabel(label: string): { hcp: string; jobNa
   }
 }
 
-function formatJobDetailModalTitle(hcp: string | null | undefined, jobName: string | null | undefined): string {
-  const h = (hcp ?? '').trim() || '—'
+/** Name-first title (v2.1529): the job name carries the header; the number rides as a chip when present. */
+function formatJobDetailModalTitleParts(
+  hcp: string | null | undefined,
+  jobName: string | null | undefined,
+): { num: string | null; name: string } {
+  const h = (hcp ?? '').trim()
   const n = (jobName ?? '').trim() || '—'
-  return `Job Detail: ${h} | ${n}`
+  return { num: h || null, name: n }
 }
 
 function googleMapsSearchUrlForAddress(address: string): string {
@@ -228,15 +233,6 @@ function DetailRow({
   )
 }
 
-const linkLikeValueStyle: CSSProperties = {
-  color: 'var(--text-link)',
-  cursor: 'pointer',
-  textDecoration: 'underline',
-  fontSize: '0.9375rem',
-  wordBreak: 'break-word',
-  display: 'inline-block',
-}
-
 const customerPanelValueStyle: CSSProperties = {
   fontSize: '0.9375rem',
   color: 'var(--text-strong)',
@@ -264,7 +260,10 @@ function DetailJobModalCustomerPanel({
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
   const email = customerEmail?.trim() ?? ''
-  const gcName = gcCustomerName?.trim() ?? ''
+  const gcNameRaw = gcCustomerName?.trim() ?? ''
+  // v2.1529 (Option B): the GC line only earns its row when it names a DIFFERENT
+  // company — "Heron Construction Group" twice was pure noise.
+  const gcName = gcNameRaw.toLowerCase() === name.toLowerCase() ? '' : gcNameRaw
   const devName = developmentName?.trim() ?? ''
 
   const openTel = () => {
@@ -274,85 +273,104 @@ function DetailJobModalCustomerPanel({
     if (email) openInExternalBrowser(`mailto:${email}`)
   }
 
+  const contactChipStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 999,
+    padding: '0.22rem 0.7rem',
+    fontSize: '0.8125rem',
+    color: 'var(--text-link)',
+    cursor: 'pointer',
+    maxWidth: '100%',
+    minWidth: 0,
+  }
+  const missingChipStyle: CSSProperties = {
+    ...contactChipStyle,
+    color: 'var(--text-faint)',
+    borderStyle: 'dashed',
+    cursor: 'default',
+  }
+  const chipTextStyle: CSSProperties = {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }
+
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={name ? customerPanelValueStyle : customerPanelMissingPlaceholderStyle}>
-            {name || '[missing name]'}
-          </div>
-          {gcName ? (
-            <div
-              title="GC/Builder for this job"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
-            >
-              <GcHardHatIcon size={12} />
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gcName}</span>
-            </div>
-          ) : null}
-          {devName ? (
-            <div
-              title="Development for this job"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
-            >
-              <DevelopmentHouseIcon size={12} />
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{devName}</span>
-            </div>
-          ) : null}
+      <div style={name ? { fontSize: '1.02rem', fontWeight: 600, wordBreak: 'break-word' } : customerPanelMissingPlaceholderStyle}>
+        {name || '[missing customer name]'}
+      </div>
+      {gcName ? (
+        <div
+          title="GC/Builder for this job"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
+        >
+          <GcHardHatIcon size={12} />
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gcName}</span>
         </div>
-        <div style={{ minWidth: 0 }}>
-          {phone ? (
-            <span
-              role="link"
-              tabIndex={0}
-              onClick={(e) => {
+      ) : null}
+      {devName ? (
+        <div
+          title="Development for this job"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
+        >
+          <DevelopmentHouseIcon size={12} />
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{devName}</span>
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+        {phone ? (
+          <span
+            role="link"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              openTel()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
                 e.stopPropagation()
                 openTel()
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  openTel()
-                }
-              }}
-              title="Call phone number"
-              aria-label="Customer phone — call number"
-              style={linkLikeValueStyle}
-            >
-              {phone}
-            </span>
-          ) : (
-            <div style={customerPanelMissingPlaceholderStyle}>[missing phone]</div>
-          )}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          {email ? (
-            <span
-              role="link"
-              tabIndex={0}
-              onClick={(e) => {
+              }
+            }}
+            title="Call phone number"
+            aria-label="Customer phone — call number"
+            style={contactChipStyle}
+          >
+            📞 <span style={chipTextStyle}>{phone}</span>
+          </span>
+        ) : (
+          <span style={missingChipStyle} title="No phone on file">📞 <span style={chipTextStyle}>no phone</span></span>
+        )}
+        {email ? (
+          <span
+            role="link"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              openMailto()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
                 e.stopPropagation()
                 openMailto()
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  openMailto()
-                }
-              }}
-              title="Compose email to customer"
-              aria-label="Customer email — compose message"
-              style={linkLikeValueStyle}
-            >
-              {email}
-            </span>
-          ) : (
-            <div style={customerPanelMissingPlaceholderStyle}>[missing email]</div>
-          )}
-        </div>
+              }
+            }}
+            title="Compose email to customer"
+            aria-label="Customer email — compose message"
+            style={contactChipStyle}
+          >
+            ✉️ <span style={chipTextStyle}>{email}</span>
+          </span>
+        ) : (
+          <span style={missingChipStyle} title="No email on file">✉️ <span style={chipTextStyle}>no email</span></span>
+        )}
       </div>
     </div>
   )
@@ -677,16 +695,20 @@ export default function DetailJobModal({
 
   const showWorkflowLink = !isSubcontractorLikeRole(authRole as UserRole) && authRole !== null
 
-  const modalTitle = useMemo(() => {
+  const modalTitleParts = useMemo(() => {
     const data = fullJob ?? limitedJob
-    if (data) return formatJobDetailModalTitle(data.hcp_number, data.job_name)
-    if (error) return 'Job Detail'
+    if (data) return formatJobDetailModalTitleParts(data.hcp_number, data.job_name)
+    if (error) return { num: null, name: 'Job Detail' }
     if (prefillRowLabel?.trim()) {
       const { hcp, jobName } = splitScheduleDetailRowLabel(prefillRowLabel)
-      return formatJobDetailModalTitle(hcp, jobName)
+      return formatJobDetailModalTitleParts(hcp === '—' ? '' : hcp, jobName)
     }
-    return 'Job Detail'
+    return { num: null, name: 'Job Detail' }
   }, [fullJob, limitedJob, error, prefillRowLabel])
+  /** Plain-text label for child dialogs (job calendar etc.). */
+  const modalTitle = modalTitleParts.num
+    ? `${modalTitleParts.num} · ${modalTitleParts.name}`
+    : modalTitleParts.name
 
   const mapsAddressLine = useMemo(() => {
     const fromJob = (fullJob ?? limitedJob)?.job_address?.trim()
@@ -900,6 +922,18 @@ export default function DetailJobModal({
 
   const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
+  const checklistAddModal = useChecklistAddModal()
+  /** Header send-as-task (v2.1529): same preset as the Pipeline row quick action. */
+  const openSendJobAsTask = () => {
+    if (!jobId) return
+    const label = `${modalTitleParts.num ?? '—'} · ${modalTitleParts.name}`
+    checklistAddModal?.openAddModal({
+      preset: {
+        title: `{{1:${label}}} — `,
+        links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(jobId)}`],
+      },
+    })
+  }
   /** Add-link modal for the grey Customer Files / Photos icons (office roles only). */
   const [addLinkTarget, setAddLinkTarget] = useState<JobDetailAddLinkTarget | null>(null)
   const [addLinkUrl, setAddLinkUrl] = useState('')
@@ -1127,7 +1161,10 @@ export default function DetailJobModal({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '1rem',
+            // Wrap so on narrow screens the action row drops BELOW the title
+            // instead of squeezing a long job name to one word per line.
+            flexWrap: 'wrap',
+            gap: '0.35rem 1rem',
             width: '100%',
           }}
         >
@@ -1138,18 +1175,44 @@ export default function DetailJobModal({
               fontSize: '1.125rem',
               wordBreak: 'break-word',
               flex: 1,
-              minWidth: 0,
+              minWidth: 'min(100%, 240px)',
               paddingRight: showDetailHeaderRightCluster ? '0.5rem' : 0,
             }}
           >
-            {modalTitle}
+            {modalTitleParts.num ? (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '0.1rem 0.5rem',
+                  marginRight: '0.45rem',
+                  borderRadius: 6,
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-700)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  verticalAlign: 'text-bottom',
+                }}
+              >
+                {modalTitleParts.num}
+              </span>
+            ) : null}
+            {modalTitleParts.name}
           </h2>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexShrink: 0 }}>
-            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
-            {showDetailHeaderRightCluster ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
-              {headerTradePill ? (
-                tradePillOpensStages ? (
+          {/* One action row (v2.1529, Option B): pill · share · send-task · calendar · mail · gear · close. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              flexWrap: 'wrap',
+              gap: '0.15rem',
+              flexShrink: 0,
+              maxWidth: '55%',
+            }}
+          >
+            {showDetailHeaderRightCluster && headerTradePill ? (
+              <span style={{ marginRight: '0.25rem', display: 'inline-flex' }}>
+                {tradePillOpensStages ? (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1163,15 +1226,49 @@ export default function DetailJobModal({
                     {headerTradePill.label}
                   </button>
                 ) : (
-                  <span
-                    style={{ ...headerTradePill.style, marginTop: 0 }}
-                    title={headerTradePillTitleText}
-                  >
+                  <span style={{ ...headerTradePill.style, marginTop: 0 }} title={headerTradePillTitleText}>
                     {headerTradePill.label}
                   </span>
-                )
-              ) : null}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+                )}
+              </span>
+            ) : null}
+            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
+            {showWorkflowLink && jobId ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openSendJobAsTask()
+                }}
+                title="Send this job to someone as a task"
+                aria-label="Send job as a task"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.35rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: '#7c3aed',
+                  borderRadius: 4,
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 640 640"
+                  width={17}
+                  height={17}
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
+                </svg>
+              </button>
+            ) : null}
+            {showDetailHeaderRightCluster ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
               {showWeekDispatchButton ? (
                 <button
                   type="button"
@@ -1275,7 +1372,6 @@ export default function DetailJobModal({
                   </svg>
                 </button>
               ) : null}
-              </div>
             </div>
             ) : null}
             <button
@@ -1309,18 +1405,155 @@ export default function DetailJobModal({
           <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem' }}>{renderAccountManChip(accountManDisplay)}</div>
         ) : null}
 
-        {showTopBand ? (
+        {/* Option B photo header (v2.1529): Street View leads as a slim banner with the
+            address pinned on it; when there's no imagery (or still loading with nothing
+            to show yet) the address falls back to a plain map-link row. */}
+        {mapsAddressLine && (streetViewLoading || streetViewImgUrl) ? (
           <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              openStreetView()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                openStreetView()
+              }
+            }}
+            title="Open Street View in Google Maps"
+            aria-label="Open Street View in Google Maps"
             style={{
+              position: 'relative',
+              width: '100%',
+              height: 110,
               marginTop: '0.75rem',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
-              gap: '0.75rem',
-              alignItems: 'start',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              overflow: 'hidden',
+              background: 'var(--bg-muted)',
+              cursor: streetViewImgUrl ? 'pointer' : 'default',
+              padding: 0,
+              display: 'block',
+              textAlign: 'left' as const,
             }}
           >
-            {topBandLeftActive ? (
-              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {streetViewLoading ? (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                Loading preview…
+              </div>
+            ) : null}
+            {streetViewImgUrl ? (
+              <img
+                src={streetViewImgUrl}
+                alt={`Street View near ${mapsAddressLine}`}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  verticalAlign: 'top',
+                }}
+              />
+            ) : null}
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation()
+                openMapsAddress()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openMapsAddress()
+                }
+              }}
+              title="Open address in Google Maps"
+              aria-label="Open address in Google Maps"
+              style={{
+                position: 'absolute',
+                left: 8,
+                bottom: 8,
+                maxWidth: '80%',
+                // On-photo scrim: fixed dark glass in both themes so white text always reads.
+                background: 'rgba(10, 14, 20, 0.62)',
+                color: '#fff',
+                borderRadius: 6,
+                padding: '0.3rem 0.6rem',
+                fontSize: '0.8125rem',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📍 {mapsAddressLine}
+            </span>
+          </div>
+        ) : mapsAddressLine ? (
+          <div style={{ marginTop: '0.75rem', minWidth: 0 }}>
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation()
+                openMapsAddress()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openMapsAddress()
+                }
+              }}
+              title="Open address in Google Maps"
+              aria-label="Open address in Google Maps"
+              style={{
+                color: 'var(--text-link)',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: '0.9375rem',
+                wordBreak: 'break-word',
+                display: 'inline-block',
+              }}
+            >
+              📍 {mapsAddressLine}
+            </span>
+          </div>
+        ) : null}
+
+        {showTopBand ? (
+          <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              {detailJob ? (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <DetailJobModalCustomerPanel
+                    customerName={detailJob.customer_name}
+                    customerPhone={detailJob.customer_phone}
+                    customerEmail={detailJob.customer_email}
+                    gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
+                    developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
+                  />
+                </div>
+              ) : (
+                <div style={{ flex: 1, minWidth: 0 }} />
+              )}
+              <div style={{ flexShrink: 0 }}>
                 <JobDetailLinkIcons
                   googleDriveLink={(fullJob ?? limitedJob)?.google_drive_link}
                   jobPicturesLink={(fullJob ?? limitedJob)?.job_pictures_link}
@@ -1330,140 +1563,33 @@ export default function DetailJobModal({
                     setAddLinkUrl('')
                   }}
                 />
-                {mapsAddressLine ? (
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>Address</div>
-                    <span
-                      role="link"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openMapsAddress()
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          openMapsAddress()
-                        }
-                      }}
-                      title="Open address in Google Maps"
-                      aria-label="Open address in Google Maps"
-                      style={{
-                        color: 'var(--text-link)',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        fontSize: '0.9375rem',
-                        wordBreak: 'break-word',
-                        display: 'inline-block',
-                      }}
-                    >
-                      {mapsAddressLine}
-                    </span>
-                  </div>
-                ) : null}
-                {scheduleContext ? (
-                  <div
-                    style={{
-                      minWidth: 0,
-                      padding: '0.65rem 0.75rem',
-                      background: 'var(--bg-subtle)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 6,
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                      Scheduled block - {scheduleFormatWeekdayOnly(scheduleContext.workDate)}
-                    </div>
-                    <div style={{ color: 'var(--text-700)' }}>
-                      {scheduleFormatDateLongNoWeekday(scheduleContext.workDate)} ·{' '}
-                      {scheduleFormatWindow(scheduleContext.timeStart, scheduleContext.timeEnd)}
-                    </div>
-                    {scheduleContext.note?.trim() ? (
-                      <div style={{ color: 'var(--text-muted)', marginTop: 6, wordBreak: 'break-word' }}>
-                        {scheduleContext.note.trim()}
-                      </div>
-                    ) : null}
+              </div>
+            </div>
+            {scheduleContext ? (
+              <div
+                style={{
+                  minWidth: 0,
+                  padding: '0.65rem 0.75rem',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  fontSize: '0.875rem',
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                  Scheduled block - {scheduleFormatWeekdayOnly(scheduleContext.workDate)}
+                </div>
+                <div style={{ color: 'var(--text-700)' }}>
+                  {scheduleFormatDateLongNoWeekday(scheduleContext.workDate)} ·{' '}
+                  {scheduleFormatWindow(scheduleContext.timeStart, scheduleContext.timeEnd)}
+                </div>
+                {scheduleContext.note?.trim() ? (
+                  <div style={{ color: 'var(--text-muted)', marginTop: 6, wordBreak: 'break-word' }}>
+                    {scheduleContext.note.trim()}
                   </div>
                 ) : null}
               </div>
             ) : null}
-            {detailJob ? (
-              <DetailJobModalCustomerPanel
-                customerName={detailJob.customer_name}
-                customerPhone={detailJob.customer_phone}
-                customerEmail={detailJob.customer_email}
-                gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
-                developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
-              />
-            ) : null}
-          </div>
-        ) : null}
-
-        {mapsAddressLine && (streetViewLoading || streetViewImgUrl) ? (
-          <div style={{ marginTop: '0.75rem' }}>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Street View</div>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation()
-                openStreetView()
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  openStreetView()
-                }
-              }}
-              title="Open Street View in Google Maps"
-              aria-label="Open Street View in Google Maps"
-              style={{
-                position: 'relative',
-                width: '100%',
-                aspectRatio: '16 / 9',
-                maxHeight: 200,
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                overflow: 'hidden',
-                background: 'var(--bg-muted)',
-                cursor: streetViewImgUrl ? 'pointer' : 'default',
-                padding: 0,
-                display: 'block',
-                textAlign: 'left' as const,
-              }}
-            >
-              {streetViewLoading ? (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.8125rem',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  Loading preview…
-                </div>
-              ) : null}
-              {streetViewImgUrl ? (
-                <img
-                  src={streetViewImgUrl}
-                  alt={`Street View near ${mapsAddressLine}`}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                    verticalAlign: 'top',
-                  }}
-                />
-              ) : null}
-            </div>
           </div>
         ) : null}
 
