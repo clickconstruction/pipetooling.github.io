@@ -407,6 +407,12 @@ export default function SendRecordInvoiceModal({
   const { role: authRole } = useAuth()
 
   const [tab, setTab] = useState<BillCustomerMainTab>('stripe')
+  /**
+   * v2.1531: HouseCall Pro is deliberately tucked behind a caret — Stripe bill and
+   * Physical invoice are the two primary choices; the ▾ reveals the HCP tab for
+   * the rare job that still needs it (owner request: keep it, but further away).
+   */
+  const [hcpTabRevealed, setHcpTabRevealed] = useState(false)
   const [sentDate, setSentDate] = useState(todayIsoDate)
   const [externalNote, setExternalNote] = useState('')
   const [billAmountStr, setBillAmountStr] = useState('')
@@ -688,8 +694,11 @@ export default function SendRecordInvoiceModal({
       return
     }
     if (!job) return
-    const hasCustomerEmail = (job.customer_email ?? '').trim().length > 0
-    setTab(hasCustomerEmail ? 'stripe' : 'housecallpro')
+    // Always open on Stripe (v2.1531) — even with no customer email, the
+    // missing-email banner above the tabs explains and fixes it inline.
+    // (Previously no-email jobs landed on HouseCall Pro first.)
+    setTab('stripe')
+    setHcpTabRevealed(false)
     const billCustomerOpenYmd = todayIsoDate()
     setSentDate(billCustomerOpenYmd)
     setStripeDueDate(billCustomerOpenYmd)
@@ -1947,16 +1956,9 @@ export default function SendRecordInvoiceModal({
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>
             Stripe bill
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('housecallpro')}
-            style={billCustomerTopTabButtonStyle(tab === 'housecallpro')}
-          >
-            HouseCall Pro
           </button>
           <button
             type="button"
@@ -1965,6 +1967,31 @@ export default function SendRecordInvoiceModal({
           >
             Physical invoice
           </button>
+          {hcpTabRevealed || tab === 'housecallpro' ? (
+            <button
+              type="button"
+              onClick={() => setTab('housecallpro')}
+              style={billCustomerTopTabButtonStyle(tab === 'housecallpro')}
+            >
+              HouseCall Pro
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setHcpTabRevealed(true)}
+              title="More billing options"
+              aria-label="Show more billing options"
+              aria-expanded={false}
+              style={{
+                ...billCustomerTopTabButtonStyle(false),
+                padding: '0.5rem 0.6rem',
+                color: 'var(--text-faint)',
+                fontSize: '0.8125rem',
+              }}
+            >
+              ▾
+            </button>
+          )}
         </div>
 
         {tab === 'housecallpro' && (
