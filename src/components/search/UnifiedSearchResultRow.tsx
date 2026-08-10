@@ -26,6 +26,7 @@ import {
 } from '../../lib/jobSearchEvidence'
 import { jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { formatDaysAgoShort } from '../../lib/duplicateJobAddressGroups'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
 /** "due 5/5" for pending bids with a due date, else "sent 3/2" — null when neither date exists. */
@@ -106,6 +107,10 @@ export function UnifiedSearchResultRow({
   bidEvidence,
   evidenceMode = 'money',
 }: UnifiedSearchResultRowProps) {
+  // Under 640px the evidence rail moves BELOW the identity line (left-aligned)
+  // instead of beside it — side-by-side crushes the label into a narrow
+  // wrapping column on phones and scatters the chips at different heights.
+  const stacked = useNarrowViewport640()
   const tradePill = serviceTypeTagForUnifiedRow(r)
   const pill = tradePill ?? customerTypePillForUnifiedRow(r)
   const je = r.source === 'job' ? jobEvidence : null
@@ -113,104 +118,131 @@ export function UnifiedSearchResultRow({
   const statusChip = je ? jobPickerStatusChip(je.status) : null
   const showMoney = evidenceMode === 'money' && je !== null && je !== undefined && (je.lineRevenue > 0 || je.lineCount > 0)
 
+  const identity = (
+    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', flex: stacked ? undefined : 1, minWidth: 0 }}>
+      {pill ? (
+        <span
+          style={{
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            padding: '0.1rem 0.28rem',
+            borderRadius: 3,
+            background: pill.color,
+            // Trade tags: white text on the bright solid bg (matches the Clock In
+            // pills); customer pills flip with their bg token via text-strong.
+            color: tradePill ? '#fff' : 'var(--text-strong)',
+            lineHeight: 1.2,
+          }}
+        >
+          {pill.tag}
+        </span>
+      ) : null}
+      {/* Plain J/B prefixes: the trade pill beside the number already says PLUM/ELEC/…,
+          so the per-service-type letter (JP → J, BP → B) would repeat it. */}
+      <span>{formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}</span>
+    </span>
+  )
+
+  const rail = je ? (
+    <span
+      style={{
+        flexShrink: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.35rem',
+        flexWrap: stacked ? 'wrap' : undefined,
+        textAlign: stacked ? 'left' : 'right',
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1.2,
+      }}
+    >
+      {statusChip ? (
+        <span style={{ ...railChipStyle, background: statusChip.background, color: statusChip.color }}>
+          {statusChip.label}
+        </span>
+      ) : null}
+      {showMoney ? (
+        <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+          ${Math.round(je.lineRevenue).toLocaleString('en-US')}
+        </span>
+      ) : null}
+      {evidenceMode === 'money' && je.lastPaidDaysAgo !== null ? (
+        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
+          paid {formatDaysAgoShort(je.lastPaidDaysAgo)}
+        </span>
+      ) : evidenceMode === 'money' && je.lineRevenue > 0 && je.status !== 'paid' ? (
+        // No payment rows + revenue → amber "unpaid" — unless the Pipeline status
+        // is already Paid (payments recorded elsewhere), where the pair would contradict.
+        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
+      ) : null}
+      {evidenceMode === 'lines-only' && je.lineCount > 0 ? (
+        <span style={railMutedStyle}>
+          {je.lineCount} {je.lineCount === 1 ? 'line' : 'lines'}
+        </span>
+      ) : null}
+      {je.blocksThisWeek > 0 ? <span style={railMutedStyle}>{je.blocksThisWeek} this wk</span> : null}
+    </span>
+  ) : be ? (
+    (() => {
+      const chip = bidSearchStatusChip(be.winLoss, be.dateSent)
+      const dateLabel = bidSearchDateLabel(be)
+      return (
+        <span
+          style={{
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            flexWrap: stacked ? 'wrap' : undefined,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          <span style={{ ...railChipStyle, background: chip.background, color: chip.color }}>{chip.label}</span>
+          {be.bidValue !== null ? (
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+              ${Math.round(be.bidValue).toLocaleString('en-US')}
+            </span>
+          ) : null}
+          {dateLabel ? <span style={railMutedStyle}>{dateLabel}</span> : null}
+        </span>
+      )
+    })()
+  ) : null
+
+  const lineSummary =
+    je && je.lineCount > 0 ? (
+      <span
+        style={{
+          display: 'block',
+          fontSize: '0.7rem',
+          color: 'var(--text-muted)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          marginTop: 1,
+        }}
+        title={je.lineSummary}
+      >
+        {je.lineSummary}
+      </span>
+    ) : null
+
+  if (stacked) {
+    return (
+      <>
+        {identity}
+        {rail ? <span style={{ display: 'flex', marginTop: 3 }}>{rail}</span> : null}
+        {lineSummary}
+      </>
+    )
+  }
   return (
     <>
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
-          {pill ? (
-            <span
-              style={{
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                padding: '0.1rem 0.28rem',
-                borderRadius: 3,
-                background: pill.color,
-                // Trade tags: white text on the bright solid bg (matches the Clock In
-                // pills); customer pills flip with their bg token via text-strong.
-                color: tradePill ? '#fff' : 'var(--text-strong)',
-                lineHeight: 1.2,
-              }}
-            >
-              {pill.tag}
-            </span>
-          ) : null}
-          {/* Plain J/B prefixes: the trade pill beside the number already says PLUM/ELEC/…,
-              so the per-service-type letter (JP → J, BP → B) would repeat it. */}
-          <span>{formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}</span>
-        </span>
-        {je ? (
-          <span
-            style={{
-              flexShrink: 0,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              textAlign: 'right',
-              fontVariantNumeric: 'tabular-nums',
-              lineHeight: 1.2,
-            }}
-          >
-            {statusChip ? (
-              <span style={{ ...railChipStyle, background: statusChip.background, color: statusChip.color }}>
-                {statusChip.label}
-              </span>
-            ) : null}
-            {showMoney ? (
-              <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
-                ${Math.round(je.lineRevenue).toLocaleString('en-US')}
-              </span>
-            ) : null}
-            {evidenceMode === 'money' && je.lastPaidDaysAgo !== null ? (
-              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
-                paid {formatDaysAgoShort(je.lastPaidDaysAgo)}
-              </span>
-            ) : evidenceMode === 'money' && je.lineRevenue > 0 && je.status !== 'paid' ? (
-              // No payment rows + revenue → amber "unpaid" — unless the Pipeline status
-              // is already Paid (payments recorded elsewhere), where the pair would contradict.
-              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
-            ) : null}
-            {evidenceMode === 'lines-only' && je.lineCount > 0 ? (
-              <span style={railMutedStyle}>
-                {je.lineCount} {je.lineCount === 1 ? 'line' : 'lines'}
-              </span>
-            ) : null}
-            {je.blocksThisWeek > 0 ? <span style={railMutedStyle}>{je.blocksThisWeek} this wk</span> : null}
-          </span>
-        ) : null}
-        {be
-          ? (() => {
-              const chip = bidSearchStatusChip(be.winLoss, be.dateSent)
-              const dateLabel = bidSearchDateLabel(be)
-              return (
-                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ ...railChipStyle, background: chip.background, color: chip.color }}>{chip.label}</span>
-                  {be.bidValue !== null ? (
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
-                      ${Math.round(be.bidValue).toLocaleString('en-US')}
-                    </span>
-                  ) : null}
-                  {dateLabel ? <span style={railMutedStyle}>{dateLabel}</span> : null}
-                </span>
-              )
-            })()
-          : null}
+        {identity}
+        {rail}
       </span>
-      {je && je.lineCount > 0 ? (
-        <span
-          style={{
-            display: 'block',
-            fontSize: '0.7rem',
-            color: 'var(--text-muted)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            marginTop: 1,
-          }}
-          title={je.lineSummary}
-        >
-          {je.lineSummary}
-        </span>
-      ) : null}
+      {lineSummary}
     </>
   )
 }

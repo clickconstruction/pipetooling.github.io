@@ -77,6 +77,39 @@ describe('UnifiedSearchResultRow', () => {
     expect(screen.queryByText(/this wk/)).toBeNull()
   })
 
+  it('stacks the rail below the identity line on narrow viewports', () => {
+    // Install a MATCHING matchMedia before renderWithProviders' shim (which only
+    // fills the gap when window.matchMedia is undefined, and returns matches:false).
+    const original = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('640'),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia
+    try {
+      renderWithProviders(
+        <UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} jobEvidence={jobEvidence} />,
+      )
+      const label = screen.getByText(/J927 · Mike Holub/)
+      const chip = screen.getByText('Ready to Bill')
+      // Stacked: the chip lives on its own line — it must NOT share the desktop
+      // layout's common flex-row ancestor with the identity span.
+      const identityLine = label.closest('span[style*="flex"]')
+      expect(identityLine).toBeTruthy()
+      expect(identityLine?.contains(chip)).toBe(false)
+      // All evidence still renders.
+      expect(screen.getByText('$4,850')).toBeTruthy()
+      expect(screen.getByText('2 this wk')).toBeTruthy()
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
   it('renders a bid with plain B prefix, outcome chip, value, and date', () => {
     renderWithProviders(
       <UnifiedSearchResultRow
