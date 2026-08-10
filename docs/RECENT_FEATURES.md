@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1496)
+last_updated: 2026-08-09 (v2.1497)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1497)
+
+### Combine jobs — Line items detail lists every specific line (2026-08-09)
+Follow-up to v2.1496, owner-requested: the aggregate Line-items row now expands. A **Line items detail** disclosure under the Combine summary (same `<details>` pattern as the Separate tab's sessions) lists each job's Specific Work lines — *name · qty × unit → extended* — grouped **Source (moves to the new card)** and **Target (already on the card)** with job labels (new `cTargetRow` state mirrors the source's), a "No line items." empty state per group, and a ruled blue **New — all N lines together** total. Auto-opens when the combined count ≤ 8, starts collapsed with a count when longer (controlled open state, reset on close). Zero new queries — the preview fetch already selected name/count/unit price; `CombinePreview.lines` just stops discarding them. Verified live (737→927, dark theme): source's "pinpoint" line, empty target, exact total. [`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx) only.
 
 ## Latest Updates (v2.1496)
 
