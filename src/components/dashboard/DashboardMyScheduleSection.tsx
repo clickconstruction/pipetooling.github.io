@@ -254,18 +254,6 @@ export function DashboardMyScheduleSection({
                               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                 {scheduleFormatWindow(b.time_start, b.time_end)}
                               </div>
-                              {b.note?.trim() ? (
-                                <div
-                                  style={{
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--text-faint)',
-                                    marginTop: '0.35rem',
-                                    wordBreak: 'break-word',
-                                  }}
-                                >
-                                  {b.note.trim()}
-                                </div>
-                              ) : null}
                             </div>
                             <div
                               style={{
@@ -352,6 +340,20 @@ export function DashboardMyScheduleSection({
                               ) : null}
                             </div>
                           </div>
+                          {/* Dispatch note spans the full card width (v2.1545) — it used to
+                              wrap inside the left column beside the icon stack. */}
+                          {b.note?.trim() ? (
+                            <div
+                              style={{
+                                fontSize: '0.8125rem',
+                                color: 'var(--text-faint)',
+                                marginTop: '0.35rem',
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {b.note.trim()}
+                            </div>
+                          ) : null}
                         </li>
                       )
                     })}

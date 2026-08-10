@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1544)
+last_updated: 2026-08-10 (v2.1545)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1545)
+
+### My Schedule: dispatch note spans the full card width (2026-08-10)
+Owner-requested (screenshot report from Helper Paige's phone view): on the Dashboard's **My Schedule** cards, the schedule block's dispatch note rendered inside the LEFT flex column — squeezed beside the phone/pictures/Leave Report icon stack, wrapping a long note onto ~5 narrow lines. [`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx): the note `<div>` moves out of the left column to below the title/icons flex row, directly inside the card `<li>`, so it spans the full card width (same faint styling, `wordBreak` kept). Verified live on Paige's real Tomorrow list at 375px: "repairs and meet with DRF" is one full-width line and the long Cop Properties note dropped from five squeezed lines to two (note width 303px of a 327px card). Client-only — no migration.
 
 ## Latest Updates (v2.1544)
 
