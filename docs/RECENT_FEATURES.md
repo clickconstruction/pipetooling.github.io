@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1542)
+last_updated: 2026-08-10 (v2.1543)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1543)
+
+### Pipeline thread panel: Schedule button opens the Assign work sheet (2026-08-10)
+Owner-requested follow-up to v2.1536 (the flagged leftover): the green **Schedule** button inside a Pipeline row's expanded **Job activity / notes** panel still opened the old team-only [`ScheduleJobModal`](../src/components/jobs/ScheduleJobModal.tsx); it now calls `openQuickAssignForJob(job)` — the dispatch **Assign work** sheet pre-picked to the job — at all four `scheduleAction` call sites ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) ×2, and the mobile card thread panel in [`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx)). The **no-team disable is dropped** with it (matching v2.1536/v2.1540 — the sheet offers the whole roster), so the button is always live. The panel's button label and styling are unchanged; the week-dispatch panel button keeps its existing behavior. `ScheduleJobModal`'s last Pipeline entry point is now the Job Calendar's date-seeded "Schedule…". Render test (+1) pins the panel wiring incl. team-less enablement; live browser check skipped deliberately (the preview tab holds the owner's Paige impersonation session, which dev-login would destroy — the sheet's pre-picked path was live-verified in v2.1536). Client-only — no migration.
 
 ## Latest Updates (v2.1542)
 

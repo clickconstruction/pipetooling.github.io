@@ -134,6 +134,27 @@ describe('JobsStagesTable render smoke', () => {
     expect(boxed[0]?.title).toContain('has a hazmat fee')
   })
 
+  it('expanded thread panel: Schedule opens the Assign work sheet, enabled without a team (v2.1543)', () => {
+    const teamless = makeJob({ job_name: 'Thread Panel Job', team_members: [] })
+    const openQuickAssignForJob = vi.fn()
+    const setScheduleModalJob = vi.fn()
+    renderWithProviders(
+      <JobsStagesTable
+        {...makeProps({
+          jobList: [teamless],
+          expandedJobThreadId: teamless.id,
+          openQuickAssignForJob,
+          setScheduleModalJob,
+        })}
+      />,
+    )
+    const btn = screen.getByText('Schedule') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+    btn.click()
+    expect(openQuickAssignForJob).toHaveBeenCalledWith(expect.objectContaining({ id: teamless.id }))
+    expect(setScheduleModalJob).not.toHaveBeenCalled()
+  })
+
   it('schedule quick action opens the Assign work sheet, even with no team members (v2.1536)', () => {
     const teamless = makeJob({ job_name: 'No Team Yet', team_members: [] })
     const openQuickAssignForJob = vi.fn()
