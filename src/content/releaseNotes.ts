@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1545',
+    date: '2026-08-10',
+    title: 'My Schedule: dispatch notes get the full card',
+    kind: 'feature',
+    highlights: [
+      'On the Dashboard\'s My Schedule cards, the dispatch note now runs the full width of the card under the job and time — instead of wrapping in a narrow column beside the buttons.',
+      'Long instructions take two lines instead of five, so each day\'s list is shorter and easier to read on a phone.',
+    ],
+  },
+  {
     version: 'v2.1544',
     date: '2026-08-10',
     title: 'Personal Time Off moves to My Time',
