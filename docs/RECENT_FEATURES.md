@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1524)
+last_updated: 2026-08-10 (v2.1525)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1525)
+
+### Dispatch schedule updates instantly + Quick Assign upgrades (2026-08-10)
+Owner-reported (design-spike session): adds and time/day changes on `pipetooling.com/dispatch-mode/schedule` didn't show up without switching days. Three staleness causes fixed in [`DispatchModeSchedule.tsx`](../src/components/dispatchMode/DispatchModeSchedule.tsx): (1) Quick Assign reset to *today* regardless of the viewed day, and the page only reloaded the viewed day after a save — the sheet now opens on the viewed day (`initialYmd` prop, day strip anchored there too), `onScheduled` reports the day the blocks landed on, and the page **jumps to that day** (shifting the two-week strip when needed); (2) the calendar count badges only loaded on window shifts — every mutation (quick assign, edit incl. day move, remove, linked-crew change) now refreshes agenda + badges together (`countsRefreshKey`); (3) nothing refetched on return — a `visibilitychange` listener reloads on phone unlock/tab switch (realtime publication for `job_schedule_blocks` deliberately deferred — connection-pool history). Quick Assign sheet upgrades ([`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx)): weekday letters (S M T W T F S) above the day strip; a **teams & people search** (new kernel `filterSwimLaneSectionsByQuery` — team-name hit keeps the whole team, person hit keeps team context, resets per open); **keyboard flow** — day strip and people list are each ONE Tab stop (roving tabindex; arrows move, ←→ ±1 day / ↑↓ ±1 week, selection follows focus; Space/Enter selects) so Tab runs day → search → people → time → instructions → confirm (~7 stops, was ~40); **team identity** — each swim lane gets a stable accent color (`swimLaneAccentColor`, hashed from lane id; palette excludes selection-blue and conflict-amber), a 3px rail, a tinted header band with member count, and a blue "✓ crew selected" band state. Kernel tests +6 (12 total in `dispatchSwimLaneSections.test.ts`). Verified live: cross-day quick assign jumped the page and updated badges; search/keyboard/colors screenshot-verified. Client-only — no migration.
 
 ## Latest Updates (v2.1524)
 

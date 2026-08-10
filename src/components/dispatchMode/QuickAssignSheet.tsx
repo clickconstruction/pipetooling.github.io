@@ -23,7 +23,11 @@ import {
   fetchDispatchSwimLanes,
   type DispatchSwimLanesData,
 } from '../../lib/dispatchSwimLanes'
-import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
+import {
+  buildSwimLaneDisplaySections,
+  filterSwimLaneSectionsByQuery,
+  swimLaneAccentColor,
+} from '../../lib/dispatchSwimLaneSections'
 import { quickAssignDisabledReason } from '../../lib/dispatchQuickAssignDisabledReason'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
 import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
@@ -60,6 +64,9 @@ import {
   formatDenverCalendarDayShort,
 } from '../../utils/dateUtils'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+
+/** Sunday-first, matching dispatchModeTwoWeekGrid (same row as the Schedule tab). */
+const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 const chip = (active: boolean): CSSProperties => ({
   flexShrink: 0,
@@ -100,10 +107,14 @@ export default function QuickAssignSheet({
   open,
   onClose,
   onScheduled,
+  initialYmd,
 }: {
   open: boolean
   onClose: () => void
-  onScheduled?: () => void
+  /** Receives the day the blocks landed on, so callers can show that day. */
+  onScheduled?: (scheduledYmd: string) => void
+  /** Day the sheet starts on when opened (defaults to today). */
+  initialYmd?: string
 }) {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
@@ -121,6 +132,7 @@ export default function QuickAssignSheet({
   const [lanes, setLanes] = useState<DispatchSwimLanesData | null>(null)
   const [dayBlocks, setDayBlocks] = useState<DispatchModeAgendaBlock[]>([])
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [peopleSearch, setPeopleSearch] = useState('')
   const [windowSel, setWindowSel] = useState<MinuteInterval | null>(null)
   const [customOpen, setCustomOpen] = useState(false)
   const [customStart, setCustomStart] = useState('08:00')
@@ -176,8 +188,9 @@ export default function QuickAssignSheet({
     setJobPickerOpen(true)
     setJobSearch('')
     setJobNumberQuery('')
-    setSelectedYmd(todayYmd)
+    setSelectedYmd(initialYmd ?? todayYmd)
     setSelected(new Set())
+    setPeopleSearch('')
     setWindowSel(null)
     setCustomOpen(false)
     setLinked(true)
@@ -241,6 +254,58 @@ export default function QuickAssignSheet({
     return buildSwimLaneDisplaySections(lanes, roster)
   }, [lanes, roster])
 
+  /** Sections narrowed by the people/teams search (team-name hit keeps the whole team). */
+  const visibleSections = useMemo(
+    () => filterSwimLaneSectionsByQuery(sections, peopleSearch),
+    [sections, peopleSearch],
+  )
+
+  /* --- Keyboard flow: day strip and people list are each ONE Tab stop
+     (roving tabindex); arrow keys move inside the group, Space/Enter selects.
+     Tab then continues: search → people → time → instructions → confirm. --- */
+  const dayStripRef = useRef<HTMLDivElement | null>(null)
+  const peopleListRef = useRef<HTMLDivElement | null>(null)
+  /** Roving key (`lane:<id>` / `person:<id>`) that owns the people group's tab stop. */
+  const [peopleFocusKey, setPeopleFocusKey] = useState<string | null>(null)
+
+  /** Ordered roving keys currently rendered — the fallback when the remembered one filters away. */
+  const peopleRovingKeys = useMemo(() => {
+    const keys: string[] = []
+    for (const sec of visibleSections) {
+      if (sec.label) keys.push(`lane:${sec.laneId ?? 'rest'}`)
+      for (const p of sec.people) keys.push(`person:${p.userId}`)
+    }
+    return keys
+  }, [visibleSections])
+  const peopleTabKey =
+    peopleFocusKey != null && peopleRovingKeys.includes(peopleFocusKey)
+      ? peopleFocusKey
+      : (peopleRovingKeys[0] ?? null)
+
+  const onDayStripKeyDown = (e: { key: string; preventDefault: () => void }) => {
+    const delta =
+      e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowDown' ? 7 : e.key === 'ArrowUp' ? -7 : 0
+    if (delta === 0) return
+    e.preventDefault()
+    const flat = weeks.flat()
+    const idx = flat.findIndex((d) => d.ymd === selectedYmd)
+    const next = flat[Math.min(flat.length - 1, Math.max(0, (idx < 0 ? 0 : idx) + delta))]
+    if (!next || next.ymd === selectedYmd) return
+    setSelectedYmd(next.ymd)
+    setWindowSel(null)
+    dayStripRef.current?.querySelector<HTMLButtonElement>(`[data-ymd="${next.ymd}"]`)?.focus()
+  }
+
+  const onPeopleListKeyDown = (e: { key: string; preventDefault: () => void }) => {
+    const delta =
+      e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0
+    if (delta === 0) return
+    e.preventDefault()
+    const items = [...(peopleListRef.current?.querySelectorAll<HTMLButtonElement>('[data-roving]') ?? [])]
+    const cur = items.findIndex((el) => el === document.activeElement)
+    items[Math.min(items.length - 1, Math.max(0, (cur < 0 ? 0 : cur) + delta))]?.focus()
+  }
+
   const suggestions = useMemo(() => {
     if (selected.size === 0) return []
     return suggestCommonWindows([...selected].map((id) => busyByUser.get(id) ?? []))
@@ -264,7 +329,12 @@ export default function QuickAssignSheet({
     return out
   }, [effectiveWindow, selected, busyByUser])
 
-  const weeks = useMemo(() => dispatchModeTwoWeekGrid(todayYmd), [todayYmd])
+  // Anchor the day strip where the caller is looking (falls back to today) so
+  // the sheet's starting day is always visible/selectable in its own strip.
+  const weeks = useMemo(
+    () => dispatchModeTwoWeekGrid(initialYmd ?? todayYmd),
+    [initialYmd, todayYmd],
+  )
 
   const togglePerson = (id: string) => {
     if (consumeLongPress()) return
@@ -327,7 +397,7 @@ export default function QuickAssignSheet({
       `Scheduled ${inserted} ${inserted === 1 ? 'person' : 'people'} on ${formatScheduleDispatchHubJobTitle(job.hcp_number, job.job_name, job.click_number)}${groupId ? ' (linked)' : ''}.`,
       'success',
     )
-    onScheduled?.()
+    onScheduled?.(selectedYmd)
     onClose()
   }, [job, effectiveWindow, selected, authUser?.id, linked, selectedYmd, instructions, showToast, onScheduled, onClose])
 
@@ -471,13 +541,31 @@ export default function QuickAssignSheet({
         {job ? (
           <>
             {/* Day strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', gap: 2 }}>
-              {weeks.flat().map((day) => {
+            <div
+              ref={dayStripRef}
+              role="group"
+              aria-label="Pick a day — arrow keys move, Enter selects"
+              onKeyDown={onDayStripKeyDown}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', gap: 2 }}
+            >
+              {WEEKDAY_LETTERS.map((w, i) => (
+                <span
+                  key={`${w}-${i}`}
+                  aria-hidden="true"
+                  style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.1rem 0' }}
+                >
+                  {w}
+                </span>
+              ))}
+              {weeks.flat().map((day, i, flat) => {
                 const sel = day.ymd === selectedYmd
+                const stripHasSelection = flat.some((d) => d.ymd === selectedYmd)
                 return (
                   <button
                     key={day.ymd}
                     type="button"
+                    data-ymd={day.ymd}
+                    tabIndex={(stripHasSelection ? sel : i === 0) ? 0 : -1}
                     aria-pressed={sel}
                     aria-label={`Assign on ${day.ymd}`}
                     onClick={() => {
@@ -501,16 +589,62 @@ export default function QuickAssignSheet({
               })}
             </div>
 
+            {/* Teams & people search */}
+            <input
+              type="search"
+              value={peopleSearch}
+              onChange={(e) => setPeopleSearch(e.target.value)}
+              placeholder="Search teams and people…"
+              aria-label="Search teams and people"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '0.45rem 0.75rem',
+                fontSize: '0.875rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 999,
+                background: 'var(--surface)',
+                color: 'var(--text-strong)',
+              }}
+            />
+
             {/* People with ribbons */}
-            <div style={{ overflowY: 'auto', flex: 1, minHeight: 120, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {sections.map((sec) => {
+            <div
+              ref={peopleListRef}
+              role="group"
+              aria-label="Pick people — arrow keys move, Space or Enter selects"
+              onKeyDown={onPeopleListKeyDown}
+              style={{ overflowY: 'auto', flex: 1, minHeight: 120, display: 'flex', flexDirection: 'column', gap: 4 }}
+            >
+              {visibleSections.length === 0 ? (
+                <p style={{ margin: 0, padding: '0.75rem 0.2rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  No teams or people match “{peopleSearch.trim()}”.
+                </p>
+              ) : null}
+              {visibleSections.map((sec) => {
                 const memberIds = sec.people.map((p) => p.userId)
                 const allIn = memberIds.length > 0 && memberIds.every((id) => selected.has(id))
+                const accent = swimLaneAccentColor(sec.laneId)
                 return (
-                  <div key={sec.laneId ?? 'rest'}>
+                  <div
+                    key={sec.laneId ?? 'rest'}
+                    style={
+                      sec.label
+                        ? {
+                            borderLeft: `3px solid ${accent ?? 'var(--border-strong)'}`,
+                            borderRadius: 0,
+                            paddingLeft: 7,
+                            marginBottom: 2,
+                          }
+                        : undefined
+                    }
+                  >
                     {sec.label ? (
                       <button
                         type="button"
+                        data-roving
+                        tabIndex={peopleTabKey === `lane:${sec.laneId ?? 'rest'}` ? 0 : -1}
+                        onFocus={() => setPeopleFocusKey(`lane:${sec.laneId ?? 'rest'}`)}
                         onClick={() => toggleLane(memberIds)}
                         {...longPressHandlers(sec.label, memberIds)}
                         aria-pressed={allIn}
@@ -518,23 +652,34 @@ export default function QuickAssignSheet({
                         style={{
                           display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'space-between',
                           gap: 6,
                           width: '100%',
-                          padding: '0.3rem 0.2rem 0.15rem',
+                          padding: '0.3rem 0.5rem',
+                          marginBottom: 4,
                           border: 'none',
-                          background: 'none',
+                          borderRadius: 6,
+                          background: allIn ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                           cursor: 'pointer',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          color: allIn ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                          color: accent ?? 'var(--text-muted)',
                           textAlign: 'left',
                           WebkitUserSelect: 'none',
                           userSelect: 'none',
                           WebkitTouchCallout: 'none',
                         }}
                       >
-                        {sec.label}
-                        <span style={{ fontWeight: 400 }}>{allIn ? '— crew selected' : ''}</span>
+                        <span>{sec.label}</span>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            fontVariantNumeric: 'tabular-nums',
+                            color: allIn ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                          }}
+                        >
+                          {allIn ? '✓ crew selected' : sec.people.length}
+                        </span>
                       </button>
                     ) : null}
                     {sec.people.map((p) => {
@@ -545,6 +690,9 @@ export default function QuickAssignSheet({
                         <button
                           key={p.userId}
                           type="button"
+                          data-roving
+                          tabIndex={peopleTabKey === `person:${p.userId}` ? 0 : -1}
+                          onFocus={() => setPeopleFocusKey(`person:${p.userId}`)}
                           onClick={() => togglePerson(p.userId)}
                           {...longPressHandlers(p.displayName, [p.userId])}
                           aria-pressed={isSel}

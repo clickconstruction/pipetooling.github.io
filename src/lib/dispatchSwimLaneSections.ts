@@ -56,6 +56,49 @@ export function personMatchesLaneQuery(
   return lane != null && lane.name.toLowerCase().includes(lowerQuery)
 }
 
+/**
+ * Team identity accents — saturated, so they read in both themes. Blue and
+ * amber are deliberately absent: blue means "selected" and amber means
+ * "time conflict" wherever these sections render.
+ */
+const LANE_ACCENT_COLORS = ['#7c3aed', '#0d9488', '#db2777', '#16a34a']
+
+/**
+ * Stable accent color for a lane: hashed from the lane id, so a team keeps its
+ * color across days, reorders, and surfaces. null for the "Everyone else"
+ * tail — it stays neutral.
+ */
+export function swimLaneAccentColor(laneId: string | null): string | null {
+  if (!laneId) return null
+  let h = 0
+  for (let i = 0; i < laneId.length; i++) h = (h * 31 + laneId.charCodeAt(i)) >>> 0
+  return LANE_ACCENT_COLORS[h % LANE_ACCENT_COLORS.length] ?? null
+}
+
+/**
+ * Filter lane sections for the Quick Assign people search: a query matching a
+ * section's label keeps the whole team; otherwise the section narrows to the
+ * people whose names match. Sections left with nobody are dropped. A blank
+ * query returns the sections untouched.
+ */
+export function filterSwimLaneSectionsByQuery(
+  sections: SwimLaneDisplaySection[],
+  query: string,
+): SwimLaneDisplaySection[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return sections
+  const out: SwimLaneDisplaySection[] = []
+  for (const sec of sections) {
+    if (sec.label.toLowerCase().includes(q)) {
+      out.push(sec)
+      continue
+    }
+    const people = sec.people.filter((p) => p.displayName.toLowerCase().includes(q))
+    if (people.length > 0) out.push({ ...sec, people })
+  }
+  return out
+}
+
 export type SwimLaneManpowerRow = {
   /** null for the "Everyone else" tail. */
   laneId: string | null

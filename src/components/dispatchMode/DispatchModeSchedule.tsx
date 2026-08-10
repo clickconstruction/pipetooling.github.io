@@ -79,6 +79,9 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const gridEnd = weeks[weeks.length - 1]?.[6]?.ymd ?? todayYmd
 
   const [dayJobCounts, setDayJobCounts] = useState<Map<string, number>>(() => new Map())
+  /** Bumped after every mutation so the per-day count badges stay honest. */
+  const [countsRefreshKey, setCountsRefreshKey] = useState(0)
+  const refreshDayJobCounts = useCallback(() => setCountsRefreshKey((k) => k + 1), [])
   useEffect(() => {
     let cancelled = false
     void fetchDispatchModeDayJobCounts(gridStart, gridEnd, selfUserId).then(({ data }) => {
@@ -87,7 +90,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     return () => {
       cancelled = true
     }
-  }, [gridStart, gridEnd, selfUserId])
+  }, [gridStart, gridEnd, selfUserId, countsRefreshKey])
 
   const [blocks, setBlocks] = useState<DispatchModeAgendaBlock[]>([])
   /** Empty set = everyone. Person ids survive day switches; absent people just contribute nothing. */
@@ -110,6 +113,40 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   useEffect(() => {
     void loadDay(selectedYmd)
   }, [selectedYmd, loadDay])
+
+  // Coming back to the app (phone unlock, tab switch) refetches — schedule
+  // changes made elsewhere while this sat open would otherwise never appear.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void loadDay(selectedYmd)
+      refreshDayJobCounts()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [selectedYmd, loadDay, refreshDayJobCounts])
+
+  /** After a mutation: reload the visible agenda + the count badges together. */
+  const refreshAfterMutation = useCallback(() => {
+    void loadDay(selectedYmd)
+    refreshDayJobCounts()
+  }, [loadDay, selectedYmd, refreshDayJobCounts])
+
+  /** Quick Assign saved onto `ymd`: jump there so the new block is on screen. */
+  const handleQuickAssignScheduled = useCallback(
+    (ymd: string) => {
+      refreshDayJobCounts()
+      if (ymd === selectedYmd) {
+        void loadDay(selectedYmd)
+        return
+      }
+      setSelectedYmd(ymd)
+      // Keep the jumped-to day visible in the two-week strip.
+      const flat = dispatchModeTwoWeekGrid(anchorYmd).flat()
+      if (!flat.some((d) => d.ymd === ymd)) setAnchorYmd(ymd)
+    },
+    [refreshDayJobCounts, selectedYmd, loadDay, anchorYmd],
+  )
 
   /* Linked-crew management (v2.1368): ⛓ chip on linked rows → the crew modal. */
   const [crewGroupId, setCrewGroupId] = useState<string | null>(null)
@@ -242,7 +279,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
       'success',
     )
     closeEditBlock()
-    void loadDay(selectedYmd)
+    refreshAfterMutation()
   }
 
   // "Remove" in the edit modal: close it and hand off to the shared confirm
@@ -266,7 +303,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
       }
       setDeleteBlockId(null)
       showToast('Removed from schedule.', 'success')
-      void loadDay(selectedYmd)
+      refreshAfterMutation()
     } finally {
       setDeleteBlockBusy(false)
     }
@@ -729,13 +766,14 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
         getJobDisplayTitle={(jobId) => jobTitleByJobId.get(jobId) ?? 'Job'}
         canManage={canEditBlocks}
         addPeople={crewRoster}
-        onChanged={() => void loadDay(selectedYmd)}
+        onChanged={refreshAfterMutation}
       />
       {canQuickAssign ? (
         <QuickAssignSheet
           open={quickAssignOpen}
           onClose={() => setQuickAssignOpen(false)}
-          onScheduled={() => void loadDay(selectedYmd)}
+          initialYmd={selectedYmd}
+          onScheduled={handleQuickAssignScheduled}
         />
       ) : null}
       {editBlock ? (
