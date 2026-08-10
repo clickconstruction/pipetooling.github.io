@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1541',
+    date: '2026-08-10',
+    title: 'Helper dashboard: clock activity moves next to My Time',
+    kind: 'feature',
+    highlights: [
+      'For Helpers, the "Clocked in today / Jobs worked today" section now sits at the bottom of the Dashboard, just above My Time — your schedule and jobs stay up top.',
+      'Everyone else\'s dashboard keeps the section where it was.',
+    ],
+  },
+  {
     version: 'v2.1540',
     date: '2026-08-10',
     title: 'Pipeline: week-dispatch shortcut hides when unusable',

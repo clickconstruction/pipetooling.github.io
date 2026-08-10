@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1540)
+last_updated: 2026-08-10 (v2.1541)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1541)
+
+### Helper dashboard: clock activity strip moves just above My Time (2026-08-10)
+Owner-requested: for the **helpers** role, the "Clocked in today / Jobs worked today" strip should sit at the bottom of the Dashboard, just above My Time, instead of up near the inbox cards. [`Dashboard.tsx`](../src/pages/Dashboard.tsx): the two byte-identical `DashboardTeamActiveClockStrip` mounts (assistant-like and everyone-else, each with its `#dash-clocked-in` dock anchor) are extracted into ONE `clockActivityStripBlock` const (anchor + strip, gated on `authUser?.id && showClockActivityStrip`), rendered at three role-gated spots: the original assistant-like position, the original everyone-else position now excluding helpers, and a new helpers-only placement immediately before the `#dash-me` anchor + [`DashboardMyTimeSection`](../src/components/DashboardMyTimeSection.tsx). Props are unchanged — placement only; the floating dock's ClockedIn entry still works because the anchor travels with the strip. Non-helper dashboards are untouched (verified live on the dev dashboard path structurally; helper placement pinned by JSX order). Client-only — no migration.
 
 ## Latest Updates (v2.1540)
 
