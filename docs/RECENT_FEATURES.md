@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1534)
+last_updated: 2026-08-10 (v2.1535)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1535)
+
+### Pipeline: Activity cell becomes a mini-feed (2026-08-10)
+Owner picked **Option A** of the mockup artifact "Pipeline Activity column — presentation options" (follow-up to v2.1534's flexible column). The Activity cell in both Stages tables now renders a **feed of one-line rows** — `[kind tag] [author — body, ellipsized] [age]` — instead of one author/time header over a 3-line preview: the **latest note** and **latest report** each get their own tagged line (NOTE blue `var(--text-link)`, REPORT purple, newest first), and the upcoming-appointment line is restyled into the same shape (**NEXT** green tag, `who — Wed Aug 12 8 AM–12 PM · note`, still opens the Job Calendar; the old two-line green-rail block is gone). New pure kernel [`computeStagesActivityFeedItems`](../src/lib/stagesActivityFeed.ts) builds the items from the thread stats the board already loads (no new queries; keeps the v2.1044 preview-over-template rule and the thread-derived author/body fallbacks; +6 unit tests). The expand chevron + note count ride the first row's age slot; full text lives in each row's tooltip; click-to-expand, Stripe emailed hint, invoice jump chips, Reports footer, and the empty-state dash are unchanged, as is the mobile card path (`asDiv`). Verified live on the board (85 note rows / 70 report rows / 13 next rows): rows are visibly shorter, thread expand + calendar clicks intact, 375px truncation clean. Client-only — no migration.
 
 ## Latest Updates (v2.1534)
 
