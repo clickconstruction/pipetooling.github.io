@@ -2,7 +2,7 @@
 title: add or remove people on a job
 category: Office
 roles: dev, master_technician, assistant
-keywords: assign people, team members, crew, add person to job, remove person, who is on the job, job people
+keywords: assign people, team members, crew, add person to job, remove person, who is on the job, job people, keyboard, enter to select, arrow keys
 order: 63
 ---
 You can see who's assigned to a job and change it right from the job's activity panel — no need to open the whole Edit Job form.
@@ -17,10 +17,13 @@ You can see who's assigned to a job and change it right from the job's activity 
 1. Click the **people button** on the far left of that row.
 2. The **People on this job** window opens with a searchable list of everyone who can be assigned. The people already on the job are checked.
 3. Check someone to add them, uncheck to remove them. Use the search box to find a name fast.
-4. Click {{button:blue|Save}}.
+4. You can stay on the keyboard the whole time: type a few letters and press **Enter** to check the top match — the search clears so you can type the next name right away. **↓/↑** move a highlight through the list, and **Space** or **Enter** checks or unchecks the highlighted person.
+5. Click {{button:blue|Save}}.
 
 :::example What happens
 Adding or removing a person is recorded in the job's activity feed automatically (a **Crew** entry showing who was added or removed), and the assigned-people list updates right away.
 :::
+
+The same search-and-check picker — including the keyboard shortcuts — appears when you press **+** next to **Team:** in the Edit Job form and when picking people on a schedule entry.
 
 Only dev, master technician, and assistant roles see the people button — everyone else sees the assigned names read-only.

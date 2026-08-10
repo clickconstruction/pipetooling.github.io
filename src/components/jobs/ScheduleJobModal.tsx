@@ -655,6 +655,7 @@ export function ScheduleJobModal({
                 onChange={setAssigneeUserIds}
                 disabled={!hasAssigneePickOptions}
                 listAriaLabel="Team members"
+                keyboardSelect
               />
             </div>
             <div style={{ marginBottom: 0 }}>

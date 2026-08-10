@@ -134,6 +134,7 @@ export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds }: 
               listAriaLabel="People to add"
               searchPlaceholder="Search people…"
               pinSelectedToTop
+              keyboardSelect
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button
