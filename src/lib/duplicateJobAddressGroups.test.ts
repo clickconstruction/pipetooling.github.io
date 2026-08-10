@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildDuplicateJobAddressGroups } from './duplicateJobAddressGroups'
+import {
+  buildDupJobEnrichments,
+  buildDuplicateJobAddressGroups,
+  formatDaysAgoShort,
+} from './duplicateJobAddressGroups'
 
 function job(id: string, address: string | null, status: string, created: string) {
   return { id, hcp_number: id, job_name: `Job ${id}`, job_address: address, status, created_at: created }
@@ -40,5 +44,52 @@ describe('buildDuplicateJobAddressGroups', () => {
     ])
     expect(groups.map((g) => g.address)).toEqual(['A Live St', 'Staging Yard', 'Z Done St'])
     expect(groups[2]?.hasActive).toBe(false)
+  })
+})
+
+const NOW_MS = Date.parse('2026-08-09T18:00:00Z')
+
+describe('buildDupJobEnrichments', () => {
+  it('sums line count/revenue and builds a capped name summary', () => {
+    const m = buildDupJobEnrichments(
+      [
+        { job_id: 'j1', name: 'A', count: 1, line_unit_price: 100 },
+        { job_id: 'j1', name: 'B', count: 2, line_unit_price: 50 },
+        { job_id: 'j1', name: 'C', count: 1, line_unit_price: 25 },
+        { job_id: 'j1', name: '  ', count: 1, line_unit_price: 25 },
+      ],
+      [],
+      NOW_MS,
+    )
+    const e = m.get('j1')
+    expect(e?.lineCount).toBe(4)
+    // 225, not 250: revenueDollarsFromFixtures ignores blank-named lines — same rule as the app's revenue math.
+    expect(e?.lineRevenue).toBe(225)
+    expect(e?.lineSummary).toBe('A, B, C +1 more')
+    expect(e?.lastPaidDaysAgo).toBeNull()
+  })
+
+  it('tracks paid total and days since the newest payment (paid_on over created_at)', () => {
+    const m = buildDupJobEnrichments(
+      [],
+      [
+        { job_id: 'j1', amount: 100, paid_on: '2026-06-01', created_at: '2026-06-02T10:00:00Z' },
+        { job_id: 'j1', amount: 50, paid_on: '2026-08-02', created_at: null },
+        { job_id: 'j2', amount: 75, paid_on: null, created_at: '2026-08-08T10:00:00Z' },
+      ],
+      NOW_MS,
+    )
+    expect(m.get('j1')?.paidTotal).toBe(150)
+    expect(m.get('j1')?.lastPaidDaysAgo).toBe(7)
+    expect(m.get('j2')?.lastPaidDaysAgo).toBe(1)
+  })
+})
+
+describe('formatDaysAgoShort', () => {
+  it('formats coarse recency classes', () => {
+    expect(formatDaysAgoShort(0)).toBe('today')
+    expect(formatDaysAgoShort(5)).toBe('5d ago')
+    expect(formatDaysAgoShort(21)).toBe('3 wk ago')
+    expect(formatDaysAgoShort(120)).toBe('4 mo ago')
   })
 })

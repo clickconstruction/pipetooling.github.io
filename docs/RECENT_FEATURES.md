@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1499)
+last_updated: 2026-08-09 (v2.1500)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1500)
+
+### Duplicate finder — evidence rows: line items and payment recency (2026-08-09)
+Owner-requested: each job row in the **Same address, multiple jobs** finder now carries decision evidence under the identity+status line: (1) **line items** — "N lines · $revenue — first names +N more" (revenue via `revenueDollarsFromFixtures`, so blank-named lines count in the list but not the dollars — same rule as everywhere); (2) **payment recency** — green "Last paid N wk/mo ago ($paid of $revenue)" from the newest `paid_on` (created_at fallback), or "No payments yet"; opened date moves down beside it. Data: two failure-tolerant batched `IN` queries (fixtures + payments) covering only the grouped job ids after the ledger scan — the finder stays three round-trips total regardless of group count. New kernel exports in [`duplicateJobAddressGroups.ts`](../src/lib/duplicateJobAddressGroups.ts): `buildDupJobEnrichments` + `formatDaysAgoShort` (6 tests). Verified live: 473 · Holub showed "Last paid 4 mo ago ($32,245.00 of $46,600.00)" against its $252 temp-line twin — the merge decision reads itself.
 
 ## Latest Updates (v2.1499)
 

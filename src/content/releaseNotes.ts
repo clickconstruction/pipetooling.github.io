@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1500',
+    date: '2026-08-09',
+    title: 'Duplicate finder: each job shows its evidence',
+    kind: 'feature',
+    highlights: [
+      'Every job in the duplicate-address list now shows its line items with the revenue total, and how long ago it was last paid.',
+      'Picking which job to keep no longer requires opening either one.',
+    ],
+  },
+  {
     version: 'v2.1499',
     date: '2026-08-09',
     title: 'Combine jobs: find duplicate addresses',
