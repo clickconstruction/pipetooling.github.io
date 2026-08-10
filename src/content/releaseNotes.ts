@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1515',
+    date: '2026-08-10',
+    title: 'Search standard: the final sweep',
+    kind: 'feature',
+    highlights: [
+      'Jobs → Billing and Job Summary number cells show the trade tag + J number; Documents job and bid rows get the standard identity, status chips, and full-dollar values.',
+      'Searching by a Click number now works everywhere it is displayed (Billing, Job Summary, Parts), Submission & Followup rows show their bid numbers, and the Dispatch Settings job picker renders standard rows.',
+    ],
+  },
+  {
     version: 'v2.1514',
     date: '2026-08-10',
     title: 'Schedule & Combine: standard job identity',

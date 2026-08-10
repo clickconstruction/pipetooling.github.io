@@ -1,10 +1,10 @@
+import { JobIdentityCell } from '../search/JobIdentityCell'
 import { useEffect, useMemo, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatAddressTwoLines } from '../../lib/jobs/jobAddressUrls'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   billingFixturesCellText,
   billingJobMatchesSearch,
@@ -188,7 +188,7 @@ export default function JobsBillingTab({
               {sortedBillingJobs.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
+                    <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
                     {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
                       <button
                         type="button"

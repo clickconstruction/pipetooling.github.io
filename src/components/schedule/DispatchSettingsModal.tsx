@@ -11,6 +11,9 @@ import {
 } from '../../lib/dispatchSettingsJobsSearch'
 import { filterRosterByQuery } from '../../lib/dispatchSettingsPeopleSearch'
 import { ChipsWithSearchPicker, type ChipsWithSearchPickerOption } from './ChipsWithSearchPicker'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 import { DispatchSwimLanesSettingsSection } from './DispatchSwimLanesSettingsSection'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
@@ -45,6 +48,7 @@ export function DispatchSettingsModal({
   const { showToast } = useToastContext()
   const { config, reload } = useDispatchNoteRequirements()
   const { role } = useAuth()
+  const settingsPrefixMap = useLedgerPrefixMap()
   /** app_settings writes are dev-only per RLS, so the Travel section renders for devs only. */
   const isDev = role === 'dev'
   const [travel, setTravel] = useState<TravelHintsConfig>(TRAVEL_HINTS_DEFAULTS)
@@ -357,6 +361,10 @@ export function DispatchSettingsModal({
             searchInputAriaLabel="Search jobs that don't require job instructions"
             resultsListAriaLabel="Jobs that don't require job instructions"
             disabled={busy}
+            renderOption={(opt) => {
+              const row = opt.row as Extract<UnifiedSearchResult, { source: 'job' }> | undefined
+              return row ? <UnifiedSearchResultRow result={row} prefixMap={settingsPrefixMap} /> : opt.label
+            }}
           />
         </div>
         </div>

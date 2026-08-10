@@ -10,6 +10,7 @@ import { formatCurrency } from './jobFormatting'
 
 export type BillingSearchableJob = {
   hcp_number?: string | null
+  click_number?: string | null
   job_name?: string | null
   job_address?: string | null
 }
@@ -19,6 +20,9 @@ export function billingJobMatchesSearch(job: BillingSearchableJob, query: string
   if (!q) return true
   return (
     (job.hcp_number ?? '').toLowerCase().includes(q) ||
+    // Rows display the Click number when there is no HCP — it must be findable
+    // by typing it too (the audit's display/match mismatch).
+    (job.click_number ?? '').toLowerCase().includes(q) ||
     (job.job_name ?? '').toLowerCase().includes(q) ||
     (job.job_address ?? '').toLowerCase().includes(q)
   )

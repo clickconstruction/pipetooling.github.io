@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1514)
+last_updated: 2026-08-10 (v2.1515)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1515)
+
+### Search standard final wave — tier-2 tables, matching gaps, dead code (2026-08-10)
+The campaign closes. (1) **Identity cells** (two-tier rule): new [`JobIdentityCell`](../src/components/search/JobIdentityCell.tsx) (pill + plain `J{num}`) in Jobs → Billing and Job Summary number cells; Reports' prose `(Job: 927)` → `(J927)`. (2) **Documents** job/bid rows keep their columns (invoice sub-rows, customer lines, doc links — full row-replacement would have destroyed them; deliberate softening of the "full rows" call, flagged for veto) but adopt the standard identity (bare pill + `J927 · `/`B356 · ` titles — the `|` dialect dies), the standard status chips (`jobPickerStatusChip`/`bidSearchStatusChip` replace the parallel text vocabulary), and full-dollar bid values (`$38,600`, not `$39k`); search predicates also match the new chip labels, and the jobs query gains the `service_types(name)` embed. (3) **Click-number matching**: `billingJobMatchesSearch` (Billing + Dashboard assigned-jobs), Job Summary, and Parts (×3 clauses) now match the Click numbers they display. (4) **DispatchSettings picker**: generic [`ChipsWithSearchPicker`](../src/components/schedule/ChipsWithSearchPicker.tsx) gains `renderOption`; the jobs picker renders standard rows; `formatDispatchSettingsJobLabel` fixes its ` - ` separator and Click-number loss. (5) **Submission & Followup** rows lead with the configured bid number via `formatBidNameWithValue(bid, prefixMap)`. (6) **Dead code**: `BidProjectCell.tsx` deleted (orphaned by v2.1513). Billing render smoke updated for the new `J2002` cells. Full suite 4,098 green; Billing + Documents verified live. Campaign record: v2.1507–v2.1515, artifact "Job & Bid Search Presentation Audit".
 
 ## Latest Updates (v2.1514)
 

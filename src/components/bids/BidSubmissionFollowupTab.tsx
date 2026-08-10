@@ -1583,7 +1583,7 @@ export function BidSubmissionFollowupTab({
                       )}
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>{bid.plan_pages?.trim() ?? '—'}</td>
-                    <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</td>
                     <td style={{ padding: '0.75rem' }}>
                       {formatDateYYMMDD(bid.bid_due_date)}
                       {formatBidDueTime(bid.bid_due_time) ? (
@@ -1709,7 +1709,7 @@ export function BidSubmissionFollowupTab({
                     </td>
                     <td style={{ padding: '0.75rem' }}>
                       <div>
-                        <div>{formatBidNameWithValue(bid)}</div>
+                        <div>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</div>
                         {bid.address && (
                           <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                             {bid.address}
@@ -1878,7 +1878,7 @@ export function BidSubmissionFollowupTab({
                         <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
@@ -1981,7 +1981,7 @@ export function BidSubmissionFollowupTab({
                       background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
                     }}
                   >
-                    <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>

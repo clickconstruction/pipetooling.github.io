@@ -1,20 +1,29 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
+import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
 
 export type DispatchSettingsJobOption = {
   value: string
   label: string
+  /** Raw search row for standard-row dropdown rendering (absent on label-only paths). */
+  row?: Extract<UnifiedSearchResult, { source: 'job' }>
 }
 
 type JobLedgerSearchRow = {
   id: string
   hcp_number: string | null
+  click_number?: string | null
   job_name: string | null
+  job_address?: string | null
+  service_type_id?: string | null
+  service_type_name?: string | null
 }
 
 type JobLedgerByIdsRow = {
   id: string
   hcp_number: string | null
+  click_number?: string | null
   job_name: string | null
 }
 
@@ -49,7 +58,17 @@ export async function searchJobsLedgerForDispatchSettings(
   const rows = res.data ?? []
   return rows.map((r) => ({
     value: r.id,
-    label: formatDispatchSettingsJobLabel(r.hcp_number, r.job_name),
+    label: formatDispatchSettingsJobLabel(r.hcp_number, r.job_name, r.click_number),
+    row: {
+      source: 'job',
+      id: r.id,
+      hcp_number: r.hcp_number ?? '',
+      click_number: r.click_number ?? null,
+      job_name: r.job_name ?? '',
+      job_address: r.job_address ?? '',
+      service_type_id: r.service_type_id ?? null,
+      service_type_name: r.service_type_name ?? null,
+    },
   }))
 }
 
@@ -68,28 +87,32 @@ export async function fetchJobLabelsByIds(ids: string[]): Promise<Map<string, st
   )) as JobLedgerByIdsRow[] | null
   const map = new Map<string, string>()
   for (const r of rows ?? []) {
-    map.set(r.id, formatDispatchSettingsJobLabel(r.hcp_number, r.job_name))
+    map.set(r.id, formatDispatchSettingsJobLabel(r.hcp_number, r.job_name, r.click_number))
   }
   return map
 }
 
 /**
  * Single source of truth for Dispatch Settings job chip / dropdown labels.
+ * Standard identity: plain `J` + effective number (HCP, falling back to the
+ * Click number — Click-only jobs used to lose their number here) and the
+ * app-wide `·` separator.
  *
  * Format priority:
- *   1. `J{hcp} - {name}` when both are set.
- *   2. `J{hcp}` when only the HCP number is set.
+ *   1. `J{num} · {name}` when both are set.
+ *   2. `J{num}` when only a number is set.
  *   3. `{name}` when only the job name is set.
  *   4. `(untitled job)` fallback.
  */
 export function formatDispatchSettingsJobLabel(
   hcpNumber: string | null,
   jobName: string | null,
+  clickNumber?: string | null,
 ): string {
-  const hcp = hcpNumber?.trim() || ''
+  const num = effectiveJobLedgerNumber(hcpNumber, clickNumber)
   const name = jobName?.trim() || ''
-  if (hcp && name) return `J${hcp} - ${name}`
-  if (hcp) return `J${hcp}`
+  if (num && name) return `J${num} · ${name}`
+  if (num) return `J${num}`
   if (name) return name
   return '(untitled job)'
 }

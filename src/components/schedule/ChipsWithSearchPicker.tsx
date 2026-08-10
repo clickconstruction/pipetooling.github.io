@@ -1,8 +1,10 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 
 export type ChipsWithSearchPickerOption = {
   value: string
   label: string
+  /** Optional payload for custom dropdown-row rendering (see `renderOption`). */
+  row?: unknown
 }
 
 export type ChipsWithSearchPickerProps = {
@@ -32,6 +34,8 @@ export type ChipsWithSearchPickerProps = {
   resultsListAriaLabel?: string
   /** Override the under-min-length hint. Default: `Type at least 2 letters to search.` */
   belowMinLengthHint?: string
+  /** Custom dropdown-row content (e.g. the standard job search row). Falls back to `label`. */
+  renderOption?: (option: ChipsWithSearchPickerOption) => ReactNode
 }
 
 const chipRowStyle: CSSProperties = {
@@ -130,6 +134,7 @@ export function ChipsWithSearchPicker({
   searchInputAriaLabel,
   resultsListAriaLabel = 'Search results',
   belowMinLengthHint = DEFAULT_BELOW_MIN_HINT,
+  renderOption,
 }: ChipsWithSearchPickerProps) {
   const reactId = useId()
   const baseId = idProp ?? reactId
@@ -287,7 +292,7 @@ export function ChipsWithSearchPicker({
                   disabled={disabled}
                   style={dropdownRowButtonStyle}
                 >
-                  {r.label}
+                  {renderOption ? renderOption(r) : r.label}
                 </button>
               </li>
             ))

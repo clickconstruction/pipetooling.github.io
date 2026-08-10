@@ -193,6 +193,7 @@ export default function JobsPartsTab({
                     (!showMyJobsOnly || !myJobIds || myJobIds.has(j.id)) &&
                     (!q ||
                       (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                      (j.click_number ?? '').toLowerCase().includes(q) ||
                       (j.job_name ?? '').toLowerCase().includes(q))
                 )
                 const invoicesOnlyJobs = jobs.filter(
@@ -203,6 +204,7 @@ export default function JobsPartsTab({
                     (!showMyJobsOnly || !myJobIds || myJobIds.has(j.id)) &&
                     (!q ||
                       (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                      (j.click_number ?? '').toLowerCase().includes(q) ||
                       (j.job_name ?? '').toLowerCase().includes(q))
                 )
                 const materialsOnlyRows = materialsOnlyJobs.map((j) => ({
@@ -228,6 +230,7 @@ export default function JobsPartsTab({
                     (!showMyJobsOnly || !myJobIds || myJobIds.has(j.id)) &&
                     (!q ||
                       (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                      (j.click_number ?? '').toLowerCase().includes(q) ||
                       (j.job_name ?? '').toLowerCase().includes(q)),
                 )
                 const cardChargesOnlyRows = cardChargesOnlyJobs.map((j) => ({
