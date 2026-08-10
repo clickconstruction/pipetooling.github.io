@@ -1,3 +1,5 @@
+import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
@@ -196,9 +198,11 @@ export function BidSubmissionFollowupTab({
     setSubmissionFollowupNotesTab(next)
   }
 
+  const submissionLedgerPrefixMap = useLedgerPrefixMap()
   const filteredBidsForSubmission = submissionSearchQuery.trim()
     ? bids.filter(
         (b) =>
+          bidNumberMatchesQuery(b, submissionSearchQuery, submissionLedgerPrefixMap) ||
           (b.project_name?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ?? false) ||

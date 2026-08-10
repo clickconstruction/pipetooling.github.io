@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1511)
+last_updated: 2026-08-10 (v2.1512)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1512)
+
+### Bid searches match numbers everywhere (2026-08-10)
+Search-matching fixes from the standardization audit: [`BidSubmissionFollowupTab`](../src/components/bids/BidSubmissionFollowupTab.tsx), [`BidChangeOrderTab`](../src/components/bids/BidChangeOrderTab.tsx), [`BidRfiTab`](../src/components/bids/BidRfiTab.tsx), and [`BidLienReleaseTab`](../src/components/bids/BidLienReleaseTab.tsx) — whose placeholders said "Search bids" but ignored bid numbers entirely — gain the `bidNumberMatchesQuery` clause (matches both raw `356` and prefixed `BP356`; each tab reads `useLedgerPrefixMap` itself). [`BidsBidBoardTab`](../src/components/bids/BidsBidBoardTab.tsx) upgrades its raw `bid_number.includes()` (which failed on typed `BP356`) to the same kernel. Matching only — row presentation unchanged (the picker full-row conversion is the next wave). Full suite 4,098 green.
 
 ## Latest Updates (v2.1511)
 

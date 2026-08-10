@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1512',
+    date: '2026-08-10',
+    title: 'Bids: search by number everywhere',
+    kind: 'fix',
+    highlights: [
+      'Submission & Followup, Change Order, RFI, and Lien Release can now be searched by bid number — typing 356 or BP356 finds the bid.',
+      'The Bid Board search now also matches prefixed numbers like BP356, not just the raw digits.',
+    ],
+  },
+  {
     version: 'v2.1511',
     date: '2026-08-10',
     title: 'Seven more pickers: standard search rows',

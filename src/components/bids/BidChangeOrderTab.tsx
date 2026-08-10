@@ -1,3 +1,5 @@
+import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -21,6 +23,7 @@ type BidChangeOrderTabProps = {
 }
 
 export function BidChangeOrderTab({ bids, authUser, selectedBid, onSelectBid, onClose, onEditBid }: BidChangeOrderTabProps) {
+  const tabLedgerPrefixMap = useLedgerPrefixMap()
   const narrowViewport640 = useNarrowViewport640()
   const bidPreview = useBidPreview()
   const [changeOrderSearchQuery, setChangeOrderSearchQuery] = useState('')
@@ -55,7 +58,7 @@ export function BidChangeOrderTab({ bids, authUser, selectedBid, onSelectBid, on
                   const name = bidDisplayName(b).toLowerCase()
                   const cust = (b.customers?.name ?? '').toLowerCase()
                   const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-                  return name.includes(q) || cust.includes(q) || gc.includes(q)
+                  return bidNumberMatchesQuery(b, q, tabLedgerPrefixMap) || name.includes(q) || cust.includes(q) || gc.includes(q)
                 })
                 .map((bid) => (
                   <tr
@@ -75,7 +78,7 @@ export function BidChangeOrderTab({ bids, authUser, selectedBid, onSelectBid, on
                 const name = bidDisplayName(b).toLowerCase()
                 const cust = (b.customers?.name ?? '').toLowerCase()
                 const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-                return name.includes(q) || cust.includes(q) || gc.includes(q)
+                return bidNumberMatchesQuery(b, q, tabLedgerPrefixMap) || name.includes(q) || cust.includes(q) || gc.includes(q)
               }).length === 0 && (
                 <tr>
                   <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
