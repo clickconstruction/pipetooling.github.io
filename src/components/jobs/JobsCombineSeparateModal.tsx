@@ -52,6 +52,13 @@ export type JobsCombineSeparateModalProps = {
   onAfterSuccess: () => void
 }
 
+type CombinePreviewLine = {
+  name: string
+  count: number
+  unitPrice: number
+  extended: number
+}
+
 type CombinePreview = {
   partsStyle: number
   materialsBilled: number
@@ -59,7 +66,11 @@ type CombinePreview = {
   teamHours: number
   lineItemsRevenue: number
   lineItemsCount: number
+  lines: CombinePreviewLine[]
 }
+
+/** Combined-lines threshold above which the Line items detail starts collapsed (the modal is tall already). */
+const COMBINE_LINE_DETAIL_OPEN_MAX = 8
 
 export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess }: JobsCombineSeparateModalProps) {
   const { showToast } = useToastContext()
@@ -78,6 +89,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [cTargetCandidates, setCTargetCandidates] = useState<JobSearchRow[]>([])
   const [cTargetSearchLoading, setCTargetSearchLoading] = useState(false)
   const [cTargetId, setCTargetId] = useState<string | null>(null)
+  const [cTargetRow, setCTargetRow] = useState<JobSearchRow | null>(null)
 
   const [cSourcePreviewLoading, setCSourcePreviewLoading] = useState(false)
   const [cSourcePreview, setCSourcePreview] = useState<CombinePreview | null>(null)
@@ -86,6 +98,14 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [cTargetPreview, setCTargetPreview] = useState<CombinePreview | null>(null)
 
   const [cMigrateBusy, setCMigrateBusy] = useState(false)
+  const [cLineDetailOpen, setCLineDetailOpen] = useState(false)
+
+  /** Auto-open the Line items detail for short lists once both previews resolve; long lists start collapsed. */
+  useEffect(() => {
+    if (cSourcePreview && cTargetPreview) {
+      setCLineDetailOpen(cSourcePreview.lines.length + cTargetPreview.lines.length <= COMBINE_LINE_DETAIL_OPEN_MAX)
+    }
+  }, [cSourcePreview, cTargetPreview])
 
   /** Separate */
   const [sJobSearch, setSJobSearch] = useState('')
@@ -121,11 +141,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     setCTargetCandidates([])
     setCTargetSearchLoading(false)
     setCTargetId(null)
+    setCTargetRow(null)
     setCSourcePreviewLoading(false)
     setCSourcePreview(null)
     setCTargetPreviewLoading(false)
     setCTargetPreview(null)
     setCMigrateBusy(false)
+    setCLineDetailOpen(false)
 
     setSJobSearch('')
     setSJobCandidates([])
@@ -289,6 +311,12 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         fixtures.map((f) => ({ name: f.name, count: f.count, line_unit_price: f.line_unit_price })),
       ),
       lineItemsCount: fixtures.length,
+      lines: fixtures.map((f) => ({
+        name: (f.name ?? '').trim(),
+        count: Number(f.count) || 0,
+        unitPrice: Number(f.line_unit_price) || 0,
+        extended: fixtureLineRevenue(f),
+      })),
     }
   }
 
@@ -753,6 +781,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   onChange={(e) => {
                     setCTargetSearch(e.target.value)
                     setCTargetId(null)
+                    setCTargetRow(null)
                   }}
                   placeholder="Search HCP, name, or address (2+ characters)"
                   disabled={cMigrateBusy}
@@ -784,7 +813,10 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                       <button
                         type="button"
                         disabled={cMigrateBusy}
-                        onClick={() => setCTargetId(j.id)}
+                        onClick={() => {
+                          setCTargetId(j.id)
+                          setCTargetRow(j)
+                        }}
                         style={{
                           width: '100%',
                           textAlign: 'left',
@@ -881,6 +913,104 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     New = the combined card after migrating the source into the target.
                   </p>
+                  {cSourceId && cTargetId ? (
+                    <details
+                      open={cLineDetailOpen}
+                      onToggle={(e) => setCLineDetailOpen((e.target as HTMLDetailsElement).open)}
+                      style={{ marginTop: '0.75rem', fontSize: '0.8125rem' }}
+                    >
+                      <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)' }}>
+                        Line items detail (
+                        {cSourcePreviewLoading || cTargetPreviewLoading
+                          ? '…'
+                          : (cSourcePreview?.lines.length ?? 0) + (cTargetPreview?.lines.length ?? 0)}
+                        )
+                      </summary>
+                      {cSourcePreviewLoading || cTargetPreviewLoading ? (
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading lines…</p>
+                      ) : (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          {(
+                            [
+                              {
+                                key: 'source',
+                                heading: `Source · ${cSourceRow ? `${effectiveJobLedgerNumber(cSourceRow.hcp_number, cSourceRow.click_number) || '—'} — ${(cSourceRow.job_name ?? '').trim() || '—'}` : '—'}`,
+                                note: 'moves to the new card',
+                                lines: cSourcePreview?.lines ?? [],
+                              },
+                              {
+                                key: 'target',
+                                heading: `Target · ${cTargetRow ? `${effectiveJobLedgerNumber(cTargetRow.hcp_number, cTargetRow.click_number) || '—'} — ${(cTargetRow.job_name ?? '').trim() || '—'}` : '—'}`,
+                                note: 'already on the card',
+                                lines: cTargetPreview?.lines ?? [],
+                              },
+                            ] as const
+                          ).map((group) => (
+                            <div key={group.key} style={{ marginBottom: '0.6rem' }}>
+                              <div
+                                style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  letterSpacing: '0.04em',
+                                  textTransform: 'uppercase',
+                                  color: 'var(--text-muted)',
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {group.heading} <span style={{ fontWeight: 400, textTransform: 'none' }}>({group.note})</span>
+                              </div>
+                              {group.lines.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)' }}>No line items.</div>
+                              ) : (
+                                group.lines.map((ln, i) => (
+                                  <div
+                                    key={`${group.key}-${i}`}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: '0.75rem',
+                                      padding: '2px 0',
+                                      fontVariantNumeric: 'tabular-nums',
+                                    }}
+                                  >
+                                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {ln.name || '(unnamed line)'}
+                                    </span>
+                                    <span style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
+                                      {ln.count} × ${formatCurrency(ln.unitPrice)} →{' '}
+                                      <strong style={{ color: 'var(--text-700)' }}>${formatCurrency(ln.extended)}</strong>
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          ))}
+                          {cSourcePreview && cTargetPreview ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: '0.75rem',
+                                borderTop: '1px solid var(--border)',
+                                paddingTop: '0.4rem',
+                                fontWeight: 700,
+                                color: 'var(--text-blue-700)',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              <span>
+                                {(() => {
+                                  const n = cSourcePreview.lines.length + cTargetPreview.lines.length
+                                  return `New — all ${n} ${n === 1 ? 'line' : 'lines'} together`
+                                })()}
+                              </span>
+                              <span>${formatCurrency(cSourcePreview.lineItemsRevenue + cTargetPreview.lineItemsRevenue)}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </details>
+                  ) : null}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>

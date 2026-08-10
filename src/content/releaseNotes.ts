@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1497',
+    date: '2026-08-09',
+    title: 'Combine jobs: see every line item before you merge',
+    kind: 'feature',
+    highlights: [
+      'A new Line items detail section lists each job\'s specific work lines — name, quantity, unit price, and extended amount — grouped by source and target.',
+      'Short lists open automatically; long ones stay tucked behind a count so the confirm button stays in reach.',
+    ],
+  },
+  {
     version: 'v2.1496',
     date: '2026-08-09',
     title: 'Combine jobs: see the combined card before you commit',
