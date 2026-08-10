@@ -1,0 +1,93 @@
+/**
+ * Standard-row bid picker list — replaces the two-column `Project | Bid Date`
+ * tables on the no-bid-selected workflow tabs (Counts, Takeoffs, Labor,
+ * Pricing, Cover Letter, Change Order, RFI, Lien Release) with the app-wide
+ * search presentation: trade pill + plain B number + project - address, and
+ * the outcome chip · $value · due/sent date rail.
+ *
+ * Rows are already-loaded `BidWithBuilder`s, so the evidence is built locally
+ * from the row itself — no fetch. Selection stays the host's `onSelectBid`.
+ */
+import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import type { BidSearchEvidence } from '../../lib/jobSearchEvidence'
+import { bidDisplayName } from '../../lib/bids/bidFormatting'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
+
+export function bidWithBuilderToUnified(b: BidWithBuilder): Extract<UnifiedSearchResult, { source: 'bid' }> {
+  return {
+    source: 'bid',
+    id: b.id,
+    bid_number: (b.bid_number ?? '').trim(),
+    project_name: bidDisplayName(b) || '',
+    address: b.address ?? '',
+    customer_name: b.customers?.name ?? b.bids_gc_builders?.name ?? '',
+    service_type_id: b.service_type_id ?? null,
+    service_type_name: b.service_type?.name ?? null,
+  }
+}
+
+export function bidWithBuilderEvidence(b: BidWithBuilder): BidSearchEvidence {
+  return {
+    bidValue: b.bid_value === null || b.bid_value === undefined ? null : Number(b.bid_value),
+    winLoss: b.outcome ?? null,
+    dateSent: b.bid_date_sent ?? null,
+    dueDate: b.bid_due_date ?? null,
+  }
+}
+
+export function BidPickerStandardList({
+  bids,
+  prefixMap,
+  onSelectBid,
+  emptyMessage,
+}: {
+  bids: BidWithBuilder[]
+  prefixMap: LedgerPrefixMap
+  onSelectBid: (bid: BidWithBuilder) => void
+  /** Rendered instead of the list when `bids` is empty; omit to render nothing. */
+  emptyMessage?: string | null
+}) {
+  if (bids.length === 0) {
+    return emptyMessage ? (
+      <p style={{ margin: 0, padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{emptyMessage}</p>
+    ) : null
+  }
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', background: 'var(--surface)' }}>
+      {bids.map((bid) => (
+        <button
+          key={bid.id}
+          type="button"
+          onClick={() => onSelectBid(bid)}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-subtle)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--surface)'
+          }}
+          style={{
+            display: 'block',
+            width: '100%',
+            textAlign: 'left',
+            padding: '0.55rem 0.75rem',
+            border: 'none',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface)',
+            cursor: 'pointer',
+            font: 'inherit',
+            fontSize: '0.875rem',
+            color: 'var(--text-strong)',
+          }}
+        >
+          <UnifiedSearchResultRow
+            result={bidWithBuilderToUnified(bid)}
+            prefixMap={prefixMap}
+            bidEvidence={bidWithBuilderEvidence(bid)}
+          />
+        </button>
+      ))}
+    </div>
+  )
+}

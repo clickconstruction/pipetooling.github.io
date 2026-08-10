@@ -2,7 +2,7 @@ import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useState } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
-import { bidDisplayName, formatDateYYMMDD, formatAmountFromString } from '../../lib/bids/bidFormatting'
+import { bidDisplayName, formatAmountFromString } from '../../lib/bids/bidFormatting'
 import {
   buildLienReleaseHtml,
   buildLienReleaseText,
@@ -20,6 +20,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidPickerStandardList } from './BidPickerStandardList'
 
 type BidLienReleaseTabProps = {
   bids: BidWithBuilder[]
@@ -53,53 +54,24 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
         />
       )}
       {!selectedBid ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: 'var(--bg-subtle)' }}>
-              <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project Name</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bids
-                .filter((b) => {
-                  const q = lienReleaseSearchQuery.toLowerCase()
-                  if (!q) return true
-                  const name = bidDisplayName(b).toLowerCase()
-                  const cust = (b.customers?.name ?? '').toLowerCase()
-                  const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-                  return bidNumberMatchesQuery(b, q, tabLedgerPrefixMap) || name.includes(q) || cust.includes(q) || gc.includes(q)
-                })
-                .map((bid) => (
-                  <tr
-                    key={bid.id}
-                    onClick={() => onSelectBid(bid)}
-                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
-                  >
-                    <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                  </tr>
-                ))}
-              {bids.filter((b) => {
-                const q = lienReleaseSearchQuery.toLowerCase()
-                if (!q) return true
-                const name = bidDisplayName(b).toLowerCase()
-                const cust = (b.customers?.name ?? '').toLowerCase()
-                const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-                return bidNumberMatchesQuery(b, q, tabLedgerPrefixMap) || name.includes(q) || cust.includes(q) || gc.includes(q)
-              }).length === 0 && (
-                <tr>
-                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        (() => {
+          const q = lienReleaseSearchQuery.toLowerCase()
+          const filtered = bids.filter((b) => {
+            if (!q) return true
+            const name = bidDisplayName(b).toLowerCase()
+            const cust = (b.customers?.name ?? '').toLowerCase()
+            const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+            return bidNumberMatchesQuery(b, q, tabLedgerPrefixMap) || name.includes(q) || cust.includes(q) || gc.includes(q)
+          })
+          return (
+            <BidPickerStandardList
+              bids={filtered}
+              prefixMap={tabLedgerPrefixMap}
+              onSelectBid={onSelectBid}
+              emptyMessage={bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+            />
+          )
+        })()
       ) : (() => {
         const bid = selectedBid
         const customerName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'

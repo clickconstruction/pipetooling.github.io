@@ -7,7 +7,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
-import { bidDisplayName, countsConfirmLabel, formatDateYYMMDD } from '../../lib/bids/bidFormatting'
+import { bidDisplayName, countsConfirmLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { parseCountsImportText } from '../../lib/bids/parseCountsImportText'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
@@ -16,7 +16,7 @@ import { SortableCountRow } from './CountRow'
 import { NewCountRow } from './NewCountRow'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
-import { BidProjectCell } from './BidProjectCell'
+import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
@@ -537,31 +537,12 @@ export function BidsCountsTab({
         </div>
       )}
       {!selectedBidForCounts && (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: 'var(--bg-subtle)' }}>
-              <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBidsForCounts.map((bid) => (
-                <tr
-                  key={bid.id}
-                  onClick={() => onSelectBid(bid)}
-                  style={{
-                    borderBottom: '1px solid var(--border)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
-                  <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <BidPickerStandardList
+          bids={filteredBidsForCounts}
+          prefixMap={ledgerPrefixMap}
+          onSelectBid={onSelectBid}
+          emptyMessage={countsSearchQuery.trim() ? 'No bids match your search.' : null}
+        />
       )}
     </div>
   )

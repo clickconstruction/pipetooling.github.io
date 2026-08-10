@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { formatDateYYMMDD, marginFlag } from '../../lib/bids/bidFormatting'
+import { marginFlag } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
@@ -17,7 +17,7 @@ import {
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from './GenerateUnitCostModal'
 import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
-import { BidProjectCell } from './BidProjectCell'
+import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
@@ -2166,31 +2166,12 @@ export function BidsPricingTab({
           />
         )}
         {!selectedBidForPricing && (
-          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: 'var(--bg-subtle)' }}>
-                <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBidsForPricing.map((bid) => (
-                  <tr
-                    key={bid.id}
-                    onClick={() => onSelectBid(bid)}
-                    style={{
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BidPickerStandardList
+            bids={filteredBidsForPricing}
+            prefixMap={ledgerPrefixMap}
+            onSelectBid={onSelectBid}
+            emptyMessage={pricingSearchQuery.trim() ? 'No bids match your search.' : null}
+          />
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
           <div>

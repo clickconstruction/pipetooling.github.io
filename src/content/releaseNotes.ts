@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1513',
+    date: '2026-08-10',
+    title: 'Bid pickers: outcome and value at a glance',
+    kind: 'feature',
+    highlights: [
+      'The bid lists on Counts, Takeoffs, Labor, Pricing, Cover Letter, Change Order, RFI, and Lien Release now use the standard search rows — trade tag, plain B number, project and address, plus the Won/Pending/Lost chip, bid value, and sent/due date on every row.',
+      'Change Order, RFI, and Lien Release rows show the bid number for the first time.',
+    ],
+  },
+  {
     version: 'v2.1512',
     date: '2026-08-10',
     title: 'Bids: search by number everywhere',
