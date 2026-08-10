@@ -2344,6 +2344,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onSendBackSimple={stagesHamMode
                       ? (j) => void updateJobStatus(j.id, 'waiting')
                       : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
+                    sendBackLabel={'Mark Waiting'}
                     showPctComplete={true}
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}

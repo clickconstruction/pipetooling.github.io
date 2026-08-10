@@ -737,7 +737,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     }
     const sendBack = onSendBack ?? onSendBackSimple
     if (sendBack) {
-      items.push({ key: 'send-back', label: 'Send back', tone: 'muted', onClick: () => sendBack(j) })
+      items.push({ key: 'send-back', label: props.sendBackLabel ?? 'Send back', tone: 'muted', onClick: () => sendBack(j) })
     }
     return items
   }

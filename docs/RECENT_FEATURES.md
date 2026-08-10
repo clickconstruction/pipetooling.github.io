@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1537)
+last_updated: 2026-08-10 (v2.1538)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1538)
+
+### Pipeline: Working section's "Send back" renamed "Mark Waiting" (2026-08-10)
+Owner-requested: on Jobs → Pipeline, a Working job's send-back action moves it to Waiting, so the button should say so. [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) gains an optional **`sendBackLabel`** prop (default `'Send back'`) applied to both send-back button variants; the mobile card ⋯ menu ([`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx)) reads the same prop. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) passes `'Mark Waiting'` at the Working mount only — Ready to Bill, Billed, and Collections keep "Send back" (their confirm modal copy is unchanged too: "This will move the job back to Waiting."). Verified live: all 32 Working rows show Mark Waiting; the 67 send-back buttons elsewhere are untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1537)
 

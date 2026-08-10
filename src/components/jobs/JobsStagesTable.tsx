@@ -117,6 +117,8 @@ export type JobsStagesTableProps = {
   canOpenJobScheduleModal: StagesRowRenderContext['canOpenJobScheduleModal']
   setScheduleModalJob: StagesRowRenderContext['setScheduleModalJob']
   openQuickAssignForJob: StagesRowRenderContext['openQuickAssignForJob']
+  /** Label for the send-back button(s); defaults to "Send back" (Working uses "Mark Waiting"). */
+  sendBackLabel?: string
   authRole: StagesRowRenderContext['authRole']
   loadJobs: StagesRowRenderContext['loadJobs']
   onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
@@ -183,6 +185,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     canOpenJobScheduleModal,
     setScheduleModalJob,
     openQuickAssignForJob,
+    sendBackLabel,
     authRole,
     loadJobs,
     onDevelopmentFilter,
@@ -470,7 +473,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                               cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                             }}
                           >
-                            Send back
+                            {sendBackLabel ?? 'Send back'}
                           </button>
                         )}
                         {onSendBackSimple && (
@@ -488,7 +491,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                               cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                             }}
                           >
-                            Send back
+                            {sendBackLabel ?? 'Send back'}
                           </button>
                         )}
                         {actionLabel && (
