@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1531',
+    date: '2026-08-10',
+    title: 'Bill Customer leads with Stripe',
+    kind: 'feature',
+    highlights: [
+      'The Bill Customer window now shows two main choices — Stripe bill and Physical invoice. HouseCall Pro is still there, behind a small ▾ at the end of the row, so it takes a deliberate extra click.',
+      'Bill Customer always opens on the Stripe tab now, including jobs with no customer email yet (the banner at the top lets you add the email right there).',
+    ],
+  },
+  {
     version: 'v2.1530',
     date: '2026-08-10',
     title: 'Pipeline shortcut icons moved to the start of each row',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1530)
+last_updated: 2026-08-10 (v2.1531)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1531)
+
+### Bill Customer: HouseCall Pro tucked behind a caret; Stripe always first (2026-08-10)
+Owner-requested: HouseCall Pro should stay available but be "further away — harder to click", and any flow that presented HCP first should present Stripe instead. [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx): the method tab bar now renders **Stripe bill · Physical invoice · ▾** — the faint caret (`aria-label="Show more billing options"`) reveals the **HouseCall Pro** tab in place (new `hcpTabRevealed` state, reset on each open; the tab also self-reveals if `tab === 'housecallpro'` is ever set programmatically). The tab's content and record-external-send behavior are unchanged. The open-default `setTab(hasCustomerEmail ? 'stripe' : 'housecallpro')` is now **always `'stripe'`** — the no-email case was the one place HCP was presented first, and the existing missing-email banner above the tabs already explains and fixes the gap inline (this was the only HCP-first surface; other "HouseCall" hits in the codebase are number-field labels). Verified live on a Ready to Bill job: opens on Stripe, bar shows the caret, caret reveals HCP, HCP tab still activates. Help guide `ready-to-bill-pipeline` → "Billing a customer" updated. Client-only — no migration.
 
 ## Latest Updates (v2.1530)
 

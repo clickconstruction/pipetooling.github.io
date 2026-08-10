@@ -106,17 +106,17 @@ The Edit Job modal's **Break off invoice** slider is the other way to do the sam
 
 ## Billing a customer
 
-Press {{button:blue|Bill Customer}}. The modal shows the job and the RTB amount, with three method tabs:
+Press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill** and shows the job and the RTB amount, with two method tabs plus a **▾** for the rest:
 
-{{gif:ready-to-bill-pipeline.gif|Bill Customer from the Ready to Bill queue: the three method tabs and the physical-invoice preview}}
+{{gif:ready-to-bill-pipeline.gif|Bill Customer from the Ready to Bill queue: the method tabs and the physical-invoice preview}}
 
 :::example Bill Customer — method tabs
-{{button:blue|Stripe bill}} &nbsp; {{button:outline|HouseCall Pro}} &nbsp; {{button:outline|Physical invoice}}
+{{button:blue|Stripe bill}} &nbsp; {{button:outline|Physical invoice}} &nbsp; {{button:outline|▾}}
 :::
 
 - **Stripe bill** — creates and sends a hosted Stripe invoice by email. This is the standard path; payment status syncs back automatically.
-- **HouseCall Pro** — records a bill you sent through HCP.
 - **Physical invoice** — a mailed paper invoice, with a date and optional memo.
+- **▾** — reveals **HouseCall Pro**, which records a bill you sent through HCP. It's tucked away on purpose; most billing should go through Stripe.
 
 A job needs a linked customer (with an email, for Stripe) before it can be billed — the modal guides you if something's missing.
 
