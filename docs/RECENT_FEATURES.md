@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1527)
+last_updated: 2026-08-10 (v2.1528)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1528)
+
+### Pipeline: creating a job clears the search and reveals the new row (2026-08-10)
+Owner-requested: after adding a job from Jobs → Pipeline, the board should clear the search and navigate to the new job. Two pieces. (1) [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx)'s imperative `focusJob` now **clears `stagesSearchQuery` first** — a live query would filter out the very row it's about to scroll to; this also fixes the pre-existing `?stagesJob=` trade-pill deep link, which silently failed to reveal the row while a search was active. (2) [`Jobs.tsx`](../src/pages/Jobs.tsx) wires the (previously unused) `onCreatedJobId` callback on both `openNewJob` call sites (toolbar `openNew` + the `?newJob=true` router) into new `pendingNewJobFocusId` state; an effect waits until the post-save `loadJobs()` refetch actually lands the job in the shared cache (`jobs.some(...)` — no busy-flag races), then drives `focusJob` (open section, scroll + flash) and clears the pending id. Off the Pipeline tab the pending id is dropped so a later tab switch can't produce a surprise scroll. Render test (+1 in [`JobsStagesTab.render.test.tsx`](../src/components/jobs/JobsStagesTab.render.test.tsx)) pins the focusJob contract: search cleared, section opened, row visible. Verified live: with the search set to a no-match string, New Job → Create Job cleared the search, scrolled to the new row at the top of Working, and flashed it (scratch job deleted after). Help guide `ready-to-bill-pipeline` mentions the reveal. Client-only — no migration.
 
 ## Latest Updates (v2.1527)
 

@@ -11,7 +11,7 @@ Every job moves through one pipeline. This guide covers the billing half — how
 {{chip:gray|Waiting}} → {{chip:blue|Working}} → {{chip:yellow|Ready to bill}} → {{chip:red|Billed}} → {{chip:green|Paid}}
 :::
 
-New jobs — from **New Job** or from an accepted estimate — land straight in {{chip:blue|Working}}. {{chip:gray|Waiting}} is a parking stage you send a job back to.
+New jobs — from **New Job** or from an accepted estimate — land straight in {{chip:blue|Working}}. {{chip:gray|Waiting}} is a parking stage you send a job back to. When you create a job with **New Job** on the Pipeline, the board clears any search you had typed, scrolls to the new job, and flashes its row so you can see exactly where it landed.
 
 ## Reading the Progress & payment bar
 

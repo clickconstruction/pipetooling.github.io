@@ -177,6 +177,12 @@ export default function Jobs() {
 
   const jobsListPipelineBusy = jobsListLoading || jobsListRefreshing
 
+  /**
+   * Job created via New Job: once the post-save refetch lands it in the cache,
+   * clear the Pipeline search and show it (same focus flow as ?stagesJob=).
+   */
+  const [pendingNewJobFocusId, setPendingNewJobFocusId] = useState<string | null>(null)
+
   const tryOpenEditJob = useCallback(
     (jobId: string, options?: OpenEditJobOptions) => {
       if (jobsListPipelineBusy) {
@@ -902,6 +908,7 @@ export default function Jobs() {
         onSaved: () => {
           void loadJobs()
         },
+        onCreatedJobId: setPendingNewJobFocusId,
       })
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -1149,6 +1156,20 @@ export default function Jobs() {
       return next
     }, { replace: true })
   }, [stagesJobParam, jobsListLoading, activeTab, setSearchParams])
+
+  // New job saved: wait for the onSaved refetch to land it in the cache, then
+  // clear the Pipeline search and scroll to + flash its row (focusJob). Off the
+  // Pipeline tab the pending id is dropped — no deferred surprise scroll later.
+  useEffect(() => {
+    if (!pendingNewJobFocusId) return
+    if (activeTab !== 'stages') {
+      setPendingNewJobFocusId(null)
+      return
+    }
+    if (!jobs.some((j) => j.id === pendingNewJobFocusId)) return
+    stagesTabRef.current?.focusJob(pendingNewJobFocusId)
+    setPendingNewJobFocusId(null)
+  }, [pendingNewJobFocusId, jobs, activeTab])
 
 
 
@@ -1441,6 +1462,7 @@ export default function Jobs() {
         void loadJobs()
         refreshCustomersAfterJobFormSave()
       },
+      onCreatedJobId: setPendingNewJobFocusId,
     })
   }
 

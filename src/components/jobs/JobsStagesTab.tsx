@@ -1278,6 +1278,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusJob: (jobId: string) => {
         const job = jobs.find((j) => j.id === jobId)
         if (job) {
+          // A live search would filter out the row we're about to scroll to.
+          setStagesSearchQuery('')
           const section = stagesSectionKeyForJobStatus(job.status)
           if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
           setPendingStagesJobFocusId(jobId)

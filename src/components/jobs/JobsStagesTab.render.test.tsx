@@ -201,6 +201,26 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('take me to Job: Stages: Billed')).toBeTruthy()
   })
 
+  it('focusJob clears an active search and opens the job’s section (new-job reveal, v2.1528)', () => {
+    const ref = createRef<JobsStagesTabHandle>()
+    const jobs = [
+      makeJob({ id: 'job-new', job_name: 'Fresh Casa', status: 'waiting' }),
+      makeJob({ job_name: 'Working Duplex', status: 'working' }),
+    ]
+    renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs })} />)
+    // A search that hides the waiting job entirely
+    fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Duplex' } })
+    expect(screen.getByText(/Waiting \(0\)/)).toBeTruthy()
+    act(() => {
+      ref.current!.focusJob('job-new')
+    })
+    // Search cleared, Waiting opened, and the job row is on screen
+    expect((screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement).value).toBe('')
+    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Fresh Casa')).toBeTruthy()
+  })
+
   it('GC/development filters live in the ⋯ tools menu, not the search bar (v2.1232)', () => {
     const jobs = [
       makeJob({ job_name: 'Horton House', gcCustomer: { id: 'gc-1', name: 'D.R. Horton' } }),
