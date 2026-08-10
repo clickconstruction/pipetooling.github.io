@@ -13,7 +13,10 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import {
+  buildDupJobEnrichments,
   buildDuplicateJobAddressGroups,
+  formatDaysAgoShort,
+  type DupJobEnrichment,
   type DuplicateAddressGroup,
   type DuplicateAddressJob,
 } from '../../lib/duplicateJobAddressGroups'
@@ -121,6 +124,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [dupError, setDupError] = useState<string | null>(null)
   const [dupGroups, setDupGroups] = useState<DuplicateAddressGroup<DupFinderJob>[]>([])
   const [dupKeep, setDupKeep] = useState<{ address: string; jobId: string } | null>(null)
+  const [dupEnrich, setDupEnrich] = useState<Map<string, DupJobEnrichment>>(() => new Map())
   const [cLineDetailOpen, setCLineDetailOpen] = useState(false)
 
   /** Auto-open the Line items detail for short lists once both previews resolve; long lists start collapsed. */
@@ -177,6 +181,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     setDupError(null)
     setDupGroups([])
     setDupKeep(null)
+    setDupEnrich(new Map())
 
     setSJobSearch('')
     setSJobCandidates([])
@@ -519,8 +524,39 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     if (res.error) {
       setDupError(res.error)
       setDupGroups([])
+      setDupEnrich(new Map())
+      setDupLoading(false)
+      return
+    }
+    const groups = buildDuplicateJobAddressGroups(res.data as DupFinderJob[])
+    setDupGroups(groups)
+    // Evidence pass: line items + payments for just the grouped jobs, two batched queries.
+    // Failure-tolerant — rows still render (without the detail lines) if either fetch dies.
+    const ids = groups.flatMap((g) => g.jobs.map((j) => j.id))
+    if (ids.length > 0) {
+      try {
+        const [fx, pay] = await Promise.all([
+          withSupabaseRetry(
+            () => supabase.from('jobs_ledger_fixtures').select('job_id, name, count, line_unit_price').in('job_id', ids),
+            'dup finder fixtures',
+          ),
+          withSupabaseRetry(
+            () => supabase.from('jobs_ledger_payments').select('job_id, amount, paid_on, created_at').in('job_id', ids),
+            'dup finder payments',
+          ),
+        ])
+        setDupEnrich(
+          buildDupJobEnrichments(
+            (fx ?? []) as Array<{ job_id: string; name: string | null; count: number | null; line_unit_price: number | null }>,
+            (pay ?? []) as Array<{ job_id: string; amount: number | null; paid_on: string | null; created_at: string | null }>,
+            Date.now(),
+          ),
+        )
+      } catch {
+        setDupEnrich(new Map())
+      }
     } else {
-      setDupGroups(buildDuplicateJobAddressGroups(res.data as DupFinderJob[]))
+      setDupEnrich(new Map())
     }
     setDupLoading(false)
   }
@@ -1570,19 +1606,18 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                         const chip = jobPickerStatusChip(j.status)
                         const opened = dupFinderOpenedLabel(j.created_at)
                         const isKept = keptId === j.id
+                        const en = dupEnrich.get(j.id)
                         return (
                           <div
                             key={j.id}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
                               padding: '0.45rem 0.75rem',
                               borderBottom: '1px solid var(--border)',
                               fontSize: '0.8125rem',
                               background: isKept ? 'var(--bg-blue-tint)' : 'var(--surface)',
                             }}
                           >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {(j.job_name ?? '').trim() || '—'}
                             </span>
@@ -1600,9 +1635,6 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                               >
                                 {chip.label}
                               </span>
-                            ) : null}
-                            {opened ? (
-                              <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{opened}</span>
                             ) : null}
                             <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
                               {g.jobs.length === 2 ? (
@@ -1666,6 +1698,37 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                                 </button>
                               )}
                             </span>
+                            </div>
+                            {en ? (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {en.lineCount > 0 ? (
+                                  <>
+                                    <strong>
+                                      {en.lineCount} {en.lineCount === 1 ? 'line' : 'lines'} · ${formatCurrency(en.lineRevenue)}
+                                    </strong>{' '}
+                                    — {en.lineSummary}
+                                  </>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)' }}>No line items</span>
+                                )}
+                              </div>
+                            ) : null}
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                              {en ? (
+                                en.lastPaidDaysAgo !== null ? (
+                                  <>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-green-800)' }}>
+                                      Last paid {formatDaysAgoShort(en.lastPaidDaysAgo)}
+                                    </span>
+                                    {` ($${formatCurrency(en.paidTotal)}${en.lineRevenue > 0 ? ` of $${formatCurrency(en.lineRevenue)}` : ''})`}
+                                  </>
+                                ) : (
+                                  'No payments yet'
+                                )
+                              ) : null}
+                              {en && opened ? ' · ' : ''}
+                              {opened ?? ''}
+                            </div>
                           </div>
                         )
                       })}
