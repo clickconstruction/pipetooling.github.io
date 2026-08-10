@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1505',
+    date: '2026-08-09',
+    title: 'Clock In: cleaner job rows',
+    kind: 'feature',
+    highlights: [
+      'Trade tags in the Clock In and Update Focus pickers lose their square brackets, and numbers read J927 instead of JP927 — the tag already says the trade.',
+    ],
+  },
+  {
     version: 'v2.1504',
     date: '2026-08-09',
     title: 'Search: cleaner job and bid numbers',

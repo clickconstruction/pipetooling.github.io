@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1504)
+last_updated: 2026-08-09 (v2.1505)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1505)
+
+### Clock In/Out — plain J/B numbers and bracket-free trade tags (2026-08-09)
+Owner-requested follow-through of the v2.1504 rule into [`ClockInOutButton`](../src/components/ClockInOutButton.tsx): (1) all seven literal `[tag]` renders lose their square brackets — the PLUM/ELEC/HVAC pills now match the header search's; (2) the three search-result lists and three selected-association chips (Clock In / Update Focus / clock-out flows) pass `plainTradePrefixes` so rows read `plum J927`, not `[plum] JP927`; the working-board bid chips hardcode the plain `B` the same way. **"Use last" deliberately keeps the configured JP/BP** — it renders no pill, so the trade letter still carries information there. Display-only; search matching untouched. Verified live in the Clock In modal ("holub" → plum J927/J737/J686; Use last: JP959) — cancelled without punching.
 
 ## Latest Updates (v2.1504)
 
