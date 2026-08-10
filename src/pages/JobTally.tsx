@@ -11,7 +11,9 @@ import { MercuryTransactionNoteIcon } from '../components/icons/MercuryTransacti
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransactionsModal'
 import { TallyClockWindowAllocateModal } from '../components/tally/TallyClockWindowAllocateModal'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { TallySortModeCardList } from '../components/tally/TallySortModeCardList'
+import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
+import { formatTallyCurrency, formatTallyPostedParts } from '../lib/tally/formatTallyPosted'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
 import { mercuryRowPassesSortingStartDate } from '../lib/bankingSortingConfig'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
@@ -51,23 +53,6 @@ const TOUCH_MIN = 48
 type JobTallyTab = 'materials-estimate' | 'transactions'
 type TallyTxScope = 'all' | 'unlinked'
 
-function formatTallyCurrency(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
-
-function formatTallyPostedParts(iso: string | null): { date: string; weekday: string } | null {
-  if (!iso) return null
-  try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return null
-    return {
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ }),
-      weekday: d.toLocaleDateString('en-US', { weekday: 'long', timeZone: APP_CALENDAR_TZ }),
-    }
-  } catch {
-    return null
-  }
-}
 
 function TallyPostedDateOpenButton({
   posted,
@@ -280,6 +265,9 @@ export default function JobTally() {
   })
   const [tallyAllocModalRow, setTallyAllocModalRow] = useState<TallyLinkedMercuryRow | null>(null)
   const [tallyClockAllocateRow, setTallyClockAllocateRow] = useState<TallyLinkedMercuryRow | null>(null)
+  /** Sort mode (phone card flow, sub-like roles): open flag + purchase to start on. */
+  const [tallySortModeOpen, setTallySortModeOpen] = useState(false)
+  const [tallySortModeStartTxId, setTallySortModeStartTxId] = useState<string | null>(null)
   const [tallyJobDrilldown, setTallyJobDrilldown] = useState<{ jobId: string; label: string } | null>(null)
   const [tallyDebitCardFilterId, setTallyDebitCardFilterId] = useState<string | null>(null)
   const [tallyTxScope, setTallyTxScope] = useState<TallyTxScope>('unlinked')
@@ -290,6 +278,30 @@ export default function JobTally() {
   const [tallyUserNoteSaving, setTallyUserNoteSaving] = useState(false)
   const [tallyUserNoteError, setTallyUserNoteError] = useState<string | null>(null)
   const [tallyGlobalMinPostedYmd, setTallyGlobalMinPostedYmd] = useState<string | null>(null)
+
+  /** Sort-mode card memo save (empty clears); mirrors the table rows' saveMyNote. */
+  const saveTallyUserNoteForCard = useCallback(
+    async (txId: string, note: string): Promise<string | null> => {
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase.rpc('upsert_mercury_tally_transaction_note', {
+              p_mercury_transaction_id: txId,
+              p_body: note,
+            }),
+          'save tally my note (card)',
+        )
+        const t = note.trim()
+        setTallyTxRows((prev) =>
+          prev.map((r) => (r.mercury_transaction_id === txId ? { ...r, tally_user_note: t } : r)),
+        )
+        return null
+      } catch (err) {
+        return err instanceof Error ? err.message : 'Could not save note.'
+      }
+    },
+    [],
+  )
 
   const loadTallyTransactions = useCallback(async () => {
     if (!authUser?.id) return
@@ -1262,6 +1274,21 @@ export default function JobTally() {
                   </button>
                 </p>
               ) : (
+                isSubcontractorLikeRole(role as UserRole) ? (
+                  /* Phone card flow (v2.1542): sub-like roles sort purchases card-by-card
+                     instead of the sideways-scrolling table. */
+                  <TallySortModeCardList
+                    rows={tallyTxSorted}
+                    unlinkedCount={tallyUnlinkedCountInScope}
+                    jobLabelById={tallyJobLabelById}
+                    onStartSort={(txId) => {
+                      setTallySortModeStartTxId(txId ?? null)
+                      setTallySortModeOpen(true)
+                    }}
+                    onOpenAllocations={(row) => setTallyAllocModalRow(row)}
+                    onSaveMyNote={saveTallyUserNoteForCard}
+                  />
+                ) : (
                 <div
                   style={{
                     overflowX: 'auto',
@@ -1762,6 +1789,7 @@ export default function JobTally() {
                 </tbody>
               </table>
                 </div>
+                )
               )}
             </>
           )}
@@ -2253,6 +2281,21 @@ export default function JobTally() {
           void loadTallyTransactions()
         }}
       />
+
+      {authUser?.id ? (
+        <TallySortPurchaseModal
+          open={tallySortModeOpen}
+          rows={tallyTxSorted}
+          startTxId={tallySortModeStartTxId}
+          userId={authUser.id}
+          onClose={() => setTallySortModeOpen(false)}
+          onSaved={() => void loadTallyTransactions()}
+          onOpenFullAssign={(row) => {
+            setTallySortModeOpen(false)
+            setTallyAllocModalRow(row)
+          }}
+        />
+      ) : null}
 
       <MercuryTransactionAllocationsModal
         open={tallyAllocModalRow !== null}
