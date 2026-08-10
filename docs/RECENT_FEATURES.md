@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1532)
+last_updated: 2026-08-10 (v2.1533)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1533)
+
+### Dev setting: hide the legacy HCP entry field on New/Edit Job (2026-08-10)
+Owner-requested: HCP numbers are no longer issued, so the entry field is noise on new jobs — but existing numbers must never be hidden or lost. New self-contained dev block [`HideHcpFieldSettingsBlock`](../src/components/settings/HideHcpFieldSettingsBlock.tsx) at the top of Settings → Jobs & dispatch: a checkbox ("Hide the HCP field on New/Edit Job") that saves on toggle to new `app_settings` key **`hide_hcp_entry_field`** (value_text 'true', delete-when-off) and mirrors into localStorage (`pt-hide-hcp-entry-field`) so the modal reads it synchronously. [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) decides **once per open** via pure kernel [`shouldHideHcpEntryField`](../src/lib/hideHcpFieldSetting.ts) (flag on AND the job has no HCP value → hide; +3 unit tests): new jobs hide the empty field, jobs that already carry a number keep it fully visible and editable, and the field can never vanish mid-edit (a background `refreshHideHcpFieldCache` updates the mirror for the NEXT open). [`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx) gains the `hideHcpNumberField` prop. Search, chips, and `effectiveJobLedgerNumber` labels are untouched — existing HCP numbers keep working everywhere. Client-only — no migration.
 
 ## Latest Updates (v2.1532)
 

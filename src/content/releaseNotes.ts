@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1533',
+    date: '2026-08-10',
+    title: 'Option to hide the old HCP field',
+    kind: 'feature',
+    highlights: [
+      'A new dev setting (Settings → Jobs & dispatch) hides the HCP number box on New/Edit Job — HCP numbers are no longer issued, so the empty field just took up space.',
+      'Jobs that already have an HCP number keep showing it and it stays editable and searchable. Nothing is deleted.',
+    ],
+  },
+  {
     version: 'v2.1532',
     date: '2026-08-10',
     title: 'Pick a default owner for all new jobs',
