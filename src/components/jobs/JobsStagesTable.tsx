@@ -30,6 +30,7 @@ import {
   renderStagesJobHcpSubline,
   renderStagesThreadFullscreenJobHeader,
   renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
+  renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   renderStagesProjectBannerRow,
   shouldSuppressStagesRowJobThreadToggle,
   stagesRowHasProjectBanner,
@@ -220,6 +221,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   const renderStagesLastActivityCell = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null) =>
     renderStagesLastActivityCellWithCtx(stagesRowSharedCtx, job, billingLineForStripeHint)
 
+  const renderStagesQuickActionsStack = (job: JobWithDetails) =>
+    renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
+
   const stagesTableColCount = 5
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
@@ -294,6 +298,10 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   }}
                 >
                   {stagesEditMode ? renderStagesEditModeRail(j, openEdit) : null}
+                  {/* v2.1530: the quick-action stack moved here from the Activity cell. */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                  {renderStagesQuickActionsStack(j)}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                   {stagesHamMode ? (
                     <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -411,6 +419,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                       {renderStagesFieldAndBillingLines(j)}
                     </>
                   )}
+                  </div>
+                  </div>
                 </td>
                 <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
                   {renderStagesOpenDetailJobName(j)}
