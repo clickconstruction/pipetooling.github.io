@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1519',
+    date: '2026-08-10',
+    title: 'Dispatch mode: richer job picker',
+    kind: 'feature',
+    highlights: [
+      'The "Add job to schedule" picker in Dispatch mode now shows the same detailed rows as other job searches: pipeline status chips, the money rail with paid/unpaid recency, work-line summaries, and finished jobs grouped at the bottom.',
+    ],
+  },
+  {
     version: 'v2.1518',
     date: '2026-08-10',
     title: 'Mobile search stays out of the status bar',

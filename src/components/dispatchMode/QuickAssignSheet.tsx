@@ -11,8 +11,14 @@ import {
   fetchUsersTabRosterForScheduleDispatchHub,
   fetchUserNamesForIds,
   formatScheduleDispatchHubJobTitle,
+  sortJobPickerRowsFinishedLast,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import {
+  fetchJobSearchEvidence,
+  jobSearchEvidenceModeForRole,
+  type JobSearchEvidence,
+} from '../../lib/jobSearchEvidence'
 import {
   fetchDispatchSwimLanes,
   type DispatchSwimLanesData,
@@ -107,6 +113,7 @@ export default function QuickAssignSheet({
   const [job, setJob] = useState<ScheduleDispatchHubJobRow | null>(null)
   const [jobPickerOpen, setJobPickerOpen] = useState(false)
   const [jobRows, setJobRows] = useState<ScheduleDispatchHubJobRow[]>([])
+  const [pickerEvidence, setPickerEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
   const [jobSearch, setJobSearch] = useState('')
   const [jobNumberQuery, setJobNumberQuery] = useState('')
   const [selectedYmd, setSelectedYmd] = useState(todayYmd)
@@ -324,9 +331,8 @@ export default function QuickAssignSheet({
     onClose()
   }, [job, effectiveWindow, selected, authUser?.id, linked, selectedYmd, instructions, showToast, onScheduled, onClose])
 
-  if (!open) return null
-
-  const pickerRows: ScheduleDispatchAssignJobPickerRow[] = (() => {
+  /** Standard job-picker rows (hub parity): status chip + finished-last demotion + evidence rail. */
+  const pickerRows: ScheduleDispatchAssignJobPickerRow[] = useMemo(() => {
     const digits = jobNumberQuery.replace(/\D/g, '')
     const q = jobSearch.trim().toLowerCase()
     // "#" mode is exclusive and keeps the matcher's exact-then-prefix tier order.
@@ -343,15 +349,45 @@ export default function QuickAssignSheet({
                 (r.customer_name ?? '').toLowerCase().includes(q),
             )
             .sort(compareJobsByCreatedAtDesc)
-    return base
-      .slice(0, 60)
-      .map((r) => ({
-        id: r.id,
-        displayTitle: formatScheduleDispatchHubJobTitle(r.hcp_number, r.job_name, r.click_number),
-        serviceTypeName: r.service_type?.name ?? null,
-        subline: pickerSubline(r),
-      }))
-  })()
+    return sortJobPickerRowsFinishedLast(base.slice(0, 60)).map((r) => ({
+      id: r.id,
+      displayTitle: formatScheduleDispatchHubJobTitle(r.hcp_number, r.job_name, r.click_number),
+      serviceTypeName: r.service_type?.name ?? null,
+      subline: pickerSubline(r),
+      status: r.status ?? null,
+      evidence: pickerEvidence.get(r.id) ?? null,
+    }))
+  }, [jobRows, jobSearch, jobNumberQuery, pickerEvidence])
+
+  /** Enrich visible picker rows with money-rail evidence — short lists only, debounced, accumulating, failure-silent (hub pattern). */
+  useEffect(() => {
+    if (!open || !jobPickerOpen) return
+    if (pickerRows.length === 0 || pickerRows.length > 30) return
+    const missing = pickerRows.filter((r) => !pickerEvidence.has(r.id)).map((r) => r.id)
+    if (missing.length === 0) return
+    let cancelled = false
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const got = await fetchJobSearchEvidence(missing, jobSearchEvidenceModeForRole(role))
+          if (cancelled) return
+          setPickerEvidence((prev) => {
+            const next = new Map(prev)
+            for (const [k, v] of got) next.set(k, v)
+            return next
+          })
+        } catch {
+          // Rows simply render without the rail.
+        }
+      })()
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [open, jobPickerOpen, pickerRows, pickerEvidence, role])
+
+  if (!open) return null
 
   const jobPill = job ? buildServiceTypeTradePill(job.service_type?.name) : null
 
@@ -813,6 +849,7 @@ export default function QuickAssignSheet({
         }
         subtitle={null}
         jobRows={pickerRows}
+        evidenceMode={jobSearchEvidenceModeForRole(role)}
         searchValue={jobSearch}
         onSearchChange={setJobSearch}
         numberQuery={jobNumberQuery}
