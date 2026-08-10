@@ -5,7 +5,7 @@ file: docs/JOB_TALLY_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the JobTally.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what each tab of the ~2,330-line src/pages/JobTally.tsx touches (state, loaders, handlers, memos, supabase tables/RPCs, page-level modals, cross-tab coupling) so extraction can proceed without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-10
 ---
 
 ## What this surface is
@@ -21,6 +21,8 @@ The page is tab-switched on a single `activeTab` state; the type union is `JobTa
 ```
 
 URL slugs differ from state keys: `?tab=transactions` ↔ `'transactions'` (the default; any other/missing value is rewritten to it with `replace: true`), `?tab=materials` ↔ `'materials-estimate'`. **Transactions** is the landing tab: sort/allocate linked Mercury debit-card purchases to jobs. **Materials Estimate** is the original tally flow: pick a job, tally fixture parts, "Send to Office" (insert + auto-PO).
+
+**Mobile Sort mode (v2.1542):** for subcontractor-like roles the Transactions tab renders [`TallySortModeCardList`](../src/components/tally/TallySortModeCardList.tsx) instead of the table (cards; no horizontal scroll) and [`TallySortPurchaseModal`](../src/components/tally/TallySortPurchaseModal.tsx) (one-purchase-at-a-time sorting: day jobs from `lib/tally/fetchSortModeDayJobs` = clock sessions ∪ schedule blocks posted±1; split math kernel `lib/tally/sortModeSplit`; saves via the same `replace_mercury_job_splits_for_my_linked_card` RPC). Office/dev keep the table; both new components are Transactions-cluster members and move with the tab when it extracts.
 
 ### Key structural facts
 
@@ -137,9 +139,9 @@ Still inline — extract to `src/lib/tally/*` (or shared lib) with colocated tes
 | Candidate | Currently | Target + tests |
 |---|---|---|
 | `sortTallyRowsStable(list, sort)` | module-level in JobTally.tsx | `lib/tally/sortTallyRows.ts` — test null `posted_at` → epoch 0, counterparty haystack includes `note` + `tally_user_note`, stable `mercury_transaction_id` tiebreak, asc/desc |
-| `formatTallyPostedParts(iso)` | module-level | `lib/tally/formatTallyPosted.ts` — test invalid iso → null, `APP_CALENDAR_TZ` weekday/date parts |
+| ~~`formatTallyPostedParts(iso)`~~ | **extracted (v2.1542)** | `lib/tally/formatTallyPosted.ts` (with `formatTallyCurrency`) — consumed by JobTally + the Sort-mode components |
 | `formatLinkedCardDisplayLabel(card)` | module-level | same file or `lib/tally/cardLabel.ts` — test nickname trim, `Card <8>…` fallback |
-| `formatTallyCurrency(n)` | module-level | check for an existing shared currency formatter first; otherwise move alongside |
+| ~~`formatTallyCurrency(n)`~~ | **extracted (v2.1542)** | moved to `lib/tally/formatTallyPosted.ts` alongside the posted-parts formatter |
 | `tallyJobLabelById` builder (jobs + job-split merge loop) | `useMemo` body (~445–464) | pure `buildTallyJobLabelById(jobs, rows)` — test hcp·name join, fallback to id, splits filling unknown jobs, no overwrite of known jobs |
 | payroll chip totals (count + `Σ|amount|`) | inline IIFE (~1014–1018) | trivial pure fn — optional, fold into the tab move if skipped |
 | `handleSave` kernel: build `jobs_tally_parts` rows (`sequence_order`, null `part_id` for sent fixtures) + align returned `inserted[i].id` to part entries | inline in `handleSave` (~761–796) | `lib/tally/tallyPartsSave.ts` `buildTallyPartRows(entries, jobId, userId)` + `partInsertedIds(entries, inserted)` — test the index alignment (it silently assumes insert-order response; a test pins that contract) and the fixture-sent null path |

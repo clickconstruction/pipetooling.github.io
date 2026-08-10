@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1542',
+    date: '2026-08-10',
+    title: 'Tally on your phone: sort purchases like cards',
+    kind: 'feature',
+    highlights: [
+      'The Transactions tab is now a card list on field phones — store, amount, and day, with a big Sort to job button. No more sideways scrolling.',
+      'Sort N purchases walks your unsorted purchases one at a time: your jobs from that day (clocked or scheduled, day before through day after) appear as big buttons — tap the job, confirm, next.',
+      'Tap a second job to split: starts even, type an exact amount and the other line balances itself. Undo right after any save.',
+      'Another job… still opens the full assign window, and + memo lets you jot what the purchase was for.',
+    ],
+  },
+  {
     version: 'v2.1541',
     date: '2026-08-10',
     title: 'Helper dashboard: clock activity moves next to My Time',

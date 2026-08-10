@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1541)
+last_updated: 2026-08-10 (v2.1542)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1542)
+
+### Tally Transactions: mobile Sort mode — cards + one-purchase-at-a-time sorting (2026-08-10)
+Owner approved the "Tally on a phone — sort purchases to jobs" mockup after a walkthrough of Helper Paige's live 375px view (sideways-scrolling table; the search-first Assign modal as the primary path; the schedule-based clock-window flow hidden behind tapping the posted date). For **subcontractor-like roles**, the Transactions tab now renders new [`TallySortModeCardList`](../src/components/tally/TallySortModeCardList.tsx) instead of the table: one card per purchase (merchant, absolute amount, weekday) with a **Sort to job** button, a green ✓ job-label button on sorted rows (opens the full Assign modal to edit), an inline **+ memo** editor (same `upsert_mercury_tally_transaction_note` RPC via new component-scope `saveTallyUserNoteForCard`), and a **"Sort N purchases →"** CTA. That CTA opens new [`TallySortPurchaseModal`](../src/components/tally/TallySortPurchaseModal.tsx): one purchase at a time (progress `1 of 7`, Back/Skip), with **the user's day jobs as big buttons** — new [`fetchSortModeDayJobs`](../src/lib/tally/fetchSortModeDayJobs.ts) unions clock-session jobs and schedule-block jobs across the posted day ±1 (the two sources the old modals used separately). Tap one job → armed full-amount assign; tap two+ → **split editor** starting even with per-job amount fields that auto-balance (new pure kernel [`sortModeSplit.ts`](../src/lib/tally/sortModeSplit.ts): `buildEvenSortModeSplit` / `setSortModeSplitAmount` clamp + last-line balancing / `sortModeSplitRemainder`; +8 unit tests). Saves go through the same **`replace_mercury_job_splits_for_my_linked_card`** RPC the clock-window modal uses; every save shows an in-modal **Undo** (replace back to empty, steps back to that purchase). **"Another job…"** hands off to the existing Assign modal. Stage-A extraction rode along: `formatTallyCurrency` + `formatTallyPostedParts` moved to [`lib/tally/formatTallyPosted.ts`](../src/lib/tally/formatTallyPosted.ts) (per `JOB_TALLY_ARCHITECTURE.md`, doc updated). Office/dev keep the table and payroll cluster untouched. Render tests +7 across both components. Verified live as Paige at 375px: card list with 7 purchases, Sort screen showed 4 day-job candidates for the Saturday Reece run, two taps produced the $22.78/$22.78 even split, editing to $30.00 auto-balanced $15.56 (closed without saving). New help guide `sort-card-purchases-to-jobs`. Client-only — no migration.
 
 ## Latest Updates (v2.1541)
 
