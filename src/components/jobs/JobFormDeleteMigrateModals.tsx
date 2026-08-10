@@ -3,6 +3,10 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useMemo } from 'react'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 
 type JobFormDeleteMigrateModalsProps = {
   editing: JobWithDetails | null
@@ -83,6 +87,16 @@ export function JobFormDeleteMigrateModals({
     creatingMigrateBid,
     createMigrateBidError,
   } = migrate
+
+  const prefixMap = useLedgerPrefixMap()
+  const migrateCandidatesUnified = useMemo(
+    () => [
+      ...migrateTargetCandidates.map((j) => ({ source: 'job' as const, ...j, click_number: j.click_number ?? null })),
+      ...migrateBidCandidates.map((b) => ({ source: 'bid' as const, ...b })),
+    ],
+    [migrateTargetCandidates, migrateBidCandidates],
+  )
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(migrateCandidatesUnified)
 
   const targetingBid = migrateTargetKind === 'bid'
   const confirmDisabled = migratingJob || (targetingBid ? !migrateTargetBidId : !migrateTargetJobId)
@@ -455,11 +469,12 @@ export function JobFormDeleteMigrateModals({
                         fontSize: '0.8125rem',
                       }}
                     >
-                      <strong>{(b.bid_number ?? '').trim() || '—'}</strong> — {(b.project_name ?? '').trim() || '—'}
-                      <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
-                        {(b.customer_name ?? '').trim() || '—'}
-                        {(b.address ?? '').trim() ? ` · ${b.address}` : ''}
-                      </div>
+                      <UnifiedSearchResultRow
+                        result={{ source: 'bid', ...b, bid_number: b.bid_number ?? '' }}
+                        prefixMap={prefixMap}
+                        bidEvidence={bidEvidence.get(b.id)}
+                        evidenceMode={evidenceMode}
+                      />
                     </button>
                   </li>
                 ))}
@@ -539,8 +554,12 @@ export function JobFormDeleteMigrateModals({
                       fontSize: '0.8125rem',
                     }}
                   >
-                    <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                    <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                    <UnifiedSearchResultRow
+                      result={{ source: 'job', ...j }}
+                      prefixMap={prefixMap}
+                      jobEvidence={jobEvidence.get(j.id)}
+                      evidenceMode={evidenceMode}
+                    />
                   </button>
                 </li>
               ))}

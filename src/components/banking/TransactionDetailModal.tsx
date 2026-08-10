@@ -31,6 +31,8 @@ import {
   type AccountingRuleForMatch,
 } from '../../lib/accountingLabelRuleMatch'
 import { formatJobLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../../lib/dragSortDefaultLabels'
 import { TransactionContextModal } from './TransactionContextModal'
@@ -43,7 +45,7 @@ import {
 } from './AccountingRuleFormModal'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
-type JobSearchRow = { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string; service_type_id: string | null }
+type JobSearchRow = { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string; service_type_id: string | null; service_type_name?: string | null }
 
 type ReplaceSplitsCall = {
   p_mercury_transaction_id: string
@@ -115,6 +117,8 @@ export function TransactionDetailModal({
   const [lines, setLines] = useState<SplitLine[]>([])
   const [jobSearch, setJobSearch] = useState('')
   const [jobResults, setJobResults] = useState<JobSearchRow[]>([])
+  const jobResultsUnified = useMemo(() => jobResults.map((r) => ({ source: 'job' as const, ...r })), [jobResults])
+  const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(jobResultsUnified, { enabled: open })
   const [jobSearchLoading, setJobSearchLoading] = useState(false)
   const [savingSplits, setSavingSplits] = useState(false)
 
@@ -520,8 +524,12 @@ export function TransactionDetailModal({
                 <div style={{ maxHeight: 140, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                   {jobResults.map((r) => (
                     <button key={r.id} type="button" onClick={() => addJobLine(r)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer' }}>
-                      <span style={{ fontWeight: 600 }}>{formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name, r.click_number)}</span>
-                      <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
+                      <UnifiedSearchResultRow
+                        result={{ source: 'job', ...r }}
+                        prefixMap={ledgerPrefixMap}
+                        jobEvidence={jobEvidence.get(r.id)}
+                        evidenceMode={evidenceMode}
+                      />
                     </button>
                   ))}
                 </div>

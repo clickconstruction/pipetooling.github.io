@@ -8,7 +8,7 @@ import {
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { loadTeamLaborData } from '../../utils/teamLabor'
 
-type MigrateCandidate = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }
+type MigrateCandidate = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; service_type_id?: string | null; service_type_name?: string | null }
 type MigratePreview = { supply: number; tally: number; mercury: number; teamCost: number; teamHours: number }
 
 /** Bid rows from `search_bids_for_clock` — the same picker Clock-in uses. */
@@ -18,6 +18,8 @@ export type MigrateBidCandidate = {
   project_name: string
   address: string
   customer_name: string
+  service_type_id?: string | null
+  service_type_name?: string | null
 }
 
 /**
