@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1526)
+last_updated: 2026-08-10 (v2.1527)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1527)
+
+### People pickers: type a name, press Enter (2026-08-10)
+Owner-requested for the Edit Job modal: the searchable people dropdowns should let Enter select the top match, with arrow keys to navigate and Space or Enter to select. [`SearchableMultiSelect`](../src/components/SearchableMultiSelect.tsx)'s opt-in `keyboardSelect` mode (previously arrows + Space only, used only by the Checklist add modal) now also handles **Enter**: it toggles the highlighted person — or the top match before any arrowing, so *type "abra" → Enter* checks Abraham in one motion — then clears the query so the next name can be typed immediately (Space keeps the query for browsing; Enter is always `preventDefault`ed so it can never submit an enclosing form). The mode is now enabled on the three job people pickers: the Edit/New Job **Team "+" → Add people** modal ([`JobFormPeoplePicker`](../src/components/jobs/JobFormPeoplePicker.tsx)), the activity panel's **People on this job** modal ([`ManageJobPeopleModal`](../src/components/jobs/ManageJobPeopleModal.tsx)), and the **Schedule job** assignee list ([`ScheduleJobModal`](../src/components/jobs/ScheduleJobModal.tsx)). New render tests ([`SearchableMultiSelect.render.test.tsx`](../src/components/SearchableMultiSelect.render.test.tsx), 6) pin the contract: Enter-toggles-top-match-and-clears, arrow walk with wrap, Space keeps query, uncheck via Enter, no-matches no-op, and all-inert without the flag. Help guide `add-or-remove-people-on-a-job` documents the keyboard path. Client-only — no migration.
 
 ## Latest Updates (v2.1526)
 

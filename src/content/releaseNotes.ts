@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1527',
+    date: '2026-08-10',
+    title: 'Pick people with the keyboard',
+    kind: 'feature',
+    highlights: [
+      'In the job people pickers — Add people on Edit Job, People on this job, and Schedule job — you can now type a few letters and press Enter to select the top match. The search clears so you can type the next name right away.',
+      'Arrow keys move a highlight through the list, and Space or Enter checks or unchecks the highlighted person.',
+    ],
+  },
+  {
     version: 'v2.1526',
     date: '2026-08-10',
     title: 'Developer login works on any local port',
