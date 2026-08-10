@@ -13,6 +13,7 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { useAuth } from '../../hooks/useAuth'
+import { stripTrailingZip } from '../../lib/displayAddress'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -565,7 +566,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-          <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+          <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{stripTrailingZip(j.job_address) || '—'}</div>
           {en && en.lineCount > 0 ? (
             <div
               style={{ color: 'var(--text-600)', fontWeight: 400, fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}

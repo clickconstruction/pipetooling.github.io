@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1505)
+last_updated: 2026-08-09 (v2.1506)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1506)
+
+### Search polish — white trade-pill text, zip-free addresses (2026-08-09)
+Two owner-requested touches. (1) Header-search trade pills switch from dark `--text-on-bright-solid` to white, matching the Clock In pills. (2) New kernel [`displayAddress.ts`](../src/lib/displayAddress.ts) `stripTrailingZip` (zip-only — the state stays, deliberately unlike PeopleReviewTab's `stripAddressZipState` which drops ", TX 78209" whole; 4 tests incl. never-strip-the-whole-string) applied to search-row addresses in [`formatUnifiedResult`](../src/utils/unifiedJobBidSearch.ts) job/bid/customer branches + `formatUnifiedJobSchedulePrimaryLine` (header + Clock In), the schedule picker's `hubJobPickerSubline`, and the Combine candidate rows. Verified live: "heron" rows end at "…San Antonio, TX", pills white. Display-only — full addresses everywhere else (documents, Job Detail, maps links) untouched.
 
 ## Latest Updates (v2.1505)
 
