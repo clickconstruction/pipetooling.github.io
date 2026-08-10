@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSwimLaneDisplaySections,
+  filterSwimLaneSectionsByQuery,
   personMatchesLaneQuery,
+  swimLaneAccentColor,
   summarizeExpectedManpowerByLane,
   SWIM_LANE_EVERYONE_ELSE_LABEL,
 } from './dispatchSwimLaneSections'
@@ -97,5 +99,54 @@ describe('summarizeExpectedManpowerByLane', () => {
       'South crew',
     ])
     expect(summarizeExpectedManpowerByLane([R('a', 5)], lanesData([], []))).toEqual([])
+  })
+})
+
+describe('filterSwimLaneSectionsByQuery', () => {
+  const sections = [
+    { laneId: 'L1', label: 'Team Abraham', people: [P('abraham'), P('paige')] },
+    { laneId: 'L2', label: 'Office', people: [P('taunya'), P('grace')] },
+    { laneId: null, label: SWIM_LANE_EVERYONE_ELSE_LABEL, people: [P('behar')] },
+  ]
+
+  it('blank query returns sections untouched', () => {
+    expect(filterSwimLaneSectionsByQuery(sections, '')).toBe(sections)
+    expect(filterSwimLaneSectionsByQuery(sections, '   ')).toBe(sections)
+  })
+
+  it('team-name match keeps the whole team', () => {
+    expect(filterSwimLaneSectionsByQuery(sections, 'office')).toEqual([sections[1]])
+    expect(filterSwimLaneSectionsByQuery(sections, 'OFF')).toEqual([sections[1]])
+  })
+
+  it('person match narrows the section to matching people, case-insensitive', () => {
+    expect(filterSwimLaneSectionsByQuery(sections, 'grace')).toEqual([
+      { laneId: 'L2', label: 'Office', people: [P('grace')] },
+    ])
+  })
+
+  it('matches across teams and drops empty sections', () => {
+    // "a" hits Team Abraham by label, GRACE + TAUNYA by name, BEHAR by name.
+    const out = filterSwimLaneSectionsByQuery(sections, 'a')
+    expect(out.map((s) => s.label)).toEqual(['Team Abraham', 'Office', SWIM_LANE_EVERYONE_ELSE_LABEL])
+    expect(out[0]?.people.map((p) => p.userId)).toEqual(['abraham', 'paige'])
+    expect(filterSwimLaneSectionsByQuery(sections, 'zzz')).toEqual([])
+  })
+})
+
+describe('swimLaneAccentColor', () => {
+  it('is stable for the same lane id and null for Everyone else', () => {
+    const a = swimLaneAccentColor('lane-123')
+    expect(a).toMatch(/^#[0-9a-f]{6}$/)
+    expect(swimLaneAccentColor('lane-123')).toBe(a)
+    expect(swimLaneAccentColor(null)).toBeNull()
+  })
+
+  it('never hands a team the selection blue or conflict amber', () => {
+    for (const id of ['L1', 'L2', 'L3', 'a-b-c', 'zz-top', '0000']) {
+      const c = swimLaneAccentColor(id)
+      expect(c).not.toBe('#2563eb')
+      expect(c).not.toBe('#d97706')
+    }
   })
 })

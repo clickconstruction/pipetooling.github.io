@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1525',
+    date: '2026-08-10',
+    title: 'Dispatch schedule updates instantly + Quick Assign upgrades',
+    kind: 'feature',
+    highlights: [
+      'Scheduling a job or changing its time/day now shows up immediately — the page jumps to the day the work landed on and the calendar counts update right away. Coming back to the app also refreshes the schedule automatically.',
+      'Assign work opens on the day you were viewing (not today), and the date row now shows weekday letters.',
+      'New search box in Assign work finds teams and people by name, and teams are easier to tell apart: each has its own color, a header band with the member count, and a clear "✓ crew selected" state.',
+      'The whole Assign work flow is keyboard-friendly: Tab moves day → search → people → time → instructions → Schedule, with arrow keys inside the day and people lists and Space/Enter to select.',
+    ],
+  },
+  {
     version: 'v2.1524',
     date: '2026-08-10',
     title: 'Job Detail: clearer recorded-time section',
