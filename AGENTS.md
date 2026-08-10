@@ -18,7 +18,7 @@
 2. Navigate the browser to `http://localhost:<port>/dev-login?as=1&to=/<path>`
    - Example: `http://localhost:5173/dev-login?as=1&to=/settings`
    - The identity is fixed (v2.1517): dev login **always signs in as `robert@douglasmining.com`** — the `as=` value is ignored; its presence just triggers the auto-login. `to=` is where to land after login (defaults to `/dashboard`).
-3. It auto-fires on page load (no clicks) — mints a magic link via the `dev-login` Edge Function and drops you onto the app authenticated.
+3. It auto-fires on page load (no clicks) — mints a magic link via the `dev-login` Edge Function, verifies its token directly on the current origin (v2.1526), and drops you onto the app authenticated. **Any port works** — parallel sessions can run Vite on 5174/5177/… without being bounced to production by the auth redirect allow-list.
 
 **Requirements:** `VITE_DEV_LOGIN_SECRET` in `.env.local` (already set locally) + server-side `DEV_LOGIN_SECRET`.
 **Safety:** dev-only — gated on `import.meta.env.DEV`; production builds redirect `/dev-login` → sign-in.

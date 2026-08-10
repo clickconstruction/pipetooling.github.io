@@ -5,6 +5,27 @@ import { supabase } from '../lib/supabase'
 // Dev login always signs in as this account; ?as= / typed emails no longer pick the user.
 export const DEV_LOGIN_EMAIL = 'robert@douglasmining.com'
 
+/**
+ * Establish the session on THIS origin by verifying the magic link's token
+ * directly, instead of following the link. Following it round-trips through
+ * Supabase's redirect allow-list, which only knows a couple of localhost
+ * ports — any other dev-server port (parallel sessions) got bounced to prod.
+ * Returns an error message, or null after kicking off the redirect.
+ */
+async function signInFromActionLink(link: string, targetRedirect: string): Promise<string | null> {
+  let tokenHash: string | null = null
+  try {
+    tokenHash = new URL(link).searchParams.get('token')
+  } catch {
+    return 'Malformed login link'
+  }
+  if (!tokenHash) return 'Login link had no token'
+  const { error } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash })
+  if (error) return error.message
+  window.location.assign(targetRedirect)
+  return null
+}
+
 export default function DevLogin() {
   const [searchParams] = useSearchParams()
   const [redirectTo, setRedirectTo] = useState('/dashboard')
@@ -41,7 +62,9 @@ export default function DevLogin() {
         }
         const link = (data as { action_link?: string } | null)?.action_link
         if (link) {
-          window.location.href = link
+          void signInFromActionLink(link, targetRedirect).then((verifyErr) => {
+            if (verifyErr) setError(verifyErr)
+          })
         } else {
           setError('No login link returned')
         }
@@ -100,7 +123,8 @@ export default function DevLogin() {
     }
     const link = (data as { action_link?: string } | null)?.action_link
     if (link) {
-      window.location.href = link
+      const verifyErr = await signInFromActionLink(link, targetRedirect)
+      if (verifyErr) setError(verifyErr)
     } else {
       setError('No login link returned')
     }

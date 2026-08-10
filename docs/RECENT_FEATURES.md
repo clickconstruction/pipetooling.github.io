@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1525)
+last_updated: 2026-08-10 (v2.1526)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1526)
+
+### Dev login works on any port (2026-08-10)
+Agent-workflow fix found the hard way in a design-spike session: with two parallel sessions holding ports 5173/5175, a third dev server on 5174/5177 couldn't dev-login — the magic-link round-trip through Supabase's redirect allow-list bounced to production (`pipetooling.com`) because the port wasn't in `additional_redirect_urls`. [`DevLogin.tsx`](../src/pages/DevLogin.tsx) no longer follows the returned `action_link`: a new `signInFromActionLink` helper parses the link's `token` and calls `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })` directly, establishing the session on the current origin — no redirect, no allow-list dependency, so **any localhost port works**. Both the `?as=1` auto-fire and the manual form go through it; errors from a malformed/expired link surface in the existing error line. Edge function untouched (still returns `action_link`; no redeploy). Docs: `AGENTS.md` login section + `EDGE_FUNCTIONS.md` → dev-login auth-config note. Client-only, dev-only surface — no migration.
 
 ## Latest Updates (v2.1525)
 
