@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1514',
+    date: '2026-08-10',
+    title: 'Schedule & Combine: standard job identity',
+    kind: 'feature',
+    highlights: [
+      'Schedule job titles across the hub, pickers, Quick Assign, and day views now read J927 instead of a bare 927.',
+      'The Combine/Separate candidate rows adopt the full standard search row — trade tag, plain J number, Pipeline stage, and the money rail.',
+    ],
+  },
+  {
     version: 'v2.1513',
     date: '2026-08-10',
     title: 'Bid pickers: outcome and value at a glance',

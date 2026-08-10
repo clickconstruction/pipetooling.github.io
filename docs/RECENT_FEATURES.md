@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1513)
+last_updated: 2026-08-10 (v2.1514)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1514)
+
+### Search standard wave 6 — Schedule titles and Combine candidates align (2026-08-10)
+Two bare-number holdouts join the standard. (1) [`formatScheduleDispatchHubJobTitle`](../src/lib/scheduleDispatchHub.ts) gains the plain `J` prefix — one helper, so the hub Jobs table, add-job picker rows, Quick Assign, user-day sections, Quickfill schedule, and toasts all flip from `927 · Mike Holub` to `J927 · Mike Holub` together (typed bare numbers still match as substrings; jobs with no number render `— ·` as before). (2) [`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx)'s `renderCandidateBody` — the v2.1502 hand-rolled identity + boxed rail — becomes `UnifiedSearchResultRow` across all three candidate lists (pill + plain J + status chip + inline rail; its ~50-line bespoke render deleted; the evidence map it already maintained plugs straight in). Verified live: hub Jobs table shows J873/J346/J951; no e2e or unit spec pinned the old format. Full suite 4,098 green. Campaign: DispatchSettings chips picker + SubmissionFollowup numbers + tier-2 tables remain (see v2.1507).
 
 ## Latest Updates (v2.1513)
 

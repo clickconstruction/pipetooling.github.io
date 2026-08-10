@@ -13,7 +13,8 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { fetchJobsLedgerForScheduleDispatchHub, jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { useAuth } from '../../hooks/useAuth'
-import { stripTrailingZip } from '../../lib/displayAddress'
+import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -31,7 +32,7 @@ import type { Database } from '../../types/database'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
 
-type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string; click_number?: string }
+type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string; click_number?: string; service_type_id?: string | null; service_type_name?: string | null }
 
 type FixtureRow = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 
@@ -135,6 +136,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [dupEnrich, setDupEnrich] = useState<Map<string, DupJobEnrichment>>(() => new Map())
   /** Money-rail evidence for the search candidate lists (all three), accumulated per job id. */
   const [searchEvidence, setSearchEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
+  const candidatePrefixMap = useLedgerPrefixMap()
   const [cLineDetailOpen, setCLineDetailOpen] = useState(false)
 
   /** Auto-open the Line items detail for short lists once both previews resolve; long lists start collapsed. */
@@ -558,59 +560,15 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     }
   }, [open, cSourceCandidates, cTargetCandidates, sJobCandidates, searchEvidence, role])
 
-  /** Shared candidate-row body: identity + address + line names on the left, money rail on the right. */
+  /** Shared candidate-row body — the app-standard search row (pill, plain J, status, money rail). */
   function renderCandidateBody(j: JobSearchRow) {
-    const en = searchEvidence.get(j.id)
-    const mode = jobSearchEvidenceModeForRole(role)
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-          <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{stripTrailingZip(j.job_address) || '—'}</div>
-          {en && en.lineCount > 0 ? (
-            <div
-              style={{ color: 'var(--text-600)', fontWeight: 400, fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              title={en.lineSummary}
-            >
-              {en.lineSummary}
-            </div>
-          ) : null}
-        </div>
-        {en ? (
-          <span
-            style={{
-              flexShrink: 0,
-              background: 'var(--bg-subtle)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '0.25rem 0.55rem',
-              textAlign: 'right',
-              display: 'inline-flex',
-              flexDirection: 'column',
-              gap: 1,
-              fontVariantNumeric: 'tabular-nums',
-              lineHeight: 1.25,
-            }}
-          >
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)' }}>
-              {mode === 'money'
-                ? `$${Math.round(en.lineRevenue).toLocaleString('en-US')}`
-                : `${en.lineCount} ${en.lineCount === 1 ? 'line' : 'lines'}`}
-            </span>
-            {mode === 'money' ? (
-              en.lastPaidDaysAgo !== null ? (
-                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
-                  paid {formatDaysAgoShort(en.lastPaidDaysAgo)}
-                </span>
-              ) : en.lineRevenue > 0 ? (
-                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
-              ) : (
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>no lines</span>
-              )
-            ) : null}
-          </span>
-        ) : null}
-      </div>
+      <UnifiedSearchResultRow
+        result={{ source: 'job', ...j }}
+        prefixMap={candidatePrefixMap}
+        jobEvidence={searchEvidence.get(j.id)}
+        evidenceMode={jobSearchEvidenceModeForRole(role)}
+      />
     )
   }
 
