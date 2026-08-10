@@ -78,6 +78,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     applyStagesInvoiceFocus: vi.fn(() => true),
     canOpenJobScheduleModal: true,
     setScheduleModalJob: vi.fn(),
+    openQuickAssignForJob: vi.fn(),
     authRole: 'dev',
     loadJobs: vi.fn(async () => []),
     ...overrides,
@@ -131,5 +132,19 @@ describe('JobsStagesTable render smoke', () => {
     const boxed = buttons.filter((b) => (b as HTMLElement).style.border.includes('rgb(34, 197, 94)'))
     expect(boxed).toHaveLength(1)
     expect(boxed[0]?.title).toContain('has a hazmat fee')
+  })
+
+  it('schedule quick action opens the Assign work sheet, even with no team members (v2.1536)', () => {
+    const teamless = makeJob({ job_name: 'No Team Yet', team_members: [] })
+    const openQuickAssignForJob = vi.fn()
+    const setScheduleModalJob = vi.fn()
+    renderWithProviders(
+      <JobsStagesTable {...makeProps({ jobList: [teamless], openQuickAssignForJob, setScheduleModalJob })} />,
+    )
+    const btn = screen.getByLabelText('Assign work — pick people and a time') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+    btn.click()
+    expect(openQuickAssignForJob).toHaveBeenCalledWith(expect.objectContaining({ id: teamless.id }))
+    expect(setScheduleModalJob).not.toHaveBeenCalled()
   })
 })

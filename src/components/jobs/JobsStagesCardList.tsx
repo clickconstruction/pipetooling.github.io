@@ -387,12 +387,11 @@ function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails, openDe
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            ctx.setScheduleModalJob(job)
+            ctx.openQuickAssignForJob(job)
           }}
-          disabled={scheduleNoTeam}
-          title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
-          aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
-          style={{ ...cardQuickIconStyle, cursor: scheduleNoTeam ? 'not-allowed' : 'pointer', color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a' }}
+          title="Assign work — pick people and a time"
+          aria-label="Assign work — pick people and a time"
+          style={{ ...cardQuickIconStyle, cursor: 'pointer', color: '#16a34a' }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
             <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
@@ -672,6 +671,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     applyStagesInvoiceFocus: props.applyStagesInvoiceFocus,
     canOpenJobScheduleModal: props.canOpenJobScheduleModal,
     setScheduleModalJob: props.setScheduleModalJob,
+    openQuickAssignForJob: props.openQuickAssignForJob,
     navigate,
     authRole: props.authRole,
     dispatchTaskModal,
@@ -870,6 +870,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     applyStagesInvoiceFocus: props.applyStagesInvoiceFocus,
     canOpenJobScheduleModal: props.canOpenJobScheduleModal,
     setScheduleModalJob: props.setScheduleModalJob,
+    openQuickAssignForJob: props.openQuickAssignForJob,
     navigate,
     authRole: props.authRole,
     dispatchTaskModal,
