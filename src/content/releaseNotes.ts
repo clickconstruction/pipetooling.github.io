@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1501',
+    date: '2026-08-09',
+    title: 'Schedule: job search shows the money at a glance',
+    kind: 'feature',
+    highlights: [
+      'Add job to schedule results now carry a summary box — job total, paid recency, and blocks this week — plus the specific work lines under each name.',
+      'Office roles see dollars; field roles see the work and dates only.',
+    ],
+  },
+  {
     version: 'v2.1500',
     date: '2026-08-09',
     title: 'Duplicate finder: each job shows its evidence',

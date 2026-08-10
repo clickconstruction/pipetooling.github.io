@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1500)
+last_updated: 2026-08-09 (v2.1501)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1501)
+
+### Job search — money-rail evidence rows in the schedule picker (2026-08-09)
+Wave 1 of the owner-chosen "design D" verbose job-search rows (mockup rounds picked money-rail over ledger-columns/chips/reveal). New shared kernel [`jobSearchEvidence.ts`](../src/lib/jobSearchEvidence.ts): `jobSearchEvidenceModeForRole` — **money** for dev/master/assistant/controller/primary, **lines-only** for field/estimating/superintendent (2 tests) — and `fetchJobSearchEvidence`, whose lines-only variant never selects price columns or payments (presentation gate backed by an actually narrower query). [`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx) rows gain optional `evidence` + `evidenceMode`: a line-names row under the subline and a boxed right rail — money mode: rounded revenue, green "paid X ago"/amber "unpaid", "N this wk"; lines-only: line count + blocks. Wired in [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx): debounced accumulate-cache effect enriches result lists of ≤30 rows only (search latency unchanged; big unfiltered lists stay plain). The modal's other three hosts (Quickfill, Quick Assign, user-day) pass no evidence and render exactly as before — waves 2+ (Job Mode picker lines-only, Combine/Tally, report pickers) pending. Verified live: "109 t" → 473 with $46,600/paid-4-mo rail vs demoted 346 with $252/unpaid.
 
 ## Latest Updates (v2.1500)
 
