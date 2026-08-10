@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1523',
+    date: '2026-08-10',
+    title: 'Bill send-backs work again',
+    kind: 'fix',
+    highlights: [
+      'A server-side fault was silently breaking "Void Stripe invoice" / bill send-backs (every attempt failed with a connection error). Found during split-bill testing and fixed the same day.',
+    ],
+  },
+  {
     version: 'v2.1522',
     date: '2026-08-10',
     title: 'Linking a matched customer works again',

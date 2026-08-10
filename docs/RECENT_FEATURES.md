@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1522)
+last_updated: 2026-08-10 (v2.1523)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1523)
+
+### void-stripe-invoice-for-revert: fix boot-failing duplicate declaration (2026-08-10)
+Found during the split-bill live test: every request to the deployed `void-stripe-invoice-for-revert` edge function returned **503 `BOOT_ERROR`** — bill send-backs and split-bill voids were dead server-side. Root cause: [`index.ts`](../supabase/functions/void-stripe-invoice-for-revert/index.ts) declared **`const r` twice in the same block scope** (the collect-payment send-back branch: the role read at ~114 and the invoice cast at ~153, both introduced by v2.1116) — a SyntaxError, so the module never parses. The running deployment had been an OLDER working bundle; the broken v2.1116 source apparently never booted, and today's routine redeploy replaced the old bundle with the unparseable source, surfacing the failure. Diagnosed by probe-bisecting the file against a scratch `zz-boot-probe` function (minimal serve → 200; full file → 503; file + rename → 200; probe deleted after). Fix: rename the invoice cast to `collectInv`, and harden the adjacent profile-role read (`(profile as … | null)?.role`) which dereferenced before its null check. **Deployed 2026-08-10**; OPTIONS returns 200 and the split-bill void step now completes. Lesson for `docs/EDGE_FUNCTIONS.md` readers: `npm run check:edge-drift` compares code, not boot health — a function can drift into an unbootable state silently.
 
 ## Latest Updates (v2.1522)
 
