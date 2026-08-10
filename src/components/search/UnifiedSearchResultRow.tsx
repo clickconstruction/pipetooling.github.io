@@ -118,11 +118,16 @@ export function UnifiedSearchResultRow({
   const statusChip = je ? jobPickerStatusChip(je.status) : null
   const showMoney = evidenceMode === 'money' && je !== null && je !== undefined && (je.lineRevenue > 0 || je.lineCount > 0)
 
+  const identityText = formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })
   const identity = (
-    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', flex: stacked ? undefined : 1, minWidth: 0 }}>
+    // One line, never wraps: a wrapping identity stranded the trade pill on its
+    // own line whenever the title was long (owner feedback, v2.1521) — the text
+    // ellipsizes instead and the full label lives in title.
+    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: stacked ? undefined : 1, minWidth: 0 }}>
       {pill ? (
         <span
           style={{
+            flexShrink: 0,
             fontSize: '0.65rem',
             fontWeight: 700,
             padding: '0.1rem 0.28rem',
@@ -139,7 +144,12 @@ export function UnifiedSearchResultRow({
       ) : null}
       {/* Plain J/B prefixes: the trade pill beside the number already says PLUM/ELEC/…,
           so the per-service-type letter (JP → J, BP → B) would repeat it. */}
-      <span>{formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}</span>
+      <span
+        style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        title={identityText}
+      >
+        {identityText}
+      </span>
     </span>
   )
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1521',
+    date: '2026-08-10',
+    title: 'Search results: tidier one-line titles',
+    kind: 'fix',
+    highlights: [
+      'Search result titles no longer wrap onto a second line (which could leave the trade tag stranded by itself) — long addresses now trail off with "…" and the status line below stays put.',
+    ],
+  },
+  {
     version: 'v2.1519',
     date: '2026-08-10',
     title: 'Dispatch mode: richer job picker',

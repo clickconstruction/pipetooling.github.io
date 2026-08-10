@@ -135,6 +135,21 @@ describe('UnifiedSearchResultRow', () => {
   })
 })
 
+describe('identity line never wraps (v2.1521)', () => {
+  it('ellipsizes the title instead of wrapping, keeping the pill on the same line', () => {
+    renderWithProviders(<UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} />)
+    const label = screen.getByText(/J927 · Mike Holub/)
+    const style = (label as HTMLElement).style
+    expect(style.whiteSpace).toBe('nowrap')
+    expect(style.textOverflow).toBe('ellipsis')
+    expect((label as HTMLElement).title).toContain('J927')
+    // The pill shares the identity line's direct flex parent (no wrap possible).
+    const identityLine = label.parentElement as HTMLElement
+    expect(identityLine.style.flexWrap).toBe('')
+    expect(identityLine.textContent).toContain('plum')
+  })
+})
+
 describe('bidSearchDateLabel', () => {
   it('prefers due date for non-terminal outcomes, sent date otherwise', () => {
     expect(bidSearchDateLabel({ bidValue: null, winLoss: null, dateSent: null, dueDate: '2026-05-05' })).toBe('due 5/5')
