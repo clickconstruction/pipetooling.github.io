@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1528)
+last_updated: 2026-08-10 (v2.1529)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1529)
+
+### Job Detail: photo header (Option B) + send-as-task from the header (2026-08-10)
+Owner-requested redesign of the Job Detail top (Option B of the mockup artifact "Job Detail header — refresh options") plus a header path into the checklist/inbox flow. [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx): the title is now **name-first** (`formatJobDetailModalTitleParts` — the HCP number rides as a small blue chip when present; no more `Job Detail: — |` dash), all actions collapse to **one wrapping row** (trade pill · share · **new purple send-as-task** · calendar · paid-email · gear · ✕; the header row `flexWrap`s so long names keep full width on phones), **Street View leads as a slim 110px banner** with the address pinned on it as a scrim pill (pill click → Google Maps, banner click → Street View; plain 📍 address row when no imagery), and the customer block drops its label, renders phone/email as tappable **contact chips** (faint dashed `no phone`/`no email` chips when missing), hides the **GC line when it duplicates the customer name**, and sits beside the Files/Photos icons in one row. The old two-column top-band grid and bottom 200px Street View block are gone; the schedule-context card and everything below are unchanged. **Send-as-task**: same preset as the Pipeline row quick action (`{{1:<num · name>}} — ` + `/jobs?jobDetail=<id>` link) via `useChecklistAddModal`; [`ChecklistAddModal`](../src/components/ChecklistAddModal.tsx) overlay z-index raised 1000 → **1012** so it stacks above Job Detail (1004) and Edit Job (1010). Verified live on Job 960 (desktop + 375×812: banner, scrim pill ellipsis, icon wrap, checklist modal stacking with preset). Help guide `ready-to-bill-pipeline` notes the header send arrow. Client-only — no migration.
 
 ## Latest Updates (v2.1528)
 

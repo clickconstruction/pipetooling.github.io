@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1529',
+    date: '2026-08-10',
+    title: 'Job Detail gets a cleaner top with a photo header',
+    kind: 'feature',
+    highlights: [
+      'The job name now leads the Job Detail window (with the job number as a small chip), and all the header buttons sit in one row.',
+      'Street View shows as a slim photo banner with the address pinned right on it — tap the address for directions, tap the photo for the full Street View. Phone and email are now tappable chips.',
+      'New purple send button in the header: send the job to someone as a task without leaving Job Detail — they get an inbox item whose job link opens this same window.',
+    ],
+  },
+  {
     version: 'v2.1528',
     date: '2026-08-10',
     title: 'New jobs show themselves on the Pipeline',
