@@ -45,6 +45,43 @@ export function bidSearchDateLabel(be: BidSearchEvidence): string | null {
   return sent ? `sent ${sent}` : null
 }
 
+/**
+ * The picked item's label — same identity language as the result rows (bare
+ * trade pill + plain J/B number) so a selection doesn't change format the
+ * moment it is chosen. Hosts own the chip container and its Clear button.
+ */
+export function UnifiedSearchSelectionLabel({
+  result: r,
+  prefixMap,
+}: {
+  result: UnifiedSearchResult
+  prefixMap: LedgerPrefixMap
+}) {
+  const tradePill = serviceTypeTagForUnifiedRow(r)
+  const pill = tradePill ?? customerTypePillForUnifiedRow(r)
+  return (
+    <>
+      {pill ? (
+        <span
+          style={{
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            padding: '0.1rem 0.28rem',
+            borderRadius: 3,
+            background: pill.color,
+            color: tradePill ? '#fff' : 'var(--text-strong)',
+            lineHeight: 1.2,
+            flex: 'none',
+          }}
+        >
+          {pill.tag}
+        </span>
+      ) : null}
+      <span>{formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}</span>
+    </>
+  )
+}
+
 const railChipStyle = {
   fontSize: '0.65rem',
   fontWeight: 600,

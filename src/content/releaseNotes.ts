@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1508',
+    date: '2026-08-09',
+    title: 'Task modals & session pickers: standard search rows',
+    kind: 'feature',
+    highlights: [
+      'The Send-to-Dispatch and Send-to-Estimator modals, the session assign popover, the clock-strip session modal, and the add-to-job/bid modal now show search results the same way the header search does — trade tag, plain J/B numbers, Pipeline stage, money, and this-week schedule count.',
+      'Square brackets around trade tags and doubled trade letters (JP927 next to a plum tag) are gone from all five.',
+    ],
+  },
+  {
     version: 'v2.1507',
     date: '2026-08-09',
     title: 'Search: job stage and schedule at a glance',

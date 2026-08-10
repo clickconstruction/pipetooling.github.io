@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import {
-  formatUnifiedResult,
-  getBidServiceTypeTag,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 
 type Props = {
@@ -26,6 +26,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
   const [loading, setLoading] = useState(false)
   const [selectedItem, setSelectedItem] = useState<UnifiedSearchResult | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const { jobEvidence, bidEvidence, evidenceMode } = useJobBidSearchEvidence(searchResults)
 
   useEffect(() => {
     const id = setTimeout(() => searchInputRef.current?.focus(), 0)
@@ -158,27 +159,13 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
                       fontSize: '0.875rem',
                     }}
                   >
-                    <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      {item.source === 'bid' &&
-                        (() => {
-                          const t = getBidServiceTypeTag(item.service_type_name)
-                          return t ? (
-                            <span
-                              style={{
-                                padding: '0.1rem 0.35rem',
-                                fontSize: '0.6875rem',
-                                fontWeight: 500,
-                                background: t.color,
-                                color: '#fff',
-                                borderRadius: 4,
-                              }}
-                            >
-                              [{t.tag}]
-                            </span>
-                          ) : null
-                        })()}
-                      {formatUnifiedResult(item, prefixMap)}
-                    </div>
+                    <UnifiedSearchResultRow
+                      result={item}
+                      prefixMap={prefixMap}
+                      jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
+                      bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
+                      evidenceMode={evidenceMode}
+                    />
                   </button>
                 )
               })
