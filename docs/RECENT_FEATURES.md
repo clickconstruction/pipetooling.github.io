@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1497)
+last_updated: 2026-08-09 (v2.1498)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1498)
+
+### Combine jobs — explainer folds behind an info toggle (2026-08-09)
+Owner-requested: the Combine tab's seven-line what-this-does paragraph in [`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx) now hides behind a right-aligned **ⓘ What does Combine do?** text-link toggle (same pattern as the Job form's "ⓘ What are line items?"), text unchanged when expanded, closed by default (`cInfoOpen`, reset on close). The modal's working area — both searches, the Source/Target/New summary, and the confirm buttons — now fits without scrolling. The irreversibility signal stays ambient via the red "Confirm migrate and delete source" button. Verified live (dark theme): collapsed by default, expands/collapses on click.
 
 ## Latest Updates (v2.1497)
 

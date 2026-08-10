@@ -98,6 +98,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
   const [cTargetPreview, setCTargetPreview] = useState<CombinePreview | null>(null)
 
   const [cMigrateBusy, setCMigrateBusy] = useState(false)
+  const [cInfoOpen, setCInfoOpen] = useState(false)
   const [cLineDetailOpen, setCLineDetailOpen] = useState(false)
 
   /** Auto-open the Line items detail for short lists once both previews resolve; long lists start collapsed. */
@@ -147,6 +148,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     setCTargetPreviewLoading(false)
     setCTargetPreview(null)
     setCMigrateBusy(false)
+    setCInfoOpen(false)
     setCLineDetailOpen(false)
 
     setSJobSearch('')
@@ -692,14 +694,36 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
             {activeTab === 'combine' ? (
               <div>
-                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-                  Move labor, parts, materials, Specific Work, and related rows from the <strong>source</strong> job into
-                  the <strong>target</strong> job, add the source <strong>Job total (revenue)</strong> to the target, then
-                  remove the source job. Matches <strong>Edit Job → Migrate and Delete</strong>. <strong>Moving the
-                  rows cannot be reversed</strong> — a dev can restore the removed source job for 90 days
-                  (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the
-                  target stays there.
-                </p>
+                <div style={{ margin: '0 0 1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCInfoOpen((v) => !v)}
+                      aria-expanded={cInfoOpen}
+                      style={{
+                        padding: 0,
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-link)',
+                        fontSize: '0.8125rem',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      ⓘ What does Combine do?
+                    </button>
+                  </div>
+                  {cInfoOpen ? (
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
+                      Move labor, parts, materials, Specific Work, and related rows from the <strong>source</strong> job into
+                      the <strong>target</strong> job, add the source <strong>Job total (revenue)</strong> to the target, then
+                      remove the source job. Matches <strong>Edit Job → Migrate and Delete</strong>. <strong>Moving the
+                      rows cannot be reversed</strong> — a dev can restore the removed source job for 90 days
+                      (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the
+                      target stays there.
+                    </p>
+                  ) : null}
+                </div>
 
                 <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   Job to remove (source)
