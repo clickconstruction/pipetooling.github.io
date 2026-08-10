@@ -1,9 +1,9 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { bidDisplayName, formatDateYYMMDD, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
+import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { BidProjectCell } from './BidProjectCell'
+import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -445,45 +445,18 @@ export function BidsCoverLetterTab({
         </div>
       )}
       {!selectedBidForPricing ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: 'var(--bg-subtle)' }}>
-              <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {coverLetterVisibleBids
-                .map((bid) => (
-                  <tr
-                    key={bid.id}
-                    onClick={() => onSelectBid(bid)}
-                    style={{
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
-                  >
-                    <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                  </tr>
-                ))}
-              {coverLetterVisibleBids.length === 0 && (
-                <tr>
-                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    {bids.length === 0
-                      ? 'No bids yet.'
-                      : onlyMyBids
-                        ? 'No bids you are the account manager or estimator for.'
-                        : 'No bids match your search.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <BidPickerStandardList
+          bids={coverLetterVisibleBids}
+          prefixMap={ledgerPrefixMap}
+          onSelectBid={onSelectBid}
+          emptyMessage={
+            bids.length === 0
+              ? 'No bids yet.'
+              : onlyMyBids
+                ? 'No bids you are the account manager or estimator for.'
+                : 'No bids match your search.'
+          }
+        />
       ) : (() => {
         const bid = selectedBidForPricing
         const customer = bid.customers

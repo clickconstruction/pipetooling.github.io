@@ -2,12 +2,11 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
-import { formatDateYYMMDD } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
-import { BidProjectCell } from './BidProjectCell'
+import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -1976,36 +1975,12 @@ export function BidsLaborTab({
         </div>
       )}
       {!selectedBidForCostEstimate && (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: 'var(--bg-subtle)' }}>
-              <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {costEstimateBidList.map((row) => {
-                const bid = row as unknown as BidWithBuilder
-                const sel = selectedBidForCostEstimate as BidWithBuilder | null
-                return (
-                  <tr
-                    key={bid.id}
-                    onClick={() => onSelectBid(bid)}
-                    style={{
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border)',
-                      background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
-                    }}
-                  >
-                    <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <BidPickerStandardList
+          bids={costEstimateBidList.map((row) => row as unknown as BidWithBuilder)}
+          prefixMap={ledgerPrefixMap}
+          onSelectBid={onSelectBid}
+          emptyMessage={costEstimateSearchQuery.trim() ? 'No bids match your search.' : null}
+        />
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
         <div>

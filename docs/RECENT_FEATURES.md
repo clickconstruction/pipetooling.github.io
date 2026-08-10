@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1512)
+last_updated: 2026-08-10 (v2.1513)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1513)
+
+### Search standard wave 5b — the eight bid pickers become full standard rows (2026-08-10)
+New shared [`BidPickerStandardList`](../src/components/bids/BidPickerStandardList.tsx) replaces the two-column `Project | Bid Date` tables on all eight no-bid-selected pickers — Counts, Takeoffs, Labor, Pricing, Cover Letter (via the retired-in-these-tabs `BidProjectCell` with its 0.7em `ᴮᴾ` mark), plus Change Order / RFI / Lien Release (whose rows showed NO number at all; their duplicated filter+empty-check closures collapse into one). Rows render `UnifiedSearchResultRow` with evidence built **locally** from the already-loaded `BidWithBuilder` (`bidWithBuilderToUnified` / `bidWithBuilderEvidence` — zero extra queries): outcome chip, $value, due/sent date replace the lone Bid Date column. Labor's dead `#eff6ff` selected-tint branch (unreachable — the table only renders with no selection) is gone with the table. Verified live on Counts: Lost $104,332 sent 4/30 / Won $1,683 / Pending $146,330 rows with plum pills and plain B numbers. `BidProjectCell` remains in use nowhere — kept for now pending a dead-code sweep. Full suite 4,098 green. Campaign: Schedule/Combine alignment + DispatchSettings picker + tier-2 tables remain (see v2.1507).
 
 ## Latest Updates (v2.1512)
 

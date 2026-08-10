@@ -19,7 +19,7 @@ import {
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { buildRoughTakeoffBreakdownHtml, buildExactTakeoffBreakdownHtml } from '../../lib/bidDocuments/takeoffBreakdown'
-import { bidDisplayName, formatDateYYMMDD } from '../../lib/bids/bidFormatting'
+import { bidDisplayName } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import {
   clampRoughQtyFromDraft,
@@ -33,7 +33,7 @@ import {
 import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
-import { BidProjectCell } from './BidProjectCell'
+import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { PartFormModal } from '../PartFormModal'
@@ -2750,31 +2750,12 @@ export function BidsTakeoffTab({
             </div>
           )}
           {!selectedBidForTakeoff && (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBidsForTakeoff.map((bid) => (
-                    <tr
-                      key={bid.id}
-                      onClick={() => onSelectBid(bid)}
-                      style={{
-                        borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
-                      <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <BidPickerStandardList
+              bids={filteredBidsForTakeoff}
+              prefixMap={ledgerPrefixMap}
+              onSelectBid={onSelectBid}
+              emptyMessage={takeoffSearchQuery.trim() ? 'No bids match your search.' : null}
+            />
           )}
           {/* Takeoff-book admin section (collapsible) + its version/entry form modals */}
           <TakeoffBookAdminSection
