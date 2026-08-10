@@ -83,11 +83,12 @@ export type StagesRowRenderContext = {
 
 /**
  * Minimum width for both Stages tables (JobsStagesTable + JobsStagesUnifiedTable).
- * They use table-layout: fixed with a colgroup whose sized columns total 676px,
- * so the flexible Job column only ever gets `minWidth − 676`. At the old 700px
- * minimum the Job column collapsed to ~24px on phones and its content overlapped
- * the Activity column; 940 keeps the Job column ≥ ~264px (the table scrolls
- * sideways inside its own wrapper instead).
+ * They use table-layout: fixed with a colgroup whose sized columns total 476px;
+ * the two flexible columns (Job and Activity) split the remaining
+ * `minWidth − 476` equally, and both keep growing as the page widens. At the
+ * old 700px minimum the Job column collapsed to ~24px on phones and its content
+ * overlapped the Activity column; 940 keeps each flexible column ≥ ~232px (the
+ * table scrolls sideways inside its own wrapper instead).
  */
 export const STAGES_TABLE_MIN_WIDTH = 940
 
@@ -1131,12 +1132,14 @@ export function renderStagesLastActivityCell(
   }
 
   // Card view reuses this cell verbatim minus the table wrapper: same flex
-  // shell, no td padding, and no desktop maxWidth clamp (cards are full-width).
-  const shell = (children: ReactNode, wide?: boolean) =>
+  // shell and no td padding (cards are full-width). The table cell carries no
+  // width clamp of its own — the colgroup governs, and the Activity column is
+  // flexible (it splits the leftover table width with the Job column).
+  const shell = (children: ReactNode) =>
     opts?.asDiv ? (
       <div style={{ ...tdShellStyle, padding: 0 }}>{children}</div>
     ) : (
-      <td style={wide ? { ...tdShellStyle, maxWidth: 280 } : tdShellStyle}>{children}</td>
+      <td style={tdShellStyle}>{children}</td>
     )
 
   if (!stat) {
@@ -1222,7 +1225,6 @@ export function renderStagesLastActivityCell(
         {renderStagesViewReportsFooterButton()}
       </div>
     </>,
-    true,
   )
 }
 

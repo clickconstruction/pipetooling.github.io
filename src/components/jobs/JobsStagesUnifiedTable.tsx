@@ -342,12 +342,13 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
       {/* tableLayout: fixed (v2.971, matching JobsStagesTable v2.967): widths come from the
           colgroup, never from content measurement — Billed/Collections rows loading or search
           filtering used to re-measure auto layout and jitter the Job / Last activity columns.
+          The two unspecified cols (Job, Activity) split the remaining width equally, so
           minWidth must exceed the colgroup's sized total (see STAGES_TABLE_MIN_WIDTH). */}
       <table style={{ width: '100%', minWidth: STAGES_TABLE_MIN_WIDTH, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: '9rem' }} />
           <col />
-          <col style={{ width: 200 }} />
+          <col />
           <col style={{ width: '12rem' }} />
           <col style={{ width: 140 }} />
         </colgroup>
