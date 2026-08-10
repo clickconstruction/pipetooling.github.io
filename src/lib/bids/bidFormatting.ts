@@ -95,16 +95,21 @@ export function bidDisplayName(b: Bid): string {
   return b.project_name || ''
 }
 
-export function formatBidNameWithValue(bid: BidWithBuilder): string {
+export function formatBidNameWithValue(bid: BidWithBuilder, prefixMap?: LedgerPrefixMap): string {
   const baseName = bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)
+  // Standard identity: lead with the configured bid number (these rows carry no
+  // trade pill, so the per-service-type prefix stays — e.g. BP356).
+  const num = (bid.bid_number ?? '').trim()
+  const numPrefix =
+    num && prefixMap ? `${resolveBidLedgerPrefix(bid.service_type_id, prefixMap)}${num} · ` : ''
 
   if (bid.bid_value != null && bid.bid_value !== 0) {
     const valueInThousands = Number(bid.bid_value) / 1000
     const formattedValue = valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)
-    return `${baseName} (${formattedValue})`
+    return `${numPrefix}${baseName} (${formattedValue})`
   }
 
-  return baseName
+  return `${numPrefix}${baseName}`
 }
 
 export function formatDesignDrawingPlanDate(dateStr: string | null): string {

@@ -23,7 +23,9 @@ import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLed
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
-import { formatBidLedgerDocTitle, formatJobLedgerDocTitle } from '../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber, formatJobLedgerDocTitle } from '../lib/ledgerDisplayPrefixes'
+import { bidSearchStatusChip } from '../lib/jobSearchEvidence'
+import { jobPickerStatusChip } from '../lib/scheduleDispatchHub'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
@@ -134,6 +136,7 @@ function documentsBidProposalsRowMatchesSearch(
   if (cx.primary.toLowerCase().includes(t)) return true
   if (cx.secondary && cx.secondary.toLowerCase().includes(t)) return true
   if (documentsBidStatusLabel(r).toLowerCase().includes(t)) return true
+  if (bidSearchStatusChip(r.outcome, r.bid_date_sent).label.toLowerCase().includes(t)) return true
   if (String(r.outcome ?? '').toLowerCase().includes(t)) return true
   if (formatBidValueCompact(r.bid_value != null ? Number(r.bid_value) : null).toLowerCase().includes(t)) return true
   const st = (r.service_type?.name ?? '').trim()
@@ -478,6 +481,7 @@ type LedgerJobRow = Pick<
   | 'customer_email'
 > & {
   customers: { name: string | null; address: string | null } | null
+  service_type?: { name: string | null } | null
 }
 
 type DocumentsJobLedgerInvoiceRow = Tables<'jobs_ledger_invoices'>
@@ -601,6 +605,7 @@ function documentsJobsRowMatchesSearch(
   if (cx.primary.toLowerCase().includes(t)) return true
   if (cx.secondary && cx.secondary.toLowerCase().includes(t)) return true
   if (documentsJobLedgerStatusLabel(r.status).toLowerCase().includes(t)) return true
+  if ((jobPickerStatusChip(r.status)?.label ?? '').toLowerCase().includes(t)) return true
   if (String(r.status ?? '').toLowerCase().includes(t)) return true
   if (formatJobRevenueUsd(r.revenue).toLowerCase().includes(t)) return true
   for (const inv of billedInvoices) {
@@ -613,7 +618,6 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
-  const prefixMap = useLedgerPrefixMap()
   const [rows, setRows] = useState<LedgerJobRow[]>([])
   const [invoicesByJobId, setInvoicesByJobId] = useState<Map<string, DocumentsJobLedgerInvoiceRow[]>>(() => new Map())
   const [loading, setLoading] = useState(true)
@@ -642,7 +646,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
             .from('jobs_ledger')
             .select(
               // jobs_ledger now has TWO customers FKs (customer_id + gc_customer_id, v2.1175) — the embed must name its FK.
-              'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers!jobs_ledger_customer_id_fkey(name, address)',
+              'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers!jobs_ledger_customer_id_fkey(name, address), service_type:service_types(name)',
             )
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),
@@ -776,9 +780,9 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                 const cx = jobLedgerCustomerLines(r)
                 const hcp = (r.hcp_number ?? '').trim()
                 const jn = (r.job_name ?? '').trim()
-                const titleText = hcp
-                  ? formatJobLedgerDocTitle(prefixMap, r.service_type_id ?? null, hcp, jn, r.click_number)
-                  : jn || '—'
+                const jobNum = effectiveJobLedgerNumber(hcp, r.click_number)
+                const titleText = jobNum ? `J${jobNum} · ${jn || '—'}` : jn || '—'
+                const jobTag = getBidServiceTypeTag(r.service_type?.name)
                 const addr = (r.job_address ?? '').trim()
                 const filesLink = (r.google_drive_link ?? '').trim()
                 const hasJobFiles = !!filesLink
@@ -817,7 +821,25 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                         </div>
                       </td>
                       <td style={tdStyle}>
-                        <Link to={`/jobs?edit=${encodeURIComponent(r.id)}`} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
+                        <Link
+                          to={`/jobs?edit=${encodeURIComponent(r.id)}`}
+                          style={{ color: 'var(--text-link)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        >
+                          {jobTag ? (
+                            <span
+                              style={{
+                                padding: '0.1rem 0.28rem',
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                background: jobTag.color,
+                                color: '#fff',
+                                borderRadius: 3,
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {jobTag.tag}
+                            </span>
+                          ) : null}
                           {titleText}
                         </Link>
                       </td>
@@ -830,7 +852,28 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
                         ) : null}
                       </td>
-                      <td style={tdStyle}>{documentsJobLedgerStatusLabel(r.status)}</td>
+                      <td style={tdStyle}>
+                        {(() => {
+                          const chip = jobPickerStatusChip(r.status)
+                          return chip ? (
+                            <span
+                              style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                padding: '0.06rem 0.45rem',
+                                borderRadius: 999,
+                                background: chip.background,
+                                color: chip.color,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {chip.label}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>{documentsJobLedgerStatusLabel(r.status)}</span>
+                          )
+                        })()}
+                      </td>
                       <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatJobRevenueUsd(r.revenue)}</td>
                     </tr>
                     {jobInvoices.map((inv) => {
@@ -880,7 +923,6 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
-  const prefixMap = useLedgerPrefixMap()
   const [rows, setRows] = useState<LedgerBidRow[]>([])
   const [countRowsByBidId, setCountRowsByBidId] = useState<Map<string, Array<{ fixture: string; count: number }>>>(
     () => new Map(),
@@ -1051,9 +1093,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
                 const addr = (r.address ?? '').trim()
                 const bidNum = r.bid_number != null && String(r.bid_number).trim() !== '' ? String(r.bid_number).trim() : null
                 const titleBase = (r.project_name ?? '').trim() || 'Untitled'
-                const titleText = bidNum
-                  ? formatBidLedgerDocTitle(prefixMap, r.service_type_id ?? null, bidNum, titleBase)
-                  : titleBase
+                const titleText = bidNum ? `B${bidNum} · ${titleBase}` : titleBase
                 const serviceTag = getBidServiceTypeTag(r.service_type?.name)
                 return (
                   <tr key={r.id}>
@@ -1128,15 +1168,16 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
                         {serviceTag ? (
                           <span
                             style={{
-                              padding: '0.1rem 0.35rem',
+                              padding: '0.1rem 0.28rem',
                               fontSize: '0.65rem',
-                              fontWeight: 500,
+                              fontWeight: 700,
                               background: serviceTag.color,
                               color: '#fff',
-                              borderRadius: 4,
+                              borderRadius: 3,
+                              lineHeight: 1.2,
                             }}
                           >
-                            [{serviceTag.tag}]
+                            {serviceTag.tag}
                           </span>
                         ) : null}
                         {titleText}
@@ -1151,9 +1192,28 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
                       ) : null}
                     </td>
-                    <td style={tdStyle}>{documentsBidStatusLabel(r)}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {formatBidValueCompact(r.bid_value != null ? Number(r.bid_value) : null)}
+                    <td style={tdStyle}>
+                      {(() => {
+                        const chip = bidSearchStatusChip(r.outcome, r.bid_date_sent)
+                        return (
+                          <span
+                            style={{
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              padding: '0.06rem 0.45rem',
+                              borderRadius: 999,
+                              background: chip.background,
+                              color: chip.color,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {chip.label}
+                          </span>
+                        )
+                      })()}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                      {r.bid_value != null ? `$${Math.round(Number(r.bid_value)).toLocaleString('en-US')}` : '—'}
                     </td>
                   </tr>
                 )

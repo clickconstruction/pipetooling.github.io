@@ -1,5 +1,6 @@
 /** Jobs → Job Summary tab: per-job cost rollup ledger with team-labor / parts / Mercury drilldowns.
  * Presentational — all data/state/loaders/modals live in the parent (Jobs.tsx) and arrive as props. */
+import { JobIdentityCell } from '../search/JobIdentityCell'
 import { Fragment, type CSSProperties, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react'
 import {
   formatCurrency,
@@ -509,9 +510,10 @@ export default function JobsJobSummaryTab({
                       const q = jobSummarySearch.trim().toLowerCase()
                       if (!q) return true
                       const hcp = (job.hcp_number ?? '').toLowerCase()
+                      const click = (job.click_number ?? '').toLowerCase()
                       const name = (job.job_name ?? '').toLowerCase()
                       const addr = (job.job_address ?? '').toLowerCase()
-                      return hcp.includes(q) || name.includes(q) || addr.includes(q)
+                      return hcp.includes(q) || click.includes(q) || name.includes(q) || addr.includes(q)
                     })
                     .flatMap(
                       (summaryRow) => {
@@ -591,7 +593,7 @@ export default function JobsJobSummaryTab({
                               <span style={{ marginRight: '0.35rem', color: 'var(--text-muted)', userSelect: 'none' }} aria-hidden>
                                 {expanded ? '▼' : '▶'}
                               </span>
-                              {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
+                              <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
                             </td>
                             <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
                             <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
