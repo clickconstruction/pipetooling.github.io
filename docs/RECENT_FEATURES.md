@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1518)
+last_updated: 2026-08-10 (v2.1519)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1519)
+
+### Dispatch mode Quick Assign job picker gets the standard rich rows (2026-08-10)
+Owner-reported from a phone screenshot: the "Add job to schedule" picker inside Dispatch mode's Quick Assign sheet showed bare rows (pill + title + date|address subline) while the hub's identical modal shows the full standard. [`QuickAssignSheet.tsx`](../src/components/dispatchMode/QuickAssignSheet.tsx) now mirrors [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx)'s wiring for the shared [`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx): rows pass `status` (pipeline chip; billed/paid demoted under the "Finished jobs" divider via `sortJobPickerRowsFinishedLast`, both search and "#" number mode) and `evidence` from a new debounced enrichment effect (hub pattern verbatim: ≤30 visible rows, 250ms, accumulating Map, failure-silent), with `evidenceMode={jobSearchEvidenceModeForRole(role)}` so office roles see the money rail (revenue + paid/unpaid recency) and field roles see lines-only. The inline `pickerRows` IIFE became a `useMemo` hoisted above the `!open` early return so the effect can key off it. Verified live in dispatch mode at 375×812: "Mike h" search renders Working/Paid chips, $46,600 · paid 4 mo ago rail, line summaries, Finished jobs divider. Client-only — no migration.
 
 ## Latest Updates (v2.1518)
 
