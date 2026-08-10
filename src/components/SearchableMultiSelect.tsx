@@ -25,7 +25,10 @@ export type SearchableMultiSelectProps = {
   pinSelectedToTop?: boolean
   /**
    * When true, the search input drives the list: ↓/↑ move a highlight and Space
-   * toggles the highlighted option (or the first one before any arrowing).
+   * or Enter toggle the highlighted option (or the first one before any
+   * arrowing — so typing a name then Enter selects the top match). Enter also
+   * clears the query, leaving the box ready for the next name; Space keeps the
+   * query so you can keep browsing the filtered list.
    * NOTE: Space then no longer types into the query.
    */
   keyboardSelect?: boolean
@@ -114,6 +117,18 @@ export function SearchableMultiSelect({
       if (!row) return
       onChange(toggleId(value, row.value, !value.includes(row.value)))
       if (activeIndex < 0) setActiveValue(row.value)
+      return
+    }
+    if (e.key === 'Enter') {
+      // Always swallow Enter so it never submits an enclosing form.
+      e.preventDefault()
+      const row = activeIndex >= 0 ? selectableRows[activeIndex] : selectableRows[0]
+      if (!row) return
+      onChange(toggleId(value, row.value, !value.includes(row.value)))
+      // Track by value so the highlight follows the row through a
+      // pinSelectedToTop reorder; clearing the query readies the next name.
+      setActiveValue(row.value)
+      if (query !== '') setQuery('')
     }
   }
 

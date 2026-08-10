@@ -168,6 +168,7 @@ export function ManageJobPeopleModal({
             listAriaLabel="Assignable people"
             searchPlaceholder="Search people…"
             pinSelectedToTop
+            keyboardSelect
           />
         )}
 
