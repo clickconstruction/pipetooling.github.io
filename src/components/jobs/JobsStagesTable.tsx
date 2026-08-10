@@ -116,6 +116,7 @@ export type JobsStagesTableProps = {
   applyStagesInvoiceFocus: StagesRowRenderContext['applyStagesInvoiceFocus']
   canOpenJobScheduleModal: StagesRowRenderContext['canOpenJobScheduleModal']
   setScheduleModalJob: StagesRowRenderContext['setScheduleModalJob']
+  openQuickAssignForJob: StagesRowRenderContext['openQuickAssignForJob']
   authRole: StagesRowRenderContext['authRole']
   loadJobs: StagesRowRenderContext['loadJobs']
   onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
@@ -181,6 +182,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
+    openQuickAssignForJob,
     authRole,
     loadJobs,
     onDevelopmentFilter,
@@ -208,6 +210,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
+    openQuickAssignForJob,
     navigate,
     authRole,
     dispatchTaskModal,

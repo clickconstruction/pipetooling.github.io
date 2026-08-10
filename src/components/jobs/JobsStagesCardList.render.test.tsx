@@ -78,6 +78,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     applyStagesInvoiceFocus: vi.fn(() => true),
     canOpenJobScheduleModal: true,
     setScheduleModalJob: vi.fn(),
+    openQuickAssignForJob: vi.fn(),
     authRole: 'dev',
     loadJobs: vi.fn(async () => []),
     ...overrides,

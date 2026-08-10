@@ -108,6 +108,7 @@ export default function QuickAssignSheet({
   onClose,
   onScheduled,
   initialYmd,
+  initialJob,
 }: {
   open: boolean
   onClose: () => void
@@ -115,6 +116,12 @@ export default function QuickAssignSheet({
   onScheduled?: (scheduledYmd: string) => void
   /** Day the sheet starts on when opened (defaults to today). */
   initialYmd?: string
+  /**
+   * Job pre-picked by the caller (e.g. the Jobs Pipeline schedule quick
+   * action): the sheet opens directly on the assign stage — day, people,
+   * time — instead of the job picker. "Change job" still opens the picker.
+   */
+  initialJob?: ScheduleDispatchHubJobRow | null
 }) {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
@@ -181,11 +188,12 @@ export default function QuickAssignSheet({
     return false
   }
 
-  // Reset per open; job picker starts the flow.
+  // Reset per open; the job picker starts the flow unless the caller
+  // pre-picked a job (initialJob), which lands straight on the assign stage.
   useEffect(() => {
     if (!open) return
-    setJob(null)
-    setJobPickerOpen(true)
+    setJob(initialJob ?? null)
+    setJobPickerOpen(initialJob == null)
     setJobSearch('')
     setJobNumberQuery('')
     setSelectedYmd(initialYmd ?? todayYmd)

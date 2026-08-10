@@ -1,6 +1,8 @@
 import {
   Fragment,
+  Suspense,
   forwardRef,
+  lazy,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -72,6 +74,10 @@ import LienToolingPrefillModal from './LienToolingPrefillModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
 import { ScheduleJobModal } from './ScheduleJobModal'
+import { jobWithDetailsToQuickAssignHubRow } from '../../lib/jobs/quickAssignFromPipeline'
+
+/** Dispatch "Assign work" sheet, loaded on first use — keeps dispatch-mode code out of the Jobs bundle. */
+const QuickAssignSheet = lazy(() => import('../dispatchMode/QuickAssignSheet'))
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRow } from '../../pages/Jobs'
@@ -428,6 +434,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
   const [scheduleModalJob, setScheduleModalJob] = useState<JobWithDetails | null>(null)
+  /** Job the dispatch "Assign work" sheet is open for (the schedule quick action). */
+  const [quickAssignJob, setQuickAssignJob] = useState<JobWithDetails | null>(null)
+  const openQuickAssignForJob = useCallback((j: JobWithDetails) => setQuickAssignJob(j), [])
   const [calendarJob, setCalendarJob] = useState<JobWithDetails | null>(null)
   // Next upcoming schedule appointment per job (the Activity column "Next:" line).
   const [stagesUpcomingByJobId, setStagesUpcomingByJobId] = useState<Record<string, StagesUpcomingAppointment>>({})
@@ -2297,6 +2306,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openJobCalendar={setCalendarJob}
                     stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
+                    openQuickAssignForJob={openQuickAssignForJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
@@ -2386,6 +2396,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openJobCalendar={setCalendarJob}
                     stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
+                    openQuickAssignForJob={openQuickAssignForJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
@@ -2523,6 +2534,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openJobCalendar={setCalendarJob}
                     stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
+                    openQuickAssignForJob={openQuickAssignForJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
@@ -2784,6 +2796,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openJobCalendar={setCalendarJob}
                     stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
+                    openQuickAssignForJob={openQuickAssignForJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
@@ -2885,6 +2898,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openJobCalendar={setCalendarJob}
                     stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
+                    openQuickAssignForJob={openQuickAssignForJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
@@ -3026,6 +3040,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       openJobCalendar={setCalendarJob}
                       stagesUpcomingByJobId={stagesUpcomingByJobId}
                       setScheduleModalJob={setScheduleModalJob}
+                    openQuickAssignForJob={openQuickAssignForJob}
                       authRole={authRole}
                       loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
@@ -3968,6 +3983,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           </div>
         </div>
       )}
+      {quickAssignJob ? (
+        <Suspense fallback={null}>
+          <QuickAssignSheet
+            open
+            initialJob={jobWithDetailsToQuickAssignHubRow(quickAssignJob)}
+            onClose={() => setQuickAssignJob(null)}
+            onScheduled={() => {
+              // Targeted refresh only — the row's green NEXT line updates in
+              // place; no loadJobs(), so scroll/search/expanded state survive.
+              const id = quickAssignJob.id
+              void fetchStagesUpcomingScheduleForJobs([id], scheduleTodayDateKey()).then((m) => {
+                setStagesUpcomingByJobId((prev) => {
+                  const next = { ...prev }
+                  const up = m[id]
+                  if (up) next[id] = up
+                  else delete next[id]
+                  return next
+                })
+              })
+            }}
+          />
+        </Suspense>
+      ) : null}
       {scheduleModalJob ? (
         <ScheduleJobModal
           key={scheduleModalJob.id}

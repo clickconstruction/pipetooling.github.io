@@ -72,6 +72,8 @@ export type StagesRowRenderContext = {
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
   canOpenJobScheduleModal: boolean
   setScheduleModalJob: (j: JobWithDetails | null) => void
+  /** Opens the dispatch "Assign work" sheet pre-picked to this job (the schedule quick action). */
+  openQuickAssignForJob: (j: JobWithDetails) => void
   navigate: NavigateFunction
   authRole: ReturnType<typeof useAuth>['role']
   dispatchTaskModal: ReturnType<typeof useDispatchTaskModal>
@@ -679,7 +681,7 @@ export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: 
 export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const {
     canOpenJobScheduleModal,
-    setScheduleModalJob,
+    openQuickAssignForJob,
     navigate,
     authRole,
     dispatchTaskModal,
@@ -711,14 +713,13 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
         {canOpenJobScheduleModal ? (
           <button
             type="button"
-            onClick={() => setScheduleModalJob(job)}
-            disabled={scheduleNoTeam}
-            title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
-            aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
+            onClick={() => openQuickAssignForJob(job)}
+            title="Assign work — pick people and a time"
+            aria-label="Assign work — pick people and a time"
             style={{
               ...quickIconButtonStyle,
-              cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-              color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a',
+              cursor: 'pointer',
+              color: '#16a34a',
             }}
           >
             <svg

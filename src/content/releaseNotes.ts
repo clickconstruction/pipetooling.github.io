@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1536',
+    date: '2026-08-10',
+    title: 'Pipeline: schedule with the Assign work sheet',
+    kind: 'feature',
+    highlights: [
+      'The green calendar shortcut on Pipeline rows now opens the same Assign work sheet Dispatch mode uses — with the job already picked, so you land straight on choosing the day, people, and time.',
+      'Pick whole crews in one tap, see who is already busy, and use the suggested free windows — exactly like scheduling from Dispatch.',
+      'When you confirm, the row’s green Next line updates right where you are — no page reload, your scroll and search stay put.',
+      'Jobs without team members can now be scheduled too — the sheet offers everyone, so the shortcut is never greyed out.',
+    ],
+  },
+  {
     version: 'v2.1535',
     date: '2026-08-10',
     title: 'Pipeline: Activity is now a mini-feed',

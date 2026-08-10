@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1535)
+last_updated: 2026-08-10 (v2.1536)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1536)
+
+### Pipeline: schedule quick action opens the dispatch "Assign work" sheet (2026-08-10)
+Owner-requested: the Pipeline's green schedule shortcut should work like `dispatch-mode/schedule`'s **Add job to schedule** flow — land the user on the assign stage with the job pre-picked, as a component modal over the board, and never disturb what they were looking at. [`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx) gains an **`initialJob`** prop: the per-open reset now seeds the job and skips the job-picker stage (Change job still opens it; dispatch mode unchanged). New pure kernel [`jobWithDetailsToQuickAssignHubRow`](../src/lib/jobs/quickAssignFromPipeline.ts) maps a board row to the sheet's hub-row shape (+3 unit tests). The quick action in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) and the mobile card icon swap `setScheduleModalJob` for new ctx member `openQuickAssignForJob` (threaded through both tables + card lists), retitled "Assign work — pick people and a time"; the **no-team disable is gone** — the sheet offers the whole dispatch roster, so team-less jobs are schedulable. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) mounts the sheet lazily (dispatch code stays out of the Jobs bundle until first open) and `onScheduled` does a **targeted refresh only**: `fetchStagesUpcomingScheduleForJobs([jobId])` merged into `stagesUpcomingByJobId`, so the row's green NEXT feed line updates in place — no `loadJobs()`, no scroll/search/expansion loss. `ScheduleJobModal` remains for the Job Calendar's date-seeded "Schedule…" and the thread panel's Schedule button. Render test (+1) pins the wiring incl. team-less enablement. Verified live: sheet opens at the assign stage on J951 with swim lanes, availability ribbons, crew tap and free-window suggestions arming "Schedule 2 people"; closed without saving. Help guide `ready-to-bill-pipeline` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1535)
 
