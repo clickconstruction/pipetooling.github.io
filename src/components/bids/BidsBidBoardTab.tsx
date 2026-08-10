@@ -3,7 +3,7 @@ import type { Bid } from '../../types/bids'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
-import { resolveBidLedgerPrefix, formatBidLedgerNumberLabel } from '../../lib/ledgerDisplayPrefixes'
+import { resolveBidLedgerPrefix, formatBidLedgerNumberLabel, bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { compareBidsForBidBoardDueDate } from '../../lib/compareBidsForBidBoardDueDate'
 import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAlert'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
@@ -149,7 +149,7 @@ export function BidsBidBoardTab({
     ? bids.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
-          ((b as { bid_number?: string | null }).bid_number?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
+          bidNumberMatchesQuery(b as { bid_number?: string | null; service_type_id?: string | null }, bidBoardSearchQuery, ledgerPrefixMap) ||
           (b.address?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
           (b.bids_gc_builders?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false)
