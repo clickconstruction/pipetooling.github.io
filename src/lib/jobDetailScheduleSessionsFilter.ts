@@ -1,5 +1,5 @@
 import type { JobDetailClockSessionRow } from './fetchClockSessionsForJobLedger'
-import { formatJobDetailModalDateFromYmd } from './formatJobDetailModalDateYmd'
+import { formatJobDetailModalDateWithWeekdayFromYmd } from './formatJobDetailModalDateYmd'
 import type { JobScheduleBlockWithAssigneeName } from './jobScheduleBlocks'
 import { scheduleFormatDateLongNoWeekday, scheduleFormatWindow } from './jobScheduleChicago'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -50,7 +50,7 @@ function scheduleBlockHaystack(b: JobScheduleBlockWithAssigneeName): string {
 
 function clockSessionHaystack(s: JobDetailClockSessionRow): string {
   const name = (s.users?.name ?? '').trim() || s.user_id
-  const workDateLine = formatJobDetailModalDateFromYmd(s.work_date) ?? s.work_date ?? '—'
+  const workDateLine = formatJobDetailModalDateWithWeekdayFromYmd(s.work_date) ?? s.work_date ?? '—'
   const notes = (s.notes ?? '').trim()
   const dur = formatDurationHoursForFilter(s.clocked_in_at, s.clocked_out_at) ?? '—'
   const timeStart = formatClockTimeOnlyChicagoForFilter(s.clocked_in_at)

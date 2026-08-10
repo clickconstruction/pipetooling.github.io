@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1523)
+last_updated: 2026-08-10 (v2.1524)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1524)
+
+### Job Detail: recorded time grouped per person with totals (2026-08-10)
+Owner-requested (design-spike session): the Job Detail "Schedule and recorded time" section needed per-person total hours "at the top" and the day of the week on each clock session; a first floating-chip pass didn't blend, so the section got Option B of the mockup artifact "Schedule & recorded time — refresh options". [`JobDetailScheduleSessionsSection`](../src/components/jobs/JobDetailScheduleSessionsSection.tsx) now renders Clock sessions **grouped by person**: a `--bg-subtle` header band per person (name left; `16 h · 2 sessions` right, `· N open` when a session is still running), rows lead with the weekday date (`Fri Jul 31st (t-10)`) via new [`formatJobDetailModalDateWithWeekdayFromYmd`](../src/lib/formatJobDetailModalDateYmd.ts) (the weekday also joins the filter haystack in `jobDetailScheduleSessionsFilter.ts`, so typing "fri" matches), hours sit in a right-aligned tabular column, and Pending approval / Rejected become small amber/red pills beside the date. Groups sort most-hours-first; jobs with 2+ people get a `Total recorded` footer band. New pure kernel [`computeJobDetailSessionGroups`](../src/lib/jobDetailSessionTotals.ts): rejected sessions stay visible in rows but contribute no hours, open sessions count without fake hours (+6 unit tests). Verified live on Job 941 (16 h = 7.8 + 8.2). Client-only — no migration.
 
 ## Latest Updates (v2.1523)
 

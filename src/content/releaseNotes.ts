@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1524',
+    date: '2026-08-10',
+    title: 'Job Detail: clearer recorded-time section',
+    kind: 'feature',
+    highlights: [
+      'Clock sessions are now grouped by person, with each person\'s total hours and session count shown in a header band — no more adding up rows by hand.',
+      'Each session shows its day of the week ("Fri Jul 31st"), and hours line up in their own column so days are easy to scan.',
+      '"Pending approval" and "Rejected" now appear as small colored tags next to the date; on multi-person jobs a "Total recorded" line sums the whole crew.',
+    ],
+  },
+  {
     version: 'v2.1523',
     date: '2026-08-10',
     title: 'Bill send-backs work again',

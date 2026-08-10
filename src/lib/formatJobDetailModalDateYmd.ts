@@ -51,6 +51,23 @@ export function formatJobDetailModalDateTitleFromYmd(ymd: string | null | undefi
 }
 
 /**
+ * e.g. `Tue Mar 24th (t+14)` — the weekday-prefixed variant used by clock-session rows.
+ */
+export function formatJobDetailModalDateWithWeekdayFromYmd(
+  ymd: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const base = formatJobDetailModalDateFromYmd(ymd, now)
+  const canon = normalizeToYmd(ymd)
+  if (base === null || canon === null) return base
+  const weekdayShort = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    weekday: 'short',
+  }).format(referenceDateForWorkDateYmd(canon))
+  return `${weekdayShort} ${base}`
+}
+
+/**
  * e.g. `Mar 24th (t+14)` in Chicago vs `now`; same calendar day → `Mar 24th (today)`.
  */
 export function formatJobDetailModalDateFromYmd(
