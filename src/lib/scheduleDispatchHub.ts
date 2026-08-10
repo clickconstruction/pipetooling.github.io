@@ -85,7 +85,11 @@ export function formatScheduleDispatchHubJobTitle(
   jobName: string | null | undefined,
   clickNumber?: string | null | undefined,
 ): string {
-  return `${effectiveJobLedgerNumber(hcp, clickNumber) || '—'} · ${(jobName ?? '').trim() || 'Job'}`
+  // Plain J prefix (search-standard identity): schedule surfaces are job-only,
+  // and the picker rows carry the trade pill, so the per-service-type letter
+  // would be redundant. Typing a bare "927" still matches as a substring.
+  const num = effectiveJobLedgerNumber(hcp, clickNumber)
+  return `${num ? `J${num}` : '—'} · ${(jobName ?? '').trim() || 'Job'}`
 }
 
 export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
