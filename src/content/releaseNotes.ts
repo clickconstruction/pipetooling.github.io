@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1507',
+    date: '2026-08-09',
+    title: 'Search: job stage and schedule at a glance',
+    kind: 'feature',
+    highlights: [
+      'Job rows in the header search now show the Pipeline stage chip (Working, Billed, Paid, …) and how many schedule blocks the job has this week — e.g. "2 this wk".',
+      'One shared search-row style now powers the header search, ready to roll out to every other job/bid picker in the app.',
+    ],
+  },
+  {
     version: 'v2.1506',
     date: '2026-08-09',
     title: 'Search: easier-to-read rows',
