@@ -15,7 +15,7 @@ import {
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
-import { effectiveJobLedgerNumber, formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
+import { DEFAULT_BID_LEDGER_PREFIX, effectiveJobLedgerNumber, formatBidLedgerNumberLabel } from '../lib/ledgerDisplayPrefixes'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
 import {
   OperationTimeoutError,
@@ -1385,8 +1385,8 @@ export default function ClockInOutButton({
         }}
       >
         {workingBoardBidPicks.map((b) => {
-          const pref = resolveBidLedgerPrefix(b.service_type_id ?? null, prefixMap)
-          const prefix = formatBidLedgerNumberLabel(pref, b.bid_number)
+          // Plain B: the trade tag renders beside the number in these chips (JP/BP → J/B rule).
+          const prefix = formatBidLedgerNumberLabel(DEFAULT_BID_LEDGER_PREFIX, b.bid_number)
           const line1 = `${prefix} · ${b.project_name || '—'}`
           const sub = (b.address || '').trim() || (b.customer_name || '').trim()
           const titleAttr = sub ? `${line1}\n${sub}` : line1
@@ -1429,7 +1429,7 @@ export default function ClockInOutButton({
                       flexShrink: 0,
                     }}
                   >
-                    [{tag.tag}]
+                    {tag.tag}
                   </span>
                 ) : null}
                 <span>{line1}</span>
@@ -1742,11 +1742,11 @@ export default function ClockInOutButton({
                       const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
                         <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                          [{t.tag}]
+                          {t.tag}
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation, prefixMap)}
+                    {formatUnifiedResult(selectedAssociation, prefixMap, { plainTradePrefixes: true })}
                   </span>
                   <button
                     type="button"
@@ -1804,11 +1804,11 @@ export default function ClockInOutButton({
                           const t = serviceTypeTagForUnifiedRow(r)
                           return t ? (
                             <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                              [{t.tag}]
+                              {t.tag}
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r, prefixMap)}
+                        {formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}
                       </button>
                     ))
                   )}
@@ -1916,11 +1916,11 @@ export default function ClockInOutButton({
                       const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
                         <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                          [{t.tag}]
+                          {t.tag}
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation, prefixMap)}
+                    {formatUnifiedResult(selectedAssociation, prefixMap, { plainTradePrefixes: true })}
                   </span>
                   <button
                     type="button"
@@ -1960,11 +1960,11 @@ export default function ClockInOutButton({
                           const t = serviceTypeTagForUnifiedRow(r)
                           return t ? (
                             <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                              [{t.tag}]
+                              {t.tag}
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r, prefixMap)}
+                        {formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}
                       </button>
                     ))
                   )}
@@ -2065,11 +2065,11 @@ export default function ClockInOutButton({
                       const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
                         <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                          [{t.tag}]
+                          {t.tag}
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation, prefixMap)}
+                    {formatUnifiedResult(selectedAssociation, prefixMap, { plainTradePrefixes: true })}
                   </span>
                   <button
                     type="button"
@@ -2119,11 +2119,11 @@ export default function ClockInOutButton({
                           const t = serviceTypeTagForUnifiedRow(r)
                           return t ? (
                             <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                              [{t.tag}]
+                              {t.tag}
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r, prefixMap)}
+                        {formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })}
                       </button>
                     ))
                   )}
