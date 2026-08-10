@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-09 (v2.1495)
+last_updated: 2026-08-09 (v2.1496)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1496)
+
+### Combine jobs — summary gains Line items row and a New column (2026-08-09)
+Owner-requested: the Combine tab's summary in [`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx) showed only three cost rows for Source and Target — nothing about revenue, and no picture of the merged result. Now: (1) a **Line items (revenue)** row on top — `jobs_ledger_fixtures` revenue via `revenueDollarsFromFixtures` with the line **count** in parentheses (fetched in the preview's existing `Promise.all`); (2) a **New** column — Source + Target per row, bold blue behind an accent rule, showing the combined card after the migrate; a footnote spells that out. The three copy-pasted row renders collapsed into one row-definition map (`CombinePreview` type extracted). Loading/absent states per column ('…'/'—'; New shows only when both previews resolve). Verified live on jobs 737→927 (sums exact). Separate tab untouched.
 
 ## Latest Updates (v2.1495)
 

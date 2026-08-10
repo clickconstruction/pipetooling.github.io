@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1496',
+    date: '2026-08-09',
+    title: 'Combine jobs: see the combined card before you commit',
+    kind: 'feature',
+    highlights: [
+      'The Combine summary now includes a Line items row — revenue and line count for each job.',
+      'A new "New" column shows exactly what the combined job will hold: source plus target for every row.',
+    ],
+  },
+  {
     version: 'v2.1495',
     date: '2026-08-09',
     title: 'Schedule: the job picker tells you which job is the live one',
