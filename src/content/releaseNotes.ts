@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1506',
+    date: '2026-08-09',
+    title: 'Search: easier-to-read rows',
+    kind: 'feature',
+    highlights: [
+      'Trade tags in search results now use white text, and addresses drop their zip codes to keep rows short.',
+    ],
+  },
+  {
     version: 'v2.1505',
     date: '2026-08-09',
     title: 'Clock In: cleaner job rows',

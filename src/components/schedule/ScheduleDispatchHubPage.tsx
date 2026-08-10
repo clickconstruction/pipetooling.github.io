@@ -100,6 +100,7 @@ import {
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
+import { stripTrailingZip } from '../../lib/displayAddress'
 
 /** Picker subline: "<N>d Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
 function hubJobPickerSubline(r: { created_at?: string | null; job_address?: string | null }): string | undefined {
@@ -112,7 +113,7 @@ function hubJobPickerSubline(r: { created_at?: string | null; job_address?: stri
       dateLabel = `${daysAgo}d ${formatDenverCalendarDayShort(d.getTime())}`
     }
   }
-  const address = (r.job_address ?? '').trim()
+  const address = stripTrailingZip(r.job_address)
   if (dateLabel && address) return `${dateLabel} | ${address}`
   return dateLabel || address || undefined
 }

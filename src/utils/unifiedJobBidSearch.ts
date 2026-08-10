@@ -9,6 +9,7 @@ import {
   resolveBidLedgerPrefix,
   resolveJobLedgerPrefix,
 } from '../lib/ledgerDisplayPrefixes'
+import { stripTrailingZip } from '../lib/displayAddress'
 
 export type JobSearchResult = {
   id: string
@@ -129,18 +130,18 @@ export function formatUnifiedResult(
       ? DEFAULT_JOB_LEDGER_PREFIX
       : resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
     const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
-    return `${prefix} · ${r.job_name || '—'} - ${r.job_address || '—'}`
+    return `${prefix} · ${r.job_name || '—'} - ${stripTrailingZip(r.job_address) || '—'}`
   }
   if (r.source === 'bid') {
     const pref = opts?.plainTradePrefixes
       ? DEFAULT_BID_LEDGER_PREFIX
       : resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
     const prefix = formatBidLedgerNumberLabel(pref, r.bid_number)
-    return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
+    return `${prefix} · ${r.project_name || '—'} - ${stripTrailingZip(r.address) || r.customer_name || '—'}`
   }
   if (r.source === 'customer') {
     const name = (r.name ?? '').trim() || '—'
-    const addr = (r.address ?? '').trim()
+    const addr = stripTrailingZip(r.address)
     return addr ? `C · ${name} - ${addr}` : `C · ${name}`
   }
   const en = r.estimate_number
@@ -158,6 +159,6 @@ export function formatUnifiedJobSchedulePrimaryLine(
   const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
   return {
     title: `${prefix} · ${r.job_name || '—'}`,
-    address: (r.job_address || '').trim(),
+    address: stripTrailingZip(r.job_address),
   }
 }
