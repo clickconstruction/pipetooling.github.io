@@ -47,6 +47,7 @@ import {
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
 import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
+import ManagePersonDayModal from './ManagePersonDayModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   ribbonSpanPct,
@@ -148,14 +149,20 @@ export default function QuickAssignSheet({
   const [instructions, setInstructions] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  /** Long-press detail: who to show + label; null = closed. */
+  /** Long-press detail: who to show + label; null = closed. Lane headers only — person rows open the Manage day modal. */
   const [detail, setDetail] = useState<{ label: string; userIds: string[] } | null>(null)
+  /** Manage day modal target (tap a person's name); null = closed. */
+  const [managePerson, setManagePerson] = useState<{ userId: string; displayName: string } | null>(null)
+  /** Bumped by Manage day mutations so the ribbons/free windows refetch. */
+  const [dayBlocksReloadKey, setDayBlocksReloadKey] = useState(0)
   const pressStartRef = useRef<number | null>(null)
   const longPressFiredRef = useRef(false)
 
   // Long-press opens ON RELEASE (>=450ms held): opening mid-hold would put the
   // detail overlay under the pointer and the release-click would hit it.
-  const longPressHandlers = (label: string, userIds: string[]) => ({
+  // `action` overrides the default read-only detail overlay — person rows pass
+  // the Manage day modal so both press styles land on the same surface.
+  const longPressHandlers = (label: string, userIds: string[], action?: () => void) => ({
     onPointerDown: () => {
       longPressFiredRef.current = false
       pressStartRef.current = Date.now()
@@ -165,7 +172,8 @@ export default function QuickAssignSheet({
       pressStartRef.current = null
       if (start != null && Date.now() - start >= 450) {
         longPressFiredRef.current = true
-        setDetail({ label, userIds })
+        if (action) action()
+        else setDetail({ label, userIds })
       }
     },
     onPointerLeave: () => {
@@ -194,6 +202,7 @@ export default function QuickAssignSheet({
     if (!open) return
     setJob(initialJob ?? null)
     setJobPickerOpen(initialJob == null)
+    setManagePerson(null)
     setJobSearch('')
     setJobNumberQuery('')
     setSelectedYmd(initialYmd ?? todayYmd)
@@ -242,7 +251,7 @@ export default function QuickAssignSheet({
     return () => {
       cancelled = true
     }
-  }, [open, selectedYmd])
+  }, [open, selectedYmd, dayBlocksReloadKey])
 
   const busyByUser = useMemo(() => {
     const m = new Map<string, MinuteInterval[]>()
@@ -695,16 +704,8 @@ export default function QuickAssignSheet({
                       const busy = busyByUser.get(p.userId) ?? []
                       const conflict = isSel && conflicts.has(p.userId)
                       return (
-                        <button
+                        <div
                           key={p.userId}
-                          type="button"
-                          data-roving
-                          tabIndex={peopleTabKey === `person:${p.userId}` ? 0 : -1}
-                          onFocus={() => setPeopleFocusKey(`person:${p.userId}`)}
-                          onClick={() => togglePerson(p.userId)}
-                          {...longPressHandlers(p.displayName, [p.userId])}
-                          aria-pressed={isSel}
-                          aria-label={`${isSel ? 'Deselect' : 'Select'} ${p.displayName}${conflict ? ' (time conflict)' : ''}`}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -723,27 +724,75 @@ export default function QuickAssignSheet({
                               : isSel
                                 ? 'var(--bg-blue-tint)'
                                 : 'var(--surface)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            WebkitUserSelect: 'none',
-                            userSelect: 'none',
-                            WebkitTouchCallout: 'none',
+                            boxSizing: 'border-box',
                           }}
                         >
-                          <span
+                          {/* Name → Manage day (mouse/touch target; keyboard flow stays on the select button). */}
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setManagePerson({ userId: p.userId, displayName: p.displayName })}
+                            title={`Manage ${p.displayName}'s schedule for this day`}
+                            aria-label={`Manage ${p.displayName}'s schedule for this day`}
                             style={{
                               width: 78,
                               flexShrink: 0,
-                              fontSize: '0.8125rem',
-                              fontWeight: isSel ? 700 : 500,
-                              color: 'var(--text-strong)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              padding: 0,
+                              border: 'none',
+                              background: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              font: 'inherit',
                             }}
                           >
-                            {p.displayName}
-                          </span>
+                            <span
+                              style={{
+                                minWidth: 0,
+                                fontSize: '0.8125rem',
+                                fontWeight: isSel ? 700 : 500,
+                                color: 'var(--text-strong)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                borderBottom: '1px dashed var(--border-strong)',
+                              }}
+                            >
+                              {p.displayName}
+                            </span>
+                            <span aria-hidden style={{ flexShrink: 0, fontSize: '0.6875rem', color: 'var(--text-link)' }}>
+                              ›
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            data-roving
+                            tabIndex={peopleTabKey === `person:${p.userId}` ? 0 : -1}
+                            onFocus={() => setPeopleFocusKey(`person:${p.userId}`)}
+                            onClick={() => togglePerson(p.userId)}
+                            {...longPressHandlers(p.displayName, [p.userId], () =>
+                              setManagePerson({ userId: p.userId, displayName: p.displayName }),
+                            )}
+                            aria-pressed={isSel}
+                            aria-label={`${isSel ? 'Deselect' : 'Select'} ${p.displayName}${conflict ? ' (time conflict)' : ''}`}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: 0,
+                              border: 'none',
+                              background: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              WebkitUserSelect: 'none',
+                              userSelect: 'none',
+                              WebkitTouchCallout: 'none',
+                            }}
+                          >
                           <span
                             aria-hidden="true"
                             style={{
@@ -796,7 +845,8 @@ export default function QuickAssignSheet({
                               overlap
                             </span>
                           ) : null}
-                        </button>
+                          </button>
+                        </div>
                       )
                     })}
                   </div>
@@ -1131,6 +1181,26 @@ export default function QuickAssignSheet({
             })}
           </div>
         </div>
+      ) : null}
+      {managePerson ? (
+        <ManagePersonDayModal
+          open
+          personUserId={managePerson.userId}
+          personName={managePerson.displayName}
+          initialYmd={selectedYmd}
+          onClose={() => setManagePerson(null)}
+          onChanged={() => setDayBlocksReloadKey((k) => k + 1)}
+          onPickForAssignment={(uid) => {
+            setSelected((prev) => {
+              const next = new Set(prev)
+              next.add(uid)
+              return next
+            })
+            setWindowSel(null)
+            setManagePerson(null)
+          }}
+          pickedForAssignment={selected.has(managePerson.userId)}
+        />
       ) : null}
     </div>
   )

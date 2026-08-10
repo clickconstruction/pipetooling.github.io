@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1536)
+last_updated: 2026-08-10 (v2.1537)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1537)
+
+### Assign work: tap a person's name to manage their day (2026-08-10)
+Owner-requested (built from the mockup artifact "Assign work — manage a person's day"): clicking a name in the Assign work sheet should open a stacked modal managing that person's schedule for the day. Person rows in [`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx) are restructured from one `<button>` into a wrapper div with TWO buttons (valid HTML, roving keyboard flow unchanged): the **name** (dashed underline + › chevron, `tabIndex={-1}`) opens new [`ManagePersonDayModal`](../src/components/dispatchMode/ManagePersonDayModal.tsx); the ribbon area keeps toggling selection. Person long-press now opens the same modal (lane-header long-press keeps the read-only crew detail overlay). The modal (z-1006 over the sheet's 1004): header `name — Today · Mon, Aug 10` + summary from new pure kernel [`computeManageDaySummary`](../src/lib/dispatchManagePersonDay.ts) (`2 blocks · 6 h · free after 3:00 PM`; +4 unit tests), **‹ › day arrows**, a **timeline strip** on the ribbons' 6 AM–6 PM scale (`ribbonSpanPct` reused), and per-block rows (time+duration, trade pill, job, note, ⛓ linked-crew badge) with **✎ edit** and **🗑 remove**. Edit expands in place with the dispatch editor's exact fields (start/end/day-move/note → `saveEditedScheduleBlockTimes`); linked blocks add a scope choice — **Whole linked crew** (group save, as dispatch does) or **person only**, which unlinks the leg (`shared_block_group_id = null`) before a solo save. Remove is an inline confirm → `deleteJobScheduleBlock` (one leg; crew-mates keep theirs). Every mutation bumps the sheet's new `dayBlocksReloadKey` so ribbons + free-window suggestions refetch; a **"+ Select <name> for this assignment"** footer adds the person to the sheet's selection. Both entry points inherit it (dispatch mode + Pipeline quick action). Render tests: +4 for the modal ([`ManagePersonDayModal.render.test.tsx`](../src/components/dispatchMode/ManagePersonDayModal.render.test.tsx)). Verified live from the Pipeline: name click opened Abraham's day (1 block, timeline, crew badge), day arrows stepped to Tue Aug 11 and back, edit expansion showed time/day/note/scope fields (cancelled — no writes), footer pick selected Abraham in the sheet, and the ribbon select-toggle still works. Help guide `dispatch-mode` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1536)
 

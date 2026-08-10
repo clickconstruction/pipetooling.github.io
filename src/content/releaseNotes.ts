@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1537',
+    date: '2026-08-10',
+    title: 'Assign work: tap a name to manage their day',
+    kind: 'feature',
+    highlights: [
+      'In the Assign work sheet, tap a person’s name (or long-press their row) to open Manage day — their full schedule for that date, right on top of the sheet.',
+      'Edit any block’s times, note, or day, or remove it. Linked crew blocks ask whether the change applies to the whole crew or just that person.',
+      '‹ › arrows step across days, and a timeline strip shows their day at a glance. Changes update the availability ribbons the moment you’re back.',
+      'A "+ Select for this assignment" button adds them to the crew you’re building. Tapping anywhere else on the row still selects, exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1536',
     date: '2026-08-10',
     title: 'Pipeline: schedule with the Assign work sheet',
