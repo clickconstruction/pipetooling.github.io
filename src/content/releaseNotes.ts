@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1583',
+    date: '2026-08-11',
+    title: 'Assign job or bid: full name, address, and line items on their own lines',
+    kind: 'fix',
+    highlights: [
+      'Search results in the assign-a-clock-session box now read as a clean stack: the job number and name, the address under it, the line items under that, and the status and dollars at the bottom — no more names cut off mid-word.',
+    ],
+  },
+  {
     version: 'v2.1582',
     date: '2026-08-11',
     title: 'Assign job or bid: job names no longer cut off',

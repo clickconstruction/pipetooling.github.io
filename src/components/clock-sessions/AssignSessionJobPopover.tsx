@@ -659,7 +659,10 @@ export function AssignSessionJobPopover({
                         evidenceMode={evidenceMode}
                         // This popover caps at ~360px on every viewport — the
                         // side-by-side layout ellipsized names to "J891 · …".
+                        // splitAddressLine: name / address / line items /
+                        // evidence, each on its own line (owner request).
                         stacked
+                        splitAddressLine
                       />
                     </button>
                   ))

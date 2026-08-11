@@ -3,6 +3,7 @@ import {
   customerTypePillForUnifiedRow,
   escapeLike,
   formatUnifiedResult,
+  formatUnifiedResultSplit,
   serviceTypeTagForUnifiedRow,
   type UnifiedSearchResult,
 } from './unifiedJobBidSearch'
@@ -107,5 +108,53 @@ describe('escapeLike', () => {
 
   it('leaves ordinary text untouched', () => {
     expect(escapeLike('Acme Plumbing')).toBe('Acme Plumbing')
+  })
+})
+
+describe('formatUnifiedResultSplit', () => {
+  const prefixMap = { plum: { job: 'JP', bid: 'BP' } } as Parameters<typeof formatUnifiedResultSplit>[1]
+  const job: UnifiedSearchResult = {
+    source: 'job',
+    id: 'j1',
+    hcp_number: '941',
+    job_name: 'Berg AirBnb- Door Repair',
+    job_address: '6288 River Rd New Braunfels, TX 78132',
+    service_type_id: 'plum',
+  }
+
+  it('splits a job into title (no address) + zip-stripped address', () => {
+    expect(formatUnifiedResultSplit(job, prefixMap, { plainTradePrefixes: true })).toEqual({
+      title: 'J941 · Berg AirBnb- Door Repair',
+      secondary: '6288 River Rd New Braunfels, TX',
+    })
+  })
+
+  it('bid secondary falls back to the customer name when there is no address', () => {
+    const bid: UnifiedSearchResult = {
+      source: 'bid',
+      id: 'b1',
+      bid_number: '319',
+      project_name: 'TAKE 5 - KERRVILLE',
+      address: '',
+      customer_name: 'Take 5 Oil',
+      service_type_id: 'plum',
+    }
+    expect(formatUnifiedResultSplit(bid, prefixMap, { plainTradePrefixes: true })).toEqual({
+      title: 'B319 · TAKE 5 - KERRVILLE',
+      secondary: 'Take 5 Oil',
+    })
+  })
+
+  it('secondary is null when nothing exists, and the joined form stays byte-identical', () => {
+    expect(formatUnifiedResultSplit(customer({ address: null }), noPrefixMap)).toEqual({
+      title: 'C · Acme LLC',
+      secondary: null,
+    })
+    // The joined formatter must reproduce its historical output through the split.
+    expect(formatUnifiedResult(job, prefixMap, { plainTradePrefixes: true })).toBe(
+      'J941 · Berg AirBnb- Door Repair - 6288 River Rd New Braunfels, TX',
+    )
+    expect(formatUnifiedResult(customer({ address: null }), noPrefixMap)).toBe('C · Acme LLC')
+    expect(formatUnifiedResult(job, prefixMap)).toContain('JP941')
   })
 })

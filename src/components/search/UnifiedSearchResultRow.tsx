@@ -15,6 +15,7 @@
 import {
   customerTypePillForUnifiedRow,
   formatUnifiedResult,
+  formatUnifiedResultSplit,
   serviceTypeTagForUnifiedRow,
   type UnifiedSearchResult,
 } from '../../utils/unifiedJobBidSearch'
@@ -105,6 +106,13 @@ export type UnifiedSearchResultRowProps = {
    * width, so on desktop it picks side-by-side and crushes the name.
    */
   stacked?: boolean
+  /**
+   * Give the address (the part after " - " in the combined label) its own
+   * muted second line instead of riding the identity line — for narrow hosts
+   * where "name - address" on one line ellipsizes the name away. Implies the
+   * stacked order: title, address, line summary, then the evidence rail.
+   */
+  splitAddressLine?: boolean
 }
 
 export function UnifiedSearchResultRow({
@@ -114,12 +122,13 @@ export function UnifiedSearchResultRow({
   bidEvidence,
   evidenceMode = 'money',
   stacked: stackedProp,
+  splitAddressLine = false,
 }: UnifiedSearchResultRowProps) {
   // Under 640px the evidence rail moves BELOW the identity line (left-aligned)
   // instead of beside it — side-by-side crushes the label into a narrow
   // wrapping column on phones and scatters the chips at different heights.
   const narrowViewport = useNarrowViewport640()
-  const stacked = stackedProp ?? narrowViewport
+  const stacked = splitAddressLine || (stackedProp ?? narrowViewport)
   const tradePill = serviceTypeTagForUnifiedRow(r)
   const pill = tradePill ?? customerTypePillForUnifiedRow(r)
   const je = r.source === 'job' ? jobEvidence : null
@@ -127,7 +136,28 @@ export function UnifiedSearchResultRow({
   const statusChip = je ? jobPickerStatusChip(je.status) : null
   const showMoney = evidenceMode === 'money' && je !== null && je !== undefined && (je.lineRevenue > 0 || je.lineCount > 0)
 
-  const identityText = formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })
+  const combinedText = formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })
+  const split = formatUnifiedResultSplit(r, prefixMap, { plainTradePrefixes: true })
+  // Split mode: the identity line carries only "{prefix} · {name}" (full
+  // combined label stays in the tooltip) and the address gets its own line.
+  const identityText = splitAddressLine ? split.title : combinedText
+  const addressLine =
+    splitAddressLine && split.secondary ? (
+      <span
+        style={{
+          display: 'block',
+          fontSize: '0.75rem',
+          color: 'var(--text-muted)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          marginTop: 2,
+        }}
+        title={split.secondary}
+      >
+        {split.secondary}
+      </span>
+    ) : null
   const identity = (
     // One line, never wraps: a wrapping identity stranded the trade pill on its
     // own line whenever the title was long (owner feedback, v2.1521) — the text
@@ -155,7 +185,7 @@ export function UnifiedSearchResultRow({
           so the per-service-type letter (JP → J, BP → B) would repeat it. */}
       <span
         style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        title={identityText}
+        title={combinedText}
       >
         {identityText}
       </span>
@@ -247,6 +277,18 @@ export function UnifiedSearchResultRow({
     ) : null
 
   if (stacked) {
+    if (splitAddressLine) {
+      // Owner-specified order for the split rows: name, address, line items,
+      // then the evidence rail as the row's footer.
+      return (
+        <>
+          {identity}
+          {addressLine}
+          {lineSummary}
+          {rail ? <span style={{ display: 'flex', marginTop: 3 }}>{rail}</span> : null}
+        </>
+      )
+    }
     return (
       <>
         {identity}

@@ -125,6 +125,28 @@ describe('UnifiedSearchResultRow', () => {
     expect(screen.getByText('$4,850')).toBeTruthy()
   })
 
+  it('splitAddressLine: name, address, line items, then the rail — each on its own line', () => {
+    renderWithProviders(
+      <UnifiedSearchResultRow
+        result={jobResult}
+        prefixMap={prefixMap}
+        jobEvidence={jobEvidence}
+        splitAddressLine
+      />,
+    )
+    // Identity carries ONLY the number + name; the address is its own element.
+    const label = screen.getByText('J927 · Mike Holub')
+    const address = screen.getByText('109 Tuscarora Dr San Antonio, TX')
+    expect(label.textContent).not.toContain('109 Tuscarora')
+    // Order: identity line < address < line summary < rail chip.
+    const summary = screen.getByText('Water heater 50 gal, Expansion tank')
+    const chip = screen.getByText('Ready to Bill')
+    expect(address.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(summary.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The full combined label survives in the tooltip.
+    expect((label as HTMLElement).title).toContain('109 Tuscarora')
+  })
+
   it('renders a bid with plain B prefix, outcome chip, value, and date', () => {
     renderWithProviders(
       <UnifiedSearchResultRow
