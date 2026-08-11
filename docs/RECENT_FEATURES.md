@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1581)
+last_updated: 2026-08-11 (v2.1582)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1582)
+
+### Assign job or bid popover: search results stack so the name survives (2026-08-11)
+Owner report with screenshot ("when assigning clock sessions I can't always see the name" — rows read "J891 · …", "B319 · TAKE…"). Root cause: [`AssignSessionJobPopover`](../src/components/clock-sessions/AssignSessionJobPopover.tsx) caps its panel at `min(360px, 100vw - 16px)` on EVERY viewport, but the shared [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) only switches to its stacked layout (evidence rail below the identity line) when the *viewport* is under 640px — so on desktop the side-by-side layout ran inside 360px and the name ellipsized to almost nothing while the status chip + $ + unpaid + "N this wk" rail kept its full width. Fix: the row gains an optional `stacked` prop that overrides the viewport heuristic (documented for always-narrow hosts), and the popover passes it — name gets the full 360px line, evidence drops to a second line, exactly the layout phones already render. Other consumers (header search, dispatch pickers, PO generator, …) are untouched — the prop defaults to the existing heuristic. Render tests 7→8 (forced-stacked on a wide viewport: the chip must leave the identity row). Live verification deferred: no pending/active clock session existed at ship time to open the popover against — the layout is the same stacked mode covered by the existing narrow-viewport test. Client-only — no migration.
 
 ## Latest Updates (v2.1581)
 

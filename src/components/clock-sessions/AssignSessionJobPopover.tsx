@@ -657,6 +657,9 @@ export function AssignSessionJobPopover({
                         jobEvidence={item.source === 'job' ? jobEvidence.get(item.id) : null}
                         bidEvidence={item.source === 'bid' ? bidEvidence.get(item.id) : null}
                         evidenceMode={evidenceMode}
+                        // This popover caps at ~360px on every viewport — the
+                        // side-by-side layout ellipsized names to "J891 · …".
+                        stacked
                       />
                     </button>
                   ))
