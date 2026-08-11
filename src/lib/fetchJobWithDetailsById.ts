@@ -20,7 +20,12 @@ function mapRowToJobWithDetails(
     jobs_ledger_payments?: JobsLedgerPayment[]
     jobs_ledger_invoices?: JobsLedgerInvoice[]
     jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
-    reports?: Array<{ job_ledger_id: string | null }>
+    reports?: Array<{
+      job_ledger_id: string | null
+      created_at: string | null
+      users?: { name: string | null } | { name: string | null }[] | null
+      report_templates?: { name: string | null } | { name: string | null }[] | null
+    }>
     projects?: { id: string; name: string } | null
     bids?: {
       id: string
@@ -53,6 +58,16 @@ function mapRowToJobWithDetails(
   } = row
   // PostgREST returns embedded to-one as an object or a 1-element array.
   const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null)
+  // Newest report's meta for the Job Detail "Reports" box — embeds are
+  // unordered, so pick by created_at here (report counts are small).
+  const latestReportRow = (rep ?? []).reduce<(typeof rep extends Array<infer R> | undefined ? R : never) | null>(
+    (best, r) => {
+      if (!r.created_at) return best
+      if (!best?.created_at || r.created_at > best.created_at) return r
+      return best
+    },
+    null,
+  )
   return {
     ...job,
     serviceType: serviceTypeEmbed && typeof (serviceTypeEmbed as { name?: string }).name === 'string' ? (serviceTypeEmbed as { name: string }) : null,
@@ -62,6 +77,13 @@ function mapRowToJobWithDetails(
     invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
     team_members: team ?? [],
     report_count: (rep ?? []).length,
+    latestReport: latestReportRow
+      ? {
+          created_at: latestReportRow.created_at,
+          author_name: one(latestReportRow.users)?.name ?? null,
+          template_name: one(latestReportRow.report_templates)?.name ?? null,
+        }
+      : null,
     project: proj ?? null,
     linkedBid: bidEmbed ? { ...bidEmbed, customers: one(bidEmbed.customers) } : null,
     gcCustomer: one(gcEmbed),

@@ -61,6 +61,8 @@ import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSec
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import JobReportsModal from '../JobReportsModal'
+import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
+import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
@@ -1722,9 +1724,29 @@ export default function DetailJobModal({
                 <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>
                   Reports
                 </span>
-                <span style={{ fontSize: '0.9375rem', color: 'var(--text-link)', textDecoration: 'underline' }}>
-                  View all reports
-                </span>
+                {/* Count-aware (the old box read "View all reports" whether the
+                    job had 0 or 10 — reports looked like they weren't showing
+                    up at all); the subline is the newest report's meta. */}
+                {(fullJob.report_count ?? 0) > 0 ? (
+                  <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline' }}>
+                    {fullJob.report_count} report{fullJob.report_count === 1 ? '' : 's'}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.9375rem', color: 'var(--text-faint)' }}>No reports yet</span>
+                )}
+                {fullJob.latestReport?.created_at ? (
+                  <span style={{ fontSize: '0.71875rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    {[
+                      fullJob.latestReport.author_name?.trim(),
+                      formatDispatchNoteDaysAgoShortPhrase(fullJob.latestReport.created_at),
+                      fullJob.latestReport.template_name
+                        ? displayReportTemplateName(fullJob.latestReport.template_name, authRole as UserRole | null)
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                ) : null}
               </button>
             </div>
 
