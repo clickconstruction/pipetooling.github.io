@@ -34,6 +34,18 @@ export function scheduleTodayDateKey(now: Date = new Date()): string {
   return scheduleDateKeyInAppTz(now)
 }
 
+/** "Mon, Aug 10" — compact day header (Dashboard My Schedule, v2.1553). */
+export function scheduleFormatWeekdayShort(dateKey: string): string {
+  const d = scheduleParseDateKeyLocal(dateKey)
+  if (!d) return dateKey
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: JOB_SCHEDULE_TIMEZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(d)
+}
+
 export function scheduleFormatWeekdayLong(dateKey: string): string {
   const d = scheduleParseDateKeyLocal(dateKey)
   if (!d) return dateKey

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { splitScheduleRowLabel, stripAddressZip } from '../../lib/dashboardScheduleCardLines'
-import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { scheduleFormatWeekdayShort, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import {
   resolveSubScheduleJobMeta,
   sortSubScheduleBlocksByStart,
@@ -118,27 +118,36 @@ export function DashboardMyScheduleSection({
           marginBottom: '0.75rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '0.5rem', minWidth: 0 }}>
-          {firstAssistantDispatchPhone ? (
-            <a
-              href={`tel:${firstAssistantDispatchPhone.telHref}`}
-              style={{ color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap' }}
-              aria-label={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
-              title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
-            >
-              <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
-            </a>
-          ) : (
-            <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '0.6rem', minWidth: 0 }}>
+          <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
+          {/* v2.1553: the two-line "(schedule wrong? click to call dispatch)"
+              parenthetical becomes one round phone button beside the title. */}
           {firstAssistantDispatchPhone && (
             <a
               href={`tel:${firstAssistantDispatchPhone.telHref}`}
-              style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textDecoration: 'none', lineHeight: 1.15, whiteSpace: 'nowrap' }}
-              aria-label={`Schedule wrong? Click to call dispatch at ${firstAssistantDispatchPhone.display}`}
-              title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
+              aria-label={`Schedule wrong? Call dispatch at ${firstAssistantDispatchPhone.display}`}
+              title={`Schedule wrong? Call dispatch at ${firstAssistantDispatchPhone.display}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 30,
+                height: 30,
+                borderRadius: 999,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text-link)',
+                textDecoration: 'none',
+                flexShrink: 0,
+              }}
             >
-              (schedule wrong?<br />click to call dispatch)
+              {/* Icon: Font Awesome Free 7.x — phone (OFL/CC-BY), shared with the card call buttons. */}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={14} height={14} aria-hidden focusable={false}>
+                <path
+                  fill="currentColor"
+                  d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8 186.3L224.2 89z"
+                />
+              </svg>
             </a>
           )}
         </div>
@@ -161,7 +170,7 @@ export function DashboardMyScheduleSection({
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: 'var(--text-700)', textAlign: 'center' }}>
                   {dayTitle}
                   <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
-                    {scheduleFormatWeekdayLong(ymd)}
+                    {scheduleFormatWeekdayShort(ymd)}
                   </span>
                 </h3>
                 {sorted.length === 0 ? (
