@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1545)
+last_updated: 2026-08-10 (v2.1546)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1546)
+
+### Field crew see the whole crew's reports on a job (2026-08-10)
+Owner-requested from the Additional Report modal: field people should see all reports on a job added by them **or any other non-office person**, not just their own. Two pieces. **(1) Migration [`20260810235431_crew_report_visibility.sql`](../supabase/migrations/20260810235431_crew_report_visibility.sql)** (see `MIGRATIONS.md`; push after merge): `list_reports_with_job_info`'s helpers/subcontractor branch widens to include job-anchored reports where the caller is on the job's team (`jobs_ledger_team_members`) AND the author is a helpers/subcontractor user — office/superintendent-authored reports stay out of the field view, the `report_sub_visibility_months()` window still applies, and GPS lat/lng stay masked on reports the caller didn't write. **(2) [`AdditionalReportModal`](../src/components/AdditionalReportModal.tsx)**: the full-width "View my reports for this job" button is replaced by a compact **"Reports for this Job"** button right-aligned on the folder/pictures icon row (owner-directed placement), and the [`JobReportsModal`](../src/components/JobReportsModal.tsx) it opens no longer passes `filterCreatedByUserId` — the server decides visibility. The Dashboard's own JobReportsModal mount was already unfiltered, so helpers get the same crew view there once the migration lands. Verified live as Helper Paige at 375px (button placement + modal open; crew rows appear after `db push`). **Migration pending `supabase db push` after merge** — client-first order safe (until pushed, subs simply keep seeing only their own reports).
 
 ## Latest Updates (v2.1545)
 

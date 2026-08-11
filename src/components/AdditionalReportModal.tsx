@@ -446,15 +446,28 @@ export default function AdditionalReportModal({
           >
             <Images size={22} strokeWidth={2} aria-hidden />
           </button>
+          {/* Opens the job's reports — yours and your crew-mates' (v2.1546). */}
+          <button
+            type="button"
+            onClick={() => setShowJobReportsModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              marginLeft: 'auto',
+              height: 40,
+              padding: '0 0.75rem',
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              color: 'var(--text-link)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border-indigo-soft)',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
+          >
+            Reports for this Job
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowJobReportsModal(true)}
-          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: 'var(--text-link)', background: 'none', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', marginBottom: '1rem' }}
-        >
-          View my reports for this job
-        </button>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
@@ -535,7 +548,6 @@ export default function AdditionalReportModal({
         jobAddress={jobAddress}
         authUserId={authUserId}
         userRole={userRole}
-        filterCreatedByUserId={authUserId}
         zIndex={overlayZIndex + 5}
         onReportSaved={onReportSaved}
       />

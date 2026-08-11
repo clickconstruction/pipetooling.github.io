@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1546',
+    date: '2026-08-10',
+    title: 'See your whole crew\'s reports on a job',
+    kind: 'feature',
+    highlights: [
+      'Field crew assigned to a job can now see all its reports from fellow field crew — not just their own. Office and superintendent reports stay out of the field view.',
+      'The Additional Report window\'s report button moved up next to the files and photos icons as "Reports for this Job", and it opens everyone\'s reports.',
+    ],
+  },
+  {
     version: 'v2.1545',
     date: '2026-08-10',
     title: 'My Schedule: dispatch notes get the full card',
