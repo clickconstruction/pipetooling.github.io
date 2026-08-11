@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-09
+last_updated: 2026-08-10
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "185 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 6, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "186 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 10, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -104,6 +104,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 10, 2026
+
+**`20260810235431_crew_report_visibility.sql`** _(apply via `supabase db push` after merge — pure `CREATE OR REPLACE` of `list_reports_with_job_info`; until pushed, field crew simply keep seeing only their own reports, so client-first deploy order is safe)_
+
+- Widens the RPC's **helpers/subcontractor** branch: a field user assigned to a job (`jobs_ledger_team_members`) now also sees that job's reports **authored by other helpers/subcontractor users** — powering "Reports for this Job" in the Additional Report modal (v2.1546).
+- Unchanged: office/superintendent visibility branches, the `report_sub_visibility_months()` window (still applies to everything subs see), and the per-row GPS masking (subs still get `NULL` lat/lng on reports they didn't author).
 
 **`20260810200050_job_owner_override_default_fallback.sql`** _(apply via `supabase db push` after merge — pure `CREATE OR REPLACE` of both `create_job_from_estimate` overloads; until pushed, the SQL path simply ignores the new default, so client-first deploy order is safe)_
 - **Purpose**: Org-wide default job owner (v2.1532) — both `create_job_from_estimate` overloads (6-arg and 7-arg/p_fixtures) extend their owner resolution with a fallback read of `app_settings.job_owner_override_default` between the personal `job_owner_override_<uid>` row and self-ownership, mirroring the client resolver (`src/lib/resolveEffectiveJobMasterUserId.ts`). Bodies re-created verbatim from the baseline with only the override block extended; no schema changes, no new tables.
