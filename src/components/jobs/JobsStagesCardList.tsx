@@ -81,9 +81,13 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 
 const cardStyle: CSSProperties = {
   position: 'relative',
-  border: '1px solid var(--border)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 10,
   background: 'var(--surface)',
+  // Elevation carries the card edge in LIGHT mode, where --bg-page (#fafafa)
+  // and --surface (#fff) are near-identical and a --border hairline dissolves;
+  // in dark mode the shadow fades to harmless and the surface step separates.
+  boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 2px 10px rgba(0,0,0,0.07)',
   padding: '0.5rem 0.65rem',
   display: 'flex',
   flexDirection: 'column',
