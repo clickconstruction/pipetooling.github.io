@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1551',
+    date: '2026-08-10',
+    title: 'My Time gets one tidy card',
+    kind: 'feature',
+    highlights: [
+      'The bottom of the Dashboard is now a single My Time card: Today and This week as easy-to-read durations (7h 23m instead of a ticking 07:23:51), with your week always visible below.',
+      'Last week and Personal Time Off sit together in one row at the card\'s foot; the per-job detail stays one tap away.',
+      'The orange clocked-in strip above is unchanged.',
+    ],
+  },
+  {
     version: 'v2.1550',
     date: '2026-08-10',
     title: 'One-tap search on Assigned Jobs',

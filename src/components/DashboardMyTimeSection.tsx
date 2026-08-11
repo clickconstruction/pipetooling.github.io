@@ -16,11 +16,12 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function formatElapsed(seconds: number): string {
+/** Friendly duration for the stat tiles (v2.1551): "7h 24m", "45m", "0m". */
+function formatDurationHM(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':')
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
 }
 
 function formatHours(seconds: number): string {
@@ -664,16 +665,45 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
   }
 
   return (
-    <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-      <div
-        role="region"
-        aria-label="My time summary"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem', textAlign: 'center' }}
-      >
-        <span style={{ fontSize: '1rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500, lineHeight: 1.25 }}>
-          Today: {formatElapsed(totalSecondsToday)} | Week: {formatElapsed(totalSecondsWeek)}
-        </span>
+    <div
+      role="region"
+      aria-label="My time summary"
+      style={{
+        marginTop: '2rem',
+        marginBottom: '1rem',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        padding: '0.85rem 1rem 1rem',
+      }}
+    >
+      {/* One My Time card (v2.1551): header, duration tiles, always-visible week
+          grid, breakdown behind the toggle, one action row. The orange clock
+          strip above stays as-is (owner request). */}
+      <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.6rem' }}>
+        My Time
       </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.75rem' }}>
+        <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Today</div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
+            {formatDurationHM(totalSecondsToday)}
+          </div>
+        </div>
+        <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>This week</div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
+            {formatDurationHM(totalSecondsWeek)}
+          </div>
+        </div>
+      </div>
+      {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
+        sessionCountByDay,
+        onDayClick: disableDayEditor ? undefined : setEditorDate,
+        editableRange: getDefaultWeekRange(),
+        hoursDaysCorrect,
+        useOnShiftDayLabel: disableDayEditor,
+      })}
       {breakdown.length > 0 && (
         <>
           <button
@@ -684,7 +714,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
               alignItems: 'center',
               gap: '0.35rem',
               padding: '0.25rem 0',
-              margin: 0,
+              margin: '0.35rem 0 0',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -696,95 +726,92 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
             <span aria-hidden>{breakdownOpen ? '▼' : '▶'}</span>
             This week detail
           </button>
-          {breakdownOpen && (
-            <>
-              {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
-                sessionCountByDay,
-                onDayClick: disableDayEditor ? undefined : setEditorDate,
-                editableRange: getDefaultWeekRange(),
-                hoursDaysCorrect,
-                useOnShiftDayLabel: disableDayEditor,
-              })}
-              {renderBreakdownList(breakdown, expandedKeys, (key) => {
-                setExpandedKeys((prev) => {
-                  const next = new Set(prev)
-                  if (next.has(key)) next.delete(key)
-                  else next.add(key)
-                  return next
-                })
-              })}
-            </>
-          )}
+          {breakdownOpen &&
+            renderBreakdownList(breakdown, expandedKeys, (key) => {
+              setExpandedKeys((prev) => {
+                const next = new Set(prev)
+                if (next.has(key)) next.delete(key)
+                else next.add(key)
+                return next
+              })
+            })}
         </>
       )}
-      <div style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={handleToggleLastWeek}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.25rem 0',
-              margin: 0,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              color: 'var(--text-muted)',
-              fontWeight: 500,
-            }}
-          >
-            <span aria-hidden>{showLastWeek ? '▼' : '▶'}</span>
-            {showLastWeek ? 'Hide last week detail' : 'Last week detail'}
-          </button>
-        </div>
-        {showLastWeek && (
-          <>
-            <div className="myTimeLastWeekSummary">
-              <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-                Last week: {formatElapsed(totalSecondsLastWeek)}
-              </div>
-              {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek, {
-                sessionCountByDay: sessionCountByDayLastWeek,
-                useOnShiftDayLabel: disableDayEditor,
-              })}
-            </div>
-            {breakdownLastWeek.length > 0 &&
-              renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
-                setExpandedKeysLastWeek((prev) => {
-                  const next = new Set(prev)
-                  if (next.has(key)) next.delete(key)
-                  else next.add(key)
-                  return next
-                })
-              })}
-          </>
-        )}
-      </div>
       {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No time logged this week.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>No time logged this week.</p>
       )}
-      {/* Personal Time Off moved here from Settings → Your account (v2.1544). */}
-      <button
-        type="button"
-        onClick={() => setTimeOffModalOpen(true)}
+      <div
         style={{
-          display: 'block',
-          margin: '1rem auto 0',
-          padding: '0.45rem 1rem',
-          background: 'var(--surface)',
-          border: '1px solid var(--border-strong)',
-          borderRadius: 6,
-          fontSize: '0.875rem',
-          fontWeight: 500,
-          color: 'var(--text-700)',
-          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          borderTop: '1px solid var(--border)',
+          marginTop: '0.85rem',
+          paddingTop: '0.7rem',
         }}
       >
-        Personal Time Off…
-      </button>
+        <button
+          type="button"
+          onClick={handleToggleLastWeek}
+          aria-expanded={showLastWeek}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.3rem 0.7rem',
+            background: showLastWeek ? 'var(--bg-subtle)' : 'var(--surface)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: '0.8125rem',
+            color: 'var(--text-700)',
+            fontWeight: 500,
+          }}
+        >
+          <span aria-hidden>{showLastWeek ? '▼' : '▶'}</span>
+          Last week
+        </button>
+        {/* Personal Time Off moved here from Settings → Your account (v2.1544). */}
+        <button
+          type="button"
+          onClick={() => setTimeOffModalOpen(true)}
+          style={{
+            marginLeft: 'auto',
+            padding: '0.3rem 0.7rem',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 6,
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            color: 'var(--text-700)',
+            cursor: 'pointer',
+          }}
+        >
+          Personal Time Off…
+        </button>
+      </div>
+      {showLastWeek && (
+        <>
+          <div className="myTimeLastWeekSummary">
+            <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+              Last week: {formatDurationHM(totalSecondsLastWeek)}
+            </div>
+            {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek, {
+              sessionCountByDay: sessionCountByDayLastWeek,
+              useOnShiftDayLabel: disableDayEditor,
+            })}
+          </div>
+          {breakdownLastWeek.length > 0 &&
+            renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
+              setExpandedKeysLastWeek((prev) => {
+                const next = new Set(prev)
+                if (next.has(key)) next.delete(key)
+                else next.add(key)
+                return next
+              })
+            })}
+        </>
+      )}
       <PersonalTimeOffModal open={timeOffModalOpen} userId={userId} onClose={() => setTimeOffModalOpen(false)} />
       {editorDate && !disableDayEditor && (
         <DashboardMyTimeDayEditorModal

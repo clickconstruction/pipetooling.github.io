@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1550)
+last_updated: 2026-08-10 (v2.1551)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1551)
+
+### Dashboard My Time becomes one card (2026-08-10)
+Owner approved the footer-redesign mockup, with one carve-out: **the orange "Clocked in today / Jobs worked today" strip stays exactly as-is**. [`DashboardMyTimeSection`](../src/components/DashboardMyTimeSection.tsx) is restructured from four floating fragments (centered `Today: 07:23:51 | Week: …` ticking timers, left-aligned "This week detail" toggle hiding the week grid, right-aligned "Last week detail", a centered Personal Time Off button) into **one bordered card**: a "My Time" header, two **duration stat tiles** (new `formatDurationHM` — `7h 23m`; the removed `formatElapsed` seconds format survives only inside the day editor), the **week-by-day grid always visible** (day-click editor + pending markers unchanged), the per-job breakdown still behind "This week detail", and a **footer action row** — a `▶ Last week` chip (expands the last-week total/grid/breakdown in place, also as durations) with `Personal Time Off…` right-aligned. Verified live as Helper Paige in dark mode: strip untouched above the card, tiles at 7h 23m, Mon 8/10 showing 7.40 hrs + 1 pending, both toggles work. Client-only — no migration.
 
 ## Latest Updates (v2.1550)
 
