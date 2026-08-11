@@ -17,6 +17,7 @@
  */
 
 import type { UpcomingPayrollLine } from './upcomingPayrollSummary'
+import { effectivePctComplete } from './jobs/effectivePctComplete'
 
 export type FinancialItem = {
   key: string
@@ -29,7 +30,12 @@ export type FinancialItem = {
   jobId: string | null
   /** Job street address — shown on Not-billed rows; null elsewhere. */
   address: string | null
-  /** Stages % complete (jobs_ledger.pct_complete) — shown on Not-billed and AR (billed/collections) rows; null on AP rows or when unset. */
+  /**
+   * Effective % done for Not-billed and AR (billed/collections) rows —
+   * jobs_ledger.pct_complete with the display fallback already applied
+   * (unset reads 0; see effectivePctComplete). Null on AP rows and rows
+   * whose job row is missing.
+   */
   pctComplete?: number | null
 }
 
@@ -153,7 +159,7 @@ export function buildArBuckets(
       dateYmd: isoToYmd(inv.billed_at),
       jobId: inv.job_id,
       address: null,
-      pctComplete: job?.pct_complete ?? null,
+      pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
     })
   }
   for (const job of jobs) {
@@ -170,7 +176,7 @@ export function buildArBuckets(
       dateYmd: null,
       jobId: job.id,
       address: null,
-      pctComplete: job.pct_complete ?? null,
+      pctComplete: effectivePctComplete(job.pct_complete, job.status),
     })
   }
   return { ar: finishBucket(arItems), collections: finishBucket(collectionsItems) }
@@ -434,7 +440,7 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
       dateYmd: job.last_work_date,
       jobId: job.id,
       address: (job.job_address ?? '').trim() || null,
-      pctComplete: job.pct_complete ?? null,
+      pctComplete: effectivePctComplete(job.pct_complete, job.status),
     })
   }
   return finishBucket(items)

@@ -8,6 +8,7 @@
  * a slightly-off delta.
  */
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { effectivePctComplete } from './jobs/effectivePctComplete'
 
 /** "45% complete — note" / "100% complete" → 45 / 100; anything else null. */
 export function parsePctCompleteNoteBody(body: string): number | null {
@@ -93,7 +94,7 @@ export function computeJobPctToday(
   const out = new Map<string, JobPctToday>()
   for (const [jobId, { pct, status }] of jobsById) {
     if (pct == null || !Number.isFinite(pct)) {
-      out.set(jobId, { pct: status === 'paid' ? 100 : 0, delta: null })
+      out.set(jobId, { pct: effectivePctComplete(pct, status), delta: null })
       continue
     }
     const acc = accByJob.get(jobId)
