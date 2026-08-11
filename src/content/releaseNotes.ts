@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1559',
+    date: '2026-08-10',
+    title: 'Roadmap tab tucked away for now',
+    kind: 'feature',
+    highlights: [
+      'The Checklist page\'s Roadmap tab is temporarily visible to devs only while it\'s being worked on. Old links to it now land on your usual Checklist tab.',
+    ],
+  },
+  {
     version: 'v2.1558',
     date: '2026-08-10',
     title: 'Job activity filters show their counts',
