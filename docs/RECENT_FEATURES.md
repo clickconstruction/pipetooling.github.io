@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1583)
+last_updated: 2026-08-11 (v2.1584)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1584)
+
+### People → Hours: "Match sessions" — one modal to match unassigned clock sessions (2026-08-11)
+Owner-approved mockup ("add a button that opens a modal to help the matching of clock sessions without assignments to jobs and bids"). **(1) The button** rides the Currently-clocked-in section header ([`People.tsx`](../src/pages/People.tsx)), amber with a count badge when the last 7 days hold sessions with no job AND no bid (salary-materialized segments and rejected/revoked excluded — `fetchUnassignedClockSessionCount`), quiet outline at zero. **(2) The modal** ([`MatchClockSessionsModal`](../src/components/people/MatchClockSessionsModal.tsx)) lists those sessions grouped by person (day · time span · open-session marker · clock note) and leads each with up to three one-tap suggestions from the new pure kernel [`matchClockSessions.ts`](../src/lib/matchClockSessions.ts) (+7 tests): **Dispatch** (a `job_schedule_blocks` row for that person+day, via the popover's existing `fetchDispatchScheduledJobsForAssigneeDay`), **Crew that day** (the same person's other session that day already on a job/bid), **From note** (3–4 digit numbers in the clock note resolved against `hcp_number`, ambiguous numbers suppressed) — deduped by target, stronger kind wins, capped at 3. Assign performs the popover's exact `clock_sessions` update; matched rows collapse to a green line with Undo (ids back to null). Search fallback embeds [`AssignSessionJobPopover`](../src/components/clock-sessions/AssignSessionJobPopover.tsx) (new `assignTriggerLabel` prop relabels its trigger "Search jobs & bids…"), Skip hides per-visit only, and the footer bulk-applies only sessions with EXACTLY one Dispatch match. Render smoke +2; new help guide [`match-clock-sessions`](../src/content/help/match-clock-sessions.md); `PEOPLE_TABS_ARCHITECTURE.md` hours dossier updated. Verified live: button badged "1" against prod, the modal listed William's real 35m Friday session with a correct Crew-that-day → Office suggestion, and the embedded search popover rendered the v2.1583 split rows (name / address / line items / rail) with real results. Client-only — no migration.
 
 ## Latest Updates (v2.1583)
 
