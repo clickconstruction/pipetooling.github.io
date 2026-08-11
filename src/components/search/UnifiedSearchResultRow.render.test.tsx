@@ -110,6 +110,21 @@ describe('UnifiedSearchResultRow', () => {
     }
   })
 
+  it('stacked prop forces the rail below the identity even on a wide viewport', () => {
+    // No matchMedia override — the viewport heuristic says desktop (matches:
+    // false), so only the prop can produce the stacked layout. Always-narrow
+    // hosts (the ~360px assign-session popover) rely on this.
+    renderWithProviders(
+      <UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} jobEvidence={jobEvidence} stacked />,
+    )
+    const label = screen.getByText(/J927 · Mike Holub/)
+    const chip = screen.getByText('Ready to Bill')
+    const identityLine = label.closest('span[style*="flex"]')
+    expect(identityLine).toBeTruthy()
+    expect(identityLine?.contains(chip)).toBe(false)
+    expect(screen.getByText('$4,850')).toBeTruthy()
+  })
+
   it('renders a bid with plain B prefix, outcome chip, value, and date', () => {
     renderWithProviders(
       <UnifiedSearchResultRow

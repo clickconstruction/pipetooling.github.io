@@ -98,6 +98,13 @@ export type UnifiedSearchResultRowProps = {
   jobEvidence?: JobSearchEvidence | null
   bidEvidence?: BidSearchEvidence | null
   evidenceMode?: JobSearchEvidenceMode
+  /**
+   * Force the stacked (rail-below-identity) layout regardless of viewport.
+   * Hosts whose CONTAINER is always narrow (e.g. the ~360px assign-session
+   * popover) must pass true — the viewport heuristic can't see container
+   * width, so on desktop it picks side-by-side and crushes the name.
+   */
+  stacked?: boolean
 }
 
 export function UnifiedSearchResultRow({
@@ -106,11 +113,13 @@ export function UnifiedSearchResultRow({
   jobEvidence,
   bidEvidence,
   evidenceMode = 'money',
+  stacked: stackedProp,
 }: UnifiedSearchResultRowProps) {
   // Under 640px the evidence rail moves BELOW the identity line (left-aligned)
   // instead of beside it — side-by-side crushes the label into a narrow
   // wrapping column on phones and scatters the chips at different heights.
-  const stacked = useNarrowViewport640()
+  const narrowViewport = useNarrowViewport640()
+  const stacked = stackedProp ?? narrowViewport
   const tradePill = serviceTypeTagForUnifiedRow(r)
   const pill = tradePill ?? customerTypePillForUnifiedRow(r)
   const je = r.source === 'job' ? jobEvidence : null
