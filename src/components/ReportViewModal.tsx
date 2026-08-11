@@ -68,10 +68,13 @@ export function ReportLocationMapsLink({
 export function ReportDetailBody({
   report,
   fieldLayout = 'stacked',
+  hideMeta = false,
 }: {
   report: ReportForView
   /** `inline`: `Label - value` on one flow (full-screen Job Reports); `stacked`: label above value (default). */
   fieldLayout?: 'stacked' | 'inline'
+  /** Hide the created-at/author meta line (the reports timeline renders its own, v2.1548). */
+  hideMeta?: boolean
 }) {
   const lat = report.reported_at_lat
   const lng = report.reported_at_lng
@@ -79,10 +82,12 @@ export function ReportDetailBody({
 
   return (
     <>
-      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-        {new Date(report.created_at).toLocaleString()} · {report.created_by_name}
-        {hasLoc && <ReportLocationMapsLink lat={Number(lat)} lng={Number(lng)} stopPropagation />}
-      </div>
+      {!hideMeta ? (
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+          {new Date(report.created_at).toLocaleString()} · {report.created_by_name}
+          {hasLoc && <ReportLocationMapsLink lat={Number(lat)} lng={Number(lng)} stopPropagation />}
+        </div>
+      ) : null}
 
       {report.field_values && Object.keys(report.field_values).length > 0 ? (
         <div style={{ fontSize: '0.875rem' }}>

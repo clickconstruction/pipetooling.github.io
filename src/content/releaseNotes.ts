@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1548',
+    date: '2026-08-10',
+    title: 'Reports read as a timeline + cleaner schedule cards',
+    kind: 'feature',
+    highlights: [
+      'The job Reports screen is now a timeline: newest report shown in full, older ones as one-line previews with Show full report, each with who, type, when, and the completion percent at that moment.',
+      'The header sums up the whole job at a glance — "3 reports · 0% → 60% complete" — and the old four-button toolbar collapsed to a single ✕.',
+      'My Schedule cards lead with the job name; the job number and address (no zip) get their own full-width line above the dispatch note.',
+    ],
+  },
+  {
     version: 'v2.1547',
     date: '2026-08-10',
     title: 'Report counts on every Leave Report button',
