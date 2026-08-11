@@ -45,7 +45,7 @@ import {
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
   renderStagesJobColumnEstimateFooter,
-  renderStagesJobHcpSubline,
+  renderStagesJobHcpChip,
   renderStagesThreadExpandButton,
   renderStagesThreadFullscreenJobHeader,
   renderStagesViewReportsButton,
@@ -85,6 +85,21 @@ const cardStyle: CSSProperties = {
   flexDirection: 'column',
   gap: '0.3rem',
   overflow: 'hidden',
+}
+
+/** Card title row: "941 PLUM" chip leading the job-name link on one line (chip below was dead vertical space). */
+const cardTitleRowWithChipStyle: CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: '0.4rem',
+}
+
+/** Nudge the chip down so it centers on the name's first text line. */
+const cardTitleChipStyle: CSSProperties = {
+  flexShrink: 0,
+  marginTop: '0.1rem',
 }
 
 const cardPrimaryActionStyle: CSSProperties = {
@@ -770,7 +785,10 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
           >
             {stagesEditMode ? renderStagesEditModeRail(j, openEdit) : null}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>{renderStagesOpenDetailJobName(j)}</div>
+              <div style={cardTitleRowWithChipStyle}>
+                {renderStagesJobHcpChip(j, cardTitleChipStyle)}
+                <div style={{ minWidth: 0, flex: 1 }}>{renderStagesOpenDetailJobName(j)}</div>
+              </div>
               {actionLabel ? (
                 <button
                   type="button"
@@ -782,7 +800,6 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
                 </button>
               ) : null}
             </div>
-            {renderStagesJobHcpSubline(j)}
             {crewLine(j)}
             {renderJobAddressWithMap(j.job_address)}
             {renderJobCustomerLineWithCtx(ctx, j)}
@@ -983,7 +1000,10 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
           >
             {stagesEditMode ? renderStagesEditModeRail(j, openEdit) : null}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>{renderStagesOpenDetailJobName(j)}</div>
+              <div style={cardTitleRowWithChipStyle}>
+                {renderStagesJobHcpChip(j, cardTitleChipStyle)}
+                <div style={{ minWidth: 0, flex: 1 }}>{renderStagesOpenDetailJobName(j)}</div>
+              </div>
               {primary ? (
                 <button
                   type="button"
@@ -995,7 +1015,6 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 </button>
               ) : null}
             </div>
-            {renderStagesJobHcpSubline(j)}
             {inv ? (
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                 <strong style={{ fontVariantNumeric: 'tabular-nums' }}>

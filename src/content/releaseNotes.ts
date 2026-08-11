@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1576',
+    date: '2026-08-11',
+    title: 'Pipeline cards: job number moves up beside the job name',
+    kind: 'fix',
+    highlights: [
+      'In Jobs → Pipeline with Mobile cards on, the job-number chip (like "941 PLUM") now sits on the same line as the job name instead of on its own row — every card gets a little shorter.',
+    ],
+  },
+  {
     version: 'v2.1575',
     date: '2026-08-11',
     title: 'Billing accuracy: double-recorded Stripe payments fixed and prevented',
