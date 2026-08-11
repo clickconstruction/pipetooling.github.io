@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1582)
+last_updated: 2026-08-11 (v2.1583)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1583)
+
+### Assign job or bid popover: address and line items each get their own line (2026-08-11)
+Owner follow-up to v2.1582 ("help me put the address on the 2nd line and the line items on the 3rd line"). The combined identity label ("J941 · Berg AirBnb… - 6288 River Rd…") still ate the name in the ~360px popover because the address rode the same line. New kernel [`formatUnifiedResultSplit`](../src/utils/unifiedJobBidSearch.ts) splits the label at the " - " joint (`title` = prefix · name; `secondary` = zip-stripped address, bids/estimates falling back to customer/subtitle, null when absent); `formatUnifiedResult` now joins through the split so the two can never drift (byte-identical output, covered by test). [`UnifiedSearchResultRow`](../src/components/search/UnifiedSearchResultRow.tsx) gains `splitAddressLine` (implies stacked): **line 1** number + name (full combined label in the tooltip), **line 2** muted address, **line 3** the line-items summary, **line 4** the evidence rail (status chip · $ · paid/unpaid · N this wk) as the row's footer. [`AssignSessionJobPopover`](../src/components/clock-sessions/AssignSessionJobPopover.tsx) turns it on; every other consumer (header search, dispatch pickers, PO generator, …) keeps the joined single-line identity. Kernel tests +3 (split shapes + join fidelity), row render tests +1 (per-line order via DOM position). Live verification deferred as in v2.1582 — no pending/active clock session existed to open the popover against. Client-only — no migration.
 
 ## Latest Updates (v2.1582)
 

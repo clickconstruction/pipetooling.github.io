@@ -116,6 +116,45 @@ export function escapeLike(s: string): string {
   return s.replace(/[%_,()\\]/g, (m) => '\\' + m)
 }
 
+/**
+ * The identity label split at the " - " joint: `title` is "{prefix} · {name}",
+ * `secondary` the address (bids/estimates fall back to customer/subtitle) or
+ * null when there is none. `formatUnifiedResult` joins these — rows that give
+ * the address its own line (splitAddressLine) consume the parts directly.
+ */
+export function formatUnifiedResultSplit(
+  r: UnifiedSearchResult,
+  prefixMap: LedgerPrefixMap,
+  opts?: {
+    /** Plain J/B prefixes instead of the per-service-type ones (e.g. JP/BP) — for rows
+     * that already render a trade pill, where the trade letter would be redundant. */
+    plainTradePrefixes?: boolean
+  },
+): { title: string; secondary: string | null } {
+  if (r.source === 'job') {
+    const pref = opts?.plainTradePrefixes
+      ? DEFAULT_JOB_LEDGER_PREFIX
+      : resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
+    const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
+    return { title: `${prefix} · ${r.job_name || '—'}`, secondary: stripTrailingZip(r.job_address) || null }
+  }
+  if (r.source === 'bid') {
+    const pref = opts?.plainTradePrefixes
+      ? DEFAULT_BID_LEDGER_PREFIX
+      : resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
+    const prefix = formatBidLedgerNumberLabel(pref, r.bid_number)
+    return { title: `${prefix} · ${r.project_name || '—'}`, secondary: stripTrailingZip(r.address) || r.customer_name || null }
+  }
+  if (r.source === 'customer') {
+    const name = (r.name ?? '').trim() || '—'
+    return { title: `C · ${name}`, secondary: stripTrailingZip(r.address) || null }
+  }
+  const en = r.estimate_number
+  const prefix = `E${Number.isFinite(en) ? String(en) : '—'}`
+  const tail = (r.subtitle || '').trim() || (r.customer_name || '').trim() || null
+  return { title: `${prefix} · ${(r.title || '').trim() || '—'}`, secondary: tail }
+}
+
 export function formatUnifiedResult(
   r: UnifiedSearchResult,
   prefixMap: LedgerPrefixMap,
@@ -125,29 +164,11 @@ export function formatUnifiedResult(
     plainTradePrefixes?: boolean
   },
 ): string {
-  if (r.source === 'job') {
-    const pref = opts?.plainTradePrefixes
-      ? DEFAULT_JOB_LEDGER_PREFIX
-      : resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
-    const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
-    return `${prefix} · ${r.job_name || '—'} - ${stripTrailingZip(r.job_address) || '—'}`
-  }
-  if (r.source === 'bid') {
-    const pref = opts?.plainTradePrefixes
-      ? DEFAULT_BID_LEDGER_PREFIX
-      : resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
-    const prefix = formatBidLedgerNumberLabel(pref, r.bid_number)
-    return `${prefix} · ${r.project_name || '—'} - ${stripTrailingZip(r.address) || r.customer_name || '—'}`
-  }
-  if (r.source === 'customer') {
-    const name = (r.name ?? '').trim() || '—'
-    const addr = stripTrailingZip(r.address)
-    return addr ? `C · ${name} - ${addr}` : `C · ${name}`
-  }
-  const en = r.estimate_number
-  const prefix = `E${Number.isFinite(en) ? String(en) : '—'}`
-  const tail = (r.subtitle || '').trim() || (r.customer_name || '').trim() || '—'
-  return `${prefix} · ${(r.title || '').trim() || '—'} - ${tail}`
+  const { title, secondary } = formatUnifiedResultSplit(r, prefixMap, opts)
+  // Customers historically omit the " - —" tail when address-less; the other
+  // sources keep it (byte-identical to the pre-split output).
+  if (r.source === 'customer') return secondary ? `${title} - ${secondary}` : title
+  return `${title} - ${secondary ?? '—'}`
 }
 
 /** `{prefix}{hcp} · job name` (no address) + trimmed address for two-line schedule quick-picks. */
