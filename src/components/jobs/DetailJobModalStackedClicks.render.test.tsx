@@ -77,7 +77,7 @@ describe('DetailJobModal backdrop vs. its stacked satellite modals', () => {
 
     expect(onClose).not.toHaveBeenCalled()
     // …and the click did what it was supposed to do.
-    await waitFor(() => expect(screen.getByText('Additional Report')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/New report ·/)).toBeTruthy())
   })
 
   it('stacks the Additional Report form above the Reports modal that opened it', async () => {
@@ -89,7 +89,7 @@ describe('DetailJobModal backdrop vs. its stacked satellite modals', () => {
 
     fireEvent.click(addReport)
 
-    const formOverlay = fixedOverlayOf(await screen.findByText('Additional Report'))
+    const formOverlay = fixedOverlayOf(await screen.findByText(/New report ·/))
     expect(Number(formOverlay.style.zIndex)).toBeGreaterThan(Number(reportsOverlay.style.zIndex))
   })
 

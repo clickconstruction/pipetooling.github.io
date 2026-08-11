@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1553)
+last_updated: 2026-08-10 (v2.1554)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1554)
+
+### Report form polish: percent quick-picks, compact header, coached placeholders (2026-08-10)
+Owner approved the report-form mockup. **(1) Percent chips:** [`ReportTemplatePercentField`](../src/components/ReportTemplatePercentField.tsx) (shared by every report form) gains five thumb-size quick-pick buttons — 0 / 25 / 50 / 75 / 100 — above the slider; the active value highlights and the slider stays for fine-tuning. **(2) Header:** [`AdditionalReportModal`](../src/components/AdditionalReportModal.tsx)'s four header lines become two — title **"New report · 473 Mike Holub"** (the "Additional Report" systems-name retired from the UI) with the zip-less address under it (`stripAddressZip` reuse). **(3) Placeholders:** the stock template questions get coaching placeholders ("What got done, what's blocking…" / "Parts, trades, or a return visit…") via a label-keyed map — unknown template fields get none. **(4) Footer:** Cancel demotes to quiet text on the left; Save report sits alone on the right above a divider. Two stacked-modal render tests updated for the new title. Verified live as Helper Paige at 375px: chip tap set 75% with the readout and slider in sync; cancelled without saving. Client-only — no migration.
 
 ## Latest Updates (v2.1553)
 
