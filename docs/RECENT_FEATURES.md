@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1561)
+last_updated: 2026-08-11 (v2.1562)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1562)
+
+### Dashboard: finance cards get aging bars and at-risk lead lines (2026-08-11)
+Owner approved the mockup ("the cards state totals but hide risk"). The AR / AP / Not Billed Out cards ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)) restructure from two-column (total + right-side extras) to a single column: **total → thin stacked aging bar → at-risk lead line → quiet detail lines**. The bar reuses the drill-down modals' `financeAgingBuckets` kernel verbatim (same 0–14 green / 15–30 amber / 30d+ red bands, same per-card date semantics — AP ages by bill **due date** via `apBills`, AR by billed date, Not Billed by last work), sized as % of the card total with the uncolored track = fresh/undated money, so card and modal strip always agree. The lead line shows the 30d+ dollars in red ("**$78.9k** over 30 days · oldest 148d"; Not Billed says "idle over"), falls back to 15–30d amber, else quiet "Nothing aged over 15 days"; the old faint "oldest: 3/16 (147d)" footer folds into it (full date keeps living in the card tooltip). Detail lines go glance-consistent short-k: AR "67 invoices · Collections $19.6k (3)", AP "Supply $92.3k · Subs $10.4k" + "Team $20.1k (+ $11.9k est. payroll)" (the cryptic "$20,169+11,957" form is gone), Not Billed "24 jobs with unbilled work". New pure kernel [`financeCardAging.ts`](../src/lib/financeCardAging.ts) (`financeCardBarSegments` + `financeCardRisk`, 6 tests). Help guide [`drill-into-the-dashboard-money-cards`](../src/content/help/drill-into-the-dashboard-money-cards.md) gains the card-bar paragraph. Verified live (dev dashboard): AR $199k/40% red, AP $134k/41% red, Not Billed $175k/**65% red — $114k idle over 30 days**, which the old cards never surfaced. Client-only — no migration.
 
 ## Latest Updates (v2.1561)
 

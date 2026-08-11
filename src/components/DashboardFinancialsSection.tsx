@@ -2,6 +2,7 @@ import { Fragment, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
 import { formatMoneyShortK } from '../lib/formatMoneyShortK'
+import { financeCardBarSegments, financeCardRisk } from '../lib/financeCardAging'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useAuth } from '../hooks/useAuth'
@@ -17,6 +18,7 @@ import {
   financeAgingDays,
   financeAgingTone,
   sortFinanceItems,
+  type FinanceAgingBuckets,
   type FinanceAgingTone,
   type FinanceDrillSort,
 } from '../lib/dashboardFinanceModalRows'
@@ -52,11 +54,6 @@ const STAGES_SECTION_LINKS: Record<string, string> = {
   'Ready to Bill': '/jobs?tab=stages&stagesSection=readyToBill',
   Working: '/jobs?tab=stages&stagesSection=working',
   Collections: '/jobs?tab=stages&stagesSection=collections',
-}
-
-/** Whole-dollar display for card glance figures, e.g. 56186.78 → "56,187". */
-function roundDollars(n: number): string {
-  return Math.round(n).toLocaleString('en-US')
 }
 
 function shortDate(ymd: string | null): string {
@@ -1107,38 +1104,67 @@ export default function DashboardFinancialsSection() {
   const [apBill, setApBill] = useState<DashboardApBill | null>(null)
   const jobDetailModal = useJobDetailModal()
 
-  // extraLines render as a second column beside the total (not a run-on subtitle line).
-  // itemNoun names the bucket's rows in the uniform "N <noun>s, oldest: M/D (Xd)" footer.
-  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extraLines?: string[]; itemNoun: string }> = data
+  // Card anatomy (v2.1562, mockup-approved): total → thin aging bar (same
+  // 0–14/15–30/30d+ bands and colors as the modal's aging strip; uncolored
+  // remainder = fresh/undated money) → at-risk lead line → quiet detail lines.
+  // detailLines use short-k glance figures; exact dollars live in the modal.
+  const cardsTodayYmd = new Date().toLocaleDateString('en-CA')
+  const cards: Array<{
+    key: CardKey
+    bucket: FinancialBucket
+    agingBuckets: FinanceAgingBuckets
+    /** 'late'/'warn' wording — Not Billed Out money isn't "overdue", it's idle. */
+    agedWord: string
+    detailLines: string[]
+  }> = data
     ? [
         {
           key: 'ar',
           bucket: data.ar,
-          itemNoun: 'invoice',
-          // One line (matches the AP card's "Label: $value" form) so it reads the same
-          // beside the total and when it wraps under the invoice-count footer.
-          extraLines:
-            data.arCollections.count > 0
-              ? [
-                  `Collections: $${roundDollars(data.arCollections.total)} (${data.arCollections.count} bill${data.arCollections.count === 1 ? '' : 's'})`,
-                ]
-              : undefined,
+          agingBuckets: financeAgingBuckets(
+            data.ar.items.map((i) => ({ amount: i.amount, ymd: i.dateYmd })),
+            cardsTodayYmd,
+          ),
+          agedWord: 'over',
+          detailLines: [
+            `${data.ar.count} invoice${data.ar.count === 1 ? '' : 's'}${
+              data.arCollections.count > 0
+                ? ` · Collections ${formatMoneyShortK(data.arCollections.total)} (${data.arCollections.count})`
+                : ''
+            }`,
+          ],
         },
         {
           key: 'ap',
           bucket: data.ap,
-          itemNoun: 'bill',
-          // Whole dollars: these are glance figures; the drill-down modal has cents.
-          // Team = payroll due + estimated upcoming ("$due+upcoming") on one line.
-          extraLines: [
-            `Supply Houses: $${roundDollars(data.ap.supplyTotal)}`,
-            `Sub Labor: $${roundDollars(data.ap.subLaborTotal)}`,
-            `Team: $${roundDollars(data.ap.payrollTotal)}${
-              data.apUpcoming.count > 0 ? `+${roundDollars(data.apUpcoming.total)}` : ''
+          // AP ages by the bill's DUE date when we have it — same resolver as the modal.
+          agingBuckets: financeAgingBuckets(
+            data.ap.items.map((i) => ({
+              amount: i.amount,
+              ymd: data.apBills[i.key]?.dueDateYmd ?? i.dateYmd,
+            })),
+            cardsTodayYmd,
+          ),
+          agedWord: 'over',
+          detailLines: [
+            `Supply ${formatMoneyShortK(data.ap.supplyTotal)} · Subs ${formatMoneyShortK(data.ap.subLaborTotal)}`,
+            `Team ${formatMoneyShortK(data.ap.payrollTotal)}${
+              data.apUpcoming.count > 0 ? ` (+ ${formatMoneyShortK(data.apUpcoming.total)} est. payroll)` : ''
             }`,
           ],
         },
-        { key: 'unbilled', bucket: data.unbilled, itemNoun: 'job' },
+        {
+          key: 'unbilled',
+          bucket: data.unbilled,
+          agingBuckets: financeAgingBuckets(
+            data.unbilled.items.map((i) => ({ amount: i.amount, ymd: i.dateYmd })),
+            cardsTodayYmd,
+          ),
+          agedWord: 'idle over',
+          detailLines: [
+            `${data.unbilled.count} job${data.unbilled.count === 1 ? '' : 's'} with unbilled work`,
+          ],
+        },
       ]
     : []
 
@@ -1150,35 +1176,37 @@ export default function DashboardFinancialsSection() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-          {cards.map(({ key, bucket, extraLines, itemNoun }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setOpenCard(key)}
-              title={`${CARD_META[key].hint} Click for the item list.`}
-              style={{
-                textAlign: 'left',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '0.85rem 1rem',
-                cursor: 'pointer',
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                // Top-aligned so all three card titles read on one line even when the
-                // grid stretches shorter cards to the tallest card's height (alignContent
-                // covers the wrapped two-row case at narrow widths).
-                alignItems: 'flex-start',
-                alignContent: 'flex-start',
-                columnGap: '0.75rem',
-                rowGap: '0.25rem',
-                // Buttons don't inherit text color; without this the unstyled
-                // amount renders UA-black on the dark surface.
-                color: 'inherit',
-              }}
-            >
-              <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 0 }}>
+          {cards.map(({ key, bucket, agingBuckets: cardAging, agedWord, detailLines }) => {
+            const segments = financeCardBarSegments(cardAging, bucket.total)
+            const risk = financeCardRisk(cardAging)
+            const oldestDays = bucket.oldestDateYmd
+              ? financeAgingDays(bucket.oldestDateYmd, cardsTodayYmd)
+              : null
+            const oldestSuffix = oldestDays != null ? ` · oldest ${oldestDays}d` : ''
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setOpenCard(key)}
+                title={`${CARD_META[key].hint} Click for the item list.${
+                  bucket.oldestDateYmd ? ` Oldest: ${oldestShortWithAge(bucket.oldestDateYmd)}.` : ''
+                }`}
+                style={{
+                  textAlign: 'left',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.85rem 1rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: '0.25rem',
+                  // Buttons don't inherit text color; without this the unstyled
+                  // amount renders UA-black on the dark surface.
+                  color: 'inherit',
+                }}
+              >
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
                 <span
                   title={`$${formatCurrency(bucket.total)}`}
@@ -1186,32 +1214,64 @@ export default function DashboardFinancialsSection() {
                 >
                   {formatMoneyShortK(bucket.total)}
                 </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                  {`${bucket.count} ${itemNoun}${bucket.count === 1 ? '' : 's'}${
-                    bucket.oldestDateYmd ? `, oldest: ${oldestShortWithAge(bucket.oldestDateYmd)}` : ''
-                  }`}
-                </span>
-              </span>
-              {extraLines && extraLines.length > 0 ? (
+                {segments.length > 0 ? (
+                  <span
+                    aria-hidden
+                    style={{
+                      display: 'flex',
+                      height: 5,
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                      background: 'var(--bg-muted)',
+                      margin: '0.1rem 0 0.15rem',
+                    }}
+                  >
+                    {segments.map((s) => (
+                      <span
+                        key={s.tone}
+                        style={{
+                          width: `${s.pct}%`,
+                          background: s.tone === 'late' ? '#dc2626' : s.tone === 'warn' ? '#d97706' : '#16a34a',
+                        }}
+                      />
+                    ))}
+                  </span>
+                ) : null}
                 <span
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.2rem',
-                    textAlign: 'right',
                     fontSize: '0.75rem',
-                    color: 'var(--text-muted)',
                     fontVariantNumeric: 'tabular-nums',
-                    whiteSpace: 'nowrap',
+                    color:
+                      risk.tone === 'late'
+                        ? 'var(--text-red-700)'
+                        : risk.tone === 'warn'
+                          ? 'var(--text-orange-700)'
+                          : 'var(--text-faint)',
                   }}
                 >
-                  {extraLines.map((line) => (
-                    <span key={line}>{line}</span>
-                  ))}
+                  {risk.tone === 'late' ? (
+                    <>
+                      <strong>{formatMoneyShortK(risk.amount)}</strong> {agedWord} 30 days{oldestSuffix}
+                    </>
+                  ) : risk.tone === 'warn' ? (
+                    <>
+                      <strong>{formatMoneyShortK(risk.amount)}</strong> {agedWord} 15 days{oldestSuffix}
+                    </>
+                  ) : (
+                    'Nothing aged over 15 days'
+                  )}
                 </span>
-              ) : null}
-            </button>
-          ))}
+                {detailLines.map((line) => (
+                  <span
+                    key={line}
+                    style={{ fontSize: '0.75rem', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {line}
+                  </span>
+                ))}
+              </button>
+            )
+          })}
         </div>
       )}
       {openCard && data ? (
