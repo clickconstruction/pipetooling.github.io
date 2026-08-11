@@ -11,16 +11,18 @@ Only devs see it. **Your own deletions never trigger it** — you know what you 
 
 ## What counts as a burst
 
-The alert counts **things**, not rows. Deleting one job archives around twenty rows behind the scenes, so counting rows would flag every ordinary delete. One job, one bid, one customer — each counts as one *thing*.
+The alert counts **records**, not rows. Deleting one job archives around twenty rows behind the scenes, so counting rows would flag every ordinary delete. One job, one bid, one customer — each counts as one *record*.
 
 You get a notice when one person, within the time window, deletes either:
 
-- **5 or more things**, or
+- **5 or more records**, or
 - **200 or more rows** — a second trigger that catches a single enormous deletion, like a customer that takes fifty projects with it.
 
 :::example What you see
-{{chip:red|3}} **Bulk deletion detected** — *Trace deleted 12 things (240 rows) around 2:05 PM. Everything deleted can be put back from Recently deleted.*
+{{chip:red|1}} **Bulk deletion detected** — *Trace — 12 records · Tue 7/14, 2:05 PM (today)*
 :::
+
+Each burst gets its own line — who, how many records, and when. With several bursts the title carries the running totals (*· 2 bursts · 26 records · 2 people*), and hovering a record count shows the underlying row count. Everything deleted can be put back from Recently deleted.
 
 ## Deal with it
 
@@ -32,7 +34,7 @@ You get a notice when one person, within the time window, deletes either:
 
 ## Change the thresholds
 
-Settings → **Data & migration** → **Bulk-deletion alert (dev)**. You can turn it off, change how many things or rows trigger it, how tightly clustered they must be, and how far back the notice looks. Leave a box blank to use the default shown.
+Settings → **Data & migration** → **Bulk-deletion alert (dev)**. You can turn it off, change how many records or rows trigger it, how tightly clustered they must be, and how far back the notice looks. Leave a box blank to use the default shown.
 
 ## Good to know
 

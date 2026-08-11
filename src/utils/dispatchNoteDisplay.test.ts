@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatDispatchNoteDaysAgoShort,
   formatDispatchNoteDaysAgoShortPhrase,
+  formatDispatchNoteWeekdayShortDateTimeChicago,
   formatDispatchNoteWeekdayShortTimeChicago,
 } from './dispatchNoteDisplay'
 
@@ -32,6 +33,16 @@ describe('formatDispatchNoteWeekdayShortTimeChicago', () => {
   it('uses the Chicago day for the weekday, not UTC', () => {
     // 2026-07-15T03:00Z is still Tue 10:00 PM in Chicago
     expect(formatDispatchNoteWeekdayShortTimeChicago('2026-07-15T03:00:00Z')).toBe('Tue 10:00 PM')
+  })
+})
+
+describe('formatDispatchNoteWeekdayShortDateTimeChicago', () => {
+  it('renders weekday, numeric month/day, and time', () => {
+    expect(formatDispatchNoteWeekdayShortDateTimeChicago('2026-07-14T19:57:00Z')).toBe('Tue 7/14, 2:57 PM')
+  })
+  it('uses the Chicago calendar day, not UTC', () => {
+    // 2026-07-15T03:00Z is still Tue 7/14 10:00 PM in Chicago
+    expect(formatDispatchNoteWeekdayShortDateTimeChicago('2026-07-15T03:00:00Z')).toBe('Tue 7/14, 10:00 PM')
   })
 })
 

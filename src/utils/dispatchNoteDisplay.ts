@@ -78,6 +78,19 @@ export function formatDispatchNoteWeekdayShortTimeChicago(isoUtc: string): strin
   return `${weekday} ${formatDispatchNoteTimeChicago(isoUtc)}`
 }
 
+/** e.g. "Thu 8/7, 11:00 AM" in America/Chicago — weekday + date for events days in the past. */
+export function formatDispatchNoteWeekdayShortDateTimeChicago(isoUtc: string): string {
+  const d = new Date(isoUtc)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    weekday: 'short',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(d)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  return `${get('weekday')} ${get('month')}/${get('day')}, ${formatDispatchNoteTimeChicago(isoUtc)}`
+}
+
 /** e.g. "3:45 PM" in America/Chicago (time only). */
 export function formatDispatchNoteTimeChicago(isoUtc: string): string {
   return new Intl.DateTimeFormat('en-US', {

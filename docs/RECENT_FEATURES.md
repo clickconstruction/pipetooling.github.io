@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1564)
+last_updated: 2026-08-11 (v2.1565)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1565)
+
+### Bulk-deletion banner: one line per burst, reconciled numbers, company-time stamps (2026-08-11)
+Owner-approved rewording (with the reassurance line dropped at their direction). The dev-only red banner ([`DashboardBulkDeleteAlertBanner`](../src/components/DashboardBulkDeleteAlertBanner.tsx)) mixed altitudes in one paragraph — newest burst detail ("6 things (34 rows) around 8/7/2026, 11:00:00 AM") followed by an all-bursts aggregate ("2 bursts, 26 in total") that read as contradicting it. Now: **each burst is its own line** ("**Taunya** — 6 records · Fri 8/7, 11:00 AM (4d ago)"), capped at 3 with "+N more bursts — see Recently deleted"; the aggregate moves to a quiet title suffix ("Bulk deletions detected · 2 bursts · 26 records · 2 people", singular title for one burst); **"things" becomes "records"** with the row count demoted to a hover tooltip ("34 database rows including attached items"); and timestamps switch from browser-timezone `toLocaleString()` (a latent `APP_CALENDAR_TZ` violation) to a new company-time formatter **`formatDispatchNoteWeekdayShortDateTimeChicago`** ("Thu 8/7, 11:00 AM"; [`dispatchNoteDisplay.ts`](../src/utils/dispatchNoteDisplay.ts), +2 tests) plus the existing days-ago phrase. Badge, Snooze 24h, Dismiss-until-count-increases, and Review deletions unchanged. Vocabulary swept for consistency: the Settings **Active bulk-deletion alert** box ([`DeletedRecordsSection`](../src/components/settings/DeletedRecordsSection.tsx)) gets the same record/tooltip/company-time treatment, the threshold setting relabels to "Alert at this many records deleted" ([`BulkDeleteAlertSettingsBlock`](../src/components/settings/BulkDeleteAlertSettingsBlock.tsx)), and the [`bulk-deletion-alert`](../src/content/help/bulk-deletion-alert.md) guide teaches "records" with the new example card. Verified live with the real active alert: "Taunya — 6 records · Fri 8/7, 11:00 AM (4d ago)" + "Wendi — 20 records · Tue 8/4, 9:00 AM (7d ago)" under "· 2 bursts · 26 records · 2 people" — 6+20=26 finally reconciles on sight. Client-only — no migration.
 
 ## Latest Updates (v2.1564)
 

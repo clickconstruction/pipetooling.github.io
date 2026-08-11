@@ -8,8 +8,15 @@ import {
 } from '../lib/bulkDeleteAlertDismiss'
 import { useAuth } from '../hooks/useAuth'
 import { useBulkDeleteAlerts } from '../hooks/useBulkDeleteAlerts'
+import {
+  formatDispatchNoteDaysAgoShortPhrase,
+  formatDispatchNoteWeekdayShortDateTimeChicago,
+} from '../utils/dispatchNoteDisplay'
 
 const SNOOZE_MS = 24 * 60 * 60 * 1000
+
+/** Bursts listed individually before collapsing to "+N more bursts". */
+const MAX_BURST_LINES = 3
 
 /**
  * Dev-only: someone deleted a lot at once. Everything else we built (archive, restore, read-only)
@@ -45,10 +52,12 @@ export default function DashboardBulkDeleteAlertBanner() {
   if (!user?.id || loading) return null
   if (!shouldShowBulkDeleteAlert(count, dismissState)) return null
 
-  // Newest first from the RPC, so [0] is the most recent burst.
-  const worst = alerts[0]
+  // Newest first from the RPC — listed one line per burst (capped) so the
+  // badge, the lines, and the title-row aggregate all describe the same thing.
   const totalBundles = alerts.reduce((sum, a) => sum + Number(a.bundles ?? 0), 0)
   const actors = new Set(alerts.map((a) => a.actor_name)).size
+  const shownBursts = alerts.slice(0, MAX_BURST_LINES)
+  const moreBursts = alerts.length - shownBursts.length
 
   return (
     <section style={{ marginTop: '1rem', marginBottom: '1rem' }}>
@@ -83,18 +92,32 @@ export default function DashboardBulkDeleteAlertBanner() {
         </span>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-800)' }}>
-            Bulk deletion detected
+            {count === 1 ? 'Bulk deletion detected' : 'Bulk deletions detected'}
+            {count > 1 ? (
+              <span style={{ fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {' '}· {count} bursts · {totalBundles} record{totalBundles === 1 ? '' : 's'} · {actors}{' '}
+                {actors === 1 ? 'person' : 'people'}
+              </span>
+            ) : null}
           </div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            {worst ? (
-              <>
-                <strong>{worst.actor_name}</strong> deleted {worst.bundles}{' '}
-                {Number(worst.bundles) === 1 ? 'thing' : 'things'} ({worst.row_count} rows) around{' '}
-                {new Date(worst.window_start).toLocaleString()}.
-              </>
-            ) : null}{' '}
-            {count > 1 ? `${count} bursts, ${totalBundles} in total, from ${actors} ${actors === 1 ? 'person' : 'people'}. ` : ''}
-            Everything deleted can be put back from Recently deleted.
+          <div style={{ fontSize: '0.875rem', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {shownBursts.map((a) => (
+              <span key={`${a.actor_name}:${a.window_start}`}>
+                <strong>{a.actor_name}</strong> —{' '}
+                <span title={`${a.row_count} database rows including attached items`}>
+                  {a.bundles} record{Number(a.bundles) === 1 ? '' : 's'}
+                </span>{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  · {formatDispatchNoteWeekdayShortDateTimeChicago(a.window_start)} (
+                  {formatDispatchNoteDaysAgoShortPhrase(a.window_start)})
+                </span>
+              </span>
+            ))}
+            {moreBursts > 0 ? (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                +{moreBursts} more burst{moreBursts === 1 ? '' : 's'} — see Recently deleted
+              </span>
+            ) : null}
           </div>
           <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
             <button

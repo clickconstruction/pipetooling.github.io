@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1565',
+    date: '2026-08-11',
+    title: 'Bulk-deletion notice adds up at a glance',
+    kind: 'feature',
+    highlights: [
+      'The red deletion notice now lists each burst on its own line — who, how many records, and when — with the combined totals up in the title, so the numbers finally reconcile at a glance.',
+      'It says "records" instead of "things", shows times in company time with how long ago, and the raw row count moved to a hover tooltip.',
+    ],
+  },
+  {
     version: 'v2.1564',
     date: '2026-08-11',
     title: 'Review reminders take you to the right person',
