@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1561',
+    date: '2026-08-10',
+    title: 'Staff purchases banner matches the new wording',
+    kind: 'feature',
+    highlights: [
+      'The blue staff banner now reads "Team purchases waiting to be sorted" — N people have M purchases with no job yet, tap to sort them on their behalf.',
+      'The window it opens is now called "Team purchases follow-up".',
+    ],
+  },
+  {
     version: 'v2.1560',
     date: '2026-08-10',
     title: 'Clearer wording on the purchases banner',

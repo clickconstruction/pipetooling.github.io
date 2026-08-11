@@ -357,7 +357,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
           <div style={{ padding: isNarrow ? '0.75rem 0.85rem 0.65rem' : '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
               <h2 id="stale-tally-staff-followup-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-                Stale tally follow-up
+                Team purchases follow-up
                 {!loading && visibleTxCount > 0 ? (
                   <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.9375rem' }}> · {visibleTxCount} to sort</span>
                 ) : null}
@@ -424,7 +424,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                   type="button"
                   onClick={() => void toggleHideDevTransactions()}
                   disabled={hideDevBusy}
-                  title="Org-wide: hides dev-role staff transactions in the Stale tally follow-up (list and banner count) for everyone"
+                  title="Org-wide: hides dev-role staff transactions in the Team purchases follow-up (list and banner count) for everyone"
                   style={{
                     padding: '0.45rem 0.9rem',
                     border: '1px solid var(--border-strong)',
@@ -455,8 +455,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
           ) : visibleGroups.length === 0 ? (
             <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
               {staleOnly && rows.length > 0
-                ? 'No stale transactions — everything left is newer than the stale cutoff.'
-                : 'No stale unlinked transactions for people you can follow up with.'}
+                ? 'Nothing overdue — every remaining purchase is newer than the cutoff.'
+                : 'No purchases waiting for the people you can follow up with.'}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: isNarrow ? '0.85rem' : '1.25rem' }}>

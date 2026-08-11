@@ -16,15 +16,11 @@ export default function DashboardTallyStaleStaffBanner({
   if (loading || peopleCount === 0 || transactionCount === 0) {
     return null
   }
-  const agePhrase =
-    minAgeDays === 2
-      ? 'Posted more than 2 calendar days ago'
-      : `Posted more than ${minAgeDays} calendar days ago`
   return (
     <button
       type="button"
       onClick={() => onOpen()}
-      aria-label="Open stale tally follow-up for your team"
+      aria-label="Open the team purchases follow-up — sort purchases to jobs on your team's behalf"
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -61,10 +57,11 @@ export default function DashboardTallyStaleStaffBanner({
         {peopleCount}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-blue-700)' }}>Stale tally follow-up</div>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-blue-700)' }}>Team purchases waiting to be sorted</div>
         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-          <strong>{peopleCount}</strong> {peopleCount === 1 ? 'person' : 'people'} · <strong>{transactionCount}</strong>{' '}
-          unlinked transaction{transactionCount === 1 ? '' : 's'} — {agePhrase}. Assign jobs on their behalf.
+          <strong>{peopleCount}</strong> {peopleCount === 1 ? 'person has' : 'people have'}{' '}
+          <strong>{transactionCount}</strong> purchase{transactionCount === 1 ? '' : 's'} over {minAgeDays} days old
+          with no job yet — tap to sort {transactionCount === 1 ? 'it' : 'them'} on their behalf.
         </div>
       </div>
     </button>
