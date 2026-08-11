@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1579)
+last_updated: 2026-08-11 (v2.1580)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1580)
+
+### Pipeline mobile cards: elevation so light mode shows card edges (2026-08-11)
+Owner report on the zoned cards: "on light mode it is hard to see the start and end of cards, it is easier on dark mode." Root cause is token arithmetic — light `--bg-page` (#fafafa) vs `--surface` (#fff) is a ~2% step outlined by a near-identical `--border` (#e5e7eb) hairline, while dark's page→surface step (#111827→#1f2937) is ~4× larger. Fix on [`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx)'s shared `cardStyle` (both layouts): border upgrades to `--border-strong` and the card gains a soft two-layer elevation shadow (`0 1px 2px rgba(0,0,0,0.06), 0 2px 10px rgba(0,0,0,0.07)`) — the shadow carries the edge in light mode and fades to harmless on the dark ground, where the surface contrast already separates (verified in both themes at 375px; option picked from a live A/B against alternating real cards). Desktop tables untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1579)
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1580',
+    date: '2026-08-11',
+    title: 'Pipeline cards easier to tell apart in light mode',
+    kind: 'fix',
+    highlights: [
+      'On the mobile card view, each card now has a soft shadow and a slightly stronger outline, so you can see where one job ends and the next begins in light mode — dark mode looks the same as before.',
+    ],
+  },
+  {
     version: 'v2.1579',
     date: '2026-08-11',
     title: 'Pipeline cards: Next appointment and latest activity move to the bottom',
