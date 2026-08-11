@@ -288,9 +288,14 @@ describe('JobsStagesTab render smoke', () => {
     expect(cards.length).toBeGreaterThanOrEqual(2)
     // The section's primary action rides the card header.
     expect(screen.getAllByText('Ready to Bill').length).toBeGreaterThanOrEqual(1)
-    // Compact zones (v2.1244): the j:/b: shorthand became labeled chips and the
-    // money legend a single condensed line.
-    expect(screen.getAllByLabelText('Field / job-activity date (click to open the job calendar)').length).toBeGreaterThanOrEqual(2)
+    // Compact zones (v2.1244, zoned card): the j:/b: shorthand became labeled
+    // chips that render only when the job HAS the date (a "job —" placeholder
+    // was dead width on the action row), and the money legend a single
+    // condensed line. The smoke jobs carry no field/billing dates, so no
+    // placeholder chips may appear.
+    expect(screen.queryByLabelText('Field / job-activity date (click to open the job calendar)')).toBeNull()
+    expect(screen.queryByText('job —')).toBeNull()
+    expect(screen.queryByText('bill —')).toBeNull()
     expect(screen.queryByText(/^j: /)).toBeNull()
     expect(screen.queryByText('Left on Job')).toBeNull()
     expect(screen.getAllByText(/^Left /).length).toBeGreaterThanOrEqual(2)
