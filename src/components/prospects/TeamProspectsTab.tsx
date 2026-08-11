@@ -591,14 +591,19 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Deep link (v2.960): ?stage=review (etc.) lands on that stage — used by the
-  // "Team reviews due" banner. Applied once, then stripped so tab-hopping
-  // afterwards doesn't snap back.
+  // "Team reviews due" banner. v2.1564: ?rate=<userId> rides along so the
+  // Rate deck opens ON the overdue person. Applied once, then stripped so
+  // tab-hopping afterwards doesn't snap back.
+  const [rateUserIdFromUrl, setRateUserIdFromUrl] = useState<string | null>(null)
   useEffect(() => {
     const wanted = searchParams.get('stage')
     if (wanted === 'screen' || wanted === 'interview' || wanted === 'hire' || wanted === 'review') {
       setStage(wanted)
+      const rate = searchParams.get('rate')
+      if (wanted === 'review' && rate) setRateUserIdFromUrl(rate)
       const next = new URLSearchParams(searchParams)
       next.delete('stage')
+      next.delete('rate')
       setSearchParams(next, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1512,7 +1517,14 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
           )}
         </>
       )}
-      {stage === 'review' && <TeamReviewSection authUserId={authUserId} isDev={isDev} onOpenScreenBoard={() => setStage('screen')} />}
+      {stage === 'review' && (
+        <TeamReviewSection
+          authUserId={authUserId}
+          isDev={isDev}
+          initialRateUserId={rateUserIdFromUrl}
+          onOpenScreenBoard={() => setStage('screen')}
+        />
+      )}
       {stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
       {stage === 'screen' && !loading && sourceSummary.length > 0 && (

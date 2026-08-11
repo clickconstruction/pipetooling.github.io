@@ -14,7 +14,7 @@ import type { MyReviewStamp } from '../lib/prospects/teamReviewDue'
  */
 export default function DashboardTeamReviewsDueBanner({ authUserId }: { authUserId: string | undefined }) {
   const navigate = useNavigate()
-  const [overdueNames, setOverdueNames] = useState<string[]>([])
+  const [overdue, setOverdue] = useState<Array<{ id: string; name: string }>>([])
   const [cadenceDays, setCadenceDays] = useState(30)
 
   const load = useCallback(async () => {
@@ -26,7 +26,7 @@ export default function DashboardTeamReviewsDueBanner({ authUserId }: { authUser
       .eq('id', authUserId)
       .maybeSingle()
     if (meError || !me?.team_prospects_access) {
-      setOverdueNames([])
+      setOverdue([])
       return
     }
     const [rosterRes, stampsRes, cadenceRes] = await Promise.all([
@@ -39,34 +39,36 @@ export default function DashboardTeamReviewsDueBanner({ authUserId }: { authUser
     ])
     // Additive UI — any load error (e.g. migration not applied) just hides the banner.
     if (rosterRes.error || stampsRes.error) {
-      setOverdueNames([])
+      setOverdue([])
       return
     }
     const days = parseTeamReviewCadenceDays(cadenceRes.data?.value_num)
     setCadenceDays(days)
-    const overdue = overdueReviewSubjects(
+    const overdueUsers = overdueReviewSubjects(
       orderUsersForRating(rosterRes.data ?? []),
       (stampsRes.data ?? []) as MyReviewStamp[],
       authUserId,
       days,
       new Date(),
     )
-    setOverdueNames(overdue.map((u) => (u.name ?? '').trim() || 'Unnamed'))
+    setOverdue(overdueUsers.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || 'Unnamed' })))
   }, [authUserId])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const count = overdueNames.length
+  const count = overdue.length
   if (count === 0) return null
 
-  const preview = overdueNames.slice(0, 3).join(', ')
+  const preview = overdue.slice(0, 3).map((u) => u.name).join(', ')
   const more = count > 3 ? ` +${count - 3} more` : ''
+  const first = overdue[0]
   return (
     <button
       type="button"
-      onClick={() => navigate('/prospects?tab=team&stage=review')}
+      // Deep link (v2.1564): land the Rate deck ON the first due person, not on card 1 of N.
+      onClick={() => navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)}
       aria-label={`Open Team Review — ${count} teammate${count === 1 ? '' : 's'} due for your review`}
       style={{
         display: 'flex',

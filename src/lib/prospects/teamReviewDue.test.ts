@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_TEAM_REVIEW_CADENCE_DAYS,
+  nextDueIndexAfter,
   overdueReviewSubjects,
   parseTeamReviewCadenceDays,
 } from './teamReviewDue'
@@ -61,5 +62,27 @@ describe('overdueReviewSubjects', () => {
   it('respects the cadence boundary', () => {
     const stamps = [stamp('fresh', '2026-06-22T12:00:01Z')] // 30 days minus 1s — not overdue at 30
     expect(overdueReviewSubjects(roster, stamps, 'me', 30, NOW).map((u) => u.id)).toEqual(['stale', 'never'])
+  })
+})
+
+describe('nextDueIndexAfter', () => {
+  const due = new Set(['stale', 'never']) // roster indexes 2 and 3
+
+  it('finds the next due index after the current one', () => {
+    expect(nextDueIndexAfter(roster, due, 0)).toBe(2)
+    expect(nextDueIndexAfter(roster, due, 2)).toBe(3)
+  })
+
+  it('wraps past the end of the roster', () => {
+    expect(nextDueIndexAfter(roster, due, 3)).toBe(2)
+  })
+
+  it('never returns the starting index itself', () => {
+    expect(nextDueIndexAfter(roster, new Set(['stale']), 2)).toBe(null)
+  })
+
+  it('returns null with nobody due or an empty roster', () => {
+    expect(nextDueIndexAfter(roster, new Set(), 0)).toBe(null)
+    expect(nextDueIndexAfter([], due, 0)).toBe(null)
   })
 })

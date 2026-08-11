@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1563)
+last_updated: 2026-08-11 (v2.1564)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1564)
+
+### Team reviews due: banner lands on the person it named; Rate deck gets due markers + next-due hop (2026-08-11)
+Owner-reported: clicking "Team reviews due — Roxi hasn't had your review…" opened the Rate deck on card 1 of 18 (whoever sorts first), not Roxi — the banner computes exactly who's overdue (`overdueReviewSubjects`) then threw that away. Three pieces, mockup-approved: **(1) Deep link** — [`DashboardTeamReviewsDueBanner`](../src/components/DashboardTeamReviewsDueBanner.tsx) now navigates to `?tab=team&stage=review&rate=<first overdue id>`; [`TeamProspectsTab`](../src/components/prospects/TeamProspectsTab.tsx) captures `rate` in its existing applied-once-then-stripped `?stage=` effect and passes `initialRateUserId` to [`TeamReviewSection`](../src/components/prospects/TeamReviewSection.tsx), whose loader opens the deck ON that person. **(2) Due awareness** — the section loads the same cadence setting the banner reads and computes the same due set (stamps from its already-loaded reviews; `TeamMemberReviewRow` gains optional `updated_at`): due people get "● Name — Role · due" in the jump dropdown, an amber "N due" counter sits beside it, and the card's "You last rated" stamp gains an amber "· due". **(3) Next-due hop** — `saveAndAdvance` prefers the next cadence-due person (new tested kernel `nextDueIndexAfter` in [`teamReviewDue.ts`](../src/lib/prospects/teamReviewDue.ts), +4 tests; skips the just-saved card by recomputing due from the post-save rows) before falling back to the existing next-unrated-this-month behavior; the save button reads "… go to next due" while others remain. Help guide [`team-prospects`](../src/content/help/team-prospects.md) updated. Verified live end-to-end as dev: banner ("Roxi hasn't…") → deck opened on "● Roxi — Assistant · due", 3 of 18, amber "1 due", card stamp "You haven't rated them yet · due". Client-only — no migration.
 
 ## Latest Updates (v2.1563)
 
