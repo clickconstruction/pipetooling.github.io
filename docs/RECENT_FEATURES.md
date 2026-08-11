@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1558)
+last_updated: 2026-08-10 (v2.1559)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1559)
+
+### Checklist: Roadmap tab temporarily dev-only (2026-08-10)
+Owner-requested ("hide the roadmap tab from all users other than the devs at this time"). [`Checklist.tsx`](../src/pages/Checklist.tsx) gains a `canSeeRoadmap = role === 'dev'` gate applied in three places: the **Roadmap tab button renders for dev only**, a **non-dev deep link** (`?tab=roadmap[&roadmap=…]`) is **rewritten** (`replace: true`) to the role's default tab (`review` for master/assistant-like, `today` otherwise) with the `roadmap` param dropped, and the tab body render is also gated as belt-and-braces. **UI-only and temporary** — no RLS/data change (`can_select_checklist_tech_tree_roadmap` and friends untouched; members/bypass semantics unchanged — see the new UI-visibility row in [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) → Checklist); widening `canSeeRoadmap` re-releases the tab. No other surface links to `tab=roadmap`. Verified live as dev: all five tabs render and the roadmap deep link (with `roadmap=<uuid>`) still opens; non-dev path covered by the three-way gate (dev-login pins to the dev identity, so it was code-reviewed rather than exercised live). Client-only — no migration.
 
 ## Latest Updates (v2.1558)
 

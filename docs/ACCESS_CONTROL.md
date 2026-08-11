@@ -674,6 +674,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| **Roadmap** tab — **UI visibility** (temporary, v2.1559): the tab is rendered for **dev only**; other roles' deep links (`?tab=roadmap`) bounce to their default tab. RLS below is unchanged — widen `canSeeRoadmap` in `src/pages/Checklist.tsx` to re-release. | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Roadmap** tab (tech tree): **see** a roadmap row (`can_select_checklist_tech_tree_roadmap`) | ✅ all | ✅ all | ✅ all | ✅ if member | ✅ if member | ✅ all | ✅ if member |
 | **Roadmap**: **create** roadmap, **delete** roadmap | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | **Roadmap**: **edit graph** (groups/tasks/edges) — `can_edit_checklist_tech_tree_structure_for_roadmap` | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |

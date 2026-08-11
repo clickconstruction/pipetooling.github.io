@@ -73,9 +73,25 @@ export default function Checklist() {
     })
   }, [authUser?.id])
 
+  // Roadmap is dev-only for now (owner request, 2026-08-10) — hide the tab and
+  // bounce deep links for everyone else. Widen this gate to re-release it.
+  const canSeeRoadmap = role === 'dev'
+
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'today' || tab === 'history' || tab === 'roadmap' || tab === 'review' || tab === 'manage') {
+    if (tab === 'roadmap' && role !== null && !canSeeRoadmap) {
+      // Deep link from a non-dev: rewrite to their default tab instead.
+      const fallbackTab =
+        role === 'master_technician' || isAssistantLike(role) ? 'review' : 'today'
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', fallbackTab)
+        next.delete('roadmap')
+        return next
+      }, { replace: true })
+      return
+    }
+    if (tab === 'today' || tab === 'history' || tab === 'review' || tab === 'manage' || (tab === 'roadmap' && canSeeRoadmap)) {
       setActiveTab(tab)
     } else if (!tab && role !== null) {
       const defaultTab =
@@ -86,7 +102,7 @@ export default function Checklist() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, role])
+  }, [searchParams, role, canSeeRoadmap])
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
@@ -184,20 +200,22 @@ export default function Checklist() {
             </button>
           </>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('roadmap')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'roadmap')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'roadmap')}
-        >
-          Roadmap
-        </button>
+        {canSeeRoadmap && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('roadmap')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'roadmap')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'roadmap')}
+          >
+            Roadmap
+          </button>
+        )}
         <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Checklist</h1>
       </div>
 
@@ -207,7 +225,7 @@ export default function Checklist() {
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
-      {activeTab === 'roadmap' && (
+      {activeTab === 'roadmap' && canSeeRoadmap && (
         <div
           style={{
             flex: 1,
