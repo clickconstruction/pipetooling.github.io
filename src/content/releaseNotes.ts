@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1574',
+    date: '2026-08-11',
+    title: 'Reports view cleans up on phones',
+    kind: 'fix',
+    highlights: [
+      "The full-screen Reports view no longer slides its title under the iPhone status bar — the header now clears the clock and notch.",
+      'Old reports imported from HouseCall Pro no longer open with a long technical ID — the note now leads with the job description.',
+    ],
+  },
+  {
     version: 'v2.1573',
     date: '2026-08-11',
     title: 'Unassigned field time explains itself',

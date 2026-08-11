@@ -19,6 +19,7 @@ import {
   formatCurrencyAbbrevTruncated,
   looksLikeRawJobIdName,
   personMatchesJobSummaryBreakdownFilter,
+  stripLeadingRawJobIdPrefix,
 } from './jobFormatting'
 
 describe('personMatchesJobSummaryBreakdownFilter', () => {
@@ -186,5 +187,26 @@ describe('looksLikeRawJobIdName', () => {
     expect(looksLikeRawJobIdName('Lagan Casita')).toBe(false)
     expect(looksLikeRawJobIdName('')).toBe(false)
     expect(looksLikeRawJobIdName(null)).toBe(false)
+  })
+})
+
+describe('stripLeadingRawJobIdPrefix', () => {
+  it('strips the "<uuid> - " import prefix, keeping the human part of the line', () => {
+    expect(
+      stripLeadingRawJobIdPrefix(
+        'e4e6647f-a430-42d7-ab51-a37229a015fd - [HCP] Kitchen hook up and half bath trim out\n\nSink and faucet in place.',
+      ),
+    ).toBe('[HCP] Kitchen hook up and half bath trim out\n\nSink and faucet in place.')
+  })
+
+  it('leaves text untouched when there is no UUID prefix, and mid-text UUIDs alone', () => {
+    expect(stripLeadingRawJobIdPrefix('Sink and faucet in place.')).toBe('Sink and faucet in place.')
+    expect(stripLeadingRawJobIdPrefix('ref e4e6647f-a430-42d7-ab51-a37229a015fd - later')).toBe(
+      'ref e4e6647f-a430-42d7-ab51-a37229a015fd - later',
+    )
+    // A bare UUID with no " - " separator is not a prefix match.
+    expect(stripLeadingRawJobIdPrefix('e4e6647f-a430-42d7-ab51-a37229a015fd')).toBe(
+      'e4e6647f-a430-42d7-ab51-a37229a015fd',
+    )
   })
 })

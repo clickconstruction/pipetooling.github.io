@@ -7,6 +7,7 @@ import {
   REPORT_FIELD_LABEL_LEGACY_WHO,
 } from '../lib/reportTemplateFieldDisplay'
 import { isReportSignatureImageDataUrl } from '../lib/reportSignatureField'
+import { stripLeadingRawJobIdPrefix } from '../lib/jobs/jobFormatting'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
@@ -103,7 +104,9 @@ export function ReportDetailBody({
                 return true
               })
               .map(([label, val]) => {
-            const s = val == null ? '' : String(val).trim()
+            // HCP-imported notes open with "<uuid> - " (the job's raw imported
+            // name); strip the id for display (v2.1574).
+            const s = stripLeadingRawJobIdPrefix(val == null ? '' : String(val).trim()).trim()
             if (!s) return null
             const displayLabel = displayLabelForFieldKey(label)
             if (isReportSignatureImageDataUrl(s)) {

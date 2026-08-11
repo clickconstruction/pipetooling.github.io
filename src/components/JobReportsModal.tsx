@@ -154,14 +154,16 @@ export default function JobReportsModal({
           overflow: 'hidden',
         }}
       >
-        {/* One-line header (timeline redesign, v2.1548): title + arc subtitle + close. */}
+        {/* One-line header (timeline redesign, v2.1548): title + arc subtitle + close.
+            Top padding clears the iOS status bar/notch — this is a full-screen
+            fixed overlay under viewport-fit=cover (v2.1574). */}
         <header
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: '0.75rem',
-            padding: '0.75rem 1rem',
+            padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem 0.75rem',
             borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}

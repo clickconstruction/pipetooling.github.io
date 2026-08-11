@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1573)
+last_updated: 2026-08-11 (v2.1574)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1574)
+
+### Job Reports view: clear the iOS status bar + strip HCP-import UUID prefixes (2026-08-11)
+Two mobile-report polish fixes from an owner screenshot (job 758, Johnny Ingram). **(1)** The full-screen Reports view ([`JobReportsModal`](../src/components/JobReportsModal.tsx)) is a `position:fixed; inset:0` overlay but its header had no safe-area padding, so under `viewport-fit=cover` the title rendered beneath the iPhone status bar (clock over "Reports · 758 · …"). Header top padding is now `calc(0.75rem + env(safe-area-inset-top))` — the same clamp the thread-notes panel and dispatch pickers already use. **(2)** HCP-imported "Note" reports open with the job's then-raw name as their first line ("`e4e6647f-… - [HCP] Kitchen hook up…`") — an import artifact in historical rows, not something the app writes today. New display kernel [`stripLeadingRawJobIdPrefix`](../src/lib/jobs/jobFormatting.ts) (sibling of v2.975's `looksLikeRawJobIdName`; +2 tests) drops the `<uuid> - ` prefix while keeping the human part of the line ("[HCP] Kitchen hook up…" is the HCP job description). Wired into both render paths: `ReportDetailBody` field values ([`ReportViewModal`](../src/components/ReportViewModal.tsx)) and the collapsed timeline preview line ([`jobReportsTimeline`](../src/lib/jobReportsTimeline.ts), +1 test). Display-only — historical report rows are untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1573)
 
