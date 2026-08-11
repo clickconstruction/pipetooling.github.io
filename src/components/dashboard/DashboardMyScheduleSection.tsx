@@ -134,9 +134,10 @@ export function DashboardMyScheduleSection({
                 width: 30,
                 height: 30,
                 borderRadius: 999,
-                border: '1px solid var(--border-strong)',
-                background: 'var(--surface)',
-                color: 'var(--text-link)',
+                border: 'none',
+                // Matches the header's dispatch task button (v2.1557).
+                background: '#0ea5e9',
+                color: 'white',
                 textDecoration: 'none',
                 flexShrink: 0,
               }}
