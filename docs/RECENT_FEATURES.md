@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1547)
+last_updated: 2026-08-10 (v2.1548)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1548)
+
+### Job Reports timeline + My Schedule card layout (2026-08-10)
+Two owner requests. **(1) Reports timeline (mockup option B):** [`JobReportsModal`](../src/components/JobReportsModal.tsx) is redesigned from stacked collapsible cards (four-button header, per-report "Open in popup", duplicated author/date) into a **timeline**: one-line header (`Reports · 473 · Mike Holub` + `2 reports · 0% → 60% complete` arc + ✕), then newest-first entries down an initials-avatar rail — each with author, type chip (Status blue / Walk teal / EOD purple / Note gray), relative age, the **completion percent recorded on that report**, and the GPS maps link. The newest report renders in full ([`ReportDetailBody`](../src/components/ReportViewModal.tsx) gains a `hideMeta` prop so the date/author line isn't printed twice); older ones show a one-line preview with **Show full report / Hide full report**. "Add additional report" moves below the timeline; Expand/Collapse-all, the popup button, and `ReportViewModal` usage here are gone. New pure kernel [`jobReportsTimeline.ts`](../src/lib/jobReportsTimeline.ts) (initials, per-report percent, preview line skipping percent/signature fields, oldest→newest percent arc; +6 unit tests). All three modal entry points (Dashboard badge/list, Additional Report modal, Job Detail) inherit the redesign. **(2) My Schedule card layout:** cards now read **job name** → time window → full-width `473 · 109 Tuscarora Trail Shavano Park, TX` (number + zip-less address, new kernel [`dashboardScheduleCardLines.ts`](../src/lib/dashboardScheduleCardLines.ts) `splitScheduleRowLabel` + `stripAddressZip`, +6 tests) → full-width dispatch note ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)). Verified live as Helper Paige: schedule cards match the requested order with zips stripped; the 473 timeline showed Abraham's newest note in full and Behar's older status as a preview that expands. Client-only — no migration.
 
 ## Latest Updates (v2.1547)
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
+import { splitScheduleRowLabel, stripAddressZip } from '../../lib/dashboardScheduleCardLines'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import {
   resolveSubScheduleJobMeta,
@@ -238,6 +239,8 @@ export function DashboardMyScheduleSection({
                             }}
                           >
                             <div style={{ flex: 1, minWidth: 0 }}>
+                              {/* Card leads with the job NAME (v2.1548); the number moves to
+                                  the full-width address line below. */}
                               <div
                                 style={{
                                   fontWeight: 500,
@@ -254,7 +257,7 @@ export function DashboardMyScheduleSection({
                                     textOverflow: 'ellipsis',
                                   }}
                                 >
-                                  {rowLabel}
+                                  {splitScheduleRowLabel(rowLabel).jobName}
                                 </span>
                               </div>
                               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -358,6 +361,24 @@ export function DashboardMyScheduleSection({
                               ) : null}
                             </div>
                           </div>
+                          {/* Full-width job number + zip-less address line (v2.1548). */}
+                          {(() => {
+                            const num = splitScheduleRowLabel(rowLabel).jobNumber
+                            const addr = stripAddressZip(jobMeta.job_address ?? '')
+                            if (!num && !addr) return null
+                            return (
+                              <div
+                                style={{
+                                  fontSize: '0.8125rem',
+                                  color: 'var(--text-muted)',
+                                  marginTop: '0.35rem',
+                                  wordBreak: 'break-word',
+                                }}
+                              >
+                                {num && addr ? `${num} · ${addr}` : num || addr}
+                              </div>
+                            )
+                          })()}
                           {/* Dispatch note spans the full card width (v2.1545) — it used to
                               wrap inside the left column beside the icon stack. */}
                           {b.note?.trim() ? (
