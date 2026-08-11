@@ -6,27 +6,6 @@ import type { MouseEventHandler } from 'react'
  * Schedule section. Moved verbatim from `src/pages/Dashboard.tsx`
  * (extraction-series refactor; no behavior change).
  */
-/** The yellow circle-exclamation reminder icon, shared with the My Schedule banner. */
-export function LeaveReportReminderIcon({ size = 21 }: { size?: number }) {
-  return (
-    // Icon: Font Awesome Free 7.x — circle exclamation (OFL/CC-BY)
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 640 640"
-      width={size}
-      height={size}
-      aria-hidden
-      focusable={false}
-      style={{ color: '#FFE600', flexShrink: 0 }}
-    >
-      <path
-        fill="currentColor"
-        d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM320 384C302.3 384 288 398.3 288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416C352 398.3 337.7 384 320 384zM320 192C301.8 192 287.3 207.5 288.6 225.7L296 329.7C296.9 342.3 307.4 352 319.9 352C332.5 352 342.9 342.3 343.8 329.7L351.2 225.7C352.5 207.5 338.1 192 319.8 192z"
-      />
-    </svg>
-  )
-}
-
 export function DashboardLeaveReportButton(props: {
   showReminder: boolean
   onClick: MouseEventHandler<HTMLButtonElement>
@@ -42,39 +21,40 @@ export function DashboardLeaveReportButton(props: {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center' }}>
       <span style={{ position: 'relative', display: 'inline-block' }}>
+        {/* Report-due state (v2.1549): the button itself turns amber and says
+            why — no overlay covering the label. Blue "Leave Report" otherwise. */}
         <button
           type="button"
           onClick={onClick}
-          title={buttonTitle}
+          title={showReminder ? 'Scheduled work ended — leave a job report.' : buttonTitle}
           style={{
             padding: '0.35rem 0.75rem',
             fontSize: '0.875rem',
-            background: '#3b82f6',
-            color: 'white',
+            background: showReminder ? '#f2c230' : '#3b82f6',
+            color: showReminder ? '#4a3800' : 'white',
+            fontWeight: showReminder ? 600 : undefined,
             border: 'none',
             borderRadius: 4,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
           }}
         >
-          {singleLine ? 'Leave Report' : <>Leave<br />Report</>}
+          {showReminder
+            ? singleLine
+              ? 'Report due'
+              : (
+                  <>
+                    Report<br />due
+                  </>
+                )
+            : singleLine
+              ? 'Leave Report'
+              : (
+                  <>
+                    Leave<br />Report
+                  </>
+                )}
         </button>
-        {showReminder ? (
-          <span
-            role="status"
-            aria-label="Scheduled work ended — leave a job report."
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              display: 'inline-flex',
-              pointerEvents: 'none',
-            }}
-          >
-            <LeaveReportReminderIcon />
-          </span>
-        ) : null}
         {reportCount > 0 && onViewReports ? (
           <button
             type="button"
@@ -92,8 +72,8 @@ export function DashboardLeaveReportButton(props: {
               height: 22,
               borderRadius: 999,
               background: 'var(--surface)',
-              border: '1.5px solid #3b82f6',
-              color: 'var(--text-link)',
+              border: showReminder ? '1.5px solid #b8901c' : '1.5px solid #3b82f6',
+              color: showReminder ? '#7a5f10' : 'var(--text-link)',
               fontSize: '0.6875rem',
               fontWeight: 600,
               display: 'inline-flex',

@@ -127,7 +127,7 @@ describe('DashboardMyScheduleSection pictures link', () => {
     expect(screen.getByLabelText('Open customer pictures')).toBeTruthy()
   })
 
-  it('the not-filed-a-report reminder renders BELOW the job list (v2.1539)', () => {
+  it('report-due card: amber Report due button + reason line, no footer banner (v2.1549)', () => {
     renderSection({
       role: 'helpers',
       leaveReportReminderForJobRow: () => true,
@@ -135,10 +135,8 @@ describe('DashboardMyScheduleSection pictures link', () => {
         { id: JOB_ID, my_last_report_at: null } as unknown as DashboardMyScheduleSectionProps['assignedJobs'][number],
       ],
     })
-    const reminder = screen.getByText(/You haven't filed a report yet/)
-    const list = document.querySelector('ul')
-    expect(list).toBeTruthy()
-    // The reminder paragraph must come after the job list in document order.
-    expect(list!.compareDocumentPosition(reminder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText(/You haven't filed a report yet/)).toBeNull()
+    const btn = screen.getByTitle('Scheduled work ended — leave a job report.') as HTMLButtonElement
+    expect(btn.textContent).toMatch(/Report\s*due/)
   })
 })

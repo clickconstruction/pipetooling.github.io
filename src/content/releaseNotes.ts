@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1549',
+    date: '2026-08-10',
+    title: 'Report due — the button says it now',
+    kind: 'feature',
+    highlights: [
+      'When your scheduled work ended without a report, the Leave Report button turns amber and reads "Report due" — no more yellow icon covering the label. It goes back to blue once you file.',
+      'The job\'s schedule card also gets a thin amber edge so the day list shows at a glance which job still needs its report, and the separate reminder banner under the list is gone.',
+    ],
+  },
+  {
     version: 'v2.1548',
     date: '2026-08-10',
     title: 'Reports read as a timeline + cleaner schedule cards',

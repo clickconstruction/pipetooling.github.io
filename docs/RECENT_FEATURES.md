@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1548)
+last_updated: 2026-08-10 (v2.1549)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1549)
+
+### Leave-report reminder: amber "Report due" button + card rail (2026-08-10)
+Owner picked **B + C** of the reminder mockups (and dropped the reason line during review). The old treatment — a yellow circle-! overlaid dead-center on the Leave Report button, plus a separate "You haven't filed a report yet. File one" banner under the My Schedule list — is replaced by state: **(B)** [`DashboardLeaveReportButton`](../src/components/dashboard/DashboardLeaveReportButton.tsx) turns **amber and reads "Report due"** when `showReminder` is set (tooltip carries the old explanation; the report-count badge's ring goes amber to match; back to blue "Leave Report" once filed). The centered overlay and the now-unused `LeaveReportReminderIcon` are deleted. **(C)** the My Schedule card ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)) gets a **3px amber left rail** when its job's report is due (shared `reminderDue` flag also drives the button), and the footer banner + its `anyLeaveReportReminderToday` computation are removed — the nag now lives exactly once, on the job it belongs to. All three button surfaces (My Schedule, Assigned Jobs, Team Ready to Bill) inherit B automatically. Render test reworked to pin the new treatment (amber Report due button, no footer banner). Verified live as Helper Paige in dark mode: Mike Holub's card shows the rail + amber button + amber-ringed count badge; tomorrow's cards stay blue. Client-only — no migration.
 
 ## Latest Updates (v2.1548)
 
