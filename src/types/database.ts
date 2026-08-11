@@ -4651,6 +4651,8 @@ export type Database = {
           assignee_user_id: string
           created_at: string
           created_by: string | null
+          field_moved_at: string | null
+          field_moved_from: Json | null
           id: string
           job_id: string
           note: string | null
@@ -4664,6 +4666,8 @@ export type Database = {
           assignee_user_id: string
           created_at?: string
           created_by?: string | null
+          field_moved_at?: string | null
+          field_moved_from?: Json | null
           id?: string
           job_id: string
           note?: string | null
@@ -4677,6 +4681,8 @@ export type Database = {
           assignee_user_id?: string
           created_at?: string
           created_by?: string | null
+          field_moved_at?: string | null
+          field_moved_from?: Json | null
           id?: string
           job_id?: string
           note?: string | null
@@ -14108,6 +14114,51 @@ export type Database = {
       search_job_ids_matching_schedule_or_clock: {
         Args: { p_job_ids: string[]; p_query: string }
         Returns: string[]
+      }
+      search_jobs_for_self_schedule: {
+        Args: { p_query: string }
+        Returns: {
+          id: string
+          hcp_number: string
+          click_number: string
+          job_name: string
+          job_address: string
+          status: string
+          customer_name: string
+        }[]
+      }
+      self_schedule_add_block: {
+        Args: {
+          p_job_id: string
+          p_work_date: string
+          p_time_start: string
+          p_time_end: string
+          p_join_crew?: boolean
+        }
+        Returns: string
+      }
+      self_move_schedule_block: {
+        Args: { p_block_id: string; p_work_date: string; p_time_start: string; p_time_end: string }
+        Returns: undefined
+      }
+      self_remove_schedule_block: {
+        Args: { p_block_id: string }
+        Returns: undefined
+      }
+      request_field_job: {
+        Args: {
+          p_job_name: string
+          p_job_address: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_customer_email: string
+          p_gc_name: string
+          p_line_items: string[]
+          p_work_date: string
+          p_time_start: string
+          p_time_end: string
+        }
+        Returns: string
       }
       search_jobs_for_reports: {
         Args: { search_text?: string }

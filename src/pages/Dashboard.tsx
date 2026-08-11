@@ -347,6 +347,7 @@ export default function Dashboard() {
     subScheduleJobMeta,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
+    reloadSubSchedule,
   } = useDashboardSubSchedule({
     authUserId: authUser?.id,
     role,
@@ -1079,6 +1080,7 @@ export default function Dashboard() {
       detailModalAssignedJobsRows={detailModalAssignedJobsRows}
       submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
       setLeaveReportJob={setLeaveReportJob}
+      reloadSubSchedule={reloadSubSchedule}
     />
   )
 

@@ -837,6 +837,8 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 **INSERT / UPDATE / DELETE**: **`dev`**, **`master_technician`**, **`assistant`**, **`superintendent`** only, with **job manage** access matching office/superintendent rules (not subcontractors, not team-only).
 
+**Self-scheduling (v2.1568)** — table RLS above is unchanged; **all roles** get four SECURITY DEFINER RPCs instead: `search_jobs_for_self_schedule` (identity fields of any waiting/working/ready_to_bill/billed job — a deliberate, owner-approved read widening; no money fields), `self_schedule_add_block` (block for **yourself** only, optional self crew-join), `self_move_schedule_block` (any block **assigned to you**; moving a dispatch-created block stamps `field_moved_at`/`field_moved_from`, unlinks you from a crew group, and posts a job thread note — the office Schedule shows a "moved by tech" badge), `self_remove_schedule_block` (**only blocks you created**; dispatch-created visits cannot be removed from the field). `request_field_job` (all roles) creates a real Waiting job owned by the earliest active master (customer kept as text fields), name-only fixtures, a block for the requester, and a `review_field_job` dispatch request. Training-mode (`read_only`) users are blocked by the v2.704 statement triggers inside all of these.
+
 **Linked rows**: Optional **`shared_block_group_id`** (UUID). Rows sharing a non-null value are edited as one logical block (times + note) in UI; each leg remains a normal row for RLS (assignee still scopes read where applicable).
 
 **Calendar / Preview**: Assignees see their blocks; **`list_assigned_jobs_for_dashboard`** includes **`project_id`** for mapping workflow context to team jobs on the Preview modal.

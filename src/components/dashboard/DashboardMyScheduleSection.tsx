@@ -15,7 +15,9 @@ import {
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
-import type { UserRole } from '../../hooks/useAuth'
+import { useAuth, type UserRole } from '../../hooks/useAuth'
+import { DashboardAddJobToMyScheduleModal } from './DashboardAddJobToMyScheduleModal'
+import { DashboardMyDayEditorModal } from './DashboardMyDayEditorModal'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
@@ -61,6 +63,8 @@ export type DashboardMyScheduleSectionProps = {
     jobName: string
     jobAddress: string
   }) => void
+  /** Re-fetches the schedule engine after a self-schedule add/move/remove (v2.1568). */
+  reloadSubSchedule?: () => void
 }
 
 /**
@@ -130,8 +134,16 @@ export function DashboardMyScheduleSection({
   reportCountByJobId,
   setViewReportsJob,
   setLeaveReportJob,
+  reloadSubSchedule,
 }: DashboardMyScheduleSectionProps) {
   const jobDetailModal = useJobDetailModal()
+  const { user: authUser } = useAuth()
+  const [addJobOpen, setAddJobOpen] = useState(false)
+  const [myDayOpen, setMyDayOpen] = useState(false)
+  const allMyBlocks = useMemo(
+    () => [...subScheduleDayPartition.todayBlocks, ...subScheduleDayPartition.tomorrowBlocks],
+    [subScheduleDayPartition],
+  )
   /** Call-customer modal (mis-click guard + call notes) — see CallCustomerModal. */
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   const scheduleJobIds = useMemo(
@@ -200,9 +212,47 @@ export function DashboardMyScheduleSection({
             </a>
           )}
         </div>
-        <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
-          Calendar →
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* v2.1568: self-scheduling — search any active job and put it on your day. */}
+          <button
+            type="button"
+            onClick={() => setAddJobOpen(true)}
+            style={{
+              padding: '0.25rem 0.8rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              border: '1px solid #2563eb',
+              borderRadius: 999,
+              background: 'transparent',
+              color: 'var(--text-link)',
+              cursor: 'pointer',
+            }}
+          >
+            + Add job
+          </button>
+          {allMyBlocks.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setMyDayOpen(true)}
+              title="Rearrange my schedule"
+              aria-label="Rearrange my schedule"
+              style={{
+                padding: '0.25rem 0.6rem',
+                fontSize: '0.8125rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 999,
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              ✎
+            </button>
+          ) : null}
+          <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
+            Calendar →
+          </Link>
+        </div>
       </div>
       {subScheduleLoading ? (
         <DashboardListRowSkeleton rows={2} />
@@ -318,6 +368,22 @@ export function DashboardMyScheduleSection({
                               {/* v2.1556: the window never wraps — overflow beats "12:00\nPM". */}
                               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem', whiteSpace: 'nowrap' }}>
                                 {scheduleFormatWindow(b.time_start, b.time_end)}
+                                {authUser?.id && b.created_by === authUser.id ? (
+                                  <span
+                                    style={{
+                                      marginLeft: '0.4rem',
+                                      fontSize: '0.625rem',
+                                      fontWeight: 600,
+                                      color: 'var(--text-green-600)',
+                                      border: '1px solid var(--border-green)',
+                                      borderRadius: 999,
+                                      padding: '0.05rem 0.4rem',
+                                      verticalAlign: '1px',
+                                    }}
+                                  >
+                                    added by you
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                             <div
@@ -527,6 +593,25 @@ export function DashboardMyScheduleSection({
           jobId={callModal.jobId}
           jobLabel={callModal.jobLabel}
           onClose={() => setCallModal(null)}
+        />
+      ) : null}
+      {addJobOpen ? (
+        <DashboardAddJobToMyScheduleModal
+          todayYmd={subScheduleDayPartition.todayYmd}
+          tomorrowYmd={subScheduleDayPartition.tomorrowYmd}
+          myBlocks={allMyBlocks}
+          blockLabels={subScheduleLabels}
+          onClose={() => setAddJobOpen(false)}
+          onSaved={() => reloadSubSchedule?.()}
+        />
+      ) : null}
+      {myDayOpen && authUser?.id ? (
+        <DashboardMyDayEditorModal
+          authUserId={authUser.id}
+          blocks={allMyBlocks}
+          blockLabels={subScheduleLabels}
+          onClose={() => setMyDayOpen(false)}
+          onSaved={() => reloadSubSchedule?.()}
         />
       ) : null}
     </div>
