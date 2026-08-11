@@ -1994,7 +1994,9 @@ export function DashboardTeamActiveClockStrip({
                                 style={{
                                   overflowX: 'auto',
                                   maxWidth: '100%',
-                                  marginLeft: `calc(${CLOCKED_IN_TODAY_EXPAND_COL} + 0.45rem)`,
+                                  // v2.1552: indent shrunk with the chevron column gone —
+                                  // just enough rail to read as a sub-row.
+                                  marginLeft: '0.45rem',
                                   borderLeft: '2px solid var(--border)',
                                   paddingLeft: '0.45rem',
                                 }}
