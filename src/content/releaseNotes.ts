@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1578',
+    date: '2026-08-11',
+    title: 'Pipeline mobile cards get a cleaner, shorter layout',
+    kind: 'feature',
+    highlights: [
+      'Each card now reads in clear zones: the job name line, the customer and address together on one line, a tinted money strip (progress, billed, paid, left, and the invoice email status), and the latest activity in one line.',
+      'The row of small icons is gone — the card foot keeps the phone icon and the ⋯ menu, which now also lists Assign work, Send to Dispatch, and Send as task, with the crew named at the top.',
+      'Cards are roughly a third shorter, so more jobs fit on a phone screen.',
+    ],
+  },
+  {
     version: 'v2.1577',
     date: '2026-08-11',
     title: 'Reliability: labor costing pairs hours to people by identity',

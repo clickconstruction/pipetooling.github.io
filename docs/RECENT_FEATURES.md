@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1577)
+last_updated: 2026-08-11 (v2.1578)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1578)
+
+### Pipeline mobile cards: zoned-card redesign (Option B) (2026-08-11)
+Owner picked "Option B — zoned card" from the mockup artifact (follow-up to v2.1576's chip move; same diagnosis: ~13 stacked rows stating the money three times and the people three times). Both card layouts in [`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx) now read in zones: **(1) identity** — chip+name title row, then new shared [`renderJobCustomerAndAddressLine`](../src/components/jobs/jobsStagesRowShared.tsx) (customer button · ONE-line address on a single muted row; GC/development/Account-Man/Not-in-Customers keep their conditional rows; desktop tables keep the old two-renderer stack); **(2) a tinted money zone** (`--bg-subtle`) that is the only place money renders — the compact `StagesProgressPaymentCell` plus, folded in, the old standalone rows: the invoice line now appears ONLY when it adds facts the Billed/Left legend can't carry (standalone #N rows, multi-invoice jobs, unbilled remainder — the single-invoice "Invoice $X · remaining $0" duplication is gone) and the Stripe hint compacts to right-aligned "✉ Sent {age} · Resend"; **(3) pulse** — the activity teaser is strictly one line (author · age — body, full stamp in the tooltip) and disappears entirely when the job has no activity and no notes (was a lone "—" row); **(4) a hairline action row** — Reports + invoice jump chips + the j/b/hours meta chips (each chip now omitted when valueless instead of rendering "job —"), then call + ⋯. The always-visible icon rail is gone: Assign work / Send to Dispatch / Send as task join the ⋯ sheet (Job detail/Share were already there), and the sheet grows a `subtitle` line carrying the **crew names** ([`StagesCardMoreActionsSheet`](../src/components/jobs/StagesCardMoreActionsSheet.tsx)), replacing the card's crew row. Render tests 4→5 (demoted rail actions + crew subtitle; the v2.1241 toggle test updated for value-gated chips); help guides `search-the-stages-board.md` + `ready-to-bill-pipeline.md` rewritten to the new anatomy. Verified live at 375px against real Billed Awaiting Payment / Working cards (~35–40% shorter; sheet shows crew + new actions). Client-only — no migration.
 
 ## Latest Updates (v2.1577)
 

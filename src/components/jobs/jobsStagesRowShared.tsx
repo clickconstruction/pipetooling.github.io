@@ -594,6 +594,165 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
   )
 }
 
+/**
+ * Mobile-card identity line: the customer button and a ONE-line address share a
+ * single muted row (" · " separated), with the conditional GC/development row,
+ * Account-Man chip, and Not-in-Customers badge below — the same affordances as
+ * renderJobCustomerLine + renderJobAddressWithMap, which the desktop tables
+ * keep using, collapsed from up to four card rows into one or two.
+ */
+export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const { customers, openEditJobAndCreateCustomerFlow } = ctx
+  const cn = (job.customer_name ?? '').trim()
+  const hasCustomerInfo = !!(cn || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
+  const addr = (job.job_address ?? '').trim()
+  const addrFmt = formatAddressTwoLines(addr)
+  const addrOneLine = addrFmt ? [addrFmt.line1, addrFmt.line2].filter(Boolean).join(', ') : ''
+  const gcName = (job.gcCustomer?.name ?? '').trim()
+  const developmentName = (job.development?.name ?? '').trim()
+  const accountMan = buildAccountManDisplay(job)
+  if (!hasCustomerInfo && !addrOneLine && !gcName && !developmentName && !accountMan) return null
+  const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
+  const showNotInCustomersBadge = hasCustomerInfo && !job.customer_id && !impliedCustomerLink
+  return (
+    <div
+      style={{
+        fontSize: '0.75rem',
+        color: 'var(--text-muted)',
+        marginTop: '0.1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: '0.25rem',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35rem', rowGap: '0.15rem', minWidth: 0 }}>
+        {hasCustomerInfo ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (job.customer_id) ctx.openCustomerProfile?.(job.customer_id)
+              else openEditJobAndCreateCustomerFlow(job)
+            }}
+            title={job.customer_id ? 'Open customer profile' : 'Link or create this customer'}
+            aria-label={job.customer_id ? `Open customer profile for ${cn || 'customer'}` : `Link or create customer ${cn || ''}`.trim()}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 640 640"
+              width={13}
+              height={13}
+              fill="currentColor"
+              aria-hidden="true"
+              style={{ flexShrink: 0 }}
+            >
+              <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
+            </svg>
+            <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn || '—'}</span>
+          </button>
+        ) : null}
+        {hasCustomerInfo && addrOneLine ? <span aria-hidden>·</span> : null}
+        {addrOneLine ? (
+          <a
+            href={googleMapsSearchUrl(addr)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open in Google Maps"
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'flex-start', gap: '0.3rem', minWidth: 0 }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 640 640"
+              width={12}
+              height={12}
+              fill="currentColor"
+              aria-hidden="true"
+              style={{ flexShrink: 0, marginTop: 2, color: 'var(--text-red-600)' }}
+            >
+              <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+            </svg>
+            <span>{addrOneLine}</span>
+          </a>
+        ) : null}
+      </span>
+      {gcName || developmentName ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {gcName ? (
+            <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+              <span>{gcName}</span>
+            </span>
+          ) : null}
+          {developmentName ? (
+            ctx.onDevelopmentFilter && job.development?.id ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  ctx.onDevelopmentFilter?.(job.development?.id ?? '')
+                }}
+                title={`Show only ${developmentName} jobs`}
+                aria-label={`Filter the board to the ${developmentName} development`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                  textDecoration: 'underline dotted',
+                  textUnderlineOffset: '2px',
+                  textAlign: 'left',
+                }}
+              >
+                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+                <span>{developmentName}</span>
+              </button>
+            ) : (
+              <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+                <span>{developmentName}</span>
+              </span>
+            )
+          ) : null}
+        </span>
+      ) : null}
+      {accountMan ? renderAccountManChip(accountMan) : null}
+      {showNotInCustomersBadge ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            openEditJobAndCreateCustomerFlow(job)
+          }}
+          aria-label="Open Edit Job and create customer from job"
+          style={{
+            padding: '0.1rem 0.3rem',
+            fontSize: '0.6875rem',
+            fontWeight: 500,
+            fontFamily: 'inherit',
+            background: 'var(--bg-amber-100)',
+            color: 'var(--text-amber-800)',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          Not in Customers
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 export function shouldSuppressStagesRowJobThreadToggle(target: EventTarget | null): boolean {
   const el = target instanceof Element ? target : null
   if (!el) return false

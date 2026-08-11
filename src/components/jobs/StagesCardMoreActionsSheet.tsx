@@ -37,11 +37,14 @@ const sheetRowStyle: CSSProperties = {
 export function StagesCardMoreActionsSheet({
   open,
   title,
+  subtitle,
   actions,
   onClose,
 }: {
   open: boolean
   title: string
+  /** Optional second muted header line (the cards use it for the crew names). */
+  subtitle?: string
   actions: StagesCardMoreAction[]
   onClose: () => void
 }) {
@@ -86,9 +89,14 @@ export function StagesCardMoreActionsSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div aria-hidden style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0.5rem auto 0.4rem' }} />
-        <p style={{ margin: '0 1rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ margin: `0 1rem ${subtitle ? '0.15rem' : '0.5rem'}`, fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
         </p>
+        {subtitle ? (
+          <p style={{ margin: '0 1rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {subtitle}
+          </p>
+        ) : null}
         {actions.map((a) => (
           <button
             key={a.key}

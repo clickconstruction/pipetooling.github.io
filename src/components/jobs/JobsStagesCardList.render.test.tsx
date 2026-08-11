@@ -126,6 +126,22 @@ describe('JobsStagesCardList more-actions sheet', () => {
     expect(onSendBack).toHaveBeenCalledTimes(1)
   })
 
+  it('carries the demoted rail actions and the crew subtitle (zoned card)', () => {
+    const openQuickAssignForJob = vi.fn()
+    const job = makeJob({
+      job_name: 'Card Delta',
+      team_members: [{ user_id: 'u1', users: { name: 'Malachi' } }] as ReturnType<typeof makeJob>['team_members'],
+    })
+    renderWithProviders(
+      <JobsStagesCardList {...makeProps({ jobList: [job], openQuickAssignForJob })} />,
+    )
+    fireEvent.click(screen.getByTitle('More actions'))
+    expect(screen.getByText('Crew: Malachi')).toBeTruthy()
+    expect(screen.getByText('Send as task')).toBeTruthy()
+    fireEvent.click(screen.getByText('Assign work'))
+    expect(openQuickAssignForJob).toHaveBeenCalledTimes(1)
+  })
+
   it('Cancel closes the sheet without running anything', () => {
     const openEdit = vi.fn()
     const job = makeJob({ job_name: 'Card Gamma' })
