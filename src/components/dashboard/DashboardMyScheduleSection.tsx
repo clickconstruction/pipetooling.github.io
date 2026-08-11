@@ -48,6 +48,10 @@ export type DashboardMyScheduleSectionProps = {
     jobAddress: string | null | undefined
   }) => Promise<void>
   /** Opener for the shared `AdditionalReportModal` (`leaveReportJob` state in the parent). */
+  /** Reports visible to this user per job (Leave Report corner badge, v2.1547). */
+  reportCountByJobId?: Record<string, number>
+  /** Opens the job's reports list from the corner badge. */
+  setViewReportsJob?: (job: { id: string; hcpNumber: string; jobName: string; jobAddress: string }) => void
   setLeaveReportJob: (job: {
     id: string
     hcpNumber: string
@@ -80,6 +84,8 @@ export function DashboardMyScheduleSection({
   assignedReadyToBillJobs,
   detailModalAssignedJobsRows,
   submitLinkJobPicturesDispatchRequest,
+  reportCountByJobId,
+  setViewReportsJob,
   setLeaveReportJob,
 }: DashboardMyScheduleSectionProps) {
   const jobDetailModal = useJobDetailModal()
@@ -326,6 +332,18 @@ export function DashboardMyScheduleSection({
                                 <DashboardLeaveReportButton
                                   showReminder={
                                     fromAssigned ? leaveReportReminderForJobRow(fromAssigned) : false
+                                  }
+                                  reportCount={reportCountByJobId?.[b.job_id] ?? 0}
+                                  onViewReports={
+                                    setViewReportsJob
+                                      ? () =>
+                                          setViewReportsJob({
+                                            id: b.job_id,
+                                            hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                            jobName: fromAssigned?.job_name ?? rowLabel,
+                                            jobAddress: jobMeta.job_address ?? '—',
+                                          })
+                                      : undefined
                                   }
                                   onClick={(e) => {
                                     e.stopPropagation()

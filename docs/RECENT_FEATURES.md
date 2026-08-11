@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1546)
+last_updated: 2026-08-10 (v2.1547)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1547)
+
+### Leave Report buttons wear a tappable report-count badge (2026-08-10)
+Owner picked **Option C** of the inline badge mockups: every Dashboard **Leave Report** button gets a small pill in its bottom-right corner showing how many reports already exist on the job — and the pill itself is a button that opens the job's reports list, while the main button still files a new report. [`DashboardLeaveReportButton`](../src/components/dashboard/DashboardLeaveReportButton.tsx) gains `reportCount` + `onViewReports` props (badge renders only when both are live and count > 0; file-lines glyph + count, 22px target, sits beside the existing yellow ! reminder; caps at 99+). The count is **viewer-scoped**: [`Dashboard.tsx`](../src/pages/Dashboard.tsx) fetches `list_reports_with_job_info` once (the same RPC the reports modal uses, so the badge never advertises reports the tap can't show — crew-scoped for field roles per v2.1546) into a `reportCountByJobId` map, refreshed by every `onReportSaved`/`onFieldReportSaved` handler. Threaded to all three button surfaces: [`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx) (new `setViewReportsJob` prop), [`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx), and [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx) (both already had `setViewReportsJob`). Zero-report jobs show no badge. Verified live as Helper Paige: 6 badges on her dashboard (Mike Holub "2" coexisting with the ! reminder, Gerald Bennett "1"); tapping a badge opened job 926's reports directly with Abraham's crew report visible. Client-only — no migration.
 
 ## Latest Updates (v2.1546)
 

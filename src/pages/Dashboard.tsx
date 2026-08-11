@@ -386,6 +386,21 @@ export default function Dashboard() {
   const refreshInvoicesRef = useRef(refreshInvoices)
   refreshInvoicesRef.current = refreshInvoices
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  /** Reports visible to this user, counted per job — feeds the Leave Report corner badges (v2.1547). */
+  const [reportCountByJobId, setReportCountByJobId] = useState<Record<string, number>>({})
+  const loadDashboardReportCounts = useCallback(async () => {
+    if (!authUser?.id) return
+    const { data, error } = await supabase.rpc('list_reports_with_job_info')
+    if (error) return
+    const counts: Record<string, number> = {}
+    for (const r of (data as { job_ledger_id: string | null }[] | null) ?? []) {
+      if (r.job_ledger_id) counts[r.job_ledger_id] = (counts[r.job_ledger_id] ?? 0) + 1
+    }
+    setReportCountByJobId(counts)
+  }, [authUser?.id])
+  useEffect(() => {
+    void loadDashboardReportCounts()
+  }, [loadDashboardReportCounts])
   const [subcontractorJobActivityModalJob, setSubcontractorJobActivityModalJob] = useState<{
     id: string
     hcpNumber: string
@@ -1049,6 +1064,8 @@ export default function Dashboard() {
    *  and again in the Job Mode early return between the job card and "Show full dashboard". */
   const myScheduleSection = (
     <DashboardMyScheduleSection
+      reportCountByJobId={reportCountByJobId}
+      setViewReportsJob={setViewReportsJob}
       role={role}
       firstAssistantDispatchPhone={firstAssistantDispatchPhone}
       subScheduleLoading={subScheduleLoading}
@@ -1087,7 +1104,7 @@ export default function Dashboard() {
               userName={clockDisplayName}
               onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
               onClockInSuccess={handleClockInSuccessContractPrompt}
-              onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
+              onFieldReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
               embedded
             />
           </div>
@@ -1124,7 +1141,7 @@ export default function Dashboard() {
               setLeaveReportJob(null)
               void refreshDashboardAssignedJobLists()
             }}
-            onReportSaved={() => void refreshDashboardAssignedJobLists()}
+            onReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
             authUserId={authUser?.id ?? null}
             userRole={role}
             jobId={leaveReportJob.id}
@@ -1277,7 +1294,7 @@ export default function Dashboard() {
               userName={clockDisplayName}
               onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
               onClockInSuccess={handleClockInSuccessContractPrompt}
-              onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
+              onFieldReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
               embedded
             />
           ) : undefined
@@ -1447,6 +1464,7 @@ export default function Dashboard() {
       {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
 
       <DashboardTeamReadyToBillSection
+        reportCountByJobId={reportCountByJobId}
         role={role}
         isMobile={isMobile}
         narrowViewport660={narrowViewport660}
@@ -1463,6 +1481,7 @@ export default function Dashboard() {
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
         <DashboardAssignedJobsSection
+          reportCountByJobId={reportCountByJobId}
           role={role}
           isMobile={isMobile}
           assignedJobs={assignedJobs}
@@ -1563,7 +1582,7 @@ export default function Dashboard() {
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
           userRole={role}
-          onReportSaved={() => void refreshDashboardAssignedJobLists()}
+          onReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
         />
       )}
       {subcontractorJobActivityModalJob ? (
@@ -1583,7 +1602,7 @@ export default function Dashboard() {
             setLeaveReportJob(null)
             void refreshDashboardAssignedJobLists()
           }}
-          onReportSaved={() => void refreshDashboardAssignedJobLists()}
+          onReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
           authUserId={authUser?.id ?? null}
           userRole={role}
           jobId={leaveReportJob.id}
