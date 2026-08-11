@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1573',
+    date: '2026-08-11',
+    title: 'Unassigned field time explains itself',
+    kind: 'feature',
+    highlights: [
+      'A day assigned only to the Office job now says "Office only — doesn\'t cover field time" instead of the confusing "No crew assignments" — Office time is overhead, so the day stays listed until a field job is assigned.',
+      'The day audit marks Office assignments as overhead and explains why they don\'t clear the day.',
+      'New "Re-sync from clock" button in the day audit rebuilds a day\'s assignments from its approved clock sessions — the one-click fix when an assignment no longer matches where someone actually clocked.',
+    ],
+  },
+  {
     version: 'v2.1572',
     date: '2026-08-11',
     title: 'The % done fallback reaches more of the Dashboard',

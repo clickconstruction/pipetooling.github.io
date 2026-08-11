@@ -404,6 +404,39 @@ describe('computeUnallocatedFieldRows', () => {
     expect(alexTue).toBeDefined()
     expect(alexTue?.crewAttributedHrs).toBeCloseTo(4, 5)
     expect(alexTue?.unallocatedHrs).toBeCloseTo(4, 5)
+    expect(alexTue?.crewAssignmentCount).toBe(1)
+    expect(alexTue?.officeAssignmentCount).toBe(1)
+  })
+
+  it('an Office-only crew row attributes nothing but is counted separately (v2.1573 — "Office only" label)', () => {
+    // The Taunya/Darren case: 6h approved field clock, crew row saved as
+    // Office 100%. Attribution stays 0 (the day remains fully unallocated),
+    // but officeAssignmentCount lets the UI say "Office only — doesn't cover
+    // field time" instead of the misleading "No crew assignments".
+    const sessions: OverheadClockSessionRow[] = [
+      fieldSession({ id: 'alex-field', userId: ALEX_ID, userName: 'Alex', workDate: '2026-05-12', hours: 6 }),
+    ]
+    const crewRows: PeopleHoursUnallocatedCrewInput[] = [
+      {
+        work_date: '2026-05-12',
+        person_name: 'Alex',
+        job_assignments: [{ job_id: OFFICE_JOB_ID, pct: 100 }],
+        bid_assignments: [],
+      },
+    ]
+    const rows = computeUnallocatedFieldRows({
+      payConfig: PAY_CONFIG,
+      crewRows,
+      overheadSessions: sessions,
+      officeJobLedgerId: OFFICE_JOB_ID,
+      workDates: WORK_DATES,
+      thresholdHours: 0.5,
+    })
+    const alexTue = rows.find((r) => r.personName === 'Alex' && r.workDate === '2026-05-12')
+    expect(alexTue).toBeDefined()
+    expect(alexTue?.crewAttributedHrs).toBe(0)
+    expect(alexTue?.crewAssignmentCount).toBe(0)
+    expect(alexTue?.officeAssignmentCount).toBe(1)
   })
 
   it('uses approved-clock hours (not people_hours) for hourly people', () => {

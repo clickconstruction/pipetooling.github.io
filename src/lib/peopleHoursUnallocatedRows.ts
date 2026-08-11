@@ -69,6 +69,13 @@ export type PeopleHoursUnallocatedRow = {
   isSalary: boolean
   /** Distinct job/bid ids already on the crew row (so the UI can show "1 job, 2 bids"). */
   crewAssignmentCount: number
+  /**
+   * Office-job assignments on the crew row (excluded from `crewAssignmentCount`
+   * and from attribution). Lets the UI say "Office only — doesn't cover field
+   * time" instead of the misleading "No crew assignments" when a row exists
+   * but is 100% Office.
+   */
+  officeAssignmentCount: number
 }
 
 export type PeopleHoursUnallocatedSummary = {
@@ -284,6 +291,7 @@ export function computeUnallocatedFieldRows(
   type CrewBucket = {
     pctTotal: number
     assignmentCount: number
+    officeAssignmentCount: number
   }
   const crewByKey = new Map<string, CrewBucket>()
   for (const r of args.crewRows) {
@@ -293,11 +301,14 @@ export function computeUnallocatedFieldRows(
     const key = `${name}|${r.work_date}`
     let bucket = crewByKey.get(key)
     if (!bucket) {
-      bucket = { pctTotal: 0, assignmentCount: 0 }
+      bucket = { pctTotal: 0, assignmentCount: 0, officeAssignmentCount: 0 }
       crewByKey.set(key, bucket)
     }
     for (const a of r.job_assignments) {
-      if (args.officeJobLedgerId && a.job_id === args.officeJobLedgerId) continue
+      if (args.officeJobLedgerId && a.job_id === args.officeJobLedgerId) {
+        bucket.officeAssignmentCount += 1
+        continue
+      }
       const pct = Number.isFinite(a.pct) ? a.pct : 0
       if (pct <= 0) continue
       bucket.pctTotal += pct
@@ -363,6 +374,7 @@ export function computeUnallocatedFieldRows(
       unallocatedHrs,
       isSalary: !!cfg?.is_salary,
       crewAssignmentCount: crew?.assignmentCount ?? 0,
+      officeAssignmentCount: crew?.officeAssignmentCount ?? 0,
     })
   }
 

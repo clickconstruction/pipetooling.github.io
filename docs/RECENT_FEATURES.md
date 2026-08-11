@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1572)
+last_updated: 2026-08-11 (v2.1573)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1573)
+
+### Unassigned field time: name Office-only days + re-sync assignments from clock (2026-08-11)
+Root-caused from Taunya's report ("All ready assigned to job and won't clear under unassigned list") on Darren's Wed 7/29: his 6h approved session is on JP878 but the crew row says Office 100% — which the unallocated kernel excludes BY DESIGN, while the UI said the contradictory "No crew assignments" (office-only rows weren't counted at all) and the audit modal showed the assignment with no hint Office doesn't count. Three fixes, all display/affordance — the allocation math is unchanged: **(1)** [`peopleHoursUnallocatedRows`](../src/lib/peopleHoursUnallocatedRows.ts) counts skipped Office assignments (`officeAssignmentCount`, kernel tests 22→23 incl. the exact Darren case) and the Quickfill row ([`QuickfillUnassignedFieldTimeSection`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx)) says **"Office only — doesn't cover field time"** (tooltip spells out why) instead of "No crew assignments". **(2)** The day audit ([`PeopleHoursDayAuditModal`](../src/components/PeopleHoursDayAuditModal.tsx)) fetches the overhead Office job id and badges Office assignments **"not counted toward field allocation"** (read-only list) / **"overhead"** (edit chips), amber with explanatory tooltips. **(3)** New **↺ Re-sync from clock** button on the Job/bid assignments panel (gated `canEditCrewJobs`) calls the existing `sync_crew_jobs_from_clock` + `sync_crew_bids_from_clock` RPCs — one-click repair when a manual crew save drifted from the approved sessions. Help guide `quickfill.md` bullet expanded. Verified live against Darren's real day (label, badges, button render; re-sync NOT clicked — office to confirm the attribution). Client-only — no migration.
 
 ## Latest Updates (v2.1572)
 
