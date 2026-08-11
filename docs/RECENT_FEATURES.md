@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1562)
+last_updated: 2026-08-11 (v2.1563)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1563)
+
+### Calendar: day-cell chips stop clipping at both edges on phones (2026-08-11)
+Owner-reported (screenshot: month-view chips reading "ob AM – 4:26" / "3 · Jason Ve"). Root cause was a rendering bug, not tight space: the bottom chip cluster in each [`Calendar.tsx`](../src/pages/Calendar.tsx) day cell used `alignItems: 'center'`, so each chip sized to its full text width, overflowed the ~71–90px phone cell on **both sides**, and the cell's `overflow: hidden` sliced both edges — the chips' own `textOverflow: ellipsis` never engaged. The cluster now uses `alignItems: 'stretch'` + `minWidth: 0` (chips clamp to the cell and ellipsize properly: "473 · Mike Hol…"), with the short badges re-centering themselves via `alignSelf: 'center'` (NCNS, the Recorded line, both "+N" chips) and the workday Link gaining center/ellipsis text styling. Applies to every chip type — clock sessions, planned blocks, workday, time-off. Verified at 375px via DOM: cluster computed `align-items: stretch`, zero chips wider than their 71px cell. Desktop unchanged apart from long chips now ellipsizing instead of clipping. Client-only — no migration.
 
 ## Latest Updates (v2.1562)
 
