@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1557',
+    date: '2026-08-10',
+    title: 'Dispatch call button matches the header',
+    kind: 'feature',
+    highlights: [
+      'The round call-dispatch button next to My Schedule is now the same sky blue as the dispatch button in the header, so the two dispatch actions read as one family.',
+    ],
+  },
+  {
     version: 'v2.1556',
     date: '2026-08-10',
     title: 'Time off history + schedule times on one line',

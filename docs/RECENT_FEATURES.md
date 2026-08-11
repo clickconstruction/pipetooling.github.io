@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1556)
+last_updated: 2026-08-10 (v2.1557)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1557)
+
+### My Schedule call button matches the header dispatch color (2026-08-10)
+Owner-requested: the round call-dispatch phone button beside the My Schedule title ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx), added in v2.1553) switches from outline styling to the **solid sky blue (`#0ea5e9`) + white** of the header's dispatch task button ([`Layout.tsx`](../src/components/Layout.tsx)) — the two dispatch actions now read as one family. Verified live as Helper Paige (computed `rgb(14, 165, 233)`). Client-only — no migration.
 
 ## Latest Updates (v2.1556)
 
