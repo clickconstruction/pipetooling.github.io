@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-07-31
+last_updated: 2026-08-11
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -286,6 +286,38 @@ through the window, so it was collecting.
 
 Host metrics are **dashboard-only** — not exposed via the CLI or MCP. Capture
 them while the window is still in retention.
+
+### 2026-08-11 — Mode B again (intermittent stalls 19:22–20:32 UTC, self-recovered)
+
+Office reported the app frozen ~20:30 UTC. Step 0: `http-only` 401 in 0.24s,
+`db-touching` hung to the 20s timeout — freeze confirmed. CLI could not connect
+(pooler `failed to receive message: context deadline exceeded` — timed out
+before even an `EAUTHQUERY` came back), so live forensics were blind, as in the
+07-31 incident. Step 2 after recovery gave the whole picture:
+
+- **Four sampler gaps** in `monitoring.health_checks`: 19:22–19:24 (120s),
+  19:38–19:40 (120s), 19:45–19:48:20 (200s, `sample_duration_ms` 787 on the
+  recovery row), and **20:27–20:32 (300s)** — the office-visible one.
+- **cron jobs 5 + 13 both failed** with `job startup timeout` at 19:39 (37s)
+  and 19:46 (2m19s) — the decisive can't-fork-workers signal.
+- **Zero `wait_event_type = 'Lock'` rows across 4 hours**; 1–6 active backends
+  with NULL wait events; `io_wait_backends = 0` throughout. No pileup, no
+  contention — the idle-host-freeze signature again.
+- **Recovered without a restart** — first Mode B that self-healed. The 20:27
+  stall ended at 20:32:00 while the restart decision was still being weighed;
+  a re-probe returning `200 t=0.5s` is what caught it. Re-probe before
+  recommending the restart — a stall that has already ended needs neither.
+- Status page: no relevant incident posted (again).
+
+Practical additions proven this time: when the Supabase MCP is unavailable,
+`psql` over the **session pooler** (port 5432, `postgres.<ref>` user,
+`SUPABASE_DB_PASSWORD` from `.env.local`) runs every Step 2 query; and the
+worktrees are not linked — run `supabase inspect` from the main checkout.
+
+Open item: 4 stalls in 70 minutes is a cluster, not a one-off. If it recurs,
+restart on the Step 0 + CLI-unreachable evidence alone (Mode B is established
+for this signature), and capture Dashboard host metrics for 19:00–20:40 UTC
+while the window is in retention.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
