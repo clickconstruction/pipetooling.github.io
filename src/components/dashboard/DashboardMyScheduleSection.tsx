@@ -266,7 +266,8 @@ export function DashboardMyScheduleSection({
                                   {splitScheduleRowLabel(rowLabel).jobName}
                                 </span>
                               </div>
-                              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                              {/* v2.1556: the window never wraps — overflow beats "12:00\nPM". */}
+                              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem', whiteSpace: 'nowrap' }}>
                                 {scheduleFormatWindow(b.time_start, b.time_end)}
                               </div>
                             </div>

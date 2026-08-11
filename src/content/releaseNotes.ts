@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1556',
+    date: '2026-08-10',
+    title: 'Time off history + schedule times on one line',
+    kind: 'feature',
+    highlights: [
+      'In Personal Time Off, past entries are now history: they can\'t be removed and live in a collapsed "Past time off" section at the bottom. Only current and upcoming time off shows Remove.',
+      'On My Schedule cards, the time window (8:00 AM–12:00 PM) stays on one line instead of wrapping the PM onto its own row.',
+      'The report form\'s title now shows just the job (no "New report ·" prefix), and the type label reads "Report type:".',
+    ],
+  },
+  {
     version: 'v2.1554',
     date: '2026-08-10',
     title: 'Report form: tap the percent, cleaner header',

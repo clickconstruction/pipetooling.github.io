@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1554)
+last_updated: 2026-08-10 (v2.1556)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1556)
+
+### Personal Time Off history + non-wrapping schedule times (2026-08-10)
+Two owner requests. **(1) Past time off is read-only history:** [`TimeOffSettings`](../src/components/TimeOffSettings.tsx) splits rows on the company-calendar today (`denverWorkDateToday`): current/upcoming entries keep their **Remove** buttons at the top; entries whose end date has passed move to a **collapsed "Past time off (N)" section at the bottom of the modal** (below Add range), rendered muted with no Remove — users can no longer delete history. **(2) Schedule window never wraps:** the My Schedule card's time line ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)) gets `whiteSpace: 'nowrap'` — "8:00 AM–12:00 PM" overflows rather than stranding "PM" on its own row. Also per owner review of v2.1554's header: the report form title drops its "New report · " prefix (now just `473 Mike Holub`) and the type label gains a colon (**Report type:**). Verified live as Helper Paige at 375px: times one line on every card; the PTO modal shows "No upcoming time off" with zero Remove buttons and her three historical "Not coming in" entries under the collapsed section. (v2.1555 belongs to a parallel session.) Client-only — no migration.
 
 ## Latest Updates (v2.1554)
 
