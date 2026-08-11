@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1581',
+    date: '2026-08-11',
+    title: 'Job Detail shows how many reports a job has',
+    kind: 'fix',
+    highlights: [
+      'The Reports box on Job Detail now says "2 reports" (or "No reports yet") instead of a generic link, and shows who filed the newest report and when — so you can see at a glance that reports exist before opening them.',
+    ],
+  },
+  {
     version: 'v2.1580',
     date: '2026-08-11',
     title: 'Pipeline cards easier to tell apart in light mode',

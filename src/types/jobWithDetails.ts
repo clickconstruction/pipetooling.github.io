@@ -23,6 +23,8 @@ export type JobWithDetails = JobsLedgerRow & {
   /** Embedded Account Man (jobs_ledger.account_manager_user_id → users, v2.1466). */
   account_manager?: { id: string; name: string | null } | null
   report_count?: number
+  /** Newest report's meta — detail fetch only (fetchJobWithDetailsById); feeds the Job Detail "Reports" box subline. */
+  latestReport?: { created_at: string | null; author_name: string | null; template_name: string | null } | null
   project?: { id: string; name: string } | null
   /** Embedded bid when `bid_id` is set (`jobs_ledger.bid_id` → `bids`). */
   linkedBid?: {

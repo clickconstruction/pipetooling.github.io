@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1580)
+last_updated: 2026-08-11 (v2.1581)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1581)
+
+### Job Detail: the Reports box shows the count + newest report (2026-08-11)
+Owner report ("On the job detail, I don't think reports are showing up"). Diagnosis: nothing was broken — the reports load fine behind "View all reports" — but the box was count-blind: identical for 0 or 10 reports, while every other surface (Pipeline card pill) shows the count, so Job Detail read as "no reports." The count was already fetched (`report_count` from the reports embed) and just never rendered. Fix: **(1)** the box link becomes **"N report(s)"** (bold, link-blue) or a quiet "No reports yet" — same tap target, still opens [`JobReportsModal`](../src/components/JobReportsModal.tsx); **(2)** a new muted subline shows the newest report's meta — "Paige · today · Status Report" (author · age via `formatDispatchNoteDaysAgoShortPhrase` · template via `displayReportTemplateName`, so legacy "Superintendent Report" rows still read "Status Report"). Plumbing: [`buildJobsLedgerFullDetailSelect`](../src/lib/jobsLedgerEmbedSelects.ts)'s reports embed widens (detail fetch ONLY — the Stages list embed stays `job_ledger_id`) to `created_at` + author/template name joins; [`fetchJobWithDetailsById`](../src/lib/fetchJobWithDetailsById.ts) picks the newest row client-side (embeds are unordered) into the new optional `JobWithDetails.latestReport`. Verified live both states (job 961: "1 report · Paige · today · Status Report"; a report-less job: "No reports yet"). Client-only — no migration.
 
 ## Latest Updates (v2.1580)
 

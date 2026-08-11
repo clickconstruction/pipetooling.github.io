@@ -100,7 +100,7 @@ export function buildJobsLedgerFullDetailSelect(): string {
     jobs_ledger_payments(${JOBS_LEDGER_PAYMENTS_EMBED}),
     jobs_ledger_invoices(${JOBS_LEDGER_INVOICES_EMBED}),
     jobs_ledger_team_members(${JOBS_LEDGER_TEAM_MEMBERS_EMBED}),
-    reports(job_ledger_id),
+    reports(job_ledger_id, created_at, users:created_by_user_id(name), report_templates:template_id(name)),
     projects:project_id(id, name),
     bids:bid_id(id, project_name, bid_number, service_type_id, customer_id, customers:customer_id(id, name)),
     gc_customer:gc_customer_id(id, name),
