@@ -31,6 +31,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1555',
+    date: '2026-08-10',
+    title: 'Pipeline: one chip for job number and trade',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Pipeline, the blue "Job: 961" badge and the separate trade pill are now a single chip — "961 PLUM" — in the trade\'s color.',
+      'Jobs without a trade keep the blue Job badge as before.',
+    ],
+  },
+  {
     version: 'v2.1554',
     date: '2026-08-10',
     title: 'Report form: tap the percent, cleaner header',

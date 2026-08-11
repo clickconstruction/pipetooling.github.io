@@ -194,21 +194,27 @@ export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSPr
     const serviceLabel = stName
       ? (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase()
       : ''
-    const borderColor = tagInfo?.color ?? '#d1d5db'
-    const servicePillStyle: CSSProperties | null = stName
-      ? {
-          ...stagesJobSublinePillBoxBase,
-          marginTop: '0.15rem',
-          letterSpacing: '0.02em',
-          border: `1px solid ${borderColor}`,
-          background: tagInfo ? borderColor : 'var(--bg-muted)',
-          color: tagInfo ? '#fff' : 'var(--text-700)',
-        }
-      : null
+    if (stName) {
+      // One merged chip — "961 PLUM" in the trade color (was a blue "Job: 961"
+      // badge plus a separate service pill).
+      const mergedChipStyle: CSSProperties = {
+        ...stagesJobSublinePillBoxBase,
+        letterSpacing: '0.02em',
+        border: tagInfo ? '1px solid rgba(255,255,255,0.5)' : '1px solid var(--border-strong)',
+        background: tagInfo ? tagInfo.color : 'var(--bg-muted)',
+        color: tagInfo ? '#fff' : 'var(--text-700)',
+      }
+      return (
+        <div style={extraWrap}>
+          <span style={mergedChipStyle} title={stName}>
+            {t} {serviceLabel}
+          </span>
+        </div>
+      )
+    }
     return (
       <div style={extraWrap}>
         <span style={stagesJobHcpBadgeStyle}>Job: {t}</span>
-        {servicePillStyle ? <span style={servicePillStyle}>{serviceLabel}</span> : null}
       </div>
     )
   }
