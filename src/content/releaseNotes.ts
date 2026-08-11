@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1563',
+    date: '2026-08-11',
+    title: 'Calendar readable on your phone again',
+    kind: 'fix',
+    highlights: [
+      'Month-view chips (jobs, recorded time, planned blocks) were getting sliced off at both ends on narrow screens — they now shorten with … like they should, so "Job 473 · Mike Holub" reads as "473 · Mike Hol…" instead of "ob AM – 4:26".',
+    ],
+  },
+  {
     version: 'v2.1562',
     date: '2026-08-11',
     title: 'Money cards show how old the money is',

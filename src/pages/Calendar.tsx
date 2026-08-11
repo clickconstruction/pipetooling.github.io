@@ -1231,12 +1231,19 @@ export default function Calendar() {
                     </div>
                     <div
                       style={{
+                        // stretch, not center: centered flex children size to their
+                        // full text width, overflow narrow phone cells on BOTH sides,
+                        // and get clipped at both edges by the cell's overflow:hidden
+                        // (the chips' own ellipsis never engages). Stretched chips
+                        // clamp to the cell and ellipsize; short badges (NCNS,
+                        // Recorded, +N) re-center themselves with alignSelf.
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: 'center',
+                        alignItems: 'stretch',
                         gap: 2,
                         marginTop: 'auto',
                         flexShrink: 0,
+                        minWidth: 0,
                       }}
                     >
                     {showMyWorkday &&
@@ -1290,6 +1297,9 @@ export default function Calendar() {
                               borderRadius: 3,
                               overflow: 'hidden',
                               fontWeight: 500,
+                              textAlign: 'center',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             }}
                             title={`Workday (${wd.source})${b.segmentIndex ? ` · block ${b.segmentIndex}` : ''}`}
                           >
@@ -1313,6 +1323,8 @@ export default function Calendar() {
                             borderRadius: 3,
                             fontWeight: 600,
                             border: '1px solid var(--border-orange)',
+                            alignSelf: 'center',
+                            maxWidth: '100%',
                           }}
                           title={ncnsCalendarChipTitle(ncns)}
                         >
@@ -1336,6 +1348,9 @@ export default function Calendar() {
                                 color: 'var(--text-600)',
                                 borderRadius: 3,
                                 fontWeight: 500,
+                                alignSelf: 'center',
+                                maxWidth: '100%',
+                                textAlign: 'center',
                               }}
                               title={title}
                             >
@@ -1406,6 +1421,7 @@ export default function Calendar() {
                                     padding: '2px 4px',
                                     color: 'var(--text-600)',
                                     fontWeight: 600,
+                                    alignSelf: 'center',
                                   }}
                                   title={`${more} more clock session(s) — open day for full list`}
                                 >
@@ -1482,6 +1498,7 @@ export default function Calendar() {
                                 padding: '2px 4px',
                                 color: '#4f46e5',
                                 fontWeight: 600,
+                                alignSelf: 'center',
                               }}
                               title={`${more} more planned block(s) — open day for list`}
                             >
