@@ -14,7 +14,7 @@ import {
 } from '../lib/stagesUpcomingSchedule'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
-import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
+import { ACTIVITY_FILTERS, countActivityByFilter, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -298,6 +298,19 @@ export function JobThreadNotesPanel({
     () => (filterEnabled ? filterActivity(activity, activityFilter) : activity),
     [filterEnabled, activity, activityFilter],
   )
+  // Per-bucket counts for the filter pills — same array the filter reads, so a
+  // pill's number always matches what clicking it shows.
+  const activityCounts = useMemo(
+    () => (filterEnabled ? countActivityByFilter(activity) : null),
+    [filterEnabled, activity],
+  )
+  // If the selected bucket empties out (items reloaded, note deleted), fall
+  // back to All rather than stranding the user on a blank feed behind a pill
+  // that is now demoted to non-clickable.
+  useEffect(() => {
+    if (activityFilter === 'all') return
+    if (activityCounts && activityCounts[activityFilter] === 0) setActivityFilter('all')
+  }, [activityCounts, activityFilter])
 
   const activityTailKey = useMemo(() => {
     const last = visibleActivity[visibleActivity.length - 1]
@@ -426,6 +439,35 @@ export function JobThreadNotesPanel({
         >
           {ACTIVITY_FILTERS.map((f) => {
             const active = activityFilter === f.value
+            const count = f.value === 'all' ? null : (activityCounts?.[f.value] ?? 0)
+            // Empty buckets demote to quiet non-clickable text (the v2.1475
+            // Reports-pill pattern): present so the vocabulary stays fixed,
+            // silent so rows with real activity pop. All is always clickable.
+            const empty = f.value !== 'all' && count === 0
+            if (empty) {
+              return (
+                <button
+                  key={f.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={false}
+                  aria-disabled
+                  title={`No ${f.label.toLowerCase()} yet`}
+                  style={{
+                    padding: '0.15rem 0.5rem',
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    cursor: 'default',
+                    border: '1px solid transparent',
+                    background: 'transparent',
+                    color: 'var(--text-faint)',
+                  }}
+                >
+                  {f.label}
+                </button>
+              )
+            }
             return (
               <button
                 key={f.value}
@@ -445,6 +487,18 @@ export function JobThreadNotesPanel({
                 }}
               >
                 {f.label}
+                {count != null ? (
+                  <span
+                    style={{
+                      marginLeft: '0.3rem',
+                      fontWeight: 700,
+                      color: active ? '#fff' : 'var(--text-link)',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {count}
+                  </span>
+                ) : null}
               </button>
             )
           })}

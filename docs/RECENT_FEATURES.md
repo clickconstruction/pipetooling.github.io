@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1557)
+last_updated: 2026-08-10 (v2.1558)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1558)
+
+### Job activity filter pills: per-bucket counts, empty buckets go quiet (2026-08-10)
+Owner picked **option A** of the filter-pill mockups. The Job activity / notes panel's All / Notes / Reports / Status / Billing / Crew row ([`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx)) now shows **how many items each bucket holds** — a blue count trails each non-empty pill's label (white on the active pill; tabular numerals) — and **empty buckets demote to quiet borderless `var(--text-faint)` text** (the v2.1475 Reports-pill pattern): not clickable, `aria-disabled` + tooltip "No <bucket> yet", still in the row so the category vocabulary stays fixed. **All stays uncounted and always clickable** — deliberately, because 'other' events (material/fixture/field-edit/combine) appear only under All, so an All count would exceed the pills' sum and read as a bug. New pure kernel **`countActivityByFilter`** in [`jobActivityFilter.ts`](../src/lib/jobActivityFilter.ts) (+4 unit tests) computes counts from the same array `filterActivity` reads, so a pill's number always matches what clicking it reveals; a guard effect resets a selection back to All if its bucket empties (item reload/deletion) rather than stranding the user on a blank feed behind a now-demoted pill. Applies everywhere the panel mounts with activity: Pipeline inline + fullscreen, Job Detail, mobile cards, Job Mode, and Dispatch Mode's customer summary (guide sentence updated in [`dispatch-mode`](../src/content/help/dispatch-mode.md)). Verified live on the board: `Notes 1` / `Crew 8` clickable with counts, Reports/Status/Billing demoted with tooltips. Client-only — no migration.
 
 ## Latest Updates (v2.1557)
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1558',
+    date: '2026-08-10',
+    title: 'Job activity filters show their counts',
+    kind: 'feature',
+    highlights: [
+      'In the Job activity / notes panel, the Notes, Reports, Status, Billing, and Crew buttons now show how many entries each one holds, so you can see where the action is before tapping.',
+      'Categories with nothing in them fade out and aren\'t tappable — no more filtering into an empty list.',
+    ],
+  },
+  {
     version: 'v2.1557',
     date: '2026-08-10',
     title: 'Dispatch call button matches the header',

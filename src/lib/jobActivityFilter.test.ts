@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobThreadActivityItem } from '../components/JobThreadNotesPanel'
-import { activityItemMatchesFilter, filterActivity } from './jobActivityFilter'
+import { activityItemMatchesFilter, countActivityByFilter, filterActivity } from './jobActivityFilter'
 
 const note: JobThreadActivityItem = {
   kind: 'note',
@@ -61,5 +61,31 @@ describe('activityItemMatchesFilter', () => {
     expect(filterActivity(items, 'all')).toBe(items)
     expect(filterActivity(items, 'billing').map((i) => i.kind)).toEqual(['event'])
     expect(filterActivity(items, 'billing')).toHaveLength(1)
+  })
+})
+
+describe('countActivityByFilter', () => {
+  it('counts each bucket and totals under all', () => {
+    const items = [note, note, clock, ev('status_change'), ev('payment_added'), ev('crew_added')]
+    expect(countActivityByFilter(items)).toEqual({ all: 6, notes: 2, reports: 0, status: 1, billing: 1, crew: 2 })
+  })
+
+  it("'other' events count under all only, so all can exceed the buckets' sum", () => {
+    const items = [note, ev('field_edited')]
+    const counts = countActivityByFilter(items)
+    expect(counts.all).toBe(2)
+    expect(counts.notes + counts.reports + counts.status + counts.billing + counts.crew).toBe(1)
+  })
+
+  it('every count matches what filterActivity returns for that bucket', () => {
+    const items = [note, clock, ev('status_change'), ev('payment_added'), ev('field_edited')]
+    const counts = countActivityByFilter(items)
+    for (const f of ['all', 'notes', 'reports', 'status', 'billing', 'crew'] as const) {
+      expect(counts[f]).toBe(filterActivity(items, f).length)
+    }
+  })
+
+  it('empty input yields all zeros', () => {
+    expect(countActivityByFilter([])).toEqual({ all: 0, notes: 0, reports: 0, status: 0, billing: 0, crew: 0 })
   })
 })

@@ -51,3 +51,23 @@ export function filterActivity(
   if (filter === 'all') return items
   return items.filter((it) => activityItemMatchesFilter(it, filter))
 }
+
+/**
+ * Per-bucket item counts for the filter pills. 'all' is the total item count —
+ * it can exceed the other buckets' sum because 'other' events (material/
+ * fixture/field-edit/combine) appear only under 'all'. Computed from the same
+ * array `filterActivity` filters, so a pill's count always matches what
+ * clicking it reveals.
+ */
+export function countActivityByFilter(items: JobThreadActivityItem[]): Record<ActivityFilter, number> {
+  const counts: Record<ActivityFilter, number> = { all: items.length, notes: 0, reports: 0, status: 0, billing: 0, crew: 0 }
+  for (const it of items) {
+    for (const f of ['notes', 'reports', 'status', 'billing', 'crew'] as const) {
+      if (activityItemMatchesFilter(it, f)) {
+        counts[f]++
+        break // buckets are disjoint — an item lives in at most one
+      }
+    }
+  }
+  return counts
+}
