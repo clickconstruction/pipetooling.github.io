@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1564',
+    date: '2026-08-11',
+    title: 'Review reminders take you to the right person',
+    kind: 'feature',
+    highlights: [
+      'Tapping the "Team reviews due" reminder now opens the Rate deck directly on the person it named — no more paging through the whole team to find them.',
+      'People due for your review are marked in the deck\'s dropdown with an amber "N due" count beside it, and saving a review jumps to the next due person until the list is clear.',
+    ],
+  },
+  {
     version: 'v2.1563',
     date: '2026-08-11',
     title: 'Calendar readable on your phone again',

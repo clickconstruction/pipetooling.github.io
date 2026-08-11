@@ -58,3 +58,22 @@ export function overdueReviewSubjects(
     return last == null || last < cutoff
   })
 }
+
+/**
+ * Rate-deck "next due" hop (v2.1564): the first roster index AFTER fromIndex
+ * (wrapping) whose user is in the due set — skipping fromIndex itself, so
+ * saving a due card never lands back on it. Null when nobody else is due.
+ */
+export function nextDueIndexAfter(
+  roster: RatableUser[],
+  dueIds: ReadonlySet<string>,
+  fromIndex: number,
+): number | null {
+  if (roster.length === 0 || dueIds.size === 0) return null
+  for (let step = 1; step < roster.length; step++) {
+    const i = (fromIndex + step + roster.length) % roster.length
+    const user = roster[i]
+    if (user && dueIds.has(user.id)) return i
+  }
+  return null
+}

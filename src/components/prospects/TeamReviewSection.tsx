@@ -37,7 +37,14 @@ import {
 } from '../../lib/prospects/teamComposite'
 import { buildRoleLeaderboards, replaceFocusEntries } from '../../lib/prospects/teamLeaderboard'
 import type { CompositeWeights } from '../../lib/prospects/teamComposite'
-import { APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS } from '../../lib/appSettingsKeys'
+import { APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS, APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS } from '../../lib/appSettingsKeys'
+import {
+  DEFAULT_TEAM_REVIEW_CADENCE_DAYS,
+  nextDueIndexAfter,
+  overdueReviewSubjects,
+  parseTeamReviewCadenceDays,
+  type MyReviewStamp,
+} from '../../lib/prospects/teamReviewDue'
 
 type ReviewDraft = {
   rating_ability: number | null
@@ -79,11 +86,14 @@ export default function TeamReviewSection({
   authUserId,
   isDev,
   onOpenScreenBoard,
+  initialRateUserId,
 }: {
   authUserId: string
   isDev: boolean
   /** Jump to the hiring board's Screen stage (the pipeline for roles the leaderboard flags). */
   onOpenScreenBoard?: () => void
+  /** Deep link (v2.1564): open the Rate deck ON this person — the "Team reviews due" banner passes its first overdue subject. */
+  initialRateUserId?: string | null
 }) {
   const [subTab, setSubTab] = useState<'rate' | 'reflect' | 'leaderboard'>('rate')
   const [roster, setRoster] = useState<RatableUser[]>([])
@@ -104,6 +114,7 @@ export default function TeamReviewSection({
   const [weightsEditorOpen, setWeightsEditorOpen] = useState(false)
   const [weightsDraft, setWeightsDraft] = useState<{ ability: string; drive: string; integrity: string }>({ ability: '', drive: '', integrity: '' })
   const [weightsSaving, setWeightsSaving] = useState(false)
+  const [cadenceDays, setCadenceDays] = useState(DEFAULT_TEAM_REVIEW_CADENCE_DAYS)
 
   const baselines = useMemo(() => reviewerBaselines(reviews), [reviews])
   const company = useMemo(() => companyDimensionMeans(reviews), [reviews])
@@ -127,6 +138,13 @@ export default function TeamReviewSection({
       .eq('key', APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS)
       .maybeSingle()
     setWeights(parseCompositeWeights(weightsRow?.value_text) ?? DEFAULT_COMPOSITE_WEIGHTS)
+    // Cadence powers the due markers + next-due hop; same setting the banner reads.
+    const { data: cadenceRow } = await supabase
+      .from('app_settings')
+      .select('value_num')
+      .eq('key', APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS)
+      .maybeSingle()
+    setCadenceDays(parseTeamReviewCadenceDays(cadenceRow?.value_num))
     const firstError = usersRes.error ?? reviewsRes.error ?? jobsRes.error
     if (firstError) {
       setError(firstError.message)
@@ -134,19 +152,42 @@ export default function TeamReviewSection({
       return
     }
     const ordered = orderUsersForRating(usersRes.data ?? [])
+    const reviewRows = (reviewsRes.data ?? []) as TeamMemberReviewRow[]
     setRoster(ordered)
-    setReviews((reviewsRes.data ?? []) as TeamMemberReviewRow[])
+    setReviews(reviewRows)
     setJobsByUser(recentJobsByUser((jobsRes.data ?? []) as RecentJobRow[]))
     setLoading(false)
-    const first = ordered[0]
-    if (first) setDraft(draftFromReview(myLatestReview((reviewsRes.data ?? []) as TeamMemberReviewRow[], first.id, authUserId)))
-  }, [authUserId])
+    // Deep link from the "Team reviews due" banner: open ON that person.
+    const deepLinkIdx = initialRateUserId ? ordered.findIndex((u) => u.id === initialRateUserId) : -1
+    const startIdx = deepLinkIdx >= 0 ? deepLinkIdx : 0
+    if (deepLinkIdx >= 0) setIndex(deepLinkIdx)
+    const start = ordered[startIdx]
+    if (start) setDraft(draftFromReview(myLatestReview(reviewRows, start.id, authUserId)))
+  }, [authUserId, initialRateUserId])
 
   useEffect(() => {
     void load()
   }, [load])
 
   const subject = roster[index] ?? null
+
+  /** My newest-save stamps, shaped for the cadence kernel the banner uses. */
+  const stampsFrom = useCallback(
+    (rows: TeamMemberReviewRow[]): MyReviewStamp[] =>
+      rows
+        .filter((r) => r.reviewer_user_id === authUserId)
+        .map((r) => ({ subject_user_id: r.subject_user_id, review_month: r.review_month, updated_at: r.updated_at ?? null })),
+    [authUserId],
+  )
+  // People I owe a review by the cadence — same math as the dashboard banner,
+  // so the deck's due markers and the banner's count always agree.
+  const dueIds = useMemo(
+    () =>
+      new Set(
+        overdueReviewSubjects(roster, stampsFrom(reviews), authUserId, cadenceDays, new Date()).map((u) => u.id),
+      ),
+    [roster, reviews, stampsFrom, authUserId, cadenceDays],
+  )
 
   function goTo(nextIndex: number, reviewsList: TeamMemberReviewRow[] = reviews) {
     if (roster.length === 0) return
@@ -210,13 +251,21 @@ export default function TeamReviewSection({
     return updated
   }
 
-  /** Save, then advance to the next person you haven't rated this month (the button flips to "All rated!" when none remain). */
+  /**
+   * Save, then advance — cadence-due people first (burns down the "Team
+   * reviews due" banner's list), else the next person unrated this month
+   * (the button flips to "All rated!" when none remain).
+   */
   async function saveAndAdvance() {
     if (!subject) return
     const updated = await saveCurrent()
     if (!updated) return
+    const dueAfterSave = new Set(
+      overdueReviewSubjects(roster, stampsFrom(updated), authUserId, cadenceDays, new Date()).map((u) => u.id),
+    )
+    const nextDue = nextDueIndexAfter(roster, dueAfterSave, index)
     const month = currentReviewMonth(APP_CALENDAR_TZ)
-    const next = nextUnratedIndex(roster, updated, authUserId, month, index)
+    const next = nextDue ?? nextUnratedIndex(roster, updated, authUserId, month, index)
     if (next != null) goTo(next, updated)
   }
 
@@ -323,10 +372,20 @@ export default function TeamReviewSection({
               >
                 {roster.map((u) => (
                   <option key={u.id} value={u.id}>
+                    {dueIds.has(u.id) ? '● ' : ''}
                     {u.name ?? 'Unnamed'} — {displayLabelForUserRole(u.role as UserRole)}
+                    {dueIds.has(u.id) ? ' · due' : ''}
                   </option>
                 ))}
               </select>
+              {dueIds.size > 0 ? (
+                <span
+                  title={`${dueIds.size} teammate${dueIds.size === 1 ? '' : 's'} due for your review (no review in ${cadenceDays}+ days)`}
+                  style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}
+                >
+                  {dueIds.size} due
+                </span>
+              ) : null}
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                 {index + 1} of {roster.length}
               </span>
@@ -346,6 +405,9 @@ export default function TeamReviewSection({
                     const mine = myLatestReview(reviews, subject.id, authUserId)
                     return mine ? `You last rated: ${formatReviewMonthLabel(mine.review_month)}` : 'You haven’t rated them yet'
                   })()}
+                  {dueIds.has(subject.id) ? (
+                    <span style={{ color: 'var(--text-orange-700)', fontWeight: 600 }}> · due</span>
+                  ) : null}
                 </span>
               </div>
 
@@ -378,6 +440,7 @@ export default function TeamReviewSection({
                 {(() => {
                   const month = currentReviewMonth(APP_CALENDAR_TZ)
                   const allRated = roster.every((u) => hasMonthReview(reviews, u.id, authUserId, month))
+                  const otherDueCount = subject ? [...dueIds].filter((id) => id !== subject.id).length : dueIds.size
                   return (
                     <button
                       type="button"
@@ -385,7 +448,11 @@ export default function TeamReviewSection({
                       disabled={busy}
                       style={{ padding: '0.5rem 1rem', background: allRated ? '#16a34a' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                     >
-                      {busy ? 'Saving…' : allRated ? 'All rated! Go to Reflect' : `Save ${formatReviewMonthLabel(month)} review, go to next`}
+                      {busy
+                        ? 'Saving…'
+                        : allRated
+                          ? 'All rated! Go to Reflect'
+                          : `Save ${formatReviewMonthLabel(month)} review, go to next${otherDueCount > 0 ? ' due' : ''}`}
                     </button>
                   )
                 })()}

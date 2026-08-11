@@ -17,6 +17,8 @@ export type TeamMemberReviewRow = {
   comment_ability: string | null
   comment_drive: string | null
   comment_integrity: string | null
+  /** Present on select('*') rows; feeds cadence-due stamps (teamReviewDue.ts). */
+  updated_at?: string | null
 }
 
 export type RatableUser = { id: string; name: string | null; role: string }
