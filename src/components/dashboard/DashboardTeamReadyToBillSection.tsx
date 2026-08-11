@@ -12,8 +12,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontracto
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatDatetime } from '../../lib/dashboardProjectsCard'
 import { subcontractorLastActivityMobileLine } from '../../lib/subcontractorLastActivityCompact'
-import { formatTimeSince, subcontractorLastActivityBlock } from '../../lib/dashboardJobRowActivity'
-import { formatOpenAgeShort } from '../../lib/formatOpenAgeShort'
+import { formatTimeSince } from '../../lib/dashboardJobRowActivity'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -28,7 +27,6 @@ import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
 export type DashboardTeamReadyToBillSectionProps = {
   role: UserRole | null
   isMobile: boolean
-  narrowViewport660: boolean
   /** From the parent's `useDashboardAssignedJobs` seam. */
   assignedReadyToBillJobs: DashboardTeamAssignedJobRow[]
   assignedReadyToBillLoading: boolean
@@ -71,7 +69,6 @@ export type DashboardTeamReadyToBillSectionProps = {
 export function DashboardTeamReadyToBillSection({
   role,
   isMobile,
-  narrowViewport660,
   assignedReadyToBillJobs,
   assignedReadyToBillLoading,
   refreshAssignedReadyToBill,
@@ -108,15 +105,13 @@ export function DashboardTeamReadyToBillSection({
           ) : (
             <div>
               {assignedReadyToBillJobs.map((j) => {
-                // Document links (Drive / Pictures / Plans). Extracted so the same
-                // cluster can sit top-right of the title on mobile (keeping the
-                // action row free for just Leave Report + Collect Payment) and in
-                // the action column on desktop.
+                // Document links (Drive / Pictures / Plans): part of the fixed icon
+                // trio pinned top-right of the title at every width (v2.1570).
                 const hasDocLinks = !!(
                   j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()
                 )
                 const docLinksCluster = hasDocLinks ? (
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
                     {j.google_drive_link?.trim() && (
                       <a
                         href={j.google_drive_link.trim()}
@@ -163,108 +158,34 @@ export function DashboardTeamReadyToBillSection({
                     background: 'var(--surface)',
                   }}
                 >
-                  {/* On mobile the header stacks: the job info gets the full card
-                      width (not a 50% column), and the action buttons sit full-width
-                      below it — so Leave report + Collect Payment share a row instead
-                      of being crammed into the right half. */}
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', gap: isMobile ? '0.5rem' : '1rem' }}>
-                    <div style={isMobile ? { width: '100%', minWidth: 0 } : undefined}>
-                      {/* Title row: on mobile the doc-link icons sit here (top-right),
-                          leaving the action row below for just the two buttons. */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openJobDetailFromDashboardJobRow(j)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              openJobDetailFromDashboardJobRow(j)
-                            }
-                          }}
-                          aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
-                          style={{
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            color: 'var(--text-strong)',
-                            minWidth: 0,
-                          }}
-                        >
-                          {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
-                        </div>
-                        {/* Call button lives in the actions cluster below (one per card,
-                            same placement as the Assigned/Superintendent sections) —
-                            v2.1006 accidentally rendered it here too. */}
-                        {isMobile ? docLinksCluster : null}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        {j.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                        ) : (
-                          '—'
-                        )}
-                      </div>
-                      {/* One muted meta line: Open · % · Last activity (the last part
-                          stays clickable → job-activity modal). narrowViewport660 also
-                          feeds the desktop last-activity block below, so they never
-                          both render. */}
-                      {isSubcontractorLikeRole(role) && narrowViewport660 && (() => {
-                        const staticText = [
-                          j.created_at ? `Open ${formatOpenAgeShort(j.created_at)}` : null,
-                          j.pct_complete != null ? `${j.pct_complete}% complete` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')
-                        const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
-                        const hasStatic = staticText.length > 0
-                        const hasActivity = !!m.textCompact
-                        if (!hasStatic && !hasActivity) return null
-                        return (
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              alignItems: 'baseline',
-                              rowGap: 0,
-                              columnGap: '0.4rem',
-                              fontSize: '0.8125rem',
-                              color: 'var(--text-muted)',
-                              marginTop: 3,
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {hasStatic && (
-                              <span title="Time since job created · reported percent complete">{staticText}</span>
-                            )}
-                            {hasStatic && hasActivity && <span aria-hidden>·</span>}
-                            {hasActivity &&
-                              (m.clickable ? (
-                                <button
-                                  type="button"
-                                  className="subcontractorLastActivityTypeBtn"
-                                  title={m.title}
-                                  aria-label={m.aria}
-                                  style={{ lineHeight: 1.3, textAlign: 'left' }}
-                                  onClick={() =>
-                                    setSubcontractorJobActivityModalJob({
-                                      id: j.id,
-                                      hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                                      jobName: j.job_name ?? '—',
-                                    })
-                                  }
-                                >
-                                  {m.textCompact}
-                                </button>
-                              ) : (
-                                <span title={m.title} aria-label={m.aria}>
-                                  {m.textCompact}
-                                </span>
-                              ))}
-                          </div>
-                        )
-                      })()}
+                  {/* v2.1570 (mockup-approved): the My Schedule anatomy at EVERY width —
+                      title with a fixed icon trio pinned top-right, address, ONE muted
+                      meta line, then the action buttons as their own row. Nothing
+                      wraps mid-cluster; the only responsive behavior is the action
+                      row stretching on phones. */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openJobDetailFromDashboardJobRow(j)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          openJobDetailFromDashboardJobRow(j)
+                        }
+                      }}
+                      aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
+                      style={{
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        color: 'var(--text-strong)',
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
                     </div>
-                    <div style={{ display: 'flex', gap: isMobile ? '0.3rem' : '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
                       {phones.get(j.id) ? (
                         <JobRowCallButton
                           phone={phones.get(j.id)!}
@@ -286,80 +207,88 @@ export function DashboardTeamReadyToBillSection({
                           }}
                         />
                       ) : null}
-                        {!isMobile ? docLinksCluster : null}
-                      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            View<br />Reports
-                          </button>
-                        </>
-                      )}
-                      {role === 'superintendent' && (
-                        <button
-                          type="button"
-                          onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          View<br />Reports
-                        </button>
-                      )}
-                      {isSubcontractorLikeRole(role) && !narrowViewport660 && (() => {
-                        const b = subcontractorLastActivityBlock(j)
-                        return (
-                          b.line3 != null ? (
+                      {docLinksCluster}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    {j.job_address?.trim() ? (
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                  {/* ONE muted meta line, all roles and widths: Open · % done · last
+                      activity (the activity part stays clickable → job-activity
+                      modal, subcontractor-like roles only — same data as before). */}
+                  {(() => {
+                    const staticText = [
+                      j.created_at ? `Open ${formatTimeSince(j.created_at)}` : null,
+                      j.pct_complete != null ? `${j.pct_complete}% done` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                    const m = isSubcontractorLikeRole(role)
+                      ? subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
+                      : null
+                    const hasStatic = staticText.length > 0
+                    const hasActivity = !!m?.textCompact
+                    if (!hasStatic && !hasActivity) return null
+                    return (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'baseline',
+                          rowGap: 0,
+                          columnGap: '0.4rem',
+                          fontSize: '0.8125rem',
+                          color: 'var(--text-muted)',
+                          marginTop: 3,
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {hasStatic && (
+                          <span title="Time since job created · reported percent complete">{staticText}</span>
+                        )}
+                        {hasStatic && hasActivity && <span aria-hidden>·</span>}
+                        {hasActivity &&
+                          m &&
+                          (m.clickable ? (
                             <button
                               type="button"
                               className="subcontractorLastActivityTypeBtn"
-                              style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              fontSize: '0.8125rem',
-                              color: 'var(--text-muted)',
-                              textAlign: 'center',
-                              maxWidth: 220,
-                              lineHeight: 1.25,
-                              gap: 2,
-                              }}
-                              title={b.title}
+                              title={m.title}
+                              aria-label={m.aria}
+                              style={{ lineHeight: 1.3, textAlign: 'left' }}
                               onClick={() =>
-                                  setSubcontractorJobActivityModalJob({
-                                    id: j.id,
-                                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                                    jobName: j.job_name ?? '—',
-                                  })
+                                setSubcontractorJobActivityModalJob({
+                                  id: j.id,
+                                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                                  jobName: j.job_name ?? '—',
+                                })
                               }
-                              aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
                             >
-                              <span>{b.line1}</span>
-                              <span>{b.line2}</span>
-                              <span>{b.line3}</span>
+                              {m.textCompact}
                             </button>
                           ) : (
-                            <div
-                              style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              fontSize: '0.8125rem',
-                              color: 'var(--text-muted)',
-                              textAlign: 'center',
-                              maxWidth: 220,
-                              lineHeight: 1.25,
-                              gap: 2,
-                              }}
-                              title={b.title}
-                            >
-                              <span>{b.line1}</span>
-                              <span>{b.line2}</span>
-                            </div>
-                          )
-                        )
-                      })()}
+                            <span title={m.title} aria-label={m.aria}>
+                              {m.textCompact}
+                            </span>
+                          ))}
+                      </div>
+                    )
+                  })()}
+                  {/* Action row: right-aligned on desktop, stretched on phones. */}
+                  <div style={{ display: 'flex', gap: isMobile ? '0.4rem' : '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'stretch' : 'flex-end', marginTop: '0.6rem' }}>
+                      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary' || role === 'superintendent') && (
+                        <button
+                          type="button"
+                          onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap', ...(isMobile ? { flex: 1 } : {}) }}
+                        >
+                          View Reports
+                        </button>
+                      )}
                       {/* Collect Payment before Leave Report (v2.994): the money action
                           leads on these subcontractor cards. */}
                       {isSubcontractorLikeRole(role) && (
@@ -380,6 +309,7 @@ export function DashboardTeamReadyToBillSection({
                             borderRadius: 4,
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
+                            ...(isMobile ? { flex: 1 } : {}),
                             ...((j.collect_payment_button_variant ?? 'default') === 'ready_terminal'
                               ? {
                                   background: '#15803d',
@@ -430,13 +360,7 @@ export function DashboardTeamReadyToBillSection({
                           }
                         />
                       )}
-                      {j.created_at && (!isSubcontractorLikeRole(role) || !narrowViewport660) && (
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
-                          <>Open<br />{formatTimeSince(j.created_at)}</>
-                        </span>
-                      )}
                     </div>
-                  </div>
                   {j.in_progress_stage_name && (
                     <Link
                       to={j.project_id && j.in_progress_step_id

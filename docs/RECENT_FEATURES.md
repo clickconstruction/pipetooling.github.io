@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1569)
+last_updated: 2026-08-11 (v2.1570)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1570)
+
+### Dashboard Ready to Bill: My Schedule card anatomy at every width (2026-08-11)
+Owner-approved mockup ("clean like My Schedule regardless of viewport"). The team "Ready to Bill (N)" cards ([`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx)) previously forked at 660px and threw phone, doc icons, a floating 220px 3-line "Last activity" column, Collect, Leave Report, and a loose "Open X" label into one `flexWrap` row — every card wrapped differently at in-between widths. New fixed anatomy, all widths: **(1)** title with the icon trio (call / Drive / Pictures / Plans) pinned top-right (doc cluster always horizontal); **(2)** address; **(3)** ONE muted meta line — "Open 1 month · 60% done · Schedule 23h ago" (the activity part keeps opening the job-activity modal for subcontractor-like roles; % done rides along free — same figure as My Schedule/Stages); **(4)** an action row — View Reports (office/superintendent, single-line label, previously two duplicated `View<br/>Reports` blocks) or Collect + Leave Report (badge intact) — right-aligned on desktop, stretched on phones (the only remaining responsive behavior). Deleted: the `narrowViewport660` prop/fork, the desktop `subcontractorLastActivityBlock` column, and the floating "Open" span (`Dashboard.tsx` drops the now-unused `useNarrowViewport660`). Render tests 2→4 (anatomy contract: single meta line + single-line buttons; superintendent View Reports). Verified live as Abraham (imitation): all 6 real cards uniform 820px/no overflow at the previously-messy 900px viewport, no overflow at 375px, meta lines like "Open 2 months · 100% done · Clock session 2w ago". Client-only — no migration.
 
 ## Latest Updates (v2.1569)
 

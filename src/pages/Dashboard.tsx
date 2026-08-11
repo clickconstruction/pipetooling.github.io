@@ -42,7 +42,6 @@ import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { useNarrowViewport660 } from '../hooks/useNarrowViewport660'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import ClockInOutButton from '../components/ClockInOutButton'
 import { DashboardContractSigningPromptModal } from '../components/DashboardContractSigningPromptModal'
@@ -296,7 +295,6 @@ export default function Dashboard() {
     })
   }, [stripSalariedUserIds])
   const isMobile = useIsMobile()
-  const narrowViewport660 = useNarrowViewport660()
   const firstAssistantDispatchPhone = useFirstAssistantDispatchPhone(isSubcontractorLikeRole(role))
   const {
     subscribedSteps,
@@ -1469,7 +1467,6 @@ export default function Dashboard() {
         reportCountByJobId={reportCountByJobId}
         role={role}
         isMobile={isMobile}
-        narrowViewport660={narrowViewport660}
         assignedReadyToBillJobs={assignedReadyToBillJobs}
         assignedReadyToBillLoading={assignedReadyToBillLoading}
         refreshAssignedReadyToBill={refreshAssignedReadyToBill}
