@@ -48,6 +48,8 @@ export type DashboardTeamReadyToBillSectionProps = {
   /** Opener for the shared `JobReportsModal` (`viewReportsJob` state in the parent). */
   setViewReportsJob: (job: { id: string; hcpNumber: string; jobName: string; jobAddress: string }) => void
   /** Opener for the shared `AdditionalReportModal` (`leaveReportJob` state in the parent). */
+  /** Reports visible to this user per job (Leave Report corner badge, v2.1547). */
+  reportCountByJobId?: Record<string, number>
   setLeaveReportJob: (job: { id: string; hcpNumber: string; jobName: string; jobAddress: string }) => void
   /** Opener for the shared `SubcontractorJobActivityModal` (parent state; also opened from Assigned rows). */
   setSubcontractorJobActivityModalJob: (job: { id: string; hcpNumber: string; jobName: string }) => void
@@ -76,6 +78,7 @@ export function DashboardTeamReadyToBillSection({
   leaveReportReminderForJobRow,
   openJobDetailFromDashboardJobRow,
   setViewReportsJob,
+  reportCountByJobId,
   setLeaveReportJob,
   setSubcontractorJobActivityModalJob,
 }: DashboardTeamReadyToBillSectionProps) {
@@ -408,6 +411,15 @@ export function DashboardTeamReadyToBillSection({
                           singleLine
                           buttonTitle="Leave a field report"
                           showReminder={leaveReportReminderForJobRow(j)}
+                          reportCount={reportCountByJobId?.[j.id] ?? 0}
+                          onViewReports={() =>
+                            setViewReportsJob({
+                              id: j.id,
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                              jobName: j.job_name ?? '—',
+                              jobAddress: j.job_address ?? '—',
+                            })
+                          }
                           onClick={() =>
                             setLeaveReportJob({
                               id: j.id,

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1547',
+    date: '2026-08-10',
+    title: 'Report counts on every Leave Report button',
+    kind: 'feature',
+    highlights: [
+      'Every Leave Report button on the Dashboard now wears a small count badge in its bottom-right corner when the job already has reports you can see.',
+      'Tapping the badge jumps straight to reading those reports; tapping the button still files a new one. No badge means no reports yet.',
+    ],
+  },
+  {
     version: 'v2.1546',
     date: '2026-08-10',
     title: 'See your whole crew\'s reports on a job',

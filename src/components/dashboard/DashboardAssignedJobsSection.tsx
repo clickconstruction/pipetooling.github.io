@@ -55,6 +55,7 @@ export function DashboardAssignedJobsSection({
   setViewReportsJob,
   setSubcontractorJobActivityModalJob,
   leaveReportReminderForJobRow,
+  reportCountByJobId,
   setLeaveReportJob,
   setReadyForBillingJob,
   setReadyForBillingChecked1,
@@ -73,6 +74,8 @@ export function DashboardAssignedJobsSection({
   setViewReportsJob: (v: { id: string; hcpNumber: string; jobName: string; jobAddress: string } | null) => void
   setSubcontractorJobActivityModalJob: (v: { id: string; hcpNumber: string; jobName: string } | null) => void
   leaveReportReminderForJobRow: (j: DashboardTeamAssignedJobRow) => boolean
+  /** Reports visible to this user per job (Leave Report corner badge, v2.1547). */
+  reportCountByJobId?: Record<string, number>
   setLeaveReportJob: (v: { id: string; hcpNumber: string; jobName: string; jobAddress: string } | null) => void
   setReadyForBillingJob: (v: { id: string; hcpNumber: string; jobName: string } | null) => void
   setReadyForBillingChecked1: (v: boolean) => void
@@ -324,6 +327,15 @@ export function DashboardAssignedJobsSection({
                         <DashboardLeaveReportButton
                           singleLine={isMobile}
                           showReminder={leaveReportReminderForJobRow(j)}
+                          reportCount={reportCountByJobId?.[j.id] ?? 0}
+                          onViewReports={() =>
+                            setViewReportsJob({
+                              id: j.id,
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                              jobName: j.job_name ?? '—',
+                              jobAddress: j.job_address ?? '—',
+                            })
+                          }
                           onClick={() =>
                             setLeaveReportJob({
                               id: j.id,
