@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1570)
+last_updated: 2026-08-11 (v2.1571)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1571)
+
+### My Schedule: jobs with no recorded % show 0% done (100% when Paid in Full) (2026-08-11)
+Owner request: the v2.1567 % stack skipped jobs whose `jobs_ledger.pct_complete` was null, so a My Schedule card with no recorded progress showed nothing where its siblings showed "0% done". [`computeJobPctToday`](../src/lib/jobPctDayDelta.ts) now takes `{ pct, status }` per job instead of a bare pct and synthesizes a value when pct is null: **100** when the job is Paid in Full (`status = 'paid'`), else **0** — always with `delta: null` (the value is synthesized, not recorded, so no movement line/bar can be claimed; a stray % note cannot invent one, covered by test). A recorded pct always wins over the fallback, including on paid jobs. `useMyScheduleJobPct` ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)) adds `status` to its jobs_ledger select. Kernel tests 7→9 (fallback trio + paid-with-recorded-pct). Client-only — no migration.
 
 ## Latest Updates (v2.1570)
 
