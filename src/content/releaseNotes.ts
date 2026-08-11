@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1570',
+    date: '2026-08-11',
+    title: 'Ready to Bill cards straighten up',
+    kind: 'feature',
+    highlights: [
+      'The Dashboard\'s Ready to Bill cards now follow the same tidy shape as My Schedule at every screen size: job and icons up top, address, one info line ("Open 1 month · 60% done · Schedule 23h ago"), and the buttons on their own row.',
+      'No more floating "Last activity" column or stray "Open" label wrapping differently on every card — and each job\'s % done now shows right on the card.',
+    ],
+  },
+  {
     version: 'v2.1569',
     date: '2026-08-11',
     title: 'Dev imitation stops bouncing to production',

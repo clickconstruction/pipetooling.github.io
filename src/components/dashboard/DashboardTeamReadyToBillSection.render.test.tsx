@@ -48,7 +48,6 @@ function makeProps(
   return {
     role: 'subcontractor',
     isMobile: false,
-    narrowViewport660: false,
     assignedReadyToBillJobs: [makeRow()],
     assignedReadyToBillLoading: false,
     refreshAssignedReadyToBill: vi.fn(),
@@ -75,5 +74,25 @@ describe('DashboardTeamReadyToBillSection', () => {
     renderWithProviders(<DashboardTeamReadyToBillSection {...makeProps({ role: 'dev' })} />)
 
     expect(screen.queryByText(/Ready to Bill/)).toBeNull()
+  })
+
+  it('v2.1570 anatomy: one meta line (Open · % done) and single-row action buttons', () => {
+    renderWithProviders(
+      <DashboardTeamReadyToBillSection
+        {...makeProps({ assignedReadyToBillJobs: [makeRow({ pct_complete: 35 })] })}
+      />,
+    )
+    // Meta line replaces the old floating "Open<br/>…" span and 3-line activity column.
+    expect(screen.getByText(/^Open .+ · 35% done$/)).toBeTruthy()
+    // The money action + report button share the action row; labels are single-line.
+    expect(screen.getByText('Collect')).toBeTruthy()
+    expect(screen.getByText(/Leave\s?Report/)).toBeTruthy()
+    expect(screen.queryByText('View Reports')).toBeNull() // office-only button absent for subs
+  })
+
+  it('superintendents get the single-line View Reports button', () => {
+    renderWithProviders(<DashboardTeamReadyToBillSection {...makeProps({ role: 'superintendent' })} />)
+    expect(screen.getByText('View Reports')).toBeTruthy()
+    expect(screen.queryByText('Collect')).toBeNull()
   })
 })
