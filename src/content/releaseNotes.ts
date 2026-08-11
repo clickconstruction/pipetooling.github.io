@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1579',
+    date: '2026-08-11',
+    title: 'Pipeline cards: Next appointment and latest activity move to the bottom',
+    kind: 'fix',
+    highlights: [
+      'On the mobile card view, the green Next chip and the latest-activity line now sit at the foot of each card — right where the notes thread opens when you tap, so the preview and the full thread read as one.',
+    ],
+  },
+  {
     version: 'v2.1578',
     date: '2026-08-11',
     title: 'Pipeline mobile cards get a cleaner, shorter layout',

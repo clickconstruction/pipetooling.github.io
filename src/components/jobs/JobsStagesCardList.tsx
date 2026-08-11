@@ -68,14 +68,15 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  * row (GC/development/Account-Man rows only when present); (2) the tinted
  * MONEY ZONE — the only place money renders: optional invoice-context line,
  * the money cell in `compact` mode (pct + bar + condensed legend), and the
- * Stripe "✉ Sent … · Resend" state; (3) pulse — the Next-appointment chip and
- * a strictly one-line activity teaser (author · age — body, expand chevron);
- * (4) a hairline-separated action row: invoice jump chips, View reports, the
- * j:/b:/hours meta chips + open-time, then call + a ⋯ button opening the
- * StagesCardMoreActionsSheet (v2.1402) with every remaining desktop-row
- * action, labeled (incl. the demoted rail icons: assign, dispatch note,
- * send-as-task; crew names ride the sheet header). Tapping the card (same as
- * a table row) expands the thread panel.
+ * Stripe "✉ Sent … · Resend" state; (3) a hairline-separated action row:
+ * invoice jump chips, View reports, the j:/b:/hours meta chips + open-time,
+ * then call + a ⋯ button opening the StagesCardMoreActionsSheet (v2.1402)
+ * with every remaining desktop-row action, labeled (incl. the demoted rail
+ * icons: assign, dispatch note, send-as-task; crew names ride the sheet
+ * header); (4) pulse, at the card FOOT — the Next-appointment chip and a
+ * strictly one-line activity teaser (author · age — body, expand chevron) —
+ * deliberately last so it sits flush against the thread panel it previews.
+ * Tapping the card (same as a table row) expands the thread panel.
  */
 
 const cardStyle: CSSProperties = {
@@ -768,9 +769,9 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
               />
             </div>
+            {cardFooterRow(ctx, j, () => setMoreActionsJob(j), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
             {cardNextChip(ctx, j)}
             {cardActivityTeaser(ctx, j)}
-            {cardFooterRow(ctx, j, () => setMoreActionsJob(j), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
             {expanded ? renderCardThreadPanel(props, ctx, j) : null}
           </div>
         )
@@ -1041,9 +1042,9 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
               />
               {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
             </div>
+            {cardFooterRow(ctx, j, () => setMoreActionsRow(row), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
             {cardNextChip(ctx, j)}
             {cardActivityTeaser(ctx, j)}
-            {cardFooterRow(ctx, j, () => setMoreActionsRow(row), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
             {expanded ? renderCardThreadPanel(props, ctx, j) : null}
           </div>
         )
