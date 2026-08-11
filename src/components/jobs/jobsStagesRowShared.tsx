@@ -179,38 +179,40 @@ const stagesJobHcpBadgeStyle: CSSProperties = {
   color: 'white',
 }
 
-export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
+/**
+ * Just the "961 PLUM" chip (or blue "Job: 961" badge when the job has no
+ * service type) — null when the job has no number. Lets the mobile card title
+ * row put the chip beside the job name; the tables keep the subline wrapper.
+ */
+export function renderStagesJobHcpChip(job: JobWithDetails, extraStyle?: CSSProperties): ReactNode {
   const t = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
-  if (t) {
-    const stName = job.serviceType?.name?.trim()
-    const tagInfo = stName ? getBidServiceTypeTag(stName) : null
-    const serviceLabel = stName
-      ? (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase()
-      : ''
-    if (stName) {
-      // One merged chip — "961 PLUM" in the trade color (was a blue "Job: 961"
-      // badge plus a separate service pill).
-      const mergedChipStyle: CSSProperties = {
-        ...stagesJobSublinePillBoxBase,
-        letterSpacing: '0.02em',
-        border: tagInfo ? '1px solid rgba(255,255,255,0.5)' : '1px solid var(--border-strong)',
-        background: tagInfo ? tagInfo.color : 'var(--bg-muted)',
-        color: tagInfo ? '#fff' : 'var(--text-700)',
-      }
-      return (
-        <div style={extraWrap}>
-          <span style={mergedChipStyle} title={stName}>
-            {t} {serviceLabel}
-          </span>
-        </div>
-      )
+  if (!t) return null
+  const stName = job.serviceType?.name?.trim()
+  if (stName) {
+    const tagInfo = getBidServiceTypeTag(stName)
+    const serviceLabel = (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase()
+    // One merged chip — "961 PLUM" in the trade color (was a blue "Job: 961"
+    // badge plus a separate service pill).
+    const mergedChipStyle: CSSProperties = {
+      ...stagesJobSublinePillBoxBase,
+      letterSpacing: '0.02em',
+      border: tagInfo ? '1px solid rgba(255,255,255,0.5)' : '1px solid var(--border-strong)',
+      background: tagInfo ? tagInfo.color : 'var(--bg-muted)',
+      color: tagInfo ? '#fff' : 'var(--text-700)',
+      ...extraStyle,
     }
     return (
-      <div style={extraWrap}>
-        <span style={stagesJobHcpBadgeStyle}>Job: {t}</span>
-      </div>
+      <span style={mergedChipStyle} title={stName}>
+        {t} {serviceLabel}
+      </span>
     )
   }
+  return <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }}>Job: {t}</span>
+}
+
+export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
+  const chip = renderStagesJobHcpChip(job)
+  if (chip) return <div style={extraWrap}>{chip}</div>
   return (
     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—</div>
   )

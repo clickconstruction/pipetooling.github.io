@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1575)
+last_updated: 2026-08-11 (v2.1576)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1576)
+
+### Pipeline mobile cards: job-number chip joins the title line (2026-08-11)
+Owner request from a phone screenshot of Jobs → Pipeline in Mobile cards mode ("I don't love this view — move 941 PLUM up to the same line as the job name"). The merged number+trade chip ("941 PLUM") sat on its own line under the job-name link, wasting a row on every card. New [`renderStagesJobHcpChip`](../src/components/jobs/jobsStagesRowShared.tsx) extracts just the chip (null when the job has no number) from `renderStagesJobHcpSubline`, which now wraps it — the desktop/table sublines are unchanged, including their "—" no-number fallback. Both mobile card layouts in [`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx) (plain job cards and the job+invoice rows used by Ready to Bill / Billed Awaiting Payment / Collections) now lead the title row with the chip: chip (flex-shrink 0, nudged 0.1rem down to center on the first text line) then the name link, with the primary action (Bill Customer / Send back) still pinned right; long names wrap in their own column beside the chip. Cards with no job number simply omit the chip instead of rendering a dash line. Verified live at 375px against real Billed Awaiting Payment and Ready to Bill cards (one-line and three-line names). Client-only — no migration.
 
 ## Latest Updates (v2.1575)
 
