@@ -33,11 +33,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'v2.1555',
     date: '2026-08-10',
-    title: 'Pipeline: one chip for job number and trade',
+    title: 'Pipeline board slims down',
     kind: 'feature',
     highlights: [
-      'On Jobs → Pipeline, the blue "Job: 961" badge and the separate trade pill are now a single chip — "961 PLUM" — in the trade\'s color.',
-      'Jobs without a trade keep the blue Job badge as before.',
+      'The Activity column is gone — the Job column gets all that room. Clicking anywhere on a row still opens the job\'s activity and notes.',
+      'The note count now sits right next to the job name, and the Open Invoice chips, Reports button, and Stripe Resend line moved under the job\'s address.',
+      'The blue "Job: 961" badge and the separate trade pill merged into one chip — "961 PLUM" — in the trade\'s color.',
     ],
   },
   {

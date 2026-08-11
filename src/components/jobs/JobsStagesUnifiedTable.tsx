@@ -42,7 +42,8 @@ import {
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
   renderStagesThreadFullscreenJobHeader,
-  renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
+  renderStagesJobCellActivityFooter as renderStagesJobCellActivityFooterWithCtx,
+  renderStagesThreadExpandButton,
   renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   renderStagesViewReportsButton,
   renderStagesProjectBannerRow,
@@ -276,11 +277,11 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
-  const renderStagesLastActivityCell = (
+  const renderStagesJobCellActivityFooter = (
     job: JobWithDetails,
     billingLineForStripeHint?: JobsLedgerInvoice | null,
     opts?: { hideReportsButton?: boolean },
-  ) => renderStagesLastActivityCellWithCtx(stagesRowSharedCtx, job, billingLineForStripeHint, opts)
+  ) => renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint, ...opts })
 
   const renderStagesQuickActionsStack = (job: JobWithDetails) =>
     renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
@@ -305,7 +306,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
       </span>
     )
   }
-  const unifiedStagesColCount = 5
+  const unifiedStagesColCount = 4
   const flashRowStyle = (invoiceId: string): CSSProperties =>
     flashInvoiceId === invoiceId
       ? {
@@ -344,13 +345,12 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
       {/* tableLayout: fixed (v2.971, matching JobsStagesTable v2.967): widths come from the
           colgroup, never from content measurement — Billed/Collections rows loading or search
-          filtering used to re-measure auto layout and jitter the Job / Last activity columns.
-          The two unspecified cols (Job, Activity) split the remaining width equally, so
-          minWidth must exceed the colgroup's sized total (see STAGES_TABLE_MIN_WIDTH). */}
+          filtering used to re-measure auto layout and jitter the columns. The one
+          unspecified col (Job) takes all the remaining width, so minWidth must
+          exceed the colgroup's sized total (see STAGES_TABLE_MIN_WIDTH). */}
       <table style={{ width: '100%', minWidth: STAGES_TABLE_MIN_WIDTH, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: '9rem' }} />
-          <col />
           <col />
           <col style={{ width: '12rem' }} />
           <col style={{ width: 140 }} />
@@ -368,7 +368,6 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
               <span style={{ whiteSpace: 'nowrap' }}>Crew &amp; Dates</span>
             </th>
             <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Activity</th>
             <th
               style={{
                 padding: '0.75rem',
@@ -560,7 +559,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
-                      {renderStagesOpenDetailJobName(j)}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
+                        {renderStagesOpenDetailJobName(j)}
+                        {renderStagesThreadExpandButton(stagesRowSharedCtx, j.id)}
+                      </div>
                       {renderJobAddressWithMap(j.job_address)}
                       {renderJobCustomerLine(j)}
                       {bundleInv != null && row.kind === 'job_with_merged_billed' ? (
@@ -579,8 +581,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         </div>
                       ) : null}
                       {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
+                      {renderStagesJobCellActivityFooter(j, bundleInv ?? undefined, row.kind === 'job_with_merged_billed' ? { hideReportsButton: true } : undefined)}
                     </td>
-                    {renderStagesLastActivityCell(j, bundleInv ?? undefined, row.kind === 'job_with_merged_billed' ? { hideReportsButton: true } : undefined)}
                     <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                         {!bundleInv ? (
@@ -1151,10 +1153,13 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(job) }}>
                       {(() => {
                         const fmt = formatJobNameTwoLines(job.job_name)
-                        if (!fmt) return <div>—</div>
+                        if (!fmt) return <div>—{renderStagesThreadExpandButton(stagesRowSharedCtx, job.id)}</div>
                         return (
                           <>
-                            <div>{fmt.line1}</div>
+                            <div>
+                              {fmt.line1}
+                              {renderStagesThreadExpandButton(stagesRowSharedCtx, job.id)}
+                            </div>
                             {fmt.line2 && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{fmt.line2}</div>}
                           </>
                         )
@@ -1162,8 +1167,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       {renderJobAddressWithMap(job.job_address)}
                       {renderJobCustomerLine(job)}
                       {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
+                      {renderStagesJobCellActivityFooter(job, inv)}
                     </td>
-                    {renderStagesLastActivityCell(job, inv)}
                     <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                         <StagesProgressPaymentCell

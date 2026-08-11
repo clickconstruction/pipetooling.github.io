@@ -1,12 +1,8 @@
-import { type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { type CSSProperties, type ReactNode } from 'react'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
-import {
-  formatStagesCompactWindow,
-  formatStagesNextDateLabel,
-  type StagesUpcomingAppointment,
-} from '../../lib/stagesUpcomingSchedule'
+import { type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import AccountManIcon from '../icons/AccountManIcon'
 import { ACCOUNT_MAN_RELATIONSHIP_LABELS, ACCOUNT_MAN_RELATIONSHIP_SHORT, buildAccountManDisplay, type AccountManDisplay } from '../../lib/jobs/accountMan'
@@ -20,10 +16,8 @@ import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHh
 import { formatAddressTwoLines, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { JobAddressText } from './JobAddressText'
 import { invoiceOpenRemainingOnJob, jobStagesInvoiceJumpChipTargets } from '../../lib/jobs/invoiceBilling'
-import { computeStagesActivityFeedItems } from '../../lib/stagesActivityFeed'
 import {
   formatDispatchNoteDaysAgoShort,
-  formatDispatchNoteDaysAgoShortPhrase,
   formatDispatchNoteWeekdayShortTimeChicago,
   getDispatchNoteDisplayMeta,
 } from '../../utils/dispatchNoteDisplay'
@@ -87,13 +81,12 @@ export type StagesRowRenderContext = {
 /**
  * Minimum width for both Stages tables (JobsStagesTable + JobsStagesUnifiedTable).
  * They use table-layout: fixed with a colgroup whose sized columns total 476px;
- * the two flexible columns (Job and Activity) split the remaining
- * `minWidth − 476` equally, and both keep growing as the page widens. At the
- * old 700px minimum the Job column collapsed to ~24px on phones and its content
- * overlapped the Activity column; 940 keeps each flexible column ≥ ~232px (the
- * table scrolls sideways inside its own wrapper instead).
+ * the single flexible column (Job — the Activity column was removed in
+ * v2.1555) takes all of the remaining `minWidth − 476` and keeps growing as
+ * the page widens. 760 keeps the Job column ≥ ~284px at the floor (the table
+ * scrolls sideways inside its own wrapper on phones instead).
  */
-export const STAGES_TABLE_MIN_WIDTH = 940
+export const STAGES_TABLE_MIN_WIDTH = 760
 
 /**
  * Edit mode rail (v2.1236): with the ⋯ tools menu's "Edit mode" on, every
@@ -852,137 +845,24 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
   )
 }
 
-export function renderStagesLastActivityCell(
+/**
+ * Job-cell activity footer (v2.1555): the survivors of the Activity column's
+ * removal — invoice jump chips, the Stripe emailed/Resend hint, and the
+ * Reports button — rendered at the bottom of the Job cell in both Stages
+ * tables. The note-count chevron rides the job-name line via
+ * renderStagesThreadExpandButton; the mobile card list keeps its own zones.
+ */
+export function renderStagesJobCellActivityFooter(
   ctx: StagesRowRenderContext,
   job: JobWithDetails,
-  billingLineForStripeHint?: JobsLedgerInvoice | null,
   opts?: {
+    /** Billing line whose Stripe emailed/Resend hint shows under the job. */
+    billingLineForStripeHint?: JobsLedgerInvoice | null
+    /** Billed merged rows render the Reports pill higher in the Job cell (v2.1155). */
     hideReportsButton?: boolean
-    /** Mobile cards (v2.1241): return the cell body in a <div> instead of a <td>. */
-    asDiv?: boolean
   },
 ) {
-  const {
-    expandedJobThreadId,
-    jobThreadStatsByJobId,
-    jobThreadActivityByJobId,
-    toggleStagesJobThreadExpanded,
-    openJobCalendar,
-    stagesUpcomingByJobId,
-    applyStagesInvoiceFocus,
-    authRole,
-    loadJobs,
-  } = ctx
-  const jobId = job.id
-  const stat = jobThreadStatsByJobId[jobId]
-  const count = stat?.note_count ?? 0
-  const activity = jobThreadActivityByJobId[jobId]
-  let fromThreadBody = ''
-  let lastChronologicalNoteAuthor: string | undefined
-  if (activity?.length) {
-    for (let i = activity.length - 1; i >= 0; i--) {
-      const it = activity[i]
-      if (it == null) continue
-      if (it.kind === 'note') {
-        fromThreadBody = (it.note.body ?? '').trim()
-        lastChronologicalNoteAuthor = it.note.author?.name?.trim() || undefined
-        break
-      }
-    }
-  }
-  const titleForEmpty = 'Job notes thread'
-  const reportCount = stat?.report_count ?? 0
-  const titleParts: string[] = []
-  if (count > 0) titleParts.push(`${count} thread note(s)`)
-  if (reportCount > 0) titleParts.push(`${reportCount} field report(s)`)
-  const titleWithNotes = titleParts.length > 0 ? titleParts.join(' · ') : titleForEmpty
-  const expanded = expandedJobThreadId === jobId
-
-  // Mini-feed rows (Option A of the "Pipeline Activity column — presentation
-  // options" mockup): every line in the cell is [kind tag] [one-line body] [age],
-  // so the latest note, latest report, and next appointment scan as a feed. The
-  // fixed-width tag column keeps the bodies left-aligned across rows.
-  const feedRowStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '0.4rem',
-    minWidth: 0,
-  }
-  const feedTagBaseStyle: CSSProperties = {
-    flexShrink: 0,
-    width: '2.9rem',
-    fontSize: '0.6rem',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-    lineHeight: 1.2,
-  }
-  const feedBodyStyle: CSSProperties = {
-    flex: 1,
-    minWidth: 0,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    fontSize: '0.8125rem',
-    color: 'var(--text-700)',
-    lineHeight: 1.35,
-  }
-  const feedWhenStyle: CSSProperties = {
-    flexShrink: 0,
-    fontSize: '0.6875rem',
-    color: 'var(--text-muted)',
-    fontVariantNumeric: 'tabular-nums',
-  }
-
-  // "Next · Abraham — Wed Aug 12 8 AM–12 PM" — the job's next upcoming schedule
-  // appointment as a feed row; click opens the Job Calendar.
-  function renderStagesUpcomingScheduleLine() {
-    const up = stagesUpcomingByJobId[jobId]
-    if (!up) return null
-    const dateLabel = formatStagesNextDateLabel(up.ymd)
-    const windowLabel = formatStagesCompactWindow(up.timeStart, up.timeEnd)
-    const who = up.assigneeNames.join(', ')
-    const headline = `${dateLabel} ${windowLabel} · ${who}`
-    return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          openJobCalendar(job)
-        }}
-        title={`Next scheduled: ${headline}${up.note ? ` — ${up.note}` : ''}. Click to open the job calendar.`}
-        aria-label={`Next scheduled appointment ${headline}. Open the job calendar.`}
-        style={{
-          ...feedRowStyle,
-          width: '100%',
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          textAlign: 'left',
-          font: 'inherit',
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ ...feedTagBaseStyle, color: '#15803d' }} aria-hidden>
-          Next
-        </span>
-        <span style={feedBodyStyle}>
-          <span style={{ fontWeight: 600 }}>{who}</span>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {' '}
-            — {dateLabel} {windowLabel}
-            {up.note ? ` · ${up.note}` : ''}
-          </span>
-        </span>
-      </button>
-    )
-  }
-
-  function renderStagesViewReportsFooterButton() {
-    if (opts?.hideReportsButton) return null
-    return renderStagesViewReportsButton(ctx, job)
-  }
+  const { applyStagesInvoiceFocus, authRole, loadJobs } = ctx
 
   const stagesInvoiceJumpAmountChipStyle: CSSProperties = {
     padding: '0.15rem 0.4rem',
@@ -1007,9 +887,7 @@ export function renderStagesLastActivityCell(
           flexWrap: 'wrap',
           alignItems: 'center',
           gap: '0.3rem',
-          marginTop: 'auto',
-          flexShrink: 0,
-          alignSelf: 'stretch',
+          marginTop: '0.35rem',
           maxWidth: '100%',
         }}
       >
@@ -1048,56 +926,8 @@ export function renderStagesLastActivityCell(
     )
   }
 
-  const lastActivityMainColumnStyle: CSSProperties = {
-    flex: 1,
-    minWidth: 0,
-    alignSelf: 'stretch',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-    alignItems: 'stretch',
-  }
-
-  const tdShellStyle: CSSProperties = {
-    padding: '0.75rem',
-    verticalAlign: 'top',
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: '0.35rem',
-  }
-
-  function lastActivityBodyInteractiveProps(title: string): {
-    role: 'button'
-    tabIndex: 0
-    title: string
-    'aria-expanded': boolean
-    onClick: () => void
-    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
-    style: CSSProperties
-  } {
-    return {
-      role: 'button',
-      tabIndex: 0,
-      title,
-      'aria-expanded': expanded,
-      onClick: () => toggleStagesJobThreadExpanded(jobId),
-      onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          toggleStagesJobThreadExpanded(jobId)
-        }
-      },
-      style: {
-        flex: 1,
-        minWidth: 0,
-        cursor: 'pointer',
-      },
-    }
-  }
-
   function renderStagesStripeEmailedCustomerHint(): ReactNode {
-    const line = billingLineForStripeHint
+    const line = opts?.billingLineForStripeHint
     if (!line) return null
     if (line.external_send_channel !== 'stripe') return null
     if (!String(line.stripe_invoice_id ?? '').trim()) return null
@@ -1109,8 +939,8 @@ export function renderStagesLastActivityCell(
     // One scan line: "Resend Email sent Fri 3:36 PM (today)" (v2.1188 — action
     // first, then the state label). Full wording lives in the tooltip; the
     // resend control keeps its own confirm/disable behavior. The action+label
-    // and the time are two nowrap chunks so narrow Activity columns wrap
-    // between them instead of overflowing into the next column (v2.1042).
+    // and the time are two nowrap chunks so narrow Job cells wrap between
+    // them instead of overflowing into the next column (v2.1042).
     return (
       <div
         title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
@@ -1118,13 +948,11 @@ export function renderStagesLastActivityCell(
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
-          justifyContent: 'center',
           gap: '0.3rem',
-          width: '100%',
+          marginTop: '0.35rem',
           fontSize: '0.6875rem',
           color: 'var(--text-muted)',
           lineHeight: 1.2,
-          textAlign: 'center',
         }}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
@@ -1153,110 +981,14 @@ export function renderStagesLastActivityCell(
     )
   }
 
-  function threadActivityWireMs(iso: string | null | undefined): number | null {
-    if (iso == null || !String(iso).trim()) return null
-    const t = Date.parse(String(iso))
-    return Number.isNaN(t) ? null : t
-  }
-
-  // Card view reuses this cell verbatim minus the table wrapper: same flex
-  // shell and no td padding (cards are full-width). The table cell carries no
-  // width clamp of its own — the colgroup governs, and the Activity column is
-  // flexible (it splits the leftover table width with the Job column).
-  const shell = (children: ReactNode) =>
-    opts?.asDiv ? (
-      <div style={{ ...tdShellStyle, padding: 0 }}>{children}</div>
-    ) : (
-      <td style={tdShellStyle}>{children}</td>
-    )
-
-  if (!stat) {
-    return shell(
-      <>
-        <div style={lastActivityMainColumnStyle}>
-          <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
-            {renderStagesThreadExpandButton(ctx, jobId)}
-          </div>
-          {renderStagesUpcomingScheduleLine()}
-          {renderStagesStripeEmailedCustomerHint()}
-          {renderStagesInvoiceJumpChips(job)}
-          {renderStagesViewReportsFooterButton()}
-        </div>
-      </>,
-    )
-  }
-  const tNote = threadActivityWireMs(stat.last_note_at)
-  const tReport = threadActivityWireMs(stat.last_report_at)
-  if (tNote == null && tReport == null) {
-    return shell(
-      <>
-        <div style={lastActivityMainColumnStyle}>
-          <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
-            {renderStagesThreadExpandButton(ctx, jobId)}
-          </div>
-          {renderStagesUpcomingScheduleLine()}
-          {renderStagesStripeEmailedCustomerHint()}
-          {renderStagesInvoiceJumpChips(job)}
-          {renderStagesViewReportsFooterButton()}
-        </div>
-      </>,
-    )
-  }
-  // Mini-feed (Option A): the latest note and latest report each get one
-  // truncated line, newest first — built from the stats the board already
-  // loads, no new queries. The full text lives in the row tooltip and the
-  // expandable thread.
-  const feedItems = computeStagesActivityFeedItems({
-    lastNoteAt: stat.last_note_at,
-    lastNoteAuthorName: stat.last_note_author_name,
-    lastNoteBody: stat.last_note_body,
-    fallbackNoteAuthorName: lastChronologicalNoteAuthor ?? null,
-    fallbackNoteBody: fromThreadBody || null,
-    lastReportAt: stat.last_report_at,
-    lastReportAuthorName: stat.last_report_author_name,
-    lastReportPreview: stat.last_report_preview,
-    lastReportTemplateName: stat.last_report_template_name,
-  })
-  return shell(
+  return (
     <>
-      <div style={lastActivityMainColumnStyle}>
-        <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            {feedItems.map((item, idx) => (
-              <div
-                key={item.kind}
-                style={feedRowStyle}
-                title={`${item.author ? `${item.author} · ` : ''}${formatDispatchNoteWeekdayShortTimeChicago(item.atIso)} (${formatDispatchNoteDaysAgoShortPhrase(item.atIso)})${item.body ? ` — ${item.body}` : ''}`}
-              >
-                <span
-                  style={{ ...feedTagBaseStyle, color: item.kind === 'note' ? 'var(--text-link)' : '#7c3aed' }}
-                  aria-hidden
-                >
-                  {item.kind === 'note' ? 'Note' : 'Report'}
-                </span>
-                <span style={feedBodyStyle}>
-                  {item.author ? <span style={{ fontWeight: 600 }}>{item.author}</span> : null}
-                  {item.author && item.body ? ' — ' : null}
-                  {item.body || (item.author ? '' : '—')}
-                </span>
-                {/* nowrap glue: age and the chevron/count share the row's fixed
-                    right slot; the chevron rides the first (newest) row only. */}
-                <span style={{ ...feedWhenStyle, whiteSpace: 'nowrap' }}>
-                  {formatDispatchNoteDaysAgoShort(item.atIso)}
-                  {idx === 0 ? renderStagesThreadExpandButton(ctx, jobId) : null}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {renderStagesUpcomingScheduleLine()}
-        {renderStagesStripeEmailedCustomerHint()}
-        {renderStagesInvoiceJumpChips(job)}
-        {renderStagesViewReportsFooterButton()}
-      </div>
-    </>,
+      {renderStagesInvoiceJumpChips(job)}
+      {renderStagesStripeEmailedCustomerHint()}
+      {opts?.hideReportsButton ? null : (
+        <div style={{ marginTop: '0.35rem' }}>{renderStagesViewReportsButton(ctx, job)}</div>
+      )}
+    </>
   )
 }
 
