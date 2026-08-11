@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1578)
+last_updated: 2026-08-11 (v2.1579)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1579)
+
+### Pipeline mobile cards: pulse moves to the card foot (2026-08-11)
+Owner follow-up to the v2.1578 zoned card ("I would like the Next and job related items that show up on Job Activity / notes to show up at the bottom of the card"). The **pulse zone** — `cardNextChip` (green NEXT appointment chip) and `cardActivityTeaser` (one-line author · age — body) in [`JobsStagesCardList`](../src/components/jobs/JobsStagesCardList.tsx) — now renders LAST in both card layouts, below the hairline action row, instead of between the money zone and the actions. Both are previews of the Job activity / notes panel, and the tap-to-expand thread panel renders directly beneath them, so the preview now sits flush against what it expands into. Pure reorder — no renderer changes; anatomy doc comment + `search-the-stages-board.md` guide updated. Verified live at 375px (Working cards: action row, then NEXT · Thu Aug 13 8–11 AM · crew, then "Paige today — I think the job is 1% complete" as the final rows). Client-only — no migration.
 
 ## Latest Updates (v2.1578)
 
