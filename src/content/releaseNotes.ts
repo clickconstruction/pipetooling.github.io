@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1560',
+    date: '2026-08-10',
+    title: 'Clearer wording on the purchases banner',
+    kind: 'feature',
+    highlights: [
+      'The orange dashboard banner now says what it means: "Purchases waiting to be sorted" — N purchases over 2 days old aren\'t on a job yet, tap to sort them in Job Parts Tally.',
+    ],
+  },
+  {
     version: 'v2.1559',
     date: '2026-08-10',
     title: 'Roadmap tab tucked away for now',
