@@ -14,20 +14,24 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDeletedRecordsArchive } from '../../hooks/useDeletedRecordsArchive'
 import {
   formatDispatchNoteDaysAgoShortPhrase,
+  formatDispatchNoteTimeChicago,
   formatDispatchNoteWeekdayShortDateTimeChicago,
 } from '../../utils/dispatchNoteDisplay'
+import { supabase } from '../../lib/supabase'
 import { listDeletedRecordRows, type DeletedRecordRow } from '../../lib/deletedRecordsArchive'
 import {
   EMPTY_BUNDLE_FILTERS,
   buildBundleDigestChips,
   bundleInAlertWindows,
+  deriveBundleBadges,
   distinctValues,
   filterDeletedBundles,
+  groupBundlesByBurst,
   humanizeArchiveTable,
-  sortBundlesAlertFirst,
-  summarizeDeletedRow,
+  summarizeDeletedRowForTable,
   summarizePreviewItems,
   type AlertWindow,
+  type BundleBadgeTone,
   type DeletedBundleFilters,
 } from '../../lib/deletedRecordContents'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -44,10 +48,21 @@ export const RECENTLY_DELETED_ANCHOR_ID = 'settings-recently-deleted'
 
 const SNOOZE_MS = 24 * 60 * 60 * 1000
 
+/** Company-time "Fri 8/7, 11:39 AM (4d ago)" for card sublines. */
 function formatDeletedAt(iso: string): string {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString()
+  return `${formatDispatchNoteWeekdayShortDateTimeChicago(iso)} (${formatDispatchNoteDaysAgoShortPhrase(iso)})`
 }
+
+/** Badge chip colors by tone — saturated status colors stay literal per house rules. */
+const BADGE_TONE_STYLES: Record<BundleBadgeTone, { color: string; background: string; border: string }> = {
+  red: { color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '#dc2626' },
+  amber: { color: 'var(--text-amber-800)', background: 'var(--bg-orange-tint)', border: '#f59e0b' },
+  blue: { color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)', border: '#2563eb' },
+  neutral: { color: 'var(--text-muted)', background: 'var(--surface)', border: 'var(--border-strong)' },
+}
+
+/** Alert-window bundles whose rows auto-load so their badges are complete. */
+const AUTO_FETCH_ALERT_BUNDLES = 12
 
 export default function DeletedRecordsSection() {
   const [open, setOpen] = useState(false)
@@ -90,6 +105,29 @@ export default function DeletedRecordsSection() {
     if (location.hash === `#${RECENTLY_DELETED_ANCHOR_ID}`) setOpen(true)
   }, [location.hash, location.key])
 
+  // Roster for type-aware summaries (row_data carries user ids, not names).
+  const [userNameById, setUserNameById] = useState<ReadonlyMap<string, string>>(() => new Map())
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void supabase
+      .from('users')
+      .select('id, name')
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        setUserNameById(
+          new Map(
+            (data as { id: string; name: string | null }[])
+              .map((u): [string, string] => [u.id, (u.name ?? '').trim()])
+              .filter(([, n]) => n !== ''),
+          ),
+        )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
   // The active bulk-delete alert, surfaced here so the review loop closes in
   // place: same RPC + per-device dismiss state as the dashboard banner.
   const { alerts } = useBulkDeleteAlerts(open && !!user?.id)
@@ -112,6 +150,28 @@ export default function DeletedRecordsSection() {
   // Burst windows of the active alerts: bundles deleted inside one sort first
   // and get flagged, so the reviewer lands on the deletions the banner is about.
   const alertWindows: AlertWindow[] = alerts.map((a) => ({ start: a.window_start, end: a.window_end }))
+
+  // Auto-load full rows for the bundles under investigation (the alert-window
+  // set, capped) so their summaries and consequence badges are complete
+  // without a click. Shares the "What's inside" cache.
+  useEffect(() => {
+    if (!open || bundles.length === 0 || alertWindows.length === 0) return
+    const targets = bundles
+      .filter((b) => bundleInAlertWindows(b.deleted_at, alertWindows))
+      .slice(0, AUTO_FETCH_ALERT_BUNDLES)
+      .filter((b) => !contentsByGroup.has(b.group_key))
+    for (const b of targets) {
+      void listDeletedRecordRows(b.group_key)
+        .then((rows) => {
+          setContentsByGroup((prev) => (prev.has(b.group_key) ? prev : new Map(prev).set(b.group_key, rows)))
+        })
+        .catch(() => {
+          /* additive UI — badges just stay partial */
+        })
+    }
+    // contentsByGroup deliberately not a dep: the in-setter has() guard makes re-runs idempotent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, bundles, alerts.length])
 
   return (
     <div id={RECENTLY_DELETED_ANCHOR_ID} style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
@@ -202,7 +262,11 @@ export default function DeletedRecordsSection() {
           ) : bundles.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Nothing deleted in the last 90 days.</p>
           ) : (() => {
-            const visible = sortBundlesAlertFirst(filterDeletedBundles(bundles, filters), alertWindows)
+            const filtered = filterDeletedBundles(bundles, filters)
+            const grouped = groupBundlesByBurst(
+              filtered,
+              alerts.map((a) => ({ actor_name: a.actor_name, window_start: a.window_start, window_end: a.window_end })),
+            )
             const kinds = distinctValues(bundles, (b) => b.kind)
             const deleters = distinctValues(bundles, (b) => b.deleted_by_name)
             const selectStyle = {
@@ -248,15 +312,15 @@ export default function DeletedRecordsSection() {
                   </select>
                   {(filters.kind !== '' || filters.deletedBy !== '' || filters.search !== '') && (
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {visible.length} of {bundles.length}
+                      {filtered.length} of {bundles.length}
                     </span>
                   )}
                 </div>
-                {visible.length === 0 ? (
+                {filtered.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No deletions match these filters.</p>
-                ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {visible.map((b) => {
+                ) : (() => {
+            const listStyle = { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' } as const
+            const renderBundleCard = (b: (typeof bundles)[number]) => {
                 const isPreviewed = preview?.groupKey === b.group_key
                 const result = isPreviewed ? preview.result : null
                 const blockers = result?.blockers ?? []
@@ -267,7 +331,29 @@ export default function DeletedRecordsSection() {
                 const restoring = busy?.groupKey === b.group_key && busy.action === 'restore'
                 const inAlertWindow = bundleInAlertWindows(b.deleted_at, alertWindows)
                 const digestChips = buildBundleDigestChips(b.tables, b.table_counts)
-                const previewLines = summarizePreviewItems(b.preview_items)
+                const summaryCtx = { userNameById }
+                // Full rows (auto-fetched for alert bundles / cached from "What's
+                // inside") beat the 5-item RPC preview for both lines and badges.
+                const cachedRows = contentsByGroup.get(b.group_key) ?? null
+                const previewLines = cachedRows
+                  ? cachedRows
+                      .slice(0, 3)
+                      .map((r) => `${humanizeArchiveTable(r.table_name)}: ${summarizeDeletedRowForTable(r.table_name, r.row_data, summaryCtx)}`)
+                  : summarizePreviewItems(b.preview_items, 3, summaryCtx)
+                const moreRowCount = cachedRows && cachedRows.length > 3 ? cachedRows.length - 3 : 0
+                const badges = deriveBundleBadges({
+                  groupKey: b.group_key,
+                  deletedAt: b.deleted_at,
+                  deletedById: b.deleted_by,
+                  deletedByName: b.deleted_by_name,
+                  tables: b.tables,
+                  rows: cachedRows,
+                  moneyTotal: b.money_total ?? null,
+                  headCreatedAt: b.head_created_at ?? null,
+                  ownerUserId: b.owner_user_id ?? null,
+                  ownerName: b.owner_name ?? null,
+                  userNameById,
+                })
 
                 return (
                   <li
@@ -331,6 +417,30 @@ export default function DeletedRecordsSection() {
                             </span>
                           ))}
                         </div>
+                        {badges.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>
+                            {badges.map((badge) => {
+                              const tone = BADGE_TONE_STYLES[badge.tone]
+                              return (
+                                <span
+                                  key={badge.label}
+                                  style={{
+                                    padding: '0.05rem 0.5rem',
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 600,
+                                    color: tone.color,
+                                    background: tone.background,
+                                    border: `1px solid ${tone.border}`,
+                                    borderRadius: 999,
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {badge.label}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
                         {previewLines.length > 0 && (
                           <ul
                             style={{
@@ -346,6 +456,9 @@ export default function DeletedRecordsSection() {
                                 {line}
                               </li>
                             ))}
+                            {moreRowCount > 0 && (
+                              <li style={{ color: 'var(--text-faint)' }}>+{moreRowCount} more row{moreRowCount === 1 ? '' : 's'}</li>
+                            )}
                           </ul>
                         )}
                         <button
@@ -426,7 +539,7 @@ export default function DeletedRecordsSection() {
                                 {tableRows.map((row) => (
                                   <details key={row.id} style={{ marginLeft: '0.75rem' }}>
                                     <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>
-                                      {summarizeDeletedRow(row.row_data)}
+                                      {summarizeDeletedRowForTable(row.table_name, row.row_data, { userNameById })}
                                     </summary>
                                     <pre
                                       style={{
@@ -503,9 +616,44 @@ export default function DeletedRecordsSection() {
                     )}
                   </li>
                 )
-              })}
-            </ul>
+            }
+            return (
+              <>
+                {grouped.bursts.map((g, gi) => (
+                  <div key={`${g.alert.window_start}-${gi}`} style={{ marginBottom: '0.75rem' }}>
+                    <div
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        marginBottom: '0.4rem',
+                        borderRadius: 6,
+                        background: 'var(--bg-orange-tint)',
+                        border: '1px solid #f59e0b',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        color: 'var(--text-amber-800)',
+                      }}
+                    >
+                      Burst — {g.alert.actor_name || 'unknown'} ·{' '}
+                      {formatDispatchNoteWeekdayShortDateTimeChicago(g.alert.window_start)}–
+                      {formatDispatchNoteTimeChicago(g.alert.window_end)} · {g.bundles.length} deletion
+                      {g.bundles.length === 1 ? '' : 's'}
+                    </div>
+                    <ul style={listStyle}>{g.bundles.map(renderBundleCard)}</ul>
+                  </div>
+                ))}
+                {grouped.rest.length > 0 && (
+                  <>
+                    {grouped.bursts.length > 0 && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.4rem' }}>
+                        Outside the active alert windows
+                      </div>
+                    )}
+                    <ul style={listStyle}>{grouped.rest.map(renderBundleCard)}</ul>
+                  </>
                 )}
+              </>
+            )
+          })()}
               </>
             )
           })()}

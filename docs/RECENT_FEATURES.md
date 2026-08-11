@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1565)
+last_updated: 2026-08-11 (v2.1566)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1566)
+
+### Recently deleted: malice-triage redesign — type-aware summaries, consequence badges, burst groups (2026-08-11)
+Owner-requested ("a lot of clicking to figure out what exactly was deleted… gauge why it was deleted to determine if it was malicious"), plan approved as Phase 1+2. **(1) Type-aware summaries** ([`deletedRecordContents.ts`](../src/lib/deletedRecordContents.ts), +12 kernel tests): `summarizeDeletedRowForTable` renders clock sessions as "Paige — 6:32 AM–4:15 PM · 9.7h · pending approval · “Abe”" (company time; "in at 7:32 AM (no clock-out)" when open), reports as template/author/date, schedule blocks, invoices (#seq · $ · status), and bid custom prices — replacing generic lines that rendered as bare "row" (those now drop from card previews entirely; `summarizePreviewItems` gains a name-resolution ctx). **(2) Consequence badges** (`deriveBundleBadges`): per-card chips for money in money tables (red, exact $), job value removed via fixtures/line items (red), **age at deletion** ("created 1m/4h before deletion" red/amber vs "existed N d / N months" neutral), approved-session / paid-invoice deletions (red), and **owner ≠ deleter** ("belonged to Paige", blue). **(3) Burst groups** (`groupBundlesByBurst`): alert-window bundles render under amber "Burst — Taunya · Fri 8/7, 11:00 AM–12:00 PM · 6 deletions" headers with the rest under "Outside the active alert windows"; [`DeletedRecordsSection`](../src/components/settings/DeletedRecordsSection.tsx) auto-fetches full rows for up to 12 alert-window bundles (shared with the "What's inside" cache, which also goes type-aware) so the set under investigation is fully described without clicks, loads the roster once for id→name resolution, and re-stamps sublines in company time. **(4) Phase 2 migration** [`20260811060705_recently_deleted_triage_digest.sql`](../supabase/migrations/20260811060705_recently_deleted_triage_digest.sql) (see `MIGRATIONS.md`) extends the digest RPC with `money_total` / `head_created_at` / `owner_user_id` / `owner_name` + a wider preview-field whitelist so ALL cards get badges without row fetches; the client treats every new field as optional, so deploy order is free. Help guide [`bulk-deletion-alert`](../src/content/help/bulk-deletion-alert.md) updated. Verified live against the real Taunya burst: burst header, "created 4h before deletion / pending approval / belonged to Paige" badges, and the no-clock-out line that explains the deletion at a glance.
 
 ## Latest Updates (v2.1565)
 
