@@ -7,6 +7,8 @@ order: 76
 ---
 The three money cards on the Dashboard — **Accounts Receivable**, **Accounts Payable**, and **Not Billed Out** — each open a drill-down listing every item behind the number. Tap any row to open the job or bill it comes from.
 
+Each card now carries a thin **aging bar** under its total — green under two weeks, yellow two to four weeks, red past a month, gray for money that isn't aged yet — plus a lead line with the amount at risk, like **$78.9k over 30 days · oldest 148d**. The bar uses the same bands as the drill-down's aging strip, so what you glance at on the card is exactly what the drill-down lets you filter to.
+
 :::example Rows in the Accounts Receivable drill-down
 {{chip:green|8d}} **1471 · Hillcrest Ave** — Garcia `$2,300`
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1562',
+    date: '2026-08-11',
+    title: 'Money cards show how old the money is',
+    kind: 'feature',
+    highlights: [
+      'The Accounts Receivable, Accounts Payable, and Not Billed Out cards now carry a thin green/yellow/red aging bar and lead with the amount at risk — like "$78.9k over 30 days" — instead of burying the oldest date in fine print.',
+      'The bar uses the same bands as the drill-down\'s aging strip, and the card sublines are now easy round numbers (the "$20,169+11,957" style is gone).',
+    ],
+  },
+  {
     version: 'v2.1561',
     date: '2026-08-10',
     title: 'Staff purchases banner matches the new wording',
