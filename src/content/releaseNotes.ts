@@ -31,6 +31,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1555',
+    date: '2026-08-10',
+    title: 'Pipeline board slims down',
+    kind: 'feature',
+    highlights: [
+      'The Activity column is gone — the Job column gets all that room. Clicking anywhere on a row still opens the job\'s activity and notes.',
+      'The note count now sits right next to the job name, and the Open Invoice chips, Reports button, and Stripe Resend line moved under the job\'s address.',
+      'The blue "Job: 961" badge and the separate trade pill merged into one chip — "961 PLUM" — in the trade\'s color.',
+    ],
+  },
+  {
     version: 'v2.1554',
     date: '2026-08-10',
     title: 'Report form: tap the percent, cleaner header',

@@ -16,7 +16,7 @@ The **Job activity / notes** panel on **Jobs → Pipeline** can take over the wh
 
 ## Jump straight there from the Reports button
 
-Each job's activity cell shows a {{button:outline-blue|2 Reports}} button (the count varies). Clicking it now opens that job's **full-screen activity view** directly — one tap from the board to the whole story of the job, reports included.
+Each job's **Job** column shows a {{button:outline-blue|2 Reports}} button under the address (the count varies). Clicking it opens that job's **full-screen activity view** directly — one tap from the board to the whole story of the job, reports included.
 
 :::example The full-screen header
 Alex, Jordan &nbsp; · &nbsp; **Job activity / notes** &nbsp; {{button:outline|⛶}}

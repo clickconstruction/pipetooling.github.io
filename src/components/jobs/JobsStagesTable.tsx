@@ -29,7 +29,8 @@ import {
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
   renderStagesThreadFullscreenJobHeader,
-  renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
+  renderStagesJobCellActivityFooter as renderStagesJobCellActivityFooterWithCtx,
+  renderStagesThreadExpandButton,
   renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   renderStagesProjectBannerRow,
   shouldSuppressStagesRowJobThreadToggle,
@@ -224,13 +225,13 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
-  const renderStagesLastActivityCell = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null) =>
-    renderStagesLastActivityCellWithCtx(stagesRowSharedCtx, job, billingLineForStripeHint)
+  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null) =>
+    renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint })
 
   const renderStagesQuickActionsStack = (job: JobWithDetails) =>
     renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
 
-  const stagesTableColCount = 5
+  const stagesTableColCount = 4
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
       {/* tableLayout: fixed (v2.967): column widths come from the colgroup, never from content
@@ -241,7 +242,6 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
       <table style={{ width: '100%', minWidth: STAGES_TABLE_MIN_WIDTH, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: '9rem' }} />
-          <col />
           <col />
           <col style={{ width: '12rem' }} />
           <col style={{ width: 140 }} />
@@ -259,7 +259,6 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
               <span style={{ whiteSpace: 'nowrap' }}>Crew &amp; Dates</span>
             </th>
             <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Activity</th>
             <th
               style={{
                 padding: '0.75rem',
@@ -430,12 +429,15 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   </div>
                 </td>
                 <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
-                  {renderStagesOpenDetailJobName(j)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
+                    {renderStagesOpenDetailJobName(j)}
+                    {renderStagesThreadExpandButton(stagesRowSharedCtx, j.id)}
+                  </div>
                   {renderJobAddressWithMap(j.job_address)}
                   {renderJobCustomerLine(j)}
                   {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
+                  {renderStagesJobCellActivityFooter(j, stagesJobLevelStripeEmailedHintInvoice(j))}
                 </td>
-                {renderStagesLastActivityCell(j, stagesJobLevelStripeEmailedHintInvoice(j))}
                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                   <StagesProgressPaymentCell
                     model={buildStagesMoneyBarModel({
