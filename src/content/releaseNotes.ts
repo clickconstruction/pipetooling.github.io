@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1550',
+    date: '2026-08-10',
+    title: 'One-tap search on Assigned Jobs',
+    kind: 'feature',
+    highlights: [
+      'The Assigned Jobs card on the Dashboard now has a search button in its header — one tap opens the section, puts the search box at the top of your screen, and you can start typing immediately.',
+      'It works whether the section was open or closed, and the button is sized for thumbs.',
+    ],
+  },
+  {
     version: 'v2.1549',
     date: '2026-08-10',
     title: 'Report due — the button says it now',
