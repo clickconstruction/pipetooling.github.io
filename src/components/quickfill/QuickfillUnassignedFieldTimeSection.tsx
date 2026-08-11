@@ -597,7 +597,9 @@ export function QuickfillUnassignedFieldTimeSection() {
                         ? `${r.crewAssignmentCount} existing crew ${
                             r.crewAssignmentCount === 1 ? 'assignment' : 'assignments'
                           }`
-                        : 'No crew assignments',
+                        : r.officeAssignmentCount > 0
+                          ? 'Assigned to the Office job only — Office time doesn’t cover field hours, so this day stays unassigned until a field job is added'
+                          : 'No crew assignments',
                       r.subLaborHrs > 0
                         ? `${fmtH(r.subLaborHrs)} h sub-labor`
                         : null,
@@ -609,7 +611,9 @@ export function QuickfillUnassignedFieldTimeSection() {
                       ? `${r.crewAssignmentCount} crew ${
                           r.crewAssignmentCount === 1 ? 'assignment' : 'assignments'
                         }`
-                      : 'No crew assignments'}
+                      : r.officeAssignmentCount > 0
+                        ? 'Office only — doesn’t cover field time'
+                        : 'No crew assignments'}
                   </span>
                   <button
                     type="button"

@@ -27,6 +27,7 @@ import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
 import { formatScheduleDispatchHubJobTitle } from '../lib/scheduleDispatchHub'
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../utils/dateUtils'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
+import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
 
 type CrewRow = MergedCrewMapRow
 
@@ -98,6 +99,9 @@ export function PeopleHoursDayAuditModal({
   const [crewDirty, setCrewDirty] = useState(false)
   const [crewSaveError, setCrewSaveError] = useState<string | null>(null)
   const [crewSaving, setCrewSaving] = useState(false)
+  /** Overhead Office job id — lets the assignments panel badge Office rows (they never count toward field allocation). */
+  const [officeJobLedgerId, setOfficeJobLedgerId] = useState<string | null>(null)
+  const [crewResyncing, setCrewResyncing] = useState(false)
 
   const [jobSearchOpen, setJobSearchOpen] = useState(false)
   const [jobSearchText, setJobSearchText] = useState('')
@@ -424,6 +428,53 @@ export function PeopleHoursDayAuditModal({
     )
     refreshSessions()
     onCrewSaved?.()
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const id = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+        if (!cancelled) setOfficeJobLedgerId(id)
+      } catch {
+        // Badge-only data — the panel just skips the Office badge on failure.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /**
+   * Rebuild this day's crew assignments from its approved clock sessions —
+   * the same server-side sync that approval runs. One-click repair when the
+   * crew row has drifted from where the person actually clocked (e.g. a
+   * manual save left it on Office while the approved session is on a job).
+   */
+  async function handleResyncCrewFromClock() {
+    if (!canEditCrewJobs || crewResyncing) return
+    setCrewResyncing(true)
+    try {
+      const jobs = await supabase.rpc('sync_crew_jobs_from_clock', {
+        p_person_name: personName,
+        p_work_date: workDate,
+      })
+      if (jobs.error) throw new Error(jobs.error.message)
+      const bids = await supabase.rpc('sync_crew_bids_from_clock', {
+        p_person_name: personName,
+        p_work_date: workDate,
+      })
+      if (bids.error) throw new Error(bids.error.message)
+    } catch (e: unknown) {
+      showToast?.(formatErrorMessage(e), 'error')
+      setCrewResyncing(false)
+      return
+    }
+    setCrewResyncing(false)
+    setDraft(null)
+    setCrewDirty(false)
+    onCrewSaved?.()
+    showToast?.('Crew assignments re-synced from approved clock sessions.', 'success')
   }
 
   async function handleSaveCrew() {
@@ -983,7 +1034,29 @@ export function PeopleHoursDayAuditModal({
             background: 'var(--bg-subtle)',
           }}
         >
-          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-strong)' }}>Job / bid assignments</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-strong)' }}>Job / bid assignments</div>
+            {canEditCrewJobs ? (
+              <button
+                type="button"
+                disabled={crewResyncing}
+                onClick={() => void handleResyncCrewFromClock()}
+                title="Rebuild this day's assignments from its approved clock sessions — fixes days where the assignment no longer matches where the person actually clocked."
+                style={{
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.75rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  background: crewResyncing ? 'var(--bg-muted)' : 'var(--surface)',
+                  color: crewResyncing ? 'var(--text-muted)' : 'var(--text-700)',
+                  cursor: crewResyncing ? 'not-allowed' : 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {crewResyncing ? 'Re-syncing…' : '↺ Re-sync from clock'}
+              </button>
+            ) : null}
+          </div>
 
           {pendingApproveBanner}
 
@@ -1004,6 +1077,22 @@ export function PeopleHoursDayAuditModal({
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}
                           >
                             <span>{label}</span>
+                            {a.type === 'job' && officeJobLedgerId != null && a.id === officeJobLedgerId ? (
+                              <span
+                                title="Office time is overhead — it never counts toward field allocation, so it won't clear this day from the Unassigned field time list."
+                                style={{
+                                  padding: '0 0.3rem',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: 600,
+                                  borderRadius: 4,
+                                  border: '1px solid #d97706',
+                                  background: 'var(--bg-amber-tint)',
+                                  color: 'var(--text-amber-700)',
+                                }}
+                              >
+                                overhead
+                              </span>
+                            ) : null}
                             <input
                               type="number"
                               min={0}
@@ -1189,9 +1278,28 @@ export function PeopleHoursDayAuditModal({
                   {initialCrewRow.unifiedAssignments.map((a) => {
                     const details = a.type === 'job' ? jobDetailsMap[a.id] : bidDetailsMap[a.id]
                     const label = formatAssignmentLabel(a.type, details, prefixMap)
+                    const isOfficeJob = a.type === 'job' && officeJobLedgerId != null && a.id === officeJobLedgerId
                     return (
                       <li key={`${a.type}:${a.id}`} style={{ marginBottom: '0.35rem' }}>
                         {label} — {a.pct}%
+                        {isOfficeJob ? (
+                          <span
+                            title="Office time is overhead — it never counts toward field allocation, so it won't clear this day from the Unassigned field time list."
+                            style={{
+                              marginLeft: '0.4rem',
+                              padding: '0.05rem 0.35rem',
+                              fontSize: '0.6875rem',
+                              fontWeight: 600,
+                              borderRadius: 4,
+                              border: '1px solid #d97706',
+                              background: 'var(--bg-amber-tint)',
+                              color: 'var(--text-amber-700)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            not counted toward field allocation
+                          </span>
+                        ) : null}
                       </li>
                     )
                   })}
