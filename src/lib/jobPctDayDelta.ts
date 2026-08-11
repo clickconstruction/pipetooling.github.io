@@ -46,13 +46,21 @@ export type JobPctToday = {
 
 export type PctNoteRow = { job_id: string; body: string; created_at: string }
 
+export type JobPctSourceRow = {
+  pct: number | null
+  /** jobs_ledger.status — only 'paid' matters here (Paid in Full). */
+  status: string | null
+}
+
 /**
- * Per-job current % + today's movement. Jobs with a null pct are omitted —
- * the card simply shows nothing. A job whose FIRST-ever % note landed today
- * baselines at 0 (it had no recorded progress before today).
+ * Per-job current % + today's movement. A job with a null pct still renders:
+ * 100 when the job is Paid in Full (status 'paid'), else 0 — with no delta,
+ * since the value is synthesized rather than recorded. A job whose FIRST-ever
+ * % note landed today baselines at 0 (it had no recorded progress before
+ * today).
  */
 export function computeJobPctToday(
-  pctByJobId: ReadonlyMap<string, number | null>,
+  jobsById: ReadonlyMap<string, JobPctSourceRow>,
   notes: PctNoteRow[],
   todayYmd: string,
 ): Map<string, JobPctToday> {
@@ -83,8 +91,11 @@ export function computeJobPctToday(
   }
 
   const out = new Map<string, JobPctToday>()
-  for (const [jobId, pct] of pctByJobId) {
-    if (pct == null || !Number.isFinite(pct)) continue
+  for (const [jobId, { pct, status }] of jobsById) {
+    if (pct == null || !Number.isFinite(pct)) {
+      out.set(jobId, { pct: status === 'paid' ? 100 : 0, delta: null })
+      continue
+    }
     const acc = accByJob.get(jobId)
     const baseline = acc?.hasBefore ? acc.latestBeforeValue : acc?.hasToday ? 0 : null
     out.set(jobId, { pct, delta: baseline == null ? null : pct - baseline })

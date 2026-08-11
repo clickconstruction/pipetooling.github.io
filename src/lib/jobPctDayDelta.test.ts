@@ -30,7 +30,7 @@ describe('computeJobPctToday', () => {
 
   it('delta = current − latest note before today; today’s notes do not move the baseline', () => {
     const out = computeJobPctToday(
-      new Map([['j1', 62]]),
+      new Map([['j1', { pct: 62, status: 'working' }]]),
       [
         note('j1', '35% complete — rough in', '2026-08-05T20:00:00Z'),
         note('j1', '49% complete', '2026-08-10T22:00:00Z'),
@@ -44,8 +44,8 @@ describe('computeJobPctToday', () => {
   it('first-ever note today baselines at 0; no notes at all leaves delta unknown', () => {
     const out = computeJobPctToday(
       new Map([
-        ['fresh', 40],
-        ['silent', 30],
+        ['fresh', { pct: 40, status: 'working' }],
+        ['silent', { pct: 30, status: 'working' }],
       ]),
       [note('fresh', '40% complete', '2026-08-11T15:00:00Z')],
       TODAY,
@@ -57,8 +57,8 @@ describe('computeJobPctToday', () => {
   it('downward corrections yield negative deltas; unchanged jobs read 0', () => {
     const out = computeJobPctToday(
       new Map([
-        ['down', 20],
-        ['flat', 75],
+        ['down', { pct: 20, status: 'working' }],
+        ['flat', { pct: 75, status: 'working' }],
       ]),
       [
         note('down', '35% complete', '2026-08-09T12:00:00Z'),
@@ -70,12 +70,9 @@ describe('computeJobPctToday', () => {
     expect(out.get('flat')).toEqual({ pct: 75, delta: 0 })
   })
 
-  it('omits jobs with a null pct and ignores unparseable or future notes', () => {
+  it('ignores unparseable or future notes', () => {
     const out = computeJobPctToday(
-      new Map([
-        ['nopct', null],
-        ['j2', 50],
-      ]),
+      new Map([['j2', { pct: 50, status: 'working' }]]),
       [
         note('j2', 'leaving job', '2026-08-10T12:00:00Z'),
         note('j2', '45% complete', '2026-08-12T12:00:00Z'), // after today — ignored
@@ -83,7 +80,27 @@ describe('computeJobPctToday', () => {
       ],
       TODAY,
     )
-    expect(out.has('nopct')).toBe(false)
     expect(out.get('j2')).toEqual({ pct: 50, delta: 20 })
+  })
+
+  it('null pct falls back to 0 (100 when Paid in Full), always with no delta', () => {
+    const out = computeJobPctToday(
+      new Map([
+        ['never-set', { pct: null, status: 'working' }],
+        ['paid-null', { pct: null, status: 'paid' }],
+        ['no-status', { pct: null, status: null }],
+      ]),
+      // A stray % note must not invent a delta for a synthesized value.
+      [note('never-set', '30% complete', '2026-08-10T12:00:00Z')],
+      TODAY,
+    )
+    expect(out.get('never-set')).toEqual({ pct: 0, delta: null })
+    expect(out.get('paid-null')).toEqual({ pct: 100, delta: null })
+    expect(out.get('no-status')).toEqual({ pct: 0, delta: null })
+  })
+
+  it('a recorded pct on a paid job wins over the fallback', () => {
+    const out = computeJobPctToday(new Map([['paid-real', { pct: 90, status: 'paid' }]]), [], TODAY)
+    expect(out.get('paid-real')).toEqual({ pct: 90, delta: null })
   })
 })

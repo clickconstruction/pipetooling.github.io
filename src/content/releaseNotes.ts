@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1571',
+    date: '2026-08-11',
+    title: 'Every My Schedule card shows its % done',
+    kind: 'feature',
+    highlights: [
+      'Jobs that never had a progress percent set no longer show a blank corner on My Schedule — they read 0% done, or 100% done once the job is Paid in Full.',
+      'Jobs with a recorded percent are unchanged, and the "today\'s movement" line still appears only for real recorded progress.',
+    ],
+  },
+  {
     version: 'v2.1570',
     date: '2026-08-11',
     title: 'Ready to Bill cards straighten up',

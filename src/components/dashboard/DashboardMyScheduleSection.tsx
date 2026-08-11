@@ -97,7 +97,7 @@ function useMyScheduleJobPct(jobIds: string[], todayYmd: string): ReadonlyMap<st
     let cancelled = false
     void (async () => {
       const [jobsRes, notesRes] = await Promise.all([
-        supabase.from('jobs_ledger').select('id, pct_complete').in('id', ids),
+        supabase.from('jobs_ledger').select('id, pct_complete, status').in('id', ids),
         supabase
           .from('jobs_ledger_thread_notes')
           .select('job_id, body, created_at')
@@ -105,11 +105,14 @@ function useMyScheduleJobPct(jobIds: string[], todayYmd: string): ReadonlyMap<st
           .like('body', '%\\% complete%'),
       ])
       if (cancelled || jobsRes.error) return
-      const pctByJobId = new Map(
-        ((jobsRes.data ?? []) as { id: string; pct_complete: number | null }[]).map((j) => [j.id, j.pct_complete]),
+      const jobsById = new Map(
+        ((jobsRes.data ?? []) as { id: string; pct_complete: number | null; status: string | null }[]).map((j) => [
+          j.id,
+          { pct: j.pct_complete, status: j.status },
+        ]),
       )
       const notes = (notesRes.error ? [] : ((notesRes.data ?? []) as PctNoteRow[]))
-      setPctToday(computeJobPctToday(pctByJobId, notes, todayYmd))
+      setPctToday(computeJobPctToday(jobsById, notes, todayYmd))
     })()
     return () => {
       cancelled = true
