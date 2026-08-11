@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1553',
+    date: '2026-08-10',
+    title: 'My Schedule header cleaned up',
+    kind: 'feature',
+    highlights: [
+      'The "(schedule wrong? click to call dispatch)" fine print next to the My Schedule title is now a round phone button — same one-tap call to dispatch, but it looks like a button.',
+      'Day headers shorten to "Today · Mon, Aug 10" style instead of spelling out the full date.',
+    ],
+  },
+  {
     version: 'v2.1552',
     date: '2026-08-10',
     title: 'Clocked-in list: names move to the left edge',

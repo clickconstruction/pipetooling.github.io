@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1552)
+last_updated: 2026-08-10 (v2.1553)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1553)
+
+### My Schedule header: phone button + short dates (2026-08-10)
+Owner picked **option B** of the header mockups. [`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx): the title is plain text again (it was itself a tel: link), and the squeezed two-line "(schedule wrong? click to call dispatch)" parenthetical becomes a **30px round phone button** beside it (same `tel:` to `firstAssistantDispatchPhone`, tooltip/aria "Schedule wrong? Call dispatch at <number>"; renders only when a dispatch number is configured, as before). Day group headers switch from "Monday, August 10, 2026" to **"Mon, Aug 10"** via new [`scheduleFormatWeekdayShort`](../src/lib/jobScheduleChicago.ts) (company-timezone, beside the existing long formatter). Verified live as Helper Paige in dark mode. Client-only — no migration.
 
 ## Latest Updates (v2.1552)
 
