@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1568)
+last_updated: 2026-08-11 (v2.1569)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1569)
+
+### Dev imitation stays on the current origin (2026-08-11)
+Dev-only fix, caught during v2.1567/68 verification: the People → Users "imitate" flow followed the Supabase-hosted magic link, whose redirect allow-list only knows a couple of localhost ports — from a parallel worktree's port (5183) the imitation bounced to **production**, landing on whatever stale prod session the browser held. [`loginAsUser`](../src/lib/loginAsUser.ts) now verifies the magic-link token **on the current origin** (`verifyOtp`, the same v2.1526 fix dev-login got) and only falls back to following the hosted link if token extraction/verification fails; the localhost imitate button ([`PeopleUsersTab`](../src/components/people/PeopleUsersTab.tsx)) drops its hardcoded `localhost:5173` redirect for `window.location.origin`. Verified live: imitation from the 5183 worktree now lands on 5183 as the imitated user. Client-only — no migration.
 
 ## Latest Updates (v2.1568)
 

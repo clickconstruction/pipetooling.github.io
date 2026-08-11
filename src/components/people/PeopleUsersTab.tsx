@@ -300,7 +300,10 @@ export function PeopleUsersTab({
                       setLoggingInAsId(item.id)
                       setError(null)
                       try {
-                        await loginAsUser(item, 'http://localhost:5173/dashboard')
+                        // Origin-based (v2.1569): parallel worktrees run Vite on other
+                        // ports — a hardcoded 5173 bounced the imitation session to
+                        // whichever session happened to own that port.
+                        await loginAsUser(item, `${window.location.origin}/dashboard`)
                       } catch (e) {
                         setError(e instanceof Error ? e.message : 'Failed to imitate')
                       } finally {
