@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
+import { supabase } from '../../lib/supabase'
+import { computeJobPctToday, type JobPctToday, type PctNoteRow } from '../../lib/jobPctDayDelta'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { splitScheduleRowLabel, stripAddressZip } from '../../lib/dashboardScheduleCardLines'
 import { scheduleFormatWeekdayShort, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
@@ -72,6 +74,46 @@ export type DashboardMyScheduleSectionProps = {
  * carries the section-dock anchor. The root is a bordered card whose styles
  * mirror `DashboardGroupCard` (custom header keeps it from using the wrapper).
  */
+/**
+ * Current % done + today's movement for the schedule's jobs (v2.1567).
+ * Self-contained: two small queries over the handful of scheduled job ids.
+ * The baseline comes from "N% complete" thread notes; roles whose RLS hides
+ * those notes just get the % with no delta line. Failures render nothing —
+ * this layer is additive.
+ */
+function useMyScheduleJobPct(jobIds: string[], todayYmd: string): ReadonlyMap<string, JobPctToday> {
+  const [pctToday, setPctToday] = useState<ReadonlyMap<string, JobPctToday>>(() => new Map())
+  const idsKey = useMemo(() => [...new Set(jobIds)].sort().join(','), [jobIds])
+  useEffect(() => {
+    const ids = idsKey === '' ? [] : idsKey.split(',')
+    if (ids.length === 0) {
+      setPctToday(new Map())
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const [jobsRes, notesRes] = await Promise.all([
+        supabase.from('jobs_ledger').select('id, pct_complete').in('id', ids),
+        supabase
+          .from('jobs_ledger_thread_notes')
+          .select('job_id, body, created_at')
+          .in('job_id', ids)
+          .like('body', '%\\% complete%'),
+      ])
+      if (cancelled || jobsRes.error) return
+      const pctByJobId = new Map(
+        ((jobsRes.data ?? []) as { id: string; pct_complete: number | null }[]).map((j) => [j.id, j.pct_complete]),
+      )
+      const notes = (notesRes.error ? [] : ((notesRes.data ?? []) as PctNoteRow[]))
+      setPctToday(computeJobPctToday(pctByJobId, notes, todayYmd))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [idsKey, todayYmd])
+  return pctToday
+}
+
 export function DashboardMyScheduleSection({
   role,
   firstAssistantDispatchPhone,
@@ -92,6 +134,12 @@ export function DashboardMyScheduleSection({
   const jobDetailModal = useJobDetailModal()
   /** Call-customer modal (mis-click guard + call notes) — see CallCustomerModal. */
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
+  const scheduleJobIds = useMemo(
+    () =>
+      [...subScheduleDayPartition.todayBlocks, ...subScheduleDayPartition.tomorrowBlocks].map((b) => b.job_id),
+    [subScheduleDayPartition],
+  )
+  const pctTodayByJobId = useMyScheduleJobPct(scheduleJobIds, subScheduleDayPartition.todayYmd)
 
   return (
     <div
@@ -367,21 +415,60 @@ export function DashboardMyScheduleSection({
                               ) : null}
                             </div>
                           </div>
-                          {/* Full-width job number + zip-less address line (v2.1548). */}
+                          {/* Full-width job number + zip-less address line (v2.1548);
+                              the % done stack (v2.1567) rides its right edge, under
+                              the Leave Report button. */}
                           {(() => {
                             const num = splitScheduleRowLabel(rowLabel).jobNumber
                             const addr = stripAddressZip(jobMeta.job_address ?? '')
-                            if (!num && !addr) return null
+                            const pctInfo = pctTodayByJobId.get(b.job_id)
+                            if (!num && !addr && !pctInfo) return null
+                            const delta = pctInfo?.delta ?? null
                             return (
                               <div
                                 style={{
-                                  fontSize: '0.8125rem',
-                                  color: 'var(--text-muted)',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'flex-start',
+                                  gap: '0.5rem',
                                   marginTop: '0.35rem',
-                                  wordBreak: 'break-word',
                                 }}
                               >
-                                {num && addr ? `${num} · ${addr}` : num || addr}
+                                <div
+                                  style={{
+                                    fontSize: '0.8125rem',
+                                    color: 'var(--text-muted)',
+                                    wordBreak: 'break-word',
+                                    flex: 1,
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  {num && addr ? `${num} · ${addr}` : num || addr}
+                                </div>
+                                {pctInfo ? (
+                                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.15 }}>
+                                      {pctInfo.pct}%
+                                      <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)' }}> done</span>
+                                    </div>
+                                    {delta != null ? (
+                                      <div
+                                        style={{
+                                          fontSize: '0.6875rem',
+                                          fontWeight: 600,
+                                          color:
+                                            delta > 0
+                                              ? 'var(--text-green-600)'
+                                              : delta < 0
+                                                ? 'var(--text-amber-800)'
+                                                : 'var(--text-faint)',
+                                        }}
+                                      >
+                                        {delta > 0 ? `▲ ${delta} today` : delta < 0 ? `▼ ${-delta} today` : 'no change today'}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
                             )
                           })()}
@@ -399,6 +486,31 @@ export function DashboardMyScheduleSection({
                               {b.note.trim()}
                             </div>
                           ) : null}
+                          {/* Progress bar (v2.1567) — only on days the job actually
+                              moved: blue = where it started, green = today's gain
+                              (amber tail = a downward correction). */}
+                          {(() => {
+                            const pctInfo = pctTodayByJobId.get(b.job_id)
+                            const delta = pctInfo?.delta ?? null
+                            if (!pctInfo || delta == null || delta === 0) return null
+                            const clamp = (n: number) => Math.max(0, Math.min(100, n))
+                            const baseWidth = clamp(delta > 0 ? pctInfo.pct - delta : pctInfo.pct)
+                            const changeWidth = clamp(Math.abs(delta))
+                            return (
+                              <div style={{ marginTop: '0.5rem' }}>
+                                <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--bg-muted)' }}>
+                                  <span style={{ width: `${baseWidth}%`, background: '#3b82f6' }} />
+                                  <span style={{ width: `${changeWidth}%`, background: delta > 0 ? '#16a34a' : '#d97706' }} />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', marginTop: 2 }}>
+                                  <span style={{ color: 'var(--text-muted)' }}>{pctInfo.pct}% done</span>
+                                  <span style={{ fontWeight: 600, color: delta > 0 ? 'var(--text-green-600)' : 'var(--text-amber-800)' }}>
+                                    {delta > 0 ? `▲ ${delta} today` : `▼ ${-delta} today`}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </li>
                       )
                     })}
