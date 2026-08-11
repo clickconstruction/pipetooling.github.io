@@ -16,7 +16,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
-import { DashboardLeaveReportButton, LeaveReportReminderIcon } from './DashboardLeaveReportButton'
+import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
 
 export type DashboardMyScheduleSectionProps = {
   role: UserRole | null
@@ -156,15 +156,6 @@ export function DashboardMyScheduleSection({
               which === 'today' ? subScheduleDayPartition.todayBlocks : subScheduleDayPartition.tomorrowBlocks
             const dayTitle = which === 'today' ? 'Today' : 'Tomorrow'
             const sorted = sortSubScheduleBlocksByStart(blocks)
-            const anyLeaveReportReminderToday =
-              which === 'today' &&
-              canLeaveJobFieldReport(role) &&
-              sorted.some((b) => {
-                const fa =
-                  assignedJobs.find((j) => j.id === b.job_id) ??
-                  assignedReadyToBillJobs.find((j) => j.id === b.job_id)
-                return fa ? leaveReportReminderForJobRow(fa) : false
-              })
             return (
               <div key={which} style={{ marginBottom: which === 'today' ? '1.25rem' : 0 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: 'var(--text-700)', textAlign: 'center' }}>
@@ -182,6 +173,11 @@ export function DashboardMyScheduleSection({
                       const fromAssigned =
                         assignedJobs.find((j) => j.id === b.job_id) ??
                         assignedReadyToBillJobs.find((j) => j.id === b.job_id)
+                      // Report-due card treatment (v2.1549): amber rail + reason
+                      // line on the card itself; replaces the old footer banner.
+                      const reminderDue =
+                        canLeaveJobFieldReport(role) &&
+                        (fromAssigned ? leaveReportReminderForJobRow(fromAssigned) : false)
                       // Billed/paid scheduled jobs are in neither assigned list;
                       // the meta map carries their pictures link / HCP / address.
                       const jobMeta = resolveSubScheduleJobMeta(
@@ -224,6 +220,7 @@ export function DashboardMyScheduleSection({
                           style={{
                             padding: '0.5rem 0.75rem',
                             border: '1px solid var(--border)',
+                            borderLeft: reminderDue ? '3px solid #f2c230' : '1px solid var(--border)',
                             borderRadius: 8,
                             marginBottom: '0.5rem',
                             background: 'var(--surface)',
@@ -333,9 +330,7 @@ export function DashboardMyScheduleSection({
                               />
                               {canLeaveJobFieldReport(role) ? (
                                 <DashboardLeaveReportButton
-                                  showReminder={
-                                    fromAssigned ? leaveReportReminderForJobRow(fromAssigned) : false
-                                  }
+                                  showReminder={reminderDue}
                                   reportCount={reportCountByJobId?.[b.job_id] ?? 0}
                                   onViewReports={
                                     setViewReportsJob
@@ -397,26 +392,6 @@ export function DashboardMyScheduleSection({
                       )
                     })}
                   </ul>
-                )}
-                {/* Below the job list (owner request, v2.1539) — it reads as a
-                    footer nudge instead of pushing the day's jobs down. */}
-                {anyLeaveReportReminderToday && (
-                  <p
-                    role="status"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.375rem',
-                      margin: 0,
-                      fontSize: '0.8125rem',
-                      color: 'var(--text-muted)',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <LeaveReportReminderIcon size={16} />
-                    You haven't filed a report yet. File one
-                  </p>
                 )}
               </div>
             )
