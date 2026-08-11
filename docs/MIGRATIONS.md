@@ -9,7 +9,7 @@ last_updated: 2026-08-11
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "186 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "201 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 10, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 11, 2026
+
+**`20260811200048_b6_payments_guard_and_race_fix.sql`** _(apply via `supabase db push` after the file is on `main`; no client or edge change — either order is safe)_
+- **Purpose**: B6 (v2.1575; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md)) — the payments_made hard guard, plus the race its gate audit surfaced: Stripe's dual `invoice.paid`+`invoice.payment_succeeded` events raced `mark_invoice_paid_from_stripe` (duplicate payment rows on jobs #925/#921, 2026-08-04/08) AND the B3 recompute trigger summed on stale snapshots (loser's half-sum won). Fixes: lock-first recompute (job row `FOR UPDATE` before summing) + transaction-local GUC; `jobs_ledger_payments_made_guard` BEFORE-UPDATE trigger rejecting non-recompute writers; `FOR UPDATE` row locks in all five payment RPCs (bodies otherwise byte-identical to `20260730174929` / `20260801020903`); repair DELETE of the two duplicate rows (payments_made values unchanged — they already equaled the true single payments).
+- **Security**: no grant/RLS changes; CREATE OR REPLACE preserves ACLs incl. the A0 revokes; no CREATE TABLE so no sweep calls needed.
+- **Ordering**: independent of any deploy.
+- **Category**: Jobs / billing / data integrity
 
 **`20260811140701_self_schedule_and_field_job_request.sql`** _(apply via `supabase db push` **immediately after merge** — the new client's schedule queries select the two new columns, so push before the Pages deploy finishes (~5 min build window); the OLD deployed client is unaffected either way. Additive columns + `CREATE OR REPLACE`/new functions; table RLS untouched)_
 

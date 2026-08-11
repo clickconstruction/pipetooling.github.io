@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1574)
+last_updated: 2026-08-11 (v2.1575)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1575)
+
+### payments_made hard guard + webhook double-payment race fix (2026-08-11)
+Migration [`20260811200048_b6_payments_guard_and_race_fix.sql`](../supabase/migrations/20260811200048_b6_payments_guard_and_race_fix.sql) — step **B6** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md), closing Workstream B. The gated re-audit (due ~2026-08-06) found a **real incident**: jobs #925/#921 each carried two identical Stripe payment rows created milliseconds apart with `payments_made` at exactly half the row sum. Two stacked races: Stripe's dual `invoice.paid`+`invoice.payment_succeeded` events (distinct ids — dedupe passes both) raced `mark_invoice_paid_from_stripe`'s remaining-check, AND the B3 recompute trigger summed on a pre-commit snapshot so the loser's stale half-sum overwrote the winner's (the stored pm was coincidentally the TRUE single-payment amount; the rows were doubled, so invoice-remaining/Edit-Job lists showed doubles). One migration: (1) lock-first recompute — job-row `FOR UPDATE` before summing so the post-lock SELECT's fresh READ COMMITTED snapshot sees the concurrent committed row, plus transaction-local GUC `pipetooling.payments_recompute`; (2) `jobs_ledger_payments_made_guard` BEFORE-UPDATE trigger rejecting any pm change without that GUC (stale clients/scripts now error instead of silently desyncing); (3) `FOR UPDATE` row locks in all five payment RPCs — the second dual-event call now waits and exits on `status='paid'`/remaining≤0 (bodies byte-identical to their CURRENT definitions: four from `20260730174929`, `apply_mercury_bank_payment_allocations` from `20260801020903`); (4) repair DELETE of the two duplicate rows (idempotent; pm values unchanged — already the true amounts). Verified post-push: audit all-consistent; guard rejects a direct pm write in a rolled-back transaction. DB-only (`supabase db push` after merge).
 
 ## Latest Updates (v2.1574)
 

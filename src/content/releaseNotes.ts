@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1575',
+    date: '2026-08-11',
+    title: 'Billing accuracy: double-recorded Stripe payments fixed and prevented',
+    kind: 'fix',
+    highlights: [
+      'Two jobs briefly showed a Stripe payment twice (a rare timing issue when Stripe reports the same payment two ways at once) — both are corrected, and the database now prevents the double-record from happening again.',
+      'Paid-to-date totals are now locked to the payment records themselves — nothing else can change them.',
+    ],
+  },
+  {
     version: 'v2.1574',
     date: '2026-08-11',
     title: 'Reports view cleans up on phones',
