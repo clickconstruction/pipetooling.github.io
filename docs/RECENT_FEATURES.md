@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1560)
+last_updated: 2026-08-10 (v2.1561)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1561)
+
+### Dashboard: staff tally banner + follow-up modal join the plain-language rename (2026-08-10)
+Follow-up to v2.1560 ("as well", owner-directed): the **blue staff banner** ([`DashboardTallyStaleStaffBanner`](../src/components/DashboardTallyStaleStaffBanner.tsx)) drops "Stale tally follow-up / N people · M unlinked transactions — Posted more than 2 calendar days ago. Assign jobs on their behalf." for **"Team purchases waiting to be sorted / N people have M purchases over {minAgeDays} days old with no job yet — tap to sort them on their behalf."** (person/has and it/them singulars handled; `aria-label` matches). The modal it opens ([`DashboardStaleTallyStaffFollowUpModal`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)) retitles to **"Team purchases follow-up"** (header keeps its "· N to sort" count), the dev hide-toggle tooltip says "Team purchases follow-up", and both empty states move to the same vocabulary ("Nothing overdue — every remaining purchase is newer than the cutoff." / "No purchases waiting for the people you can follow up with."). Verified live: blue badge 7 · 77 with the new body, modal "Team purchases follow-up · 86 to sort". Client-only — no migration.
 
 ## Latest Updates (v2.1560)
 
