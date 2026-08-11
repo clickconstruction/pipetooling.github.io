@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 /**
  * Groups related dashboard sections into one visible unit: a bordered card with
@@ -17,6 +17,7 @@ export function DashboardGroupCard({
   headerRight,
   collapseStorageKey,
   defaultCollapsed = false,
+  expandRequestKey,
   children,
 }: {
   id?: string
@@ -24,6 +25,8 @@ export function DashboardGroupCard({
   headerRight?: ReactNode
   collapseStorageKey?: string
   defaultCollapsed?: boolean
+  /** Bump to force the card open (e.g. a headerRight search button, v2.1550); persisted like a manual expand. */
+  expandRequestKey?: number
   children: ReactNode
 }) {
   const collapsible = collapseStorageKey != null
@@ -37,6 +40,16 @@ export function DashboardGroupCard({
     }
     return defaultCollapsed
   })
+  useEffect(() => {
+    if (!expandRequestKey || !collapsible) return
+    setCollapsed(false)
+    try {
+      localStorage.setItem(collapseStorageKey!, 'false')
+    } catch {
+      /* ignore */
+    }
+  }, [expandRequestKey, collapsible, collapseStorageKey])
+
   const toggle = () => {
     setCollapsed((prev) => {
       const next = !prev

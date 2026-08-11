@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1549)
+last_updated: 2026-08-10 (v2.1550)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1550)
+
+### Assigned Jobs: one-tap header search button (2026-08-10)
+Owner-requested for mobile: the Assigned Jobs card starts collapsed, so reaching its search box took expand → scroll → tap. [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) gains an optional **`expandRequestKey`** prop (bumping it forces the card open and persists like a manual expand); [`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx) uses it from a new **44px magnifier button** in the card header (`headerRight`, rendered collapsed or open): one tap expands the card, focuses the existing search input (`focus({ preventScroll: true })` so the keyboard opens without fighting the scroll), and `scrollIntoView`s the input to the top of the viewport. Verified live as Helper Paige at 375px: from collapsed, one tap landed the focused search box 51px from the viewport top with the job list beneath, and typing filtered immediately. Client-only — no migration.
 
 ## Latest Updates (v2.1549)
 
