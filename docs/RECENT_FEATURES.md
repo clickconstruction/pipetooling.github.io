@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1559)
+last_updated: 2026-08-10 (v2.1560)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1560)
+
+### Dashboard: stale-tally banner rewritten in plain language (2026-08-10)
+Owner picked **option A** of the wording mockups. The orange dashboard banner ([`DashboardTallyStaleBanner`](../src/components/DashboardTallyStaleBanner.tsx)) drops its system-speak — title "Stale tally transactions" becomes **"Purchases waiting to be sorted"**, and the body "N unlinked transactions — Posted more than 2 calendar days ago. Sort to jobs in Job Parts Tally (Transactions)." becomes **"N purchases over 2 days old aren't on a job yet — tap to sort them in Job Parts Tally."** (singular: "One purchase … isn't on a job yet — tap to sort it …"). The age number stays driven by the `minAgeDays` prop (no hardcoded "2"), the "(Transactions)" tab path is gone (the banner is one tap to that exact tab), and the `aria-label` matches the new vocabulary. The blue staff follow-up banner ("Stale tally follow-up") is deliberately untouched pending owner direction. Verified live on the dashboard (badge 49 + new title/body). Client-only — no migration.
 
 ## Latest Updates (v2.1559)
 

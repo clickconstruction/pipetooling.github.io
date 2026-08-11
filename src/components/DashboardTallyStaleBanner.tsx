@@ -14,15 +14,11 @@ export default function DashboardTallyStaleBanner({
   if (loading || staleCount === 0) {
     return null
   }
-  const agePhrase =
-    minAgeDays === 2
-      ? 'Posted more than 2 calendar days ago'
-      : `Posted more than ${minAgeDays} calendar days ago`
   return (
     <button
       type="button"
       onClick={() => onGoToTally?.()}
-      aria-label="Go to Job Parts Tally to sort stale unlinked transactions"
+      aria-label="Go to Job Parts Tally to sort purchases that aren't on a job yet"
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -59,10 +55,11 @@ export default function DashboardTallyStaleBanner({
         {staleCount}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>Stale tally transactions</div>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>Purchases waiting to be sorted</div>
         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-          {staleCount === 1 ? 'One unlinked transaction — ' : `${staleCount} unlinked transactions — `}
-          {agePhrase}. Sort to jobs in Job Parts Tally (Transactions).
+          {staleCount === 1
+            ? `One purchase over ${minAgeDays} days old isn't on a job yet — tap to sort it in Job Parts Tally.`
+            : `${staleCount} purchases over ${minAgeDays} days old aren't on a job yet — tap to sort them in Job Parts Tally.`}
         </div>
       </div>
     </button>
