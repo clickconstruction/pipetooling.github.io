@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1572',
+    date: '2026-08-11',
+    title: 'The % done fallback reaches more of the Dashboard',
+    kind: 'feature',
+    highlights: [
+      'The Dashboard\'s Ready to Bill cards and the Not Billed Out, Accounts Receivable, and Collections lists now show "0% done" for jobs that never had a progress percent set, matching My Schedule.',
+      'The Jobs Pipeline board is unchanged on purpose: a blank progress box there still flags a job the office hasn\'t assessed yet.',
+    ],
+  },
+  {
     version: 'v2.1571',
     date: '2026-08-11',
     title: 'Every My Schedule card shows its % done',

@@ -23,15 +23,15 @@ describe('buildUnbilledBucket pctComplete', () => {
     expect(bucket.items[0]?.pctComplete).toBe(65)
   })
 
-  it('is null when the job has no % complete set (unset or absent field)', () => {
+  it('unset % complete reads as the effective 0 (v2.1572 display fallback)', () => {
     const bucket = buildUnbilledBucket(
       [job({ id: 'j1', pct_complete: null }), job({ id: 'j2', hcp_number: '501' })],
       [],
     )
-    expect(bucket.items.map((i) => i.pctComplete)).toEqual([null, null])
+    expect(bucket.items.map((i) => i.pctComplete)).toEqual([0, 0])
   })
 
-  it('keeps 0% distinct from unset', () => {
+  it('a recorded 0% carries through unchanged', () => {
     const bucket = buildUnbilledBucket([job({ pct_complete: 0 })], [])
     expect(bucket.items[0]?.pctComplete).toBe(0)
   })

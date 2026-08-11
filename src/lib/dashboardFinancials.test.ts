@@ -76,7 +76,7 @@ describe('buildArBucket', () => {
     expect(bucket).toMatchObject({ total: 0, count: 0, oldestDateYmd: null })
   })
 
-  it('carries the job pct_complete onto invoice-level and job-level AR items (null when unset)', () => {
+  it('carries the effective pct onto invoice-level and job-level AR items (unset reads 0)', () => {
     const bucket = buildArBucket(
       [
         job({ pct_complete: 85 }),
@@ -88,7 +88,13 @@ describe('buildArBucket', () => {
     const invItem = bucket.items.find((i) => i.key === 'inv:i1')
     const jobItem = bucket.items.find((i) => i.key === 'job:j2')
     expect(invItem?.pctComplete).toBe(85)
-    expect(jobItem?.pctComplete).toBeNull()
+    expect(jobItem?.pctComplete).toBe(0)
+  })
+
+  it('an invoice whose job row is missing keeps a null pct (no fallback without a job)', () => {
+    const bucket = buildArBucket([], [invoice({ amount: 400 })], [])
+    expect(bucket.items[0]?.label).toBe('Unknown job')
+    expect(bucket.items[0]?.pctComplete).toBeNull()
   })
 
   it('carries pct_complete onto collections items too', () => {

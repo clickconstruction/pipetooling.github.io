@@ -21,6 +21,7 @@ import {
 } from '../../lib/dashboardTeamAssignedJobRow'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
+import { effectivePctComplete } from '../../lib/jobs/effectivePctComplete'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
 
@@ -223,7 +224,9 @@ export function DashboardTeamReadyToBillSection({
                   {(() => {
                     const staticText = [
                       j.created_at ? `Open ${formatTimeSince(j.created_at)}` : null,
-                      j.pct_complete != null ? `${j.pct_complete}% done` : null,
+                      // undefined = the RPC didn't return the column (pre-20260722266000
+                      // deploys) — keep hiding; null = genuinely unset — read 0 via fallback.
+                      j.pct_complete !== undefined ? `${effectivePctComplete(j.pct_complete, j.status ?? null)}% done` : null,
                     ]
                       .filter(Boolean)
                       .join(' · ')

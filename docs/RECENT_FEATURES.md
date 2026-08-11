@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1571)
+last_updated: 2026-08-11 (v2.1572)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1572)
+
+### Effective % done: one shared fallback rule, rolled out to the read-only % surfaces (2026-08-11)
+Follow-up to v2.1571 (owner: "i want to improve it"). The null-reads-as-0/100 rule moves from the My Schedule kernel into a shared display kernel [`effectivePctComplete`](../src/lib/jobs/effectivePctComplete.ts) (`pct ?? (status === 'paid' ? 100 : 0)`; recorded pct always wins; +3 tests) whose doc comment carries the guardrails: display-only — never write it back, never seed a % editor with it (the Stages "% done" input commits on blur, so prefilling would mint fake assessments — the Stages board cell deliberately does NOT adopt it), never feed money math, and movement UI (deltas/bars/the yellow field-progress dot) stays recorded-only. Adopted by: **(1)** [`jobPctDayDelta`](../src/lib/jobPctDayDelta.ts) (refactor, same behavior); **(2)** the Dashboard **Ready to Bill** cards' meta line ([`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx)) — `undefined` (column absent from a pre-20260722266000 RPC deploy) still hides, only a true null reads 0; **(3)** the **Financials** Not Billed Out / AR / Collections rows — resolved at row-build time in [`dashboardFinancials`](../src/lib/dashboardFinancials.ts) where status is in hand (`FinancialItem.pctComplete` is now the effective value; "Unknown job" invoice rows stay null, +1 test). Left alone on purpose: the Stages board Progress & payment cell (editable input + blank-bar-means-needs-assessment office signal) and Job Summary's own invoice-first % chain. Client-only — no migration.
 
 ## Latest Updates (v2.1571)
 
