@@ -12,6 +12,10 @@ import { useLocation } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useDeletedRecordsArchive } from '../../hooks/useDeletedRecordsArchive'
+import {
+  formatDispatchNoteDaysAgoShortPhrase,
+  formatDispatchNoteWeekdayShortDateTimeChicago,
+} from '../../utils/dispatchNoteDisplay'
 import { listDeletedRecordRows, type DeletedRecordRow } from '../../lib/deletedRecordsArchive'
 import {
   EMPTY_BUNDLE_FILTERS,
@@ -154,8 +158,11 @@ export default function DeletedRecordsSection() {
                 {worstAlert ? (
                   <>
                     <strong>{worstAlert.actor_name}</strong> deleted {worstAlert.bundles}{' '}
-                    {Number(worstAlert.bundles) === 1 ? 'thing' : 'things'} ({worstAlert.row_count} rows)
-                    around {new Date(worstAlert.window_start).toLocaleString()}.
+                    <span title={`${worstAlert.row_count} database rows including attached items`}>
+                      record{Number(worstAlert.bundles) === 1 ? '' : 's'}
+                    </span>{' '}
+                    · {formatDispatchNoteWeekdayShortDateTimeChicago(worstAlert.window_start)} (
+                    {formatDispatchNoteDaysAgoShortPhrase(worstAlert.window_start)}).
                   </>
                 ) : null}{' '}
                 {alertCount > 1 ? `${alertCount} bursts in total. ` : ''}

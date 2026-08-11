@@ -16,9 +16,9 @@ import {
 const FIELDS = [
   {
     key: APP_SETTINGS_KEY_BULK_DELETE_ALERT_BUNDLES,
-    label: 'Alert at this many things deleted',
+    label: 'Alert at this many records deleted',
     fallback: BULK_DELETE_ALERT_DEFAULTS.bundles,
-    hint: 'Counts whole jobs/bids/customers, not rows — deleting one job is one thing even though it archives ~20 rows.',
+    hint: 'Counts whole jobs/bids/customers, not rows — deleting one job is one record even though it archives ~20 rows.',
   },
   {
     key: APP_SETTINGS_KEY_BULK_DELETE_ALERT_ROWS,
