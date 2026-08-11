@@ -354,7 +354,7 @@ export default function AdditionalReportModal({
                 whiteSpace: 'nowrap',
               }}
             >
-              New report · {hcpNumber} {jobName}
+              {hcpNumber} {jobName}
             </h2>
             <p
               style={{
@@ -495,7 +495,7 @@ export default function AdditionalReportModal({
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type</label>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type:</label>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {templates.map((t) => (
                 <button

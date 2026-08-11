@@ -17,6 +17,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [note, setNote] = useState('')
+  const [pastOpen, setPastOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -131,6 +132,10 @@ export function TimeOffSettings({ userId }: { userId: string }) {
     return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading time off…</p>
   }
 
+  const todayYmd = denverWorkDateToday()
+  const upcomingRows = rows.filter((r) => r.end_date >= todayYmd)
+  const pastRows = rows.filter((r) => r.end_date < todayYmd)
+
   return (
     <div style={{ marginBottom: '1rem' }}>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
@@ -156,11 +161,13 @@ export function TimeOffSettings({ userId }: { userId: string }) {
           Not coming in today
         </button>
       </div>
+      {/* v2.1556: only current/upcoming entries are removable; past time off is
+          history — read-only, in a collapsed section under the form. */}
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem 0' }}>
-        {rows.length === 0 ? (
-          <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No entries yet.</li>
+        {upcomingRows.length === 0 ? (
+          <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming time off.</li>
         ) : (
-          rows.map((r) => (
+          upcomingRows.map((r) => (
             <li
               key={r.id}
               style={{
@@ -212,6 +219,48 @@ export function TimeOffSettings({ userId }: { userId: string }) {
           {saving ? 'Saving…' : 'Add Personal Time Off'}
         </button>
       </form>
+      {pastRows.length > 0 ? (
+        <div style={{ marginTop: '0.9rem' }}>
+          <button
+            type="button"
+            onClick={() => setPastOpen((o) => !o)}
+            aria-expanded={pastOpen}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.8125rem',
+              color: 'var(--text-muted)',
+              fontWeight: 500,
+            }}
+          >
+            <span aria-hidden>{pastOpen ? '▼' : '▶'}</span>
+            Past time off ({pastRows.length})
+          </button>
+          {pastOpen ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0.4rem 0 0' }}>
+              {pastRows.map((r) => (
+                <li
+                  key={r.id}
+                  style={{
+                    padding: '0.4rem 0',
+                    borderBottom: '1px solid var(--border)',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <strong>{timeOffKindLabel(r.kind)}</strong> · {r.start_date} → {r.end_date}
+                  {r.note ? ` — ${r.note}` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
