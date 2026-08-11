@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1569',
+    date: '2026-08-11',
+    title: 'Dev imitation stops bouncing to production',
+    kind: 'fix',
+    highlights: [
+      'Dev-only: "imitate user" from a local dev server on any port now signs in right there instead of redirecting to pipetooling.com.',
+    ],
+  },
+  {
     version: 'v2.1568',
     date: '2026-08-11',
     title: 'Put jobs on your own schedule',
