@@ -95,6 +95,19 @@ export function looksLikeRawJobIdName(name: string | null | undefined): boolean 
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test((name ?? '').trim())
 }
 
+const RAW_JOB_ID_PREFIX_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\s*-\s*/i
+
+/**
+ * Strip a leading "<uuid> - " prefix from imported report text (v2.1574).
+ * HCP-imported Note reports open with the job's then-raw name as their first
+ * line ("<uuid> - [HCP] Kitchen hook up…"); the UUID is an import artifact,
+ * but the rest of the line is the human job description, so only the id and
+ * its separator go. Text not starting with a UUID passes through untouched.
+ */
+export function stripLeadingRawJobIdPrefix(text: string): string {
+  return text.replace(RAW_JOB_ID_PREFIX_RE, '')
+}
+
 export function jobSummaryPartsCostIsZero(n: number): boolean {
   const x = Number(n)
   return Number.isFinite(x) && Math.abs(x) < 1e-6

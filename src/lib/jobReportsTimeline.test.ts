@@ -49,6 +49,16 @@ describe('buildJobReportsTimelineItems', () => {
     ])
     expect(items[0]?.previewLine).toBe('Toilet pulled')
   })
+
+  it('strips the HCP-import "<uuid> - " prefix from the preview line (v2.1574)', () => {
+    const items = buildJobReportsTimelineItems([
+      REPORT('r1', 'Abraham', {
+        Notes:
+          'e4e6647f-a430-42d7-ab51-a37229a015fd - [HCP] Kitchen hook up and half bath trim out\n\nSink and faucet in place.',
+      }),
+    ])
+    expect(items[0]?.previewLine).toBe('[HCP] Kitchen hook up and half bath trim out')
+  })
 })
 
 describe('jobReportsPercentArc', () => {

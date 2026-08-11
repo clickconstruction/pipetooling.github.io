@@ -3,6 +3,7 @@ import {
   tryParsePercent0to100,
 } from './reportTemplateFieldDisplay'
 import { isReportSignatureImageDataUrl } from './reportSignatureField'
+import { stripLeadingRawJobIdPrefix } from './jobs/jobFormatting'
 
 /**
  * Pure kernel for the job Reports timeline (v2.1548 — mockup option B):
@@ -48,7 +49,9 @@ export function jobReportPreviewLine(fieldValues: Record<string, string> | null 
   if (!fieldValues) return ''
   for (const [label, value] of Object.entries(fieldValues)) {
     if (isPercentFieldKey(label)) continue
-    const s = (value ?? '').trim()
+    // Strip the "<uuid> - " prefix HCP-imported notes carry (v2.1574) so the
+    // preview line leads with the human part, not the import artifact.
+    const s = stripLeadingRawJobIdPrefix((value ?? '').trim()).trim()
     if (!s || isReportSignatureImageDataUrl(s)) continue
     return s.split('\n')[0]!.trim()
   }
