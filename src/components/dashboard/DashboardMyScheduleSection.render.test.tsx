@@ -18,6 +18,13 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The % done layer (v2.1567): the section's hook feeds whatever the kernel
+// returns straight into the cards, so tests steer this mutable result.
+let pctTodayResult: Map<string, { pct: number; delta: number | null }> = new Map()
+vi.mock('../../lib/jobPctDayDelta', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobPctDayDelta')>('../../lib/jobPctDayDelta')
+  return { ...actual, computeJobPctToday: () => pctTodayResult }
+})
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
@@ -125,6 +132,25 @@ describe('DashboardMyScheduleSection pictures link', () => {
       subScheduleJobMeta: new Map([[JOB_ID, meta({ job_pictures_link: null })]]),
     })
     expect(screen.getByLabelText('Open customer pictures')).toBeTruthy()
+  })
+
+  it('moved-today card: % stack under the button AND the movement bar (v2.1567)', async () => {
+    pctTodayResult = new Map([[JOB_ID, { pct: 62, delta: 13 }]])
+    renderSection()
+    // Stack delta line + bar right label both carry the movement.
+    expect(await screen.findAllByText('▲ 13 today')).toHaveLength(2)
+    // Bar footer's combined "62% done" label (the stack splits it across spans).
+    expect(screen.getByText('62% done')).toBeTruthy()
+    pctTodayResult = new Map()
+  })
+
+  it('unmoved card: % stack with "no change today", NO bar (v2.1567)', async () => {
+    pctTodayResult = new Map([[JOB_ID, { pct: 75, delta: 0 }]])
+    renderSection()
+    expect(await screen.findByText('no change today')).toBeTruthy()
+    expect(screen.queryByText(/▲|▼/)).toBeNull()
+    expect(screen.queryByText('75% done')).toBeNull() // bar absent; stack renders 75% + "done" in separate spans
+    pctTodayResult = new Map()
   })
 
   it('report-due card: amber Report due button + reason line, no footer banner (v2.1549)', () => {

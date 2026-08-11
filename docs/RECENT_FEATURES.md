@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1566)
+last_updated: 2026-08-11 (v2.1567)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1567)
+
+### My Schedule: % done + today's movement on every job card (2026-08-11)
+Owner picked "A on the card + C's bar only when the job moved today" from the mockups. Each My Schedule card ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)) now shows a **% stack** at the right edge of the number/address line — exactly the dead corner under the Leave Report button the owner circled — with the job's `pct_complete` big ("62% done") and today's movement under it (green "▲ 13 today", amber "▼ N today" for corrections, quiet "no change today"; the line is absent when history is unknowable). On days the job actually moved, a **thin progress bar** also spans the card foot: blue = where the job started the day, green segment = today's gain (amber = a downward correction), labeled "62% done / ▲ 13 today". New pure kernel [`jobPctDayDelta.ts`](../src/lib/jobPctDayDelta.ts) (+7 tests): the baseline is the latest "N% complete" thread note (the body every Stages % commit writes — `stagesPctNote.ts`) BEFORE today in company time (`companyYmdOf` via `APP_CALENDAR_TZ`); a job whose first-ever % note landed today baselines at 0; no notes at all → delta null (known, accepted gap: pct writes that skipped the note flow are invisible to the baseline). Self-contained `useMyScheduleJobPct` hook: two small queries over the schedule's job ids (`jobs_ledger.pct_complete` + thread notes `LIKE '%\% complete%'`); roles whose RLS hides thread notes just get the % with no delta; failures render nothing (additive layer). Render smokes +2 (moved-today: stack + bar both present; unmoved: "no change today", no bar). Client-only — no migration.
 
 ## Latest Updates (v2.1566)
 

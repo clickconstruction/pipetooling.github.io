@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1567',
+    date: '2026-08-11',
+    title: 'My Schedule shows how far along each job is',
+    kind: 'feature',
+    highlights: [
+      'Every job card on My Schedule now shows the job\'s % done in the corner under the Leave Report button, with how much it moved today underneath — green when it climbed, amber if it was corrected down.',
+      'On days a job actually moved, a slim progress bar appears across the card\'s foot with today\'s gain shown in green.',
+    ],
+  },
+  {
     version: 'v2.1566',
     date: '2026-08-11',
     title: 'Recently deleted tells you what died — and why it might matter',
