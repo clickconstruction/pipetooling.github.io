@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1554',
+    date: '2026-08-10',
+    title: 'Report form: tap the percent, cleaner header',
+    kind: 'feature',
+    highlights: [
+      'The completion percent now has five big tap targets — 0, 25, 50, 75, 100 — with the slider kept underneath for in-between values. Works in every report form.',
+      'The report window\'s header shrinks to two lines ("New report · 473 Mike Holub" plus the address, zip dropped), the answer boxes suggest what to write, and Save moved away from Cancel so a hurried thumb can\'t miss.',
+    ],
+  },
+  {
     version: 'v2.1553',
     date: '2026-08-10',
     title: 'My Schedule header cleaned up',

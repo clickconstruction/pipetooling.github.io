@@ -11,8 +11,13 @@ function clampPercentString(raw: string): string {
   return String(Math.max(0, Math.min(100, n)))
 }
 
+/** One-tap values covering almost every real answer; the slider below fine-tunes (v2.1554). */
+const PERCENT_QUICK_PICKS = [0, 25, 50, 75, 100]
+
 /**
- * 0–100% slider; value is a string 0..100 in field_values (same as other report fields).
+ * 0–100% field: five thumb-size quick-pick chips plus the slider for
+ * fine-tuning; value is a string 0..100 in field_values (same as other report
+ * fields).
  */
 export function ReportTemplatePercentField({ id, label, value, onChange }: Props) {
   const n = (() => {
@@ -48,6 +53,34 @@ export function ReportTemplatePercentField({ id, label, value, onChange }: Props
         >
           {n}%
         </output>
+      </div>
+      <div style={{ display: 'flex', gap: '0.35rem', marginBottom: 6 }}>
+        {PERCENT_QUICK_PICKS.map((p) => {
+          const active = n === p
+          return (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(String(p))}
+              aria-pressed={active}
+              aria-label={`Set ${label} to ${p} percent`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: '0.45rem 0',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                border: active ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                borderRadius: 6,
+                background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
+                cursor: 'pointer',
+              }}
+            >
+              {p}
+            </button>
+          )
+        })}
       </div>
       <div style={{ width: '100%', minWidth: 0 }}>
         <input

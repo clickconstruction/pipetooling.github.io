@@ -21,6 +21,7 @@ import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import JobReportsModal from './JobReportsModal'
+import { stripAddressZip } from '../lib/dashboardScheduleCardLines'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
@@ -32,6 +33,12 @@ const TOAST_NO_CUSTOMER_FILES =
 
 const TOAST_NO_CUSTOMER_PICTURES =
   "Customer Pictures isn't linked for this job yet. Contact Dispatch to have it added."
+
+/** Placeholder nudges for the stock template questions (v2.1554); unknown labels get none. */
+const REPORT_FIELD_PLACEHOLDERS: Record<string, string> = {
+  'What is the status of the job?': 'What got done, what\u2019s blocking\u2026',
+  'What needs to be done to get to the next stage?': 'Parts, trades, or a return visit\u2026',
+}
 
 type Props = {
   open: boolean
@@ -336,13 +343,30 @@ export default function AdditionalReportModal({
           gap: '0.75rem',
           ...stickyModalHeaderStyle(),
         }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Additional Report</h2>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', fontWeight: 500 }}>
-              {hcpNumber} {jobName}
-            </p>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {jobAddress}
+          <div style={{ minWidth: 0 }}>
+            {/* v2.1554: four header lines become two — job in the title, zip-less address under it. */}
+            <h2
+              style={{
+                margin: 0,
+                fontSize: '1.05rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              New report · {hcpNumber} {jobName}
+            </h2>
+            <p
+              style={{
+                margin: '0.15rem 0 0',
+                fontSize: '0.8125rem',
+                color: 'var(--text-muted)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {stripAddressZip(jobAddress)}
             </p>
           </div>
           <button
@@ -521,6 +545,7 @@ export default function AdditionalReportModal({
                       value={fieldValues[f.label] ?? ''}
                       onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
                       rows={3}
+                      placeholder={REPORT_FIELD_PLACEHOLDERS[f.label]}
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
@@ -531,9 +556,10 @@ export default function AdditionalReportModal({
 
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-            <button type="submit" disabled={!canSubmit || saving} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+          {/* v2.1554: Cancel demoted to quiet text on the left; Save alone on the right. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 0.75rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem' }}>Cancel</button>
+            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
           </div>
         </form>
       </div>
