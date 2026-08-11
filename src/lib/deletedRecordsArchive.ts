@@ -16,6 +16,11 @@ export type DeletedRecordBundle = {
   table_counts?: Record<string, number> | null
   /** Up to 5 trimmed rows (money tables first, head row excluded); absent pre-migration. */
   preview_items?: { table_name: string; fields: Record<string, unknown> }[] | null
+  /** Triage digest (v2.1566 migration) — all absent until it is applied. */
+  money_total?: number | null
+  head_created_at?: string | null
+  owner_user_id?: string | null
+  owner_name?: string | null
 }
 
 /** Envelope returned by restore_deleted_records (dry-run and real runs share the shape). */

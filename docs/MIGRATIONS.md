@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-10
+last_updated: 2026-08-11
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 11, 2026
+
+**`20260811060705_recently_deleted_triage_digest.sql`** _(apply via `supabase db push` after merge — DROP + CREATE of `list_deleted_records` (RETURNS TABLE gains columns, so CREATE OR REPLACE can't apply it; GRANT re-issued); until pushed, the new client simply renders without the triage fields — alert-window bundles still get full badges from their auto-fetched rows — so client-first deploy order is safe)_
+
+- Adds four triage columns to the dev-only bundle digest (v2.1566 "Recently deleted" malice-triage redesign): **`money_total`** (Σ first-present money field across the bundle's rows in money tables), **`head_created_at`** (head row's `created_at` → age-at-deletion badges), **`owner_user_id`** / **`owner_name`** (head row's `user_id`/`created_by` + `users.name` → "belonged to X" badges). Casts are guarded (`jsonb_typeof`/regex) since values come from `to_jsonb(OLD)`.
+- Widens the `preview_items` field whitelist (clock in/out + approval stamps + notes, report template/author, schedule windows, invoice sequence/status, `user_id`/`created_by`/`created_at`) so the client's type-aware summaries work without a per-bundle row fetch.
+- Unchanged: dev-only gate (`is_dev()`), bundle labels/kinds, ordering, the 5-item preview cap, and `authenticated` EXECUTE grant.
 
 #### August 10, 2026
 

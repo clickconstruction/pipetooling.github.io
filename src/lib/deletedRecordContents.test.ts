@@ -3,11 +3,15 @@ import {
   EMPTY_BUNDLE_FILTERS,
   buildBundleDigestChips,
   bundleInAlertWindows,
+  clockSessionStatus,
+  deriveBundleBadges,
   distinctValues,
   filterDeletedBundles,
+  groupBundlesByBurst,
   humanizeArchiveTable,
   sortBundlesAlertFirst,
   summarizeDeletedRow,
+  summarizeDeletedRowForTable,
   summarizePreviewItems,
 } from './deletedRecordContents'
 
@@ -115,7 +119,7 @@ describe('summarizePreviewItems', () => {
     expect(summarizePreviewItems(items)).toEqual([
       'invoices: 1042 · $4,520.00',
       'line items: PVC 2in · 4 qty',
-      'clock sessions: 2026-08-07 · 8 hr',
+      'clock sessions: 2026-08-07 · pending approval',
     ])
     expect(summarizePreviewItems(items, 4)).toHaveLength(4)
   })
@@ -153,5 +157,163 @@ describe('alert-window helpers', () => {
       'old, outside',
     ])
     expect(sortBundlesAlertFirst(bundles, []).map((b) => b.label)).toEqual(bundles.map((b) => b.label))
+  })
+})
+
+describe('summarizeDeletedRowForTable (v2.1566 type-aware summaries)', () => {
+  const users = new Map([['u-paige', 'Paige'], ['u-taunya', 'Taunya']])
+
+  it('clock session: person, company-time window, hours, status, note', () => {
+    const line = summarizeDeletedRowForTable(
+      'clock_sessions',
+      {
+        user_id: 'u-paige',
+        work_date: '2026-08-07',
+        clocked_in_at: '2026-08-07T11:32:00Z', // 6:32 AM Chicago (CDT)
+        clocked_out_at: '2026-08-07T21:15:00Z', // 4:15 PM
+        approved_at: null,
+        notes: 'Abe',
+      },
+      { userNameById: users },
+    )
+    expect(line).toBe('Paige — 6:32 AM–4:15 PM · 9.7h · pending approval · “Abe”')
+  })
+
+  it('clock session with no clock-out says so', () => {
+    const line = summarizeDeletedRowForTable(
+      'clock_sessions',
+      { user_id: 'u-paige', clocked_in_at: '2026-08-07T11:32:00Z' },
+      { userNameById: users },
+    )
+    expect(line).toBe('Paige — in at 6:32 AM (no clock-out) · pending approval')
+  })
+
+  it('report: template, author, date', () => {
+    expect(
+      summarizeDeletedRowForTable('reports', {
+        template_name: 'Daily report',
+        created_by_name: 'Abraham',
+        created_at: '2026-08-07T12:00:00Z',
+      }),
+    ).toBe('“Daily report” · Abraham · 2026-08-07')
+  })
+
+  it('invoice: sequence, amount, status', () => {
+    expect(
+      summarizeDeletedRowForTable('invoices', { sequence_order: 2, amount: 4520, stripe_invoice_status: 'paid' }),
+    ).toBe('invoice #2 · $4,520.00 · paid')
+  })
+
+  it('falls back to the generic summary for unknown tables', () => {
+    expect(summarizeDeletedRowForTable('jobs_ledger_fixtures', { fixture_name: 'Tub drain', price: 340 })).toBe(
+      'Tub drain · $340.00',
+    )
+  })
+})
+
+describe('clockSessionStatus', () => {
+  it('orders revoked > rejected > approved > pending', () => {
+    expect(clockSessionStatus({ approved_at: '2026-08-01T00:00:00Z' })).toBe('approved')
+    expect(clockSessionStatus({ rejected_at: '2026-08-01T00:00:00Z' })).toBe('rejected')
+    expect(clockSessionStatus({})).toBe('pending approval')
+  })
+})
+
+describe('deriveBundleBadges', () => {
+  const base = {
+    groupKey: 'g1',
+    deletedAt: '2026-08-07T16:39:00Z',
+    deletedById: 'u-taunya',
+    deletedByName: 'Taunya',
+    userNameById: new Map([['u-paige', 'Paige']]),
+  }
+
+  it('flags money, young age, pending approval, and foreign ownership from full rows', () => {
+    const badges = deriveBundleBadges({
+      ...base,
+      rows: [
+        {
+          table_name: 'clock_sessions',
+          record_id: 'g1',
+          row_data: { user_id: 'u-paige', created_at: '2026-08-07T16:15:00Z' },
+        },
+        { table_name: 'invoices', record_id: 'x', row_data: { amount: 4520 } },
+      ],
+    })
+    expect(badges).toEqual([
+      { label: '$4,520 in invoices', tone: 'red' },
+      { label: 'created 24m before deletion', tone: 'red' },
+      { label: 'pending approval', tone: 'amber' },
+      { label: 'belonged to Paige', tone: 'blue' },
+    ])
+  })
+
+  it('uses the digest RPC fields when rows are absent', () => {
+    const badges = deriveBundleBadges({
+      ...base,
+      tables: ['payments_made'],
+      moneyTotal: 900,
+      headCreatedAt: '2026-04-01T00:00:00Z',
+      ownerUserId: 'u-paige',
+      ownerName: 'Paige',
+    })
+    expect(badges).toEqual([
+      { label: '$900 in payments', tone: 'red' },
+      { label: 'existed 4 months', tone: 'neutral' },
+      { label: 'belonged to Paige', tone: 'blue' },
+    ])
+  })
+
+  it('reports approved sessions and job value as red, own-record deletions get no ownership badge', () => {
+    const badges = deriveBundleBadges({
+      ...base,
+      deletedById: 'u-paige',
+      rows: [
+        {
+          table_name: 'clock_sessions',
+          record_id: 'g1',
+          row_data: { user_id: 'u-paige', approved_at: '2026-08-01T00:00:00Z', created_at: '2026-06-01T00:00:00Z' },
+        },
+        { table_name: 'jobs_ledger_fixtures', record_id: 'f1', row_data: { price: 340 } },
+      ],
+    })
+    expect(badges).toEqual([
+      { label: '$340 removed from job', tone: 'red' },
+      { label: 'existed 2 months', tone: 'neutral' },
+      { label: 'approved session deleted', tone: 'red' },
+    ])
+  })
+
+  it('renders nothing when nothing is known', () => {
+    expect(deriveBundleBadges({ groupKey: 'g', deletedAt: '2026-08-07T00:00:00Z' })).toEqual([])
+  })
+})
+
+describe('groupBundlesByBurst', () => {
+  const alerts = [
+    { actor_name: 'Taunya', window_start: '2026-08-07T15:00:00Z', window_end: '2026-08-07T17:00:00Z' },
+    { actor_name: 'Wendi', window_start: '2026-08-04T13:00:00Z', window_end: '2026-08-04T15:00:00Z' },
+  ]
+
+  it('assigns bundles to their burst window and keeps the rest in order', () => {
+    const bundles = [
+      { label: 'a', deleted_at: '2026-08-07T16:00:00Z' },
+      { label: 'b', deleted_at: '2026-08-04T14:00:00Z' },
+      { label: 'c', deleted_at: '2026-08-01T09:00:00Z' },
+      { label: 'd', deleted_at: '2026-08-07T15:30:00Z' },
+    ]
+    const { bursts, rest } = groupBundlesByBurst(bundles, alerts)
+    expect(bursts.map((g) => ({ actor: g.alert.actor_name, labels: g.bundles.map((b) => b.label) }))).toEqual([
+      { actor: 'Taunya', labels: ['a', 'd'] },
+      { actor: 'Wendi', labels: ['b'] },
+    ])
+    expect(rest.map((b) => b.label)).toEqual(['c'])
+  })
+
+  it('drops empty bursts and handles no alerts', () => {
+    expect(groupBundlesByBurst([{ deleted_at: '2026-08-01T00:00:00Z' }], alerts).bursts).toEqual([])
+    const none = groupBundlesByBurst([{ deleted_at: '2026-08-01T00:00:00Z' }], [])
+    expect(none.bursts).toEqual([])
+    expect(none.rest).toHaveLength(1)
   })
 })

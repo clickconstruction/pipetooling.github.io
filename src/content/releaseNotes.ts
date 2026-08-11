@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1566',
+    date: '2026-08-11',
+    title: 'Recently deleted tells you what died — and why it might matter',
+    kind: 'feature',
+    highlights: [
+      'Each deletion now describes itself in plain words — a clock session shows whose it was, the hours, the note, and whether it was approved; invoices show the amount and status — instead of hiding everything behind raw data.',
+      'New warning chips flag what deserves a second look: money removed, records deleted minutes after being created (or months old), approved time deleted, and deletions of someone else\'s records.',
+      'Deletions from an active alert group under a burst header — who, when, how many — so you review one burst at a time.',
+    ],
+  },
+  {
     version: 'v2.1565',
     date: '2026-08-11',
     title: 'Bulk-deletion notice adds up at a glance',
