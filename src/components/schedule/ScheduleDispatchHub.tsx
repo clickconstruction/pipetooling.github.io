@@ -22,6 +22,7 @@ import {
 } from '../../lib/scheduleDispatchExpectedManpower'
 import { formatCurrency } from '../../lib/format'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
+import { formatFieldMovedFrom } from '../../lib/selfScheduleJobs'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
@@ -743,6 +744,30 @@ function HubPeopleBlockCard({
             }}
           >
             <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
+            {/* v2.1568 self-scheduling trail: the assignee moved this dispatch-made
+                block themselves — movement is allowed, silence isn't. */}
+            {block.field_moved_at ? (
+              <span
+                title={`Moved by the assignee — ${formatFieldMovedFrom(block as { field_moved_from?: { work_date?: string; time_start?: string; time_end?: string } | null }) ?? 'original window unknown'}`}
+                style={{
+                  fontSize: '0.625rem',
+                  fontWeight: 600,
+                  color: 'var(--text-amber-800)',
+                  background: 'var(--bg-orange-tint)',
+                  border: '1px solid #f59e0b',
+                  borderRadius: 999,
+                  padding: '0.05rem 0.4rem',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                moved by tech{(() => {
+                  const was = formatFieldMovedFrom(
+                    block as { field_moved_from?: { work_date?: string; time_start?: string; time_end?: string } | null },
+                  )
+                  return was ? ` · ${was.replace(/^was /, 'was ')}` : ''
+                })()}
+              </span>
+            ) : null}
           </div>
           {block.note ? (
             <div style={{ color: 'var(--text-600)', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>

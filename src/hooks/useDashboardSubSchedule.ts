@@ -55,6 +55,9 @@ export function useDashboardSubSchedule({
     () => new Map(),
   )
   const [scheduleReminderNow, setScheduleReminderNow] = useState(() => new Date())
+  /** Bumped by self-schedule writes (v2.1568) so My Schedule refetches. */
+  const [reloadNonce, setReloadNonce] = useState(0)
+  const reloadSubSchedule = useCallback(() => setReloadNonce((n) => n + 1), [])
 
   useEffect(() => {
     const id = window.setInterval(() => setScheduleReminderNow(new Date()), 60_000)
@@ -91,7 +94,7 @@ export function useDashboardSubSchedule({
     return () => {
       cancelled = true
     }
-  }, [authUserId, role, showToast])
+  }, [authUserId, role, showToast, reloadNonce])
 
   useEffect(() => {
     if (!authUserId) {
@@ -238,5 +241,6 @@ export function useDashboardSubSchedule({
     scheduleReminderNow,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
+    reloadSubSchedule,
   }
 }

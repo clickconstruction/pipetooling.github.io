@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1568',
+    date: '2026-08-11',
+    title: 'Put jobs on your own schedule',
+    kind: 'feature',
+    highlights: [
+      'My Schedule has a + Add job button: search any active job — Waiting through Billed — pick a day and time, and it\'s on your schedule (and you\'re on the job\'s crew).',
+      'The new My day editor rearranges your whole day, including visits dispatch set for you — moving one of those posts a note on the job and shows the office a "moved by tech" tag, so nothing moves silently. Visits you added yourself can also be removed.',
+      'Can\'t find the job? Request it: enter the job, customer, and line items — it\'s created in Waiting, lands on your schedule and everyone\'s Schedule page, and Dispatch gets a review request.',
+    ],
+  },
+  {
     version: 'v2.1567',
     date: '2026-08-11',
     title: 'My Schedule shows how far along each job is',

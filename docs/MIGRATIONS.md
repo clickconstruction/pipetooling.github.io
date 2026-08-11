@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 11, 2026
 
+**`20260811140701_self_schedule_and_field_job_request.sql`** _(apply via `supabase db push` **immediately after merge** — the new client's schedule queries select the two new columns, so push before the Pages deploy finishes (~5 min build window); the OLD deployed client is unaffected either way. Additive columns + `CREATE OR REPLACE`/new functions; table RLS untouched)_
+
+- **Columns**: `job_schedule_blocks.field_moved_at timestamptz` + `field_moved_from jsonb` — the v2.1568 self-scheduling trail (who-moved-what badge on the office Schedule; original window captured once on first field move).
+- **RPCs (all `SECURITY DEFINER`, granted to `authenticated`)**: `search_jobs_for_self_schedule` (identity-only search of waiting/working/ready_to_bill/billed jobs, cap 20), `self_schedule_add_block` (self-assignee block + optional self crew-join), `self_move_schedule_block` (own-assignee moves; dispatch-created moves stamp the trail, unlink the crew group, and post a thread note), `self_remove_schedule_block` (self-created only), `request_field_job` (real Waiting job owned by the earliest active master + text customer fields + name-only fixtures + requester block + thread note + `review_field_job` dispatch request).
+- Training-mode users stay blocked (v2.704 statement triggers fire inside SECURITY DEFINER functions).
+
 **`20260811060705_recently_deleted_triage_digest.sql`** _(apply via `supabase db push` after merge — DROP + CREATE of `list_deleted_records` (RETURNS TABLE gains columns, so CREATE OR REPLACE can't apply it; GRANT re-issued); until pushed, the new client simply renders without the triage fields — alert-window bundles still get full badges from their auto-fetched rows — so client-first deploy order is safe)_
 
 - Adds four triage columns to the dev-only bundle digest (v2.1566 "Recently deleted" malice-triage redesign): **`money_total`** (Σ first-present money field across the bundle's rows in money tables), **`head_created_at`** (head row's `created_at` → age-at-deletion badges), **`owner_user_id`** / **`owner_name`** (head row's `user_id`/`created_by` + `users.name` → "belonged to X" badges). Casts are guarded (`jsonb_typeof`/regex) since values come from `to_jsonb(OLD)`.

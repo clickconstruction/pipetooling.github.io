@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1567)
+last_updated: 2026-08-11 (v2.1568)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1568)
+
+### My Schedule: self-scheduling — add any active job, reflow your own day, request jobs from the field (2026-08-11)
+Owner-approved plan + mockups (both phases, including "anyone can move any block that's theirs — silence is what we prevent"). **(1) + Add job** (all roles) on the My Schedule header opens [`DashboardAddJobToMyScheduleModal`](../src/components/dashboard/DashboardAddJobToMyScheduleModal.tsx): debounced search over ANY waiting/working/ready_to_bill/billed job (`search_jobs_for_self_schedule` — identity fields only, an owner-approved read widening for field roles), then Today/Tomorrow/date + time window with a warn-not-block own-overlap check, an "Add me to the job crew" toggle (default ON — crew membership is what keeps the job visible to field roles elsewhere), and `self_schedule_add_block`. **(2) My day editor** ([`DashboardMyDayEditorModal`](../src/components/dashboard/DashboardMyDayEditorModal.tsx), ✎ beside the button): every block assigned to you is movable (±30m nudges, retime, change day; draft-level overlap outlines); **dispatch-created moves leave the trail** — `self_move_schedule_block` stamps `field_moved_at` + first `field_moved_from`, unlinks the crew group (Manage-day semantic), and posts a job thread note; the office Schedule hub row ([`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx)) shows an amber "moved by tech · was …" badge (`formatFieldMovedFrom`). Deleting stays self-created-only (`self_remove_schedule_block`); cards you added wear an "added by you" chip. **(3) Request a job** (search empty state): job name/address, customer as TEXT fields (office links/creates the real customer on review — the customers table stays clean), free-text GC, name-only line items → `request_field_job` creates a real Waiting job owned by the earliest active master, schedules the requester, posts a thread note, and files a `review_field_job` dispatch request (renders in the Dispatch inbox generically). New kernel [`selfScheduleJobs.ts`](../src/lib/selfScheduleJobs.ts) (RPC wrappers + `findOwnScheduleOverlap`/`shiftPgTime`/`formatFieldMovedFrom`, +5 tests); `useDashboardSubSchedule` gains `reloadSubSchedule`; block fetches select the two new columns (hence the push-right-after-merge note in `MIGRATIONS.md`); hand-synced `database.ts` entries pending the next gen-types. Docs: migration entry, `ACCESS_CONTROL.md` self-scheduling block, new help guide [`add-a-job-to-my-schedule`](../src/content/help/add-a-job-to-my-schedule.md). Verified live pre-push: button + modal + graceful empty search; post-push roundtrip planned (add → chip → move → remove). Migration [`20260811140701_self_schedule_and_field_job_request.sql`](../supabase/migrations/20260811140701_self_schedule_and_field_job_request.sql).
 
 ## Latest Updates (v2.1567)
 

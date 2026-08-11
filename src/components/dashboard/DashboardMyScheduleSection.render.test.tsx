@@ -45,6 +45,8 @@ function block(over: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
     assignee_user_id: 'user-1',
     created_at: '2026-08-06T12:00:00Z',
     created_by: null,
+    field_moved_at: null,
+    field_moved_from: null,
     id: 'blk-1',
     job_id: JOB_ID,
     note: null,

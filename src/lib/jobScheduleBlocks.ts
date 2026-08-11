@@ -80,7 +80,7 @@ export async function fetchScheduleJobContext(
 }
 
 const SELECT_FIELDS =
-  'id, job_id, assignee_user_id, work_date, time_start, time_end, note, shared_block_group_id, created_at, created_by, updated_at'
+  'id, job_id, assignee_user_id, work_date, time_start, time_end, note, shared_block_group_id, created_at, created_by, updated_at, field_moved_at, field_moved_from'
 
 const SELECT_FIELDS_WITH_ASSIGNEE_NAME = `${SELECT_FIELDS}, users!job_schedule_blocks_assignee_user_id_fkey(name)`
 

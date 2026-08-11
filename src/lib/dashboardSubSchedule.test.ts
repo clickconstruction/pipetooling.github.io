@@ -12,6 +12,8 @@ const block = (over: Partial<JobScheduleBlockRow> & { id: string }): JobSchedule
   assignee_user_id: 'user-1',
   created_at: '2026-07-17T12:00:00Z',
   created_by: null,
+  field_moved_at: null,
+  field_moved_from: null,
   job_id: 'job-1',
   note: null,
   shared_block_group_id: null,
