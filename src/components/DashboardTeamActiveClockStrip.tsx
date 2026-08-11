@@ -1158,7 +1158,6 @@ export function DashboardTeamActiveClockStrip({
   )
   const [clockedInTodayTableMode, setClockedInTodayTableMode] = useState<ClockedInTodayTableMode>('missing')
   /** Users who collapsed session detail; everyone else is expanded by default. */
-  const [collapsedClockedInTodayUserIds, setCollapsedClockedInTodayUserIds] = useState(() => new Set<string>())
   const [clockedInTodayExpandMode, setClockedInTodayExpandMode] = useState<ClockedInTodayExpandMode>(() =>
     readClockedInTodayExpandMode(),
   )
@@ -1879,7 +1878,9 @@ export function DashboardTeamActiveClockStrip({
                     {!clockedInTodaySectionOpen ? null : clockedInTodayBodyRows.length === 0 ? null : (
                       clockedInTodayBodyRows.map((row) => {
                   const hasDetail = row.todaySessions.length > 0
-                  const expanded = hasDetail && !collapsedClockedInTodayUserIds.has(row.userId)
+                  // v2.1552: per-person expand chevrons removed (owner request) —
+                  // session sub-rows simply show whenever they exist.
+                  const expanded = hasDetail
                   const detailId = `clocked-in-today-detail-${row.userId}`
                   const rowLabel = stripClockedInTodayDisplayLabel(row, authUserId)
                   const showApplyScheduleProportionsForRow =
@@ -1888,39 +1889,7 @@ export function DashboardTeamActiveClockStrip({
                   return (
                     <Fragment key={row.userId}>
                       <tr>
-                        <td
-                          style={{
-                            ...clockedInTodayRowTd,
-                            width: CLOCKED_IN_TODAY_EXPAND_COL,
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                          }}
-                        >
-                          {hasDetail ? (
-                            <button
-                              type="button"
-                              aria-expanded={expanded}
-                              aria-controls={detailId}
-                              aria-label={
-                                expanded
-                                  ? `Hide today’s sessions for ${rowLabel}`
-                                  : `Show today’s sessions for ${rowLabel}`
-                              }
-                              onClick={() =>
-                                setCollapsedClockedInTodayUserIds((prev) => {
-                                  const next = new Set(prev)
-                                  if (next.has(row.userId)) next.delete(row.userId)
-                                  else next.add(row.userId)
-                                  return next
-                                })
-                              }
-                              style={stripBodyExpandChevronButton}
-                            >
-                              <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
-                            </button>
-                          ) : null}
-                        </td>
-                        <td style={clockedInTodayRowTd}>
+                        <td colSpan={2} style={clockedInTodayRowTd}>
                           <span
                             style={{
                               display: 'inline-flex',
@@ -2025,7 +1994,9 @@ export function DashboardTeamActiveClockStrip({
                                 style={{
                                   overflowX: 'auto',
                                   maxWidth: '100%',
-                                  marginLeft: `calc(${CLOCKED_IN_TODAY_EXPAND_COL} + 0.45rem)`,
+                                  // v2.1552: indent shrunk with the chevron column gone —
+                                  // just enough rail to read as a sub-row.
+                                  marginLeft: '0.45rem',
                                   borderLeft: '2px solid var(--border)',
                                   paddingLeft: '0.45rem',
                                 }}

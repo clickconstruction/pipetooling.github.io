@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-10 (v2.1551)
+last_updated: 2026-08-10 (v2.1552)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1552)
+
+### Clock strip: per-person expand chevrons removed (2026-08-10)
+Owner-requested (screenshot report): in the orange **Clocked in today** table, each person row carried a ▼/▶ chevron in a dedicated 1.75rem first column, pushing names right for a toggle nobody needed — session sub-rows default open anyway. [`DashboardTeamActiveClockStrip`](../src/components/DashboardTeamActiveClockStrip.tsx): the per-row chevron `<td>`, its `collapsedClockedInTodayUserIds` state, and the toggle handler are deleted; the name cell now `colSpan={2}`s across the old chevron column so names start at the strip's left edge. Session sub-rows render whenever the person has sessions (previous default, now unconditional) and their indent shrinks to a thin 0.45rem rail (it was sized for the deleted chevron column); the **section-level** chevron in the orange header (collapse/unassigned-peek/full cycle) and the Jobs-worked-today per-job chevrons are untouched. Verified live as Helper Paige in dark mode: "You · Paige" flush left, session row still shown, header toggle intact. Client-only — no migration.
 
 ## Latest Updates (v2.1551)
 

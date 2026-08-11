@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1552',
+    date: '2026-08-10',
+    title: 'Clocked-in list: names move to the left edge',
+    kind: 'feature',
+    highlights: [
+      'In the orange Clocked in today list, the little arrow next to each person is gone — names now start at the left edge with more room.',
+      'Session rows just show whenever a person has them, and the arrow on the orange header still collapses the whole section.',
+    ],
+  },
+  {
     version: 'v2.1551',
     date: '2026-08-10',
     title: 'My Time gets one tidy card',
