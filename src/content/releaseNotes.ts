@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1577',
+    date: '2026-08-11',
+    title: 'Reliability: labor costing pairs hours to people by identity',
+    kind: 'infra',
+    highlights: [
+      'Hourly workers’ recorded hours now match to their crew assignments by identity rather than spelled name in Job Summary, Crew P&L, and Team Labor — completing the identity series for all labor cost math.',
+    ],
+  },
+  {
     version: 'v2.1576',
     date: '2026-08-11',
     title: 'Pipeline cards: job number moves up beside the job name',

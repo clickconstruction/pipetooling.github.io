@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1576)
+last_updated: 2026-08-11 (v2.1577)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1577)
+
+### teamLabor hourly-hours join resolves person-id-first (2026-08-11)
+[`utils/teamLabor.ts`](../src/utils/teamLabor.ts) — step **C1-6** (v2.1577) of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) / PERSON_IDENTITY_PLAN. The last name-keyed join in the costing loaders: hourly people's hours paired `people_hours` to crew rows by `${person_name}:${work_date}` in all three loaders (jobs / one-job / bids). New shared `buildHoursMap` (keys by `person_id` when the row carries it — ~97% post-Phase-B — and by name) + `hoursForCrewRow` (crew-row id first, name fallback) replace the three inline builds/lookups; the `people_hours` selects add `person_id` (the one-job loader keeps its `.in('person_name', …)` fetch scope). Closes the residual divergence window (partial rename-cascade failure, name variants) for hourly hours in Job Summary / Crew P&L / Team Labor, and duplicate active names no longer collide onto one hours key when ids exist. **The costing loaders are now fully id-first end-to-end** (wages v2.1012, salary flags v2.1123, hours v2.1577). Deliberately NOT flipped, same hot-path rationale as the C1-5 skip: `useDashboardMyTeamSectionState`'s display-only `people_hours` name-IN read. Client-only.
 
 ## Latest Updates (v2.1576)
 
