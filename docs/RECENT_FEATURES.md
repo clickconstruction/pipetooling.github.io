@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1607)
+last_updated: 2026-08-12 (v2.1608)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1608)
+
+### Supply house email: names the company and offers the office number (2026-08-12)
+Owner follow-up to the v2.1605 email ("help me include the company that is asking (Click Plumbing) and offer the office number"). [`composeJobAccountEmail`](../src/lib/supplyHouseJobAccount.ts) gains an `org` param and the intro now reads "Please set up a job account for **{company}** for the property below. Reply to this email **or call the office at {phone}** with any questions — {sender}." — sourced from the **physical-invoice issuer settings** (`physical_invoice_issuer_v1`, Settings → Templates &amp; testing), not hardcoded, so the identity stays dev-editable; the share modal fetches the issuer on open ([`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx), session-pinned fetch + `getPhysicalInvoiceIssuerForDocument`). Blank settings fall back to "our office" with the phone clause omitted (test-pinned; kernel tests 10→12). Prod already carries "Click Plumbing and Electrical" + "(512) 360-0599", so the change lands fully worded. Client-only — no migration, no edge change (composition is client-side).
 
 ## Latest Updates (v2.1607)
 

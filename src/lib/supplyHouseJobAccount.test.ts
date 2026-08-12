@@ -89,9 +89,30 @@ describe('composeJobAccountEmail', () => {
     )
     expect(subject).toBe('Job account setup — 964 · Pondhill demo')
     expect(text).toContain('Homeowner: O')
-    expect(text).not.toContain('company')
+    expect(text).not.toContain('company)')
     expect(text).toContain('— Taunya')
     expect(html).toContain('<strong>O</strong>')
+  })
+
+  it('names the asking company and offers the office number (v2.1608)', () => {
+    const { text } = composeJobAccountEmail(
+      { propertyName: 'P', address: 'A', sitePhone: '1', ownerMode: 'homeowner', ownerName: 'O', ownerPhone: '2', ownerEmail: '', companyName: '' },
+      'J1',
+      'Taunya',
+      { companyName: 'Click Plumbing', officePhone: '(830) 555-0100' }
+    )
+    expect(text).toContain('set up a job account for Click Plumbing for the property below')
+    expect(text).toContain('or call the office at (830) 555-0100')
+  })
+
+  it('missing org settings fall back to "our office" with no phone clause', () => {
+    const { text } = composeJobAccountEmail(
+      { propertyName: 'P', address: 'A', sitePhone: '1', ownerMode: 'homeowner', ownerName: 'O', ownerPhone: '2', ownerEmail: '', companyName: '' },
+      'J1',
+      ''
+    )
+    expect(text).toContain('set up a job account for our office for the property below')
+    expect(text).not.toContain('call the office')
   })
 
   it('building owner email carries the company row and escapes HTML', () => {

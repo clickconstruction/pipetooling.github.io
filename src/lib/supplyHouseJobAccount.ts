@@ -68,12 +68,19 @@ export function jobAccountGaps(info: JobAccountInfo): string[] {
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-/** Subject + plain text + simple table HTML for the job-account email. */
+/**
+ * Subject + plain text + simple table HTML for the job-account email.
+ * `org` (v2.1608) names who is asking and offers the office number — pulled
+ * from the physical-invoice issuer settings (Settings → Templates & testing).
+ */
 export function composeJobAccountEmail(
   info: JobAccountInfo,
   jobLabel: string,
-  senderName: string
+  senderName: string,
+  org?: { companyName?: string; officePhone?: string }
 ): { subject: string; text: string; html: string } {
+  const company = t(org?.companyName)
+  const officePhone = t(org?.officePhone)
   const rows: Array<[string, string]> = [
     ['Property', info.propertyName || '—'],
     ['Address', info.address || '—'],
@@ -86,9 +93,9 @@ export function composeJobAccountEmail(
     ...(t(info.ownerEmail) ? ([['Owner email', info.ownerEmail]] as Array<[string, string]>) : []),
   ]
   const subject = `Job account setup — ${jobLabel}`
-  const intro = `Please set up a job account for the property below. Reply to this email with any questions${
-    senderName ? ` — ${senderName}` : ''
-  }.`
+  const intro = `Please set up a job account for ${company || 'our office'} for the property below. Reply to this email${
+    officePhone ? ` or call the office at ${officePhone}` : ''
+  } with any questions${senderName ? ` — ${senderName}` : ''}.`
   const text = [subject, '', intro, '', ...rows.map(([k, v]) => `${k}: ${v}`)].join('\n')
   const html = [
     `<div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; font-size: 14px; color: #111;">`,
