@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router-dom'
 
 const QuickAssignSheet = lazy(() => import('./dispatchMode/QuickAssignSheet'))
+const ManagePersonDayModal = lazy(() => import('./dispatchMode/ManagePersonDayModal'))
 import {
   JOBS_WORKED_TODAY_UNASSIGNED_ID,
   type ClockedInTodayStripRow,
@@ -815,6 +816,9 @@ export function DashboardTeamActiveClockStrip({
   // the tick refetches the icon counts after the sheet schedules blocks.
   const [quickAssignForUserId, setQuickAssignForUserId] = useState<string | null>(null)
   const [dispatchCountsTick, setDispatchCountsTick] = useState(0)
+  // Blue calendar icon → person-day modal (v2.1600): see and edit what's
+  // scheduled without leaving the Dashboard.
+  const [personDayModalFor, setPersonDayModalFor] = useState<{ userId: string; name: string } | null>(null)
   useEffect(() => {
     if (!enableCurrentlyInDispatchIcon || !dispatchCountUserIdsKey) {
       setDispatchJobCounts(new Map())
@@ -1649,17 +1653,24 @@ export function DashboardTeamActiveClockStrip({
                           </button>
                         )
                       }
+                      // Blue count icon (v2.1600): opens the person-day modal in
+                      // place; the Dispatch board stays one link away inside it.
                       return (
-                        <Link
-                          to={`/schedule-dispatch?week=${encodeURIComponent(getDefaultWeekRange().start)}&focusPerson=${encodeURIComponent(s.user_id)}`}
-                          title={`Open Dispatch for ${personName(s)} — ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`}
-                          aria-label={`Open Dispatch for ${personName(s)}, ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`}
+                        <button
+                          type="button"
+                          onClick={() => setPersonDayModalFor({ userId: s.user_id, name: personName(s) })}
+                          title={`See ${personName(s)}'s schedule — ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} today`}
+                          aria-label={`See ${personName(s)}'s schedule, ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} today`}
                           style={{
                             position: 'relative',
                             display: 'inline-flex',
                             alignItems: 'center',
                             flexShrink: 0,
                             marginRight: '0.4rem',
+                            padding: 0,
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
                             color: 'var(--text-link)',
                           }}
                         >
@@ -1682,7 +1693,7 @@ export function DashboardTeamActiveClockStrip({
                           >
                             {jobCount > 9 ? '9+' : jobCount}
                           </span>
-                        </Link>
+                        </button>
                       )
                     })() : null}
                     {userReviewModal ? (
@@ -2981,6 +2992,24 @@ export function DashboardTeamActiveClockStrip({
         initialYmd={clockStripWorkDateResolved}
         initialSelectedUserIds={[quickAssignForUserId]}
         onScheduled={() => setDispatchCountsTick((t) => t + 1)}
+      />
+    </Suspense>
+  ) : null}
+  {personDayModalFor != null ? (
+    <Suspense fallback={null}>
+      <ManagePersonDayModal
+        open
+        personUserId={personDayModalFor.userId}
+        personName={personDayModalFor.name}
+        initialYmd={clockStripWorkDateResolved}
+        onClose={() => setPersonDayModalFor(null)}
+        onChanged={() => setDispatchCountsTick((t) => t + 1)}
+        onAssignMoreWork={() => {
+          const userId = personDayModalFor.userId
+          setPersonDayModalFor(null)
+          setQuickAssignForUserId(userId)
+        }}
+        dispatchLinkTo={`/schedule-dispatch?week=${encodeURIComponent(getDefaultWeekRange().start)}&focusPerson=${encodeURIComponent(personDayModalFor.userId)}`}
       />
     </Suspense>
   ) : null}

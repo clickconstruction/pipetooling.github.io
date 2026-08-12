@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1599)
+last_updated: 2026-08-12 (v2.1600)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1600)
+
+### Clock strip: the blue calendar icon opens the person-day modal (2026-08-12)
+Owner follow-up to v2.1599, mockup-approved ("I like it but have the bars at the top list the job number in them and then build this"). The strip's **blue count icon** now opens [`ManagePersonDayModal`](../src/components/dispatchMode/ManagePersonDayModal.tsx) **standalone** (lazy) instead of navigating to the Dispatch hub — the same person-day card the Assign work sheet uses: day header + ‹/› day nav, "2 blocks · 8h 0m · free after 4:00 PM" summary, the 6 AM–6 PM ribbon, and the block rows with working edit/delete. Additions: **(1)** the ribbon bars now carry the **job number inside them** (clip-no-wrap, `effectiveJobLedgerNumber`) — shows in the sheet context too; **(2)** additive footer props for the standalone context — `onAssignMoreWork` (dashed "+ Assign more work" → closes and opens the Assign work sheet pre-picked to the person, the v2.1599 wiring) and `dispatchLinkTo` (quiet "Open full Dispatch board →" preserving the old navigation); the sheet's "Select <name> for this assignment" CTA is untouched. Any edit/delete in the modal bumps the strip's count-refresh tick. Together with v2.1599: **gray icon → assign work; blue icon → see/edit the day.** Verified live against prod: Abraham's icon opened the centered modal with bars labeled 951/964, "+ Assign more work" handed off to the sheet with Abraham pre-selected, day modal closed itself. Crew-names-on-chip enrichment deferred (needs a per-group fetch). Client-only — no migration.
 
 ## Latest Updates (v2.1599)
 

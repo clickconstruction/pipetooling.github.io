@@ -75,6 +75,8 @@ export default function ManagePersonDayModal({
   onChanged,
   onPickForAssignment,
   pickedForAssignment,
+  onAssignMoreWork,
+  dispatchLinkTo,
 }: {
   open: boolean
   personUserId: string
@@ -85,6 +87,10 @@ export default function ManagePersonDayModal({
   /** When set, the footer offers "Select <name> for this assignment". */
   onPickForAssignment?: (userId: string) => void
   pickedForAssignment?: boolean
+  /** Standalone (clock strip) context, v2.1600: footer "+ Assign more work" opens the Assign work sheet for this person. */
+  onAssignMoreWork?: () => void
+  /** Standalone context: quiet "Open full Dispatch board →" link at the foot (preserves the old blue-icon navigation). */
+  dispatchLinkTo?: string
 }) {
   const { showToast } = useToastContext()
   const todayYmd = denverCalendarDayKey(Date.now())
@@ -316,8 +322,29 @@ export default function ManagePersonDayModal({
                     background: 'var(--bg-blue-200)',
                     border: '1px solid #2563eb',
                     boxSizing: 'border-box',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
                   }}
-                />
+                >
+                  {/* Job number in the bar (v2.1600, owner request) — clipped, never wraps. */}
+                  <span
+                    aria-hidden
+                    style={{
+                      fontSize: '0.5625rem',
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      color: 'var(--text-blue-800)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'clip',
+                      padding: '0 2px',
+                    }}
+                  >
+                    {effectiveJobLedgerNumber(b.hcpNumber, b.clickNumber) || ''}
+                  </span>
+                </span>
               ) : null
             })}
           </div>
@@ -581,6 +608,37 @@ export default function ManagePersonDayModal({
           >
             + Select {personName} for this assignment
           </button>
+        ) : null}
+        {onAssignMoreWork ? (
+          <button
+            type="button"
+            onClick={onAssignMoreWork}
+            style={{
+              border: '1px dashed #2563eb',
+              color: 'var(--text-link)',
+              background: 'none',
+              borderRadius: 6,
+              padding: '0.4rem 0.8rem',
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+              marginTop: '0.2rem',
+            }}
+          >
+            + Assign more work
+          </button>
+        ) : null}
+        {dispatchLinkTo ? (
+          <a
+            href={dispatchLinkTo}
+            style={{
+              textAlign: 'center',
+              fontSize: '0.75rem',
+              color: 'var(--text-link)',
+              marginTop: '0.1rem',
+            }}
+          >
+            Open full Dispatch board →
+          </a>
         ) : null}
       </div>
     </div>
