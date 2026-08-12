@@ -74,6 +74,8 @@ serve(async (req) => {
     const body = (await req.json()) as {
       job_id?: string
       to_emails?: unknown
+      /** v2.1606: labeled recipients — audit-logged into supply_house_job_accounts. */
+      recipients?: unknown
       subject?: string
       email_html?: string
       email_text?: string
@@ -84,9 +86,21 @@ serve(async (req) => {
     const emailHtml = typeof body.email_html === 'string' ? body.email_html.trim() : ''
     const emailText = typeof body.email_text === 'string' ? body.email_text.trim() : ''
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const toEmails = Array.isArray(body.to_emails)
-      ? body.to_emails.filter((e): e is string => typeof e === 'string' && emailRegex.test(e.trim())).map((e) => e.trim())
+    // Prefer labeled recipients (v2.1606); fall back to the v2.1605 to_emails shape.
+    const labeled = Array.isArray(body.recipients)
+      ? (body.recipients as Array<{ label?: unknown; email?: unknown }>)
+          .map((r) => ({
+            label: typeof r?.label === 'string' ? r.label.trim() : '',
+            email: typeof r?.email === 'string' ? r.email.trim() : '',
+          }))
+          .filter((r) => emailRegex.test(r.email))
       : []
+    const toEmails =
+      labeled.length > 0
+        ? labeled.map((r) => r.email)
+        : Array.isArray(body.to_emails)
+          ? body.to_emails.filter((e): e is string => typeof e === 'string' && emailRegex.test(e.trim())).map((e) => e.trim())
+          : []
 
     if (!jobId) {
       return jsonResponse({ error: 'job_id required' }, 400)
@@ -139,6 +153,24 @@ serve(async (req) => {
       from: 'PipeTooling <team@noreply.pipetooling.com>',
       subject,
     })
+
+    // Share ledger (v2.1606): one row per recipient, service role (the table
+    // has no client write policies). Failure must not report the send as
+    // failed — the email is already gone.
+    try {
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      const serviceClient = createClient(supabaseUrl, serviceKey)
+      const rows = (labeled.length > 0 ? labeled : toEmails.map((email) => ({ label: '', email }))).map((r) => ({
+        job_id: jobId,
+        contact_label: r.label,
+        contact_email: r.email,
+        sent_by: me.id,
+        sent_by_name: typeof me.name === 'string' ? me.name : '',
+      }))
+      await serviceClient.from('supply_house_job_accounts').insert(rows)
+    } catch (auditErr) {
+      console.error('supply_house_job_accounts audit insert failed', auditErr)
+    }
 
     return jsonResponse({ success: true, resend_email_id: sent.id ?? null })
   } catch (e) {

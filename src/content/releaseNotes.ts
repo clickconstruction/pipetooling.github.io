@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1606',
+    date: '2026-08-12',
+    title: 'Supply Houses shows jobs with accounts',
+    kind: 'feature',
+    highlights: [
+      'Materials \u2192 Supply Houses gains a collapsible "Job accounts" section listing every job shared with a supply house \u2014 who received it, when, and by whom, with search.',
+      'The share modal now flags jobs that were already shared \u2014 click the pill to see exactly when and to who.',
+    ],
+  },
+  {
     version: 'v2.1605',
     date: '2026-08-12',
     title: 'Share a job with a supply house',

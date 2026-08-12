@@ -217,7 +217,7 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 **Required Role**: `dev`, `master_technician`, `assistant`, or `controller` — JWT verified in-handler (`config.toml` sets `verify_jwt = false`); the `job_id` must be readable through the caller's RLS (blocks cross-tenant sends).
 
-**Payload**: `{ job_id, to_emails: string[] (1–10), subject, email_html (≤100k chars), email_text }` — subject/html/text are composed client-side by `src/lib/supplyHouseJobAccount.ts` and sent verbatim.
+**Payload**: `{ job_id, recipients: [{label, email}] (1–10; v2.1606 — audit-logged) | to_emails: string[] (v2.1605 fallback), subject, email_html (≤100k chars), email_text }` — subject/html/text are composed client-side by `src/lib/supplyHouseJobAccount.ts` and sent verbatim. After a successful send, inserts one `supply_house_job_accounts` row per recipient with the service role (best-effort).
 
 **Behavior**: sends via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the caller's email as reply-to, then best-effort logs to `email_send_log`. No audit table.
 

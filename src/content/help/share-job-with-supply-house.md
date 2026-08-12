@@ -26,3 +26,7 @@ The modal prefills everything it can from the job and its customer:
 Pick who gets it from your **supply house contacts** — tap the chips to select one or more. {{button:outline|+ Add contact}} takes a label and an email ("Ferguson — Central desk") and remembers it for next time; the list is shared with the whole office.
 
 {{button:blue|Send email}} delivers "Job account setup — 964 · Pondhill demo" from PipeTooling with the packet as a clean table. **Replies go to your email**, so the supply house can ask follow-ups directly.
+
+## Keeping track
+
+Every send is remembered. If a job was shared before, the modal shows a blue **Already shared with … · date** pill — click it to see every previous send with the exact time, contact, and who sent it. And **Materials → Supply Houses** has a collapsible **Job accounts** section listing every job with an account: the contacts it went to, the last send, and a search box. Click a job there to open its Job Detail.
