@@ -12,7 +12,9 @@ import {
   dispatchMinutesToHHmm,
 } from '../../lib/dispatchAddBlockTime'
 import { RIBBON_GUIDE_TICK_MINUTES, ribbonSpanPct, ribbonTickLeftPct } from '../../lib/quickAssignFreeWindows'
-import { computeManageDaySummary } from '../../lib/dispatchManagePersonDay'
+import { computeManageDaySummary, crewNamesByGroup } from '../../lib/dispatchManagePersonDay'
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
 import { deleteJobScheduleBlock, updateJobScheduleBlock } from '../../lib/jobScheduleBlocks'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -103,6 +105,8 @@ export default function ManagePersonDayModal({
   const [removeId, setRemoveId] = useState<string | null>(null)
   const [removeBusy, setRemoveBusy] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  /** groupId → crew member names, for the linked-crew chips (v2.1601). Best-effort. */
+  const [crewNames, setCrewNames] = useState<ReadonlyMap<string, string[]>>(() => new Map())
 
   useEffect(() => {
     if (!open) return
@@ -121,6 +125,29 @@ export default function ManagePersonDayModal({
       if (cancelled) return
       setBlocks(data)
       setLoading(false)
+      // Crew names for the linked-crew chips: one query covering every group
+      // on the day. Best-effort — a failure just leaves the chips nameless.
+      const groupIds = Array.from(new Set(data.map((b) => b.sharedBlockGroupId).filter((g): g is string => g != null)))
+      if (groupIds.length === 0) {
+        setCrewNames(new Map())
+        return
+      }
+      void (async () => {
+        try {
+          const legs = await withSupabaseRetry<Array<{ shared_block_group_id: string | null; users: { name: string | null } | null }>>(
+            async () =>
+              supabase
+                .from('job_schedule_blocks')
+                .select('shared_block_group_id, users!job_schedule_blocks_assignee_user_id_fkey(name)')
+                .in('shared_block_group_id', groupIds),
+            'load linked-crew names',
+          )
+          if (cancelled) return
+          setCrewNames(crewNamesByGroup((legs ?? []).map((l) => ({ shared_block_group_id: l.shared_block_group_id, name: l.users?.name ?? null }))))
+        } catch {
+          if (!cancelled) setCrewNames(new Map())
+        }
+      })()
     })
     return () => {
       cancelled = true
@@ -409,6 +436,10 @@ export default function ManagePersonDayModal({
                         }}
                       >
                         ⛓ linked crew
+                        {(() => {
+                          const names = crewNames.get(b.sharedBlockGroupId)
+                          return names && names.length > 0 ? ` — ${names.join(', ')}` : ''
+                        })()}
                       </span>
                     ) : null}
                   </span>
