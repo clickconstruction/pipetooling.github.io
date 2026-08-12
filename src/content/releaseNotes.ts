@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1602',
+    date: '2026-08-12',
+    title: 'Trade pills stay on one line',
+    kind: 'fix',
+    highlights: [
+      'The orange "964 PLUM"-style pills on the Pipeline board no longer break onto two lines in narrow columns.',
+    ],
+  },
+  {
     version: 'v2.1601',
     date: '2026-08-12',
     title: 'Linked crew chips name the crew',

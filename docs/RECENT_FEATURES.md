@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1601)
+last_updated: 2026-08-12 (v2.1602)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1602)
+
+### Pipeline: the "964 PLUM" trade pill never wraps (2026-08-12)
+Owner bug report with screenshot ("950 PLUM should never wrap to two lines") — with the v2.1594 activity box absorbing the row's middle, squeezed Crew &amp; Dates columns broke the merged number+trade chip between the number and the tag. One-line fix in [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx): `stagesJobSublinePillBoxBase` gains `whiteSpace: 'nowrap'`, covering the merged "964 PLUM" chip, the no-tag "Job: N" badge, and the fullscreen-header service pill (same fix family as v2.1586's j:/b: lines and v2.1590's invoice badge) — the auto-layout column widens instead. Verified live against the real board: 96 pills at 1600px AND at a squeezed 1460px, zero wrapped, all a uniform 20px tall. Client-only — no migration.
 
 ## Latest Updates (v2.1601)
 

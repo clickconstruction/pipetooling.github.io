@@ -171,6 +171,10 @@ const stagesJobSublinePillBoxBase: CSSProperties = {
   lineHeight: 1.2,
   borderRadius: 4,
   fontFamily: 'inherit',
+  // "964 PLUM" must never break between the number and the tag (v2.1602 —
+  // same fix family as the j:/b: lines in v2.1586 and the invoice badge in
+  // v2.1590); the auto-layout column widens instead.
+  whiteSpace: 'nowrap',
 }
 const stagesJobHcpBadgeStyle: CSSProperties = {
   ...stagesJobSublinePillBoxBase,
