@@ -295,6 +295,9 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
     fontSize: '0.75rem',
     color: 'var(--text-muted)',
     marginTop: '0.15rem',
+    // "j: T+106 (mon)" / "b: T+120 (mon)" / "22h 46m" must never wrap — a
+    // dangling "(mon)" line reads as a fourth row of the stack (owner report).
+    whiteSpace: 'nowrap',
   } as const
   const jbLineButtonStyle: CSSProperties = {
     ...lineStyle,

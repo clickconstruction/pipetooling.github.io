@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1586',
+    date: '2026-08-11',
+    title: 'Pipeline dates stop wrapping mid-line',
+    kind: 'fix',
+    highlights: [
+      'On the Jobs Pipeline board, the little "j: T+106 (mon)", "b: T+120 (mon)", and hours lines now always stay on one line instead of dropping "(mon)" onto its own row.',
+    ],
+  },
+  {
     version: 'v2.1585',
     date: '2026-08-11',
     title: 'Job activity now shows every % complete change',

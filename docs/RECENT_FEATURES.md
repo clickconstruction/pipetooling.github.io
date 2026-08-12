@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1585)
+last_updated: 2026-08-11 (v2.1586)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1586)
+
+### Pipeline tables: the j:/b:/hours stack never wraps (2026-08-11)
+Owner report with screenshot: on the desktop Pipeline board, long Crew & Dates values like "j: T+106 (mon)" wrapped their "(mon)" onto its own line, reading as a fourth row of the stack. One-line fix in [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx): `renderStagesFieldAndBillingLines`'s shared `lineStyle` gains `whiteSpace: 'nowrap'`, covering all three lines (j:, b:, and the man-hours "22h 46m") in both desktop tables — the auto-layout table column widens slightly instead of wrapping. Verified live at a squeezed 900px viewport against real long values ("b: T+148 (mon)", "j: T+110 (thu)"): 222 lines on the board, zero wrapped. (The mobile cards' chip variants already carried nowrap.) Client-only — no migration.
 
 ## Latest Updates (v2.1585)
 
