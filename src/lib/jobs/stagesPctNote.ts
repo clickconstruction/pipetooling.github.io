@@ -15,6 +15,17 @@ export function composePctCompleteNoteBody(value: number, note: string): string 
   return trimmed ? `${value}% complete — ${trimmed}` : `${value}% complete`
 }
 
+/**
+ * Auto-note body for the quick % inputs (Pipeline inline "% done", Edit Job)
+ * that historically wrote pct_complete SILENTLY — every change now leaves a
+ * thread-note trail even without user note text. Clearing composes a body the
+ * baseline parser deliberately ignores (it doesn't start with "N% complete").
+ */
+export function composePctAutoNoteBody(value: number | null, previous: number | null): string {
+  if (value != null) return composePctCompleteNoteBody(value, '')
+  return previous != null ? `Cleared % complete — was ${previous}%` : 'Cleared % complete'
+}
+
 export type PctCommitValidation = { ok: true } | { ok: false; error: string }
 
 /** Gate a commit: block a sub-100% set that has no note. */

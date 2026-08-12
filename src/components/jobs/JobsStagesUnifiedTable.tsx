@@ -596,7 +596,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               })}
                               pctComplete={j.pct_complete ?? null}
                               pctSaving={pctCompleteSavingId === j.id}
-                              onPctCommit={(n) => updateJobPctComplete(j.id, n)}
+                              onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                               footnote={showRemaining ? (() => {
                                 const u = jobBillingUnallocatedDollars(j)
@@ -645,7 +645,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               })}
                               pctComplete={j.pct_complete ?? null}
                               pctSaving={pctCompleteSavingId === j.id}
-                              onPctCommit={(n) => updateJobPctComplete(j.id, n)}
+                              onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                               footnote={
                                 row.kind === 'job_with_merged_billed'
@@ -1180,7 +1180,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           })}
                           pctComplete={job.pct_complete ?? null}
                           pctSaving={pctCompleteSavingId === job.id}
-                          onPctCommit={(n) => updateJobPctComplete(job.id, n)}
+                          onPctCommit={(n) => updateJobPctComplete(job.id, n, job.pct_complete ?? null)}
                           onNoBidValueClick={() => openEdit(job, { fixturesSectionHighlight: true })}
                           footnote={(() => {
                             const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0

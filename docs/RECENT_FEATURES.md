@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1584)
+last_updated: 2026-08-11 (v2.1585)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1585)
+
+### Every % complete change now posts a Job activity note (2026-08-11)
+Owner question ("am I seeing every time a user changes the % complete? If not I would like to, even if someone in the office changes it from the Jobs Pipeline page"). Answer was no: of the four pct writers, the thread panels' Set-%-complete flow and the Job Detail % editor post the "N% complete — note" thread note, but the **Pipeline inline "% done" input** (`updateJobPctComplete` in [`useJobsStagesMutations`](../src/hooks/useJobsStagesMutations.ts) — tables + mobile cards) and the **Edit Job "% done" field** ([`JobFormModal`](../src/components/jobs/JobFormModal.tsx) `commitPctComplete`) wrote silently — the exact v2.1567 "pct writes that skipped the note flow" baseline gap. Now both post an auto note, attributed to whoever made the change: new kernel [`composePctAutoNoteBody`](../src/lib/jobs/stagesPctNote.ts) — sets compose the standard parseable "62% complete"; clears compose "Cleared % complete — was 62%", which `parsePctCompleteNoteBody` deliberately ignores (test-pinned) so a clear can never read as a 0% set in the My Schedule day-delta baseline. Guards: `updateJobPctComplete` gains a `previous` param (all 6 commit sites pass the row's pct) and **no-ops on unchanged blurs** — the % input commits on EVERY blur, so without the guard idle blurs would spam notes; same guard in Edit Job. Notes are best-effort (a notes hiccup never blocks the pct save); Edit Job posts via new [`postJobThreadNoteBody`](../src/lib/jobs/postJobThreadNote.ts) (plain insert, no hook). Side effect: the v2.1567 % movement baselines become complete going forward. Kernel tests +4. Verified live against prod on the "ZZ Split Bill Test" job: set 25 → "25% complete" note authored Robert; clear → "Cleared % complete — was 25%" + pct back to null; repeated unchanged blur → no note. Help guide `ready-to-bill-pipeline.md` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1584)
 

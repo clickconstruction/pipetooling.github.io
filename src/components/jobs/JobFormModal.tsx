@@ -40,6 +40,8 @@ import {
   type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
 import { diffPaymentRows } from '../../lib/jobs/paymentRowsDiff'
+import { composePctAutoNoteBody } from '../../lib/jobs/stagesPctNote'
+import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
 import {
   buildJobFormUndoSnapshot,
   invoiceSetKey,
@@ -932,9 +934,16 @@ export default function JobFormModal({
   // Same immediate-save contract as the Stages Progress & payment cell: writes
   // jobs_ledger.pct_complete on blur/Enter, outside the form's Save flow (the
   // form payload never touches pct_complete, so Save can't clobber it).
+  // Every real change also posts an auto thread note (best-effort) so Job
+  // activity shows office edits made from Edit Job; unchanged blurs no-op.
   async function commitPctComplete(pct: number | null) {
     if (!editing?.id) return
+    const previous = editing.pct_complete ?? null
+    if (pct === previous) return
     setPctSaving(true)
+    if (authUser?.id) {
+      await postJobThreadNoteBody(editing.id, authUser.id, composePctAutoNoteBody(pct, previous))
+    }
     const { error: pctErr } = await supabase.from('jobs_ledger').update({ pct_complete: pct }).eq('id', editing.id)
     setPctSaving(false)
     if (pctErr) {
