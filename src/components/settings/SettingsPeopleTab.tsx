@@ -5,6 +5,7 @@
 import { type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
+import AssistantHoursWindowSettingsBlock from './AssistantHoursWindowSettingsBlock'
 import ActiveAccountsPanel from './ActiveAccountsPanel'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -440,6 +441,8 @@ export default function SettingsPeopleTab({
         </div>
       )}
           </div>
+
+          <AssistantHoursWindowSettingsBlock />
 
           <TeamFeedbackDevSettingsBlock />
 

@@ -26,6 +26,12 @@ import { PeopleHoursTeams, type PeopleHoursTeam } from '../components/people/Peo
 import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSummaries'
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
+import { assistantHoursWindowFloorYmd, clampHoursRangeToFloor } from '../lib/people/assistantHoursWindow'
+import {
+  APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS,
+  DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS,
+  parseAssistantHoursWindowWeeks,
+} from '../lib/appSettingsKeys'
 import { PeopleHoursGrid } from '../components/people/PeopleHoursGrid'
 import { PeopleHoursGridJobHighlight, type HoursGridJobHighlightPick } from '../components/people/PeopleHoursGridJobHighlight'
 import { PeopleHoursAlignModal } from '../components/people/PeopleHoursAlignModal'
@@ -294,7 +300,7 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessHours, canAccessLicenses, canAccessContracts, isDev, canSeePushStatus } = usePeopleAccess(authUser?.id)
+  const { canAccessPay, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus } = usePeopleAccess(authUser?.id)
   const canOpenHoursTab = canAccessPay || canAccessHours
   const usersTabTags = useUsersTabTags({
     isDev,
@@ -478,6 +484,48 @@ export default function People() {
     start.setDate(d.getDate() - day + 6)
     return start.toLocaleDateString('en-CA')
   })
+  // Assistant hours visibility window (org setting; missing = 3 weeks, 0 = unlimited).
+  const [assistantHoursWindowWeeks, setAssistantHoursWindowWeeks] = useState(
+    DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS
+  )
+  useEffect(() => {
+    if (!isAssistant) return
+    let cancelled = false
+    void supabase
+      .from('app_settings')
+      .select('value_num')
+      .eq('key', APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setAssistantHoursWindowWeeks(parseAssistantHoursWindowWeeks(data?.value_num))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAssistant])
+  /** Earliest Hours-tab date visible to this viewer, or null for no limit (non-assistants, or the unlimited setting). */
+  const hoursFloorYmd = useMemo(
+    () =>
+      isAssistant
+        ? assistantHoursWindowFloorYmd(new Date().toLocaleDateString('en-CA'), assistantHoursWindowWeeks)
+        : null,
+    [isAssistant, assistantHoursWindowWeeks]
+  )
+  // Snap-back invariant: no code path may leave the range below the floor.
+  useEffect(() => {
+    if (!hoursFloorYmd) return
+    const clamped = clampHoursRangeToFloor(hoursDateStart, hoursDateEnd, hoursFloorYmd)
+    if (clamped.start !== hoursDateStart) setHoursDateStart(clamped.start)
+    if (clamped.end !== hoursDateEnd) setHoursDateEnd(clamped.end)
+  }, [hoursFloorYmd, hoursDateStart, hoursDateEnd])
+  const setHoursDateStartClamped = useCallback(
+    (value: string) => setHoursDateStart(hoursFloorYmd && value < hoursFloorYmd ? hoursFloorYmd : value),
+    [hoursFloorYmd]
+  )
+  const setHoursDateEndClamped = useCallback(
+    (value: string) => setHoursDateEnd(hoursFloorYmd && value < hoursFloorYmd ? hoursFloorYmd : value),
+    [hoursFloorYmd]
+  )
   /** Stable fan-out behaviors for the hours/clock Realtime subscription; assigned below once the refresh refs exist. */
   const realtimeCallbacksRef = useRef<PeopleHoursRealtimeCallbacks>({
     onPeopleHoursChange: () => {},
@@ -2617,9 +2665,9 @@ export default function People() {
     return getCostForPersonDate(personName, workDate)
   }
 
-  /** Widens Hours tab range if needed so a payroll-modal date can appear as a column (en-CA strings sort chronologically). */
+  /** Widens Hours tab range if needed so a payroll-modal date can appear as a column (en-CA strings sort chronologically). Never widens below the assistant floor. */
   function ensureHoursRangeIncludesDate(workDate: string) {
-    if (workDate < hoursDateStart) setHoursDateStart(workDate)
+    if (workDate < hoursDateStart) setHoursDateStartClamped(workDate)
     if (workDate > hoursDateEnd) setHoursDateEnd(workDate)
   }
 
@@ -2707,8 +2755,13 @@ export default function People() {
     const dEnd = new Date(hoursDateEnd + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setHoursDateStart(dStart.toLocaleDateString('en-CA'))
-    setHoursDateEnd(dEnd.toLocaleDateString('en-CA'))
+    const clamped = clampHoursRangeToFloor(
+      dStart.toLocaleDateString('en-CA'),
+      dEnd.toLocaleDateString('en-CA'),
+      hoursFloorYmd
+    )
+    setHoursDateStart(clamped.start)
+    setHoursDateEnd(clamped.end)
   }
 
   /** Prior full Sun–Sat week from local today (en-CA), for Draft Payroll default period. */
@@ -3710,9 +3763,10 @@ export default function People() {
             narrowViewport={narrowViewport}
             hoursDateStart={hoursDateStart}
             hoursDateEnd={hoursDateEnd}
-            setHoursDateStart={setHoursDateStart}
-            setHoursDateEnd={setHoursDateEnd}
+            setHoursDateStart={setHoursDateStartClamped}
+            setHoursDateEnd={setHoursDateEndClamped}
             shiftHoursWeek={shiftHoursWeek}
+            minDateYmd={hoursFloorYmd}
           />
           {canAccessHours && (
           <>
