@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1597',
+    date: '2026-08-12',
+    title: 'Not Billed Out drill-down gets line items and context',
+    kind: 'feature',
+    highlights: [
+      'Rows in the Dashboard Not Billed Out drill-down now show the address inline plus an expandable line-items chip, matching Accounts Receivable.',
+      'Each amount now reads "of $X job total · N% done", so partially billed jobs and untouched jobs are instantly distinguishable.',
+      'Jobs that are 100% done with nothing billed yet wear an amber "done — nothing billed" flag.',
+    ],
+  },
+  {
     version: 'v2.1596',
     date: '2026-08-12',
     title: 'AP drill-down: payroll grouped per person',

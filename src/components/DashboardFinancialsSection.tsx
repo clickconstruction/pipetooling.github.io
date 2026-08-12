@@ -480,7 +480,7 @@ function ItemsModal({
   const [arLinesByJob, setArLinesByJob] = useState<Map<string, ArLineItem[]> | null>(null)
   const [expandedLineKeys, setExpandedLineKeys] = useState<Set<string>>(() => new Set())
   useEffect(() => {
-    if (cardKey !== 'ar') return
+    if (cardKey !== 'ar' && cardKey !== 'unbilled') return
     const jobIds = Array.from(
       new Set(
         [...bucket.items, ...(arCollectionsSection?.items ?? [])]
@@ -503,9 +503,9 @@ function ItemsModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per open; items don't change while open
   }, [cardKey])
-  /** AR rows: inline zip-stripped address + the expandable line-items block (shared by the phone sheet and desktop table). */
+  /** AR + Not-billed rows: inline zip-stripped address + the expandable line-items block (shared by the phone sheet and desktop table). */
   const arRowExtras = (item: FinancialItem): { address: string | null; lines: ArLineItem[]; expanded: boolean } | null => {
-    if (cardKey !== 'ar') return null
+    if (cardKey !== 'ar' && cardKey !== 'unbilled') return null
     return {
       address: item.address ? stripTrailingZip(item.address) : null,
       lines: (item.jobId ? arLinesByJob?.get(item.jobId) : null) ?? [],
@@ -533,6 +533,40 @@ function ItemsModal({
     jobId: null,
     address: null,
   })
+  // Not-billed rows (v2.1597): "of $X job total · N% done" context under the
+  // amount, and the amber flag on 100%-done jobs with nothing billed yet.
+  const amountContextLine = (item: FinancialItem) => {
+    if (cardKey === 'unbilled' && item.jobTotal) {
+      return (
+        <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>
+          of ${Math.round(item.jobTotal).toLocaleString('en-US')} job total
+          {item.pctComplete != null ? ` · ${item.pctComplete}% done` : ''}
+        </div>
+      )
+    }
+    if (showPctComplete && item.pctComplete != null) {
+      return <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.1rem' }}>{item.pctComplete}% done</div>
+    }
+    return null
+  }
+  const doneNothingBilledPill = (item: FinancialItem) =>
+    cardKey === 'unbilled' && item.fullyUnbilledDone ? (
+      <span
+        title="100% done and none of the job total is on a billed invoice yet"
+        style={{
+          marginLeft: '0.4rem',
+          padding: '0.05rem 0.5rem',
+          borderRadius: 999,
+          background: 'var(--bg-orange-100)',
+          color: 'var(--text-orange-800)',
+          fontSize: '0.71875rem',
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        done — nothing billed
+      </span>
+    ) : null
   const payrollLinkStyle: CSSProperties = {
     background: 'none',
     border: 'none',
@@ -892,6 +926,7 @@ function ItemsModal({
                                   <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.address}</span>
                                 ) : null
                               })()}
+                              {doneNothingBilledPill(item)}
                             </div>
                             {(() => {
                               const ex = arRowExtras(item)
@@ -900,9 +935,7 @@ function ItemsModal({
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
                             <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>${formatCurrency(item.amount)}</div>
-                            {showPctComplete && item.pctComplete != null ? (
-                              <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.1rem' }}>{item.pctComplete}% done</div>
-                            ) : null}
+                            {amountContextLine(item)}
                           </div>
                           {onSendToDispatch && item.jobId ? (
                             <button
@@ -1291,7 +1324,8 @@ function ItemsModal({
                                 </>
                               )
                             })()}
-                            {item.address && cardKey !== 'ar' ? (
+                            {doneNothingBilledPill(item)}
+                            {item.address && cardKey === 'ap' ? (
                               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{stripTrailingZip(item.address)}</div>
                             ) : null}
                             {(() => {
@@ -1310,9 +1344,7 @@ function ItemsModal({
                           </td>
                           <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                             ${formatCurrency(item.amount)}
-                            {showPctComplete && item.pctComplete != null ? (
-                              <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.1rem' }}>{item.pctComplete}% done</div>
-                            ) : null}
+                            {amountContextLine(item)}
                           </td>
                           {onSendToDispatch ? (
                             <td style={{ padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' }}>
