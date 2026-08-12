@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1588',
+    date: '2026-08-11',
+    title: 'Pipeline titles declutter next to the activity box',
+    kind: 'fix',
+    highlights: [
+      'The little ▼-with-count at the end of each job title now hides when the row shows the new activity box (which already carries that information), and comes back on smaller windows where the box is absent.',
+    ],
+  },
+  {
     version: 'v2.1587',
     date: '2026-08-11',
     title: 'Pipeline: a Job activity box fills the empty middle on big screens',

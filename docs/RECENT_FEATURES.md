@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1587)
+last_updated: 2026-08-11 (v2.1588)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1588)
+
+### Pipeline: the title chevron yields to the activity box on wide screens (2026-08-11)
+Owner follow-up to v2.1587 ("at the end of every title is a ▼ 3 — hidden when the middle box is present, showing when it is not"). Both desktop tables now render `renderStagesThreadExpandButton` beside the job name only when `!wideViewport` — the same gate the activity box uses, so the chevron+count and the box are exactly complementary: box-less rows (below 1440px, and standalone invoice rows at any width) keep the chevron; rows wearing the box drop it (the box carries the count's information and row click still expands the thread). Verified live: 1600px → 94 boxes, 17 chevrons, zero overlap (all 17 on box-less invoice rows); 1200px → 0 boxes, 111 chevrons. Client-only — no migration.
 
 ## Latest Updates (v2.1587)
 

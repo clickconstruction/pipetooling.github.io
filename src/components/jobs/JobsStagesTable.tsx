@@ -443,7 +443,10 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
                     {renderStagesOpenDetailJobName(j)}
-                    {renderStagesThreadExpandButton(stagesRowSharedCtx, j.id)}
+                    {/* The activity box already carries the trail on wide screens —
+                        the chevron+count beside the name is redundant there (v2.1588);
+                        row click still expands the thread either way. */}
+                    {!wideViewport ? renderStagesThreadExpandButton(stagesRowSharedCtx, j.id) : null}
                   </div>
                   {renderJobAddressWithMap(j.job_address)}
                   {renderJobCustomerLine(j)}
