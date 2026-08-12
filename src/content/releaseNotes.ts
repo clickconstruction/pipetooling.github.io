@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1599',
+    date: '2026-08-12',
+    title: 'Empty calendar icon assigns work directly',
+    kind: 'feature',
+    highlights: [
+      'On the Dashboard clock strip, tapping the gray "nothing scheduled" calendar next to a person now opens the Assign work sheet with that person already selected — pick a job and a time without leaving the page.',
+      'Once work is scheduled, the icon flips to the blue count immediately. The blue icon still opens Dispatch as before.',
+    ],
+  },
+  {
     version: 'v2.1598',
     date: '2026-08-12',
     title: 'Day editor: cleaner header, nothing cut off',

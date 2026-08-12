@@ -6,10 +6,14 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  lazy,
+  Suspense,
   type CSSProperties,
   type ReactNode,
 } from 'react'
 import { Link } from 'react-router-dom'
+
+const QuickAssignSheet = lazy(() => import('./dispatchMode/QuickAssignSheet'))
 import {
   JOBS_WORKED_TODAY_UNASSIGNED_ID,
   type ClockedInTodayStripRow,
@@ -807,6 +811,10 @@ export function DashboardTeamActiveClockStrip({
     if (!enableCurrentlyInDispatchIcon) return ''
     return Array.from(new Set(sessions.map((s) => s.user_id))).sort().join(',')
   }, [enableCurrentlyInDispatchIcon, sessions])
+  // Empty calendar icon → Assign work sheet pre-picked to that person (v2.1599);
+  // the tick refetches the icon counts after the sheet schedules blocks.
+  const [quickAssignForUserId, setQuickAssignForUserId] = useState<string | null>(null)
+  const [dispatchCountsTick, setDispatchCountsTick] = useState(0)
   useEffect(() => {
     if (!enableCurrentlyInDispatchIcon || !dispatchCountUserIdsKey) {
       setDispatchJobCounts(new Map())
@@ -833,7 +841,7 @@ export function DashboardTeamActiveClockStrip({
     return () => {
       cancelled = true
     }
-  }, [enableCurrentlyInDispatchIcon, dispatchCountUserIdsKey, clockStripWorkDateResolved])
+  }, [enableCurrentlyInDispatchIcon, dispatchCountUserIdsKey, clockStripWorkDateResolved, dispatchCountsTick])
   const userReviewModal = useUserReviewModal()
   const openUserReview = useCallback(
     (userId: string, displayName: string) => {
@@ -1610,51 +1618,70 @@ export function DashboardTeamActiveClockStrip({
                     {enableCurrentlyInDispatchIcon ? (() => {
                       const jobCount = dispatchJobCounts.get(s.user_id) ?? 0
                       const hasJobs = jobCount > 0
+                      const calendarSvg = (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                          <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+                        </svg>
+                      )
+                      // Empty calendar (v2.1599): opens the Assign work sheet
+                      // pre-picked to this person instead of leaving the page.
+                      if (!hasJobs) {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setQuickAssignForUserId(s.user_id)}
+                            title={`Nothing scheduled today for ${personName(s)} — assign work`}
+                            aria-label={`Assign work for ${personName(s)} — nothing scheduled today`}
+                            style={{
+                              position: 'relative',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              flexShrink: 0,
+                              marginRight: '0.4rem',
+                              padding: 0,
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: 'var(--text-faint)',
+                            }}
+                          >
+                            {calendarSvg}
+                          </button>
+                        )
+                      }
                       return (
                         <Link
                           to={`/schedule-dispatch?week=${encodeURIComponent(getDefaultWeekRange().start)}&focusPerson=${encodeURIComponent(s.user_id)}`}
-                          title={
-                            hasJobs
-                              ? `Open Dispatch for ${personName(s)} — ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`
-                              : `Open Dispatch for ${personName(s)} — nothing scheduled today; add jobs`
-                          }
-                          aria-label={
-                            hasJobs
-                              ? `Open Dispatch for ${personName(s)}, ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`
-                              : `Open Dispatch for ${personName(s)}, nothing scheduled today`
-                          }
+                          title={`Open Dispatch for ${personName(s)} — ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`}
+                          aria-label={`Open Dispatch for ${personName(s)}, ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`}
                           style={{
                             position: 'relative',
                             display: 'inline-flex',
                             alignItems: 'center',
                             flexShrink: 0,
                             marginRight: '0.4rem',
-                            color: hasJobs ? 'var(--text-link)' : 'var(--text-faint)',
+                            color: 'var(--text-link)',
                           }}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
-                            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
-                          </svg>
-                          {hasJobs ? (
-                            <span
-                              aria-hidden
-                              style={{
-                                position: 'absolute',
-                                left: 0,
-                                right: 0,
-                                top: '52%',
-                                transform: 'translateY(-38%)',
-                                textAlign: 'center',
-                                fontSize: '0.5625rem',
-                                fontWeight: 700,
-                                lineHeight: 1,
-                                color: '#ffffff',
-                                pointerEvents: 'none',
-                              }}
-                            >
-                              {jobCount > 9 ? '9+' : jobCount}
-                            </span>
-                          ) : null}
+                          {calendarSvg}
+                          <span
+                            aria-hidden
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              right: 0,
+                              top: '52%',
+                              transform: 'translateY(-38%)',
+                              textAlign: 'center',
+                              fontSize: '0.5625rem',
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              color: '#ffffff',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            {jobCount > 9 ? '9+' : jobCount}
+                          </span>
                         </Link>
                       )
                     })() : null}
@@ -2946,6 +2973,17 @@ export function DashboardTeamActiveClockStrip({
     onClose={() => setStripViewingReport(null)}
     viewerRole={viewerRole}
   />
+  {quickAssignForUserId != null ? (
+    <Suspense fallback={null}>
+      <QuickAssignSheet
+        open
+        onClose={() => setQuickAssignForUserId(null)}
+        initialYmd={clockStripWorkDateResolved}
+        initialSelectedUserIds={[quickAssignForUserId]}
+        onScheduled={() => setDispatchCountsTick((t) => t + 1)}
+      />
+    </Suspense>
+  ) : null}
     </>
   )
 }
