@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1584',
+    date: '2026-08-11',
+    title: 'Match sessions: clear unassigned clock time in a few taps',
+    kind: 'feature',
+    highlights: [
+      'People → Hours has a new Match sessions button on the Currently clocked in section — it wears a count whenever clock sessions from the last 7 days have no job or bid.',
+      'The modal suggests where each session belongs — from the person\'s Dispatch schedule that day, the rest of their day\'s assignments, or a job number typed in their clock note — and one tap assigns it.',
+      'Sessions with exactly one scheduled job that day can be applied all at once; anything ambiguous stays a per-session decision, and search is always there as the fallback.',
+    ],
+  },
+  {
     version: 'v2.1583',
     date: '2026-08-11',
     title: 'Assign job or bid: full name, address, and line items on their own lines',

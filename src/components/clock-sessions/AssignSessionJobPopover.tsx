@@ -44,6 +44,8 @@ type Props = {
   compactTrigger?: boolean
   /** When false and session already has job/bid, render no trigger (e.g. strip where day editor handles changes). Default true. */
   showChangeWhenAssigned?: boolean
+  /** Label for the unassigned 'default' trigger (default "Assign") — e.g. "Search jobs & bids…" in the Match sessions modal. */
+  assignTriggerLabel?: string
   /**
    * When both set, load Dispatch (`job_schedule_blocks`) jobs for this assignee + work date and show quick-picks above search.
    */
@@ -126,6 +128,7 @@ export function AssignSessionJobPopover({
   unassignedTrigger = 'default',
   compactTrigger = false,
   showChangeWhenAssigned = true,
+  assignTriggerLabel = 'Assign',
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
@@ -427,7 +430,7 @@ export function AssignSessionJobPopover({
         disabled={loading}
         style={{ ...assignSt, opacity: loading ? 0.7 : 1 }}
       >
-        Assign
+        {assignTriggerLabel}
       </button>
     )
 

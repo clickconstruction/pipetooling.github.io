@@ -102,6 +102,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useActiveAccountsModal } from '../contexts/ActiveAccountsModalContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
+import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../components/people/MatchClockSessionsModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
@@ -572,6 +573,8 @@ export default function People() {
   type CrewBidAssignment = { bid_id: string; pct: number }
   type CrewBidRow = { bid_assignments: CrewBidAssignment[] }
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
+  const [matchSessionsOpen, setMatchSessionsOpen] = useState(false)
+  const [unassignedSessionCount, setUnassignedSessionCount] = useState<number | null>(null)
   const [hoursDayAuditModal, setHoursDayAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
 
   // Offset form state — only the Record-payment "employee credit" entry point lives here.
@@ -622,6 +625,15 @@ export default function People() {
       loadPeopleHours(hoursDateStart, hoursDateEnd)
     }
   }
+
+  /** Badge for the Currently-clocked-in header's "Match sessions" button. */
+  const refreshUnassignedSessionCount = useCallback(() => {
+    void fetchUnassignedClockSessionCount().then(setUnassignedSessionCount)
+  }, [])
+  useEffect(() => {
+    if (activeTab !== 'hours' || !canAccessHours) return
+    refreshUnassignedSessionCount()
+  }, [activeTab, canAccessHours, refreshUnassignedSessionCount])
 
   async function loadPersonProjects() {
     // Get all steps with assigned people
@@ -3653,7 +3665,7 @@ export default function People() {
           </div>
           {canAccessHours ? (
           <section id="people-hours-clock-strip" style={HOURS_TAB_SECTION_SHELL}>
-            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.clockStrip)}>
+            <div style={{ ...hoursTabSectionHeaderGap(hoursTabSectionsOpen.clockStrip), display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 aria-expanded={hoursTabSectionsOpen.clockStrip}
@@ -3662,6 +3674,33 @@ export default function People() {
               >
                 <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.clockStrip ? '▼' : '▶'}</span>
                 Currently clocked in
+              </button>
+              <button
+                type="button"
+                onClick={() => setMatchSessionsOpen(true)}
+                aria-label="Match unassigned clock sessions to jobs and bids"
+                style={{
+                  marginLeft: 'auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.25rem 0.7rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  // Amber "needs sorting" voice when sessions are waiting; quiet outline at zero.
+                  ...((unassignedSessionCount ?? 0) > 0
+                    ? { border: '1px solid #f59e0b', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+                    : { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)' }),
+                }}
+              >
+                Match sessions
+                {(unassignedSessionCount ?? 0) > 0 ? (
+                  <span style={{ background: '#d97706', color: '#fff', borderRadius: 999, padding: '0 0.45rem', fontSize: '0.71875rem', fontWeight: 800, lineHeight: 1.5 }}>
+                    {unassignedSessionCount}
+                  </span>
+                ) : null}
               </button>
             </div>
             {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} /> : null}
@@ -4106,6 +4145,19 @@ export default function People() {
           </div>
         </div>
       )}
+
+      <MatchClockSessionsModal
+        open={matchSessionsOpen}
+        onClose={() => {
+          setMatchSessionsOpen(false)
+          refreshUnassignedSessionCount()
+        }}
+        onSessionsChanged={() => {
+          refreshUnassignedSessionCount()
+          loadAllClockSessionsRef.current?.()
+          loadPeopleHoursRef.current?.()
+        }}
+      />
 
       {hoursUnassignedModal && canEditCrewJobs && (
         <HoursUnassignedModal
