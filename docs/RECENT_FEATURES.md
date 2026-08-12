@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1598)
+last_updated: 2026-08-12 (v2.1599)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1599)
+
+### Clock strip: the empty calendar icon opens Assign work for that person (2026-08-12)
+Owner request with screenshot ("when a user presses on an empty calendar icon (to the left of the users name), I would like it to offer that flow" — the Assign work sheet, identified in the preceding Q&A). On the Currently-In strip's dispatch icon ([`DashboardTeamActiveClockStrip`](../src/components/DashboardTeamActiveClockStrip.tsx), dispatch-editor roles): the **gray "nothing scheduled" calendar** is now a button opening the **Assign work sheet** ([`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx), lazy-loaded) **pre-picked to that person** and the strip's day, instead of navigating away to the Dispatch hub; scheduling through it bumps a refresh tick so the icon flips to the blue count immediately. The blue has-jobs icon keeps its existing Dispatch-hub link (unchanged). Sheet gains additive `initialSelectedUserIds` — seeded into `selected` on open; the job picker still shows first, and the person wears the blue selected row once a job is picked. Verified live against prod: 3 gray icons on the real strip, Isiah's opened the sheet, picking J964 · Pondhill demo showed Isiah pre-selected (blue row), closed without scheduling. Client-only — no migration.
 
 ## Latest Updates (v2.1598)
 

@@ -112,6 +112,7 @@ export default function QuickAssignSheet({
   onScheduled,
   initialYmd,
   initialJob,
+  initialSelectedUserIds,
 }: {
   open: boolean
   onClose: () => void
@@ -125,6 +126,12 @@ export default function QuickAssignSheet({
    * time — instead of the job picker. "Change job" still opens the picker.
    */
   initialJob?: ScheduleDispatchHubJobRow | null
+  /**
+   * People pre-checked when the sheet opens (v2.1599 — the Dashboard clock
+   * strip's empty calendar icon opens the sheet for that person). The job
+   * picker still shows first when no initialJob is given.
+   */
+  initialSelectedUserIds?: string[]
 }) {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
@@ -208,7 +215,7 @@ export default function QuickAssignSheet({
     setJobSearch('')
     setJobNumberQuery('')
     setSelectedYmd(initialYmd ?? todayYmd)
-    setSelected(new Set())
+    setSelected(new Set(initialSelectedUserIds ?? []))
     setPeopleSearch('')
     setWindowSel(null)
     setCustomOpen(false)
