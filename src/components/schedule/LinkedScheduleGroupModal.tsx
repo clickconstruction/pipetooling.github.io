@@ -61,6 +61,8 @@ export function LinkedScheduleGroupModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  /** Row id awaiting in-app Remove confirmation (v2.1603 — replaces window.confirm). */
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
   const [addUserId, setAddUserId] = useState('')
   const [adding, setAdding] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -83,6 +85,7 @@ export function LinkedScheduleGroupModal({
       setError(null)
       setLoading(false)
       setAddUserId('')
+      setConfirmRemoveId(null)
       return
     }
     let cancelled = false
@@ -143,7 +146,7 @@ export function LinkedScheduleGroupModal({
   const removeRow = useCallback(
     async (r: JobScheduleBlockRow) => {
       const who = nameByUserId.get(r.assignee_user_id) ?? 'this person'
-      if (!window.confirm(`Remove ${who}'s block on ${r.work_date}? The block is deleted.`)) return
+      setConfirmRemoveId(null)
       setBusyId(r.id)
       const { error: err } = await deleteJobScheduleBlock(r.id)
       setBusyId(null)
@@ -344,7 +347,31 @@ export function LinkedScheduleGroupModal({
                               outside week
                             </span>
                           ) : null}
-                          {canManage ? (
+                          {canManage && confirmRemoveId === r.id ? (
+                            // In-app Remove confirmation (v2.1603 — was window.confirm).
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
+                                Delete {name}&rsquo;s block?
+                              </span>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => void removeRow(r)}
+                                title={`Delete ${name}'s block on ${formatLinkedCrewWorkDate(r.work_date)}`}
+                                style={actionBtn(true)}
+                              >
+                                Remove
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyId === r.id}
+                                onClick={() => setConfirmRemoveId(null)}
+                                style={actionBtn()}
+                              >
+                                Cancel
+                              </button>
+                            </span>
+                          ) : canManage ? (
                             <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
                               <button
                                 type="button"
@@ -358,7 +385,7 @@ export function LinkedScheduleGroupModal({
                               <button
                                 type="button"
                                 disabled={busyId === r.id}
-                                onClick={() => void removeRow(r)}
+                                onClick={() => setConfirmRemoveId(r.id)}
                                 title="Delete this person's block"
                                 style={actionBtn(true)}
                               >

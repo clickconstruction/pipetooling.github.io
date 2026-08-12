@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1603',
+    date: '2026-08-12',
+    title: 'Removing a crew block asks in-app',
+    kind: 'fix',
+    highlights: [
+      'Removing a person\'s block from a Linked crew now confirms right in the modal — "Delete Abraham\'s block? Remove · Cancel" — instead of a raw browser popup.',
+    ],
+  },
+  {
     version: 'v2.1602',
     date: '2026-08-12',
     title: 'Trade pills stay on one line',

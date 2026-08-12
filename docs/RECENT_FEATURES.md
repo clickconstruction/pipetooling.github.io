@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1602)
+last_updated: 2026-08-12 (v2.1603)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1603)
+
+### Linked crew: Remove confirms in-app, not with a browser dialog (2026-08-12)
+Owner request with screenshot of the raw `pipetooling.com says…` browser confirm ("Help me turn this into a modal"). The Linked crew modal's per-person **Remove** ([`LinkedScheduleGroupModal`](../src/components/schedule/LinkedScheduleGroupModal.tsx)) dropped its `window.confirm` — the row's Unlink/Remove pair now swaps in place for a red **"Delete {name}'s block?" Remove · Cancel** strip (same inline-confirm pattern as the person-day modal's remove); the confirming Remove carries the full date in its tooltip, Cancel or closing/switching groups resets the pending state, and the delete path is byte-identical after confirmation. Render tests 4→5 (strip appears, no `window.confirm` call, Cancel restores the pair). Verified live against prod on the real 961 crew: a spied `window.confirm` never fired, the strip read "Delete Abraham's block?", Cancel restored the row (no writes). Client-only — no migration.
 
 ## Latest Updates (v2.1602)
 
