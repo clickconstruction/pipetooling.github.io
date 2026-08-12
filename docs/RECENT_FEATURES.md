@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1597)
+last_updated: 2026-08-12 (v2.1598)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1598)
+
+### My Time day editor: nothing truncates anymore (2026-08-12)
+Owner design review with screenshot + approved mockup ("I like this, but NCNS can stay 'NCNS'"). Presentational-only polish of the shared clock-day editor ([`DashboardMyTimeDayEditorModal`](../src/components/DashboardMyTimeDayEditorModal.tsx) — the 13-call-site payroll-path modal; the save engine is untouched). **(1) Header**: title goes short-date via new `formatWorkDateYmdWeekdayShortFriendly` ("Paige · Wed, Aug 12" — the old long form ellipsized to "…Aug 12, 20…"); the day total moves out of the title into a new subtitle line "3.38 h clocked · 1 session". **(2) Truncation root-cause fix** in [`MyTimeDayClusterVisual`](../src/components/my-time-day-editor/MyTimeDayClusterVisual.tsx): the segment header row's two columns used zero-basis flex, so they *shrank and ellipsized* ("7:26 AM – 10:…", "No Jo…") instead of using the row's wrap — columns now get content-sized bases and the row always wraps; both the full time range "[3.38 h]" and the full chip render. **(3)** The combined unassigned chip's action renames "Add" → **"Assign"** (the `combined` trigger is exclusive to this modal's two layouts). **(4)** The anonymous "+" under the note becomes a bordered **"+ Add session"** button (same Add-disjoint flow). NCNS deliberately stays "NCNS" (owner call). The note textarea intentionally keeps its flex-fill — segment heights mirror the timeline proportions on multi-segment days. Verified live against prod on Paige's real day, both Visual and Form layouts (`scrollWidth <= clientWidth` on the link and chip — nothing clipped). Client-only — no migration.
 
 ## Latest Updates (v2.1597)
 

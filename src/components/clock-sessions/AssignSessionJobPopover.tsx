@@ -419,7 +419,7 @@ export function AssignSessionJobPopover({
           aria-hidden
         />
         <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, flexShrink: 0 }} aria-hidden>
-          Add
+          Assign
         </span>
       </button>
     ) : (
