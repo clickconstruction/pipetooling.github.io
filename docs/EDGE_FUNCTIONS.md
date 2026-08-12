@@ -77,6 +77,7 @@ when_to_read:
 2. [Authentication](#authentication)
 3. [Functions](#functions)
    - [create-user](#create-user)
+   - [send-supply-house-job-account](#send-supply-house-job-account)
    - [invite-user](#invite-user)
    - [send-sign-in-email](#send-sign-in-email)
    - [merge-users](#merge-users)
@@ -207,6 +208,22 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 ---
 
 ## Functions
+
+### send-supply-house-job-account
+
+**Purpose**: Email a job-account setup packet (property, phones, homeowner / building owner + company) to office-chosen supply house contacts — the Job Detail "Share with supply house" flow (v2.1605).
+
+**Endpoint**: `POST /functions/v1/send-supply-house-job-account`
+
+**Required Role**: `dev`, `master_technician`, `assistant`, or `controller` — JWT verified in-handler (`config.toml` sets `verify_jwt = false`); the `job_id` must be readable through the caller's RLS (blocks cross-tenant sends).
+
+**Payload**: `{ job_id, to_emails: string[] (1–10), subject, email_html (≤100k chars), email_text }` — subject/html/text are composed client-side by `src/lib/supplyHouseJobAccount.ts` and sent verbatim.
+
+**Behavior**: sends via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the caller's email as reply-to, then best-effort logs to `email_send_log`. No audit table.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY` (service key only for the shared email log helper).
+
+**Deploy**: `supabase functions deploy send-supply-house-job-account` (after the v2.1605 client merge).
 
 ### create-user
 
