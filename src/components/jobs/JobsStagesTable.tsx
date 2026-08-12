@@ -448,7 +448,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     })}
                     pctComplete={j.pct_complete ?? null}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
-                    onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n) : undefined}
+                    onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                     onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                   />
                 </td>

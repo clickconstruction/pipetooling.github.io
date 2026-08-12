@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1585',
+    date: '2026-08-11',
+    title: 'Job activity now shows every % complete change',
+    kind: 'fix',
+    highlights: [
+      'Changing a job\'s % done from the Pipeline page or the Edit Job form now posts a note in Job activity — "62% complete", with the name of whoever changed it — just like setting it from the activity panel always has.',
+      'Clearing a % leaves its own note ("Cleared % complete — was 62%"), so the trail never has silent gaps.',
+    ],
+  },
+  {
     version: 'v2.1584',
     date: '2026-08-11',
     title: 'Match sessions: clear unassigned clock time in a few taps',

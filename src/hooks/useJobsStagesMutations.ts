@@ -2,7 +2,7 @@ import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import { OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
 import { addDaysToDate } from '../lib/jobs/jobFormatting'
-import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
+import { composePctAutoNoteBody, composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
 import {
   ensureLedgerInvoiceRemovedAfterStripeSendBack,
   invoiceNeedsStripeVoidForRevert,
@@ -268,10 +268,23 @@ export function useJobsStagesMutations({
     })
   }
 
-  async function updateJobPctComplete(jobId: string, value: number | null) {
+  /**
+   * Quick % input commit (Pipeline tables/cards "% done"). `previous` is the
+   * row's current pct: unchanged blurs no-op (the input commits on EVERY blur),
+   * and every real change also posts an auto thread note ("62% complete" /
+   * "Cleared % complete — was 62%") so Job activity shows office edits too.
+   * The note is best-effort — a notes hiccup must not block the pct save.
+   */
+  async function updateJobPctComplete(jobId: string, value: number | null, previous: number | null) {
+    if (value === previous) return
     setPctCompleteSavingId(jobId)
     setError(null)
     try {
+      try {
+        await submitJobThreadNoteWithBody(jobId, composePctAutoNoteBody(value, previous), 'draft')
+      } catch {
+        // pct write proceeds; the thread realtime/merge paths self-heal stats.
+      }
       const { error: err } = await withOperationTimeout(
         Promise.resolve(supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)),
         STAGES_MUTATION_TIMEOUT_MS,

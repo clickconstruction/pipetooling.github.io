@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  composePctAutoNoteBody,
   composePctCompleteNoteBody,
   pctNoteRequired,
   validatePctCommit,
@@ -40,5 +41,16 @@ describe('validatePctCommit', () => {
   it('allows 100 with or without a note', () => {
     expect(validatePctCommit(100, '')).toEqual({ ok: true })
     expect(validatePctCommit(100, 'all wrapped up')).toEqual({ ok: true })
+  })
+})
+
+describe('composePctAutoNoteBody (quick-input auto-notes)', () => {
+  it('a set composes the standard parseable body', () => {
+    expect(composePctAutoNoteBody(62, 40)).toBe('62% complete')
+    expect(composePctAutoNoteBody(100, null)).toBe('100% complete')
+  })
+  it('a clear composes a body that names the old value but never parses as a set', () => {
+    expect(composePctAutoNoteBody(null, 62)).toBe('Cleared % complete — was 62%')
+    expect(composePctAutoNoteBody(null, null)).toBe('Cleared % complete')
   })
 })

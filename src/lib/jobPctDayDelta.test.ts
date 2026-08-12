@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { companyYmdOf, computeJobPctToday, parsePctCompleteNoteBody } from './jobPctDayDelta'
 
 describe('parsePctCompleteNoteBody', () => {
+  it('ignores the quick-input "Cleared % complete" bodies (they must not read as a 0% set)', () => {
+    expect(parsePctCompleteNoteBody('Cleared % complete — was 62%')).toBeNull()
+    expect(parsePctCompleteNoteBody('Cleared % complete')).toBeNull()
+  })
   it('parses the stagesPctNote body forms', () => {
     expect(parsePctCompleteNoteBody('45% complete — hung fixtures')).toBe(45)
     expect(parsePctCompleteNoteBody('100% complete')).toBe(100)
