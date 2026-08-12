@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1588)
+last_updated: 2026-08-11 (v2.1589)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1589)
+
+### ELEC trade pill: gold → owner-picked amber-orange (2026-08-11)
+Owner request with a color swatch ("'ELEC' is too yellow — change to the color of this ring"). `BID_SERVICE_TYPE_TAGS.Electrical` in [`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts) — the single source every trade pill, chip, and search row derives from — goes `#FFD700` → `#EE9310` (sampled from the owner's ring image; the old pure gold also made the white pill text near-unreadable). Verified live on the board's real "813 ELEC" pill (computed rgb(238,147,16)), clearly distinct from Plumbing's `#e17235` burnt orange. Client-only — no migration.
 
 ## Latest Updates (v2.1588)
 
