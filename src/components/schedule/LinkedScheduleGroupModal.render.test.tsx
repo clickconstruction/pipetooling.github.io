@@ -6,7 +6,7 @@
  * context, and multi-day groups get one header card per leg.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 
 vi.mock('../../hooks/useAuth', async () => useAuthModuleMock())
@@ -105,6 +105,20 @@ describe('LinkedScheduleGroupModal redesign', () => {
     expect(screen.queryByText('outside week')).toBeNull()
     expect(screen.getByText('Add a person…')).toBeTruthy()
     expect(screen.getByText('Add')).toBeTruthy()
+  })
+
+  it('Remove asks in-app (no window.confirm): confirm strip appears, Cancel restores (v2.1603)', async () => {
+    renderModal()
+    await screen.findAllByText('940 · Lyndsey McDermott')
+    const firstRemove = screen.getAllByText('Remove')[0]
+    expect(firstRemove).toBeTruthy()
+    fireEvent.click(firstRemove!)
+    expect(screen.getByText(/Delete .+’s block\?/)).toBeTruthy()
+    // Row's Unlink/Remove pair swapped for the confirm strip — one fewer Unlink.
+    expect(screen.getAllByText('Unlink')).toHaveLength(2)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.queryByText(/Delete .+’s block\?/)).toBeNull()
+    expect(screen.getAllByText('Unlink')).toHaveLength(3)
   })
 
   it('read-only variant renders the cards without manage buttons', async () => {
