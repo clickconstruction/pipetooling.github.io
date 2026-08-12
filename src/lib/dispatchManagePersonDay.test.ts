@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { computeManageDaySummary } from './dispatchManagePersonDay'
+import { computeManageDaySummary, crewNamesByGroup } from './dispatchManagePersonDay'
+
+describe('crewNamesByGroup', () => {
+  it('groups deduped names by group id in query order', () => {
+    const map = crewNamesByGroup([
+      { shared_block_group_id: 'g1', name: 'Abraham' },
+      { shared_block_group_id: 'g1', name: 'Paige' },
+      { shared_block_group_id: 'g2', name: 'Isiah' },
+      { shared_block_group_id: 'g1', name: 'Abraham' },
+    ])
+    expect(map.get('g1')).toEqual(['Abraham', 'Paige'])
+    expect(map.get('g2')).toEqual(['Isiah'])
+  })
+
+  it('drops ungrouped legs and blank names; all-blank groups have no entry', () => {
+    const map = crewNamesByGroup([
+      { shared_block_group_id: null, name: 'Solo' },
+      { shared_block_group_id: 'g1', name: '   ' },
+      { shared_block_group_id: 'g1', name: null },
+    ])
+    expect(map.size).toBe(0)
+  })
+})
 
 describe('computeManageDaySummary', () => {
   it('totals block minutes and reports the free-after point', () => {

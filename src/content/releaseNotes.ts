@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1601',
+    date: '2026-08-12',
+    title: 'Linked crew chips name the crew',
+    kind: 'fix',
+    highlights: [
+      'In the person-day schedule modal, the "linked crew" chip now lists who is on the crew — "linked crew — Abraham, Paige" — in both the Dashboard and Assign work contexts.',
+    ],
+  },
+  {
     version: 'v2.1600',
     date: '2026-08-12',
     title: 'Blue calendar icon shows the person\'s day',

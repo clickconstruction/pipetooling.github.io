@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1600)
+last_updated: 2026-08-12 (v2.1601)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1601)
+
+### Person-day modal: the linked-crew chip names the crew (2026-08-12)
+Owner-requested follow-up to v2.1600 (the enrichment deferred there). The purple **⛓ linked crew** chip in [`ManagePersonDayModal`](../src/components/dispatchMode/ManagePersonDayModal.tsx) now reads "⛓ linked crew — Abraham, Paige": after the day's blocks load, ONE `job_schedule_blocks` query covering every `shared_block_group_id` on the day (with the `users` name join) feeds the new kernel [`crewNamesByGroup`](../src/lib/dispatchManagePersonDay.ts) (+2 tests — dedup per group, query order, blank/ungrouped legs dropped). Best-effort: a failed fetch just leaves the chips as before. Applies in both contexts (clock-strip standalone and the Assign work sheet). Verified live against prod on Abraham's day: 951 · Shearer Pinpoint chip read "linked crew — Abraham, Paige"; 964 · Pondhill demo truthfully read "linked crew — Abraham" (a one-leg group). Client-only — no migration.
 
 ## Latest Updates (v2.1600)
 
