@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1587',
+    date: '2026-08-11',
+    title: 'Pipeline: a Job activity box fills the empty middle on big screens',
+    kind: 'feature',
+    highlights: [
+      'On wide monitors, every Pipeline row now shows the job\'s activity right in the middle: the next appointment, then the notes and reports in a small scrolling list — so "what\'s the latest on this job" is answered without a click.',
+      'Each note wears a circled number (1 is the oldest, numbers never change), so you can say "check note 3" on a call and it means the same thing later.',
+      'A floating Post button in the box\'s corner slides open a note bar — type, hit Enter, and the note is on the job thread with your name.',
+      'Smaller windows are untouched — the board looks exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1586',
     date: '2026-08-11',
     title: 'Pipeline dates stop wrapping mid-line',

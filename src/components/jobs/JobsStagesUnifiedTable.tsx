@@ -32,6 +32,8 @@ import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { JobsStagesActivityBox } from './JobsStagesActivityBox'
+import { useWideViewport1440 } from '../../hooks/useWideViewport1440'
 import type { UserRow } from '../../pages/Jobs'
 import {
   accountManOnlyStripeStyle,
@@ -130,6 +132,9 @@ export type JobsStagesUnifiedTableProps = {
   jobThreadSubmittingId: ReturnType<typeof useJobThreadNotes>['jobThreadSubmittingId']
   setJobThreadDraft: ReturnType<typeof useJobThreadNotes>['setJobThreadDraft']
   submitJobThreadNote: ReturnType<typeof useJobThreadNotes>['submitJobThreadNote']
+  /** Wide-screen Job activity box (v2.1587): body-based note submit + lazy activity loader. */
+  submitJobThreadNoteWithBody?: ReturnType<typeof useJobThreadNotes>['submitJobThreadNoteWithBody']
+  loadJobThreadNotesForJob?: ReturnType<typeof useJobThreadNotes>['loadJobThreadNotesForJob']
   authUser: ReturnType<typeof useAuth>['user']
   // --- shared row-render context inputs (navigate + the dispatch-task/checklist modals are consumed via hooks here) ---
   showToast: StagesRowRenderContext['showToast']
@@ -214,6 +219,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     jobThreadSubmittingId,
     setJobThreadDraft,
     submitJobThreadNote,
+    submitJobThreadNoteWithBody,
+    loadJobThreadNotesForJob,
     authUser,
     showToast,
     customers,
@@ -243,6 +250,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     setWhenInvoiceBillModal,
     setWhenInvoiceBillModalDate,
   } = props
+  const wideViewport = useWideViewport1440()
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
@@ -559,6 +567,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
+                      {/* Wide screens: identity keeps its natural width and the Job
+                          activity box (v2.1587) absorbs the cell's dead middle. */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', justifyContent: 'space-between' }}>
+                      <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
                         {renderStagesOpenDetailJobName(j)}
                         {renderStagesThreadExpandButton(stagesRowSharedCtx, j.id)}
@@ -582,6 +594,16 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       ) : null}
                       {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                       {renderStagesJobCellActivityFooter(j, bundleInv ?? undefined, row.kind === 'job_with_merged_billed' ? { hideReportsButton: true } : undefined)}
+                      </div>
+                      {wideViewport ? (
+                        <JobsStagesActivityBox
+                          job={j}
+                          ctx={stagesRowSharedCtx}
+                          loadActivityForJob={loadJobThreadNotesForJob}
+                          submitNoteWithBody={submitJobThreadNoteWithBody}
+                        />
+                      ) : null}
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>

@@ -19,6 +19,8 @@ import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { JobsStagesActivityBox } from './JobsStagesActivityBox'
+import { useWideViewport1440 } from '../../hooks/useWideViewport1440'
 import type { UserRow } from '../../pages/Jobs'
 import {
   accountManOnlyStripeStyle,
@@ -97,6 +99,9 @@ export type JobsStagesTableProps = {
   jobThreadSubmittingId: ReturnType<typeof useJobThreadNotes>['jobThreadSubmittingId']
   setJobThreadDraft: ReturnType<typeof useJobThreadNotes>['setJobThreadDraft']
   submitJobThreadNote: ReturnType<typeof useJobThreadNotes>['submitJobThreadNote']
+  /** Wide-screen Job activity box (v2.1587): body-based note submit + lazy activity loader. */
+  submitJobThreadNoteWithBody?: ReturnType<typeof useJobThreadNotes>['submitJobThreadNoteWithBody']
+  loadJobThreadNotesForJob?: ReturnType<typeof useJobThreadNotes>['loadJobThreadNotesForJob']
   authUser: ReturnType<typeof useAuth>['user']
   // --- shared row-render context inputs (navigate + the dispatch-task/checklist modals are consumed via hooks here) ---
   showToast: StagesRowRenderContext['showToast']
@@ -166,6 +171,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     jobThreadSubmittingId,
     setJobThreadDraft,
     submitJobThreadNote,
+    submitJobThreadNoteWithBody,
+    loadJobThreadNotesForJob,
     authUser,
     showToast,
     customers,
@@ -191,6 +198,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     loadJobs,
     onDevelopmentFilter,
   } = props
+  const wideViewport = useWideViewport1440()
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
@@ -429,6 +437,10 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   </div>
                 </td>
                 <td style={{ padding: '0.75rem', ...accountManOnlyStripeStyle(j) }}>
+                  {/* Wide screens: identity keeps its natural width and the Job
+                      activity box (v2.1587) absorbs the cell's dead middle. */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', justifyContent: 'space-between' }}>
+                  <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
                     {renderStagesOpenDetailJobName(j)}
                     {renderStagesThreadExpandButton(stagesRowSharedCtx, j.id)}
@@ -437,6 +449,16 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   {renderJobCustomerLine(j)}
                   {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                   {renderStagesJobCellActivityFooter(j, stagesJobLevelStripeEmailedHintInvoice(j))}
+                  </div>
+                  {wideViewport ? (
+                    <JobsStagesActivityBox
+                      job={j}
+                      ctx={stagesRowSharedCtx}
+                      loadActivityForJob={loadJobThreadNotesForJob}
+                      submitNoteWithBody={submitJobThreadNoteWithBody}
+                    />
+                  ) : null}
+                  </div>
                 </td>
                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                   <StagesProgressPaymentCell

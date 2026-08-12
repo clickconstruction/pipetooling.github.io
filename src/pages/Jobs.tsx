@@ -366,6 +366,7 @@ export default function Jobs() {
     setJobThreadDraft,
     submitJobThreadNote,
     submitJobThreadNoteWithBody,
+    loadJobThreadNotesForJob,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,
   } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
@@ -1776,6 +1777,8 @@ export default function Jobs() {
         jobThreadDraft={jobThreadDraft}
         setJobThreadDraft={setJobThreadDraft}
         submitJobThreadNote={submitJobThreadNote}
+        submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+        loadJobThreadNotesForJob={loadJobThreadNotesForJob}
         jobThreadStatsByJobId={jobThreadStatsByJobId}
         refreshJobThreadStatsForJobIds={refreshJobThreadStatsForJobIds}
       />

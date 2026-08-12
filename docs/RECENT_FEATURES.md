@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1586)
+last_updated: 2026-08-11 (v2.1587)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1587)
+
+### Pipeline wide screens: the Job activity box fills the dead middle (2026-08-11)
+Owner idea, iterated through three mockup rounds ("instead of all this space in the middle… an outlined box containing the Job activity / notes" → scrollable feed + floating Post + numbered notes). New [`JobsStagesActivityBox`](../src/components/jobs/JobsStagesActivityBox.tsx) renders in BOTH desktop tables' Job cell (identity keeps natural width, box absorbs the slack; standalone invoice rows excluded) behind the new [`useWideViewport1440`](../src/hooks/useWideViewport1440.ts) gate — below 1440px nothing changes, and mobile cards keep their pulse. Anatomy: pinned green NEXT appointment (→ job calendar), a **scrolling feed** (~3 entries tall, rows never grow) of notes + reports numbered by the new kernel [`jobActivityBoxFeed`](../src/lib/jobs/jobActivityBoxFeed.ts) (+4 tests) — **1 = oldest, numbers never shift**, so "check note 3" stays note 3; schedule/clock/event synthetic items stay panel-only — a floating **Post** pill, and a sliding composer bar (Enter posts, ✕/Escape dismisses) that submits through `submitJobThreadNoteWithBody` (optimistic entry + realtime, same pipeline as the panel). Data: the pre-load teaser renders from the board-wide `jobThreadStatsByJobId` (zero extra queries); the full feed lazy-loads per row on first pointerover/focus via `loadJobThreadNotesForJob` (both newly threaded Jobs.tsx → JobsStagesTab → tables as optional props the card list ignores). Render tests +4; help guide `ready-to-bill-pipeline.md` gains the box section. Verified live at 1600px against the real board: 94 boxes (teasers, numbered feeds after hover-load, dashed empty states), composer open/Escape cycle on a real row. Client-only — no migration.
 
 ## Latest Updates (v2.1586)
 
