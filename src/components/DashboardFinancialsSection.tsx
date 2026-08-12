@@ -1,4 +1,7 @@
-import { Fragment, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties } from 'react'
+import { supabase } from '../lib/supabase'
+import { stripTrailingZip } from '../lib/displayAddress'
+import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
 import { formatMoneyShortK } from '../lib/formatMoneyShortK'
@@ -463,6 +466,85 @@ function ItemsModal({
   const isMobile = useIsMobile()
   const [drillQuery, setDrillQuery] = useState('')
   const [drillSort, setDrillSort] = useState<FinanceDrillSort>('amount')
+  // AR line items (v2.1595, "Variant B"): one fixtures fetch for every AR job on
+  // open; each row wears an "N line items" chip that expands in place.
+  const [arLinesByJob, setArLinesByJob] = useState<Map<string, ArLineItem[]> | null>(null)
+  const [expandedLineKeys, setExpandedLineKeys] = useState<Set<string>>(() => new Set())
+  useEffect(() => {
+    if (cardKey !== 'ar') return
+    const jobIds = Array.from(
+      new Set(
+        [...bucket.items, ...(arCollectionsSection?.items ?? [])]
+          .map((i) => i.jobId)
+          .filter((id): id is string => id != null)
+      )
+    )
+    if (jobIds.length === 0) return
+    let cancelled = false
+    void supabase
+      .from('jobs_ledger_fixtures')
+      .select('job_id, name, count, line_unit_price, sequence_order')
+      .in('job_id', jobIds)
+      .then(({ data, error: err }) => {
+        if (cancelled || err) return
+        setArLinesByJob(buildArLineItemsByJob(data ?? []))
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per open; items don't change while open
+  }, [cardKey])
+  /** AR rows: inline zip-stripped address + the expandable line-items block (shared by the phone sheet and desktop table). */
+  const arRowExtras = (item: FinancialItem): { address: string | null; lines: ArLineItem[]; expanded: boolean } | null => {
+    if (cardKey !== 'ar') return null
+    return {
+      address: item.address ? stripTrailingZip(item.address) : null,
+      lines: (item.jobId ? arLinesByJob?.get(item.jobId) : null) ?? [],
+      expanded: expandedLineKeys.has(item.key),
+    }
+  }
+  const toggleLineKey = (key: string) =>
+    setExpandedLineKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const arLineItemsBlock = (item: FinancialItem, extras: { lines: ArLineItem[]; expanded: boolean }) => {
+    if (extras.lines.length === 0) return null
+    return (
+      <div style={{ marginTop: '0.2rem' }}>
+        <button
+          type="button"
+          onClick={() => toggleLineKey(item.key)}
+          aria-expanded={extras.expanded}
+          aria-label={`${extras.expanded ? 'Hide' : 'Show'} line items for ${item.label}`}
+          style={{
+            padding: '0.05rem 0.5rem',
+            borderRadius: 999,
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
+            fontSize: '0.71875rem',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {extras.lines.length} line item{extras.lines.length === 1 ? '' : 's'} {extras.expanded ? '▴' : '▾'}
+        </button>
+        {extras.expanded ? (
+          <div style={{ margin: '0.3rem 0 0.1rem 0.75rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.6rem', maxWidth: 420 }}>
+            {extras.lines.map((l, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.08rem 0' }}>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.label}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(l.amount)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
   /** Desktop aging-strip filter: only rows in this aging bucket; null = all. */
   const [agingFilter, setAgingFilter] = useState<FinanceAgingTone | null>(null)
   // Unbilled/AR rows carry the Stages % complete — shown under the amount.
@@ -717,7 +799,17 @@ function ItemsModal({
                               ) : null}
                               <span style={{ whiteSpace: 'nowrap' }}>{shortDate(apBills?.[item.key]?.dueDateYmd ?? item.dateYmd)}</span>
                               {agingChip(item)}
+                              {(() => {
+                                const ex = arRowExtras(item)
+                                return ex?.address ? (
+                                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.address}</span>
+                                ) : null
+                              })()}
                             </div>
+                            {(() => {
+                              const ex = arRowExtras(item)
+                              return ex ? arLineItemsBlock(item, ex) : null
+                            })()}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
                             <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>${formatCurrency(item.amount)}</div>
@@ -1022,7 +1114,19 @@ function ItemsModal({
                             {item.sublabel && !section.hideSublabels ? (
                               <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                             ) : null}
-                            {item.address ? (
+                            {(() => {
+                              const ex = arRowExtras(item)
+                              if (!ex) return null
+                              return (
+                                <>
+                                  {ex.address ? (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}> · {ex.address}</span>
+                                  ) : null}
+                                  {arLineItemsBlock(item, ex)}
+                                </>
+                              )
+                            })()}
+                            {item.address && cardKey !== 'ar' ? (
                               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
                             ) : null}
                             {(() => {

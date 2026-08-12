@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1594)
+last_updated: 2026-08-12 (v2.1595)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1595)
+
+### Dashboard AR modal: address + expandable line items per row (2026-08-12)
+Owner request with screenshot, mockup-approved "Variant B" ("I would like to add the address and line items to it… Build B"). Every row in the Dashboard Financials **Accounts Receivable** drill-down now carries: **(1)** the job's zip-stripped address inline after the name/kind ("891 · Take 5- Liberty Hill · Billed invoice · 11730 TX-29 Liberty Hill, TX") — `buildArBuckets` in [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) now populates `FinancialItem.address` for both AR branches (the field existed for Not-billed rows; the desktop block-address render is gated to non-AR so AR stays inline); **(2)** an **"N line items ▾"** chip expanding in place to an indented list with per-line dollars. Lines are the job's Specific Work fixtures — invoices don't store lines; bills are composed from `jobs_ledger_fixtures` (BILLING_FLOWS "Bill composition") — via the new kernel [`arModalLineItems.ts`](../src/lib/arModalLineItems.ts) (+4 tests; billable rule matches the bill builders: non-empty name AND count×unit > 0, sequence order, "×N" count suffix). One `.in('job_id', …)` fixtures fetch when the AR drill opens covers every row incl. the Collections sub-section; both the desktop table and the phone sheet render the chip (phone: address joins the meta line). Verified live against prod: 77 chips across the real 74-item modal, first row "650 · ATI Schertz · … · 5498 Cibolo Valley Dr 200 Schertz, TX", and the 813 Reliant Health row expanded to its real 5 lines (Rough In $5,718.40 · Top Out $5,718.40 · two change orders · Trim Set $2,859.20). Client-only — no migration.
 
 ## Latest Updates (v2.1594)
 
