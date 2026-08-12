@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1596',
+    date: '2026-08-12',
+    title: 'AP drill-down: payroll grouped per person',
+    kind: 'feature',
+    highlights: [
+      'In the Dashboard Accounts Payable drill-down, each person\'s open payroll weeks now collapse to one row with their total owed — expand it to see the weeks.',
+      'The mixed "Payroll due" section split into Team payroll and Sub labor, each with its own count and subtotal.',
+      'Clicking a person opens the People → Payroll ledger with their name pre-searched.',
+      'Fixed the doubled dollar sign on the aging filter chips.',
+    ],
+  },
+  {
     version: 'v2.1595',
     date: '2026-08-12',
     title: 'AR drill-down shows address and line items',

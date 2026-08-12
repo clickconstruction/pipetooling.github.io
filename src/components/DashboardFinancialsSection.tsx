@@ -2,7 +2,8 @@ import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { groupPayrollStubItems, isPayrollPersonGroup, payrollWeekLabel, type PayrollRowOrGroup } from '../lib/apPayrollGroups'
 import { formatCurrency } from '../lib/format'
 import { formatMoneyShortK } from '../lib/formatMoneyShortK'
 import { financeCardBarSegments, financeCardRisk } from '../lib/financeCardAging'
@@ -439,11 +440,19 @@ function ItemsModal({
         ? (
             [
               {
-                title: 'Payroll due',
-                // Merged-in upcoming items render in their own "(estimate)" section below.
-                items: bucket.items.filter((i) => !i.key.startsWith('supply:') && !i.key.startsWith('upcoming:')),
+                // v2.1596: the old mixed "Payroll due" section split into Team
+                // payroll (open pay-report weeks, grouped per person at render)
+                // and Sub labor — each with its own honest count + subtotal.
+                title: 'Team payroll',
+                items: bucket.items.filter((i) => i.key.startsWith('stub:')),
                 hideSublabels: false,
-                noun: 'item',
+                noun: 'week',
+              },
+              {
+                title: 'Sub labor',
+                items: bucket.items.filter((i) => i.key.startsWith('sublabor:')),
+                hideSublabels: false,
+                noun: 'job',
               },
               {
                 title: 'Supplies',
@@ -510,6 +519,32 @@ function ItemsModal({
       else next.add(key)
       return next
     })
+  // Payroll rows (v2.1596): person names deep-link to the People → Payroll
+  // ledger with the person pre-searched; grouped rows age by their oldest week.
+  const navigate = useNavigate()
+  const openPayrollLedger = (personName: string) =>
+    navigate(`/people?tab=pay_stubs&payrollSearch=${encodeURIComponent(personName)}`)
+  const groupAgingItem = (g: { key: string; label: string; total: number; oldestDateYmd: string | null }): FinancialItem => ({
+    key: g.key,
+    label: g.label,
+    sublabel: null,
+    amount: g.total,
+    dateYmd: g.oldestDateYmd,
+    jobId: null,
+    address: null,
+  })
+  const payrollLinkStyle: CSSProperties = {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    margin: 0,
+    font: 'inherit',
+    color: 'var(--text-link)',
+    textDecoration: 'underline dotted',
+    textUnderlineOffset: '2px',
+    cursor: 'pointer',
+    textAlign: 'left',
+  }
   const arLineItemsBlock = (item: FinancialItem, extras: { lines: ArLineItem[]; expanded: boolean }) => {
     if (extras.lines.length === 0) return null
     return (
@@ -564,7 +599,7 @@ function ItemsModal({
     const base = [...sections]
     if (upcomingSection && upcomingSection.count > 0) {
       const upSec: ModalSection = { title: 'Upcoming payroll (estimate)', items: upcomingSection.items, noun: 'person-week' }
-      const payrollIdx = base.findIndex((sec) => sec.title === 'Payroll due')
+      const payrollIdx = base.findIndex((sec) => sec.title === 'Team payroll')
       if (payrollIdx >= 0) base.splice(payrollIdx + 1, 0, upSec)
       else base.push(upSec)
     }
@@ -576,10 +611,14 @@ function ItemsModal({
     const days = financeAgingDays(itemDateYmd(item), todayYmd)
     return days != null && financeAgingTone(days) === agingFilter
   }
-  const shownSections = drillSections.map((sec) => ({
-    ...sec,
-    shown: sortFinanceItems(filterFinanceItems(sec.items, drillQuery).filter(bucketMatches), drillSort, itemDateYmd),
-  }))
+  const shownSections = drillSections.map((sec) => {
+    const shown = sortFinanceItems(filterFinanceItems(sec.items, drillQuery).filter(bucketMatches), drillSort, itemDateYmd)
+    // Team payroll (v2.1596): a person's open weeks collapse to one expandable
+    // row (grouping happens after filter/sort so search and the aging strip
+    // still work per week).
+    const shownRows: PayrollRowOrGroup[] = sec.title === 'Team payroll' ? groupPayrollStubItems(shown, drillSort) : shown
+    return { ...sec, shown, shownRows }
+  })
   const filtersActive = q !== '' || agingFilter != null
   const isCollapsed = (title: string | null) => title != null && !filtersActive && (collapsedSections[title] ?? false)
   const shownCount = shownSections.reduce((sum, sec) => sum + sec.shown.length, 0)
@@ -754,10 +793,58 @@ function ItemsModal({
                         </span>
                       </button>
                     ) : null}
-                    {(collapsed ? [] : sec.shown).map((item) => {
+                    {(collapsed ? [] : sec.shownRows).map((row) => {
+                      if (isPayrollPersonGroup(row)) {
+                        const groupExpanded = expandedLineKeys.has(row.key)
+                        return (
+                          <div key={row.key} style={{ padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openPayrollLedger(row.label)}
+                                  aria-label={`Open the Payroll ledger for ${row.label}`}
+                                  style={{ display: 'block', background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-link)', textAlign: 'left', cursor: 'pointer' }}
+                                >
+                                  {row.label}
+                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleLineKey(row.key)}
+                                    aria-expanded={groupExpanded}
+                                    style={{ padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.71875rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  >
+                                    {row.weeks.length} open weeks {groupExpanded ? '▴' : '▾'}
+                                  </button>
+                                  <span style={{ whiteSpace: 'nowrap' }}>{shortDate(row.oldestDateYmd)}</span>
+                                  {agingChip(groupAgingItem(row))}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                                <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>${formatCurrency(row.total)}</div>
+                              </div>
+                            </div>
+                            {groupExpanded ? (
+                              <div style={{ margin: '0.35rem 0 0 0.75rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.6rem' }}>
+                                {row.weeks.map((w) => (
+                                  <div key={w.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.12rem 0' }}>
+                                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {payrollWeekLabel(w)} {agingChip(w)}
+                                    </span>
+                                    <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(w.amount)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      }
+                      const item = row
                       const openJob = item.jobId && onOpenJob ? () => onOpenJob(item) : null
                       const openBill = !openJob && onOpenApBill && item.key.startsWith('supply:') ? () => onOpenApBill(item) : null
-                      const onTap = openJob ?? openBill
+                      const openPayroll = !openJob && !openBill && item.key.startsWith('stub:') ? () => openPayrollLedger(item.label) : null
+                      const onTap = openJob ?? openBill ?? openPayroll
                       return (
                         <div key={item.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -765,8 +852,8 @@ function ItemsModal({
                               <button
                                 type="button"
                                 onClick={onTap}
-                                title={openJob ? 'Open this job' : 'Open this bill'}
-                                aria-label={openJob ? `Open job ${item.label}` : `Open bill from ${item.label}`}
+                                title={openJob ? 'Open this job' : openBill ? 'Open this bill' : 'Open the Payroll ledger for this person'}
+                                aria-label={openJob ? `Open job ${item.label}` : openBill ? `Open bill from ${item.label}` : `Open the Payroll ledger for ${item.label}`}
                                 style={{
                                   display: 'block',
                                   width: '100%',
@@ -999,7 +1086,7 @@ function ItemsModal({
                   title={`${b.count} item${b.count === 1 ? '' : 's'} aged ${label} — click to ${on ? 'clear the filter' : 'show only these'}`}
                   style={{ ...toneColors(tone, on), ...(b.count === 0 ? { opacity: 0.3, cursor: 'default' } : null) }}
                 >
-                  {label} ${formatMoneyShortK(b.total)}
+                  {label} {formatMoneyShortK(b.total)}
                 </button>
               )
             })}
@@ -1063,7 +1150,75 @@ function ItemsModal({
                           </td>
                         </tr>
                       ) : null}
-                      {(collapsed ? [] : section.shown).map((item: FinancialItem) => (
+                      {(collapsed ? [] : section.shownRows).map((row: PayrollRowOrGroup) => {
+                        if (isPayrollPersonGroup(row)) {
+                          const groupExpanded = expandedLineKeys.has(row.key)
+                          return (
+                            <Fragment key={row.key}>
+                              <tr style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
+                                <td style={{ padding: '0.45rem 0.65rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => openPayrollLedger(row.label)}
+                                    title="Open the Payroll ledger for this person"
+                                    aria-label={`Open the Payroll ledger for ${row.label}`}
+                                    style={payrollLinkStyle}
+                                  >
+                                    {row.label}
+                                  </button>
+                                  <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · Payroll</span>
+                                  <div style={{ marginTop: '0.2rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleLineKey(row.key)}
+                                      aria-expanded={groupExpanded}
+                                      aria-label={`${groupExpanded ? 'Hide' : 'Show'} open weeks for ${row.label}`}
+                                      style={{
+                                        padding: '0.05rem 0.5rem',
+                                        borderRadius: 999,
+                                        border: '1px solid var(--border-strong)',
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-700)',
+                                        fontSize: '0.71875rem',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {row.weeks.length} open weeks {groupExpanded ? '▴' : '▾'}
+                                    </button>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
+                                  {shortDate(row.oldestDateYmd)}
+                                  <span style={{ marginLeft: '0.35rem' }}>{agingChip(groupAgingItem(row))}</span>
+                                </td>
+                                <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                  ${formatCurrency(row.total)}
+                                </td>
+                                {onSendToDispatch ? <td /> : null}
+                              </tr>
+                              {groupExpanded
+                                ? row.weeks.map((w) => (
+                                    <tr key={w.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top', background: 'var(--bg-subtle)' }}>
+                                      <td style={{ padding: '0.3rem 0.65rem 0.3rem 1.6rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                                        {payrollWeekLabel(w)}
+                                      </td>
+                                      <td style={{ padding: '0.3rem 0.65rem', whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
+                                        {shortDate(itemDateYmd(w))}
+                                        <span style={{ marginLeft: '0.35rem' }}>{agingChip(w)}</span>
+                                      </td>
+                                      <td style={{ padding: '0.3rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
+                                        ${formatCurrency(w.amount)}
+                                      </td>
+                                      {onSendToDispatch ? <td /> : null}
+                                    </tr>
+                                  ))
+                                : null}
+                            </Fragment>
+                          )
+                        }
+                        const item = row
+                        return (
                         <tr key={item.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                           <td style={{ padding: '0.45rem 0.65rem' }}>
                             {item.jobId && onOpenJob ? (
@@ -1108,6 +1263,16 @@ function ItemsModal({
                               >
                                 {item.label}
                               </button>
+                            ) : item.key.startsWith('stub:') ? (
+                              <button
+                                type="button"
+                                onClick={() => openPayrollLedger(item.label)}
+                                title="Open the Payroll ledger for this person"
+                                aria-label={`Open the Payroll ledger for ${item.label}`}
+                                style={payrollLinkStyle}
+                              >
+                                {item.label}
+                              </button>
                             ) : (
                               item.label
                             )}
@@ -1127,7 +1292,7 @@ function ItemsModal({
                               )
                             })()}
                             {item.address && cardKey !== 'ar' ? (
-                              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
+                              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{stripTrailingZip(item.address)}</div>
                             ) : null}
                             {(() => {
                               const bill = apBills?.[item.key]
@@ -1174,7 +1339,8 @@ function ItemsModal({
                             </td>
                           ) : null}
                         </tr>
-                      ))}
+                        )
+                      })}
                     </Fragment>
                   )
                 })
