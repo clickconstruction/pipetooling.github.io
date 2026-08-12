@@ -83,7 +83,9 @@ export type UnifiedSearchResult =
 
 export const BID_SERVICE_TYPE_TAGS: Record<string, { tag: string; color: string }> = {
   Plumbing: { tag: 'plum', color: '#e17235' },
-  Electrical: { tag: 'elec', color: '#FFD700' },
+  // Amber-orange (owner-picked, 2026-08-11) — the old #FFD700 gold was "too
+  // yellow" and white pill text was unreadable on it.
+  Electrical: { tag: 'elec', color: '#EE9310' },
   HVAC: { tag: 'hvac', color: '#06b6d4' },
 }
 

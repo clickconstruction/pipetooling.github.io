@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1589',
+    date: '2026-08-11',
+    title: 'ELEC badge gets a readable amber-orange',
+    kind: 'fix',
+    highlights: [
+      'The yellow ELEC trade badge is now a deeper amber-orange everywhere it appears — easier to read and no longer glaring next to the other trade colors.',
+    ],
+  },
+  {
     version: 'v2.1588',
     date: '2026-08-11',
     title: 'Pipeline titles declutter next to the activity box',
