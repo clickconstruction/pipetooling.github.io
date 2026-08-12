@@ -22,6 +22,7 @@ import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
+import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
@@ -1095,6 +1096,8 @@ export function SupplyHousesTab({
           </div>
         )}
       </section>
+
+      <SupplyHouseJobAccountsSection />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
         <button

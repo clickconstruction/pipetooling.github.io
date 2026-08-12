@@ -12,6 +12,11 @@ import {
   type JobAccountInfo,
   type OwnerMode,
 } from '../../lib/supplyHouseJobAccount'
+import {
+  shareContactDisplay,
+  summarizeJobShares,
+  type JobAccountShareRow,
+} from '../../lib/supplyHouseJobAccountsLedger'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 type ContactRow = { id: string; label: string; email: string }
@@ -66,12 +71,26 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   const [addEmail, setAddEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [sending, setSending] = useState(false)
+  /** Prior shares of this job (v2.1606) — collapsed hint, click for when/who. */
+  const [priorShares, setPriorShares] = useState<JobAccountShareRow[]>([])
+  const [priorOpen, setPriorOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
     let cancelled = false
     setSelectedIds(new Set())
     setAddOpen(false)
+    setPriorShares([])
+    setPriorOpen(false)
+    void supabase
+      .from('supply_house_job_accounts')
+      .select('job_id, contact_label, contact_email, sent_by_name, sent_at')
+      .eq('job_id', job.id)
+      .order('sent_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (!cancelled) setPriorShares((data ?? []) as JobAccountShareRow[])
+      })
     void (async () => {
       let customer: { id: string; name: string | null; contact_info: unknown; customer_type: string | null } | null = null
       if (job.customer_id) {
@@ -148,9 +167,10 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     }
     setSending(true)
     const { subject, text, html } = composeJobAccountEmail(info, jobLabel, profileName ?? '')
-    const toEmails = contacts.filter((c) => selectedIds.has(c.id)).map((c) => c.email)
+    const recipients = contacts.filter((c) => selectedIds.has(c.id)).map((c) => ({ label: c.label, email: c.email }))
+    const toEmails = recipients.map((r) => r.email)
     const { data, error } = await supabase.functions.invoke('send-supply-house-job-account', {
-      body: { job_id: job.id, to_emails: toEmails, subject, email_html: html, email_text: text },
+      body: { job_id: job.id, recipients, to_emails: toEmails, subject, email_html: html, email_text: text },
     })
     const fnError = error ? formatErrorMessage(error) : (data as { error?: string } | null)?.error
     if (fnError) {
@@ -226,6 +246,51 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
           </button>
         </div>
 
+        {priorShares.length > 0 ? (
+          <div style={{ marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setPriorOpen((v) => !v)}
+              aria-expanded={priorOpen}
+              title="Show every previous send — when and to who"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.2rem 0.6rem',
+                borderRadius: 999,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--bg-blue-tint)',
+                color: 'var(--text-blue-700)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {summarizeJobShares(priorShares, (iso) => {
+                const d = new Date(iso)
+                return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
+              })}
+              <span aria-hidden style={{ fontSize: '0.625rem' }}>{priorOpen ? '▴' : '▾'}</span>
+            </button>
+            {priorOpen ? (
+              <div style={{ margin: '0.4rem 0 0 0.5rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.6rem' }}>
+                {priorShares.map((s, idx) => {
+                  const d = new Date(s.sent_at)
+                  const when = Number.isNaN(d.getTime())
+                    ? '—'
+                    : `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                  return (
+                    <div key={idx} style={{ fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.1rem 0' }}>
+                      {when} · <span title={s.contact_email}>{shareContactDisplay(s)}</span>
+                      {s.sent_by_name ? <span style={{ color: 'var(--text-muted)' }}> · by {s.sent_by_name}</span> : null}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {!info ? (
           <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
         ) : (

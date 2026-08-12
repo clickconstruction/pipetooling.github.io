@@ -10391,6 +10391,36 @@ export type Database = {
           },
         ]
       }
+      supply_house_job_accounts: {
+        Row: {
+          contact_email: string
+          contact_label: string
+          id: string
+          job_id: string
+          sent_at: string
+          sent_by: string | null
+          sent_by_name: string
+        }
+        Insert: {
+          contact_email: string
+          contact_label: string
+          id?: string
+          job_id: string
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+        }
+        Update: {
+          contact_email?: string
+          contact_label?: string
+          id?: string
+          job_id?: string
+          sent_at?: string
+          sent_by?: string | null
+          sent_by_name?: string
+        }
+        Relationships: []
+      }
       supply_house_contacts: {
         Row: {
           created_at: string

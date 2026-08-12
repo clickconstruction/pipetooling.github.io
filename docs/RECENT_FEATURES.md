@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1605)
+last_updated: 2026-08-12 (v2.1606)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1606)
+
+### Supply Houses: "Job accounts" ledger + already-shared hint (2026-08-12)
+Owner request, mockup-approved ("I would like to see on /materials?tab=supply-houses all the jobs that have job accounts… include that 'already shared' but clarify when it was shared and to who when clicked on"). **(1) The record**: new table **`supply_house_job_accounts`** (migration `20260812200000` — one row per recipient per v2.1605 send; office-role SELECT, dev-only DELETE for pruning, INSERTs service-role only, both read-only sweeps) written by [`send-supply-house-job-account`](../supabase/functions/send-supply-house-job-account/index.ts) post-send (new labeled `recipients` payload, v2.1605 `to_emails` still accepted). **(2) The section**: collapsible **Job accounts** on Materials → Supply Houses ([`SupplyHouseJobAccountsSection`](../src/components/materials/SupplyHouseJobAccountsSection.tsx), between the aging matrix and the house list) — one row per job (link → Job Detail via the app-level modal), address subline, deduped contact chips, "Last sent M/D/YY · by name", header search; **invisible while the ledger is empty** so the AP workflow sees zero noise. **(3) The hint**: [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx) now shows a blue "Already shared with {newest} · {date} · +N more" pill when the job was shared before — **click it** for the full when/to-who list (every send: date+time · contact · by sender). New kernel [`supplyHouseJobAccountsLedger`](../src/lib/supplyHouseJobAccountsLedger.ts) (+5 tests): per-job grouping with contact dedup + the hint summary. The ledger starts at deploy (earlier sends were never recorded). **Deploy: client → `supabase db push` → `supabase functions deploy send-supply-house-job-account`.**
 
 ## Latest Updates (v2.1605)
 

@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 12, 2026
 
+**`20260812200000_supply_house_job_accounts.sql`** _(apply via `supabase db push` after the file is on `main`; client first, then push, then redeploy `send-supply-house-job-account`)_
+- **Purpose**: job-account share ledger (v2.1606) — one row per recipient per "Share with supply house" send: `job_id` (FK CASCADE), `contact_label`, `contact_email`, `sent_by`, `sent_by_name`, `sent_at`; `job_id` index. Feeds the Supply Houses "Job accounts" section and the share modal's already-shared hint.
+- **Security**: RLS enabled; SELECT for dev/master/assistant/controller, DELETE dev-only (pruning); NO client INSERT/UPDATE — the edge function writes with the service role. Ends with BOTH read-only sweep calls (new table).
+- **Ordering**: ledger rows only start once the function is redeployed.
+- **Category**: Jobs / supply houses
+
 **`20260812180000_supply_house_contacts.sql`** _(apply via `supabase db push` after the file is on `main`; deploy the client first — the table is only read by the new v2.1605 share modal, old clients never touch it)_
 - **Purpose**: org-wide supply house contact shortlist for the Job Detail "Share with supply house" flow (v2.1605) — `id`, free-form `label` ("Ferguson — Central desk"), `email`, `created_by`, `created_at`. No per-master tenancy (shared like `supply_houses`).
 - **Security**: RLS enabled; SELECT/INSERT/UPDATE/DELETE for dev / master_technician / assistant / controller (role-array policies, idempotent via pg_policies checks). Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (new table).
