@@ -103,6 +103,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### August 2026
 
+#### August 12, 2026
+
+**`20260812180000_supply_house_contacts.sql`** _(apply via `supabase db push` after the file is on `main`; deploy the client first — the table is only read by the new v2.1605 share modal, old clients never touch it)_
+- **Purpose**: org-wide supply house contact shortlist for the Job Detail "Share with supply house" flow (v2.1605) — `id`, free-form `label` ("Ferguson — Central desk"), `email`, `created_by`, `created_at`. No per-master tenancy (shared like `supply_houses`).
+- **Security**: RLS enabled; SELECT/INSERT/UPDATE/DELETE for dev / master_technician / assistant / controller (role-array policies, idempotent via pg_policies checks). Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (new table).
+- **Ordering**: client first, then push, then `supabase functions deploy send-supply-house-job-account`.
+- **Category**: Jobs / supply houses
+
 #### August 11, 2026
 
 **`20260811200048_b6_payments_guard_and_race_fix.sql`** _(apply via `supabase db push` after the file is on `main`; no client or edge change — either order is safe)_

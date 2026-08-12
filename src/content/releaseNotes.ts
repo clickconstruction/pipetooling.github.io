@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1605',
+    date: '2026-08-12',
+    title: 'Share a job with a supply house',
+    kind: 'feature',
+    highlights: [
+      'Job Detail has a new storefront button that emails a supply house everything they need to set up a job account: property, address, phones, and the homeowner or building owner with company name.',
+      'Blanks are flagged and fillable right in the modal; a phone or email you add is saved back to the customer.',
+      'Pick recipients from a shared supply house contact list you can add to on the spot.',
+    ],
+  },
+  {
     version: 'v2.1604',
     date: '2026-08-12',
     title: 'Assign work: default time counts',

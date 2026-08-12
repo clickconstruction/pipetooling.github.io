@@ -479,6 +479,10 @@ verify_jwt = false
 [functions.send-gc-statement-email]
 verify_jwt = false
 
+# Job Detail "Share with supply house": Resend send; JWT + role check in function (v2.1605).
+[functions.send-supply-house-job-account]
+verify_jwt = false
+
 # Staff: JWT validated in function (getUser). Heuristic probe for Google Drive/Docs attachment URLs.
 [functions.check-estimate-attachment-url]
 verify_jwt = false

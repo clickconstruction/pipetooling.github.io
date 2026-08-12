@@ -10391,6 +10391,30 @@ export type Database = {
           },
         ]
       }
+      supply_house_contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
       supply_houses: {
         Row: {
           address: string | null

@@ -35,6 +35,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { JobCalendarModal } from './JobCalendarModal'
 import { ShareJobButton } from './ShareJobButton'
+import { SupplyHouseShareModal } from './SupplyHouseShareModal'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { renderAccountManChip } from './jobsStagesRowShared'
 import { buildAccountManDisplay } from '../../lib/jobs/accountMan'
@@ -922,7 +923,11 @@ export default function DetailJobModal({
     openInExternalBrowser(googleMapsSearchUrlForAddress(mapsAddressLine))
   }
 
-  const { user: authUser, profileName } = useAuth()
+  const { user: authUser, profileName, role: viewerAuthRole } = useAuth()
+  // Share with supply house (v2.1605): office roles only; needs the full job.
+  const canShareSupplyHouse =
+    viewerAuthRole === 'dev' || viewerAuthRole === 'master_technician' || viewerAuthRole === 'assistant' || viewerAuthRole === 'controller'
+  const [supplyHouseShareOpen, setSupplyHouseShareOpen] = useState(false)
   const { showToast } = useToastContext()
   const checklistAddModal = useChecklistAddModal()
   /** Header send-as-task (v2.1529): same preset as the Pipeline row quick action. */
@@ -1235,6 +1240,34 @@ export default function DetailJobModal({
               </span>
             ) : null}
             <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
+            {canShareSupplyHouse && fullJob ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSupplyHouseShareOpen(true)
+                }}
+                title="Share with supply house — set up a job account"
+                aria-label="Share with supply house"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.35rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-600)',
+                  borderRadius: 4,
+                }}
+              >
+                {/* Storefront glyph */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden>
+                  <path d="M96 96L544 96L592 224L592 256C592 291.3 563.3 320 528 320C505.1 320 485 307.9 473.6 289.7C462.3 307.9 442.2 320 419.2 320C396.2 320 376.1 307.9 364.8 289.7C353.4 307.9 333.3 320 310.4 320C287.4 320 267.3 307.9 256 289.7C244.7 307.9 224.6 320 201.6 320C178.6 320 158.5 307.9 147.2 289.7C135.8 307.9 115.7 320 92.8 320C69.9 320 48 291.3 48 256L48 224L96 96zM112 352L112 544L288 544L288 432L384 432L384 544L528 544L528 352C534 352 550 350 560 344L560 544C560 561.7 545.7 576 528 576L112 576C94.3 576 80 561.7 80 544L80 344C90 350 106 352 112 352z" />
+                </svg>
+              </button>
+            ) : null}
             {showWorkflowLink && jobId ? (
               <button
                 type="button"
@@ -2269,6 +2302,9 @@ export default function DetailJobModal({
           jobStatus={fullJob?.status ?? null}
           onClose={() => setPaidEmailModalOpen(false)}
         />
+      ) : null}
+      {supplyHouseShareOpen && fullJob ? (
+        <SupplyHouseShareModal open job={fullJob} onClose={() => setSupplyHouseShareOpen(false)} />
       ) : null}
     </div>
   )

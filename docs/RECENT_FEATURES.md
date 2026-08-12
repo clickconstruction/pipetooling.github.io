@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1604)
+last_updated: 2026-08-12 (v2.1605)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1605)
+
+### Job Detail: "Share with supply house" — job account setup email (2026-08-12)
+Owner request, mockup-approved ("share a jobs info with a supply house to setup a job account… Name address Phone numbers of the property and specifically the Home owners info or building owners info if it is different the Company name if it is a building owner"). New storefront icon in the Job Detail header (office roles: dev/master/assistant/controller) opens [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx): **(1)** the job-account packet prefilled from the job + its customer — property/address/site phone, a **Homeowner / Building owner** toggle (auto: GC on the job or commercial customer → building owner, company prefilled from the GC), amber **missing** chips with inline fields for gaps (footer lists them honestly; sending anyway allowed), owner phone/email fills **saved back** to `customers.contact_info` when they were blank; **(2)** an org-wide contact shortlist — new table **`supply_house_contacts`** (migration `20260812180000`, office-role RLS, both read-only sweeps) with tap-to-select chips + inline Add; **(3)** send via new edge function **`send-supply-house-job-account`** (Resend, from team@noreply.pipetooling.com, reply-to the sender, JWT + role check in-handler, job readable through caller RLS, `email_send_log` best-effort). Pure kernel [`supplyHouseJobAccount`](../src/lib/supplyHouseJobAccount.ts) (+10 tests): prefill/owner-mode rules, gap labels, and the composed subject/text/HTML the function sends verbatim. `database.ts` hand-extended with the table (matches regeneration). Verified live against prod pre-migration: Pondhill demo opened fully prefilled (building owner via GC "H &amp; I Construction", real phones/email, "All fields filled"); contacts/send verified post-deploy. New help guide [`share-job-with-supply-house`](../src/content/help/share-job-with-supply-house.md). **Deploy: client → `supabase db push` → `supabase functions deploy send-supply-house-job-account`.**
 
 ## Latest Updates (v2.1604)
 
