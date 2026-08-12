@@ -71,6 +71,9 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 /** Sunday-first, matching dispatchModeTwoWeekGrid (same row as the Schedule tab). */
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
+/** Default assignment window, 8 AM–4 PM (v2.1604) — a real selection once people are picked, not slider cosmetics. */
+const QUICK_ASSIGN_DEFAULT_WINDOW: MinuteInterval = { startMin: 8 * 60, endMin: 16 * 60 }
+
 const chip = (active: boolean): CSSProperties => ({
   flexShrink: 0,
   padding: '0.3rem 0.75rem',
@@ -343,8 +346,12 @@ export default function QuickAssignSheet({
       const e = timeInputToMinutesSafe(customEnd)
       return e > s ? { startMin: s, endMin: e } : null
     }
-    return windowSel
-  }, [customOpen, customStart, customEnd, windowSel])
+    if (windowSel) return windowSel
+    // Default 8 AM–4 PM once people are picked (v2.1604): the slider always
+    // DREW this window, but it wasn't real state — the Schedule button stayed
+    // gray until a slider nudge. Owner call: the default is a real selection.
+    return selected.size > 0 ? QUICK_ASSIGN_DEFAULT_WINDOW : null
+  }, [customOpen, customStart, customEnd, windowSel, selected])
 
   const conflicts = useMemo(() => {
     if (!effectiveWindow) return new Set<string>()
@@ -945,7 +952,7 @@ export default function QuickAssignSheet({
                 Dragging a dot switches the window to Custom with that value, so the
                 bar, the chips, and the time inputs stay in sync. */}
             {(() => {
-              const sliderWindow = effectiveWindow ?? { startMin: timeInputToMinutesSafe('08:00'), endMin: timeInputToMinutesSafe('16:00') }
+              const sliderWindow = effectiveWindow ?? QUICK_ASSIGN_DEFAULT_WINDOW
               const sliderTrim = {
                 loSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('06:00')),
                 hiSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('20:00')),

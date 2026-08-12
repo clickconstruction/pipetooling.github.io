@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1603)
+last_updated: 2026-08-12 (v2.1604)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1604)
+
+### Assign work: the 8 AM–4 PM default is a real selection (2026-08-12)
+Owner bug report with screenshot ("when I select a team the Schedule 2 people stays grayed but shows the default time of 8-4… it is making me click once on the time slider"). Root cause in [`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx): picking people resets `windowSel` to null, and the slider then merely *drew* an 8–4 fallback that wasn't state — so the sheet looked time-picked while `effectiveWindow` was null and the Schedule button stayed gray until any slider nudge flipped it to Custom. Fix: new `QUICK_ASSIGN_DEFAULT_WINDOW` (8 AM–4 PM) becomes the `effectiveWindow` fallback whenever people are selected and no suggestion/custom window is chosen — the button goes live immediately, the dashed per-person window and conflict highlights render against the real default, and the slider constant now shares the same source. Suggestion chips and Custom still override; with nobody selected the sheet behaves exactly as before ("Pick people and a time"). Verified live against prod: job → Team Abraham crew-select → button immediately blue "Schedule 2 people 8:00 AM–4:00 PM" (aria-disabled false) with the slider untouched; deselecting reverts the label; closed without scheduling. Client-only — no migration.
 
 ## Latest Updates (v2.1603)
 
