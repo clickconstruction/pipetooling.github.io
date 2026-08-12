@@ -522,7 +522,10 @@ export function MyTimeDayClusterVisual({
                     alignItems: 'center',
                     width: '100%',
                     minWidth: 0,
-                    flexWrap: compactMerge ? 'wrap' : 'nowrap',
+                    // Always wrap (v2.1598): when the row is space-starved the time
+                    // range and the assign chip stack instead of ellipsizing
+                    // ("7:26 AM – 10:…" / "No Jo…").
+                    flexWrap: 'wrap',
                     gap: 6,
                     marginBottom: compactMerge ? 4 : 6,
                   }}
@@ -530,7 +533,9 @@ export function MyTimeDayClusterVisual({
                   <div
                     className="myTimeDayVisualSegTimeCol"
                     style={{
-                      flex: compactMerge ? '1 1 auto' : 1,
+                      // Content-sized basis (v2.1598): with zero-basis flex the columns
+                      // shrank and ellipsized instead of using the row's wrap.
+                      flex: '1 1 auto',
                       minWidth: 0,
                       display: 'flex',
                       alignItems: 'center',
@@ -578,7 +583,7 @@ export function MyTimeDayClusterVisual({
                   <div
                     className="myTimeDayVisualSegJobCol"
                     style={{
-                      flex: compactMerge ? '1 1 100%' : 1,
+                      flex: compactMerge ? '1 1 100%' : '1 1 auto',
                       minWidth: 0,
                       display: 'flex',
                       justifyContent: compactMerge ? 'flex-start' : 'center',

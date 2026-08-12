@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1598',
+    date: '2026-08-12',
+    title: 'Day editor: cleaner header, nothing cut off',
+    kind: 'fix',
+    highlights: [
+      'The clock-day editor title now reads like "Paige · Wed, Aug 12" with the day\'s total hours on its own line — no more cut-off dates.',
+      'The time range and the "No Job or Bid | Assign" chip always show in full instead of truncating.',
+      'The little "+" under the note is now a labeled "+ Add session" button.',
+    ],
+  },
+  {
     version: 'v2.1597',
     date: '2026-08-12',
     title: 'Not Billed Out drill-down gets line items and context',

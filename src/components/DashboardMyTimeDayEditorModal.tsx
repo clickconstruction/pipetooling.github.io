@@ -83,6 +83,7 @@ import {
   formatDenverBlockDateHeader,
   formatDenverTimeOnly,
   formatWorkDateYmdWeekdayLongFriendly,
+  formatWorkDateYmdWeekdayShortFriendly,
   getDefaultWeekRange,
   getThisAndLastWeekRange,
 } from '../utils/dateUtils'
@@ -1103,15 +1104,21 @@ export function DashboardMyTimeDayEditorModal({
     return total
   }, [sortedSessions, nowTick])
 
+  // v2.1598: short date so the title never truncates ("Paige · Wed, Aug 12");
+  // the day total moved from the title to the clocked-subtitle line below.
   const modalTitleText = useMemo(() => {
-    const hoursPart =
-      !sessionsLoading || sortedSessions.length > 0
-        ? ` • [${formatDurationMs(dayTotalClockedMs)}]`
-        : ''
-    return `${modalTitlePerson} · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}${hoursPart}${
+    return `${modalTitlePerson} · ${formatWorkDateYmdWeekdayShortFriendly(dateStr)}${
       clockTimesReadOnly ? ' — punch times locked' : ''
     }`
-  }, [modalTitlePerson, dateStr, clockTimesReadOnly, sessionsLoading, sortedSessions, dayTotalClockedMs])
+  }, [modalTitlePerson, dateStr, clockTimesReadOnly])
+
+  /** "3h 1m clocked · 1 session" — under the title once sessions are known. */
+  const clockedSubtitle = useMemo(() => {
+    if (sortedSessions.length === 0) return null
+    return `${formatDurationMs(dayTotalClockedMs)} clocked · ${sortedSessions.length} session${
+      sortedSessions.length === 1 ? '' : 's'
+    }`
+  }, [sortedSessions, dayTotalClockedMs])
 
   const timelineItems = useMemo(
     () => buildDayTimeline(sortedSessions, nowTick, { splitClustersWithPairwiseOverlap: true }),
@@ -2669,6 +2676,11 @@ export function DashboardMyTimeDayEditorModal({
             </div>
           ) : null}
         </div>
+        {clockedSubtitle ? (
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {clockedSubtitle}
+          </p>
+        ) : null}
         {sessionsSpanDenverSubtitle ? (
           <p
             id="dashboard-my-time-editor-subtitle"
@@ -2978,21 +2990,22 @@ export function DashboardMyTimeDayEditorModal({
                 >
                   <button
                     type="button"
-                    title="Add disjoint session"
-                    aria-label="Add disjoint session"
+                    title="Add a separate clock session to this day"
+                    aria-label="Add session"
                     onClick={() => setAddDisjointOpen(computeAddDisjointDefaults())}
                     disabled={saving}
                     style={{
-                      padding: '0 4px',
-                      border: 'none',
-                      background: 'transparent',
+                      padding: '0.2rem 0.6rem',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 4,
+                      background: 'var(--surface)',
                       cursor: saving ? 'not-allowed' : 'pointer',
-                      color: 'var(--text-faint)',
-                      fontSize: '1rem',
-                      lineHeight: 1,
+                      color: 'var(--text-700)',
+                      fontSize: '0.75rem',
+                      lineHeight: 1.2,
                     }}
                   >
-                    +
+                    + Add session
                   </button>
                 </div>
               ) : null}

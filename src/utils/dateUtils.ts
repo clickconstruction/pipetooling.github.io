@@ -406,6 +406,14 @@ export function formatWorkDateYmdWeekdayLongFriendly(ymd: string): string {
   return `${formatDenverWeekday(ms)} ${friendly}`
 }
 
+/** E.g. `Wed, Aug 12` — short weekday + month-day, no year (My Time day editor header, v2.1598). */
+export function formatWorkDateYmdWeekdayShortFriendly(ymd: string): string {
+  const md = formatWorkDateYmdMonthDayShort(ymd)
+  const ms = denverMsForWorkDateYmd(ymd)
+  if (ms == null) return md
+  return `${formatDenverWeekdayShort(ms)}, ${md}`
+}
+
 /** Same company calendar day for both instants. */
 export function denverSameCalendarDay(aMs: number, bMs: number): boolean {
   return denverCalendarDayKey(aMs) === denverCalendarDayKey(bMs)
