@@ -3697,7 +3697,7 @@ export default function People() {
               >
                 Match sessions
                 {(unassignedSessionCount ?? 0) > 0 ? (
-                  <span style={{ background: '#f59e0b', color: '#1f2937', borderRadius: 999, padding: '0 0.45rem', fontSize: '0.71875rem', fontWeight: 800, lineHeight: 1.5 }}>
+                  <span style={{ background: '#d97706', color: '#fff', borderRadius: 999, padding: '0 0.45rem', fontSize: '0.71875rem', fontWeight: 800, lineHeight: 1.5 }}>
                     {unassignedSessionCount}
                   </span>
                 ) : null}
