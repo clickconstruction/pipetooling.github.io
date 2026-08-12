@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1596)
+last_updated: 2026-08-12 (v2.1597)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1597)
+
+### Dashboard Not-Billed modal: line items, job-total context, "done — nothing billed" flag (2026-08-12)
+Owner request with screenshot + mockup approval ("I would like to see line items on this page as well much like accounts receivable… make the change"). The **Not Billed Out** drill-down gets the AR treatment plus two of its own: **(1) Line items** — the v2.1595 fixtures fetch + "N line items ▾" chip now also runs for `cardKey='unbilled'` (shared `arRowExtras` seam in [`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)); the address moves inline after the name (zip-stripped) matching AR, block addresses now AP-only. **(2) Job-total context line** — the unbilled figure alone can't distinguish an untouched job from a sliver: the amount cell now reads "of $X job total · N% done" (`FinancialItem.jobTotal` populated in `buildUnbilledBucket`; live specimen: 523 Mission Hills "$43,260.00 · of $123,600 job total" — mostly billed, which the old row hid). **(3) "done — nothing billed" flag** — amber pill on rows 100% done with the ENTIRE job total still unbilled (`fullyUnbilledDone`; the same population Quickfill's "Complete, no Total Bill" chases), deliberately NOT firing on 100%-done-but-partially-billed rows (test-pinned, +1 builder test). Verified live against prod: 17 chips, real context lines ("$6,700.00 · of $33,500 job total · 80% done"), pill on exactly one row (914 · H & I, $85.23 fully unbilled at 100%) with a 100%-done partially-billed row correctly unflagged. Client-only — no migration.
 
 ## Latest Updates (v2.1596)
 

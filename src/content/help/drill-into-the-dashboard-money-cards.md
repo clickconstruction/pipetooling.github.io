@@ -21,6 +21,8 @@ The aging strip above the list totals each band: {{chip:green|0–14d $12k}} {{c
 
 Accounts Receivable rows also carry the **job address** right after the name and an expandable {{chip:gray|3 line items ▾}} chip — tap it to unfold the job's billed work with a dollar amount per line, so you can see what the money is owed for without opening the job.
 
+Not Billed Out rows get the same address + line-items treatment, and each amount carries context — *of $33,500 job total · 80% done* — so a job that's mostly billed reads differently from one that's untouched. Jobs **100% done with nothing billed at all** wear an amber {{chip:yellow|done — nothing billed}} flag: that money is one Bill Customer away.
+
 In Accounts Payable, team payroll and sub labor each have their **own section** with their own count and subtotal. A person several weeks behind shows as **one row with their total owed**, aged by their oldest unpaid week — tap {{chip:gray|8 open weeks ▾}} to unfold the individual weeks, or tap the person's name to open the People → Payroll ledger with their name already searched.
 
 ## On your phone

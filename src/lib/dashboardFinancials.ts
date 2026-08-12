@@ -37,6 +37,10 @@ export type FinancialItem = {
    * whose job row is missing.
    */
   pctComplete?: number | null
+  /** Full job total (jobs_ledger.revenue) — the "of $X job total" context line on Not-billed rows (v2.1597); null when 0/missing. */
+  jobTotal?: number | null
+  /** Not-billed rows: 100% done with the entire job total still unbilled — the "done — nothing billed" flag (v2.1597). */
+  fullyUnbilledDone?: boolean
 }
 
 export type FinancialBucket = {
@@ -429,9 +433,11 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
   for (const job of jobs) {
     const status = job.status ?? ''
     if (status !== 'working' && status !== 'ready_to_bill') continue
-    const gross = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+    const revenue = Number(job.revenue ?? 0)
+    const gross = Math.max(0, revenue - Number(job.payments_made ?? 0))
     const unbilled = Math.max(0, gross - (billedAmountByJob.get(job.id) ?? 0))
     if (unbilled <= EPSILON) continue
+    const pct = effectivePctComplete(job.pct_complete, job.status)
     items.push({
       key: `job:${job.id}`,
       label: financialJobLabel(job),
@@ -440,7 +446,9 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
       dateYmd: job.last_work_date,
       jobId: job.id,
       address: (job.job_address ?? '').trim() || null,
-      pctComplete: effectivePctComplete(job.pct_complete, job.status),
+      pctComplete: pct,
+      jobTotal: revenue > 0 ? revenue : null,
+      fullyUnbilledDone: pct === 100 && revenue > 0 && unbilled >= revenue - EPSILON,
     })
   }
   return finishBucket(items)

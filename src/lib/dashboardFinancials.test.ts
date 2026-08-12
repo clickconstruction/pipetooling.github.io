@@ -397,6 +397,24 @@ describe('buildUnbilledBucket', () => {
     expect(bucket.items.find((i) => i.key === 'job:j1')?.address).toBe('123 Main St, Tulsa')
     expect(bucket.items.find((i) => i.key === 'job:j2')?.address).toBeNull()
   })
+
+  it('carries jobTotal and flags 100%-done jobs with the entire total unbilled (v2.1597)', () => {
+    const bucket = buildUnbilledBucket(
+      [
+        job({ id: 'j1', status: 'working', revenue: 6990, payments_made: 0, pct_complete: 100 }),
+        job({ id: 'j2', status: 'working', revenue: 68700, payments_made: 0, pct_complete: 63 }),
+        job({ id: 'j3', status: 'working', revenue: 1000, payments_made: 0, pct_complete: 100 }),
+      ],
+      [invoice({ id: 'i1', job_id: 'j3', amount: 400, status: 'billed' })],
+    )
+    const done = bucket.items.find((i) => i.key === 'job:j1')
+    expect(done?.jobTotal).toBe(6990)
+    expect(done?.fullyUnbilledDone).toBe(true)
+    // 63% done → not flagged even though fully unbilled.
+    expect(bucket.items.find((i) => i.key === 'job:j2')?.fullyUnbilledDone).toBe(false)
+    // 100% done but partially billed → not flagged.
+    expect(bucket.items.find((i) => i.key === 'job:j3')?.fullyUnbilledDone).toBe(false)
+  })
 })
 
 describe('buildArBuckets (collections split)', () => {
