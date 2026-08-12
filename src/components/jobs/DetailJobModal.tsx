@@ -1139,7 +1139,10 @@ export default function DetailJobModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1004,
-        padding: '1rem',
+        // Safe-area aware (v2.1607): in the installed app the webview runs under
+        // the iOS status bar / call pill, which clipped the title. env() is 0 in
+        // plain browsers, so desktop keeps the plain 1rem.
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         ...(narrowViewport ? { overscrollBehavior: 'contain' as const } : {}),
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -1205,16 +1208,19 @@ export default function DetailJobModal({
             ) : null}
             {modalTitleParts.name}
           </h2>
-          {/* One action row (v2.1529, Option B): pill · share · send-task · calendar · mail · gear · close. */}
+          {/* One action row (v2.1529, Option B): pill · share · supply house · send-task · calendar · mail · gear · close.
+              Narrow screens (v2.1607): full-width row under the title — the old
+              55% cap forced a ragged two-line wrap once the cluster grew. */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
               flexWrap: 'wrap',
-              gap: '0.15rem',
+              gap: narrowViewport ? '0.3rem' : '0.15rem',
               flexShrink: 0,
-              maxWidth: '55%',
+              maxWidth: narrowViewport ? '100%' : '55%',
+              ...(narrowViewport ? { width: '100%' } : {}),
             }}
           >
             {showDetailHeaderRightCluster && headerTradePill ? (

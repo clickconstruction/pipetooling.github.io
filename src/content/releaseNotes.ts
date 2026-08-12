@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1607',
+    date: '2026-08-12',
+    title: 'Job Detail header fixed on phones',
+    kind: 'fix',
+    highlights: [
+      'On phones the Job Detail title no longer hides under the status bar or in-call pill, and the header icons sit in one tidy row instead of wrapping raggedly.',
+    ],
+  },
+  {
     version: 'v2.1606',
     date: '2026-08-12',
     title: 'Supply Houses shows jobs with accounts',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1606)
+last_updated: 2026-08-12 (v2.1607)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1607)
+
+### Job Detail mobile header: safe-area inset + one-row actions (2026-08-12)
+Owner report with phone screenshot ("On mobile, the job detail at the top doesn't look right") — two defects in [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx): **(1)** in the installed app the webview runs under the iOS status bar / in-call pill and the overlay's flat `padding: 1rem` let the title render beneath it — the overlay's vertical padding now adds `env(safe-area-inset-top/bottom, 0px)` (zero in plain browsers, so desktop is untouched); **(2)** the header action cluster (which v2.1605's storefront icon grew to 8 controls) was capped at `maxWidth: 55%`, forcing a ragged two-line centered wrap on phones — under the existing `useNarrowViewport640` gate it now takes the full row beneath the title with a slightly larger gap, landing as ONE tidy right-aligned row. Verified live at the 375px mobile preset: title on its own line at the dialog top, all 8 controls in a single row band (DOM-measured), desktop layout unchanged; the safe-area inset is standard CSS not provable in the preview (env()=0 outside standalone) — confirm on the phone. Client-only — no migration.
 
 ## Latest Updates (v2.1606)
 
