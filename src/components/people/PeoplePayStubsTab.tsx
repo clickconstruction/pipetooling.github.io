@@ -167,7 +167,15 @@ export default function PeoplePayStubsTab({
   const [payStubAdditionalModalStub, setPayStubAdditionalModalStub] = useState<PayStubRow | null>(null)
   const [payStubNoteDetail, setPayStubNoteDetail] = useState<PayStubRow | null>(null)
   const [deletingPayStubPaymentId, setDeletingPayStubPaymentId] = useState<string | null>(null)
-  const [ledgerPersonSearch, setLedgerPersonSearch] = useState('')
+  // ?payrollSearch=<name> pre-fills the ledger search (Dashboard AP modal's
+  // payroll deep links, v2.1596). Read once on mount — no router subscription.
+  const [ledgerPersonSearch, setLedgerPersonSearch] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('payrollSearch') ?? ''
+    } catch {
+      return ''
+    }
+  })
   const [showWeekNumber, setShowWeekNumber] = useState(false)
   const [payStubCalendarPerson, setPayStubCalendarPerson] = useState<string | null>(null)
   const [payStubCalendarYear, setPayStubCalendarYear] = useState(() => new Date().getFullYear())

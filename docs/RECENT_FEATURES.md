@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1595)
+last_updated: 2026-08-12 (v2.1596)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1596)
+
+### Dashboard AP modal: per-person payroll groups, honest sections, $$ fix (2026-08-12)
+Owner asked what could improve the AP drill-down; four items shipped together. **(1) The `$$` bug**: the desktop aging strip rendered "0–14d $$12.2k" in all three drill modals — the template prefixed `$` onto `formatMoneyShortK`'s own `$` ([`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)). **(2) Per-person payroll groups**: the old section listed one open pay-report week per row (Malachi = 7 scattered rows hiding his real total); new kernel [`apPayrollGroups.ts`](../src/lib/apPayrollGroups.ts) (+5 tests) collapses 2+ weeks per person into one row — total owed, aging chip from the **oldest** week, "N open weeks ▾" chip expanding to indented per-week rows (v2.1595's AR chip pattern; grouping applies after search/sort/aging-filter so those still work per week; single-week people stay flat). **(3) Honest sections**: "Payroll due" silently mixed sub-labor rows into its subtotal — split into **Team payroll** (noun "weeks") and **Sub labor** (noun "jobs"), each with its own count + subtotal, matching the card's Supply/Subs/Team detail lines (live check: $22,031.79 + $11,660.49 = the old mixed $33,692.28). **(4) Payroll deep links + polish**: person names (grouped rows and flat) now open **People → Payroll** with the person pre-searched via new `?payrollSearch=` param (read once on mount in [`PeoplePayStubsTab`](../src/components/people/PeoplePayStubsTab.tsx)); sub-labor/unbilled block addresses get the zip-strip treatment. Verified live against prod: no `$$`, Malachi grouped to "8 open weeks · $14,123.60 · 60d", expansion listed his real weeks (6/07–6/13 $2,309.20 60d …), and clicking him landed on `/people?tab=pay_stubs&payrollSearch=Malachi` with the ledger search pre-filled. Client-only — no migration.
 
 ## Latest Updates (v2.1595)
 
