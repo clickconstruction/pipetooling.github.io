@@ -456,66 +456,15 @@ export function DashboardMyScheduleSection({
                                   })
                                 }
                               />
-                              {canLeaveJobFieldReport(role) ? (
-                                <DashboardLeaveReportButton
-                                  showReminder={reminderDue}
-                                  reportCount={reportCountByJobId?.[b.job_id] ?? 0}
-                                  onViewReports={
-                                    setViewReportsJob
-                                      ? () =>
-                                          setViewReportsJob({
-                                            id: b.job_id,
-                                            hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
-                                            jobName: fromAssigned?.job_name ?? rowLabel,
-                                            jobAddress: jobMeta.job_address ?? '—',
-                                          })
-                                      : undefined
-                                  }
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setLeaveReportJob({
-                                      id: b.job_id,
-                                      hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
-                                      jobName: fromAssigned?.job_name ?? rowLabel,
-                                      jobAddress: jobMeta.job_address ?? '—',
-                                    })
-                                  }}
-                                />
-                              ) : null}
-                            </div>
-                          </div>
-                          {/* Full-width job number + zip-less address line (v2.1548);
-                              the % done stack (v2.1567) rides its right edge, under
-                              the Leave Report button. */}
-                          {(() => {
-                            const num = splitScheduleRowLabel(rowLabel).jobNumber
-                            const addr = stripAddressZip(jobMeta.job_address ?? '')
-                            const pctInfo = pctTodayByJobId.get(b.job_id)
-                            if (!num && !addr && !pctInfo) return null
-                            const delta = pctInfo?.delta ?? null
-                            return (
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'flex-start',
-                                  gap: '0.5rem',
-                                  marginTop: '0.35rem',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--text-muted)',
-                                    wordBreak: 'break-word',
-                                    flex: 1,
-                                    minWidth: 0,
-                                  }}
-                                >
-                                  {num && addr ? `${num} · ${addr}` : num || addr}
-                                </div>
-                                {pctInfo ? (
-                                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              {(() => {
+                                // v2.1591: the % stack is ANCHORED directly under the
+                                // Leave Report button (owner request) — riding the
+                                // address line put it at a varying distance whenever
+                                // the title wrapped.
+                                const pctInfo = pctTodayByJobId.get(b.job_id)
+                                const delta = pctInfo?.delta ?? null
+                                const pctStack = pctInfo ? (
+                                  <div style={{ textAlign: 'right' }}>
                                     <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.15 }}>
                                       {pctInfo.pct}%
                                       <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)' }}> done</span>
@@ -537,7 +486,59 @@ export function DashboardMyScheduleSection({
                                       </div>
                                     ) : null}
                                   </div>
-                                ) : null}
+                                ) : null
+                                const reportButton = canLeaveJobFieldReport(role) ? (
+                                  <DashboardLeaveReportButton
+                                    showReminder={reminderDue}
+                                    reportCount={reportCountByJobId?.[b.job_id] ?? 0}
+                                    onViewReports={
+                                      setViewReportsJob
+                                        ? () =>
+                                            setViewReportsJob({
+                                              id: b.job_id,
+                                              hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                              jobName: fromAssigned?.job_name ?? rowLabel,
+                                              jobAddress: jobMeta.job_address ?? '—',
+                                            })
+                                        : undefined
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setLeaveReportJob({
+                                        id: b.job_id,
+                                        hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                        jobName: fromAssigned?.job_name ?? rowLabel,
+                                        jobAddress: jobMeta.job_address ?? '—',
+                                      })
+                                    }}
+                                  />
+                                ) : null
+                                if (!reportButton && !pctStack) return null
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                                    {reportButton}
+                                    {pctStack}
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                          {/* Full-width job number + zip-less address line (v2.1548);
+                              the % done stack moved up under the Leave Report button (v2.1591). */}
+                          {(() => {
+                            const num = splitScheduleRowLabel(rowLabel).jobNumber
+                            const addr = stripAddressZip(jobMeta.job_address ?? '')
+                            if (!num && !addr) return null
+                            return (
+                              <div
+                                style={{
+                                  fontSize: '0.8125rem',
+                                  color: 'var(--text-muted)',
+                                  wordBreak: 'break-word',
+                                  marginTop: '0.35rem',
+                                }}
+                              >
+                                {num && addr ? `${num} · ${addr}` : num || addr}
                               </div>
                             )
                           })()}

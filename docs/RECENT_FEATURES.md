@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1590)
+last_updated: 2026-08-11 (v2.1591)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1591)
+
+### My Schedule: the % done stack anchors directly under Leave Report (2026-08-11)
+Owner report with phone screenshot ("I would like the '0% done' to always be just under the leave report button and not at varying distances from it"). The v2.1567 % stack rode the number/address line's right edge, so its gap to the button grew with every wrapped title line. [`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx) now wraps the Leave Report button and the % stack in one flex COLUMN inside the card's right cluster — the stack sits a fixed 0.5rem under the button on every card (and still renders top-right for roles without the button); the number/address line returns to full width. Render tests 8→9 (the stack's immediate previous sibling IS the button — the v2.1591 contract). Movement bar at the card foot unchanged. Live verification deferred (needs a field-role schedule; render test pins the layout). Client-only — no migration.
 
 ## Latest Updates (v2.1590)
 

@@ -155,6 +155,19 @@ describe('DashboardMyScheduleSection pictures link', () => {
     pctTodayResult = new Map()
   })
 
+  it('% stack is anchored in the button column, not on the address line (v2.1591)', async () => {
+    pctTodayResult = new Map([[JOB_ID, { pct: 62, delta: null }]])
+    renderSection({ role: 'helpers' })
+    const pct = await screen.findByText('62%')
+    // The stack's IMMEDIATE previous sibling in the column is the Leave Report
+    // button — the whole point of v2.1591 (fixed distance, no address-line ride).
+    const stack = pct.parentElement as HTMLElement
+    const prev = stack.previousElementSibling as HTMLElement | null
+    expect(prev).toBeTruthy()
+    expect(/leave\s*report|report\s*due/i.test(prev?.textContent ?? '')).toBe(true)
+    pctTodayResult = new Map()
+  })
+
   it('report-due card: amber Report due button + reason line, no footer banner (v2.1549)', () => {
     renderSection({
       role: 'helpers',
