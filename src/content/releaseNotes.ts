@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1591',
+    date: '2026-08-11',
+    title: 'My Schedule: % done sits right under Leave Report',
+    kind: 'fix',
+    highlights: [
+      'On My Schedule cards, the "% done" figure is now always directly under the Leave Report button instead of floating at different heights depending on how long the job name is.',
+    ],
+  },
+  {
     version: 'v2.1590',
     date: '2026-08-11',
     title: 'Pipeline invoice badges stay on one line',
