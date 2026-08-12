@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1593)
+last_updated: 2026-08-12 (v2.1594)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1594)
+
+### Pipeline: the Job activity box spans the entire middle (2026-08-12)
+Owner request with screenshot ("I would like to have this middle section span the entire middle"). The v2.1587 box grew with the row but capped at `maxWidth: 460`, leaving dead space between the box and Progress & payment on wide boards. One-line fix in [`JobsStagesActivityBox`](../src/components/jobs/JobsStagesActivityBox.tsx): the cap is removed — `flex: 1 1 260px` now takes every remaining pixel of the Job cell in BOTH desktop tables (identity keeps its natural width, same v2.1587 seam). Verified live at 1600px against the real board: 95 boxes measured 841–907px wide inside the 1076px Job cell, flush to the cell's right padding (gap 0). Below 1440px nothing renders, unchanged. Client-only — no migration.
 
 ## Latest Updates (v2.1593)
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1594',
+    date: '2026-08-12',
+    title: 'Pipeline activity box fills the whole middle',
+    kind: 'fix',
+    highlights: [
+      'On wide screens, the Job activity box on the Pipeline board now stretches across the entire middle of the row instead of stopping short and leaving empty space.',
+    ],
+  },
+  {
     version: 'v2.1593',
     date: '2026-08-12',
     title: 'Clock strip honors the assistant hours window',
