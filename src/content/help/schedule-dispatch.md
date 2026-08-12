@@ -19,7 +19,7 @@ Opening a single job (from a job link or the Pipeline board's Week dispatch butt
 
 ## Jumping here from the Dashboard
 
-In the Dashboard's **Currently In** clock strip, every clocked-in person has a small calendar icon left of their name: {{chip:blue|2}} **blue with a white count** when they have jobs on today's schedule, **grey** when they have nothing scheduled. Clicking the blue icon lands you on this page with that person's row highlighted and scrolled into view. Clicking the **grey** icon opens the **Assign work** sheet right there with that person already selected — pick a job and a time without leaving the Dashboard, and the icon flips to the blue count as soon as the work is scheduled.
+In the Dashboard's **Currently In** clock strip, every clocked-in person has a small calendar icon left of their name: {{chip:blue|2}} **blue with a white count** when they have jobs on today's schedule, **grey** when they have nothing scheduled. Clicking the **blue** icon opens that person's day right there — their scheduled blocks with times and job numbers on the timeline, edit and remove, day-to-day arrows, plus **+ Assign more work** and a link to the full Dispatch board. Clicking the **grey** icon opens the **Assign work** sheet with that person already selected — pick a job and a time without leaving the Dashboard, and the icon flips to the blue count as soon as the work is scheduled.
 
 ## Assigning someone to a job
 

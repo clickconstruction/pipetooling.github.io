@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1600',
+    date: '2026-08-12',
+    title: 'Blue calendar icon shows the person\'s day',
+    kind: 'feature',
+    highlights: [
+      'Tapping the blue calendar count on the Dashboard clock strip now opens that person\'s day right there — their scheduled blocks with times, edit and remove, and day-to-day arrows.',
+      'The timeline bars at the top now show each block\'s job number.',
+      'From the modal you can assign more work (person pre-selected) or jump to the full Dispatch board.',
+    ],
+  },
+  {
     version: 'v2.1599',
     date: '2026-08-12',
     title: 'Empty calendar icon assigns work directly',
