@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1590',
+    date: '2026-08-11',
+    title: 'Pipeline invoice badges stay on one line',
+    kind: 'fix',
+    highlights: [
+      'The green "Invoice: 891"-style badges on the Pipeline board no longer wrap onto two lines in narrow columns.',
+    ],
+  },
+  {
     version: 'v2.1589',
     date: '2026-08-11',
     title: 'ELEC badge gets a readable amber-orange',

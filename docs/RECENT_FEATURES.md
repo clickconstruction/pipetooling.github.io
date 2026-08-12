@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1589)
+last_updated: 2026-08-11 (v2.1590)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1590)
+
+### Pipeline: the "Invoice: N" badge never wraps (2026-08-11)
+Owner report ("On some browsers I am seeing 'Invoice: 891' wrapping to two lines"). The standalone invoice rows' green Crew &amp; Dates badge (`stagesInvoiceHcpBadgeStyle` in [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx)) and its muted no-badge fallback line both lacked `white-space: nowrap`, so narrow columns broke the label after the colon. Both get nowrap — same fix family as v2.1586's j:/b:/hours lines. Verified live: all 15 badges on the real board (incl. "Invoice: 891") single-line. Client-only — no migration.
 
 ## Latest Updates (v2.1589)
 

@@ -347,6 +347,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     background: '#16a34a',
     color: 'white',
     lineHeight: 1.2,
+    // "Invoice: 891" must never break after the colon in a narrow column.
+    whiteSpace: 'nowrap',
     fontFamily: 'inherit',
   }
   return (
@@ -1078,7 +1080,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           <span style={stagesInvoiceHcpBadgeStyle}>{stagesInvoiceRowHcpLabel}</span>
                         </div>
                       ) : (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>
                           {stagesInvoiceRowHcpLabel}
                         </div>
                       )}
