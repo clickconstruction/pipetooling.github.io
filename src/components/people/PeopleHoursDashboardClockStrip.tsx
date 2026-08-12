@@ -32,6 +32,7 @@ import {
   PeopleHoursClockStripMiniCalendar,
 } from './PeopleHoursClockStripMiniCalendar'
 import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 const HOURS_DAY_CORRECT_BLOCK_TOAST =
@@ -57,9 +58,11 @@ type Props = {
   onSessionsChanged?: () => void
   /** People → Hours roster as `{ value: user_id, label: name }` for the add-session person picker. */
   addSessionPeople?: { value: string; label: string }[]
+  /** Earliest visible day (assistant hours window, v2.1593). Null/absent = unlimited day navigation. */
+  minDateYmd?: string | null
 }
 
-export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPeople }: Props) {
+export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPeople, minDateYmd = null }: Props) {
   const { user: authUser, role } = useAuth()
   const narrowViewport640 = useNarrowViewport640()
   const { showToast } = useToastContext()
@@ -69,6 +72,15 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
     showClockStripScopeToggle || role === 'superintendent'
 
   const [selectedYmd, setSelectedYmd] = useState(() => denverCalendarDayKey(Date.now()))
+  /** All day selections route through the assistant-window clamp; a snap-back below covers a late-arriving floor. */
+  const selectDayClamped = useCallback(
+    (ymd: string) => setSelectedYmd(clampYmdToFloor(ymd, minDateYmd)),
+    [minDateYmd],
+  )
+  useEffect(() => {
+    if (minDateYmd != null && selectedYmd < minDateYmd) setSelectedYmd(minDateYmd)
+  }, [minDateYmd, selectedYmd])
+  const atDayFloor = minDateYmd != null && selectedYmd <= minDateYmd
   const [addSessionOpen, setAddSessionOpen] = useState(false)
   const canAddSession = showClockStripScopeToggle && (addSessionPeople?.length ?? 0) > 0
 
@@ -327,7 +339,7 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
         miniCalendarYmds={miniCalendarYmds}
         todayDenver={todayDenver}
         selectedYmd={selectedYmd}
-        onSelectYmd={setSelectedYmd}
+        onSelectYmd={selectDayClamped}
         pendingUnapprovedCountByWorkDate={pendingUnapprovedCountByWorkDate}
         countsLoading={stripUnapprovedMiniCalendarLoading}
         narrowViewport640={narrowViewport640}
@@ -357,8 +369,10 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
           >
             <button
               type="button"
-              style={{ ...navBtnStyle, fontSize: '0.8125rem', padding: '0.35rem 0.5rem' }}
-              onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, -1))}
+              disabled={atDayFloor}
+              title={atDayFloor ? 'Earlier days are not available for your role' : undefined}
+              style={{ ...navBtnStyle, fontSize: '0.8125rem', padding: '0.35rem 0.5rem', cursor: atDayFloor ? 'not-allowed' : 'pointer', opacity: atDayFloor ? 0.45 : 1 }}
+              onClick={() => selectDayClamped(shiftWorkDateYmd(selectedYmd, -1))}
             >
               Previous day
             </button>
@@ -368,7 +382,7 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
             <button
               type="button"
               style={{ ...navBtnStyle, fontSize: '0.8125rem', padding: '0.35rem 0.5rem' }}
-              onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, 1))}
+              onClick={() => selectDayClamped(shiftWorkDateYmd(selectedYmd, 1))}
             >
               Next day
             </button>
@@ -407,13 +421,15 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
         >
           <button
             type="button"
-            style={navBtnStyle}
-            onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, -1))}
+            disabled={atDayFloor}
+            title={atDayFloor ? 'Earlier days are not available for your role' : undefined}
+            style={{ ...navBtnStyle, cursor: atDayFloor ? 'not-allowed' : 'pointer', opacity: atDayFloor ? 0.45 : 1 }}
+            onClick={() => selectDayClamped(shiftWorkDateYmd(selectedYmd, -1))}
           >
             Previous day
           </button>
           <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{dateLabel}</span>
-          <button type="button" style={navBtnStyle} onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, 1))}>
+          <button type="button" style={navBtnStyle} onClick={() => selectDayClamped(shiftWorkDateYmd(selectedYmd, 1))}>
             Next day
           </button>
           {selectedYmd !== todayDenver ? (

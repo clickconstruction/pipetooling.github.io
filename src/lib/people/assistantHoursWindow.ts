@@ -23,6 +23,11 @@ export function assistantHoursWindowFloorYmd(todayYmd: string, weeks: number): s
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/** Clamp a single day to the floor (v2.1593 — clock strip day nav). Null floor = unchanged. */
+export function clampYmdToFloor(ymd: string, floorYmd: string | null): string {
+  return floorYmd != null && ymd < floorYmd ? floorYmd : ymd
+}
+
 /**
  * Clamp a start/end range to the floor. Start never precedes the floor; end
  * never precedes the (possibly clamped) start. Null floor = unchanged.

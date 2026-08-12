@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assistantHoursWindowFloorYmd, clampHoursRangeToFloor } from './assistantHoursWindow'
+import { assistantHoursWindowFloorYmd, clampHoursRangeToFloor, clampYmdToFloor } from './assistantHoursWindow'
 
 describe('assistantHoursWindowFloorYmd', () => {
   it('weeks=3 mid-week → the Sunday two weeks before the current week', () => {
@@ -33,6 +33,22 @@ describe('assistantHoursWindowFloorYmd', () => {
 
   it('fractional weeks floor to whole weeks', () => {
     expect(assistantHoursWindowFloorYmd('2026-08-12', 3.9)).toBe('2026-07-26')
+  })
+})
+
+describe('clampYmdToFloor', () => {
+  it('null floor leaves the day unchanged', () => {
+    expect(clampYmdToFloor('2020-01-01', null)).toBe('2020-01-01')
+  })
+
+  it('day at/after the floor is unchanged', () => {
+    expect(clampYmdToFloor('2026-07-26', '2026-07-26')).toBe('2026-07-26')
+    expect(clampYmdToFloor('2026-08-12', '2026-07-26')).toBe('2026-08-12')
+  })
+
+  it('day below the floor clamps to it', () => {
+    expect(clampYmdToFloor('2026-07-25', '2026-07-26')).toBe('2026-07-26')
+    expect(clampYmdToFloor('2020-01-01', '2026-07-26')).toBe('2026-07-26')
   })
 })
 
