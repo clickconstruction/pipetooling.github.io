@@ -248,6 +248,9 @@ export type JobsStagesTabProps = {
   jobThreadDraft: ReturnType<typeof useJobThreadNotes>['jobThreadDraft']
   setJobThreadDraft: ReturnType<typeof useJobThreadNotes>['setJobThreadDraft']
   submitJobThreadNote: ReturnType<typeof useJobThreadNotes>['submitJobThreadNote']
+  /** Body-based note submit + lazy activity loader — the wide-screen Job activity box (v2.1587) needs both. */
+  submitJobThreadNoteWithBody?: ReturnType<typeof useJobThreadNotes>['submitJobThreadNoteWithBody']
+  loadJobThreadNotesForJob?: ReturnType<typeof useJobThreadNotes>['loadJobThreadNotesForJob']
   jobThreadStatsByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadStatsByJobId']
   refreshJobThreadStatsForJobIds: ReturnType<typeof useJobThreadNotes>['refreshJobThreadStatsForJobIds']
 }
@@ -394,6 +397,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     jobThreadDraft,
     setJobThreadDraft,
     submitJobThreadNote,
+    submitJobThreadNoteWithBody,
+    loadJobThreadNotesForJob,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,
   } = props
@@ -2287,6 +2292,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadSubmittingId={jobThreadSubmittingId}
                     setJobThreadDraft={setJobThreadDraft}
                     submitJobThreadNote={submitJobThreadNote}
+                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
                     authUser={authUser}
                     showToast={showToast}
                     customers={customers}
@@ -2378,6 +2385,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadSubmittingId={jobThreadSubmittingId}
                     setJobThreadDraft={setJobThreadDraft}
                     submitJobThreadNote={submitJobThreadNote}
+                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
                     authUser={authUser}
                     showToast={showToast}
                     customers={customers}
@@ -2516,6 +2525,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadSubmittingId={jobThreadSubmittingId}
                     setJobThreadDraft={setJobThreadDraft}
                     submitJobThreadNote={submitJobThreadNote}
+                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
                     authUser={authUser}
                     showToast={showToast}
                     customers={customers}
@@ -2778,6 +2789,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadSubmittingId={jobThreadSubmittingId}
                     setJobThreadDraft={setJobThreadDraft}
                     submitJobThreadNote={submitJobThreadNote}
+                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
                     authUser={authUser}
                     showToast={showToast}
                     customers={customers}
@@ -2880,6 +2893,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadSubmittingId={jobThreadSubmittingId}
                     setJobThreadDraft={setJobThreadDraft}
                     submitJobThreadNote={submitJobThreadNote}
+                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
                     authUser={authUser}
                     showToast={showToast}
                     customers={customers}
@@ -3022,6 +3037,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       jobThreadSubmittingId={jobThreadSubmittingId}
                       setJobThreadDraft={setJobThreadDraft}
                       submitJobThreadNote={submitJobThreadNote}
+                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
+                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
                       authUser={authUser}
                       showToast={showToast}
                       customers={customers}
