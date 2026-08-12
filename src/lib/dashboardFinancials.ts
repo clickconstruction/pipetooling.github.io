@@ -158,7 +158,7 @@ export function buildArBuckets(
       amount: remaining,
       dateYmd: isoToYmd(inv.billed_at),
       jobId: inv.job_id,
-      address: null,
+      address: (job?.job_address ?? '').trim() || null,
       pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
     })
   }
@@ -175,7 +175,7 @@ export function buildArBuckets(
       amount: remaining,
       dateYmd: null,
       jobId: job.id,
-      address: null,
+      address: (job.job_address ?? '').trim() || null,
       pctComplete: effectivePctComplete(job.pct_complete, job.status),
     })
   }

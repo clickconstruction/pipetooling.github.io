@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1595',
+    date: '2026-08-12',
+    title: 'AR drill-down shows address and line items',
+    kind: 'feature',
+    highlights: [
+      'Every row in the Dashboard Accounts Receivable drill-down now shows the job address inline after the name.',
+      'A "N line items" chip on each row expands in place to list the job\'s billed work with per-line dollar amounts.',
+    ],
+  },
+  {
     version: 'v2.1594',
     date: '2026-08-12',
     title: 'Pipeline activity box fills the whole middle',

@@ -19,6 +19,8 @@ Each card now carries a thin **aging bar** under its total — green under two w
 The aging strip above the list totals each band: {{chip:green|0–14d $12k}} {{chip:yellow|15–30d $31k}} {{chip:red|30d+ $165k}} — click a band to see just that money.
 :::
 
+Accounts Receivable rows also carry the **job address** right after the name and an expandable {{chip:gray|3 line items ▾}} chip — tap it to unfold the job's billed work with a dollar amount per line, so you can see what the money is owed for without opening the job.
+
 ## On your phone
 
 The drill-down opens as a full-height sheet built for one-hand use:
