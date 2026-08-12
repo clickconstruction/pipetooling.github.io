@@ -4,6 +4,11 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
+import {
+  fetchPhysicalInvoiceIssuerFromAppSettings,
+  getPhysicalInvoiceIssuerForDocument,
+  type PhysicalInvoiceIssuer,
+} from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   composeJobAccountEmail,
@@ -74,6 +79,8 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   /** Prior shares of this job (v2.1606) — collapsed hint, click for when/who. */
   const [priorShares, setPriorShares] = useState<JobAccountShareRow[]>([])
   const [priorOpen, setPriorOpen] = useState(false)
+  /** Org identity for the email intro (v2.1608) — issuer settings: company + office phone. */
+  const [issuer, setIssuer] = useState<PhysicalInvoiceIssuer | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -82,6 +89,11 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     setAddOpen(false)
     setPriorShares([])
     setPriorOpen(false)
+    void fetchPhysicalInvoiceIssuerFromAppSettings()
+      .then(() => {
+        if (!cancelled) setIssuer(getPhysicalInvoiceIssuerForDocument())
+      })
+      .catch(() => {})
     void supabase
       .from('supply_house_job_accounts')
       .select('job_id, contact_label, contact_email, sent_by_name, sent_at')
@@ -166,7 +178,10 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
       return
     }
     setSending(true)
-    const { subject, text, html } = composeJobAccountEmail(info, jobLabel, profileName ?? '')
+    const { subject, text, html } = composeJobAccountEmail(info, jobLabel, profileName ?? '', {
+      companyName: issuer?.companyName,
+      officePhone: issuer?.phone,
+    })
     const recipients = contacts.filter((c) => selectedIds.has(c.id)).map((c) => ({ label: c.label, email: c.email }))
     const toEmails = recipients.map((r) => r.email)
     const { data, error } = await supabase.functions.invoke('send-supply-house-job-account', {

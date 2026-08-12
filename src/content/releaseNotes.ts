@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1608',
+    date: '2026-08-12',
+    title: 'Supply house email names the company',
+    kind: 'fix',
+    highlights: [
+      'The job-account email now says who is asking ("\u2026set up a job account for Click Plumbing and Electrical\u2026") and offers the office number alongside reply-by-email.',
+    ],
+  },
+  {
     version: 'v2.1607',
     date: '2026-08-12',
     title: 'Job Detail header fixed on phones',
