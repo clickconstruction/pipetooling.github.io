@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1592)
+last_updated: 2026-08-12 (v2.1593)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1593)
+
+### Clock strip day navigation joins the assistant hours window (2026-08-12)
+Owner follow-up audit of v2.1592 ("is there any other surface area where an assistant can see more than three weeks now?"). One gap found: the Hours-tab clock strip's **Previous day** button ([`PeopleHoursDashboardClockStrip`](../src/components/people/PeopleHoursDashboardClockStrip.tsx)) shifted `selectedYmd` with no floor — an assistant could walk day-by-day arbitrarily far back and view any past day's org-wide sessions, bypassing the new week-range clamp in the same tab. Now the strip takes `minDateYmd` (People.tsx passes the same `hoursFloorYmd`): every day selection routes through the new kernel helper `clampYmdToFloor` (mini-calendar pills, both Previous/Next day button pairs), both Previous-day buttons disable at the floor with the "Earlier days are not available for your role" tooltip, and a snap-back effect covers a late-arriving floor. Kernel tests 11→14. Audit found everything else bounded or gated: mini-calendar pills fixed 11 days, Match sessions 7 days, Teams/Due-by-Team + Review Hours behind `canAccessPay`, Dashboard strip today-only (no day nav), dispatch Manage-person-day shows schedules not hours. Verified live against prod as assistant Grace: 25 rapid Previous-day clicks stopped exactly at Sunday Jul 26 (floor) with the button disabled, Next day re-enabled it; dev walked past the floor freely (Jul 23, button live). Client-only — no migration.
 
 ## Latest Updates (v2.1592)
 

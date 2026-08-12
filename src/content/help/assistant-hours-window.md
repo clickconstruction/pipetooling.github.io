@@ -13,6 +13,7 @@ Assistants working in **People → Hours** see a rolling window of recent weeks 
 The **Week range** controls stop at the edge of the window:
 
 - The {{button:outline|← last week}} button grays out once the earliest visible week is showing.
+- The clock strip's {{button:outline|Previous day}} button stops at the same edge — day-by-day browsing can't go back further than the window either.
 - The **Start** and **End** date pickers won't accept dates before the window; typing an earlier date snaps back to the earliest allowed day.
 - A note under the controls names the cutoff:
 

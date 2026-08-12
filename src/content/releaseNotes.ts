@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1593',
+    date: '2026-08-12',
+    title: 'Clock strip honors the assistant hours window',
+    kind: 'fix',
+    highlights: [
+      'The "Previous day" button on the People → Hours clock strip now stops at the assistant hours window instead of walking back through unlimited history.',
+      'Devs, controllers, and pay-approved masters remain unlimited, matching the week range below it.',
+    ],
+  },
+  {
     version: 'v2.1592',
     date: '2026-08-12',
     title: 'Assistants see a three-week hours window',

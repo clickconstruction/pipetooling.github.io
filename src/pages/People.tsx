@@ -3756,7 +3756,7 @@ export default function People() {
                 ) : null}
               </button>
             </div>
-            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} /> : null}
+            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} minDateYmd={hoursFloorYmd} /> : null}
           </section>
           ) : null}
           <PeopleHoursWeekRange
