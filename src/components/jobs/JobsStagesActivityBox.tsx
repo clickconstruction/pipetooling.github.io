@@ -21,9 +21,10 @@ import {
 
 const boxStyle: CSSProperties = {
   position: 'relative',
+  // No max width: the box spans the Job cell's entire middle (v2.1594) —
+  // identity keeps its natural width, the box takes every remaining pixel.
   flex: '1 1 260px',
   minWidth: 240,
-  maxWidth: 460,
   marginLeft: 'auto',
   border: '1px solid var(--border-strong)',
   borderRadius: 10,
