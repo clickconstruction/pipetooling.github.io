@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1592',
+    date: '2026-08-12',
+    title: 'Assistants see a three-week hours window',
+    kind: 'feature',
+    highlights: [
+      'On People → Hours, assistants now see the current week plus two previous weeks; earlier history is out of reach and a note names the cutoff date.',
+      'Devs, controllers, and pay-approved masters are never limited.',
+      'Devs can change the window (or turn the limit off) at Settings → People & accounts → Assistant hours visibility.',
+    ],
+  },
+  {
     version: 'v2.1591',
     date: '2026-08-11',
     title: 'My Schedule: % done sits right under Leave Report',

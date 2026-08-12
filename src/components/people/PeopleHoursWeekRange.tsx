@@ -8,6 +8,8 @@ export interface PeopleHoursWeekRangeProps {
   setHoursDateStart: (value: string) => void
   setHoursDateEnd: (value: string) => void
   shiftHoursWeek: (delta: number) => void
+  /** Earliest visible date (assistant hours window). Null/absent = unlimited history. */
+  minDateYmd?: string | null
 }
 
 export function PeopleHoursWeekRange({
@@ -17,7 +19,16 @@ export function PeopleHoursWeekRange({
   setHoursDateStart,
   setHoursDateEnd,
   shiftHoursWeek,
+  minDateYmd = null,
 }: PeopleHoursWeekRangeProps) {
+  const atFloor = minDateYmd != null && hoursDateStart <= minDateYmd
+  const floorHint = minDateYmd != null && (
+    <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center', width: '100%' }}>
+      Hours history before{' '}
+      {new Date(minDateYmd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+      is not available for your role.
+    </p>
+  )
   return (
     <section id="people-hours-week" aria-labelledby="people-hours-week-heading" style={HOURS_TAB_SECTION_ANCHOR_STYLE}>
       <h3
@@ -48,7 +59,9 @@ export function PeopleHoursWeekRange({
               type="button"
               aria-label="Previous week"
               onClick={() => shiftHoursWeek(-1)}
-              style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+              disabled={atFloor}
+              title={atFloor ? 'Earlier weeks are not available for your role' : undefined}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: atFloor ? 'not-allowed' : 'pointer', fontSize: '1.125rem', lineHeight: 1, opacity: atFloor ? 0.45 : 1 }}
             >
               ‹
             </button>
@@ -87,7 +100,7 @@ export function PeopleHoursWeekRange({
                 }}
               >
                 <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>Start</span>
-                <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                <input type="date" value={hoursDateStart} min={minDateYmd ?? undefined} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
               <label
                 style={{
@@ -98,10 +111,11 @@ export function PeopleHoursWeekRange({
                 }}
               >
                 <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>End</span>
-                <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                <input type="date" value={hoursDateEnd} min={minDateYmd ?? undefined} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
             </div>
           </details>
+          {floorHint}
         </div>
       ) : (
         <div
@@ -117,7 +131,9 @@ export function PeopleHoursWeekRange({
           <button
             type="button"
             onClick={() => shiftHoursWeek(-1)}
-            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
+            disabled={atFloor}
+            title={atFloor ? 'Earlier weeks are not available for your role' : undefined}
+            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: atFloor ? 'not-allowed' : 'pointer', fontSize: '0.875rem', opacity: atFloor ? 0.45 : 1 }}
           >
             ← last week
           </button>
@@ -130,7 +146,7 @@ export function PeopleHoursWeekRange({
             }}
           >
             <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>Start</span>
-            <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+            <input type="date" value={hoursDateStart} min={minDateYmd ?? undefined} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
           </label>
           <label
             style={{
@@ -141,7 +157,7 @@ export function PeopleHoursWeekRange({
             }}
           >
             <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>End</span>
-            <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+            <input type="date" value={hoursDateEnd} min={minDateYmd ?? undefined} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
           </label>
           <button
             type="button"
@@ -150,6 +166,7 @@ export function PeopleHoursWeekRange({
           >
             next week →
           </button>
+          {floorHint}
         </div>
       )}
     </section>

@@ -189,6 +189,30 @@ export const APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS = 'team_review_cadence_da
 export const APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE = 'crew_pnl_sub_equivalent_rate_v1' as const
 
 /**
+ * `value_num`: how many weeks of People → Hours history assistants can view
+ * (current week counts as 1; default 3 = current + two back via
+ * `parseAssistantHoursWindowWeeks`; explicit 0 = unlimited). Dev writes
+ * (Settings → People & accounts); all authenticated read.
+ * @see `src/lib/people/assistantHoursWindow.ts`
+ */
+export const APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS = 'assistant_hours_window_weeks_v1' as const
+
+export const DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS = 3
+
+/**
+ * Parse the assistant hours window `value_num`. Missing/blank/garbage/negative
+ * falls back to the default (the limit is the safe state); an explicit 0 means
+ * unlimited (today's unrestricted behavior).
+ */
+export function parseAssistantHoursWindowWeeks(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || value === '') return DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS
+  if (n === 0) return 0
+  return Math.max(1, Math.floor(n))
+}
+
+/**
  * `value_text`: org-added city names (one per line) appended to the built-in
  * TX_JOB_ADDRESS_LOCALITY_KEYWORDS list that decides where one-line job addresses split
  * into street / "City ST" lines (Stages + Billing rows, lien prefill, AIA form).

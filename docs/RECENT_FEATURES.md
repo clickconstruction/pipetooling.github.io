@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-11 (v2.1591)
+last_updated: 2026-08-12 (v2.1592)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1592)
+
+### Assistants see a three-week hours window (2026-08-12)
+Owner request ("Assistants can see back as many hours as they want in the people hours section. I would like this to be limited to three weeks, the current week and two weeks back, and I would like this to be a setting a dev can set in settings"). Assistants on **People → Hours** are now clamped to a rolling window — default **3 weeks** (current + two back) — while devs, controllers, and pay-approved masters stay unlimited. New pure kernel [`assistantHoursWindow`](../src/lib/people/assistantHoursWindow.ts) (+11 tests) computes the Sunday-anchored floor and clamps ranges; `usePeopleAccess` gains `isAssistant`; People.tsx loads the new `app_settings` key **`assistant_hours_window_weeks_v1`** (`value_num`; missing = 3 via `parseAssistantHoursWindowWeeks`, **0 = unlimited**), wraps the range setters, clamps `shiftHoursWeek`/`ensureHoursRangeIncludesDate`, and holds a snap-back effect so no code path can leave the range below the floor. [`PeopleHoursWeekRange`](../src/components/people/PeopleHoursWeekRange.tsx) gains `minDateYmd`: both prev-week buttons disable at the floor, the date inputs carry `min`, and a muted note names the cutoff ("Hours history before Jul 26, 2026 is not available for your role."). Dev control: self-contained [`AssistantHoursWindowSettingsBlock`](../src/components/settings/AssistantHoursWindowSettingsBlock.tsx) (Weeks visible + No limit) in Settings → People & accounts. UI-level enforcement only (RLS untouched — a phase-2 hardening if ever needed). Render tests +4 pin the week-range contract; new help guide [`assistant-hours-window`](../src/content/help/assistant-hours-window.md). Verified live against prod as assistant Grace via the localhost imitate button: floor Jul 26 with today Aug 12, two back-clicks landed 07/26–08/01 with the button disabled, and typing 2026-06-01 into Start snapped back to 07/26; dev view unchanged. Client-only — no migration (the setting row is upserted on first save).
 
 ## Latest Updates (v2.1591)
 

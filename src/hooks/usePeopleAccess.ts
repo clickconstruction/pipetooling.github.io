@@ -13,6 +13,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
   const [canAccessLicenses, setCanAccessLicenses] = useState(false)
   const [canAccessContracts, setCanAccessContracts] = useState(false)
   const [isDev, setIsDev] = useState(false)
+  const [isAssistant, setIsAssistant] = useState(false)
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
         return
       }
       if (role === 'assistant') {
+        setIsAssistant(true)
         setCanAccessHours(true)
         setCanAccessLicenses(true)
         setCanAccessContracts(true)
@@ -69,6 +71,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
     canAccessLicenses,
     canAccessContracts,
     isDev,
+    isAssistant,
     canSeePushStatus,
   }
 }
