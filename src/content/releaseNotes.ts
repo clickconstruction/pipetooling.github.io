@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1604',
+    date: '2026-08-12',
+    title: 'Assign work: default time counts',
+    kind: 'fix',
+    highlights: [
+      'In the Assign work sheet, picking people now lights up the Schedule button immediately with the default 8 AM\u20134 PM window \u2014 no more nudging the slider first.',
+    ],
+  },
+  {
     version: 'v2.1603',
     date: '2026-08-12',
     title: 'Removing a crew block asks in-app',
