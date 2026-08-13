@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1610)
+last_updated: 2026-08-13 (v2.1611)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1611)
+
+### Share modal: the Send-to-Dispatch button centers in dispatch purple (2026-08-13)
+Owner polish request ("center and make the same color as the header icon to send to dispatch"). The v2.1610 **"Send to Dispatch — find the owner"** button in [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx) now centers in the owner section and wears the send-to-dispatch **purple `#7c3aed`** (text + border) of the Job Detail header's send-as-task icon, replacing the blue; the "Dispatch is on it" line centers with it. Verified live: computed color/border rgb(124, 58, 237), centered within the dialog. Client-only — no migration.
 
 ## Latest Updates (v2.1610)
 

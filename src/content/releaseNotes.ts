@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1611',
+    date: '2026-08-13',
+    title: 'Dispatch button styled to match',
+    kind: 'fix',
+    highlights: [
+      'The "Send to Dispatch \u2014 find the owner" button is now centered and wears the same purple as the send-to-dispatch icon.',
+    ],
+  },
+  {
     version: 'v2.1610',
     date: '2026-08-13',
     title: 'Dispatch can chase down property owners',

@@ -424,7 +424,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                       : 'The supply house needs the property owner to open the account.'}
                   </p>
                   {findOwnerRequest ? (
-                    <p style={{ margin: '0.35rem 0 0.1rem', fontSize: '0.75rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                    <p style={{ margin: '0.35rem 0 0.1rem', fontSize: '0.75rem', color: 'var(--text-blue-700)', fontWeight: 600, textAlign: 'center' }}>
                       ✓ Dispatch is on it — requested{' '}
                       {(() => {
                         const d = new Date(findOwnerRequest.created_at)
@@ -432,34 +432,38 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                       })()}
                     </p>
                   ) : (
-                    <button
-                      type="button"
-                      disabled={dispatching}
-                      onClick={() => {
-                        setDispatching(true)
-                        void submitFindPropertyOwnerDispatchRequestForJob(authUser?.id, showToast, {
-                          jobId: job.id,
-                          jobLabel,
-                          jobAddress: info.address,
-                        }).then((req) => {
-                          setDispatching(false)
-                          if (req) setFindOwnerRequest(req)
-                        })
-                      }}
-                      style={{
-                        margin: '0.35rem 0 0.1rem',
-                        padding: '0.3rem 0.75rem',
-                        border: '1px solid #93c5fd',
-                        borderRadius: 6,
-                        background: 'var(--surface)',
-                        color: 'var(--text-blue-700)',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        cursor: dispatching ? 'wait' : 'pointer',
-                      }}
-                    >
-                      {dispatching ? 'Sending…' : 'Send to Dispatch — find the owner'}
-                    </button>
+                    // Centered, in the send-to-dispatch purple of the Job Detail
+                    // header's send-as-task icon (v2.1611, owner request).
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        disabled={dispatching}
+                        onClick={() => {
+                          setDispatching(true)
+                          void submitFindPropertyOwnerDispatchRequestForJob(authUser?.id, showToast, {
+                            jobId: job.id,
+                            jobLabel,
+                            jobAddress: info.address,
+                          }).then((req) => {
+                            setDispatching(false)
+                            if (req) setFindOwnerRequest(req)
+                          })
+                        }}
+                        style={{
+                          margin: '0.35rem 0 0.1rem',
+                          padding: '0.3rem 0.75rem',
+                          border: '1px solid #7c3aed',
+                          borderRadius: 6,
+                          background: 'var(--surface)',
+                          color: '#7c3aed',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: dispatching ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {dispatching ? 'Sending…' : 'Send to Dispatch — find the owner'}
+                      </button>
+                    </div>
                   )}
                 </>
               ) : (
