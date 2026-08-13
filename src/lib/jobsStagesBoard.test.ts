@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bankPaymentTargetsFromStageRows,
   stagesSectionKeyForJobStatus,
   buildCapableToBillBreakdownRows,
   capableToBillTotalFromWorking,
@@ -1099,5 +1100,49 @@ describe('sortStagesJobsByEffectiveNumberDesc (C# interleaves with HCP)', () => 
   it('breaks ties on job name', () => {
     const list = [numbered('z', '10', null, 'Zeta'), numbered('a', '10', null, 'Alpha')]
     expect(order(list)).toEqual(['a', 'z'])
+  })
+})
+
+describe('bankPaymentTargetsFromStageRows — Stripe-hosted lines (v2.1614)', () => {
+  const billedInvoiceStub = (over: Partial<Record<string, unknown>> & { id: string; job_id: string; amount: number }) =>
+    rtbInvoiceStub({ ...over, status: 'billed' })
+
+  const billedJob = (id: string, invoices: unknown[]) =>
+    jobStub({ id, status: 'billed', invoices: invoices as JobWithDetails['invoices'] })
+
+  it('includes a Stripe-hosted billed line, flagged and labeled', () => {
+    const inv = billedInvoiceStub({ id: 'inv-s', job_id: 'job-1', amount: 600, stripe_invoice_id: 'in_123' })
+    const job = billedJob('job-1', [inv])
+    const rows = buildBilledStageRows([job], [])
+    const targets = bankPaymentTargetsFromStageRows(rows)
+    const t = targets.find((x) => x.invoiceId === 'inv-s')
+    expect(t).toBeTruthy()
+    expect(t?.stripeHosted).toBe(true)
+    expect(t?.label).toContain('· Stripe')
+    expect(t?.searchLabel).toContain('Stripe')
+  })
+
+  it('non-Stripe billed line keeps stripeHosted false and an unmarked label', () => {
+    const inv = billedInvoiceStub({ id: 'inv-n', job_id: 'job-2', amount: 600 })
+    const job = billedJob('job-2', [inv])
+    const rows = buildBilledStageRows([job], [])
+    const targets = bankPaymentTargetsFromStageRows(rows)
+    const t = targets.find((x) => x.invoiceId === 'inv-n')
+    expect(t).toBeTruthy()
+    expect(t?.stripeHosted).toBe(false)
+    expect(t?.label).not.toContain('Stripe')
+  })
+
+  it('fully paid Stripe-hosted lines still drop out on remaining <= 0', () => {
+    const inv = billedInvoiceStub({ id: 'inv-p', job_id: 'job-3', amount: 600, stripe_invoice_id: 'in_456' })
+    const job = jobStub({
+      id: 'job-3',
+      status: 'billed',
+      invoices: [inv] as JobWithDetails['invoices'],
+      payments: [{ id: 'pay-1', amount: 600, invoice_id: 'inv-p' }] as JobWithDetails['payments'],
+    })
+    const rows = buildBilledStageRows([job], [])
+    const targets = bankPaymentTargetsFromStageRows(rows)
+    expect(targets.find((x) => x.invoiceId === 'inv-p')).toBeUndefined()
   })
 })

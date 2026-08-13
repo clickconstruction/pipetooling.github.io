@@ -18,6 +18,8 @@ export type ArRecordedPaymentCandidate = {
   hcp_number: string | null
   click_number: string | null
   job_name: string | null
+  /** v2.1614: the payment's invoice was Stripe-hosted — linking requires the out-of-band confirmation. */
+  stripe_hosted?: boolean
 }
 
 function money(n: number): string {
@@ -40,6 +42,7 @@ export function arRecordedPaymentSearchLabel(c: ArRecordedPaymentCandidate): str
     [type, amount].filter(Boolean).join(' '),
     (c.paid_on ?? '').trim(),
     (c.note ?? '').trim() || (c.reference_number ?? '').trim(),
+    c.stripe_hosted ? 'Stripe bill' : '',
   ]
     .filter(Boolean)
     .join(' · ')

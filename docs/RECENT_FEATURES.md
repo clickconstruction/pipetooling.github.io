@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1613)
+last_updated: 2026-08-13 (v2.1614)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1614)
+
+### Accounts Receivable can allocate to Stripe-hosted bills — behind a paid-outside-Stripe gate (2026-08-13)
+Owner request from a live case (job 925: Stripe invoice emailed, customer mailed a $600 check — the AR "Billed line" search found nothing because Stripe-hosted lines were excluded end-to-end). The exclusion is now an **opt-in**: [`bankPaymentTargetsFromStageRows`](../src/lib/jobsStagesBoard.ts) includes Stripe-hosted billed lines flagged `stripeHosted` (labels gain "· Stripe", searchable), and [`BankPaymentsModal`](../src/components/jobs/BankPaymentsModal.tsx) gates any allocation touching one behind an amber **confirmation checkbox** — "the customer paid outside Stripe (check/cash/ACH); afterwards void the invoice or mark it paid out-of-band in Stripe so the emailed link can't be paid twice" — Apply stays disabled until checked, and only then does the client send the new `p_allow_stripe_hosted` flag. **Server** (migration [`20260813234538_ar_stripe_hosted_allocations.sql`](../supabase/migrations/20260813234538_ar_stripe_hosted_allocations.sql)): `apply_mercury_bank_payment_allocations` gains a defaulted `p_allow_stripe_hosted` param (old 5-arg signature dropped first — a defaulted param would otherwise mint a second overload; old deployed clients resolve against the new function with the default and keep byte-identical guards) relaxing BOTH Stripe rejections — direct invoice allocations and linking recorded payments applied to Stripe bills; `list_unlinked_payments_for_bank_payments` is recreated (return-shape change) to list check payments recorded against Stripe bills with a new `stripe_hosted` column, so the "Payment received" path works for this case too and inherits the same gate. Modal header copy updated (the "(N Stripe-hosted lines excluded)" note is gone). Kernel tests +3 (flag + label + fully-paid dropout); help guide `ready-to-bill-pipeline.md` gains "Customer paid a Stripe invoice by check?". **Deploy: `supabase db push` BEFORE the client** (the client calls with 6 args; the function change is invisible to the old client).
 
 ## Latest Updates (v2.1613)
 

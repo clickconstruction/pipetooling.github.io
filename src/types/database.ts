@@ -12477,6 +12477,7 @@ export type Database = {
       apply_mercury_bank_payment_allocations: {
         Args: {
           p_allocations: Json
+          p_allow_stripe_hosted?: boolean
           p_mercury_transaction_id: string
           p_note: string
           p_paid_on: string
@@ -13817,6 +13818,7 @@ export type Database = {
           payment_id: string
           payment_type: string
           reference_number: string
+          stripe_hosted: boolean
         }[]
       }
       list_user_display_names: {
