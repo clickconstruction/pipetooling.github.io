@@ -4,7 +4,6 @@
  * Stages section table (Ready to Bill / Billed / Collections), extracted from
  * Jobs.tsx in v2.830.
  */
-import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
@@ -34,14 +33,6 @@ function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsSt
     stagesJobFlashId: null,
     stagesHamMode: false,
     stagesEditMode: false,
-    assignedEditJobId: null,
-    setAssignedEditJobId: vi.fn(),
-    assignedEditSelectedIds: [],
-    setAssignedEditSelectedIds: vi.fn(),
-    assignedEditSavingId: null,
-    assignedEditDropdownRef: createRef<HTMLDivElement | null>() as JobsStagesUnifiedTableProps['assignedEditDropdownRef'],
-    users: [],
-    updateJobTeamMembers: vi.fn(async () => {}),
     renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
     stagesStatusUpdatingId: null,
     pctCompleteSavingId: null,

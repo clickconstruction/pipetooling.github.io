@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -34,7 +34,6 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import { useWideViewport1440 } from '../../hooks/useWideViewport1440'
-import type { UserRow } from '../../pages/Jobs'
 import {
   accountManOnlyStripeStyle,
   renderJobAddressWithMap,
@@ -102,14 +101,6 @@ export type JobsStagesUnifiedTableProps = {
   stagesHamMode: boolean
   /** ⋯ tools menu "Edit mode" (v2.1236): thin vertical EDIT rail on every job-backed row → openEdit. */
   stagesEditMode: boolean
-  assignedEditJobId: string | null
-  setAssignedEditJobId: (id: string | null) => void
-  assignedEditSelectedIds: string[]
-  setAssignedEditSelectedIds: Dispatch<SetStateAction<string[]>>
-  assignedEditSavingId: string | null
-  assignedEditDropdownRef: MutableRefObject<HTMLDivElement | null>
-  users: UserRow[]
-  updateJobTeamMembers: (jobId: string, userIds: string[]) => Promise<void>
   renderStagesOpenDetailJobName: (j: JobWithDetails) => ReactNode
   stagesStatusUpdatingId: ReturnType<typeof useJobsStagesMutations>['stagesStatusUpdatingId']
   pctCompleteSavingId: ReturnType<typeof useJobsStagesMutations>['pctCompleteSavingId']
@@ -190,14 +181,6 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     stagesJobFlashId,
     stagesHamMode,
     stagesEditMode,
-    assignedEditJobId,
-    setAssignedEditJobId,
-    assignedEditSelectedIds,
-    setAssignedEditSelectedIds,
-    assignedEditSavingId,
-    assignedEditDropdownRef,
-    users,
-    updateJobTeamMembers,
     renderStagesOpenDetailJobName,
     stagesStatusUpdatingId,
     pctCompleteSavingId,
@@ -448,123 +431,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
                       {renderStagesQuickActionsStack(j)}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                      {stagesHamMode ? (
-                        <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            <span>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (assignedEditJobId === j.id) {
-                                setAssignedEditJobId(null)
-                              } else {
-                                setAssignedEditJobId(j.id)
-                                setAssignedEditSelectedIds((j.team_members ?? []).map((t) => t.user_id))
-                              }
-                            }}
-                            disabled={assignedEditSavingId === j.id}
-                            title="Change assigned"
-                            aria-label="Change assigned"
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: 24,
-                              height: 24,
-                              padding: 0,
-                              border: 'none',
-                              borderRadius: 4,
-                              background: 'none',
-                              cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                              color: 'var(--text-muted)',
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                              <path d="M100.4 417.2C104.5 402.6 112.2 389.3 123 378.5L304.2 197.3L338.1 163.4C354.7 180 389.4 214.7 442.1 267.4L476 301.3L442.1 335.2L260.9 516.4C250.2 527.1 236.8 534.9 222.2 539L94.4 574.6C86.1 576.9 77.1 574.6 71 568.4C64.9 562.2 62.6 553.3 64.9 545L100.4 417.2zM156 413.5C151.6 418.2 148.4 423.9 146.7 430.1L122.6 517L209.5 492.9C215.9 491.1 221.7 487.8 226.5 483.2L155.9 413.5zM510 267.4C493.4 250.8 458.7 216.1 406 163.4L372 129.5C398.5 103 413.4 88.1 416.9 84.6C430.4 71 448.8 63.4 468 63.4C487.2 63.4 505.6 71 519.1 84.6L554.8 120.3C568.4 133.9 576 152.3 576 171.4C576 190.5 568.4 209 554.8 222.5C551.3 226 536.4 240.9 509.9 267.4z" />
-                            </svg>
-                          </button>
-                          {assignedEditJobId === j.id && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: 4,
-                                zIndex: 50,
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border-strong)',
-                                borderRadius: 4,
-                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                padding: '0.5rem',
-                                minWidth: 180,
-                                maxHeight: 200,
-                                overflowY: 'auto',
-                              }}
-                            >
-                              <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Assigned</div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                {users.map((u) => (
-                                  <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={assignedEditSelectedIds.includes(u.id)}
-                                      onChange={() => {
-                                        setAssignedEditSelectedIds((prev) =>
-                                          prev.includes(u.id) ? prev.filter((x) => x !== u.id) : [...prev, u.id]
-                                        )
-                                      }}
-                                      style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                    />
-                                    <span>{u.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => updateJobTeamMembers(j.id, assignedEditSelectedIds)}
-                                  disabled={assignedEditSavingId === j.id}
-                                  style={{
-                                    padding: '0.35rem 0.75rem',
-                                    fontSize: '0.8125rem',
-                                    background: '#3b82f6',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                  }}
-                                >
-                                  {assignedEditSavingId === j.id ? '…' : 'Apply'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setAssignedEditJobId(null)}
-                                  style={{
-                                    padding: '0.35rem 0.75rem',
-                                    fontSize: '0.8125rem',
-                                    background: 'none',
-                                    color: 'var(--text-muted)',
-                                    border: '1px solid var(--border-strong)',
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
-                        {renderStagesFieldAndBillingLines(j)}
-                      </div>
-                      ) : (
-                        <>
-                          <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                          {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
-                          {renderStagesFieldAndBillingLines(j)}
-                        </>
-                      )}
+                      <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
+                      {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
+                      {renderStagesFieldAndBillingLines(j)}
                       </div>
                       </div>
                     </td>

@@ -3,7 +3,6 @@
  * Render-smoke tests for JobsStagesTable — the job-only Stages section table
  * (Waiting / Working / Paid in Full), extracted from Jobs.tsx in v2.830.
  */
-import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
@@ -29,16 +28,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     onSendBackSimple: undefined,
     showPctComplete: false,
     stagesJobFlashId: null,
-    stagesHamMode: false,
     stagesEditMode: false,
-    assignedEditJobId: null,
-    setAssignedEditJobId: vi.fn(),
-    assignedEditSelectedIds: [],
-    setAssignedEditSelectedIds: vi.fn(),
-    assignedEditSavingId: null,
-    assignedEditDropdownRef: createRef<HTMLDivElement | null>() as JobsStagesTableProps['assignedEditDropdownRef'],
-    users: [],
-    updateJobTeamMembers: vi.fn(async () => {}),
     renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
     stagesStatusUpdatingId: null,
     pctCompleteSavingId: null,
