@@ -1,139 +1,139 @@
 import { describe, expect, it } from 'vitest'
 import {
   composeJobAccountEmail,
-  jobAccountGaps,
+  jobAccountOwnerGaps,
+  jobAccountSendBlocked,
+  jobAccountSoftGaps,
   prefillJobAccountInfo,
   type JobAccountInfo,
 } from './supplyHouseJobAccount'
 
-const base = {
+const args = {
   jobName: 'Pondhill demo',
   jobAddress: '4114 Pond Hill Rd, San Antonio, TX',
   customerName: 'Hank Ibarra',
   customerPhone: '(210) 889-1901',
   customerEmail: 'hank@example.com',
+  customerAddress: '99 Mailing Ln, San Antonio, TX',
   customerType: null as string | null,
-  gcName: null as string | null,
+  gc: null as { name: string | null; phone: string | null; email: string | null } | null,
+  savedOwner: null as {
+    owner_mode: string
+    owner_name: string
+    company_name: string
+    mailing_address: string
+    owner_email: string
+  } | null,
 }
 
-describe('prefillJobAccountInfo', () => {
-  it('homeowner by default: owner = the job customer', () => {
-    const info = prefillJobAccountInfo(base)
+describe('prefillJobAccountInfo (v2.1609 owner rules)', () => {
+  it('residential, no GC: customer is the homeowner — name + mailing address prefill', () => {
+    const info = prefillJobAccountInfo(args)
     expect(info.ownerMode).toBe('homeowner')
     expect(info.ownerName).toBe('Hank Ibarra')
-    expect(info.sitePhone).toBe('(210) 889-1901')
-    expect(info.companyName).toBe('')
+    expect(info.mailingAddress).toBe('99 Mailing Ln, San Antonio, TX')
+    expect(info.gcCompany).toBe('')
   })
 
-  it('a GC on the job → building owner with the GC as company', () => {
-    const info = prefillJobAccountInfo({ ...base, gcName: 'H & I Construction' })
+  it('GC-routed job: GC block fills, owner section starts BLANK (the GC is not the owner)', () => {
+    const info = prefillJobAccountInfo({
+      ...args,
+      gc: { name: 'H & I Construction', phone: '(210) 111-2222', email: 'gc@hi.com' },
+    })
+    expect(info.gcCompany).toBe('H & I Construction')
+    expect(info.gcPhone).toBe('(210) 111-2222')
     expect(info.ownerMode).toBe('building_owner')
-    expect(info.companyName).toBe('H & I Construction')
-    expect(info.ownerName).toBe('Hank Ibarra')
+    expect(info.companyName).toBe('')
+    expect(info.ownerName).toBe('')
+    expect(info.mailingAddress).toBe('')
   })
 
-  it('commercial customer without a GC → building owner, customer is the company', () => {
-    const info = prefillJobAccountInfo({ ...base, customerType: 'commercial' })
+  it('commercial customer, no GC: the customer IS the building owner', () => {
+    const info = prefillJobAccountInfo({ ...args, customerType: 'commercial' })
     expect(info.ownerMode).toBe('building_owner')
     expect(info.companyName).toBe('Hank Ibarra')
+    expect(info.mailingAddress).toBe('99 Mailing Ln, San Antonio, TX')
   })
 
-  it('trims and null-safes every field', () => {
+  it('a saved job_property_owners row always wins, GC or not', () => {
     const info = prefillJobAccountInfo({
-      jobName: '  X  ',
-      jobAddress: null,
-      customerName: null,
-      customerPhone: null,
-      customerEmail: null,
-      customerType: null,
-      gcName: null,
+      ...args,
+      gc: { name: 'H & I Construction', phone: null, email: null },
+      savedOwner: {
+        owner_mode: 'building_owner',
+        owner_name: 'Pat Owner',
+        company_name: 'Pondhill Property LLC',
+        mailing_address: 'PO Box 12, Austin, TX',
+        owner_email: 'pat@pondhill.com',
+      },
     })
-    expect(info.propertyName).toBe('X')
-    expect(info.address).toBe('')
-    expect(info.ownerName).toBe('')
+    expect(info.companyName).toBe('Pondhill Property LLC')
+    expect(info.ownerName).toBe('Pat Owner')
+    expect(info.mailingAddress).toBe('PO Box 12, Austin, TX')
   })
 })
 
-describe('jobAccountGaps', () => {
-  const full: JobAccountInfo = {
-    propertyName: 'P',
-    address: 'A',
-    sitePhone: '1',
-    ownerMode: 'homeowner',
-    ownerName: 'O',
-    ownerPhone: '2',
-    ownerEmail: '',
-    companyName: '',
-  }
+const full: JobAccountInfo = {
+  propertyName: 'P',
+  address: 'A',
+  sitePhone: '1',
+  gcCompany: 'GC Co',
+  gcPhone: '2',
+  gcEmail: 'g@x.com',
+  ownerMode: 'building_owner',
+  ownerName: 'Pat',
+  companyName: 'Owner LLC',
+  mailingAddress: 'PO Box 1',
+  ownerEmail: '',
+}
 
-  it('no gaps when the homeowner packet is complete (email optional)', () => {
-    expect(jobAccountGaps(full)).toEqual([])
+describe('send gate (v2.1609 — hard block until the owner is known)', () => {
+  it('complete building owner: not blocked', () => {
+    expect(jobAccountSendBlocked(full)).toBe(false)
+    expect(jobAccountOwnerGaps(full)).toEqual([])
   })
 
-  it('company only counts for building owners', () => {
-    expect(jobAccountGaps({ ...full, ownerMode: 'building_owner' })).toEqual(['Company name'])
-    expect(jobAccountGaps({ ...full, companyName: 'Acme', ownerMode: 'building_owner' })).toEqual([])
+  it('building owner missing company or mailing address blocks', () => {
+    expect(jobAccountOwnerGaps({ ...full, companyName: '' })).toEqual(['Owner company'])
+    expect(jobAccountOwnerGaps({ ...full, mailingAddress: ' ' })).toEqual(['Owner mailing address'])
+    expect(jobAccountSendBlocked({ ...full, companyName: '', mailingAddress: '' })).toBe(true)
   })
 
-  it('lists every blank field by label', () => {
-    expect(jobAccountGaps({ ...full, sitePhone: '', ownerPhone: ' ' })).toEqual(['Site phone', 'Owner phone'])
+  it('homeowner requires name + mailing address; contact optional for building owners', () => {
+    expect(jobAccountOwnerGaps({ ...full, ownerMode: 'homeowner', ownerName: '' })).toEqual(['Owner name'])
+    expect(jobAccountOwnerGaps({ ...full, ownerName: '' })).toEqual([])
+  })
+
+  it('soft gaps never block', () => {
+    const info = { ...full, sitePhone: '', propertyName: '' }
+    expect(jobAccountSoftGaps(info)).toEqual(['Property name', 'Site phone'])
+    expect(jobAccountSendBlocked(info)).toBe(false)
   })
 })
 
-describe('composeJobAccountEmail', () => {
-  it('homeowner email: subject, rows, no company line, sender in intro', () => {
-    const { subject, text, html } = composeJobAccountEmail(
-      { propertyName: 'P', address: 'A', sitePhone: '1', ownerMode: 'homeowner', ownerName: 'O', ownerPhone: '2', ownerEmail: '', companyName: '' },
-      '964 · Pondhill demo',
-      'Taunya'
-    )
-    expect(subject).toBe('Job account setup — 964 · Pondhill demo')
-    expect(text).toContain('Homeowner: O')
-    expect(text).not.toContain('company)')
-    expect(text).toContain('— Taunya')
-    expect(html).toContain('<strong>O</strong>')
+describe('composeJobAccountEmail (sectioned, v2.1609)', () => {
+  it('renders Property / General contractor / Property owner sections with mailing address', () => {
+    const { text, html } = composeJobAccountEmail(full, 'J1', 'Taunya', { companyName: 'Click', officePhone: '555' })
+    expect(text).toContain('Property:')
+    expect(text).toContain('General contractor:')
+    expect(text).toContain('  Company: GC Co')
+    expect(text).toContain('Property owner:')
+    expect(text).toContain('  Building owner (company): Owner LLC')
+    expect(text).toContain('  Mailing address: PO Box 1')
+    expect(text).not.toContain('Owner phone')
+    expect(html).toContain('General contractor')
+    expect(text).toContain('job account for Click for the property below')
+    expect(text).toContain('call the office at 555')
   })
 
-  it('names the asking company and offers the office number (v2.1608)', () => {
+  it('no GC → the contractor section is omitted; homeowner labels apply', () => {
     const { text } = composeJobAccountEmail(
-      { propertyName: 'P', address: 'A', sitePhone: '1', ownerMode: 'homeowner', ownerName: 'O', ownerPhone: '2', ownerEmail: '', companyName: '' },
-      'J1',
-      'Taunya',
-      { companyName: 'Click Plumbing', officePhone: '(830) 555-0100' }
-    )
-    expect(text).toContain('set up a job account for Click Plumbing for the property below')
-    expect(text).toContain('or call the office at (830) 555-0100')
-  })
-
-  it('missing org settings fall back to "our office" with no phone clause', () => {
-    const { text } = composeJobAccountEmail(
-      { propertyName: 'P', address: 'A', sitePhone: '1', ownerMode: 'homeowner', ownerName: 'O', ownerPhone: '2', ownerEmail: '', companyName: '' },
+      { ...full, gcCompany: '', gcPhone: '', gcEmail: '', ownerMode: 'homeowner' },
       'J1',
       ''
     )
-    expect(text).toContain('set up a job account for our office for the property below')
-    expect(text).not.toContain('call the office')
-  })
-
-  it('building owner email carries the company row and escapes HTML', () => {
-    const { text, html } = composeJobAccountEmail(
-      { propertyName: 'P', address: 'A', sitePhone: '1', ownerMode: 'building_owner', ownerName: 'O', ownerPhone: '2', ownerEmail: 'e@x.com', companyName: 'H & I <Construction>' },
-      'J1',
-      ''
-    )
-    expect(text).toContain('Building owner (company): H & I <Construction>')
-    expect(text).toContain('Owner email: e@x.com')
-    expect(html).toContain('H &amp; I &lt;Construction&gt;')
-  })
-
-  it('blank fields render as em dashes, never dropped (except optional email)', () => {
-    const { text } = composeJobAccountEmail(
-      { propertyName: '', address: '', sitePhone: '', ownerMode: 'homeowner', ownerName: '', ownerPhone: '', ownerEmail: '', companyName: '' },
-      'J1',
-      ''
-    )
-    expect(text).toContain('Property: —')
-    expect(text).toContain('Owner phone: —')
-    expect(text).not.toContain('Owner email')
+    expect(text).not.toContain('General contractor')
+    expect(text).toContain('  Homeowner: Pat')
+    expect(text).toContain('job account for our office')
   })
 })

@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 12, 2026
 
+**`20260812210000_job_property_owners.sql`** _(apply via `supabase db push` after the file is on `main`; client first — only the v2.1609 share modal reads/writes it)_
+- **Purpose**: remembered property owner per job (v2.1609) — `job_id` PK (FK CASCADE), `owner_mode` (homeowner/building_owner CHECK), `owner_name`, `company_name`, `mailing_address`, `owner_email`, `updated_by/at`. Upserted by the share modal on send; always wins the owner prefill so the office looks an owner up once.
+- **Security**: RLS enabled; SELECT/INSERT/UPDATE/DELETE for dev/master/assistant/controller (loop-generated idempotent policies). Ends with BOTH read-only sweep calls (new table).
+- **Ordering**: independent of the edge function (unchanged).
+- **Category**: Jobs / supply houses
+
 **`20260812200000_supply_house_job_accounts.sql`** _(apply via `supabase db push` after the file is on `main`; client first, then push, then redeploy `send-supply-house-job-account`)_
 - **Purpose**: job-account share ledger (v2.1606) — one row per recipient per "Share with supply house" send: `job_id` (FK CASCADE), `contact_label`, `contact_email`, `sent_by`, `sent_by_name`, `sent_at`; `job_id` index. Feeds the Supply Houses "Job accounts" section and the share modal's already-shared hint.
 - **Security**: RLS enabled; SELECT for dev/master/assistant/controller, DELETE dev-only (pruning); NO client INSERT/UPDATE — the edge function writes with the service role. Ends with BOTH read-only sweep calls (new table).

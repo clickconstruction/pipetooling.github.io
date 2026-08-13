@@ -12,7 +12,9 @@ import {
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   composeJobAccountEmail,
-  jobAccountGaps,
+  jobAccountOwnerGaps,
+  jobAccountSendBlocked,
+  jobAccountSoftGaps,
   prefillJobAccountInfo,
   type JobAccountInfo,
   type OwnerMode,
@@ -56,19 +58,18 @@ const missingChip = (
 )
 
 /**
- * Job Detail → "Share with supply house" (v2.1605, mockup-approved): the
- * job-account packet a supply house needs (property, phones, homeowner vs
- * building owner + company) with inline gap-filling, an org-wide contact
- * shortlist (supply_house_contacts), and a PipeTooling email send via the
- * send-supply-house-job-account edge function. Fills to the owner's phone /
- * email save back to the customer's contact_info when they were blank.
+ * Job Detail → "Share with supply house" (v2.1605; owner rework v2.1609):
+ * Property and General contractor sections auto-fill from the job; the
+ * Property owner section (name/company + MAILING ADDRESS — the supply house's
+ * real ask) only prefills when the owner is actually known, and sending is
+ * hard-blocked until it is. Owner info the office types is upserted to
+ * job_property_owners so resends and other desks prefill. Contacts shortlist
+ * (v2.1605) + already-shared hint (v2.1606) + org intro (v2.1608) unchanged.
  */
 export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; job: JobWithDetails; onClose: () => void }) {
-  const { profileName } = useAuth()
+  const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [info, setInfo] = useState<JobAccountInfo | null>(null)
-  const [customerId, setCustomerId] = useState<string | null>(null)
-  const [customerContact, setCustomerContact] = useState<{ phone: string; email: string }>({ phone: '', email: '' })
   const [contacts, setContacts] = useState<ContactRow[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [addOpen, setAddOpen] = useState(false)
@@ -76,10 +77,8 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   const [addEmail, setAddEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [sending, setSending] = useState(false)
-  /** Prior shares of this job (v2.1606) — collapsed hint, click for when/who. */
   const [priorShares, setPriorShares] = useState<JobAccountShareRow[]>([])
   const [priorOpen, setPriorOpen] = useState(false)
-  /** Org identity for the email intro (v2.1608) — issuer settings: company + office phone. */
   const [issuer, setIssuer] = useState<PhysicalInvoiceIssuer | null>(null)
 
   useEffect(() => {
@@ -89,11 +88,6 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     setAddOpen(false)
     setPriorShares([])
     setPriorOpen(false)
-    void fetchPhysicalInvoiceIssuerFromAppSettings()
-      .then(() => {
-        if (!cancelled) setIssuer(getPhysicalInvoiceIssuerForDocument())
-      })
-      .catch(() => {})
     void supabase
       .from('supply_house_job_accounts')
       .select('job_id, contact_label, contact_email, sent_by_name, sent_at')
@@ -103,24 +97,43 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
       .then(({ data }) => {
         if (!cancelled) setPriorShares((data ?? []) as JobAccountShareRow[])
       })
+    void fetchPhysicalInvoiceIssuerFromAppSettings()
+      .then(() => {
+        if (!cancelled) setIssuer(getPhysicalInvoiceIssuerForDocument())
+      })
+      .catch(() => {})
     void (async () => {
-      let customer: { id: string; name: string | null; contact_info: unknown; customer_type: string | null } | null = null
+      let customer: { id: string; name: string | null; address: string | null; contact_info: unknown; customer_type: string | null } | null = null
       if (job.customer_id) {
         const { data } = await supabase
           .from('customers')
-          .select('id, name, contact_info, customer_type')
+          .select('id, name, address, contact_info, customer_type')
           .eq('id', job.customer_id)
           .maybeSingle()
         customer = data ?? null
       }
+      // The GC block wants the GC customer's phone/email, not just its name.
+      let gcRow: { name: string | null; contact_info: unknown } | null = null
+      if (job.gc_customer_id) {
+        const { data } = await supabase
+          .from('customers')
+          .select('name, contact_info')
+          .eq('id', job.gc_customer_id)
+          .maybeSingle()
+        gcRow = data ?? null
+      }
+      const { data: savedOwner } = await supabase
+        .from('job_property_owners')
+        .select('owner_mode, owner_name, company_name, mailing_address, owner_email')
+        .eq('job_id', job.id)
+        .maybeSingle()
       const { data: contactRows } = await supabase
         .from('supply_house_contacts')
         .select('id, label, email')
         .order('label')
       if (cancelled) return
       const contact = customer ? extractContactFromCustomer({ contact_info: customer.contact_info as never }) : { phone: '', email: '' }
-      setCustomerId(customer?.id ?? null)
-      setCustomerContact(contact)
+      const gcContact = gcRow ? extractContactFromCustomer({ contact_info: gcRow.contact_info as never }) : { phone: '', email: '' }
       setInfo(
         prefillJobAccountInfo({
           jobName: job.job_name ?? job.customer_name,
@@ -128,8 +141,10 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
           customerName: customer?.name ?? job.customer_name,
           customerPhone: contact.phone,
           customerEmail: contact.email,
+          customerAddress: customer?.address ?? null,
           customerType: customer?.customer_type ?? null,
-          gcName: job.gcCustomer?.name ?? null,
+          gc: gcRow ? { name: gcRow.name, phone: gcContact.phone, email: gcContact.email } : null,
+          savedOwner: savedOwner ?? null,
         })
       )
       setContacts((contactRows ?? []) as ContactRow[])
@@ -140,7 +155,9 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefill once per open
   }, [open])
 
-  const gaps = useMemo(() => (info ? jobAccountGaps(info) : []), [info])
+  const ownerGaps = useMemo(() => (info ? jobAccountOwnerGaps(info) : []), [info])
+  const softGaps = useMemo(() => (info ? jobAccountSoftGaps(info) : []), [info])
+  const blocked = info ? jobAccountSendBlocked(info) : true
   const jobLabel = `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · ${(job.job_name ?? job.customer_name ?? '').trim() || 'Job'}`
 
   if (!open) return null
@@ -173,7 +190,12 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   }
 
   const send = async () => {
-    if (!info || selectedIds.size === 0) {
+    if (!info) return
+    if (blocked) {
+      showToast(`Owner required before sending: ${ownerGaps.join(', ')}`, 'info', 4500)
+      return
+    }
+    if (selectedIds.size === 0) {
       showToast('Pick at least one supply house contact', 'info')
       return
     }
@@ -193,18 +215,22 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
       showToast(`Could not send: ${fnError}`, 'error')
       return
     }
-    // Save filled owner contact back to the customer when it was blank (best-effort).
-    if (customerId) {
-      const phoneFill = !customerContact.phone.trim() && info.ownerPhone.trim()
-      const emailFill = !customerContact.email.trim() && info.ownerEmail.trim()
-      if (phoneFill || emailFill) {
-        const nextContact = {
-          ...(phoneFill ? { phone: info.ownerPhone.trim() } : { phone: customerContact.phone }),
-          ...(emailFill ? { email: info.ownerEmail.trim() } : { email: customerContact.email }),
-        }
-        await supabase.from('customers').update({ contact_info: nextContact }).eq('id', customerId)
-      }
-    }
+    // Remember the owner for this job (v2.1609) — best-effort; resends prefill.
+    await supabase
+      .from('job_property_owners')
+      .upsert(
+        {
+          job_id: job.id,
+          owner_mode: info.ownerMode,
+          owner_name: info.ownerName.trim(),
+          company_name: info.companyName.trim(),
+          mailing_address: info.mailingAddress.trim(),
+          owner_email: info.ownerEmail.trim(),
+          updated_by: authUser?.id ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'job_id' }
+      )
     setSending(false)
     showToast(`Job account info sent to ${toEmails.length} ${toEmails.length === 1 ? 'contact' : 'contacts'}.`, 'success')
     onClose()
@@ -224,11 +250,22 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     </div>
   )
 
-  const sectionHead = (text: string) => (
+  const readRow = (label: string, value: string) =>
+    value.trim() ? (
+      <div style={rowStyle}>
+        <span style={labelStyle}>{label}</span>
+        <span style={{ textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{value}</span>
+      </div>
+    ) : null
+
+  const sectionHead = (text: string, hint?: string) => (
     <p style={{ margin: '0.8rem 0 0.25rem', fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
       {text}
+      {hint ? <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> — {hint}</span> : null}
     </p>
   )
+
+  const sendDisabled = sending || blocked || selectedIds.size === 0
 
   return (
     <div
@@ -306,43 +343,77 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
             ) : null}
           </div>
         ) : null}
+
         {!info ? (
           <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
-            {sectionHead('Job account info')}
-            {fieldRow('Property', info.propertyName, (v) => patch({ propertyName: v }), 'Property name…')}
+            {sectionHead('Property')}
+            {fieldRow('Name', info.propertyName, (v) => patch({ propertyName: v }), 'Property name…')}
             {fieldRow('Address', info.address, (v) => patch({ address: v }), 'Street, city…')}
             {fieldRow('Site phone', info.sitePhone, (v) => patch({ sitePhone: v }), 'Add a phone…')}
 
-            {sectionHead('Owner')}
-            <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', width: 'fit-content', marginBottom: '0.2rem' }}>
-              {(['homeowner', 'building_owner'] as OwnerMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => patch({ ownerMode: mode })}
-                  aria-pressed={info.ownerMode === mode}
-                  style={{
-                    padding: '0.25rem 0.7rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: info.ownerMode === mode ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                    color: info.ownerMode === mode ? 'var(--text-blue-700)' : 'var(--text-700)',
-                  }}
-                >
-                  {mode === 'homeowner' ? 'Homeowner' : 'Building owner'}
-                </button>
-              ))}
+            {info.gcCompany.trim() ? (
+              <>
+                {sectionHead('General contractor', 'from the job')}
+                {readRow('Company', info.gcCompany)}
+                {readRow('Phone', info.gcPhone)}
+                {readRow('Email', info.gcEmail)}
+              </>
+            ) : null}
+
+            {sectionHead('Property owner', 'what the supply house needs')}
+            <div
+              style={{
+                border: blocked ? '1.5px solid var(--border-amber-strong, #f59e0b)' : '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '0.2rem 0.7rem 0.5rem',
+              }}
+            >
+              <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', width: 'fit-content', margin: '0.5rem 0 0.2rem' }}>
+                {(['homeowner', 'building_owner'] as OwnerMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => patch({ ownerMode: mode })}
+                    aria-pressed={info.ownerMode === mode}
+                    style={{
+                      padding: '0.25rem 0.7rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: info.ownerMode === mode ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: info.ownerMode === mode ? 'var(--text-blue-700)' : 'var(--text-700)',
+                    }}
+                  >
+                    {mode === 'homeowner' ? 'Homeowner' : 'Building owner'}
+                  </button>
+                ))}
+              </div>
+              {info.ownerMode === 'building_owner'
+                ? fieldRow('Company', info.companyName, (v) => patch({ companyName: v }), 'Owner LLC…')
+                : null}
+              {fieldRow(
+                info.ownerMode === 'building_owner' ? 'Contact (optional)' : 'Homeowner',
+                info.ownerName,
+                (v) => patch({ ownerName: v }),
+                'Name…'
+              )}
+              {fieldRow('Mailing address', info.mailingAddress, (v) => patch({ mailingAddress: v }), 'Street or PO Box, city…')}
+              {fieldRow('Email (optional)', info.ownerEmail, (v) => patch({ ownerEmail: v }), 'Optional…')}
+              {blocked ? (
+                <p style={{ margin: '0.4rem 0 0.1rem', fontSize: '0.71875rem', color: 'var(--text-amber-800)' }}>
+                  {info.gcCompany.trim()
+                    ? 'The GC is not the owner — get the property owner from the GC before sending.'
+                    : 'The supply house needs the property owner to open the account.'}
+                </p>
+              ) : (
+                <p style={{ margin: '0.4rem 0 0.1rem', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
+                  Remembered for this job — resends prefill it.
+                </p>
+              )}
             </div>
-            {info.ownerMode === 'building_owner'
-              ? fieldRow('Company', info.companyName, (v) => patch({ companyName: v }), 'Company name…')
-              : null}
-            {fieldRow(info.ownerMode === 'building_owner' ? 'Contact' : 'Homeowner', info.ownerName, (v) => patch({ ownerName: v }), 'Name…')}
-            {fieldRow('Owner phone', info.ownerPhone, (v) => patch({ ownerPhone: v }), 'Add a phone…')}
-            {fieldRow('Owner email', info.ownerEmail, (v) => patch({ ownerEmail: v }), 'Optional…')}
 
             {sectionHead('Send to')}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -410,8 +481,12 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: '0.8rem' }}>
-              <span style={{ fontSize: '0.75rem', color: gaps.length ? 'var(--text-amber-800)' : 'var(--text-green-600)' }}>
-                {gaps.length ? `Missing: ${gaps.join(', ')} — you can send anyway.` : 'All fields filled.'}
+              <span style={{ fontSize: '0.75rem', color: blocked ? 'var(--text-amber-800)' : softGaps.length ? 'var(--text-muted)' : 'var(--text-green-600)' }}>
+                {blocked
+                  ? `Owner required: ${ownerGaps.join(', ')}`
+                  : softGaps.length
+                    ? `Missing: ${softGaps.join(', ')} — you can send anyway.`
+                    : 'Ready to send.'}
               </span>
               <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
                 <button
@@ -424,17 +499,17 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                 </button>
                 <button
                   type="button"
+                  aria-disabled={sendDisabled}
                   onClick={() => void send()}
-                  disabled={sending || selectedIds.size === 0}
                   style={{
                     padding: '0.45rem 1rem',
                     border: 'none',
                     borderRadius: 6,
-                    background: sending || selectedIds.size === 0 ? 'var(--bg-muted)' : '#2563eb',
-                    color: sending || selectedIds.size === 0 ? 'var(--text-muted)' : '#fff',
+                    background: sendDisabled ? 'var(--bg-muted)' : '#2563eb',
+                    color: sendDisabled ? 'var(--text-muted)' : '#fff',
                     fontSize: '0.8125rem',
                     fontWeight: 700,
-                    cursor: sending || selectedIds.size === 0 ? 'not-allowed' : 'pointer',
+                    cursor: sendDisabled ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {sending ? 'Sending…' : 'Send email'}

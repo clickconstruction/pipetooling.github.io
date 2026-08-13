@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1608)
+last_updated: 2026-08-12 (v2.1609)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1609)
+
+### Supply house share: the owner is not the GC — honest sections, hard gate, mailing address (2026-08-12)
+Owner design review of v2.1605 ("what is being auto entered is the GC info but that is not the homeowners info… A user may have to google the owner after"), mockup-approved with two calls: **send blocks until the owner is known** (no escape hatch) and the owner carries a **mailing address instead of a phone** (lien-notice material). Rework in [`supplyHouseJobAccount`](../src/lib/supplyHouseJobAccount.ts) + [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx): **(1)** three honest sections — Property, **General contractor** (read-only, from the job's GC customer incl. its phone/email), **Property owner**; **(2)** owner prefill only when truly known — residential-no-GC → the customer as homeowner (name + customer address as mailing), commercial-no-GC → the customer as building owner, **GC-routed → blank** with an amber-bordered section and "The GC is not the owner — get the property owner from the GC before sending"; **(3)** hard gate — `jobAccountSendBlocked` (owner name/company + mailing address) grays Send and the footer names what's missing ("Owner required: …"); property/site fields stay soft gaps; **(4)** owner memory — new table **`job_property_owners`** (migration `20260812210000`, one row per job, office-role RLS all ops, both sweeps) upserted on send and always winning the prefill, so the office googles an owner once ever; the old save-back-to-customer is removed (the owner may not be the customer). Email recomposed into Property / General contractor / Property owner sections with Mailing address. Kernel tests rewritten (12→10, all four prefill rules + the gate pinned). Verified live against prod on the GC job 964: GC section filled from H &amp; I, owner blank + amber + "Owner required: Owner company, Owner mailing address", Send gray; filling company + mailing flipped the footer to "Ready to send". **Deploy: client → `supabase db push`** (no edge change — composition is client-side).
 
 ## Latest Updates (v2.1608)
 

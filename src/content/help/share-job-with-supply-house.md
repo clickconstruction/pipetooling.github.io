@@ -14,12 +14,13 @@ Open any job's **Job Detail** and look at the icon row in the header — the sma
 
 ## Filling the packet
 
-The modal prefills everything it can from the job and its customer:
+The modal shows three sections:
 
-- **Property, address, and site phone** come from the job.
-- The **Homeowner / Building owner** toggle picks itself: a job with a GC (or a commercial customer) starts on **Building owner**, with the company name filled in.
-- Anything blank wears an amber {{chip:yellow|missing}} chip with a field right there — type it in without leaving the modal. A phone or email you fill for the owner is **saved back to the customer** so it's never missing again.
-- The footer tells you honestly what's still blank — you can send anyway.
+- **Property** — name, address, and site phone from the job.
+- **General contractor** — filled automatically when the job has a GC. This is *not* the owner; it's shown so the supply house knows who's buying.
+- **Property owner** — what the supply house actually needs: the homeowner, or the building owner's **company**, plus the owner's **mailing address** (that's what lien notices run on). On a homeowner job with no GC this prefills from the customer. On a GC job it starts **blank** — get the owner from the GC and type it in. {{button:blue|Send email}} stays off until the owner is entered, and the footer names exactly what's missing.
+
+Owner info is **remembered for the job** — enter it once and every resend (or another desk) prefills it.
 
 ## Sending
 
