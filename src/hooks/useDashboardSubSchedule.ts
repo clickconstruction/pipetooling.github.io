@@ -105,7 +105,8 @@ export function useDashboardSubSchedule({
       setSubScheduleLabels(new Map())
       return
     }
-    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
+    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id).filter((id): id is string => id != null))]
+    const bidIds = [...new Set(subScheduleRows.map((b) => b.bid_id).filter((id): id is string => id != null))]
     const labelMap = new Map<string, string>()
     for (const j of [...assignedJobs, ...assignedReadyToBillJobs]) {
       if (jobIds.includes(j.id)) {
@@ -113,18 +114,30 @@ export function useDashboardSubSchedule({
       }
     }
     const missing = jobIds.filter((id) => !labelMap.has(id))
-    if (missing.length === 0) {
+    if (missing.length === 0 && bidIds.length === 0) {
       setSubScheduleLabels(new Map(labelMap))
       return
     }
     let cancelled = false
     void (async () => {
       try {
-        const rows = await withSupabaseRetry(
-          async () =>
-            await supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', missing),
-          'dashboardSubScheduleJobLabels',
-        )
+        // Bid-anchored blocks (v2.1613) label from bids, keyed `bid:<uuid>`.
+        const [rows, bidRows] = await Promise.all([
+          missing.length === 0
+            ? Promise.resolve([])
+            : withSupabaseRetry(
+                async () =>
+                  await supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', missing),
+                'dashboardSubScheduleJobLabels',
+              ),
+          bidIds.length === 0
+            ? Promise.resolve([])
+            : withSupabaseRetry(
+                async () =>
+                  await supabase.from('bids').select('id, bid_number, project_name').in('id', bidIds),
+                'dashboardSubScheduleBidLabels',
+              ),
+        ])
         if (cancelled) return
         for (const r of (rows ?? []) as Array<{
           id: string
@@ -132,6 +145,17 @@ export function useDashboardSubSchedule({
           job_name: string | null
         }>) {
           labelMap.set(r.id, subScheduleJobLabel(r.hcp_number, r.job_name))
+        }
+        for (const r of (bidRows ?? []) as Array<{
+          id: string
+          bid_number: string | null
+          project_name: string | null
+        }>) {
+          const num = (r.bid_number ?? '').trim()
+          labelMap.set(
+            `bid:${r.id}`,
+            `${num ? `B${num}` : 'Bid'} · ${(r.project_name ?? '').trim() || 'Bid'}`,
+          )
         }
         for (const id of missing) {
           if (!labelMap.has(id)) labelMap.set(id, 'Job')
@@ -165,7 +189,12 @@ export function useDashboardSubSchedule({
       setSubScheduleJobMeta(new Map())
       return
     }
-    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
+    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id).filter((id): id is string => id != null))]
+    if (jobIds.length === 0) {
+      setSubSchedulePhones(new Map())
+      setSubScheduleJobMeta(new Map())
+      return
+    }
     let cancelled = false
     void (async () => {
       try {

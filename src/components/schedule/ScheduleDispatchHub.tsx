@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
-import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
+import { scheduleBlockAnchorId, type JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import {
   scheduleBlockActionLinkedIconButtonStyle,
   scheduleBlockActionTextButtonStyle,
@@ -692,10 +692,10 @@ function HubPeopleBlockCard({
           }}
         >
           <span style={{ fontWeight: 700, color: 'var(--text-blue-900)', wordBreak: 'break-word' }}>
-            {getJobDisplayTitle(block.job_id)}
+            {getJobDisplayTitle(scheduleBlockAnchorId(block))}
           </span>
           {(() => {
-            const addr = getJobAddress?.(block.job_id) ?? ''
+            const addr = getJobAddress?.(scheduleBlockAnchorId(block)) ?? ''
             if (!addr) return null
             return (
               <span
@@ -718,7 +718,7 @@ function HubPeopleBlockCard({
           type="button"
           onClick={() => {
             if (placementPickingActive) return
-            onOpenJob(block.job_id)
+            onOpenJob(scheduleBlockAnchorId(block))
           }}
           style={{
             display: 'block',
@@ -1632,7 +1632,7 @@ function HubPeoplePanel({
       for (const dk of visibleDayKeys) {
         const blocks = personDayBlocks.get(hubPersonDayKey(row.userId, dk)) ?? []
         for (const b of blocks) {
-          if (getJobDisplayTitle(b.job_id).toLowerCase().includes(q)) return true
+          if (getJobDisplayTitle(scheduleBlockAnchorId(b)).toLowerCase().includes(q)) return true
         }
       }
       return false

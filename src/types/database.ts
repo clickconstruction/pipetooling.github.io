@@ -4649,12 +4649,13 @@ export type Database = {
       job_schedule_blocks: {
         Row: {
           assignee_user_id: string
+          bid_id: string | null
           created_at: string
           created_by: string | null
           field_moved_at: string | null
           field_moved_from: Json | null
           id: string
-          job_id: string
+          job_id: string | null
           note: string | null
           shared_block_group_id: string | null
           time_end: string
@@ -4664,12 +4665,13 @@ export type Database = {
         }
         Insert: {
           assignee_user_id: string
+          bid_id?: string | null
           created_at?: string
           created_by?: string | null
           field_moved_at?: string | null
           field_moved_from?: Json | null
           id?: string
-          job_id: string
+          job_id?: string | null
           note?: string | null
           shared_block_group_id?: string | null
           time_end: string
@@ -4679,12 +4681,13 @@ export type Database = {
         }
         Update: {
           assignee_user_id?: string
+          bid_id?: string | null
           created_at?: string
           created_by?: string | null
           field_moved_at?: string | null
           field_moved_from?: Json | null
           id?: string
-          job_id?: string
+          job_id?: string | null
           note?: string | null
           shared_block_group_id?: string | null
           time_end?: string
@@ -4693,6 +4696,13 @@ export type Database = {
           work_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "job_schedule_blocks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_schedule_blocks_assignee_user_id_fkey"
             columns: ["assignee_user_id"]
@@ -13963,7 +13973,7 @@ export type Database = {
       }
       move_job_schedule_block_group: {
         Args: {
-          p_job_id: string
+          p_job_id: string | null
           p_new_work_date: string
           p_shared_block_group_id: string
         }

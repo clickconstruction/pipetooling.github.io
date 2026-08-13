@@ -319,7 +319,7 @@ export function ScheduleJobModal({
       const barLabel = name.trim().split(/\s+/)[0] || name
       segs.push({
         id,
-        jobId: b.job_id,
+        jobId: b.job_id ?? `bid:${b.bid_id ?? ''}`,
         timeStart: b.time_start,
         timeEnd: b.time_end,
         label: barLabel,

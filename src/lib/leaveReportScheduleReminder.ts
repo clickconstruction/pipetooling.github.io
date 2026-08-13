@@ -7,7 +7,8 @@ export const LEAVE_REPORT_REMINDER_MY_REPORT_SILENCE_MS = 12 * 60 * 60 * 1000
 export type LeaveReportReminderBlockSlice = Readonly<
   Pick<
     {
-      job_id: string
+      /** Null for bid-anchored blocks (v2.1613) — they never match a job's reminder. */
+      job_id: string | null
       work_date: string
       time_end: string
     },

@@ -3,7 +3,7 @@ import {
   timeInputToMinutesSafe,
   timeInputToPg,
 } from './dispatchAddBlockTime'
-import type { JobScheduleBlockRow } from './jobScheduleBlocks'
+import { scheduleBlockAnchorId, type JobScheduleBlockRow } from './jobScheduleBlocks'
 import { scheduleTimeToMinutesFromMidnight } from './jobScheduleOverlap'
 import type { AddBlockTimelineSegment } from './scheduleDispatchAddBlockTimeline'
 import { formatScheduleDispatchHubJobTitle } from './scheduleDispatchHub'
@@ -16,8 +16,9 @@ export function blocksToSegments(
   return [...rows]
     .map((b) => ({
       blockId: b.id,
-      jobId: b.job_id,
-      label: jobTitleById.get(b.job_id) ?? formatScheduleDispatchHubJobTitle(null, null),
+      // Anchor id (job uuid or `bid:<uuid>`, v2.1613) — title maps key on it.
+      jobId: scheduleBlockAnchorId(b),
+      label: jobTitleById.get(scheduleBlockAnchorId(b)) ?? formatScheduleDispatchHubJobTitle(null, null),
       time_start: b.time_start,
       time_end: b.time_end,
       shared_block_group_id: b.shared_block_group_id,

@@ -807,7 +807,7 @@ export function PeopleHoursDayAuditModal({
                 <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   {dispatchData.blocks.map((b) => {
                     const jobLabel =
-                      dispatchData.jobTitleById.get(b.job_id) ??
+                      dispatchData.jobTitleById.get(b.job_id ?? `bid:${b.bid_id ?? ''}`) ??
                       formatScheduleDispatchHubJobTitle(null, null)
                     const note = (b.note ?? '').trim()
                     return (

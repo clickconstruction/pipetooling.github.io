@@ -5,10 +5,12 @@ file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,302 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,384 lines, container), treated as one hot ~5.7k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-08-13
 ---
 
 ## What this surface is
+
+> **Anchors since v2.1613:** schedule blocks anchor to **exactly one of a job or a bid** (`job_schedule_blocks.job_id` is nullable; `bid_id` + one-anchor CHECK). Hub plumbing carries an opaque **anchor id** — the job uuid, or `bid:<uuid>` — produced by `scheduleBlockAnchorId()` and decoded by `scheduleBlockAnchorFromId()` (both in [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts)); `hubJobTitleById` / `hubJobAddressById` carry `bid:`-keyed entries so every id-keyed lookup just works. The linked-group primitives (`updateJobScheduleBlockGroup`, `fetchJobScheduleBlockGroupLegs`, `move_job_schedule_block_group`) are **group-keyed** — they no longer take/filter by job. Job-only affordances (Job Detail, job week `?jobId=`, team fetch, week summaries) skip bid anchors.
 
 The Schedule Dispatch hub is the week-grid scheduling surface at `/schedule-dispatch`. It is **already split into the playbook's two layers**, but both halves are individually oversized and hot (both files rank in the repo's top churn — dozens of `RECENT_FEATURES.md` entries touch them):
 

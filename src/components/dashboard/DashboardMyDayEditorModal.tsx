@@ -187,7 +187,7 @@ export function DashboardMyDayEditorModal({
             const d = drafts.get(b.id)
             if (!d) return null
             const mine = b.created_by === authUserId
-            const label = blockLabels.get(b.job_id) ?? 'Job'
+            const label = blockLabels.get(b.job_id ?? `bid:${b.bid_id ?? ''}`) ?? (b.job_id == null ? 'Bid visit' : 'Job')
             return (
               <div
                 key={b.id}

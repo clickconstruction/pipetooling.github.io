@@ -1,4 +1,4 @@
-import type { JobScheduleBlockRow } from './jobScheduleBlocks'
+import { scheduleBlockAnchorId, type JobScheduleBlockRow } from './jobScheduleBlocks'
 import { scheduleFormatWindow } from './jobScheduleChicago'
 import { scheduleBlockToRange } from './jobScheduleOverlap'
 
@@ -74,9 +74,9 @@ export function expectedManpowerRowsForDay(
     if (b.work_date !== dayKey) continue
     rows.push({
       blockId: b.id,
-      jobId: b.job_id,
+      jobId: scheduleBlockAnchorId(b),
       assigneeUserId: b.assignee_user_id,
-      jobTitle: resolveJobTitle(b.job_id),
+      jobTitle: resolveJobTitle(scheduleBlockAnchorId(b)),
       personName: resolvePersonName(b.assignee_user_id),
       personHours: expectedManpowerBlockPersonHours(b),
       windowLabel: scheduleFormatWindow(b.time_start, b.time_end),
@@ -107,9 +107,9 @@ export function expectedManpowerRowsForVisibleDays(
     if (!set.has(b.work_date)) continue
     rows.push({
       blockId: b.id,
-      jobId: b.job_id,
+      jobId: scheduleBlockAnchorId(b),
       assigneeUserId: b.assignee_user_id,
-      jobTitle: resolveJobTitle(b.job_id),
+      jobTitle: resolveJobTitle(scheduleBlockAnchorId(b)),
       personName: resolvePersonName(b.assignee_user_id),
       personHours: expectedManpowerBlockPersonHours(b),
       windowLabel: scheduleFormatWindow(b.time_start, b.time_end),

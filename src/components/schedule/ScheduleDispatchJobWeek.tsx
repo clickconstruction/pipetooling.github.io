@@ -525,8 +525,8 @@ export function ScheduleDispatchJobWeek() {
       const segments: AddBlockTimelineSegment[] = [...rows]
         .map((b) => ({
           blockId: b.id,
-          jobId: b.job_id,
-          label: labelFor(b.job_id),
+          jobId: b.job_id ?? `bid:${b.bid_id ?? ''}`,
+          label: labelFor(b.job_id ?? ''),
           time_start: b.time_start,
           time_end: b.time_end,
           shared_block_group_id: b.shared_block_group_id,
@@ -745,7 +745,7 @@ export function ScheduleDispatchJobWeek() {
       const gid = b.shared_block_group_id
       try {
         if (gid) {
-          const { error: upErr } = await updateJobScheduleBlockGroup(jobId, gid, { note: noteVal })
+          const { error: upErr } = await updateJobScheduleBlockGroup(gid, { note: noteVal })
           if (upErr) {
             setBlockNoteError(upErr)
             return

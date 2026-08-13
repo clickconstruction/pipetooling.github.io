@@ -174,6 +174,7 @@ export function LinkedScheduleGroupModal({
     for (const leg of legs.values()) {
       const { error: err } = await insertJobScheduleBlock({
         job_id: leg.job_id,
+        bid_id: leg.bid_id,
         assignee_user_id: addUserId,
         work_date: leg.work_date,
         time_start: leg.time_start,

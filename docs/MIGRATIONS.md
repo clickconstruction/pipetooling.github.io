@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-11
+last_updated: 2026-08-13
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 13, 2026
+
+**`20260813224521_bid_schedule_blocks.sql`** _(apply via `supabase db push` **BEFORE the v2.1613 client deploys** — the new client selects `bid_id`; the migration is invisible to the old client)_
+- **Purpose**: bid-anchored schedule blocks (v2.1613) — `job_schedule_blocks.bid_id` (FK→bids CASCADE), `job_id` drops NOT NULL, `job_schedule_blocks_one_anchor` CHECK (exactly one of job_id/bid_id, `reports_one_anchor` pattern), partial `bid_id` index. Lets dispatch schedule people onto bid work (site walks, estimating, pre-construction).
+- **Security**: ADDITIVE `_bid_` policies alongside the untouched job policies — SELECT requires a visible bid (bare `EXISTS` on `bids`, so bid RLS decides); INSERT/UPDATE/DELETE add the same office-role gate the job policies use (dev/master/assistant/superintendent — superintendents fall out naturally, they can't read bids). Field roles keep seeing their own bid blocks via the existing SELECT policy's `assignee_user_id` arm.
+- **Functions**: `move_job_schedule_block_group` — every `job_id = p_job_id` predicate relaxed to `(p_job_id IS NULL OR …)` (group ids are unique; old callers byte-identical). `self_move_schedule_block` — the dispatch-created-move job-thread note now fires only when the block has a job anchor (it aborted bid moves via the NOT NULL note FK).
+- **Deferred**: schedule-email RPCs (`list_job_schedule_blocks_for_schedule_email`, `list_schedule_blocks_for_share`) still INNER JOIN `jobs_ledger` — bid blocks are absent from schedule emails; the deleted-records archive cascade-grouping key stays `job_id`.
+- **Category**: Schedule Dispatch
 
 #### August 12, 2026
 

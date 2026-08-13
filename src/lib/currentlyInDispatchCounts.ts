@@ -4,7 +4,7 @@
  * Currently In dispatch icon badge on the Dashboard clock strip.
  */
 export function countDistinctJobsPerAssignee(
-  rows: ReadonlyArray<{ assignee_user_id: string; job_id: string }>,
+  rows: ReadonlyArray<{ assignee_user_id: string; job_id: string | null }>,
 ): Map<string, number> {
   const jobsByUser = new Map<string, Set<string>>()
   for (const r of rows) {
