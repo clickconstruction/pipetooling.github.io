@@ -33,6 +33,7 @@ export function DashboardTeamsInboxCard({
   showHelpFeedback,
   onOpenDismissedArchive,
   onLinkJobPictures,
+  onOpenSupplyHouseShare,
   onCreateTripCharge,
 }: {
   dispatchInbox: ReturnType<typeof useDispatchInbox>
@@ -40,6 +41,8 @@ export function DashboardTeamsInboxCard({
   showHelpFeedback: boolean
   onOpenDismissedArchive: () => void
   onLinkJobPictures?: (jobId: string) => void
+  /** find_property_owner requests (v2.1610): opens Job Detail + the supply house share modal. */
+  onOpenSupplyHouseShare?: (jobId: string) => void
   onCreateTripCharge?: (args: CreateTripChargeTarget) => void
 }) {
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
@@ -102,6 +105,7 @@ export function DashboardTeamsInboxCard({
           onDismiss={dismissDispatchRequest}
           onOpenDismissedArchive={onOpenDismissedArchive}
           onLinkJobPictures={onLinkJobPictures}
+          onOpenSupplyHouseShare={onOpenSupplyHouseShare}
           onCreateTripCharge={onCreateTripCharge}
         />
       )}
