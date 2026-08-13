@@ -6,7 +6,6 @@
  * choosing an action runs its handler and closes the sheet. The old
  * tap-revealed toolbelt is gone.
  */
-import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
@@ -29,16 +28,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     onSendBackSimple: undefined,
     showPctComplete: false,
     stagesJobFlashId: null,
-    stagesHamMode: false,
     stagesEditMode: false,
-    assignedEditJobId: null,
-    setAssignedEditJobId: vi.fn(),
-    assignedEditSelectedIds: [],
-    setAssignedEditSelectedIds: vi.fn(),
-    assignedEditSavingId: null,
-    assignedEditDropdownRef: createRef<HTMLDivElement | null>() as JobsStagesTableProps['assignedEditDropdownRef'],
-    users: [],
-    updateJobTeamMembers: vi.fn(async () => {}),
     renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
     stagesStatusUpdatingId: null,
     pctCompleteSavingId: null,

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1612',
+    date: '2026-08-13',
+    title: 'Cleaner crew names on the Pipeline board',
+    kind: 'fix',
+    highlights: [
+      'The little pencil next to the crew names on Pipeline rows is gone — the names now read clean.',
+      'To change who is on a job, use the green assign-work button on the row or the Edit Job window.',
+    ],
+  },
+  {
     version: 'v2.1611',
     date: '2026-08-13',
     title: 'Dispatch button styled to match',

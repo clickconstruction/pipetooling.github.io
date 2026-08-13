@@ -56,7 +56,6 @@ const STAGES_MUTATION_TIMEOUT_MS = 15000
  * `pctCompleteSavingId`.
  *
  * Stays in the page (UI-entangled; moves with the step-9 tab move):
- * `updateJobTeamMembers` (writes `assignedEdit*` UI state),
  * `createInvoiceFromModal` (reads `createPartialInvoice*` modal state + the
  * bill-customer context), and the collections confirm handler (writes
  * `collectionsConfirm`/`collectionsSaving`; the `setJobCollectionsFlag` lib

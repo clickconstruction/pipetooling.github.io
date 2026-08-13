@@ -662,10 +662,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   /** Focus ring for the unified command bar (v2.1187) — the input inside is borderless. */
   const [stagesSearchBarFocused, setStagesSearchBarFocused] = useState(false)
-  const [assignedEditJobId, setAssignedEditJobId] = useState<string | null>(null)
-  const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
-  const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
-  const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -997,17 +993,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [sendBackInvoice])
 
-  useEffect(() => {
-    if (!assignedEditJobId) return
-    function handleClickOutside(e: MouseEvent) {
-      if (assignedEditDropdownRef.current && !assignedEditDropdownRef.current.contains(e.target as Node)) {
-        setAssignedEditJobId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [assignedEditJobId])
-
   /** Stages board man-hours-per-job (load-once per visit; RLS-governed RPC, empty for roles without labor access). */
   async function loadStagesManHours() {
     if (stagesManHoursLoadedRef.current) return
@@ -1254,30 +1239,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setError(extra ? `${msg}. ${extra}` : msg)
     } finally {
       setCreatingPartialInvoiceFromModal(false)
-    }
-  }
-
-  async function updateJobTeamMembers(jobId: string, userIds: string[]) {
-    setAssignedEditSavingId(jobId)
-    try {
-      const { data: existingTeam } = await supabase.from('jobs_ledger_team_members').select('user_id').eq('job_id', jobId)
-      const existingTeamIds = new Set((existingTeam ?? []).map((t: { user_id: string }) => t.user_id))
-      const toAdd = userIds.filter((id) => !existingTeamIds.has(id))
-      const toRemove = [...existingTeamIds].filter((id) => !userIds.includes(id))
-      for (const uid of toRemove) {
-        const { error: delErr } = await supabase.from('jobs_ledger_team_members').delete().eq('job_id', jobId).eq('user_id', uid)
-        if (delErr) throw delErr
-      }
-      for (const uid of toAdd) {
-        const { error: insErr } = await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-        if (insErr) throw insErr
-      }
-      await loadJobs()
-      setAssignedEditJobId(null)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update assigned')
-    } finally {
-      setAssignedEditSavingId(null)
     }
   }
 
@@ -2261,16 +2222,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onSendBackSimple={undefined}
                     showPctComplete={true}
                     stagesJobFlashId={stagesJobFlashId}
-                    stagesHamMode={stagesHamMode}
                     stagesEditMode={stagesEditModeActive}
-                    assignedEditJobId={assignedEditJobId}
-                    setAssignedEditJobId={setAssignedEditJobId}
-                    assignedEditSelectedIds={assignedEditSelectedIds}
-                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
-                    assignedEditSavingId={assignedEditSavingId}
-                    assignedEditDropdownRef={assignedEditDropdownRef}
-                    users={users}
-                    updateJobTeamMembers={updateJobTeamMembers}
                     renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
                     stagesStatusUpdatingId={stagesStatusUpdatingId}
                     pctCompleteSavingId={pctCompleteSavingId}
@@ -2354,16 +2306,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     sendBackLabel={'Mark Waiting'}
                     showPctComplete={true}
                     stagesJobFlashId={stagesJobFlashId}
-                    stagesHamMode={stagesHamMode}
                     stagesEditMode={stagesEditModeActive}
-                    assignedEditJobId={assignedEditJobId}
-                    setAssignedEditJobId={setAssignedEditJobId}
-                    assignedEditSelectedIds={assignedEditSelectedIds}
-                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
-                    assignedEditSavingId={assignedEditSavingId}
-                    assignedEditDropdownRef={assignedEditDropdownRef}
-                    users={users}
-                    updateJobTeamMembers={updateJobTeamMembers}
                     renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
                     stagesStatusUpdatingId={stagesStatusUpdatingId}
                     pctCompleteSavingId={pctCompleteSavingId}
@@ -2496,14 +2439,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
                     stagesEditMode={stagesEditModeActive}
-                    assignedEditJobId={assignedEditJobId}
-                    setAssignedEditJobId={setAssignedEditJobId}
-                    assignedEditSelectedIds={assignedEditSelectedIds}
-                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
-                    assignedEditSavingId={assignedEditSavingId}
-                    assignedEditDropdownRef={assignedEditDropdownRef}
-                    users={users}
-                    updateJobTeamMembers={updateJobTeamMembers}
                     renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
                     stagesStatusUpdatingId={stagesStatusUpdatingId}
                     pctCompleteSavingId={pctCompleteSavingId}
@@ -2760,14 +2695,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
                     stagesEditMode={stagesEditModeActive}
-                    assignedEditJobId={assignedEditJobId}
-                    setAssignedEditJobId={setAssignedEditJobId}
-                    assignedEditSelectedIds={assignedEditSelectedIds}
-                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
-                    assignedEditSavingId={assignedEditSavingId}
-                    assignedEditDropdownRef={assignedEditDropdownRef}
-                    users={users}
-                    updateJobTeamMembers={updateJobTeamMembers}
                     renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
                     stagesStatusUpdatingId={stagesStatusUpdatingId}
                     pctCompleteSavingId={pctCompleteSavingId}
@@ -2864,14 +2791,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
                     stagesEditMode={stagesEditModeActive}
-                    assignedEditJobId={assignedEditJobId}
-                    setAssignedEditJobId={setAssignedEditJobId}
-                    assignedEditSelectedIds={assignedEditSelectedIds}
-                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
-                    assignedEditSavingId={assignedEditSavingId}
-                    assignedEditDropdownRef={assignedEditDropdownRef}
-                    users={users}
-                    updateJobTeamMembers={updateJobTeamMembers}
                     renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
                     stagesStatusUpdatingId={stagesStatusUpdatingId}
                     pctCompleteSavingId={pctCompleteSavingId}
@@ -3007,16 +2926,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' })}
                       showPctComplete={true}
                       stagesJobFlashId={stagesJobFlashId}
-                      stagesHamMode={stagesHamMode}
                       stagesEditMode={stagesEditModeActive}
-                      assignedEditJobId={assignedEditJobId}
-                      setAssignedEditJobId={setAssignedEditJobId}
-                      assignedEditSelectedIds={assignedEditSelectedIds}
-                      setAssignedEditSelectedIds={setAssignedEditSelectedIds}
-                      assignedEditSavingId={assignedEditSavingId}
-                      assignedEditDropdownRef={assignedEditDropdownRef}
-                      users={users}
-                      updateJobTeamMembers={updateJobTeamMembers}
                       renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
                       stagesStatusUpdatingId={stagesStatusUpdatingId}
                       pctCompleteSavingId={pctCompleteSavingId}

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1611)
+last_updated: 2026-08-13 (v2.1612)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1612)
+
+### Pipeline crew cell: the inline "Change assigned" pencil is gone (2026-08-13)
+Owner report with screenshot ("I don't love how the edit button looks for the people on a job — perhaps we should remove the edit persons from the view"). The Ham-mode-gated pencil beside the crew names — a 24px inline button opening a checkbox dropdown to edit `jobs_ledger_team_members` — is removed from BOTH Stages tables ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx)); the crew cell now always renders the plain joined-names line both modes shared. Crew editing stays available through the Edit Job modal and the green Assign-work quick action. Full apparatus removed with it: the `assignedEdit*` state + outside-click effect + `updateJobTeamMembers` handler in [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx), the eight now-dead props on both table prop types (card lists share those types), and `stagesHamMode` from the job-only table entirely (its ONLY consumer there was the pencil; the unified table keeps it for the est-bill-date ±1 bumpers — Ham mode itself is unchanged). Render tests updated (28/28 stages tests, full suite 4,324 green). Verified live with Ham mode ON against the reported row (job 925, Malachi/Isiah/Abraham/Paige): names + trade pill + dates render clean, zero "Change assigned" buttons in the DOM, quick-action stack intact. Client-only — no migration.
 
 ## Latest Updates (v2.1611)
 
