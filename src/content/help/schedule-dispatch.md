@@ -48,6 +48,14 @@ Every result carries its billing state — {{chip:gray|Waiting}} {{chip:yellow|W
 
 Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:yellow|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
 
+### Scheduling bid work
+
+**Bids can go on the calendar too** — site walks, estimating visits, pre-construction work that has no job yet. Below the job rows, the same picker lists open bids (anything not marked lost) with a violet {{chip:purple|Bid}} chip; search matches the bid number, project name, and address. A bid block places, drags, copies, and links exactly like a job block, and everyone sees it as **B123 · Project name** — on this board, on their Dashboard **My Schedule**, and in the day reviews.
+
+:::example Scheduling an estimator's site walk
+Type the bid number in the Assign-work search, pick the {{chip:purple|Bid}} row, then click the person-day cell — the visit lands on their schedule as `B412 · Oakmont Clubhouse`, no placeholder job needed.
+:::
+
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.
 
 ## Grouping people into swim lanes

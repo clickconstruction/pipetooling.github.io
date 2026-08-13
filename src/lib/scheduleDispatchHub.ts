@@ -44,6 +44,8 @@ export function jobPickerStatusChip(
       return { label: 'Billed', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
     case 'paid':
       return { label: 'Paid', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
+    case 'bid':
+      return { label: 'Bid', background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)' }
     default:
       return null
   }
@@ -90,6 +92,50 @@ export function formatScheduleDispatchHubJobTitle(
   // would be redundant. Typing a bare "927" still matches as a substring.
   const num = effectiveJobLedgerNumber(hcp, clickNumber)
   return `${num ? `J${num}` : '—'} · ${(jobName ?? '').trim() || 'Job'}`
+}
+
+/** `B{bid_number} · project name` — the schedule surfaces' bid identity line (v2.1613). */
+export function formatScheduleDispatchHubBidTitle(
+  bidNumber: string | null | undefined,
+  projectName: string | null | undefined,
+): string {
+  const num = (bidNumber ?? '').trim()
+  return `${num ? `B${num}` : 'Bid'} · ${(projectName ?? '').trim() || 'Bid'}`
+}
+
+export type ScheduleDispatchHubBidRow = {
+  id: string
+  bid_number: string | null
+  project_name: string | null
+  address: string | null
+  outcome: string | null
+  created_at: string
+  service_type: { name: string } | null
+}
+
+/**
+ * Bids schedulable from the dispatch calendar (v2.1613): not lost, not
+ * archived off the working board. RLS-limited like the jobs fetch.
+ */
+export async function fetchBidsForScheduleDispatchHub(): Promise<{
+  data: ScheduleDispatchHubBidRow[]
+  error: string | null
+}> {
+  try {
+    const data = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('bids')
+          .select('id, bid_number, project_name, address, outcome, created_at, service_type:service_types(name)')
+          .is('working_board_archived_at', null)
+          .or('outcome.is.null,outcome.neq.lost')
+          .order('bid_number', { ascending: false }),
+      'fetchBidsForScheduleDispatchHub',
+    )
+    return { data: (data ?? []) as ScheduleDispatchHubBidRow[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
 }
 
 export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
@@ -232,15 +278,24 @@ export async function fetchJobScheduleBlockWeekSummaries(
           .lte('work_date', toDate),
       'fetchJobScheduleBlockWeekSummaries',
     )
-    return { data: (data ?? []) as JobScheduleBlockWeekSummaryRow[], error: null }
+    const rows = (data ?? []) as Array<{ job_id: string | null; work_date: string }>
+    // Bid-anchored blocks (v2.1613) have no job — the per-job week counts skip them.
+    return {
+      data: rows.filter((r): r is JobScheduleBlockWeekSummaryRow => r.job_id != null),
+      error: null,
+    }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
   }
 }
 
-/** Derive lightweight job×day summary rows for aggregateWeekSummariesByJob (one row per block). */
+/** Derive lightweight job×day summary rows for aggregateWeekSummariesByJob (one row per JOB block; bid blocks are skipped). */
 export function blocksToJobWeekSummaries(blocks: JobScheduleBlockRow[]): JobScheduleBlockWeekSummaryRow[] {
-  return blocks.map((b) => ({ job_id: b.job_id, work_date: b.work_date }))
+  const out: JobScheduleBlockWeekSummaryRow[] = []
+  for (const b of blocks) {
+    if (b.job_id != null) out.push({ job_id: b.job_id, work_date: b.work_date })
+  }
+  return out
 }
 
 const HUB_PERSON_DAY_KEY_SEP = '\t'

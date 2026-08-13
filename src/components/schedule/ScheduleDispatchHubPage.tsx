@@ -12,6 +12,9 @@ import {
   fetchScheduleBlocksForAssigneesOnDay,
   insertJobScheduleBlock,
   newJobScheduleSharedBlockGroupId,
+  isScheduleBidAnchorId,
+  scheduleBlockAnchorFromId,
+  scheduleBlockAnchorId,
   updateJobScheduleBlock,
   updateJobScheduleBlockGroup,
   type JobScheduleBlockRow,
@@ -53,14 +56,17 @@ import {
   buildPersonDayBlockMap,
   fetchArchivedUserIdSetForIds,
   hubPersonDayKey,
+  fetchBidsForScheduleDispatchHub,
   fetchJobsLedgerForScheduleDispatchHub,
   fetchTeamMemberUserIdsForJobIds,
   fetchUserNamesForIds,
   fetchUsersTabRosterForScheduleDispatchHub,
   findDuplicateJobAddress,
+  formatScheduleDispatchHubBidTitle,
   formatScheduleDispatchHubJobTitle,
   parseHubPersonDayKey,
   sortJobPickerRowsFinishedLast,
+  type ScheduleDispatchHubBidRow,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
 import {
@@ -326,6 +332,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubJobsError, setHubJobsError] = useState<string | null>(null)
   const [hubSummariesError, setHubSummariesError] = useState<string | null>(null)
   const [hubJobs, setHubJobs] = useState<ScheduleDispatchHubJobRow[]>([])
+  /** Schedulable bids (v2.1613) — picker rows + `bid:<id>` title/address map entries. */
+  const [hubBids, setHubBids] = useState<ScheduleDispatchHubBidRow[]>([])
   const [hubWeekBlocks, setHubWeekBlocks] = useState<JobScheduleBlockRow[]>([])
   const [hubTeamMemberUserIds, setHubTeamMemberUserIds] = useState<string[]>([])
   const [hubRoleByUserId, setHubRoleByUserId] = useState<Map<string, string>>(() => new Map())
@@ -386,8 +394,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     for (const j of hubJobs) {
       m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number))
     }
+    // Bid anchors key on their `bid:<uuid>` anchor id, so every id-keyed lookup just works.
+    for (const b of hubBids) {
+      m.set(`bid:${b.id}`, formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name))
+    }
     return m
-  }, [hubJobs])
+  }, [hubJobs, hubBids])
 
   const hubAllPeopleRows = useMemo(() => {
     const idSet = new Set<string>([...hubTeamMemberUserIds, ...hubWeekBlocks.map((b) => b.assignee_user_id)])
@@ -483,8 +495,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const a = (j.job_address ?? '').trim()
       if (a) m.set(j.id, a)
     }
+    for (const b of hubBids) {
+      const a = (b.address ?? '').trim()
+      if (a) m.set(`bid:${b.id}`, a)
+    }
     return m
-  }, [hubJobs])
+  }, [hubJobs, hubBids])
 
   const getHubJobAddress = useCallback((id: string) => hubJobAddressById.get(id) ?? '', [hubJobAddressById])
 
@@ -518,11 +534,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setHubSummariesError(null)
       setHubSalariedUserIds(new Set())
 
-      // Phase A: jobs ledger + week blocks + users-tab roster — fully independent, parallel.
-      const [jr, br, usersTabRes] = await Promise.all([
+      // Phase A: jobs ledger + week blocks + users-tab roster + bids — fully independent, parallel.
+      const [jr, br, usersTabRes, bidsRes] = await Promise.all([
         fetchJobsLedgerForScheduleDispatchHub(),
         fetchJobScheduleBlocksForHubDateRange(weekStart, weekEnd),
         fetchUsersTabRosterForScheduleDispatchHub(role === 'dev'),
+        fetchBidsForScheduleDispatchHub(),
       ])
 
       let hubJobsData: ScheduleDispatchHubJobRow[] = []
@@ -532,6 +549,14 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       } else {
         hubJobsData = jr.data
         setHubJobs(jr.data)
+      }
+
+      // Bids degrade to a warning — the board is still fully usable for jobs.
+      if (bidsRes.error) {
+        setHubBids([])
+        showToast(`Bids list: ${bidsRes.error}`, 'warning')
+      } else {
+        setHubBids(bidsRes.data)
       }
 
       let blocksData: JobScheduleBlockRow[] = []
@@ -689,7 +714,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           continue
         }
         const { error: insErr } = await insertJobScheduleBlock({
-          job_id: targetJobId,
+          ...scheduleBlockAnchorFromId(targetJobId),
           assignee_user_id: assigneeUserId,
           work_date: workDate,
           time_start: ts,
@@ -940,8 +965,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const segments: AddBlockTimelineSegment[] = [...rows]
         .map((b) => ({
           blockId: b.id,
-          jobId: b.job_id,
-          label: labelFor(b.job_id),
+          jobId: scheduleBlockAnchorId(b),
+          label: labelFor(scheduleBlockAnchorId(b)),
           time_start: b.time_start,
           time_end: b.time_end,
           shared_block_group_id: b.shared_block_group_id,
@@ -1054,9 +1079,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         return
       }
 
-      const allJobBlocks = hubWeekBlocks.filter((b) => b.job_id === source.job_id)
+      const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
       const { error: hubInsErr } = await insertScheduleDispatchCopiedLeg({
-        jobId: source.job_id,
+        jobId: scheduleBlockAnchorId(source),
         createdBy: authUser.id,
         source,
         targetAssigneeUserId: assigneeUserId,
@@ -1196,9 +1221,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       try {
         const results: LinkedCopyLegResult[] = []
         for (const source of sources) {
-          const allJobBlocks = hubWeekBlocks.filter((b) => b.job_id === source.job_id)
+          const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
           const { error } = await insertScheduleDispatchCopiedLeg({
-            jobId: source.job_id,
+            jobId: scheduleBlockAnchorId(source),
             createdBy: authUser.id,
             source,
             targetAssigneeUserId: personUserId,
@@ -1243,9 +1268,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         const results: LinkedCopyLegResult[] = []
         for (const memberUserId of memberUserIds) {
           for (const source of sources) {
-            const allJobBlocks = hubWeekBlocks.filter((b) => b.job_id === source.job_id)
+            const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
             const { error } = await insertScheduleDispatchCopiedLeg({
-              jobId: source.job_id,
+              jobId: scheduleBlockAnchorId(source),
               createdBy: authUser.id,
               source,
               targetAssigneeUserId: memberUserId,
@@ -1338,6 +1363,44 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     }
     return sortJobPickerRowsFinishedLast([...list].sort(compareJobsByCreatedAtDesc))
   }, [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
+
+  /**
+   * Bid rows for the assign picker (v2.1613): same generic row shape the modal
+   * renders, listed after every job row under their violet "Bid" chip. Search
+   * matches bid number / project / address; the digits-only number query
+   * matches bid_number.
+   */
+  const hubAssignBidPickerRows = useMemo(() => {
+    const digits = hubAssignJobPickerNumberQuery.replace(/\D/g, '')
+    const q = hubAssignJobPickerSearch.trim().toLowerCase()
+    let list = hubBids
+    if (digits !== '') {
+      list = list.filter((b) => (b.bid_number ?? '').replace(/\D/g, '').includes(digits))
+    } else if (q) {
+      list = list.filter(
+        (b) =>
+          (b.bid_number ?? '').toLowerCase().includes(q) ||
+          (b.project_name ?? '').toLowerCase().includes(q) ||
+          (b.address ?? '').toLowerCase().includes(q) ||
+          formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name).toLowerCase().includes(q),
+      )
+    }
+    const blocksThisWeekByBid = new Map<string, number>()
+    for (const blk of hubWeekBlocks) {
+      if (blk.bid_id != null) {
+        blocksThisWeekByBid.set(blk.bid_id, (blocksThisWeekByBid.get(blk.bid_id) ?? 0) + 1)
+      }
+    }
+    return list.map((b) => ({
+      id: `bid:${b.id}`,
+      displayTitle: formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name),
+      serviceTypeName: b.service_type?.name ?? null,
+      subline: hubJobPickerSubline({ created_at: b.created_at, job_address: b.address }),
+      status: 'bid',
+      blocksThisWeek: blocksThisWeekByBid.get(b.id) ?? 0,
+      evidence: null,
+    }))
+  }, [hubBids, hubWeekBlocks, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
 
   /** Enrich visible picker rows with money-rail evidence — short lists only, debounced, accumulating, failure-silent. */
   useEffect(() => {
@@ -1874,6 +1937,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const openHubJobDetail = useCallback(
     (block: JobScheduleBlockRow, workDateYmd: string) => {
+      // Bid-anchored blocks (v2.1613) have no Job Detail to open.
+      if (block.job_id == null) return
       jobDetailModal?.openJobDetail({
         jobId: block.job_id,
         scheduleContext: {
@@ -1901,7 +1966,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const gid = b.shared_block_group_id
       try {
         if (gid) {
-          const { error: upErr } = await updateJobScheduleBlockGroup(b.job_id, gid, { note: noteVal })
+          const { error: upErr } = await updateJobScheduleBlockGroup(gid, { note: noteVal })
           if (upErr) {
             setBlockNoteError(upErr)
             return
@@ -2315,15 +2380,18 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           open={hubAssignJobPickerOpen}
           onClose={closeHubAssignJobPicker}
           subtitle={hubAssignJobPickerSubtitle}
-          jobRows={hubAssignJobPickerRows.map((r) => ({
-            id: r.id,
-            displayTitle: r.displayTitle,
-            serviceTypeName: r.service_type?.name ?? null,
-            subline: hubJobPickerSubline(r),
-            status: r.status ?? null,
-            blocksThisWeek: r.totalBlocks,
-            evidence: hubJobEvidence.get(r.id) ?? null,
-          }))}
+          jobRows={[
+            ...hubAssignJobPickerRows.map((r) => ({
+              id: r.id,
+              displayTitle: r.displayTitle,
+              serviceTypeName: r.service_type?.name ?? null,
+              subline: hubJobPickerSubline(r),
+              status: r.status ?? null,
+              blocksThisWeek: r.totalBlocks,
+              evidence: hubJobEvidence.get(r.id) ?? null,
+            })),
+            ...hubAssignBidPickerRows,
+          ]}
           duplicateAddressNotice={hubAssignJobPickerDuplicateAddressNotice}
           evidenceMode={jobSearchEvidenceModeForRole(role)}
           searchValue={hubAssignJobPickerSearch}
@@ -2332,6 +2400,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           onNumberQueryChange={setHubAssignJobPickerNumberQuery}
           searchPlaceholder="Search HCP, job, address, or customer"
           onOpenJobDetail={(pickedJobId) => {
+            if (isScheduleBidAnchorId(pickedJobId)) return
             const row = hubMergedRows.find((r) => r.id === pickedJobId)
             // Picker stays open underneath — Job Detail (and Edit Job from it)
             // stack above it, so closing them lands back on this picker.

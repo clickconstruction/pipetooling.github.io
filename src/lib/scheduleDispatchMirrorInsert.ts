@@ -2,6 +2,8 @@ import {
   ensureSharedBlockGroupForRow,
   fetchScheduleBlocksForAssigneesOnDay,
   insertJobScheduleBlock,
+  scheduleBlockAnchorFromId,
+  scheduleBlockAnchorId,
   type JobScheduleBlockRow,
 } from './jobScheduleBlocks'
 import { scheduleBlockToRange, scheduleOverlapsAny } from './jobScheduleOverlap'
@@ -9,6 +11,7 @@ import { scheduleBlockToRange, scheduleOverlapsAny } from './jobScheduleOverlap'
 export type ScheduleDispatchCopiedLegLinkMode = 'linked' | 'unlinked'
 
 export type InsertScheduleDispatchCopiedLegArgs = {
+  /** Anchor id: job uuid or `bid:<uuid>` (v2.1613) — must match `source`'s anchor. */
   jobId: string
   createdBy: string
   source: JobScheduleBlockRow
@@ -28,7 +31,7 @@ export async function insertScheduleDispatchCopiedLeg(
 ): Promise<{ error: string | null }> {
   const { jobId, createdBy, source, targetAssigneeUserId, targetWorkDate, linkMode, allJobBlocks } = args
 
-  if (source.job_id !== jobId) {
+  if (scheduleBlockAnchorId(source) !== jobId) {
     return { error: 'Block is not on this job.' }
   }
 
@@ -69,7 +72,7 @@ export async function insertScheduleDispatchCopiedLeg(
     }
 
     const { error: insErr } = await insertJobScheduleBlock({
-      job_id: jobId,
+      ...scheduleBlockAnchorFromId(jobId),
       assignee_user_id: targetAssigneeUserId,
       work_date: targetWorkDate,
       time_start: source.time_start,
@@ -95,7 +98,7 @@ export async function insertScheduleDispatchCopiedLeg(
   }
 
   const { error: insErr } = await insertJobScheduleBlock({
-    job_id: jobId,
+    ...scheduleBlockAnchorFromId(jobId),
     assignee_user_id: targetAssigneeUserId,
     work_date: targetWorkDate,
     time_start: source.time_start,

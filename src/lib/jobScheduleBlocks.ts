@@ -80,7 +80,30 @@ export async function fetchScheduleJobContext(
 }
 
 const SELECT_FIELDS =
-  'id, job_id, assignee_user_id, work_date, time_start, time_end, note, shared_block_group_id, created_at, created_by, updated_at, field_moved_at, field_moved_from'
+  'id, job_id, bid_id, assignee_user_id, work_date, time_start, time_end, note, shared_block_group_id, created_at, created_by, updated_at, field_moved_at, field_moved_from'
+
+/**
+ * Opaque anchor id for a block (v2.1613 bid-anchored blocks): the job uuid for
+ * job blocks, `bid:<uuid>` for bid blocks. Lets id-keyed plumbing (maps, drag
+ * payloads, placement state) stay single-string; decode with
+ * `scheduleBlockAnchorFromId` at the save/title boundaries.
+ */
+export function scheduleBlockAnchorId(block: Pick<JobScheduleBlockRow, 'job_id' | 'bid_id'>): string {
+  return block.job_id ?? `bid:${block.bid_id ?? ''}`
+}
+
+export const SCHEDULE_BID_ANCHOR_PREFIX = 'bid:'
+
+export function isScheduleBidAnchorId(anchorId: string): boolean {
+  return anchorId.startsWith(SCHEDULE_BID_ANCHOR_PREFIX)
+}
+
+/** Split an opaque anchor id back into insert columns. */
+export function scheduleBlockAnchorFromId(anchorId: string): { job_id: string | null; bid_id: string | null } {
+  return isScheduleBidAnchorId(anchorId)
+    ? { job_id: null, bid_id: anchorId.slice(SCHEDULE_BID_ANCHOR_PREFIX.length) }
+    : { job_id: anchorId, bid_id: null }
+}
 
 const SELECT_FIELDS_WITH_ASSIGNEE_NAME = `${SELECT_FIELDS}, users!job_schedule_blocks_assignee_user_id_fkey(name)`
 
@@ -139,9 +162,12 @@ export async function fetchJobScheduleBlocksForJobDay(
   }
 }
 
-/** Every leg of a linked block (same job + `shared_block_group_id`), one row per assignee. */
+/**
+ * Every leg of a linked block (same `shared_block_group_id`), one row per
+ * assignee. Group-keyed since v2.1613 — group ids are unique UUIDs, so the old
+ * job filter was redundant and silently dropped bid-anchored legs.
+ */
 export async function fetchJobScheduleBlockGroupLegs(
-  jobId: string,
   groupId: string,
 ): Promise<{ data: JobScheduleBlockRow[]; error: string | null }> {
   try {
@@ -150,7 +176,6 @@ export async function fetchJobScheduleBlockGroupLegs(
         await supabase
           .from('job_schedule_blocks')
           .select(SELECT_FIELDS)
-          .eq('job_id', jobId)
           .eq('shared_block_group_id', groupId),
       'fetchJobScheduleBlockGroupLegs',
     )
@@ -238,7 +263,8 @@ export function buildDispatchScheduledJobsForAssign(
   const enDash = '\u2013'
   for (const r of rows) {
     const jl = r.jobs_ledger
-    if (!jl) continue
+    const rowJobId = r.job_id
+    if (!jl || !rowJobId) continue
     const span: DispatchScheduledWindowSpan = {
       startLabel: scheduleFormatTimeHm(r.time_start),
       endLabel: scheduleFormatTimeHm(r.time_end),
@@ -246,7 +272,7 @@ export function buildDispatchScheduledJobsForAssign(
     const startMin = pgTimeToMinutes(r.time_start)
     const endMin = pgTimeToMinutes(r.time_end)
     const durMin = Math.max(0, endMin - startMin)
-    const existing = byJob.get(r.job_id)
+    const existing = byJob.get(rowJobId)
     if (existing) {
       existing.windowSpans.push(span)
       existing.scheduledMinutes += durMin
@@ -255,7 +281,7 @@ export function buildDispatchScheduledJobsForAssign(
         startMin,
       )
     } else {
-      byJob.set(r.job_id, {
+      byJob.set(rowJobId, {
         jl,
         windowSpans: [span],
         scheduledMinutes: durMin,
@@ -519,9 +545,13 @@ export async function updateJobScheduleBlock(
   }
 }
 
-/** Atomically moves every leg of a linked group to `newWorkDate` (assignees unchanged); overlap-checked in the RPC. */
+/**
+ * Atomically moves every leg of a linked group to `newWorkDate` (assignees
+ * unchanged); overlap-checked in the RPC. `jobId` may be null for bid-anchored
+ * groups (v2.1613) — the RPC matches by group alone when it is.
+ */
 export async function moveJobScheduleBlockGroupViaRpc(
-  jobId: string,
+  jobId: string | null,
   sharedBlockGroupId: string,
   newWorkDate: string,
 ): Promise<{ error: string | null }> {
@@ -541,9 +571,13 @@ export async function moveJobScheduleBlockGroupViaRpc(
   }
 }
 
-/** Sync times/note for every leg of a linked block (same `shared_block_group_id`). */
+/**
+ * Sync times/note for every leg of a linked block (same
+ * `shared_block_group_id`). Group-keyed since v2.1613 (see
+ * fetchJobScheduleBlockGroupLegs) — the old job filter silently no-oped
+ * bid-anchored groups.
+ */
 export async function updateJobScheduleBlockGroup(
-  jobId: string,
   groupId: string,
   patch: Pick<
     Database['public']['Tables']['job_schedule_blocks']['Update'],
@@ -556,7 +590,6 @@ export async function updateJobScheduleBlockGroup(
         await supabase
           .from('job_schedule_blocks')
           .update(patch)
-          .eq('job_id', jobId)
           .eq('shared_block_group_id', groupId),
       'updateJobScheduleBlockGroup',
     )

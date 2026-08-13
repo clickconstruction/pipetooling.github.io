@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1612)
+last_updated: 2026-08-13 (v2.1613)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1613)
+
+### Bids on the dispatch calendar — schedule people onto bid work (2026-08-13)
+Assistant report ("I can't assign bids to people on the dispatch calendar") — the schedule was structurally jobs-only: `job_schedule_blocks.job_id` was NOT NULL and every RLS policy resolved through `jobs_ledger`. The block anchor is now a union: **exactly one of `job_id` / `bid_id`** (migration [`20260813224521_bid_schedule_blocks.sql`](../supabase/migrations/20260813224521_bid_schedule_blocks.sql) — nullable job_id, `bid_id` FK→bids CASCADE, `one_anchor` CHECK on the `reports_one_anchor` pattern, partial index, **additive** `_bid_` RLS policies that inherit bid visibility from the bids table's own RLS via bare EXISTS with the same office-role write gate, `move_job_schedule_block_group` relaxed to `(p_job_id IS NULL OR …)`, and `self_move_schedule_block` guarded so a field move of a bid block skips the job-thread note instead of aborting). **Client**: the Dispatch hub's Assign-work picker lists schedulable bids (not lost, not board-archived) after the jobs under a violet **Bid** chip — searched by number/project/address, `B{n} · project` identity everywhere via new `formatScheduleDispatchHubBidTitle` / `fetchBidsForScheduleDispatchHub` ([`scheduleDispatchHub.ts`](../src/lib/scheduleDispatchHub.ts)); picked bids flow through the whole hub machinery (add block, multi-cell apply, drag, linked copies, notes, delete) as an opaque **anchor id** (`bid:<uuid>`, helpers in [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts)) — decoded only at insert and title/address lookup, so the id-keyed plumbing needed no rework. **Linked-group primitives went group-keyed** (`updateJobScheduleBlockGroup`, `fetchJobScheduleBlockGroupLegs`, the move RPC): group ids are unique UUIDs, so the old job filter was redundant AND silently no-oped cross-anchor groups. Every downstream schedule reader is anchor-aware or null-safe: Dashboard My Schedule labels bid visits (`B{n} · project`) and drops job-only affordances (detail/call/pictures/report/%) on bid rows — its label/phone `.in()` queries no longer receive nulls; Quickfill, User Review day/week/month, Day audit, My-Day editor, Reorder, Linked-crew modal (leg keys now anchor-scoped), expected manpower, and the Currently-In counts all guard or label. Job-only surfaces (job calendar, quick-picks, stages banners, per-job week counts) cleanly skip bid blocks. Kernel tests +3 (null-anchor RPC pass-through, `bid:` insert split, plain-job regression); suite 4,327 green. **Deferred, documented**: schedule-email RPCs still INNER JOIN jobs (bid blocks absent from emails), no bid week grid, Jobs-tab counts stay job-only. **Deploy: `supabase db push` BEFORE the client** (the new client selects `bid_id`; the migration is invisible to the old client).
 
 ## Latest Updates (v2.1612)
 

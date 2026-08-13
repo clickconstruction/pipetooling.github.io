@@ -274,7 +274,7 @@ export function QuickfillScheduleSection({
   const travelJobIdsKey = useMemo(() => {
     if (!travelConfig.enabled) return ''
     const ids = new Set<string>()
-    for (const [, rows] of blocksByUserId) for (const r of rows) ids.add(r.job_id)
+    for (const [, rows] of blocksByUserId) for (const r of rows) if (r.job_id != null) ids.add(r.job_id)
     return [...ids].sort().join(',')
   }, [blocksByUserId, travelConfig.enabled])
   /** Self-healing geocodes (v2.932): scheduled addresses missing from the cache
@@ -394,6 +394,7 @@ export function QuickfillScheduleSection({
       for (let i = 0; i + 1 < sorted.length; i++) {
         const fromJobId = sorted[i]!.job_id
         const toJobId = sorted[i + 1]!.job_id
+        if (fromJobId == null || toJobId == null) continue
         if (fromJobId === toJobId) continue
         const from = jobCoordsByJobId.get(fromJobId)
         const to = jobCoordsByJobId.get(toJobId)
@@ -422,7 +423,7 @@ export function QuickfillScheduleSection({
       const gaps = buildDayTravelGaps(
         rows.map((r) => ({
           blockId: r.id,
-          jobId: r.job_id,
+          jobId: r.job_id ?? `bid:${r.bid_id ?? ''}`,
           startMin: timeInputToMinutesSafe(r.time_start.slice(0, 5)),
           endMin: timeInputToMinutesSafe(r.time_end.slice(0, 5)),
         })),
@@ -521,7 +522,7 @@ export function QuickfillScheduleSection({
     return rosterFilteredUsers.filter(({ id, name }) => {
       if (name.toLowerCase().includes(n)) return true
       for (const b of blocksByUserId.get(id) ?? []) {
-        const title = jobTitleById.get(b.job_id) ?? formatScheduleDispatchHubJobTitle(null, null)
+        const title = jobTitleById.get(b.job_id ?? `bid:${b.bid_id ?? ''}`) ?? formatScheduleDispatchHubJobTitle(null, null)
         if (title.toLowerCase().includes(n)) return true
       }
       return false
@@ -582,8 +583,8 @@ export function QuickfillScheduleSection({
       const segments: AddBlockTimelineSegment[] = [...rows]
         .map((b) => ({
           blockId: b.id,
-          jobId: b.job_id,
-          label: labelFor(b.job_id),
+          jobId: b.job_id ?? `bid:${b.bid_id ?? ''}`,
+          label: labelFor(b.job_id ?? `bid:${b.bid_id ?? ''}`),
           time_start: b.time_start,
           time_end: b.time_end,
           shared_block_group_id: b.shared_block_group_id,
@@ -1695,7 +1696,7 @@ export function QuickfillScheduleSection({
         personName={(reorderUserId ? nameById.get(reorderUserId) : null) ?? 'this person'}
         blocks={(reorderUserId ? blocksByUserId.get(reorderUserId) ?? [] : []).map((r) => ({
           id: r.id,
-          label: jobTitleById.get(r.job_id) ?? 'Job',
+          label: jobTitleById.get(r.job_id ?? `bid:${r.bid_id ?? ''}`) ?? (r.job_id == null ? 'Bid visit' : 'Job'),
           time_start: r.time_start,
           time_end: r.time_end,
           linked: r.shared_block_group_id != null,

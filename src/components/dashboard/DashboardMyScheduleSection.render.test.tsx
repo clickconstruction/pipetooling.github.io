@@ -43,6 +43,7 @@ const PICTURES_URL = 'https://drive.google.com/drive/folders/1IBsb1Ep0UR4OKFePV0
 function block(over: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
   return {
     assignee_user_id: 'user-1',
+    bid_id: null,
     created_at: '2026-08-06T12:00:00Z',
     created_by: null,
     field_moved_at: null,

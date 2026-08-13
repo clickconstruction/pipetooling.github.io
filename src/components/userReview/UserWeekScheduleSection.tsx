@@ -124,7 +124,7 @@ export function UserWeekScheduleSection({
 
   const blockPreviewJobTitle = useMemo(() => {
     if (!blockPreview) return ''
-    const fromMap = jobTitleById.get(blockPreview.job_id)?.trim()
+    const fromMap = (blockPreview.job_id != null ? jobTitleById.get(blockPreview.job_id) : bidTitleById.get(blockPreview.bid_id ?? ''))?.trim()
     return fromMap && fromMap.length > 0 ? fromMap : formatScheduleDispatchHubJobTitle(null, null)
   }, [blockPreview, jobTitleById])
 

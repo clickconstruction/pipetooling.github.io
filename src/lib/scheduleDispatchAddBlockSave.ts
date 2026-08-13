@@ -4,6 +4,7 @@ import {
   insertJobScheduleBlock,
   moveJobScheduleBlockGroupViaRpc,
   newJobScheduleSharedBlockGroupId,
+  scheduleBlockAnchorFromId,
   updateJobScheduleBlock,
   updateJobScheduleBlockGroup,
 } from './jobScheduleBlocks'
@@ -57,7 +58,8 @@ export const SCHEDULE_MULTI_DAY_GROUP_MOVE_ERROR =
  */
 export async function saveEditedScheduleBlockTimes(params: {
   blockId: string
-  jobId: string
+  /** Null for bid-anchored blocks (v2.1613); only the day-move RPC still sees it. */
+  jobId: string | null
   assigneeUserId: string
   workDate: string
   sharedBlockGroupId: string | null
@@ -80,7 +82,6 @@ export async function saveEditedScheduleBlockTimes(params: {
 
   if (params.sharedBlockGroupId) {
     const { data: legs, error: legsErr } = await fetchJobScheduleBlockGroupLegs(
-      params.jobId,
       params.sharedBlockGroupId,
     )
     if (legsErr) return { ok: false, error: legsErr }
@@ -118,7 +119,7 @@ export async function saveEditedScheduleBlockTimes(params: {
       if (moveErr) return { ok: false, error: moveErr }
     }
 
-    const { error: upErr } = await updateJobScheduleBlockGroup(params.jobId, params.sharedBlockGroupId, {
+    const { error: upErr } = await updateJobScheduleBlockGroup(params.sharedBlockGroupId, {
       time_start: ts,
       time_end: te,
       note: noteVal,
@@ -149,6 +150,7 @@ export async function saveNewScheduleBlockForPersonDay(params: {
   authUserId: string
   assigneeUserId: string
   workDate: string
+  /** Job uuid, or a `bid:<uuid>` anchor id (v2.1613) — see scheduleBlockAnchorFromId. */
   targetJobId: string
   addTimeStart: string
   addTimeEnd: string
@@ -182,7 +184,6 @@ export async function saveNewScheduleBlockForPersonDay(params: {
 
   const processedGroup = new Set<string>()
   const groupPatches: Array<{
-    jobId: string
     groupId: string
     time_start: string
     time_end: string
@@ -206,7 +207,6 @@ export async function saveNewScheduleBlockForPersonDay(params: {
       if (!d0) continue
       const noteLeg = dayBlocks.find((b) => b.shared_block_group_id === gid) ?? row
       groupPatches.push({
-        jobId: legWithDraft.job_id,
         groupId: gid,
         time_start: timeInputToPg(d0.time_start),
         time_end: timeInputToPg(d0.time_end),
@@ -218,7 +218,7 @@ export async function saveNewScheduleBlockForPersonDay(params: {
   }
 
   for (const p of groupPatches) {
-    const { error: upErr } = await updateJobScheduleBlockGroup(p.jobId, p.groupId, {
+    const { error: upErr } = await updateJobScheduleBlockGroup(p.groupId, {
       time_start: p.time_start,
       time_end: p.time_end,
       note: p.note,
@@ -234,7 +234,7 @@ export async function saveNewScheduleBlockForPersonDay(params: {
   }
 
   const { error: insErr } = await insertJobScheduleBlock({
-    job_id: params.targetJobId,
+    ...scheduleBlockAnchorFromId(params.targetJobId),
     assignee_user_id: params.assigneeUserId,
     work_date: params.workDate,
     time_start: ts,

@@ -236,7 +236,7 @@ export function UserDaySummaryModal({
             ) : (
               <ul style={listStyle}>
                 {sortedBlocks.map((b) => {
-                  const label = jobTitleById.get(b.job_id)?.trim() || '—'
+                  const label = (b.job_id != null ? jobTitleById.get(b.job_id) : undefined)?.trim() || (b.job_id == null ? 'Bid visit' : '—')
                   const note = (b.note ?? '').trim()
                   return (
                     <li key={b.id}>

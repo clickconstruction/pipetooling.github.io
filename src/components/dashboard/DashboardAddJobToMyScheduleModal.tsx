@@ -143,7 +143,7 @@ export function DashboardAddJobToMyScheduleModal({
       </div>
       {overlap ? (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
-          ⚠ overlaps your {blockLabels.get(overlap.job_id) ?? 'other visit'} (
+          ⚠ overlaps your {blockLabels.get(overlap.job_id ?? `bid:${overlap.bid_id ?? ''}`) ?? 'other visit'} (
           {scheduleFormatWindow(overlap.time_start, overlap.time_end)}) — you can still save
         </div>
       ) : null}

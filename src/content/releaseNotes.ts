@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1613',
+    date: '2026-08-13',
+    title: 'Schedule bids on the dispatch calendar',
+    kind: 'feature',
+    highlights: [
+      'The dispatch calendar can now put people on bid work — site walks, estimating visits, pre-construction — not just jobs.',
+      'Pick a bid from the same Assign-work search (they show a violet Bid chip) and place it like any job block.',
+      'Bid visits show as "B123 · Project" on the board, My Schedule, Quickfill, and review screens.',
+    ],
+  },
+  {
     version: 'v2.1612',
     date: '2026-08-13',
     title: 'Cleaner crew names on the Pipeline board',

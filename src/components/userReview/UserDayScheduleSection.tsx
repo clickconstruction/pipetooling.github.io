@@ -278,8 +278,8 @@ export function UserDayScheduleSection({
       const segs: AddBlockTimelineSegment[] = [...rows]
         .map((b) => ({
           blockId: b.id,
-          jobId: b.job_id,
-          label: labelFor(b.job_id),
+          jobId: b.job_id ?? `bid:${b.bid_id ?? ''}`,
+          label: labelFor(b.job_id ?? `bid:${b.bid_id ?? ''}`),
           time_start: b.time_start,
           time_end: b.time_end,
           shared_block_group_id: b.shared_block_group_id,
@@ -485,7 +485,7 @@ export function UserDayScheduleSection({
 
   const blockPreviewJobTitle = useMemo(() => {
     if (!blockPreview) return ''
-    const fromMap = jobTitleById.get(blockPreview.job_id)?.trim()
+    const fromMap = (blockPreview.job_id != null ? jobTitleById.get(blockPreview.job_id) : bidTitleById.get(blockPreview.bid_id ?? ''))?.trim()
     return fromMap && fromMap.length > 0 ? fromMap : formatScheduleDispatchHubJobTitle(null, null)
   }, [blockPreview, jobTitleById])
 

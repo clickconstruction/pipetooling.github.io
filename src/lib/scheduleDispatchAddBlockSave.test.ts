@@ -2,16 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SCHEDULE_MULTI_DAY_GROUP_MOVE_ERROR,
   saveEditedScheduleBlockTimes,
+  saveNewScheduleBlockForPersonDay,
 } from './scheduleDispatchAddBlockSave'
 import {
   fetchJobScheduleBlockGroupLegs,
   fetchScheduleBlocksForAssigneesOnDay,
+  insertJobScheduleBlock,
   moveJobScheduleBlockGroupViaRpc,
   updateJobScheduleBlock,
   updateJobScheduleBlockGroup,
 } from './jobScheduleBlocks'
 
-vi.mock('./jobScheduleBlocks', () => ({
+vi.mock('./jobScheduleBlocks', async (importOriginal) => ({
+  // Pure helpers (anchor id encode/decode) stay real; network mutators are mocked.
+  ...(await importOriginal<typeof import('./jobScheduleBlocks')>()),
   fetchJobScheduleBlockGroupLegs: vi.fn(),
   fetchScheduleBlocksForAssigneesOnDay: vi.fn(),
   insertJobScheduleBlock: vi.fn(),
@@ -23,6 +27,7 @@ vi.mock('./jobScheduleBlocks', () => ({
 
 const mockGroupLegs = vi.mocked(fetchJobScheduleBlockGroupLegs)
 const mockDayBlocks = vi.mocked(fetchScheduleBlocksForAssigneesOnDay)
+const mockInsertBlock = vi.mocked(insertJobScheduleBlock)
 const mockMoveGroup = vi.mocked(moveJobScheduleBlockGroupViaRpc)
 const mockUpdateBlock = vi.mocked(updateJobScheduleBlock)
 const mockUpdateGroup = vi.mocked(updateJobScheduleBlockGroup)
@@ -111,7 +116,7 @@ describe('saveEditedScheduleBlockTimes', () => {
     const res = await saveEditedScheduleBlockTimes({ ...soloParams, sharedBlockGroupId: 'g1' })
     expect(res).toEqual({ ok: true })
     expect(mockDayBlocks).toHaveBeenCalledTimes(2)
-    expect(mockUpdateGroup).toHaveBeenCalledWith('j1', 'g1', {
+    expect(mockUpdateGroup).toHaveBeenCalledWith('g1', {
       time_start: '08:00:00',
       time_end: '11:00:00',
       note: null,
@@ -146,7 +151,7 @@ describe('saveEditedScheduleBlockTimes', () => {
     })
     const res = await saveEditedScheduleBlockTimes({ ...soloParams, sharedBlockGroupId: 'g1' })
     expect(res).toEqual({ ok: true })
-    expect(mockUpdateGroup).toHaveBeenCalledWith('j1', 'g1', {
+    expect(mockUpdateGroup).toHaveBeenCalledWith('g1', {
       time_start: '08:00:00',
       time_end: '11:00:00',
       note: null,
@@ -245,7 +250,7 @@ describe('saveEditedScheduleBlockTimes — moving the day', () => {
     })
     expect(res).toEqual({ ok: true })
     expect(mockMoveGroup).toHaveBeenCalledWith('j1', 'g1', '2026-08-01')
-    expect(mockUpdateGroup).toHaveBeenCalledWith('j1', 'g1', {
+    expect(mockUpdateGroup).toHaveBeenCalledWith('g1', {
       time_start: '08:00:00',
       time_end: '11:00:00',
       note: null,
@@ -309,5 +314,91 @@ describe('saveEditedScheduleBlockTimes — moving the day', () => {
     expect(res).toEqual({ ok: false, error: 'End time must be after start time.' })
     expect(mockMoveGroup).not.toHaveBeenCalled()
     expect(mockUpdateBlock).not.toHaveBeenCalled()
+  })
+})
+
+describe('bid-anchored blocks (v2.1613)', () => {
+  const legRow = (
+    id: string,
+    assignee: string,
+    workDate: string,
+    start = '08:00:00',
+    end = '10:00:00',
+  ): DayBlockRow =>
+    ({
+      id,
+      assignee_user_id: assignee,
+      work_date: workDate,
+      time_start: start,
+      time_end: end,
+    }) as DayBlockRow
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUpdateBlock.mockResolvedValue({ error: null })
+    mockUpdateGroup.mockResolvedValue({ error: null })
+    mockMoveGroup.mockResolvedValue({ error: null })
+    mockInsertBlock.mockResolvedValue({ data: null, error: null })
+    mockDayBlocks.mockResolvedValue({ data: [], error: null })
+  })
+
+  it('linked bid block day-move passes a null job id to the group-move RPC', async () => {
+    mockGroupLegs.mockResolvedValue({
+      data: [legRow('b1', 'u1', '2026-08-04')],
+      error: null,
+    })
+    const res = await saveEditedScheduleBlockTimes({
+      blockId: 'b1',
+      jobId: null,
+      assigneeUserId: 'u1',
+      workDate: '2026-08-04',
+      sharedBlockGroupId: 'g1',
+      timeStart: '08:00',
+      timeEnd: '11:00',
+      note: '',
+      newWorkDate: '2026-08-05',
+    })
+    expect(res).toEqual({ ok: true })
+    expect(mockGroupLegs).toHaveBeenCalledWith('g1')
+    expect(mockMoveGroup).toHaveBeenCalledWith(null, 'g1', '2026-08-05')
+    expect(mockUpdateGroup).toHaveBeenCalledWith('g1', {
+      time_start: '08:00:00',
+      time_end: '11:00:00',
+      note: null,
+    })
+  })
+
+  it('saveNewScheduleBlockForPersonDay splits a `bid:` anchor id into bid_id', async () => {
+    const res = await saveNewScheduleBlockForPersonDay({
+      authUserId: 'me',
+      assigneeUserId: 'u1',
+      workDate: '2026-08-04',
+      targetJobId: 'bid:bid-9',
+      addTimeStart: '08:00',
+      addTimeEnd: '11:00',
+      addNote: '',
+      addBlockDraftByBlockId: {},
+    })
+    expect(res).toEqual({ ok: true })
+    expect(mockInsertBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ job_id: null, bid_id: 'bid-9', assignee_user_id: 'u1' }),
+    )
+  })
+
+  it('saveNewScheduleBlockForPersonDay keeps a plain job uuid on job_id', async () => {
+    const res = await saveNewScheduleBlockForPersonDay({
+      authUserId: 'me',
+      assigneeUserId: 'u1',
+      workDate: '2026-08-04',
+      targetJobId: 'j1',
+      addTimeStart: '08:00',
+      addTimeEnd: '11:00',
+      addNote: '',
+      addBlockDraftByBlockId: {},
+    })
+    expect(res).toEqual({ ok: true })
+    expect(mockInsertBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ job_id: 'j1', bid_id: null }),
+    )
   })
 })

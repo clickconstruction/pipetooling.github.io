@@ -151,7 +151,9 @@ export function DashboardMyScheduleSection({
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   const scheduleJobIds = useMemo(
     () =>
-      [...subScheduleDayPartition.todayBlocks, ...subScheduleDayPartition.tomorrowBlocks].map((b) => b.job_id),
+      [...subScheduleDayPartition.todayBlocks, ...subScheduleDayPartition.tomorrowBlocks]
+        .map((b) => b.job_id)
+        .filter((id): id is string => id != null),
     [subScheduleDayPartition],
   )
   const pctTodayByJobId = useMyScheduleJobPct(scheduleJobIds, subScheduleDayPartition.todayYmd)
@@ -280,7 +282,11 @@ export function DashboardMyScheduleSection({
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {sorted.map((b) => {
-                      const rowLabel = subScheduleLabels.get(b.job_id) ?? 'Job'
+                      // Bid-anchored blocks (v2.1613): no job affordances (detail,
+                      // call, pictures, reports, %) — just the labeled visit.
+                      const blockJobId = b.job_id
+                      const anchorId = blockJobId ?? `bid:${b.bid_id ?? ''}`
+                      const rowLabel = subScheduleLabels.get(anchorId) ?? (blockJobId == null ? 'Bid' : 'Job')
                       const fromAssigned =
                         assignedJobs.find((j) => j.id === b.job_id) ??
                         assignedReadyToBillJobs.find((j) => j.id === b.job_id)
@@ -293,11 +299,11 @@ export function DashboardMyScheduleSection({
                       // the meta map carries their pictures link / HCP / address.
                       const jobMeta = resolveSubScheduleJobMeta(
                         fromAssigned,
-                        subScheduleJobMeta.get(b.job_id),
+                        blockJobId != null ? subScheduleJobMeta.get(blockJobId) : undefined,
                       )
                       const prefillAddr = (jobMeta.job_address ?? '').trim() || null
-                      const scheduleDetailPayload = {
-                        jobId: b.job_id,
+                      const scheduleDetailPayload = blockJobId == null ? null : {
+                        jobId: blockJobId,
                         prefillRowLabel: rowLabel,
                         prefillAddress: prefillAddr,
                         scheduleContext: {
@@ -312,15 +318,17 @@ export function DashboardMyScheduleSection({
                           key={b.id}
                           role="button"
                           tabIndex={0}
-                          onClick={() =>
+                          onClick={() => {
+                            if (!scheduleDetailPayload) return
                             jobDetailModal?.openJobDetail({
                               ...scheduleDetailPayload,
                               assignedJobsRows: detailModalAssignedJobsRows,
                             })
-                          }
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault()
+                              if (!scheduleDetailPayload) return
                               jobDetailModal?.openJobDetail({
                                 ...scheduleDetailPayload,
                                 assignedJobsRows: detailModalAssignedJobsRows,
@@ -398,15 +406,15 @@ export function DashboardMyScheduleSection({
                               }}
                             >
                               {(() => {
-                                const phone = (subSchedulePhones.get(b.job_id) ?? '').trim()
-                                if (!phone) return null
+                                const phone = blockJobId != null ? (subSchedulePhones.get(blockJobId) ?? '').trim() : ''
+                                if (!phone || blockJobId == null) return null
                                 return (
                                   <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     // Mis-click guard: open the Call modal (big tel target + call notes) instead of dialing immediately.
-                                    setCallModal({ phone, jobId: b.job_id, jobLabel: rowLabel })
+                                    setCallModal({ phone, jobId: blockJobId, jobLabel: rowLabel })
                                   }}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
@@ -443,25 +451,27 @@ export function DashboardMyScheduleSection({
                                   </button>
                                 )
                                 })()}
+                              {blockJobId != null ? (
                               <DashboardJobPicturesLinkRow
                                 layout="inline"
                                 size="large"
                                 jobPicturesLink={jobMeta.job_pictures_link}
                                 onMissingClick={() =>
                                   void submitLinkJobPicturesDispatchRequest({
-                                    jobId: b.job_id,
+                                    jobId: blockJobId,
                                     hcpNumber: jobMeta.hcp_number,
                                     jobName: fromAssigned?.job_name ?? rowLabel,
                                     jobAddress: jobMeta.job_address,
                                   })
                                 }
                               />
+                              ) : null}
                               {(() => {
                                 // v2.1591: the % stack is ANCHORED directly under the
                                 // Leave Report button (owner request) — riding the
                                 // address line put it at a varying distance whenever
                                 // the title wrapped.
-                                const pctInfo = pctTodayByJobId.get(b.job_id)
+                                const pctInfo = blockJobId != null ? pctTodayByJobId.get(blockJobId) : undefined
                                 const delta = pctInfo?.delta ?? null
                                 const pctStack = pctInfo ? (
                                   <div style={{ textAlign: 'right' }}>
@@ -487,15 +497,15 @@ export function DashboardMyScheduleSection({
                                     ) : null}
                                   </div>
                                 ) : null
-                                const reportButton = canLeaveJobFieldReport(role) ? (
+                                const reportButton = canLeaveJobFieldReport(role) && blockJobId != null ? (
                                   <DashboardLeaveReportButton
                                     showReminder={reminderDue}
-                                    reportCount={reportCountByJobId?.[b.job_id] ?? 0}
+                                    reportCount={(blockJobId != null ? reportCountByJobId?.[blockJobId] : undefined) ?? 0}
                                     onViewReports={
                                       setViewReportsJob
                                         ? () =>
                                             setViewReportsJob({
-                                              id: b.job_id,
+                                              id: blockJobId,
                                               hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
                                               jobName: fromAssigned?.job_name ?? rowLabel,
                                               jobAddress: jobMeta.job_address ?? '—',
@@ -505,7 +515,7 @@ export function DashboardMyScheduleSection({
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       setLeaveReportJob({
-                                        id: b.job_id,
+                                        id: blockJobId,
                                         hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
                                         jobName: fromAssigned?.job_name ?? rowLabel,
                                         jobAddress: jobMeta.job_address ?? '—',
@@ -560,7 +570,7 @@ export function DashboardMyScheduleSection({
                               moved: blue = where it started, green = today's gain
                               (amber tail = a downward correction). */}
                           {(() => {
-                            const pctInfo = pctTodayByJobId.get(b.job_id)
+                            const pctInfo = blockJobId != null ? pctTodayByJobId.get(blockJobId) : undefined
                             const delta = pctInfo?.delta ?? null
                             if (!pctInfo || delta == null || delta === 0) return null
                             const clamp = (n: number) => Math.max(0, Math.min(100, n))

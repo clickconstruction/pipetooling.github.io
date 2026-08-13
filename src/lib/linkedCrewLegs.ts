@@ -10,7 +10,9 @@
  */
 
 export type LinkedCrewLegRowShape = {
-  job_id: string
+  job_id: string | null
+  /** Bid anchor (v2.1613) — legs key on the anchor so bid legs never collapse together. */
+  bid_id?: string | null
   work_date: string
   time_start: string
   time_end: string
@@ -18,6 +20,7 @@ export type LinkedCrewLegRowShape = {
 
 export type LinkedCrewLeg<T extends LinkedCrewLegRowShape> = {
   key: string
+  /** Anchor id: job uuid or `bid:<uuid>` (v2.1613). */
   jobId: string
   workDate: string
   timeStart: string
@@ -25,8 +28,12 @@ export type LinkedCrewLeg<T extends LinkedCrewLegRowShape> = {
   rows: T[]
 }
 
+function linkedCrewLegAnchorId(row: LinkedCrewLegRowShape): string {
+  return row.job_id ?? `bid:${row.bid_id ?? ''}`
+}
+
 export function linkedCrewLegKey(row: LinkedCrewLegRowShape): string {
-  return `${row.job_id}|${row.work_date}|${row.time_start}|${row.time_end}`
+  return `${linkedCrewLegAnchorId(row)}|${row.work_date}|${row.time_start}|${row.time_end}`
 }
 
 /** Group blocks into legs, ordered by work date, then start time, then job id; row order within a leg is preserved. */
@@ -40,7 +47,7 @@ export function groupLinkedCrewLegs<T extends LinkedCrewLegRowShape>(rows: reado
     } else {
       byKey.set(key, {
         key,
-        jobId: row.job_id,
+        jobId: linkedCrewLegAnchorId(row),
         workDate: row.work_date,
         timeStart: row.time_start,
         timeEnd: row.time_end,

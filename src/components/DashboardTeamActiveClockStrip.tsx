@@ -827,7 +827,7 @@ export function DashboardTeamActiveClockStrip({
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry<Array<{ assignee_user_id: string; job_id: string }>>(
+        const data = await withSupabaseRetry<Array<{ assignee_user_id: string; job_id: string | null }>>(
           async () =>
             supabase
               .from('job_schedule_blocks')

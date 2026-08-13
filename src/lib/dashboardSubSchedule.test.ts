@@ -10,6 +10,7 @@ import {
 
 const block = (over: Partial<JobScheduleBlockRow> & { id: string }): JobScheduleBlockRow => ({
   assignee_user_id: 'user-1',
+  bid_id: null,
   created_at: '2026-07-17T12:00:00Z',
   created_by: null,
   field_moved_at: null,
