@@ -24,6 +24,11 @@ import {
   summarizeJobShares,
   type JobAccountShareRow,
 } from '../../lib/supplyHouseJobAccountsLedger'
+import {
+  closeOpenFindOwnerRequestsAfterSend,
+  fetchOpenFindOwnerRequest,
+  submitFindPropertyOwnerDispatchRequestForJob,
+} from '../../lib/findPropertyOwnerDispatchRequest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 type ContactRow = { id: string; label: string; email: string }
@@ -80,6 +85,9 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   const [priorShares, setPriorShares] = useState<JobAccountShareRow[]>([])
   const [priorOpen, setPriorOpen] = useState(false)
   const [issuer, setIssuer] = useState<PhysicalInvoiceIssuer | null>(null)
+  /** Open "find the owner" dispatch request for this job (v2.1610) — drives the "Dispatch is on it" state. */
+  const [findOwnerRequest, setFindOwnerRequest] = useState<{ id: string; created_at: string } | null>(null)
+  const [dispatching, setDispatching] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -102,6 +110,10 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
         if (!cancelled) setIssuer(getPhysicalInvoiceIssuerForDocument())
       })
       .catch(() => {})
+    setFindOwnerRequest(null)
+    void fetchOpenFindOwnerRequest(job.id).then((req) => {
+      if (!cancelled) setFindOwnerRequest(req)
+    })
     void (async () => {
       let customer: { id: string; name: string | null; address: string | null; contact_info: unknown; customer_type: string | null } | null = null
       if (job.customer_id) {
@@ -231,6 +243,8 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
         },
         { onConflict: 'job_id' }
       )
+    // The send completes the "find the owner" errand — close any open request (v2.1610).
+    if (authUser?.id) await closeOpenFindOwnerRequestsAfterSend(job.id, authUser.id)
     setSending(false)
     showToast(`Job account info sent to ${toEmails.length} ${toEmails.length === 1 ? 'contact' : 'contacts'}.`, 'success')
     onClose()
@@ -403,11 +417,51 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
               {fieldRow('Mailing address', info.mailingAddress, (v) => patch({ mailingAddress: v }), 'Street or PO Box, city…')}
               {fieldRow('Email (optional)', info.ownerEmail, (v) => patch({ ownerEmail: v }), 'Optional…')}
               {blocked ? (
-                <p style={{ margin: '0.4rem 0 0.1rem', fontSize: '0.71875rem', color: 'var(--text-amber-800)' }}>
-                  {info.gcCompany.trim()
-                    ? 'The GC is not the owner — get the property owner from the GC before sending.'
-                    : 'The supply house needs the property owner to open the account.'}
-                </p>
+                <>
+                  <p style={{ margin: '0.4rem 0 0.1rem', fontSize: '0.71875rem', color: 'var(--text-amber-800)' }}>
+                    {info.gcCompany.trim()
+                      ? 'The GC is not the owner — get the property owner from the GC before sending.'
+                      : 'The supply house needs the property owner to open the account.'}
+                  </p>
+                  {findOwnerRequest ? (
+                    <p style={{ margin: '0.35rem 0 0.1rem', fontSize: '0.75rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                      ✓ Dispatch is on it — requested{' '}
+                      {(() => {
+                        const d = new Date(findOwnerRequest.created_at)
+                        return Number.isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
+                      })()}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={dispatching}
+                      onClick={() => {
+                        setDispatching(true)
+                        void submitFindPropertyOwnerDispatchRequestForJob(authUser?.id, showToast, {
+                          jobId: job.id,
+                          jobLabel,
+                          jobAddress: info.address,
+                        }).then((req) => {
+                          setDispatching(false)
+                          if (req) setFindOwnerRequest(req)
+                        })
+                      }}
+                      style={{
+                        margin: '0.35rem 0 0.1rem',
+                        padding: '0.3rem 0.75rem',
+                        border: '1px solid #93c5fd',
+                        borderRadius: 6,
+                        background: 'var(--surface)',
+                        color: 'var(--text-blue-700)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: dispatching ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {dispatching ? 'Sending…' : 'Send to Dispatch — find the owner'}
+                    </button>
+                  )}
+                </>
               ) : (
                 <p style={{ margin: '0.4rem 0 0.1rem', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
                   Remembered for this job — resends prefill it.

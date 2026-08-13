@@ -24,6 +24,8 @@ export type OpenJobDetailOptions = {
   /** When set (including `[]`), used as-is. When omitted, rows are derived from JobsListCache. */
   assignedJobsRows?: DetailJobModalAssignedJobRow[]
   onEditJobSaved?: () => void
+  /** Auto-open the Share-with-supply-house modal on top (v2.1610 — Dispatch inbox one-click). */
+  openSupplyHouseShare?: boolean
 }
 
 export type JobDetailModalContextValue = {
@@ -60,6 +62,7 @@ type OpenState =
       /** null = derive from JobsListCache jobs */
       explicitAssignedRows: DetailJobModalAssignedJobRow[] | null
       onEditJobSaved?: () => void
+      openSupplyHouseShare?: boolean
     }
 
 let jobDetailModalInstanceSeed = 0
@@ -94,6 +97,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       prefillAddress: options.prefillAddress,
       explicitAssignedRows,
       onEditJobSaved: options.onEditJobSaved,
+      openSupplyHouseShare: options.openSupplyHouseShare,
     })
   }, [])
 
@@ -128,6 +132,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
           assignedJobsRows={assignedRowsForModal}
           prefillRowLabel={openState.prefillRowLabel ?? undefined}
           prefillAddress={openState.prefillAddress ?? undefined}
+          autoOpenSupplyHouseShare={openState.openSupplyHouseShare ?? false}
           onEditJobSaved={() => {
             if (openState.kind !== 'open') return
             if (openState.onEditJobSaved) openState.onEditJobSaved()

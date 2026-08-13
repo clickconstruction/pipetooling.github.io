@@ -1367,6 +1367,11 @@ export default function Dashboard() {
                   ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
                   : undefined
               }
+              onOpenSupplyHouseShare={
+                jobDetailModal
+                  ? (jobId) => jobDetailModal.openJobDetail({ jobId, openSupplyHouseShare: true })
+                  : undefined
+              }
               onCreateTripCharge={(args) => setTripChargeTarget(args)}
             />
           )}
@@ -1439,6 +1444,11 @@ export default function Dashboard() {
           onLinkJobPictures={
             jobFormModal
               ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
+          onOpenSupplyHouseShare={
+            jobDetailModal
+              ? (jobId) => jobDetailModal.openJobDetail({ jobId, openSupplyHouseShare: true })
               : undefined
           }
           onCreateTripCharge={

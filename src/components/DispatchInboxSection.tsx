@@ -81,6 +81,8 @@ type DispatchInboxSectionProps = {
   onOpenDismissedArchive?: () => void
   /** Opens Edit Job with the Customer Pictures input scrolled into view and focused. */
   onLinkJobPictures?: (jobId: string) => void
+  /** find_property_owner requests (v2.1610): opens Job Detail with the Share-with-supply-house modal on top. */
+  onOpenSupplyHouseShare?: (jobId: string) => void
   /** Opens the Create Trip Charge modal for a Turnaway request (pending_action 'trip_charge_turnaway'). */
   onCreateTripCharge?: (args: { requestId: string; jobId: string; referenceSummary: string | null }) => void
 }
@@ -107,6 +109,7 @@ export function DispatchInboxSection({
   onDismiss,
   onOpenDismissedArchive,
   onLinkJobPictures,
+  onOpenSupplyHouseShare,
   onCreateTripCharge,
 }: DispatchInboxSectionProps) {
   const narrow = useNarrowViewport640()
@@ -232,6 +235,37 @@ export function DispatchInboxSection({
                     }}
                   >
                     Add Customer Pictures URL
+                  </button>
+                ) : null
+                const showOpenSupplyShareAction =
+                  !isClosed &&
+                  req.pending_action === 'find_property_owner' &&
+                  !!req.job_ledger_id &&
+                  !!onOpenSupplyHouseShare
+                const openSupplyShareBtn = showOpenSupplyShareAction ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (req.job_ledger_id && onOpenSupplyHouseShare) {
+                        onOpenSupplyHouseShare(req.job_ledger_id)
+                      }
+                    }}
+                    title="Open Job Detail with the Share-with-supply-house modal — fill the owner and send"
+                    aria-label="Open Share with supply house"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: 'var(--surface)',
+                      border: '1px solid #93c5fd',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: 'var(--text-blue-700)',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Open Share with supply house
                   </button>
                 ) : null
                 const showCreateTripChargeAction =
@@ -429,6 +463,7 @@ export function DispatchInboxSection({
                         }
                       >
                         {linkJobPicturesBtn}
+                        {openSupplyShareBtn}
                         {createTripChargeBtn}
                       </div>
                     </div>

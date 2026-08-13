@@ -5,6 +5,7 @@ import { useDashboardBoot } from '../../hooks/useDashboardBoot'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { getCurrentUserName as getCurrentUserNameById } from '../../lib/getCurrentUserName'
 import { DashboardMyInboxCard } from '../dashboard/DashboardMyInboxCard'
 import { DashboardPinnedQuickRow } from '../dashboard/DashboardPinnedQuickRow'
@@ -30,6 +31,7 @@ export default function DispatchModeInbox() {
     checklistLoading,
   } = useDashboardBoot({ authUserId: authUser?.id })
 
+  const jobDetailModal = useJobDetailModal()
   const dispatchInbox = useDispatchInbox()
   const estimatorInbox = useEstimatorInbox()
   const { dispatchInboxEligible, fetchDismissedDispatchInboxRows } = dispatchInbox
@@ -106,6 +108,11 @@ export default function DispatchModeInbox() {
           onLinkJobPictures={
             jobFormModal
               ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
+          onOpenSupplyHouseShare={
+            jobDetailModal
+              ? (jobId) => jobDetailModal.openJobDetail({ jobId, openSupplyHouseShare: true })
               : undefined
           }
           onCreateTripCharge={(args) => setTripChargeTarget(args)}

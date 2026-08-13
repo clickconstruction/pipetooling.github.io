@@ -103,6 +103,8 @@ type Props = {
   prefillAddress?: string | null
   /** After Edit job save from this modal (e.g. refresh schedule hub). */
   onEditJobSaved?: () => void
+  /** Auto-open the Share-with-supply-house modal once the job loads (v2.1610 — Dispatch inbox one-click). */
+  autoOpenSupplyHouseShare?: boolean
 }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
@@ -590,6 +592,7 @@ export default function DetailJobModal({
   prefillRowLabel = null,
   prefillAddress = null,
   onEditJobSaved,
+  autoOpenSupplyHouseShare = false,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -928,6 +931,15 @@ export default function DetailJobModal({
   const canShareSupplyHouse =
     viewerAuthRole === 'dev' || viewerAuthRole === 'master_technician' || viewerAuthRole === 'assistant' || viewerAuthRole === 'controller'
   const [supplyHouseShareOpen, setSupplyHouseShareOpen] = useState(false)
+  // One-shot auto-open from the Dispatch inbox's find-owner action (v2.1610):
+  // waits for the full job (the share modal needs it), fires once.
+  const supplyShareAutoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (!autoOpenSupplyHouseShare || supplyShareAutoOpenedRef.current) return
+    if (!fullJob || !canShareSupplyHouse) return
+    supplyShareAutoOpenedRef.current = true
+    setSupplyHouseShareOpen(true)
+  }, [autoOpenSupplyHouseShare, fullJob, canShareSupplyHouse])
   const { showToast } = useToastContext()
   const checklistAddModal = useChecklistAddModal()
   /** Header send-as-task (v2.1529): same preset as the Pipeline row quick action. */

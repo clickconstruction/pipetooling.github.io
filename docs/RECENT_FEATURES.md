@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-12 (v2.1609)
+last_updated: 2026-08-13 (v2.1610)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1610)
+
+### Supply house share: "Send to Dispatch — find the owner" with a one-click way back (2026-08-13)
+Owner request ("dispatch a request to have them fill out and setup a job account… come back to this screen to send it off"; "so dispatch can get back to the Share with supply house modal in one click with the Job Detail modal in the background"). The v2.1609 hard block gets a productive exit on the `add_job_phone`/`link_job_pictures` pattern: **(1)** the blocked owner section grows a **"Send to Dispatch — find the owner"** button — new [`findPropertyOwnerDispatchRequest`](../src/lib/findPropertyOwnerDispatchRequest.ts) files a `dispatch_requests` row (`pending_action: 'find_property_owner'`, job attached, dedupe on an open request, best-effort push), and the modal shows **"✓ Dispatch is on it — requested M/D/YY"** whenever one is open (checked on every open); **(2)** the Dispatch inbox renders an **"Open Share with supply house"** action on those requests ([`DispatchInboxSection`](../src/components/DispatchInboxSection.tsx), threaded through `DashboardTeamsInboxCard` → both Dashboard positions AND Dispatch Mode's inbox) — one click opens **Job Detail with the share modal already on top** via new `openSupplyHouseShare` option on `JobDetailModalContext.openJobDetail` → `DetailJobModal.autoOpenSupplyHouseShare` (one-shot, waits for the full job); **(3)** a successful send **auto-closes** any open find-owner request ("Job account sent to the supply house — owner info filled." — the `link_job_pictures` self-heal pattern), so the errand completes itself. Verified live against prod end-to-end: filed from the blocked modal, the Dashboard inbox button opened Job Detail + share modal in one click, filling the owner + sending closed the request (status/closed_note confirmed via PostgREST); test artifacts pruned. Client-only — no migration (dispatch_requests existed), no edge change.
 
 ## Latest Updates (v2.1609)
 

@@ -22,6 +22,8 @@ The modal shows three sections:
 
 Owner info is **remembered for the job** — enter it once and every resend (or another desk) prefills it.
 
+Don't know the owner? Hit **Send to Dispatch — find the owner**: the errand lands in the Dispatch inbox with a one-click **Open Share with supply house** button that brings them right back to this screen. Once they fill the owner and send, the dispatch request closes itself. The modal shows {{chip:blue|Dispatch is on it}} while the request is open, so nobody files it twice.
+
 ## Sending
 
 Pick who gets it from your **supply house contacts** — tap the chips to select one or more. {{button:outline|+ Add contact}} takes a label and an email ("Ferguson — Central desk") and remembers it for next time; the list is shared with the whole office.

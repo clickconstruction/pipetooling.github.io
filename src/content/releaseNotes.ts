@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1610',
+    date: '2026-08-13',
+    title: 'Dispatch can chase down property owners',
+    kind: 'feature',
+    highlights: [
+      'When the property owner is unknown, the share modal can send the errand to the Dispatch inbox \u2014 and shows "Dispatch is on it" so nobody double-files.',
+      'From the inbox, one click opens the job with the share modal ready \u2014 fill the owner and send.',
+      'Sending the job account closes the dispatch request automatically.',
+    ],
+  },
+  {
     version: 'v2.1609',
     date: '2026-08-12',
     title: 'Supply house share: real owner info required',
