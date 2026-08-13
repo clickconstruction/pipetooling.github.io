@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1609',
+    date: '2026-08-12',
+    title: 'Supply house share: real owner info required',
+    kind: 'feature',
+    highlights: [
+      'The share modal now separates the general contractor (auto-filled from the job) from the property owner \u2014 no more GC info masquerading as the owner.',
+      'Sending is blocked until the owner is entered: name or company plus a mailing address (what lien notices need). The email shows all three sections.',
+      'Owner info is remembered per job \u2014 look it up once and every resend prefills it.',
+    ],
+  },
+  {
     version: 'v2.1608',
     date: '2026-08-12',
     title: 'Supply house email names the company',

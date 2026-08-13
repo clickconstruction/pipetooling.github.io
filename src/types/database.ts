@@ -10391,6 +10391,39 @@ export type Database = {
           },
         ]
       }
+      job_property_owners: {
+        Row: {
+          company_name: string
+          job_id: string
+          mailing_address: string
+          owner_email: string
+          owner_mode: string
+          owner_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_name?: string
+          job_id: string
+          mailing_address?: string
+          owner_email?: string
+          owner_mode?: string
+          owner_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_name?: string
+          job_id?: string
+          mailing_address?: string
+          owner_email?: string
+          owner_mode?: string
+          owner_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       supply_house_job_accounts: {
         Row: {
           contact_email: string
