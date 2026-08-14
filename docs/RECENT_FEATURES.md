@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1624)
+last_updated: 2026-08-13 (v2.1626)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1626)
+
+### Billing tab: Specific Work gets the width; Contractors stops hogging it (2026-08-13)
+Owner request. [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): Contractors pins to a 130px column (smaller type, names wrap), Other job charges to 140px, and **Specific Work takes 42% of the table** — line items that wrapped across five short lines now read in one or two, and rows are visibly shorter. Verified live against prod. Client-only — no migration.
 
 ## Latest Updates (v2.1624)
 

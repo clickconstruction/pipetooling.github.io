@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1626',
+    date: '2026-08-13',
+    title: 'Roomier line items on the Billing tab',
+    kind: 'fix',
+    highlights: [
+      'Specific Work now takes most of the row; Contractors and Other job charges shrink to tight fixed columns.',
+    ],
+  },
+  {
     version: 'v2.1624',
     date: '2026-08-13',
     title: 'Bid visits reach schedule emails',
