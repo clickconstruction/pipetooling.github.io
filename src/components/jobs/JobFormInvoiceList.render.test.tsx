@@ -13,16 +13,23 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
 import { JobFormInvoiceList } from './JobFormInvoiceList'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 
-function renderList(invoices: ReturnType<typeof makeInvoice>[]) {
+function renderList(
+  invoices: ReturnType<typeof makeInvoice>[],
+  payments: Array<{ id: string; amount: number; paid_on: string | null; note: string | null; payment_type: string | null; reference_number: string | null; invoice_id: string | null; mercury_transaction_id: string | null }> = [],
+) {
   const job = makeJob({ invoices })
   return renderWithProviders(
     <JobFormInvoiceList
       editing={job}
-      payments={[]}
+      payments={payments}
       canApplyAgreedWriteDown={false}
       onClose={() => {}}
       onSavedRef={createRef<(() => void) | undefined>()}
@@ -57,5 +64,48 @@ describe('JobFormInvoiceList draft-delete ✕', () => {
       makeInvoice({ id: 'inv-billed', status: 'billed', amount: 500, is_primary_rtb_bundle: false }),
     ])
     expect(screen.queryByLabelText(/Delete draft invoice/)).toBeNull()
+  })
+})
+
+describe('JobFormInvoiceList billed send-back (v2.1653)', () => {
+  const payment = (invoice_id: string | null, amount: number) => ({
+    id: `pay-${invoice_id}-${amount}`,
+    amount,
+    paid_on: null,
+    note: null,
+    payment_type: null,
+    reference_number: null,
+    invoice_id,
+    mercury_transaction_id: null,
+  })
+
+  it('offers Send back on an unpaid billed row and the confirm requires the acknowledgment', () => {
+    renderList([makeInvoice({ id: 'inv-billed', status: 'billed', amount: 8900, is_primary_rtb_bundle: false })])
+    const btn = screen.getByRole('button', { name: 'Send back' })
+    expect((btn as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(btn)
+    const dialog = screen.getByRole('dialog', { name: 'Send bill back' })
+    expect(within(dialog).getByText(/\$8,900\.00/)).toBeTruthy()
+    // Confirm stays dead until the acknowledgment is checked.
+    const confirm = within(dialog).getByRole('button', { name: 'Send back' })
+    expect((confirm as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(within(dialog).getByRole('checkbox'))
+    expect((confirm as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(within(dialog).getByText('Cancel'))
+    expect(screen.queryByRole('dialog', { name: 'Send bill back' })).toBeNull()
+  })
+
+  it('disables Send back when payments reference the invoice, and never offers it on drafts', () => {
+    renderList(
+      [
+        makeInvoice({ id: 'inv-paid', status: 'billed', amount: 6220, is_primary_rtb_bundle: false }),
+        makeInvoice({ id: 'inv-draft', status: 'ready_to_bill', amount: 2680, is_primary_rtb_bundle: true }),
+      ],
+      [payment('inv-paid', 6220)],
+    )
+    const buttons = screen.getAllByRole('button', { name: 'Send back' })
+    expect(buttons.length).toBe(1)
+    expect((buttons[0] as HTMLButtonElement).disabled).toBe(true)
+    expect((buttons[0] as HTMLButtonElement).title).toMatch(/Payments are applied/)
   })
 })

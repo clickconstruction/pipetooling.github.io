@@ -314,7 +314,14 @@ export function JobFormBreakOffSection({
  * useBreakOffSlider instance with the equation row, so the amount input,
  * handle, and badges stay in lockstep.
  */
-export function JobFormBreakOffTrack({ breakOff }: { breakOff: ReturnType<typeof useBreakOffSlider> }) {
+export function JobFormBreakOffTrack({
+  breakOff,
+  billsAheadRemedyHint,
+}: {
+  breakOff: ReturnType<typeof useBreakOffSlider>
+  /** Remedy line appended to the bills-ahead warning when an unpaid billed row could be sent back instead (v2.1653). */
+  billsAheadRemedyHint?: string | null
+}) {
   const {
     newInvoiceAmount,
     breakOffSliderDragCombinedPct,
@@ -580,6 +587,7 @@ export function JobFormBreakOffTrack({ breakOff }: { breakOff: ReturnType<typeof
             >
               ⚠ Would bill through {Math.round(breakOffCombinedHandlePct)}% of a job that&rsquo;s{' '}
               {Math.round(jobCompleteTrackPct ?? 0)}% done in the field.
+              {billsAheadRemedyHint ? <> {billsAheadRemedyHint}</> : null}
             </p>
           ) : null}
         </div>

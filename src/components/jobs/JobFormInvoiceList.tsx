@@ -13,6 +13,16 @@ import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBi
 import { billToDisplayLabel, invoiceBillToFromRow } from '../../lib/jobs/invoiceBillTo'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
+import { sendBackBlockedByPayments } from '../../lib/jobs/editJobInvoiceSendBack'
+import {
+  ensureLedgerInvoiceRemovedAfterStripeSendBack,
+  invoiceNeedsStripeVoidForRevert,
+  invokeVoidStripeInvoiceForRevert,
+  stripeModeForBillingFromRole,
+} from '../../lib/voidStripeInvoiceForRevert'
+import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
+import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
+import { useAuth } from '../../hooks/useAuth'
 import type { JobBillingContext } from '../../lib/jobBillingContext'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
@@ -65,9 +75,13 @@ export function JobFormInvoiceList({
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
+  const { role: authRole } = useAuth()
   const billCustomer = useBillCustomerModal()
   const [confirmDeleteInvoice, setConfirmDeleteInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
   const [deletingDraft, setDeletingDraft] = useState(false)
+  const [confirmSendBackInvoice, setConfirmSendBackInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
+  const [sendBackAcknowledged, setSendBackAcknowledged] = useState(false)
+  const [sendingBack, setSendingBack] = useState(false)
   const invoices = editing.invoices ?? []
   if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed')) return null
 
@@ -112,6 +126,70 @@ export function JobFormInvoiceList({
       showToast(e instanceof Error ? e.message : 'Failed to delete draft invoice', 'error')
     } finally {
       setDeletingDraft(false)
+    }
+  }
+
+  /**
+   * Send back an unpaid billed row from inside Edit Job (v2.1653) — the same
+   * primitives as the Pipeline/Dashboard send-backs: void the Stripe invoice
+   * when one backs the bill (kills the customer's payment link), else delete
+   * the billed row via RPC; both server paths hard-block if any payment
+   * references the invoice. Demotes the job to Ready to Bill when the last
+   * billed row is gone, then refreshes the modal in place.
+   */
+  async function sendBackBilledInvoice(inv: JobsLedgerInvoiceRow) {
+    setSendingBack(true)
+    try {
+      if (invoiceNeedsStripeVoidForRevert(inv)) {
+        const token = await getAccessTokenForEdgeFunctions()
+        if (!token) {
+          showToast('Not signed in', 'error')
+          return
+        }
+        const r = await invokeVoidStripeInvoiceForRevert({
+          invoiceId: inv.id,
+          stripeModeForBilling: stripeModeForBillingFromRole(authRole),
+          accessToken: token,
+        })
+        if (!r.ok) {
+          showToast(r.message, 'error')
+          return
+        }
+        const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
+        if (!cleaned.ok) {
+          showToast(cleaned.message, 'error')
+          return
+        }
+      } else {
+        const data = await withSupabaseRetry(
+          async () => await supabase.rpc('delete_billed_invoice_on_send_back', { p_invoice_id: inv.id }),
+          'delete_billed_invoice_on_send_back',
+        )
+        const result = data as { ok?: boolean; error?: string } | null
+        if (!result?.ok) {
+          showToast(result?.error ?? 'Failed to send back the bill', 'error')
+          return
+        }
+      }
+      const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, editing.id)
+      if (!sync.ok) {
+        showToast(sync.message, 'error')
+        return
+      }
+      onInvoiceDeleted(inv.id)
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) setEditing(found)
+      onSavedRef.current?.()
+      showToast(
+        `Bill sent back — $${formatCurrency(Number(inv.amount ?? 0))} returned to unbilled.`,
+        'success',
+      )
+      setConfirmSendBackInvoice(null)
+      setSendBackAcknowledged(false)
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Failed to send back the bill', 'error')
+    } finally {
+      setSendingBack(false)
     }
   }
 
@@ -334,6 +412,29 @@ export function JobFormInvoiceList({
                               Add discount
                             </button>
                           ) : null}
+                          {!isDraft ? (
+                            (() => {
+                              const blocked = sendBackBlockedByPayments(inv.id, payments)
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={blocked}
+                                  title={
+                                    blocked
+                                      ? 'Payments are applied to this bill — unlink them first (Payments received below).'
+                                      : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'
+                                  }
+                                  onClick={() => {
+                                    setSendBackAcknowledged(false)
+                                    setConfirmSendBackInvoice(inv)
+                                  }}
+                                  style={{ ...btnGray, cursor: blocked ? 'not-allowed' : 'pointer', opacity: blocked ? 0.6 : 1 }}
+                                >
+                                  Send back
+                                </button>
+                              )
+                            })()
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => {
@@ -459,6 +560,97 @@ export function JobFormInvoiceList({
                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', fontWeight: 600, background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: 6, cursor: deletingDraft ? 'default' : 'pointer', opacity: deletingDraft ? 0.7 : 1 }}
               >
                 {deletingDraft ? 'Deleting…' : 'Delete draft'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {confirmSendBackInvoice ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: nestedOverlayZIndex,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !sendingBack) {
+              setConfirmSendBackInvoice(null)
+              setSendBackAcknowledged(false)
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Send bill back"
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 8,
+              padding: '1.25rem',
+              maxWidth: 440,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-strong)' }}>Send this bill back?</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              The <strong>${formatCurrency(Number(confirmSendBackInvoice.amount ?? 0))}</strong> bill is removed and its
+              amount returns to unbilled. If it was the job&rsquo;s only sent bill, the job moves back to Ready to Bill.
+            </div>
+            {invoiceNeedsStripeVoidForRevert(confirmSendBackInvoice) ? (
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.5rem 0.7rem' }}>
+                This bill was sent via Stripe — the customer&rsquo;s payment link will be voided and can no longer be
+                paid. If Stripe already shows a payment on it, the send-back will fail until that is resolved in Stripe.
+              </div>
+            ) : null}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <input
+                type="checkbox"
+                checked={sendBackAcknowledged}
+                onChange={(e) => setSendBackAcknowledged(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                I understand the customer can no longer pay or reference this bill, and I&rsquo;ll send a corrected bill
+                if one is still owed.
+              </span>
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmSendBackInvoice(null)
+                  setSendBackAcknowledged(false)
+                }}
+                disabled={sendingBack}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void sendBackBilledInvoice(confirmSendBackInvoice)}
+                disabled={sendingBack || !sendBackAcknowledged}
+                style={{
+                  padding: '0.45rem 0.9rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  background: sendingBack || !sendBackAcknowledged ? '#9ca3af' : '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: sendingBack || !sendBackAcknowledged ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {sendingBack ? 'Sending back…' : 'Send back'}
               </button>
             </div>
           </div>
