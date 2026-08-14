@@ -49,6 +49,7 @@ const stripeDetail = {
   amount_remaining: 500000,
   amount_paid: 0,
   paid_at: null,
+  oob_paid_on: null,
   due_date: null,
   invoice_number: '560-2608101530',
   customer_name: 'Customer',

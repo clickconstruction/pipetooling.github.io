@@ -86,6 +86,24 @@ function formatStripePaidRelativeAgo(paidUnixSec: number): string {
   return `${n} days ago`
 }
 
+/** v2.1641: effective OOB pay date (plain calendar day — no time; the money arrived by check/cash). */
+function formatOobPaidOnChicago(ymd: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(ymdToUtcNoonMs(ymd)))
+}
+
+function formatOobPaidOnRelativeAgo(ymd: string): string {
+  const todayYmd = denverCalendarDayKey(Date.now())
+  const n = calendarDaysFromTo(ymd, todayYmd)
+  if (n <= 0) return 'today'
+  if (n === 1) return 'yesterday'
+  return `${n} days ago`
+}
+
 function fallbackPaidUnixSecFromJobPayments(
   payments: JobsLedgerPayment[] | undefined,
   invoiceId: string,
@@ -537,16 +555,23 @@ export function HostedStripeBillPanel({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
                     <span style={{ color: 'var(--text-700)', lineHeight: 1.35, minWidth: 0 }}>
                       {(() => {
+                        // v2.1641: an out-of-band-paid invoice (check/cash — Stripe collected
+                        // nothing, so amount_paid is 0) shows the EFFECTIVE pay date recorded
+                        // at marking time, not status_transitions.paid_at (the un-backdatable
+                        // API-call instant).
+                        const oobYmd = stripeDetail.amount_paid === 0 ? stripeDetail.oob_paid_on : null
                         const paidDisplaySec = stripeDetail.paid_at ?? fallbackPaidUnixSecFromApp
                         const showPaidWhen =
-                          (stripeDetail.amount_paid > 0 || applied > 0) && paidDisplaySec != null
+                          (stripeDetail.amount_paid > 0 || applied > 0) && (oobYmd != null || paidDisplaySec != null)
                         if (!showPaidWhen) return 'Amount paid'
-                        const fromStripe = stripeDetail.paid_at != null
+                        const fromStripe = oobYmd != null || stripeDetail.paid_at != null
                         return (
                           <>
                             Amount paid{' '}
                             <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                              ({formatStripePaidAtChicago(paidDisplaySec)} | {formatStripePaidRelativeAgo(paidDisplaySec)})
+                              {oobYmd != null
+                                ? `(${formatOobPaidOnChicago(oobYmd)} | ${formatOobPaidOnRelativeAgo(oobYmd)})`
+                                : `(${formatStripePaidAtChicago(paidDisplaySec!)} | ${formatStripePaidRelativeAgo(paidDisplaySec!)})`}
                             </span>
                             {!fromStripe ? (
                               <span style={{ fontWeight: 400, color: 'var(--text-faint)', fontSize: '0.75rem' }}>

@@ -12,6 +12,8 @@ export type StripeInvoiceDetailsSuccess = {
   amount_remaining: number
   amount_paid: number
   paid_at: number | null
+  /** YYYY-MM-DD — effective out-of-band pay date (v2.1641); the day the money arrived, not the API-call day. */
+  oob_paid_on: string | null
   due_date: number | null
   invoice_number: string | null
   customer_name: string | null
@@ -60,6 +62,10 @@ export function parseStripeInvoiceDetailsResponse(raw: unknown): StripeInvoiceDe
         ? paidAtRaw
         : null
 
+  const oobPaidRaw = o.oob_paid_on
+  const oob_paid_on =
+    typeof oobPaidRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(oobPaidRaw.trim()) ? oobPaidRaw.trim() : null
+
   const linesRaw = o.lines
   const lines: StripeInvoiceLineDetail[] = []
   if (Array.isArray(linesRaw)) {
@@ -88,6 +94,7 @@ export function parseStripeInvoiceDetailsResponse(raw: unknown): StripeInvoiceDe
     amount_remaining,
     amount_paid,
     paid_at,
+    oob_paid_on,
     due_date,
     invoice_number: str('invoice_number'),
     customer_name: str('customer_name'),
