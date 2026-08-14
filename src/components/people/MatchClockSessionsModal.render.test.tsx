@@ -12,7 +12,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-import { MatchClockSessionsModal } from './MatchClockSessionsModal'
+import { MatchClockSessionsModal, MatchClockSessionsInline } from './MatchClockSessionsModal'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 describe('MatchClockSessionsModal', () => {
@@ -30,5 +30,15 @@ describe('MatchClockSessionsModal', () => {
     })
     fireEvent.click(screen.getByText('Close'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('MatchClockSessionsInline', () => {
+  it('renders nothing at all when the window has no sessions to match', async () => {
+    const { container } = renderWithProviders(<MatchClockSessionsInline />)
+    await waitFor(() => {
+      expect(container.textContent).toBe('')
+    })
+    expect(screen.queryByText('Match sessions to jobs')).toBeNull()
   })
 })

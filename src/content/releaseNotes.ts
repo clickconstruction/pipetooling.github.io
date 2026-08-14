@@ -20,6 +20,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1661',
+    date: '2026-08-14',
+    title: 'Match sessions right on Quickfill',
+    kind: 'feature',
+    highlights: [
+      'Quickfill → Unassigned field time: the Match sessions list now sits directly on the page instead of behind a button — unmatched clock sessions spread out in columns, grouped by person.',
+      'Everything from the popup works in place: one-tap Assign suggestions, job search, Skip, Undo, and Apply all for sessions with exactly one Dispatch match.',
+      'When the last 7 days are all matched, the block disappears — the section stays clean at zero.',
+    ],
+  },
+  {
     version: 'v2.1660',
     date: '2026-08-14',
     title: 'Vehicle insurance plans',

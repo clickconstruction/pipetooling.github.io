@@ -17,13 +17,19 @@ import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { APP_CALENDAR_TZ, denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 
 /**
- * People → Hours "Match sessions" modal (opened from the Currently clocked in
- * header): every clock session in the last 7 days with no job or bid, grouped
- * by person, each led by one-tap suggestions from the matchClockSessions
- * kernel (dispatch / crew / note). Assign writes the same
+ * The "Match sessions" flow: every clock session in the last 7 days with no
+ * job or bid, grouped by person, each led by one-tap suggestions from the
+ * matchClockSessions kernel (dispatch / crew / note). Assign writes the same
  * `clock_sessions.job_ledger_id` / `bid_id` update the assign popover does;
  * the popover itself is the search fallback. Salary-materialized segments are
  * excluded (they legitimately carry no job).
+ *
+ * Two hosts share the state hook + card list below:
+ * - `MatchClockSessionsModal` — People → Hours (opened from the Currently
+ *   clocked in header), unchanged since v2.1584.
+ * - `MatchClockSessionsInline` — Quickfill's Unassigned field time section
+ *   renders the same content spread out on the page instead of behind a
+ *   button (owner request), hidden entirely when the window is clear.
  */
 
 const WINDOW_DAYS = 7
@@ -80,6 +86,10 @@ function durationLabel(s: MatchableClockSession, nowMs: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
+function windowSummaryLabel(count: number): string {
+  return `${count} session${count === 1 ? '' : 's'} in the last ${WINDOW_DAYS} days ${count === 1 ? 'has' : 'have'} no job or bid`
+}
+
 const tradePillStyle: CSSProperties = {
   display: 'inline-block',
   borderRadius: 3,
@@ -121,14 +131,8 @@ function suggestionTargetLabel(s: SessionMatchSuggestion): { pill: { tag: string
 
 type MatchedInfo = { label: string }
 
-type Props = {
-  open: boolean
-  onClose: () => void
-  /** Fires after any assign/undo so hosts can refresh strips + the button count. */
-  onSessionsChanged?: () => void
-}
-
-export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Props) {
+/** All match-sessions state + actions, shared by the modal and inline hosts. */
+function useMatchClockSessions(active: boolean, onSessionsChanged?: () => void) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<SessionWithName[]>([])
@@ -259,20 +263,11 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    if (!active) return
     setMatched(new Map())
     setSkipped(new Set())
     void load()
-  }, [open, load])
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [active, load])
 
   const unassigned = useMemo(() => sessions.filter(isMatchableUnassignedSession), [sessions])
 
@@ -360,6 +355,18 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
     [onSessionsChanged],
   )
 
+  const markMatchedViaSearch = useCallback(
+    (sessionId: string) => {
+      setMatched((m) => new Map(m).set(sessionId, { label: 'a job or bid (via search)' }))
+      onSessionsChanged?.()
+    },
+    [onSessionsChanged],
+  )
+
+  const skip = useCallback((sessionId: string) => {
+    setSkipped((prev) => new Set(prev).add(sessionId))
+  }, [])
+
   const bulkTargets = useMemo(
     () =>
       visible
@@ -375,6 +382,186 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
       await applySuggestion(s, sug)
     }
   }, [bulkTargets, applySuggestion])
+
+  return {
+    loading,
+    error,
+    setError,
+    unassignedCount: unassigned.length,
+    visible,
+    groups,
+    suggestionsBySessionId,
+    matched,
+    savingId,
+    nowMs,
+    todayYmd,
+    applySuggestion,
+    undoMatch,
+    markMatchedViaSearch,
+    skip,
+    bulkTargets,
+    applyBulk,
+  }
+}
+
+type MatchState = ReturnType<typeof useMatchClockSessions>
+
+/**
+ * The per-person session cards, shared by both hosts. `layout: 'grid'` spreads
+ * the person groups across the page width (inline host); `'list'` stacks them
+ * (modal). `popoverZIndex` keeps the search popover above a modal overlay.
+ */
+function MatchSessionGroups({ st, layout, popoverZIndex }: { st: MatchState; layout: 'list' | 'grid'; popoverZIndex?: number }) {
+  return (
+    <>
+      {st.error ? (
+        <p style={{ color: 'var(--text-red-600)', fontSize: '0.8125rem' }}>{st.error}</p>
+      ) : null}
+      <div
+        style={
+          layout === 'grid'
+            ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', columnGap: 14, alignItems: 'start' }
+            : undefined
+        }
+      >
+        {st.groups.map(([person, list]) => (
+          <div key={person} style={{ padding: '0.5rem 0 0.1rem' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
+              {person}
+            </div>
+            {list.map((s) => {
+              const done = st.matched.get(s.id)
+              const sugs = st.suggestionsBySessionId.get(s.id) ?? []
+              const isOpenSession = s.clocked_out_at == null
+              return (
+                <div key={s.id} style={{ border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 10, padding: '0.6rem 0.75rem', marginBottom: 10 }}>
+                  {done ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-green-800)' }}>
+                      ✓ Matched to {done.label}
+                      <button
+                        type="button"
+                        onClick={() => void st.undoMatch(s.id)}
+                        disabled={st.savingId === s.id}
+                        style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 650, fontSize: '0.875rem' }}>
+                          {formatDayLabel(s.work_date, st.todayYmd)} · {formatTimeShort(s.clocked_in_at)}
+                          {s.clocked_out_at ? ` – ${formatTimeShort(s.clocked_out_at)}` : ' →'}
+                        </span>
+                        {isOpenSession ? (
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--text-green-800)', fontWeight: 650 }}>
+                            ● still clocked in · {durationLabel(s, st.nowMs)}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)' }}>{durationLabel(s, st.nowMs)}</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.notes.trim() ? `"${s.notes.trim()}"` : 'no clock note'}
+                      </div>
+                      {sugs.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                          {sugs.map((sug, i) => {
+                            const { pill, text } = suggestionTargetLabel(sug)
+                            return (
+                              <div
+                                key={i}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', borderLeft: `3px solid ${SUG_EDGE[sug.kind]}`, borderRadius: 8, padding: '0.35rem 0.5rem 0.35rem 0.6rem', background: 'var(--surface)', minWidth: 0 }}
+                              >
+                                <span style={{ fontSize: '0.625rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: SUG_EDGE[sug.kind], flexShrink: 0 }}>
+                                  {SUG_KIND_LABEL[sug.kind]}
+                                </span>
+                                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8125rem' }} title={`${text} · ${sug.detail}`}>
+                                  {pill ? <span style={{ ...tradePillStyle, background: pill.color }}>{pill.tag}</span> : null}
+                                  {text} <span style={{ color: 'var(--text-muted)' }}>· {sug.detail}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => void st.applySuggestion(s, sug)}
+                                  disabled={st.savingId != null}
+                                  style={{ marginLeft: 'auto', flexShrink: 0, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 650, cursor: st.savingId != null ? 'not-allowed' : 'pointer' }}
+                                >
+                                  {st.savingId === s.id ? '…' : 'Assign'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                        <AssignSessionJobPopover
+                          session={{ id: s.id, job_ledger_id: s.job_ledger_id, bid_id: s.bid_id }}
+                          onSaved={() => st.markMatchedViaSearch(s.id)}
+                          onError={(msg) => st.setError(msg)}
+                          popoverZIndex={popoverZIndex}
+                          assignTriggerLabel="Search jobs & bids…"
+                          dispatchScheduleAssigneeUserId={s.user_id}
+                          dispatchScheduleWorkDateYmd={s.work_date}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => st.skip(s.id)}
+                          style={{ fontSize: '0.75rem', color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** The "N sessions have exactly one Dispatch match — Apply all" row. */
+function BulkApplyControls({ st }: { st: MatchState }) {
+  if (st.bulkTargets.length === 0) return null
+  return (
+    <>
+      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        {st.bulkTargets.length} session{st.bulkTargets.length === 1 ? ' has' : 's have'} exactly one Dispatch match
+      </span>
+      <button
+        type="button"
+        onClick={() => void st.applyBulk()}
+        disabled={st.savingId != null}
+        style={{ background: 'none', border: '1px solid #16a34a', color: 'var(--text-green-800)', borderRadius: 8, padding: '0.3rem 0.75rem', fontSize: '0.8125rem', fontWeight: 650, cursor: 'pointer' }}
+      >
+        Apply {st.bulkTargets.length === 1 ? 'it' : `all ${st.bulkTargets.length}`}
+      </button>
+    </>
+  )
+}
+
+type Props = {
+  open: boolean
+  onClose: () => void
+  /** Fires after any assign/undo so hosts can refresh strips + the button count. */
+  onSessionsChanged?: () => void
+}
+
+export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Props) {
+  const st = useMatchClockSessions(open, onSessionsChanged)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -394,135 +581,19 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
         <div style={{ padding: '0.85rem 1.1rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 700, fontSize: '1rem' }}>Match sessions to jobs</div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            {loading
-              ? 'Loading sessions…'
-              : `${visible.length} session${visible.length === 1 ? '' : 's'} in the last ${WINDOW_DAYS} days ${visible.length === 1 ? 'has' : 'have'} no job or bid`}
+            {st.loading ? 'Loading sessions…' : windowSummaryLabel(st.visible.length)}
           </div>
         </div>
         <div style={{ overflowY: 'auto', padding: '0.5rem 1.1rem', flex: 1 }}>
-          {error ? (
-            <p style={{ color: 'var(--text-red-600)', fontSize: '0.8125rem' }}>{error}</p>
-          ) : null}
-          {!loading && visible.length === 0 ? (
+          {!st.loading && st.visible.length === 0 && !st.error ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.75rem 0' }}>
               Nothing to match — every session in the window has a job or bid. 🎉
             </p>
           ) : null}
-          {groups.map(([person, list]) => (
-            <div key={person} style={{ padding: '0.5rem 0 0.1rem' }}>
-              <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
-                {person}
-              </div>
-              {list.map((s) => {
-                const done = matched.get(s.id)
-                const sugs = suggestionsBySessionId.get(s.id) ?? []
-                const isOpenSession = s.clocked_out_at == null
-                return (
-                  <div key={s.id} style={{ border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 10, padding: '0.6rem 0.75rem', marginBottom: 10 }}>
-                    {done ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-green-800)' }}>
-                        ✓ Matched to {done.label}
-                        <button
-                          type="button"
-                          onClick={() => void undoMatch(s.id)}
-                          disabled={savingId === s.id}
-                          style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-                        >
-                          Undo
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 650, fontSize: '0.875rem' }}>
-                            {formatDayLabel(s.work_date, todayYmd)} · {formatTimeShort(s.clocked_in_at)}
-                            {s.clocked_out_at ? ` – ${formatTimeShort(s.clocked_out_at)}` : ' →'}
-                          </span>
-                          {isOpenSession ? (
-                            <span style={{ fontSize: '0.6875rem', color: 'var(--text-green-800)', fontWeight: 650 }}>
-                              ● still clocked in · {durationLabel(s, nowMs)}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)' }}>{durationLabel(s, nowMs)}</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {s.notes.trim() ? `"${s.notes.trim()}"` : 'no clock note'}
-                        </div>
-                        {sugs.length > 0 ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                            {sugs.map((sug, i) => {
-                              const { pill, text } = suggestionTargetLabel(sug)
-                              return (
-                                <div
-                                  key={i}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', borderLeft: `3px solid ${SUG_EDGE[sug.kind]}`, borderRadius: 8, padding: '0.35rem 0.5rem 0.35rem 0.6rem', background: 'var(--surface)', minWidth: 0 }}
-                                >
-                                  <span style={{ fontSize: '0.625rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: SUG_EDGE[sug.kind], flexShrink: 0 }}>
-                                    {SUG_KIND_LABEL[sug.kind]}
-                                  </span>
-                                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8125rem' }} title={`${text} · ${sug.detail}`}>
-                                    {pill ? <span style={{ ...tradePillStyle, background: pill.color }}>{pill.tag}</span> : null}
-                                    {text} <span style={{ color: 'var(--text-muted)' }}>· {sug.detail}</span>
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => void applySuggestion(s, sug)}
-                                    disabled={savingId != null}
-                                    style={{ marginLeft: 'auto', flexShrink: 0, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 650, cursor: savingId != null ? 'not-allowed' : 'pointer' }}
-                                  >
-                                    {savingId === s.id ? '…' : 'Assign'}
-                                  </button>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ) : null}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                          <AssignSessionJobPopover
-                            session={{ id: s.id, job_ledger_id: s.job_ledger_id, bid_id: s.bid_id }}
-                            onSaved={() => {
-                              setMatched((m) => new Map(m).set(s.id, { label: 'a job or bid (via search)' }))
-                              onSessionsChanged?.()
-                            }}
-                            onError={(msg) => setError(msg)}
-                            popoverZIndex={1250}
-                            assignTriggerLabel="Search jobs & bids…"
-                            dispatchScheduleAssigneeUserId={s.user_id}
-                            dispatchScheduleWorkDateYmd={s.work_date}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setSkipped((prev) => new Set(prev).add(s.id))}
-                            style={{ fontSize: '0.75rem', color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
-                          >
-                            Skip
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+          <MatchSessionGroups st={st} layout="list" popoverZIndex={1250} />
         </div>
         <div style={{ borderTop: '1px solid var(--border)', padding: '0.6rem 1.1rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-          {bulkTargets.length > 0 ? (
-            <>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                {bulkTargets.length} session{bulkTargets.length === 1 ? ' has' : 's have'} exactly one Dispatch match
-              </span>
-              <button
-                type="button"
-                onClick={() => void applyBulk()}
-                disabled={savingId != null}
-                style={{ background: 'none', border: '1px solid #16a34a', color: 'var(--text-green-800)', borderRadius: 8, padding: '0.3rem 0.75rem', fontSize: '0.8125rem', fontWeight: 650, cursor: 'pointer' }}
-              >
-                Apply {bulkTargets.length === 1 ? 'it' : `all ${bulkTargets.length}`}
-              </button>
-            </>
-          ) : null}
+          <BulkApplyControls st={st} />
           <button
             type="button"
             onClick={onClose}
@@ -532,6 +603,39 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Inline host (Quickfill → Unassigned field time): the modal's contents spread
+ * out on the page. Renders nothing when the window has no sessions to match;
+ * matched/skipped cards behave exactly as in the modal.
+ */
+export function MatchClockSessionsInline({ onSessionsChanged }: { onSessionsChanged?: () => void }) {
+  const st = useMatchClockSessions(true, onSessionsChanged)
+
+  if (!st.loading && st.unassignedCount === 0 && !st.error) return null
+
+  return (
+    <div aria-label="Match sessions to jobs" style={{ margin: '0 0 1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>Match sessions to jobs</span>
+        <span style={{ fontSize: '0.8125rem', color: st.visible.length > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+          {st.loading ? 'Loading sessions…' : windowSummaryLabel(st.visible.length)}
+        </span>
+      </div>
+      {!st.loading && st.visible.length === 0 && st.unassignedCount > 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+          Every session here is matched or skipped.
+        </p>
+      ) : null}
+      <MatchSessionGroups st={st} layout="grid" />
+      {st.bulkTargets.length > 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+          <BulkApplyControls st={st} />
+        </div>
+      ) : null}
     </div>
   )
 }

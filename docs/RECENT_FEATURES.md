@@ -16,6 +16,10 @@ navigation: "No table of contents — find entries by grepping for the version (
 
 ### Vehicles: search box moves under the title (2026-08-14)
 Owner request. [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx): the "Search vehicles or people" input moves out of the header's right-side button group to its own left-aligned row directly below the **Vehicles** title (above the summary chips); **Insurance plans** and **+ Add Vehicle** stay on the right of the title row. Layout-only — no behavior change (verified live: filtering works from the new spot). Client-only — no migration.
+## Latest Updates (v2.1661)
+
+### Quickfill: Match sessions spreads out on the page (2026-08-14)
+Owner request ("I would like to see the contents of the modal spread out instead of behind that button"). The v2.1656 **Match sessions** button + modal on Quickfill's **Unassigned field time** section is now the content itself: [`MatchClockSessionsModal.tsx`](../src/components/people/MatchClockSessionsModal.tsx) split into a shared `useMatchClockSessions` state hook + `MatchSessionGroups` card renderer with two hosts — the People → Hours modal (unchanged, still opened from the Currently clocked in header) and a new **`MatchClockSessionsInline`** that [`QuickfillUnassignedFieldTimeSection`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) renders under its controls row in place of the button. Inline particulars: person groups flow in a responsive grid (`repeat(auto-fill, minmax(340px, 1fr))` — 3 columns at 1280px), the header line carries the same "N sessions in the last 7 days have no job or bid" summary (amber while sessions wait), the **Apply all N** bulk row sits at the bottom, and the whole block **renders nothing when the window is clear** so the section stays quiet at zero. All card behavior (one-tap Assign, search popover fallback, Skip, ✓ Matched + Undo) is the shared code path. The section's count badge state/effect went away with the button. Render tests: +1 (inline renders nothing on an empty window; 10 total across modal + kernel). Help guide `quickfill` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1660)
 
