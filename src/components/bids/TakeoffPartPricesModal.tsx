@@ -5,7 +5,13 @@ import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
-export type TakeoffPartPricesModalTarget = { partId: string; partName: string; defaultAddPrice?: string }
+export type TakeoffPartPricesModalTarget = {
+  partId: string
+  partName: string
+  defaultAddPrice?: string
+  /** v2.1638: set when opened from a takeoff rough line — enables the per-row "Use" button. */
+  lineId?: string
+}
 
 export type TakeoffPartPricesModalProps = {
   /** The open-target pointer stays PARENT-owned (opened from rough rows, Add
@@ -15,6 +21,8 @@ export type TakeoffPartPricesModalProps = {
   setPartPricesModal: Dispatch<SetStateAction<TakeoffPartPricesModalTarget | null>>
   supplyHouses: SupplyHouse[]
   setError: (message: string | null) => void
+  /** v2.1638: pin a specific supply house's price on the opening takeoff line (bid override). */
+  onUsePriceForLine?: (lineId: string, price: number, supplyHouseName: string) => void
 }
 
 /**
@@ -28,6 +36,7 @@ export function TakeoffPartPricesModal({
   setPartPricesModal,
   supplyHouses,
   setError,
+  onUsePriceForLine,
 }: TakeoffPartPricesModalProps) {
   const [partPricesModalData, setPartPricesModalData] = useState<Array<{ price_id: string; supply_house_name: string; supply_house_id: string; price: number; website_url: string | null }> | 'loading' | null>(null)
   const [partPricesModalEditing, setPartPricesModalEditing] = useState<Record<string, string>>({})
@@ -159,7 +168,7 @@ export function TakeoffPartPricesModal({
                                 style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                               />
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <button
                                 type="button"
                                 onClick={() => isValid && updatePartPriceInModal(row.price_id, numVal)}
@@ -168,6 +177,19 @@ export function TakeoffPartPricesModal({
                               >
                                 {partPricesModalUpdating === row.price_id ? 'Updating…' : 'Update'}
                               </button>
+                              {partPricesModal.lineId && onUsePriceForLine ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onUsePriceForLine(partPricesModal.lineId!, row.price, row.supply_house_name)
+                                    setPartPricesModal(null)
+                                  }}
+                                  title={`Price this line at ${row.supply_house_name}'s price ($${row.price.toFixed(2)}) — even if it isn't the lowest`}
+                                  style={{ marginLeft: '0.35rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                >
+                                  Use
+                                </button>
+                              ) : null}
                             </td>
                           </tr>
                         )

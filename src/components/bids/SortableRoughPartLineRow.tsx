@@ -86,7 +86,7 @@ export function SortableRoughPartLineRow({
     >
   ) => void
   resetRoughLineToCatalogPrice: (lineId: string) => void | Promise<void>
-  setPartPricesModal: (v: { partId: string; partName: string; defaultAddPrice?: string } | null) => void
+  setPartPricesModal: (v: { partId: string; partName: string; defaultAddPrice?: string; lineId?: string } | null) => void
   onRequestRemoveRoughLine: (lineId: string) => void
   onOpenBundleBreakdown: (templateId: string, lineId: string, assemblyName: string) => void
   bundlePartLines: BundlePartLine[] | undefined
@@ -516,6 +516,7 @@ export function SortableRoughPartLineRow({
                       partId: line.partId ?? '',
                       partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
                       defaultAddPrice: Number(line.unitPrice) > 0 ? String(line.unitPrice) : '',
+                      lineId: line.id,
                     })
                   }
                   onKeyDown={(e) => {
@@ -525,6 +526,7 @@ export function SortableRoughPartLineRow({
                         partId: line.partId ?? '',
                         partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
                         defaultAddPrice: Number(line.unitPrice) > 0 ? String(line.unitPrice) : '',
+                        lineId: line.id,
                       })
                     }
                   }}

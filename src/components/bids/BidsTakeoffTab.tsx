@@ -1613,6 +1613,12 @@ export function BidsTakeoffTab({
     showToast(`Applied ${supplyHouseName} bundle price ($${(Number(price) || 0).toFixed(2)}).`, 'success')
   }
 
+  /** v2.1638: the Prices modal's "Use" button — pin a supply house's catalog price on a part line (bid override; sticks even when it isn't the lowest). */
+  function applyCatalogPriceToLine(lineId: string, price: number, supplyHouseName: string) {
+    updateTakeoffRoughPartLine(lineId, { unitPrice: Math.max(0, Number(price) || 0), sourceMaterialPartPriceId: null })
+    showToast(`Applied ${supplyHouseName} price ($${(Number(price) || 0).toFixed(2)}).`, 'success')
+  }
+
 
 
   const bidsScopedForTakeoff = onlyMyBids ? bids.filter(isMyBid) : bids
@@ -2874,6 +2880,7 @@ export function BidsTakeoffTab({
         setPartPricesModal={setPartPricesModal}
         supplyHouses={supplyHouses}
         setError={setError}
+        onUsePriceForLine={applyCatalogPriceToLine}
       />
 
       {roughQtyNumpadLineId != null && roughQtyNumpadPos != null

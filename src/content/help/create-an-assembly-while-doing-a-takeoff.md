@@ -32,6 +32,8 @@ Optionally record what a supply house quotes for the **whole assembly** — one 
 
 When you arrived via **Save as Assembly**, each bundle price also offers a **Use for takeoff** radio: pick one and saving replaces that fixture's individual part lines with a single bundle line at that price.
 
+Individual part lines work the same way: a line normally prices at the **lowest** supply house, but the **Catalog prices** link under the price opens the part's price list where every supply house row has a {{button:blue|Use}} button — pick the house you're actually buying from (even when it's not the cheapest) and the line switches to that price, marked **Bid override**. **Reset to catalog** snaps it back to the lowest.
+
 ## Finish
 
 {{button:blue|Save assembly}} creates the assembly (and its bundle prices) in the shared catalog. If you came from a fixture's assembly picker, the new assembly is applied to that fixture automatically.
