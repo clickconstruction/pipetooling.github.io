@@ -1102,7 +1102,7 @@ function JobsSubLaborFormModalInner(
   const laborStepVisible = (n: 1 | 2 | 3): boolean => (editingLaborJob ? true : laborStep === n)
   const LABOR_STEP_TITLES: Record<1 | 2 | 3, string> = { 1: 'Job', 2: 'Crew', 3: 'Work and cost' }
   const laborStepNextBlocked =
-    laborStep === 1 ? (!laborPickedJobId ? 'Pick the job first' : !laborAddress.trim() ? 'The job has no address — enter one' : null)
+    laborStep === 1 ? (!laborPickedJobId ? 'Pick the job first' : !laborAddress.trim() ? 'The job has no address — add it in Edit Job first' : null)
     : laborStep === 2 ? (laborAssignedTo.length === 0 ? 'Pick at least one contractor' : null)
     : null
 
@@ -1211,8 +1211,16 @@ function JobsSubLaborFormModalInner(
                           color: picked ? 'inherit' : 'var(--text-faint)',
                         }}
                       >
-                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {picked ? subLaborJobDisplayLabel(picked) : 'Search job # / name / address / customer'}
+                        <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {picked ? subLaborJobDisplayLabel(picked) : 'Search job # / name / address / customer'}
+                          </span>
+                          {/* v2.1621: the address is the JOB's — read-only, shown right here. */}
+                          {picked && laborAddress.trim() ? (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {laborAddress}
+                            </span>
+                          ) : null}
                         </span>
                         <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {picked ? 'change' : '\u2315'}
@@ -1236,16 +1244,18 @@ function JobsSubLaborFormModalInner(
                     />
                   </div>
                 ) : null}
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
-                  <input
-                    type="text"
-                    value={laborAddress}
-                    onChange={(e) => setLaborAddress(e.target.value)}
-                    placeholder={editingLaborJob ? 'Job address' : 'Fills from the job — edit if needed'}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
-                  />
-                </div>
+                {editingLaborJob ? (
+                  <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
+                    <input
+                      type="text"
+                      value={laborAddress}
+                      onChange={(e) => setLaborAddress(e.target.value)}
+                      placeholder="Job address"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ) : null}
                 {editingLaborJob ? (
                   <div style={{ flex: '0 0 110px', minWidth: 110 }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
