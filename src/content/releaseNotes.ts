@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1659',
+    date: '2026-08-14',
+    title: 'Faster Pipeline activity loading',
+    kind: 'fix',
+    highlights: [
+      'Jobs → Pipeline: the per-job note counts and latest-note previews now come from a precomputed rollup instead of rescanning every note, fixing the intermittent "canceling statement due to statement timeout" errors on busy boards.',
+    ],
+  },
+  {
     version: 'v2.1658',
     date: '2026-08-14',
     title: 'Tidier Pipeline activity boxes',

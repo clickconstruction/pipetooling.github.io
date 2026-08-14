@@ -9,7 +9,7 @@ last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "217 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "218 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 14, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 14, 2026
+
+**`20260814214439_thread_note_stats_cache.sql`** _(apply via `supabase db push` after the v2.1659 merge — CREATE TABLE + backfill + `CREATE OR REPLACE` of the stats RPC; no client coupling, prefer a quiet window since the backfill scans `jobs_ledger_thread_notes` once)_
+- **Purpose**: kill the chronic `jobs_ledger_thread_note_stats` statement timeouts (v2.1659) — new trigger-maintained `jobs_ledger_thread_note_stats_cache` (one row per job: note count + newest substantive note, stamps deprioritized) written only by SECURITY DEFINER `recompute_jobs_ledger_thread_note_stats(uuid)`; the RPC keeps its signature but reads the cache under a job-level SELECT policy (mirrors note visibility) instead of window-ranking every note of 200 jobs under per-note RLS. Ends with both read-only block reapplications (new table).
+- **Category**: Jobs / Performance / RLS
 
 **`20260814191048_get_user_display_names.sql`** _(apply via `supabase db push` with the v2.1652 merge — additive RPC; clients fail soft until applied)_
 - **Purpose**: id → display-name resolver (v2.1652) — SECURITY DEFINER `get_user_display_names(uuid[])` returns id/name/role/archived (no contact info) to any authenticated caller, so surfaces labeling historical records (Edit Job team chips, vehicle possession history) can name ARCHIVED users the `users` SELECT policy hides from non-dev viewers.
