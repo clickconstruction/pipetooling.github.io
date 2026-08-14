@@ -130,6 +130,10 @@ Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard
 In **Accounts Receivable**, each allocation line has a **Billed line / Payment received** switch. Pick **Payment received** to link the deposit to a payment already sitting in Edit Job → Payments received — the amount locks to that row and no duplicate payment is created; the deposit's remaining balance drops just the same.
 :::
 
+### Customer paid a Stripe invoice by check?
+
+Sometimes you email a Stripe invoice and the customer mails a check anyway. Those bills show in the Accounts Receivable picker marked **· Stripe** — you can allocate the deposit straight to one, but an amber confirmation appears first: check the box acknowledging the customer paid **outside** Stripe, and — this is the important part — afterwards **void the invoice or mark it paid out-of-band in Stripe** so the emailed payment link can't be paid a second time. Until the box is checked, {{button:blue|Apply}} stays disabled.
+
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest.
 
 ## The "paid in full" email

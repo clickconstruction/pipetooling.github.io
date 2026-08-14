@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1614',
+    date: '2026-08-13',
+    title: 'Match bank deposits to Stripe bills paid by check',
+    kind: 'feature',
+    highlights: [
+      'When a customer pays a Stripe invoice by check or cash instead of the emailed link, Accounts Receivable can now match the deposit straight to that bill — it shows marked "· Stripe" in the picker.',
+      'A confirmation reminds you to void the invoice or mark it paid in Stripe so the emailed link can’t be paid twice.',
+    ],
+  },
+  {
     version: 'v2.1613',
     date: '2026-08-13',
     title: 'Schedule bids on the dispatch calendar',

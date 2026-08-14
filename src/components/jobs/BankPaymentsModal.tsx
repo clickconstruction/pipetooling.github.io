@@ -464,6 +464,7 @@ export default function BankPaymentsModal({
     if (!open || !selectedId) return
     setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
     setApplyError(null)
+    setStripeOutOfBandConfirmed(false)
   }, [open, selectedId])
 
   // Recorded-payment candidates for the "Payment received" allocation kind
@@ -596,15 +597,24 @@ export default function BankPaymentsModal({
     void loadMercurySamplesForConfigModal()
   }, [sortingConfigModalOpen, authRole, loadMercurySamplesForConfigModal])
 
-  const stripeSkippedCount = useMemo(() => {
-    let n = 0
-    for (const r of billedRows) {
-      if (r.kind === 'invoice' || r.kind === 'job_with_merged_billed') {
-        if (String(r.inv.stripe_invoice_id ?? '').trim() !== '') n += 1
+  /**
+   * v2.1614: allocations may target Stripe-hosted lines (customer paid outside
+   * Stripe — check/cash/ACH), but only behind an explicit confirmation that
+   * also reminds the user to void / mark the invoice out-of-band in Stripe.
+   */
+  const [stripeOutOfBandConfirmed, setStripeOutOfBandConfirmed] = useState(false)
+
+  const stripeAllocationSelected = useMemo(() => {
+    for (const line of allocLines) {
+      if (!line.targetKey) continue
+      if (line.kind === 'billed') {
+        if (targetByKey.get(line.targetKey)?.stripeHosted) return true
+      } else {
+        if (recordedPaymentById.get(line.targetKey)?.stripe_hosted) return true
       }
     }
-    return n
-  }, [billedRows])
+    return false
+  }, [allocLines, targetByKey, recordedPaymentById])
 
   const validationMessage = useMemo(() => {
     if (!selected) return null
@@ -644,10 +654,12 @@ export default function BankPaymentsModal({
     !!validationMessage ||
     (targets.length === 0 && recordedPayments.length === 0) ||
     !paidOnYmdFromMercury ||
-    !canAllocateRemaining
+    !canAllocateRemaining ||
+    (stripeAllocationSelected && !stripeOutOfBandConfirmed)
 
   async function submitApply() {
     if (!selected || !canApply || !canAllocateRemaining) return
+    if (stripeAllocationSelected && !stripeOutOfBandConfirmed) return
     if (!paidOnYmdFromMercury) {
       setApplyError('Missing Mercury posted date for this transaction.')
       return
@@ -691,6 +703,9 @@ export default function BankPaymentsModal({
             p_payment_type: kindPaymentTypeLabel,
             p_note: internalNote.trim(),
             p_allocations: allocations,
+            // Only claimed when a Stripe-hosted target is in play AND the user
+            // checked the out-of-band confirmation (gated above).
+            p_allow_stripe_hosted: stripeAllocationSelected,
           }),
         'apply_mercury_bank_payment_allocations',
       )
@@ -770,14 +785,9 @@ export default function BankPaymentsModal({
         </div>
 
         <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Match Mercury deposits to <strong>Billed Awaiting Payment</strong> lines (non-Stripe). Payments appear in Edit Job →
-          Payments received.
-          {stripeSkippedCount > 0 ? (
-            <span>
-              {' '}
-              ({stripeSkippedCount} Stripe-hosted {stripeSkippedCount === 1 ? 'line' : 'lines'} excluded.)
-            </span>
-          ) : null}
+          Match Mercury deposits to <strong>Billed Awaiting Payment</strong> lines. Payments appear in Edit Job →
+          Payments received. Stripe-hosted bills are marked <strong>· Stripe</strong> — pick one only when the customer
+          paid outside Stripe (check, cash, ACH).
         </div>
 
         {authRole === 'dev' && (
@@ -1270,7 +1280,7 @@ export default function BankPaymentsModal({
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           {billedTargetsLoading
                             ? 'Loading billed job lines…'
-                            : 'No eligible billed lines (non-Stripe with balance).'}
+                            : 'No eligible billed lines with balance.'}
                         </p>
                       ) : (
                         <>
@@ -1557,6 +1567,35 @@ export default function BankPaymentsModal({
                     </p>
                   )}
 
+                  {stripeAllocationSelected ? (
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.5rem',
+                        marginTop: '0.75rem',
+                        padding: '0.6rem 0.75rem',
+                        border: '1px solid #f59e0b',
+                        borderRadius: 6,
+                        background: 'var(--bg-amber-tint)',
+                        fontSize: '0.8125rem',
+                        color: 'var(--text-amber-800)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={stripeOutOfBandConfirmed}
+                        onChange={(e) => setStripeOutOfBandConfirmed(e.target.checked)}
+                        style={{ marginTop: 2, flexShrink: 0 }}
+                      />
+                      <span>
+                        <strong>This bill was sent through Stripe.</strong> The customer paid outside Stripe (check,
+                        cash, ACH) — after applying, void the invoice or mark it paid out-of-band in Stripe so the
+                        emailed link can’t be paid a second time.
+                      </span>
+                    </label>
+                  ) : null}
                   {validationMessage && (
                     <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{validationMessage}</p>
                   )}

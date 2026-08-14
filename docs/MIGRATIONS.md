@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 13, 2026
 
+**`20260813234538_ar_stripe_hosted_allocations.sql`** _(apply via `supabase db push` **BEFORE the v2.1614 client deploys** — the client calls the 6-arg function; the change is invisible to the old client)_
+- **Purpose**: AR allocations to Stripe-hosted bills, opt-in (v2.1614) — the customer-paid-by-check-instead-of-the-Stripe-link case. `apply_mercury_bank_payment_allocations` gains `p_allow_stripe_hosted boolean DEFAULT false`; when true, BOTH Stripe rejections relax (direct invoice allocations and linking recorded payments applied to Stripe bills). The old 5-arg signature is DROPPED first (a defaulted param would otherwise create a second overload); old clients resolve to the new function with the default → byte-identical guards.
+- **Also**: `list_unlinked_payments_for_bank_payments` dropped + recreated (return-shape change) — payments applied to Stripe-hosted invoices are now listed with a new `stripe_hosted` column; true Stripe webhook payments (`note = 'Stripe'`) stay excluded. Grants restored on both.
+- **Client coupling**: the AR modal sends `p_allow_stripe_hosted` only after an explicit "paid outside Stripe" confirmation that reminds the user to void / mark the invoice out-of-band in Stripe.
+- **Category**: Banking / Accounts Receivable
+
 **`20260813224521_bid_schedule_blocks.sql`** _(apply via `supabase db push` **BEFORE the v2.1613 client deploys** — the new client selects `bid_id`; the migration is invisible to the old client)_
 - **Purpose**: bid-anchored schedule blocks (v2.1613) — `job_schedule_blocks.bid_id` (FK→bids CASCADE), `job_id` drops NOT NULL, `job_schedule_blocks_one_anchor` CHECK (exactly one of job_id/bid_id, `reports_one_anchor` pattern), partial `bid_id` index. Lets dispatch schedule people onto bid work (site walks, estimating, pre-construction).
 - **Security**: ADDITIVE `_bid_` policies alongside the untouched job policies — SELECT requires a visible bid (bare `EXISTS` on `bids`, so bid RLS decides); INSERT/UPDATE/DELETE add the same office-role gate the job policies use (dev/master/assistant/superintendent — superintendents fall out naturally, they can't read bids). Field roles keep seeing their own bid blocks via the existing SELECT policy's `assignee_user_id` arm.

@@ -178,6 +178,12 @@ export type BankPaymentTarget = {
   jobAddress: string
   lineKind: BankPaymentLineKind
   invoiceSequenceOrder: number | null
+  /**
+   * v2.1614: the bill was sent through Stripe. Allocating to it is allowed but
+   * gated — the AR modal requires the paid-outside-Stripe confirmation and
+   * sends p_allow_stripe_hosted to the RPC.
+   */
+  stripeHosted: boolean
 }
 
 function bankPaymentTargetMoneyStr(n: number): string {
@@ -219,12 +225,17 @@ export function bankPaymentTargetPrimaryLabel(t: BankPaymentTarget): string {
   return t.label
 }
 
-/** Billed rows eligible for Bank Payments (non-Stripe, positive remaining). */
+/**
+ * Billed rows eligible for Bank Payments (positive remaining). Stripe-hosted
+ * lines are INCLUDED since v2.1614 (customer paid by check instead of the
+ * Stripe link) but flagged `stripeHosted` — the modal gates them behind an
+ * explicit paid-outside-Stripe confirmation.
+ */
 export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTarget[] {
   const out: BankPaymentTarget[] = []
   for (const r of rows) {
     if (r.kind === 'invoice' || r.kind === 'job_with_merged_billed') {
-      if (isStripeHostedBilledInvoice(r.inv)) continue
+      const stripeHosted = isStripeHostedBilledInvoice(r.inv)
       const rem = billedStageRowRemainingAmount(r)
       if (rem <= 0.0005) continue
       const job = r.job
@@ -232,8 +243,8 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
       const lineKind: BankPaymentLineKind = r.kind === 'job_with_merged_billed' ? 'merged_billed' : 'invoice'
       out.push({
         key: `inv:${r.inv.id}`,
-        label: shortLabel,
-        searchLabel: bankPaymentTargetSearchLabel(job, shortLabel, rem),
+        label: stripeHosted ? `${shortLabel} · Stripe` : shortLabel,
+        searchLabel: bankPaymentTargetSearchLabel(job, stripeHosted ? `${shortLabel} · Stripe` : shortLabel, rem),
         remaining: rem,
         invoiceId: r.inv.id,
         jobId: job.id,
@@ -242,6 +253,7 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
         jobAddress: (job.job_address ?? '').trim(),
         lineKind,
         invoiceSequenceOrder: r.inv.sequence_order,
+        stripeHosted,
       })
     } else if (r.kind === 'job') {
       const rem = billedStageRowRemainingAmount(r)
@@ -260,6 +272,7 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
         jobAddress: (job.job_address ?? '').trim(),
         lineKind: 'job_balance',
         invoiceSequenceOrder: null,
+        stripeHosted: false,
       })
     }
   }
