@@ -5387,6 +5387,38 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger_thread_note_stats_cache: {
+        Row: {
+          job_id: string
+          last_note_at: string
+          last_note_author_user_id: string | null
+          last_note_body: string
+          note_count: number
+        }
+        Insert: {
+          job_id: string
+          last_note_at: string
+          last_note_author_user_id?: string | null
+          last_note_body: string
+          note_count: number
+        }
+        Update: {
+          job_id?: string
+          last_note_at?: string
+          last_note_author_user_id?: string | null
+          last_note_body?: string
+          note_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_thread_note_stats_cache_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger_thread_notes: {
         Row: {
           author_user_id: string
@@ -14277,6 +14309,10 @@ export type Database = {
       preview_merge_customers: {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
+      }
+      recompute_jobs_ledger_thread_note_stats: {
+        Args: { p_job_id: string }
+        Returns: undefined
       }
       recompute_people_hours_after_session_edit: {
         Args: { p_old_work_date?: string; p_session_id: string }
