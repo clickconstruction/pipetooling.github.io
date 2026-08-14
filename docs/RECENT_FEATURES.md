@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1651)
+last_updated: 2026-08-14 (v2.1652)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1652)
+
+### Archived crew resolve to names everywhere — no more raw uuids for assistants (2026-08-14)
+Owner screenshot (job 258's Edit Job): assistants saw six raw uuids in the Team chips — all six are **archived** users (Mario, Juan, Chelsea, Zack, Mike Z, Jesse). Root cause: the `users` SELECT policy requires `archived_at IS NULL` for every non-dev viewer, so the modal's missing-id fallback fetch (which exists precisely to prevent raw-uuid chips) silently returned nothing for assistants while devs resolved fine. Fix: new SECURITY DEFINER RPC [`get_user_display_names(uuid[])`](../supabase/migrations/20260814191048_get_user_display_names.sql) — id/name/role/archived only (no contact info), any authenticated caller — plus client kernel [`userDisplayNames.ts`](../src/lib/userDisplayNames.ts) (`userDisplayLabel` → "Mario (archived)", `missingUserIds`; +2 tests). [`JobFormModal`](../src/components/jobs/JobFormModal.tsx)'s fallback switches from the direct `users` select to the RPC, and [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx) resolves possession holders / reading authors / problem reporters the same way (archived holders showed an id slice on the fleet board). Archived people now label as **"Name (archived)"** for every role. **Deploy: `supabase db push` with the merge** — additive RPC; the fallback fails soft (empty) until applied.
 
 ## Latest Updates (v2.1651)
 

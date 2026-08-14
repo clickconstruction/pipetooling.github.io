@@ -13240,6 +13240,15 @@ export type Database = {
           total_parts: number
         }[]
       }
+      get_user_display_names: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          id: string
+          name: string
+          role: string
+          archived: boolean
+        }[]
+      }
       get_weekly_money_movement_payload: {
         Args: { p_week_monday?: string }
         Returns: Json
