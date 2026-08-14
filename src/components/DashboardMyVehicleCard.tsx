@@ -8,6 +8,7 @@ import {
   odometerFreshness,
   oilChipLabel,
   oilStatus,
+  oilThresholdsForVehicle,
   openProblems,
   parseOdometerInput,
   vehicleDisplayName,
@@ -33,6 +34,8 @@ type HeldVehicle = {
   model: string
   vin: string | null
   oil_change_interval_miles?: number | null
+  oil_suggest_window_miles?: number | null
+  oil_require_past_due_miles?: number | null
 }
 
 export type DashboardMyVehicleCardProps = {
@@ -73,7 +76,10 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
       return
     }
     const [{ data: vehData }, { data: odoData }, { data: oilData }, { data: probData }] = await Promise.all([
-      supabase.from('vehicles').select('id, year, make, model, vin, oil_change_interval_miles').in('id', ids),
+      supabase
+        .from('vehicles')
+        .select('id, year, make, model, vin, oil_change_interval_miles, oil_suggest_window_miles, oil_require_past_due_miles')
+        .in('id', ids),
       supabase.from('vehicle_odometer_entries').select('*').in('vehicle_id', ids).order('read_date', { ascending: false }).limit(200),
       supabase
         .from('vehicle_service_events')
@@ -212,7 +218,7 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
       {vehicles.map((v, i) => {
         const latest = latestByVehicle[v.id] ?? null
         const freshness = odometerFreshness(latest, today)
-        const oil = oilStatus(lastOilByVehicle[v.id] ?? null, v.oil_change_interval_miles, latest)
+        const oil = oilStatus(lastOilByVehicle[v.id] ?? null, v.oil_change_interval_miles, latest, oilThresholdsForVehicle(v))
         const open = openByVehicle[v.id] ?? []
         return (
           <div key={v.id} style={{ marginTop: i === 0 ? 0 : '0.9rem', paddingTop: i === 0 ? 0 : '0.9rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
@@ -222,9 +228,43 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
                 ? chip(freshness === 'fresh' ? 'plain' : 'amber', `${latest.odometer_value.toLocaleString()} mi · ${odometerAgeLabel(latest, today)}`)
                 : chip('amber', 'No reading yet')}
               {freshness !== 'fresh' && chip('amber', 'reading requested')}
-              {oil.state !== 'unknown' && chip(oil.state === 'ok' ? 'green' : oil.state === 'due_soon' ? 'amber' : 'red', oilChipLabel(oil))}
+              {oil.state === 'ok' && chip('green', oilChipLabel(oil))}
               {open.length > 0 && chip('red', `${open.length} open problem${open.length === 1 ? '' : 's'}`)}
             </div>
+            {(oil.state === 'due_soon' || oil.state === 'overdue') && (
+              <div
+                role="status"
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                  borderRadius: 8,
+                  padding: '0.5rem 0.75rem',
+                  marginBottom: '0.6rem',
+                  fontSize: '0.8125rem',
+                  background: oil.state === 'overdue' ? 'var(--bg-red-100)' : 'var(--bg-amber-100)',
+                  color: oil.state === 'overdue' ? 'var(--text-red-700)' : 'var(--text-amber-800)',
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }}>🛢</span>
+                <span>
+                  {oil.state === 'overdue' ? (
+                    <>
+                      <strong>Oil change required</strong> — {oil.milesOver.toLocaleString()} mi overdue. Get it in and
+                      the office will log the service.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Oil change suggested</strong> —{' '}
+                      {oil.milesRemaining < 0
+                        ? `${(-oil.milesRemaining).toLocaleString()} mi past due`
+                        : `due in ${oil.milesRemaining.toLocaleString()} mi`}{' '}
+                      (next at {oil.nextDueAt.toLocaleString()})
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <input
                 type="text"

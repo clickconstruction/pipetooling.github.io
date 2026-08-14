@@ -12,6 +12,7 @@ import {
   isMotorPoolPossession,
   lastEndedInsurancePeriod,
   MOTOR_POOL_LABEL,
+  oilThresholdsForVehicle,
   fleetSummary,
   handOffWrites,
   lastOilChange,
@@ -54,6 +55,8 @@ type Vehicle = {
   weekly_insurance_cost: number
   weekly_registration_cost: number
   oil_change_interval_miles?: number | null
+  oil_suggest_window_miles?: number | null
+  oil_require_past_due_miles?: number | null
 }
 
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
@@ -175,6 +178,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [serviceNote, setServiceNote] = useState('')
   const [serviceSaving, setServiceSaving] = useState(false)
   const [vehicleOilInterval, setVehicleOilInterval] = useState('')
+  const [vehicleOilSuggestWindow, setVehicleOilSuggestWindow] = useState('')
+  const [vehicleOilRequirePastDue, setVehicleOilRequirePastDue] = useState('')
 
   /** Names for possession/reading users outside the roster prop (archived crew — v2.1652). */
   const [extraNames, setExtraNames] = useState<Record<string, string>>({})
@@ -452,6 +457,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setVehicleInsCost(v?.weekly_insurance_cost?.toString() ?? '')
     setVehicleRegCost(v?.weekly_registration_cost?.toString() ?? '')
     setVehicleOilInterval((v?.oil_change_interval_miles ?? 5000).toString())
+    setVehicleOilSuggestWindow((v?.oil_suggest_window_miles ?? 1000).toString())
+    setVehicleOilRequirePastDue((v?.oil_require_past_due_miles ?? 0).toString())
     setVehicleFormOpen(true)
   }
 
@@ -469,6 +476,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     const ins = parseFloat(vehicleInsCost) || 0
     const reg = parseFloat(vehicleRegCost) || 0
     const interval = parseInt(vehicleOilInterval, 10)
+    const suggestWindow = parseInt(vehicleOilSuggestWindow, 10)
+    const requirePastDue = parseInt(vehicleOilRequirePastDue, 10)
     const payload = {
       year,
       make: vehicleMake.trim(),
@@ -477,6 +486,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       weekly_insurance_cost: ins,
       weekly_registration_cost: reg,
       oil_change_interval_miles: !isNaN(interval) && interval > 0 ? interval : 5000,
+      oil_suggest_window_miles: !isNaN(suggestWindow) && suggestWindow >= 0 ? suggestWindow : 1000,
+      oil_require_past_due_miles: !isNaN(requirePastDue) && requirePastDue >= 0 ? requirePastDue : 0,
     }
     const { error: err } = editingVehicle
       ? await supabase.from('vehicles').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingVehicle.id)
@@ -1006,7 +1017,12 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     )
                   })()}
                   {(() => {
-                    const s = oilStatus(lastOilMap.get(selectedVehicle.id) ?? null, selectedVehicle.oil_change_interval_miles, latestMap.get(selectedVehicle.id) ?? null)
+                    const s = oilStatus(
+                      lastOilMap.get(selectedVehicle.id) ?? null,
+                      selectedVehicle.oil_change_interval_miles,
+                      latestMap.get(selectedVehicle.id) ?? null,
+                      oilThresholdsForVehicle(selectedVehicle),
+                    )
                     if (s.state === 'unknown') return null
                     return <span style={chipStyle(oilChipToneFor(s.state))}>{oilChipLabel(s)}</span>
                   })()}
@@ -1304,7 +1320,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     </span>
                     {freshness !== 'fresh' && <span style={chipStyle('amber')}>{freshness === 'none' ? 'needs first reading' : 'needs a reading'}</span>}
                     {(() => {
-                      const s = oilStatus(lastOilMap.get(v.id) ?? null, v.oil_change_interval_miles, latest)
+                      const s = oilStatus(lastOilMap.get(v.id) ?? null, v.oil_change_interval_miles, latest, oilThresholdsForVehicle(v))
                       if (s.state === 'unknown') return null
                       return <span style={chipStyle(oilChipToneFor(s.state))}>{oilChipLabel(s)}</span>
                     })()}
@@ -1421,6 +1437,17 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               <label style={{ display: 'block', marginBottom: 4 }}>Oil change interval (miles)</label>
               <input type="number" min={500} step={500} value={vehicleOilInterval} onChange={(e) => setVehicleOilInterval(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
             </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Suggest oil change within (miles of due)</label>
+              <input type="number" min={0} step={100} value={vehicleOilSuggestWindow} onChange={(e) => setVehicleOilSuggestWindow(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Require oil change past due by (miles)</label>
+              <input type="number" min={0} step={100} value={vehicleOilRequirePastDue} onChange={(e) => setVehicleOilRequirePastDue(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              0 = required the moment it hits the interval. These drive the holder's Dashboard prompts.
+            </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={upsertVehicle} style={{ padding: '0.5rem 1rem' }}>Save</button>
               <button type="button" onClick={closeVehicleForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>

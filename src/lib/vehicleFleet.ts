@@ -261,22 +261,34 @@ export type OilStatus =
 
 export const OIL_DUE_SOON_MILES = 1000
 
+export type OilThresholds = {
+  /** Miles before due at which "suggested" starts (default OIL_DUE_SOON_MILES). */
+  suggestWindowMiles?: number | null
+  /** Miles past due before "suggested" escalates to "required" (default 0). */
+  requirePastDueMiles?: number | null
+}
+
 /**
  * Oil due math: last oil change odometer + interval vs the latest reading.
- * Unknown until BOTH an oil change with miles and a reading exist. Due soon
- * inside the last 1,000 miles; overdue past the interval.
+ * Unknown until BOTH an oil change with miles and a reading exist.
+ * due_soon ("suggested") inside the suggest window — which extends past the
+ * due mark until the require threshold; overdue ("required") beyond that.
+ * milesRemaining can be negative in the past-due grace zone.
  */
 export function oilStatus(
   lastOil: FleetServiceEvent | null,
   interval: number | null | undefined,
   latest: FleetOdometerEntry | null,
+  thresholds?: OilThresholds,
 ): OilStatus {
   const iv = interval ?? 5000
   if (!lastOil || lastOil.odometer_value == null || !latest || iv <= 0) return { state: 'unknown' }
+  const suggestWindow = thresholds?.suggestWindowMiles ?? OIL_DUE_SOON_MILES
+  const requirePastDue = Math.max(0, thresholds?.requirePastDueMiles ?? 0)
   const nextDueAt = lastOil.odometer_value + iv
   const remaining = nextDueAt - latest.odometer_value
-  if (remaining < 0) return { state: 'overdue', nextDueAt, milesOver: -remaining }
-  if (remaining <= OIL_DUE_SOON_MILES) return { state: 'due_soon', nextDueAt, milesRemaining: remaining }
+  if (remaining < -requirePastDue) return { state: 'overdue', nextDueAt, milesOver: -remaining }
+  if (remaining <= suggestWindow) return { state: 'due_soon', nextDueAt, milesRemaining: remaining }
   return { state: 'ok', nextDueAt, milesRemaining: remaining }
 }
 
@@ -288,27 +300,90 @@ export function oilChipLabel(status: OilStatus): string {
     case 'ok':
       return `Oil OK · next ${status.nextDueAt.toLocaleString()}`
     case 'due_soon':
-      return `Oil due in ${status.milesRemaining.toLocaleString()} mi`
+      return status.milesRemaining < 0
+        ? `Oil due · ${(-status.milesRemaining).toLocaleString()} mi past`
+        : `Oil due in ${status.milesRemaining.toLocaleString()} mi`
     case 'overdue':
       return `Oil overdue ${status.milesOver.toLocaleString()} mi`
+  }
+}
+
+/** Per-vehicle thresholds straight off a vehicles row (missing columns → defaults). */
+export function oilThresholdsForVehicle(v: {
+  oil_suggest_window_miles?: number | null
+  oil_require_past_due_miles?: number | null
+}): OilThresholds {
+  return {
+    suggestWindowMiles: v.oil_suggest_window_miles,
+    requirePastDueMiles: v.oil_require_past_due_miles,
   }
 }
 
 export type FleetOilCounts = { dueSoon: number; overdue: number }
 
 export function fleetOilCounts(
-  vehicles: Array<FleetVehicle & { oil_change_interval_miles?: number | null }>,
+  vehicles: Array<
+    FleetVehicle & {
+      oil_change_interval_miles?: number | null
+      oil_suggest_window_miles?: number | null
+      oil_require_past_due_miles?: number | null
+    }
+  >,
   lastOilByVehicle: ReadonlyMap<string, FleetServiceEvent>,
   latestByVehicle: ReadonlyMap<string, FleetOdometerEntry>,
 ): FleetOilCounts {
   let dueSoon = 0
   let overdue = 0
   for (const v of vehicles) {
-    const s = oilStatus(lastOilByVehicle.get(v.id) ?? null, v.oil_change_interval_miles, latestByVehicle.get(v.id) ?? null)
+    const s = oilStatus(
+      lastOilByVehicle.get(v.id) ?? null,
+      v.oil_change_interval_miles,
+      latestByVehicle.get(v.id) ?? null,
+      oilThresholdsForVehicle(v),
+    )
     if (s.state === 'due_soon') dueSoon++
     if (s.state === 'overdue') overdue++
   }
   return { dueSoon, overdue }
+}
+
+export const ODOMETER_STALE_DAYS = 7
+
+export type StaleOdometerRow = {
+  vehicle: FleetVehicle
+  /** The person holding it (never a motor-pool row). */
+  holder: FleetPossession
+  latest: FleetOdometerEntry | null
+  /** Days since the last reading; null = never read. */
+  daysStale: number | null
+}
+
+/**
+ * The Quickfill "call for readings" list: vehicles held by a PERSON (motor
+ * pool and unassigned skipped) whose latest reading is more than staleDays
+ * old or missing entirely. Never-read vehicles sort first, then oldest.
+ */
+export function staleOdometerCallList(
+  vehicles: FleetVehicle[],
+  holderByVehicle: ReadonlyMap<string, FleetPossession>,
+  latestByVehicle: ReadonlyMap<string, FleetOdometerEntry>,
+  todayYmd: string,
+  staleDays: number = ODOMETER_STALE_DAYS,
+): StaleOdometerRow[] {
+  const rows: StaleOdometerRow[] = []
+  for (const v of vehicles) {
+    const holder = holderByVehicle.get(v.id)
+    if (!holder || isMotorPoolPossession(holder)) continue
+    const latest = latestByVehicle.get(v.id) ?? null
+    const daysStale = latest ? daysBetweenYmd(latest.read_date, todayYmd) : null
+    if (daysStale != null && daysStale <= staleDays) continue
+    rows.push({ vehicle: v, holder, latest, daysStale })
+  }
+  rows.sort((a, b) => {
+    if ((a.daysStale == null) !== (b.daysStale == null)) return a.daysStale == null ? -1 : 1
+    return (b.daysStale ?? 0) - (a.daysStale ?? 0)
+  })
+  return rows
 }
 
 export type FleetProblemReport = {

@@ -23,6 +23,7 @@ import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSo
 import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
+import { QuickfillVehicleOdometersSection } from '../components/quickfill/QuickfillVehicleOdometersSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
 import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
@@ -73,6 +74,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
     sectionId: 'unassigned-field-time',
     label: 'Unassigned field time',
   },
+  { id: 'quickfill-vehicle-odometers', sectionId: 'vehicle-odometers', label: 'Vehicle odometers' },
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
@@ -671,6 +673,9 @@ function QuickfillPage() {
       if (sectionId === 'unassigned-field-time') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
+      if (sectionId === 'vehicle-odometers') {
+        return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+      }
       return true
     },
     [
@@ -1014,6 +1019,28 @@ function QuickfillPage() {
             }
           >
             <QuickfillUnassignedFieldTimeSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'vehicle-odometers':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['vehicle-odometers']?.marked_at ?? null)}
+            collapsed={
+              isCollapsed('vehicle-odometers') && !forceExpandedSections.has('vehicle-odometers')
+            }
+            mark={sectionMarks['vehicle-odometers']}
+            onMarkUpToDate={() => void markSectionUpToDate('vehicle-odometers')}
+            onOpenNow={() => openSectionNow('vehicle-odometers')}
+            onOpenHistory={() =>
+              setMarkHistoryModal({ sectionId: 'vehicle-odometers', label: 'Vehicle odometers' })
+            }
+          >
+            <QuickfillVehicleOdometersSection />
           </QuickfillSectionWrapper>
         )
       case 'difficult-people':

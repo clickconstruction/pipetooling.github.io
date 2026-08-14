@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1664',
+    date: '2026-08-14',
+    title: 'Odometer calls and oil prompts',
+    kind: 'feature',
+    highlights: [
+      'Quickfill gains a Vehicle odometers station: vehicles held by a person with no reading in over a week, each with a tap-to-call holder link and an inline miles box — call, type, save.',
+      'Drivers now get oil banners on their Dashboard My Vehicle card: amber "Oil change suggested" as the due mark approaches, red "Oil change required" once it\'s past.',
+      'The mile thresholds are set per vehicle in Edit vehicle — suggest window and how far past due before it\'s required.',
+    ],
+  },
+  {
     version: 'v2.1663',
     date: '2026-08-14',
     title: 'Motor pool for parked vehicles',

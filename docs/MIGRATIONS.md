@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 14, 2026
 
+**`20260814230114_vehicle_oil_thresholds.sql`** _(apply via `supabase db push` with the v2.1664 merge — additive columns with defaults, old clients unaffected)_
+- **Purpose**: per-vehicle oil prompt thresholds (v2.1664, Vehicles fleet phase 7) — `vehicles.oil_suggest_window_miles` (default 1000, the previously hardcoded due-soon window) + `vehicles.oil_require_past_due_miles` (default 0 = required at the interval). Drive the holder-facing "Oil change suggested/required" Dashboard banners and all office oil chips.
+- **Category**: Vehicles / column change
+
 **`20260814223807_vehicle_motor_pool_possessions.sql`** _(apply via `supabase db push` with the v2.1663 merge — metadata-only ALTER, old clients unaffected)_
 - **Purpose**: motor pool (v2.1663, Vehicles fleet phase 6) — `vehicle_possessions.user_id` drops NOT NULL; NULL user = the vehicle is deliberately parked in the motor pool (distinct from having no open possession = Unassigned). Other consumers filter by a specific user_id, so pool rows are invisible to them.
 - **Category**: Vehicles / column change

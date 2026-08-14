@@ -17,6 +17,15 @@ Type the number off your dash into **Odometer today** and tap {{button:blue|Send
 
 The oil chip tracks your vehicle's oil-change schedule from the readings you send — another reason to keep them coming.
 
+## Oil change prompts
+
+When your readings show the truck closing in on its next oil change, the card tells you directly:
+
+- {{chip:yellow|Oil change suggested}} — you're inside the warning window (e.g. "due in 400 mi"). Work a shop visit into the week.
+- {{chip:red|Oil change required}} — past due (e.g. "620 mi overdue"). Get it in; the office logs the service and the prompt clears.
+
+The mile thresholds behind these are set per vehicle by the office, and the math runs off the odometer readings you send — a truck with stale readings can't warn you, so keep them coming.
+
 ## Reporting a problem
 
 Tap {{button:outline|Report problem}}, describe what's wrong in your own words, and pick how serious it is:
