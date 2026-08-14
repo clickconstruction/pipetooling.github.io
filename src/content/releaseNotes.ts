@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1632',
+    date: '2026-08-14',
+    title: 'Link Invoice finds its own row',
+    kind: 'fix',
+    highlights: [
+      'In Sub Labor, the Link Invoice button now sits on its own row below Remove and Add line item.',
+      'The duplicate "Total labor cost" line below it is gone — the subtotal next to Itemize hours and rate already shows it.',
+    ],
+  },
+  {
     version: 'v2.1631',
     date: '2026-08-13',
     title: 'Sub Labor drops drive cost for good',
