@@ -4,9 +4,14 @@ import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { buildJobActivityBoxFeed, stripRedundantStampBody, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import {
-  formatDispatchNoteDaysAgoShortPhrase,
+  formatDispatchNoteDaysAgoShort,
   formatDispatchNoteWeekdayShortTimeChicago,
 } from '../../utils/dispatchNoteDisplay'
+
+/** Entry meta, e.g. "Thu 3:45 PM (1d)" / "Fri 11:53 AM (today)". */
+function entryMetaLabel(atIso: string): string {
+  return `${formatDispatchNoteWeekdayShortTimeChicago(atIso)} (${formatDispatchNoteDaysAgoShort(atIso)})`
+}
 
 /**
  * The Pipeline row "Job activity" box (wide desktop ≥1440px only): fills the
@@ -68,7 +73,7 @@ function entryLine(e: JobActivityBoxEntry) {
         title={`(${e.number}) ${formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} ${e.authorName ?? ''} — ${e.body}`}
       >
         <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
-          {formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} · {formatDispatchNoteDaysAgoShortPhrase(e.atIso)}
+          {entryMetaLabel(e.atIso)}
         </span>{' '}
         <strong style={{ color: 'var(--text-strong)' }}>{e.authorName ?? '—'}</strong>
         <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
@@ -155,6 +160,49 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
       onFocusCapture={ensureLoaded}
       aria-label={`Job activity for ${(job.job_name ?? '').trim() || 'job'}`}
     >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          ctx.openJobActivityExpand(job)
+        }}
+        aria-label="Expand job activity"
+        title="Expand job activity"
+        style={{
+          position: 'absolute',
+          top: 5,
+          right: 5,
+          zIndex: 2,
+          width: 22,
+          height: 22,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'transparent',
+          border: 'none',
+          borderRadius: 6,
+          color: 'var(--text-faint)',
+          cursor: 'pointer',
+          padding: 0,
+        }}
+      >
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9.5 2.5h4v4" />
+          <path d="M13.5 2.5 9 7" />
+          <path d="M6.5 13.5h-4v-4" />
+          <path d="M2.5 13.5 7 9" />
+        </svg>
+      </button>
       {up ? (
         <button
           type="button"
@@ -167,8 +215,13 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             display: 'block',
             width: '100%',
             margin: '0 0 4px',
-            padding: '0 0 0 8px',
-            border: 'none',
+            // Right inset keeps the NEXT text clear of the corner expand button.
+            padding: '0 26px 0 8px',
+            // Longhands only — a `border` shorthand + `borderLeft` mix trips
+            // React's style-diff warning when unkeyed siblings shift (v2.770).
+            borderTop: 'none',
+            borderRight: 'none',
+            borderBottom: 'none',
             borderLeft: '3px solid var(--border-green)',
             background: 'transparent',
             cursor: 'pointer',
@@ -197,7 +250,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 2 }}>
             <span style={{ minWidth: 0, color: 'var(--text-700)', overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, lineHeight: 1.45 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
-                {formatDispatchNoteWeekdayShortTimeChicago(teaser.atIso)} · {formatDispatchNoteDaysAgoShortPhrase(teaser.atIso)}
+                {entryMetaLabel(teaser.atIso)}
               </span>{' '}
               <strong style={{ color: 'var(--text-strong)' }}>{teaser.authorName ?? '—'}</strong>
               <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>

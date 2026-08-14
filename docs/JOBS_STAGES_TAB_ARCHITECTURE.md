@@ -5,7 +5,7 @@ file: docs/JOBS_STAGES_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the already-extracted Pipeline board — src/components/jobs/JobsStagesTab.tsx (3,664 lines) plus its table/row sub-files JobsStagesUnifiedTable.tsx (1,407), JobsStagesTable.tsx (659), and jobsStagesRowShared.tsx (1,204). The v2.831 extraction moved the tab out of Jobs.tsx, but the surface kept growing (18 commits of churn since; the v2.96x–v2.108x feature run landed almost entirely here). This map inventories every region so the next round of extraction — toolbar, modal tail, inline modals, prop-bundle seam for the two tables — can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-10
+last_updated: 2026-08-14
 ---
 
 ## What this surface is
@@ -20,6 +20,8 @@ The Pipeline board (tab label renamed from "Stages" in the v2.1251+ naming audit
 | [`src/components/jobs/jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) | 1,204 | shared row renderers taking a **21-field `StagesRowRenderContext`** |
 
 Satellite (v2.1587): [`JobsStagesActivityBox.tsx`](../src/components/jobs/JobsStagesActivityBox.tsx) — the wide-screen (≥1440px via `useWideViewport1440`) "Job activity" box both tables render inside the Job cell's slack: pinned NEXT line, scrolling feed of notes+reports numbered by the [`jobActivityBoxFeed`](../src/lib/jobs/jobActivityBoxFeed.ts) kernel (1 = oldest), floating Post → sliding composer through `submitJobThreadNoteWithBody`; feed lazy-loads per row via `loadJobThreadNotesForJob` (both threaded down as OPTIONAL props so `JobsStagesCardList`, which shares the props types, ignores them).
+
+Satellite (v2.1657): [`JobsStagesActivityExpandModal.tsx`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) — the full-page activity view, ONE instance mounted in JobsStagesTab's modal tail behind `StagesRowRenderContext.openJobActivityExpand(job)` (a 22nd ctx field, threaded through both tables + the card list). Entry points: the activity box's corner expand button and the row's "N Reports" chip (`renderStagesViewReportsButton` — its old target `openJobThreadFullscreen` still exists for the card list's "Activity and notes" more-action and the panel's own ⛶ toggle). Shows the FULL timeline day-grouped (Chicago) via the `buildJobActivityModalItems` / `filterJobActivityModalItems` / `groupJobActivityModalItemsByDay` kernels — numbered notes/reports (numbers match the box exactly) + unnumbered schedule/clock/event rows — plus the panel's filter pills, % complete editor (`commitStagesPctWithNote`), and team/manage-people header (z 1001; ManageJobPeopleModal stacks above at 1002). Trap: the modal holds a JobWithDetails SNAPSHOT — the % commit patches it in place, but team edits show stale names until reopen.
 
 Total surface: **6,934 lines**. This is a *sub*-decomposition map: how the tab was carved out of `Jobs.tsx`, what the page still owns, the imperative handle, deep-link routing, and the `useJobsStagesMutations` engine are all documented in [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) (§ `stages` dossier) — **reference that, don't re-derive it here**. This map covers what lives *inside* the four files and how to shrink them.
 

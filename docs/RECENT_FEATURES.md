@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1656)
+last_updated: 2026-08-14 (v2.1657)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1657)
+
+### Pipeline job activity expands to a full-page view (2026-08-14)
+Owner-designed feature (mockup approved, then "fold all of the dropdown's pieces in"). New [`JobsStagesActivityExpandModal`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) — a full-page overlay over the board (z 1001, ✕ / Escape / backdrop close; Escape while typing first blurs the composer, draft kept) — opened from **two entry points**: a new corner expand button on the wide-screen Job activity box and the row's **"N Reports" chip** (which previously opened the thread panel's fullscreen mode; the panel's own ⛶ toggle is untouched). One instance lives at tab level behind a new `StagesRowRenderContext.openJobActivityExpand(job)` (threaded through both Stages tables + the card list), reading live from the thread store so realtime posts appear in place. **Content is the full timeline**: notes/reports keep the box's stable circled numbers (1 = oldest, assigned pre-filter by the same comparator — "check note 3" never shifts) rendered unclamped with **full report field lines** (`displayReportTemplateName` + `allReportFieldLinesForThread`), while schedule blocks, clock sessions (pending-approval badge), and status/billing/crew events interleave as unnumbered tag-styled rows, all grouped under **Chicago day separators** ("Wed, Aug 12" / "Fri, Aug 14 · Today"). Folded in from the dropdown panel: the **All/Notes/Reports/Status/Billing/Crew filter pills** with counts (shared `jobActivityFilter` kernels; empty buckets demote to quiet text), the **% complete readout + Set-%-complete editor** (same `clampCompletenessPct`/`validatePctCommit` validation, committing through `commitStagesPctWithNote` and patching the modal's snapshot), and the **team-members / manage-people header** (opens the existing modal at z 1002). The pinned green NEXT line and always-open composer (same `submitNoteWithBody` pipeline) carry over from the box design. Rode along: activity meta lines in the box + modal now read **`Thu 3:45 PM (1d)`** / `(today)` instead of `· 1d ago` (owner request), and the box's NEXT line switched to border longhands (the v2.770 shorthand-mix warning surfaced by the new sibling button). Kernel: [`buildJobActivityModalItems` / `filterJobActivityModalItems` / `groupJobActivityModalItemsByDay`](../src/lib/jobs/jobActivityBoxFeed.ts) (+6 tests, day-splits on Chicago midnight); render tests: modal 6 cases (mixed timeline, filters, team/people, % validation+commit, loading, composer Escape-blur), box asserts the shared opener. Help guides `open-job-activity-full-screen` + `ready-to-bill-pipeline` updated. Client-only — no migration.
 ## Latest Updates (v2.1656)
 
 ### Quickfill: Match sessions joins the Unassigned field time station (2026-08-14)

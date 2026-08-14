@@ -5,21 +5,30 @@ roles: all
 keywords: job activity, notes, full screen, fullscreen, expand, reports button, mobile, stages, thread
 order: 63
 ---
-The **Job activity / notes** panel on **Jobs → Pipeline** can take over the whole screen — the same feed of notes, reports, schedule blocks, and clock sessions, but with room to read and type. This is especially handy on a phone, where the inline panel only gets a few lines.
+A job's whole trail on **Jobs → Pipeline** can open as a **full-page view** — every note and report plus schedule, clock, status, and billing events, grouped day by day with room to read and type.
 
-## Expand the panel
+## Open the full-page view
 
-1. On **Jobs → Pipeline**, click a job's notes icon to expand its **Job activity / notes** panel.
-2. Click the expand button (the small ⛶ outward-arrows icon) at the top right of the panel, next to the **Job activity / notes** heading.
-3. The panel fills the screen: the job's identity sits at the top — the {{chip:blue|Job: 4821}} number badge, service type, job name, and address (tap the address to open Google Maps) — then the activity feed gets all the height, and the composer stays pinned at the bottom so you can keep posting notes, setting % complete, or opening {{button:green|Schedule}} — everything works the same as inline.
-4. To go back, click the button again (now a compress icon) or press **Esc**. Collapsing the job's thread also exits full screen.
+Two ways in, same view:
 
-## Jump straight there from the Reports button
+1. Click the {{button:outline-blue|2 Reports}} button in a job's **Job** column (the count varies), **or**
+2. On wide screens, click the small expand arrows in the top-right corner of the row's **Job activity box**.
 
-Each job's **Job** column shows a {{button:outline-blue|2 Reports}} button under the address (the count varies). Clicking it opens that job's **full-screen activity view** directly — one tap from the board to the whole story of the job, reports included.
+The job's identity sits at the top — the {{chip:blue|Job: 4821}} number badge, service type, job name, and address (tap the address to open Google Maps). Close it with the **✕**, the **Esc** key, or by clicking the dark backdrop.
 
-:::example The full-screen header
-Alex, Jordan &nbsp; · &nbsp; **Job activity / notes** &nbsp; {{button:outline|⛶}}
+## What's inside
+
+- **Day separators** ("Wed, Aug 12" … "Fri, Aug 14 · Today") break the trail into days, oldest first — read it top-down like a transcript.
+- **Notes and reports keep their circled numbers** (1 is the oldest), the same numbers the row's activity box shows — "check note 3" means the same thing everywhere. Reports show their full contents, not just the title.
+- **Schedule, clock, status, and billing entries** appear between them with their colored tags, so you see what happened around each conversation.
+- **Filter pills** — All, Notes, Reports, Status, Billing, Crew — narrow the feed; each shows its count.
+- The people on the job are listed at the top, with the manage-people button for editors, and the green **Next** appointment stays pinned above the feed.
+- The note bar stays at the bottom: type and press Enter to post. Editors also get {{button:outline-blue|Set % complete}} — pick the percent, add a note (required below 100%), and both land on the job.
+
+:::example A day in the feed
+**Fri, Aug 14 · Today** — ⑤ `Fri 11:53 AM (today)` **Roxi** | Still Pending Pinpoint-DRF · **STATUS** Ready to Bill → Working
 :::
 
-Reports still appear inline in the feed with their blue **Report** tag, so the Reports button lands you on the same thread the office already reads — just bigger.
+## The inline panel still expands too
+
+The **Job activity / notes** panel (opened by a job's notes icon) keeps its own ⛶ full-screen toggle at the top right, and collapsing the thread exits it — that path is unchanged.
