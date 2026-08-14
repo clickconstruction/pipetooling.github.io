@@ -5,7 +5,7 @@ file: docs/PEOPLE_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/People.tsx touches (state, loaders, handlers, sub-components, supabase tables, cross-tab coupling) to prioritize decomposition of the ~21.4k-line God component.
 audience: Developers, AI Agents
-last_updated: 2026-08-12
+last_updated: 2026-08-14
 ---
 
 ## Overview
@@ -44,7 +44,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.ts
 | `employment` | thin wrapper | ~1,151 (component) | extracted (`PeopleEmploymentTab`, self-loading) | 0 in parent | reads the `usePayConfig` cluster + `users` via props | low-med | Done (see dossier) |
 | `pay_stubs` | thin wrapper (tab button reads **Payroll**, v2.1257; Ledger half) | ~1,331 | extracted (`PeoplePayStubsTab`, Ledger half) | draft-payroll + mark-paid clusters stay in parent | high | Done — conservative seam (see dossier) |
 | `hours` | inline orchestration only (~320 render lines; every major sub-section is an extracted component) | ~320 render + parent-owned state/loaders | partial | ~39 (`hours*`, clock sessions) | **owns** `payConfig`/`teams`/`crewJobsByDatePerson` | very high | Phase 3 sub-section decomposition done: Teams → `PeopleHoursTeams`, Due-Summaries → `PeopleHoursDueSummaries`, Sessions → `PeopleHoursSessions`, Week → `PeopleHoursWeekRange`, Hours grid → `PeopleHoursGrid` (+ `PeopleHoursGridJobHighlight`/`PeopleHoursPendingBanner`) (Cost matrix + Sharing sections retired 2026-07-15); inline remains the clock-strip wrapper + the orchestration/wiring |
-| `vehicles` | thin wrapper | ~235 | extracted (`PeopleVehiclesTab`) | 0 in parent | `users` prop | low | Done (PR #19) |
+| `vehicles` | thin wrapper | ~235 | extracted (`PeopleVehiclesTab`; rebuilt v2.1644 as the fleet board — cards + ledger + hand-off, kernels in `src/lib/vehicleFleet.ts`) | 0 in parent | `users` prop | low | Done (PR #19) |
 | `housing` | thin wrapper | ~200 | extracted (`PeopleHousingTab`) | 0 in parent | `users` prop | low | Done (PR #20) |
 | `offsets` | thin wrapper | ~195 | extracted (`PeopleOffsetsTab`) | 0 in parent | `payStubs`/`loadPayStubs` props | low-med | Done (PR #22) |
 | `licenses` | thin wrapper | ~320 | extracted (`PeopleLicensesTab`) | 0 in parent | `people`/`users` props | low | Done (PR #21) |
