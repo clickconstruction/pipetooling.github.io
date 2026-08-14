@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1644)
+last_updated: 2026-08-14 (v2.1645)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1645)
+
+### database.ts regenerated from the linked prod schema (2026-08-14)
+Maintenance: [`src/types/database.ts`](../src/types/database.ts) had drifted from prod (project `yewfzhbofbbyvkvtaatw`) — regenerated via `npm run gen-types:linked` (~245-line diff). Picks up types that shipped without a regen: the `job_property_owners` and `supply_house_contacts` tables, the self-scheduling RPCs (`search_jobs_for_self_schedule`, `self_schedule_add_block`, `self_move_schedule_block`, `self_remove_schedule_block`, `request_field_job`), `supply_house_job_accounts`' job FK relationship, plus generator re-sorting of previously hand-appended sections. One hand-edit was reverted by the regen: `move_job_schedule_block_group`'s `p_job_id` is non-null again in the generated types (gen-types can't express nullable SQL args), so [`moveJobScheduleBlockGroupViaRpc`](../src/lib/jobScheduleBlocks.ts) now casts its nullable `jobId` at the call site instead (RPC behavior unchanged — it accepts NULL for bid-anchored groups per v2.1613). Client-only — no migration.
 
 ## Latest Updates (v2.1644)
 
