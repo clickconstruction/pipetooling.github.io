@@ -114,23 +114,20 @@ export function useBreakOffSlider(args: {
   const breakOffCombinedHandlePct = useMemo(() => {
     const total = jobTotalBidDollars
     if (!(total > 0)) return 0
-    const { min, max } = breakOffCombinedSliderBounds
     if (breakOffSliderDragCombinedPct != null) {
       return Math.min(100, Math.max(0, breakOffSliderDragCombinedPct))
     }
+    // Track the amount exactly, focused or not — typed amounts are no longer
+    // snapped to the 5% grid on blur, so the thumb must not be either (drag
+    // and keyboard paths write already-snapped amounts, so they still land on
+    // the grid).
     const b = parseMoneyInputToNumber(newInvoiceAmount)
-    const raw = Math.min(100, Math.max(0, ((breakOffPaidSum + breakOffBilledSum + b) / total) * 100))
-    if (newInvoiceAmountInputFocused) {
-      return Math.min(100, Math.max(0, raw))
-    }
-    return snapBreakOffCombinedPctToStep(raw, min, max)
+    return Math.min(100, Math.max(0, ((breakOffPaidSum + breakOffBilledSum + b) / total) * 100))
   }, [
     jobTotalBidDollars,
-    breakOffCombinedSliderBounds,
     breakOffPaidSum,
     breakOffBilledSum,
     newInvoiceAmount,
-    newInvoiceAmountInputFocused,
     breakOffSliderDragCombinedPct,
   ])
 

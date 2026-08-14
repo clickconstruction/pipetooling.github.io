@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1649',
+    date: '2026-08-14',
+    title: 'Typed invoice amounts no longer snap to 5% steps',
+    kind: 'fix',
+    highlights: [
+      'In Edit Job → Invoices, a typed New Invoice amount now sticks exactly as entered (it used to jump to the nearest 5% of the job total — e.g. 81,916.60 became 80,340).',
+      'Amounts above what’s left to bill still clamp down to the remaining balance.',
+      'The slider drag, arrow keys, and quick-set percent buttons keep their clean 5% steps.',
+    ],
+  },
+  {
     version: 'v2.1648',
     date: '2026-08-14',
     title: 'My Vehicle card on the Dashboard',

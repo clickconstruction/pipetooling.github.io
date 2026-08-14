@@ -50,6 +50,17 @@ export function breakDollarsFromCombinedPct(
 export const BREAK_OFF_COMBINED_SLIDER_STEP_PCT = 5
 
 /**
+ * Normalize a typed break-off amount on blur: round to cents and clamp to the
+ * remaining unallocated dollars — no percent-step snapping. The 5% grid is a
+ * drag/keyboard affordance only; a typed amount is exact by intent (typing
+ * 81,916.60 on a $123,600 job used to snap to $80,340 = the nearest 5% step).
+ */
+export function clampTypedBreakOffAmount(n: number, remainingUnallocated: number): number {
+  const cents = Math.min(Math.round(n * 100), Math.round(remainingUnallocated * 100))
+  return Math.max(0, cents) / 100
+}
+
+/**
  * Map a pointer position on the break-off track (ratio 0–1 across its width)
  * to a combined (paid + this bill) percent. The track's visual axis is ALWAYS
  * 0–100% of the job total — ticks at 20/40/60/80, thumb at the combined pct —
