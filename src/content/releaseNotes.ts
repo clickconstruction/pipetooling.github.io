@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1647',
+    date: '2026-08-14',
+    title: 'Vehicles track reported problems',
+    kind: 'feature',
+    highlights: [
+      'Report a problem on any vehicle — a description plus a severity: Monitor, Needs service, or Urgent.',
+      'Open problems show as red chips on the vehicle cards and in an Open problems list on the vehicle, each with a Resolve button and an optional "how it was fixed" note.',
+      'Reports and their resolutions both land in the vehicle ledger, so the history stays complete.',
+    ],
+  },
+  {
     version: 'v2.1646',
     date: '2026-08-14',
     title: 'Vehicles track oil changes and services',

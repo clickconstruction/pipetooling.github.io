@@ -15,13 +15,17 @@ import {
   odometerFreshness,
   oilChipLabel,
   oilStatus,
+  openProblemCounts,
+  openProblems,
   parseOdometerInput,
+  PROBLEM_SEVERITY_LABELS,
   SERVICE_TYPE_LABELS,
   vehicleDisplayName,
   vehicleMatchesSearch,
   vinTail,
   type FleetOdometerEntry,
   type FleetPossession,
+  type FleetProblemReport,
   type FleetServiceEvent,
   type FleetValueEntry,
   type VehicleLedgerRowKind,
@@ -55,6 +59,7 @@ const LEDGER_FILTERS: Array<{ key: 'all' | VehicleLedgerRowKind; label: string }
   { key: 'all', label: 'All' },
   { key: 'reading', label: 'Odometer' },
   { key: 'service', label: 'Service' },
+  { key: 'problem', label: 'Problems' },
   { key: 'handoff', label: 'Holders' },
   { key: 'value', label: 'Value' },
 ]
@@ -118,6 +123,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [valueFormOpen, setValueFormOpen] = useState(false)
   const [valueDate, setValueDate] = useState(todayYmd)
   const [valueAmount, setValueAmount] = useState('')
+
+  const [openProblemsByVehicle, setOpenProblemsByVehicle] = useState<Record<string, number>>({})
+  const [panelProblems, setPanelProblems] = useState<FleetProblemReport[]>([])
+  const [problemFormOpen, setProblemFormOpen] = useState(false)
+  const [problemDescription, setProblemDescription] = useState('')
+  const [problemSeverity, setProblemSeverity] = useState('needs_service')
+  const [problemSaving, setProblemSaving] = useState(false)
+  const [resolvingProblem, setResolvingProblem] = useState<FleetProblemReport | null>(null)
+  const [resolutionNote, setResolutionNote] = useState('')
+  const [resolveSaving, setResolveSaving] = useState(false)
 
   const [lastOilByVehicle, setLastOilByVehicle] = useState<Record<string, FleetServiceEvent>>({})
   const [panelServiceEvents, setPanelServiceEvents] = useState<FleetServiceEvent[]>([])
@@ -201,7 +216,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setLatestByVehicle({})
       return
     }
-    const [{ data: possData }, { data: odoData }, { data: oilData }] = await Promise.all([
+    const [{ data: possData }, { data: odoData }, { data: oilData }, { data: probData }] = await Promise.all([
       supabase.from('vehicle_possessions').select('*').in('vehicle_id', ids).order('start_date', { ascending: false }),
       supabase
         .from('vehicle_odometer_entries')
@@ -216,7 +231,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         .eq('service_type', 'oil_change')
         .order('service_date', { ascending: false })
         .limit(2000),
+      supabase
+        .from('vehicle_problem_reports')
+        .select('*')
+        .in('vehicle_id', ids)
+        .is('resolved_at', null)
+        .limit(2000),
     ])
+    const probCounts: Record<string, number> = {}
+    for (const [vid, n] of openProblemCounts((probData ?? []) as FleetProblemReport[])) probCounts[vid] = n
+    setOpenProblemsByVehicle(probCounts)
     setPossessionsAll((possData ?? []) as FleetPossession[])
     const lastOil: Record<string, FleetServiceEvent> = {}
     const oilGrouped = new Map<string, FleetServiceEvent[]>()
@@ -245,14 +269,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   }
 
   async function loadPanel(vehicleId: string) {
-    const [{ data: odoData }, { data: valData }, { data: svcData }] = await Promise.all([
+    const [{ data: odoData }, { data: valData }, { data: svcData }, { data: probData2 }] = await Promise.all([
       supabase.from('vehicle_odometer_entries').select('*').eq('vehicle_id', vehicleId).order('read_date', { ascending: false }),
       supabase.from('vehicle_replacement_value_entries').select('*').eq('vehicle_id', vehicleId).order('read_date', { ascending: false }),
       supabase.from('vehicle_service_events').select('*').eq('vehicle_id', vehicleId).order('service_date', { ascending: false }),
+      supabase.from('vehicle_problem_reports').select('*').eq('vehicle_id', vehicleId).order('report_date', { ascending: false }),
     ])
     setPanelReadings((odoData ?? []) as FleetOdometerEntry[])
     setPanelValues((valData ?? []) as FleetValueEntry[])
     setPanelServiceEvents((svcData ?? []) as FleetServiceEvent[])
+    setPanelProblems((probData2 ?? []) as FleetProblemReport[])
   }
 
   useEffect(() => {
@@ -271,6 +297,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setPanelReadings([])
       setPanelValues([])
       setPanelServiceEvents([])
+      setPanelProblems([])
     }
   }, [selectedVehicleId])
 
@@ -463,6 +490,58 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
   }
 
+  async function submitProblem() {
+    if (!selectedVehicleId || problemSaving) return
+    if (!problemDescription.trim()) {
+      setError('Describe the problem first')
+      return
+    }
+    setProblemSaving(true)
+    const { error: err } = await supabase.from('vehicle_problem_reports').insert({
+      vehicle_id: selectedVehicleId,
+      description: problemDescription.trim(),
+      severity: problemSeverity,
+      report_date: todayYmd(),
+      reported_by: authUser?.id ?? null,
+    })
+    setProblemSaving(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setProblemFormOpen(false)
+    setProblemDescription('')
+    setProblemSeverity('needs_service')
+    showToast('Problem reported.', 'success')
+    loadPanel(selectedVehicleId)
+    loadFleet()
+  }
+
+  async function submitResolve() {
+    if (!resolvingProblem || resolveSaving) return
+    setResolveSaving(true)
+    const { error: err } = await supabase
+      .from('vehicle_problem_reports')
+      .update({
+        resolved_at: new Date().toISOString(),
+        resolved_by: authUser?.id ?? null,
+        resolution_note: resolutionNote.trim() || null,
+      })
+      .eq('id', resolvingProblem.id)
+    setResolveSaving(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setResolvingProblem(null)
+    setResolutionNote('')
+    showToast('Problem resolved.', 'success')
+    if (selectedVehicleId) loadPanel(selectedVehicleId)
+    loadFleet()
+  }
+
   async function submitValueEntry() {
     if (!selectedVehicleId) return
     const val = parseFloat(valueAmount)
@@ -492,7 +571,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
           ? 'vehicle_replacement_value_entries'
           : kind === 'service'
             ? 'vehicle_service_events'
-            : 'vehicle_possessions'
+            : kind === 'problem' || kind === 'problem_resolved'
+              ? 'vehicle_problem_reports'
+              : 'vehicle_possessions'
     const { error: err } = await supabase.from(table).delete().eq('id', sourceId)
     if (err) {
       setError(err.message)
@@ -509,15 +590,21 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       possessions: possessionsAll.filter((p) => p.vehicle_id === selectedVehicleId),
       valueEntries: panelValues,
       serviceEvents: panelServiceEvents,
+      problemReports: panelProblems,
       userNameById,
     })
-  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, possessionsAll, userNameById])
+  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, possessionsAll, userNameById])
 
   const visibleLedgerRows = useMemo(
     () =>
       ledgerFilter === 'all'
         ? ledgerRows
-        : ledgerRows.filter((r) => r.kind === ledgerFilter || (ledgerFilter === 'handoff' && r.kind === 'return')),
+        : ledgerRows.filter(
+            (r) =>
+              r.kind === ledgerFilter ||
+              (ledgerFilter === 'handoff' && r.kind === 'return') ||
+              (ledgerFilter === 'problem' && r.kind === 'problem_resolved'),
+          ),
     [ledgerRows, ledgerFilter],
   )
 
@@ -617,6 +704,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
           {summary.staleReadings > 0 && <span style={chipStyle('amber')}>{summary.staleReadings} need a reading</span>}
           {oilCounts.dueSoon > 0 && <span style={chipStyle('amber')}>{oilCounts.dueSoon} oil due soon</span>}
           {oilCounts.overdue > 0 && <span style={chipStyle('red')}>{oilCounts.overdue} oil overdue</span>}
+          {(() => {
+            const totalOpen = Object.values(openProblemsByVehicle).reduce((s, n) => s + n, 0)
+            return totalOpen > 0 ? <span style={chipStyle('red')}>{totalOpen} open problem{totalOpen === 1 ? '' : 's'}</span> : null
+          })()}
           {weeklyTotal > 0 && <span style={chipStyle('plain')}>${formatCurrency(weeklyTotal)}/wk ins+reg</span>}
         </div>
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
@@ -672,6 +763,17 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     }}
                   >
                     Log service
+                  </button>
+                  <button
+                    type="button"
+                    style={actionBtn}
+                    onClick={() => {
+                      setProblemDescription('')
+                      setProblemSeverity('needs_service')
+                      setProblemFormOpen(true)
+                    }}
+                  >
+                    Report problem
                   </button>
                   <button type="button" style={actionBtn} onClick={() => { setValueFormOpen(true); setValueAmount(''); setValueDate(todayYmd()) }}>
                     Update value
@@ -743,6 +845,59 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 </button>
               </div>
 
+              {(() => {
+                const open = openProblems(panelProblems)
+                if (open.length === 0) return null
+                return (
+                  <div style={{ marginBottom: '0.9rem' }}>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-red-700)' }}>
+                      Open problems ({open.length})
+                    </div>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                      {open.map((p, i) => (
+                        <div
+                          key={p.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.6rem',
+                            padding: '0.6rem 0.9rem',
+                            borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...chipStyle(p.severity === 'urgent' ? 'red' : p.severity === 'monitor' ? 'plain' : 'amber'),
+                              fontSize: '0.6875rem',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {PROBLEM_SEVERITY_LABELS[p.severity] ?? p.severity}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div>{p.description}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {(p.reported_by ? (userNameById.get(p.reported_by) ?? '') : '') || 'Office'} · {formatYmdShort(p.report_date)}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            style={{ ...actionBtn, flexShrink: 0 }}
+                            onClick={() => {
+                              setResolutionNote('')
+                              setResolvingProblem(p)
+                            }}
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Ledger</span>
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -787,23 +942,36 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       <span style={{ color: 'var(--text-muted)', width: 88, flexShrink: 0, fontSize: '0.8125rem' }}>{formatYmdShort(r.dateYmd)}</span>
                       <span
                         style={{
-                          ...chipStyle('plain'),
+                          ...chipStyle(
+                            r.kind === 'problem' ? 'red' : r.kind === 'problem_resolved' || r.kind === 'service' ? 'green' : 'plain',
+                          ),
                           fontSize: '0.6875rem',
-                          background: r.kind === 'handoff' || r.kind === 'return' ? 'var(--bg-sky-tint)' : 'var(--bg-subtle)',
-                          color: r.kind === 'handoff' || r.kind === 'return' ? 'var(--text-link)' : 'var(--text-muted)',
+                          ...(r.kind === 'handoff' || r.kind === 'return'
+                            ? { background: 'var(--bg-sky-tint)', color: 'var(--text-link)' }
+                            : {}),
                         }}
                       >
-                        {r.kind === 'reading' ? 'Odometer' : r.kind === 'value' ? 'Value' : 'Hand-off'}
+                        {r.kind === 'reading'
+                          ? 'Odometer'
+                          : r.kind === 'value'
+                            ? 'Value'
+                            : r.kind === 'service'
+                              ? 'Service'
+                              : r.kind === 'problem'
+                                ? 'Problem'
+                                : r.kind === 'problem_resolved'
+                                  ? 'Resolved'
+                                  : 'Hand-off'}
                       </span>
                       <span style={{ flex: 1, minWidth: 0 }}>{r.label}</span>
                       <span style={{ textAlign: 'right', width: 90, flexShrink: 0, color: r.odometer == null && r.amount == null ? 'var(--text-muted)' : undefined }}>
                         {r.odometer != null ? `${r.odometer.toLocaleString()} mi` : r.amount != null ? `$${formatCurrency(r.amount)}` : '—'}
                       </span>
-                      {r.kind !== 'return' && (
+                      {r.kind !== 'return' && r.kind !== 'problem_resolved' && (
                         <button
                           type="button"
                           onClick={() => deleteLedgerRow(r.kind, r.sourceId)}
-                          title={r.kind === 'handoff' ? 'Delete this possession row' : 'Delete this entry'}
+                          title={r.kind === 'handoff' ? 'Delete this possession row' : r.kind === 'problem' ? 'Delete this problem report' : 'Delete this entry'}
                           style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           ×
@@ -857,6 +1025,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       if (s.state === 'unknown') return null
                       return <span style={chipStyle(oilChipToneFor(s.state))}>{oilChipLabel(s)}</span>
                     })()}
+                    {(openProblemsByVehicle[v.id] ?? 0) > 0 && (
+                      <span style={chipStyle('red')}>
+                        {openProblemsByVehicle[v.id]} problem{openProblemsByVehicle[v.id] === 1 ? '' : 's'}
+                      </span>
+                    )}
                   </div>
                 </div>
               )
@@ -1029,6 +1202,102 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 }}
               >
                 {serviceSaving ? '…' : 'Log service'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {problemFormOpen && selectedVehicleId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 400 }}>
+            <h3 style={{ marginTop: 0 }}>Report a problem</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>What's wrong? *</label>
+              <textarea
+                value={problemDescription}
+                onChange={(e) => setProblemDescription(e.target.value)}
+                placeholder="e.g. brakes grinding on front left, worse when loaded"
+                rows={3}
+                style={{ width: '100%', padding: '0.5rem', font: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Severity</label>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                {Object.entries(PROBLEM_SEVERITY_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setProblemSeverity(key)}
+                    style={{
+                      padding: '0.3rem 0.8rem',
+                      borderRadius: 999,
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      border: problemSeverity === key ? '1px solid #dc2626' : '1px solid var(--border-strong)',
+                      background: problemSeverity === key ? 'var(--bg-red-100)' : 'var(--surface)',
+                      color: problemSeverity === key ? 'var(--text-red-700)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setProblemFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={submitProblem}
+                disabled={problemSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: problemSaving ? '#9ca3af' : '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: problemSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {problemSaving ? '…' : 'Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resolvingProblem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 400 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>Resolve problem</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{resolvingProblem.description}</p>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>How was it fixed? (optional)</label>
+              <input
+                type="text"
+                value={resolutionNote}
+                onChange={(e) => setResolutionNote(e.target.value)}
+                placeholder="e.g. new pads with the May service visit"
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setResolvingProblem(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={submitResolve}
+                disabled={resolveSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: resolveSaving ? '#9ca3af' : '#16a34a',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: resolveSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {resolveSaving ? '…' : 'Resolve'}
               </button>
             </div>
           </div>

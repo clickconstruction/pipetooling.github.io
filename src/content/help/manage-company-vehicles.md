@@ -41,6 +41,16 @@ Oil changes drive the oil chips you see on every card:
 
 The math is simple: last oil change's odometer plus the vehicle's interval (5,000 miles unless you change it in {{button:outline|Edit}}), compared against the latest reading. No chip shows until the vehicle has both an oil change with miles and a reading — so log the current state once and it tracks from there. The chips above the board count how many vehicles are due soon or overdue across the whole fleet.
 
+## Reported problems
+
+{{button:outline|Report problem}} records something wrong with the vehicle — a description and a severity:
+
+- {{chip:gray|Monitor}} — keeping an eye on it
+- {{chip:yellow|Needs service}} — book a shop visit
+- {{chip:red|Urgent}} — deal with it now
+
+Open problems show as a red chip on the vehicle's card and in an **Open problems** list on the vehicle itself, each with a {{button:outline|Resolve}} button — add a note about how it was fixed and both the report and the resolution stay in the ledger. The chips above the board total the open problems across the fleet, so nothing reported gets forgotten.
+
 ## Vehicle details
 
 {{button:outline|Edit}} on an open vehicle changes year, make, model, VIN, and the weekly insurance and registration costs (those print on pay stubs and feed the fleet total). {{button:outline|Update value}} records what replacing the vehicle would cost today — the history stays in the ledger. Deleting a vehicle removes its whole history with it, so park old vehicles as **Unassigned** instead unless you really mean delete.

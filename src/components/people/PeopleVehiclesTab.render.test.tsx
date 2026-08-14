@@ -33,6 +33,9 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   vehicle_service_events: [
     { id: 's1', vehicle_id: 'v1', service_type: 'oil_change', service_date: '2026-05-02', odometer_value: 115000, cost: 89, note: 'Take 5', created_at: null, created_by: null },
   ],
+  vehicle_problem_reports: [
+    { id: 'q1', vehicle_id: 'v1', description: 'Brakes grinding front left', severity: 'needs_service', report_date: '2026-08-09', reported_by: 'u2', resolved_at: null, resolved_by: null, resolution_note: null, created_at: null },
+  ],
 }
 
 vi.mock('../../lib/supabase', () => {
@@ -90,5 +93,13 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByRole('button', { name: 'Log service' })).toBeTruthy()
     expect(screen.getByText('Oil change · Take 5 · $89.00')).toBeTruthy()
     expect(screen.getAllByText('Oil overdue 1,480 mi').length).toBeGreaterThan(0)
+
+    // v2.1647: problem reports — Report problem action, the Open problems
+    // block with severity chip + Resolve, and the ledger's Problem row.
+    expect(screen.getByRole('button', { name: 'Report problem' })).toBeTruthy()
+    expect(screen.getByText('Open problems (1)')).toBeTruthy()
+    expect(screen.getByText('Needs service')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Resolve' })).toBeTruthy()
+    expect(screen.getByText('Brakes grinding front left — reported by Tristen')).toBeTruthy()
   })
 })

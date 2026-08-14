@@ -251,7 +251,40 @@ export function fleetOilCounts(
   return { dueSoon, overdue }
 }
 
-export type VehicleLedgerRowKind = 'reading' | 'handoff' | 'return' | 'value' | 'service'
+export type FleetProblemReport = {
+  id: string
+  vehicle_id: string
+  description: string
+  severity: string
+  report_date: string
+  reported_by: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+  resolution_note: string | null
+  created_at: string | null
+}
+
+export const PROBLEM_SEVERITY_LABELS: Record<string, string> = {
+  monitor: 'Monitor',
+  needs_service: 'Needs service',
+  urgent: 'Urgent',
+}
+
+export function openProblems(reports: FleetProblemReport[]): FleetProblemReport[] {
+  return reports.filter((r) => r.resolved_at == null)
+}
+
+/** Open problem count per vehicle for the cards and summary chip. */
+export function openProblemCounts(reports: FleetProblemReport[]): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const r of reports) {
+    if (r.resolved_at != null) continue
+    m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + 1)
+  }
+  return m
+}
+
+export type VehicleLedgerRowKind = 'reading' | 'handoff' | 'return' | 'value' | 'service' | 'problem' | 'problem_resolved'
 
 export type VehicleLedgerRow = {
   key: string
@@ -277,8 +310,9 @@ export function buildVehicleLedger(args: {
   valueEntries: FleetValueEntry[]
   userNameById: ReadonlyMap<string, string>
   serviceEvents?: FleetServiceEvent[]
+  problemReports?: FleetProblemReport[]
 }): VehicleLedgerRow[] {
-  const { readings, possessions, valueEntries, userNameById, serviceEvents = [] } = args
+  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [] } = args
   const name = (id: string | null | undefined): string | null => {
     if (!id) return null
     return userNameById.get(id) ?? null
@@ -353,7 +387,39 @@ export function buildVehicleLedger(args: {
       sourceId: e.id,
     })
   }
-  const kindOrder: Record<VehicleLedgerRowKind, number> = { return: 0, handoff: 1, service: 2, reading: 3, value: 4 }
+  for (const r of problemReports) {
+    const by = name(r.reported_by)
+    rows.push({
+      key: `problem-${r.id}`,
+      kind: 'problem',
+      dateYmd: r.report_date,
+      label: `${r.description}${by ? ` — reported by ${by}` : ''}`,
+      odometer: null,
+      amount: null,
+      sourceId: r.id,
+    })
+    if (r.resolved_at != null) {
+      const note = (r.resolution_note ?? '').trim()
+      rows.push({
+        key: `problem-resolved-${r.id}`,
+        kind: 'problem_resolved',
+        dateYmd: r.resolved_at.slice(0, 10),
+        label: note ? `Resolved · ${r.description} — ${note}` : `Resolved · ${r.description}`,
+        odometer: null,
+        amount: null,
+        sourceId: r.id,
+      })
+    }
+  }
+  const kindOrder: Record<VehicleLedgerRowKind, number> = {
+    return: 0,
+    handoff: 1,
+    problem_resolved: 2,
+    problem: 3,
+    service: 4,
+    reading: 5,
+    value: 6,
+  }
   rows.sort((a, b) => {
     if (a.dateYmd !== b.dateYmd) return b.dateYmd.localeCompare(a.dateYmd)
     return kindOrder[a.kind] - kindOrder[b.kind]

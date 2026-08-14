@@ -11969,6 +11969,77 @@ export type Database = {
           },
         ]
       }
+      vehicle_problem_reports: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          report_date: string
+          reported_by: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_service_event_id: string | null
+          severity: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          report_date: string
+          reported_by?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_service_event_id?: string | null
+          severity?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          report_date?: string
+          reported_by?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_service_event_id?: string | null
+          severity?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_problem_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_problem_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_problem_reports_resolved_service_event_id_fkey"
+            columns: ["resolved_service_event_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_service_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_problem_reports_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_replacement_value_entries: {
         Row: {
           created_at: string | null

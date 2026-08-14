@@ -18,6 +18,9 @@ import {
   vinTail,
   type FleetOdometerEntry,
   type FleetPossession,
+  openProblemCounts,
+  openProblems,
+  type FleetProblemReport,
   type FleetServiceEvent,
   type FleetValueEntry,
 } from './vehicleFleet'
@@ -238,6 +241,54 @@ describe('buildVehicleLedger service rows (v2.1645)', () => {
     expect(rows[0]?.label).toBe('Oil change · Take 5, Bandera Rd · $89.00')
     expect(rows[0]?.odometer).toBe(115000)
     expect(rows[2]?.label).toBe('Tires · 2 front + alignment · $612.00')
+  })
+})
+
+function prob(over: Partial<FleetProblemReport>): FleetProblemReport {
+  return {
+    id: 'q1',
+    vehicle_id: 'v1',
+    description: 'Brakes grinding front left',
+    severity: 'needs_service',
+    report_date: '2026-08-09',
+    reported_by: 'u2',
+    resolved_at: null,
+    resolved_by: null,
+    resolution_note: null,
+    created_at: null,
+    ...over,
+  }
+}
+
+describe('problem reports (v2.1647)', () => {
+  it('counts open problems per vehicle, ignoring resolved ones', () => {
+    const counts = openProblemCounts([
+      prob({}),
+      prob({ id: 'q2', description: 'Slow leak rear right' }),
+      prob({ id: 'q3', vehicle_id: 'v2', resolved_at: '2026-08-01T10:00:00Z' }),
+    ])
+    expect(counts.get('v1')).toBe(2)
+    expect(counts.get('v2')).toBeUndefined()
+    expect(openProblems([prob({}), prob({ id: 'q9', resolved_at: '2026-08-01T10:00:00Z' })]).map((p) => p.id)).toEqual(['q1'])
+  })
+  it('ledgers the report and its resolution as separate dated rows', () => {
+    const rows = buildVehicleLedger({
+      readings: [],
+      possessions: [],
+      valueEntries: [],
+      problemReports: [
+        prob({ resolved_at: '2026-08-12T15:00:00Z', resolution_note: 'new pads' }),
+        prob({ id: 'q2', description: 'Wiper motor weak', report_date: '2026-08-10' }),
+      ],
+      userNameById: new Map([['u2', 'Tristen']]),
+    })
+    expect(rows.map((r) => [r.kind, r.dateYmd])).toEqual([
+      ['problem_resolved', '2026-08-12'],
+      ['problem', '2026-08-10'],
+      ['problem', '2026-08-09'],
+    ])
+    expect(rows[0]?.label).toBe('Resolved · Brakes grinding front left — new pads')
+    expect(rows[2]?.label).toBe('Brakes grinding front left — reported by Tristen')
   })
 })
 
