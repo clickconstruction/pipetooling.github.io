@@ -739,10 +739,10 @@ Route access for the restricted roles above comes from the per-role allowed-path
 | Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ | ✅ Adopted |
 | Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ | ❌ |
 | Hours tab (timesheet; Review Hours, pay config, Due by Team, teams — former Pay merged — see `PROJECT_DOCUMENTATION.md` §5) | ✅ | ✅ If Pay Approved | ✅ (hours/rosters, no wage data) | ❌ | ❌ | ❌ | ❌ |
-| Payroll tab (ledger, generators, print; view in bulk modal; Draft Payroll drilldown/print v2.514) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
-| Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
-| Housing tab (units CRUD, weekly rent/utilities/insurance, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
-| Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
+| Payroll tab (ledger, generators, print; view in bulk modal; Draft Payroll drilldown/print v2.514) | ✅ | ✅ If Pay Approved | ❌ (v2.660 — UI **and** DB: pay-stub family is `has_payroll_access()` only) | ❌ | ❌ | ❌ | ❌ |
+| Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ❌ (tab hidden — see note below) | ❌ | ❌ | ❌ | ❌ |
+| Housing tab (units CRUD, weekly rent/utilities/insurance, possessions) | ✅ | ✅ If Pay Approved | ❌ (tab hidden — see note below) | ❌ | ❌ | ❌ | ❌ |
+| Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ❌ (v2.660 — UI **and** DB: `person_offsets` is `has_payroll_access()` only) | ❌ | ❌ | ❌ | ❌ |
 | Licenses tab (license type, note, date of expiry per person) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Licenses tab — **Hours log** (per-person approved hours by job + board CSV, v2.767): `SECURITY DEFINER` RPC **`list_user_license_hours_log`** gates dev / assistant-like / Pay-Approved master and raises otherwise (never silently partial); hours only, no wages | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -750,6 +750,8 @@ Route access for the restricted roles above comes from the per-role allowed-path
 | Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
 | **Team leads** modal (Users tab): manage **`team_leader_assignments`** (add/remove leader→member links; leader-centric collapsible cards; leader-or-member search) via the shared `TeamLeadsManager`; **Leader dashboard** visibility (**Full**/**Strip** toggle) **dev-only**. Former **Teams tab** removed v2.1292 (`?tab=teams` → Users) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Overhead** tab (`?tab=overhead`): daily **approved, closed** clock labor $ — **office** job from **`app_settings`** **`overhead_office_job_ledger_id_v1`** (dev configures) + **bid** time; hours × **`people_pay_config.hourly_wage`** (office/bid time uses **`office_hourly_wage`** for dual-rate people, matching payroll) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+**Payroll / Vehicles / Housing / Offsets (assistants):** since the v2.660–v2.663 pay-visibility overhaul, all four tabs are hidden from assistants (`canAccessPay` in **`usePeopleAccess.ts`** is dev / controller / Pay-Approved-master only). **Payroll** and **Offsets** are also blocked at the DB — the pay-stub family and **`person_offsets`** require **`has_payroll_access()`** (migration **`20260714120000_assistant_pay_lockdown.sql`**). **Vehicles**/**Housing** table RLS still admits plain **assistant** (v2.661's **`20260714200000_dissolve_assistant_pay_linkage.sql`** rewrote the old master-linked checks to `is_assistant()`), but no assistant-visible UI reads those tables — the grant is latent. Master adoption confers nothing: `is_assistant_of_pay_approved_master()` was dropped in v2.661.
 
 **Contracts (assistants):** **assistant** may use the tab but **cannot delete** person documents, packets (contract templates), Contract library documents, or remove packet checklist documents on save (**`canDeletePeopleContracts`** in **`People.tsx`** — **dev** and **master_technician** only; since v2.1411 the surfaces are the **Contract library** modal's Documents/Packets tabs and the **Assign packets** modal). **Unassign** (behind each assigned packet's ⋯ menu) is limited the same way (DB **DELETE** on contract tables excludes plain **assistant** — migration **`20260502070926_contract_tables_assistant_no_delete.sql`**).
 
