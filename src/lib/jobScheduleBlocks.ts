@@ -559,7 +559,9 @@ export async function moveJobScheduleBlockGroupViaRpc(
     await withSupabaseRetry(
       async () =>
         await supabase.rpc('move_job_schedule_block_group', {
-          p_job_id: jobId,
+          // Cast: SQL args are inherently nullable and the RPC handles NULL
+          // (v2.1613), but gen-types emits non-null `string` for uuid args.
+          p_job_id: jobId as string,
           p_shared_block_group_id: sharedBlockGroupId,
           p_new_work_date: newWorkDate,
         }),
