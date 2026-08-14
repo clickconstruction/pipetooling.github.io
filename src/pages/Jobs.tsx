@@ -193,13 +193,9 @@ export default function Jobs() {
 
   // Sub Sheet Ledger state (the payment/backcharge/edit-payment modal states moved to SubLaborPaymentModals in v2.824)
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
-  const [driveSettingsOpen, setDriveSettingsOpen] = useState(false)
   const [driveMileageCost, setDriveMileageCost] = useState<number | null>(null)
   const [driveTimePerMile, setDriveTimePerMile] = useState<number | null>(null)
-  const [driveSettingsSaving, setDriveSettingsSaving] = useState(false)
-  const [defaultLaborRateModalOpen, setDefaultLaborRateModalOpen] = useState(false)
   const [defaultLaborRateValue, setDefaultLaborRateValue] = useState('')
-  const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
   const {
     laborJobs,
     setLaborJobs,
@@ -1216,28 +1212,14 @@ export default function Jobs() {
 
   useEffect(() => {
     if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
-      const t = setTimeout(() => loadDriveSettings(), 80)
+      // v2.1631: the Drive Settings / Default Labor Rate modals are gone —
+      // the VALUES still load here (drive cost on legacy rows, the rate that
+      // seeds new line items); editing them is Settings-side now.
+      const t = setTimeout(() => { void loadDriveSettings(); void loadDefaultLaborRate(); }, 80)
       return () => clearTimeout(t)
     }
   }, [activeTab, authUser?.id])
 
-  async function saveDriveSettings(e: React.FormEvent) {
-    e.preventDefault()
-    setDriveSettingsSaving(true)
-    setError(null)
-    const mileageCost = driveMileageCost ?? 0.70
-    const timePerMile = driveTimePerMile ?? 0.02
-    const { error: err } = await supabase.from('app_settings').upsert(
-      [
-        { key: 'drive_mileage_cost', value_num: mileageCost },
-        { key: 'drive_time_per_mile', value_num: timePerMile },
-      ],
-      { onConflict: 'key' }
-    )
-    setDriveSettingsSaving(false)
-    if (err) setError(err.message)
-    else setDriveSettingsOpen(false)
-  }
 
   async function loadDefaultLaborRate() {
     const { data } = await supabase.from('app_settings').select('value_num').eq('key', 'default_labor_rate').maybeSingle()
@@ -1245,20 +1227,6 @@ export default function Jobs() {
     setDefaultLaborRateValue(val != null ? String(val) : '')
   }
 
-  async function saveDefaultLaborRate(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') {
-      setError('Only devs can change the default labor rate.')
-      return
-    }
-    setDefaultLaborRateSaving(true)
-    setError(null)
-    const val = defaultLaborRateValue.trim() === '' ? null : parseFloat(defaultLaborRateValue) || null
-    const { error: err } = await supabase.from('app_settings').upsert({ key: 'default_labor_rate', value_num: val }, { onConflict: 'key' })
-    setDefaultLaborRateSaving(false)
-    if (err) setError(err.message)
-    else setDefaultLaborRateModalOpen(false)
-  }
 
 
 
@@ -1694,11 +1662,8 @@ export default function Jobs() {
           laborJobNamesByHcp={laborJobNamesByHcp}
           subLaborDueTotal={subLaborDueTotal}
           subLaborOutstandingByPerson={subLaborOutstandingByPerson}
-          myRole={myRole}
           onNewLaborJob={() => subLaborFormRef.current?.openNew()}
           onEditLaborJob={(job) => subLaborFormRef.current?.openEdit(job)}
-          onOpenDriveSettings={() => { loadDriveSettings(); setDriveSettingsOpen(true); }}
-          onOpenDefaultLaborRate={() => { loadDefaultLaborRate(); setDefaultLaborRateModalOpen(true); }}
           onPrintJobSubSheet={printJobSubSheet}
           onUpdateLaborJobDate={updateLaborJobDate}
           onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
@@ -1854,85 +1819,7 @@ export default function Jobs() {
         printJobSubSheet={printJobSubSheet}
       />
 
-      {defaultLaborRateModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Default Labor Rate</h2>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              This rate is pre-filled when adding a new job. Leave empty for no default.
-            </p>
-            <form onSubmit={saveDefaultLaborRate}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={defaultLaborRateValue}
-                  onChange={(e) => setDefaultLaborRateValue(e.target.value)}
-                  placeholder="e.g. 75.00"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" disabled={defaultLaborRateSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer' }}>
-                  {defaultLaborRateSaving ? 'Saving…' : 'Save'}
-                </button>
-                <button type="button" onClick={() => setDefaultLaborRateModalOpen(false)} disabled={defaultLaborRateSaving} style={{ padding: '0.5rem 1rem' }}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {driveSettingsOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Drive Settings</h2>
-            <form onSubmit={saveDriveSettings}>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Mileage cost ($/mi)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={driveMileageCost ?? ''}
-                    onChange={(e) => setDriveMileageCost(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
-                    placeholder="0.70"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                </div>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Time per mile (hrs/mi)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={driveTimePerMile ?? ''}
-                    onChange={(e) => setDriveTimePerMile(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
-                    placeholder="0.02"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                </div>
-              </div>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                Drive cost = (miles × mileage cost) + (miles × time per mile × labor rate). Defaults: $0.70/mi, 0.02 hrs/mi (~1.2 min/mi).
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" disabled={driveSettingsSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: driveSettingsSaving ? 'not-allowed' : 'pointer' }}>
-                  {driveSettingsSaving ? 'Saving…' : 'Save'}
-                </button>
-                <button type="button" onClick={() => setDriveSettingsOpen(false)} disabled={driveSettingsSaving} style={{ padding: '0.5rem 1rem' }}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <SubLaborPaymentModals
         ref={subLaborPaymentModalsRef}
