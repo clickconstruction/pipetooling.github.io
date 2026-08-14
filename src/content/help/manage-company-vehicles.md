@@ -2,7 +2,7 @@
 title: manage company vehicles and track their odometers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive
+keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive, maintenance, tasks, battery, repair checklist
 ---
 
 **People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, whether that reading is getting old, and which insurance plan covers it. The board groups into **Active** (someone is using the vehicle) and **Inactive** (parked in the motor pool, or waiting for a holder). The chips above the board total it up — how many vehicles, how many are in the motor pool, how many are {{chip:yellow|unassigned}}, how many {{chip:yellow|need a reading}}, how many are {{chip:yellow|not on insurance}}, and the fleet's weekly insurance + registration cost.
@@ -52,6 +52,18 @@ Oil changes drive the oil chips you see on every card:
 - {{chip:red|Oil overdue 1,480 mi}} — past due, get it in
 
 The math is simple: last oil change's odometer plus the vehicle's interval (5,000 miles unless you change it in {{button:outline|Edit}}), compared against the latest reading. No chip shows until the vehicle has both an oil change with miles and a reading — so log the current state once and it tracks from there. The chips above the board count how many vehicles are due soon or overdue across the whole fleet.
+
+## Maintenance tasks
+
+Every open vehicle has a **Maintenance** list — the to-dos that keep it on the road: change a battery, fix a door handle, wiper blades before winter. Type into **Add a task** and press Enter; each open task shows who added it and wears either an assignee chip or {{chip:yellow|Unassigned}}.
+
+{{button:outline|Assign}} picks the person and a due date — and this is where it connects to the rest of the app: assigning creates a **one-time checklist task on their list** ("2019 Ford F250 — Change battery") that shows on their Dashboard My Inbox and Checklist → Today and **stays until completed**. Check "Notify me when it's done" to get pinged on completion.
+
+Completion syncs both ways: when they check it off their checklist, the vehicle's task marks done by itself; when you check it off here, it clears from their list too — and a prefilled **Log service** form opens so the work can land in the service log with cost and odometer ({{button:outline|Cancel}} to skip; not every task needs a service entry). Done tasks live in the ledger as {{chip:green|Task}} rows.
+
+:::example From problem to fixed
+A driver reports "battery struggling on cold mornings" → the office taps {{button:outline|Create task}} on the problem → {{button:outline|Assign}} to Abraham, due Friday → Abraham sees it in his My Inbox, swaps the battery, checks it off → the office gets notified, logs it as a service, and resolves the problem report.
+:::
 
 ## Reported problems
 

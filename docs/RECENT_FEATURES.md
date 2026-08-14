@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1664)
+last_updated: 2026-08-14 (v2.1665)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1665)
+
+### Vehicles: assignable maintenance tasks riding the Checklist (2026-08-14)
+Owner-designed (mockup approved): per-vehicle maintenance to-dos ("change battery", "fix a thing") that can be **assigned** — and assignment integrates with the existing Checklist system instead of inventing a new inbox. Migration [`20260814233006_vehicle_maintenance_tasks.sql`](../supabase/migrations/20260814233006_vehicle_maintenance_tasks.sql): `vehicle_maintenance_tasks` (title/note, optional `source_problem_report_id`, denormalized `assigned_user_id`/`due_date`, `checklist_item_id`/`checklist_instance_id` links, completion fields), office-pool RLS + both read-only blocks, and SECURITY DEFINER trigger `sync_vehicle_maintenance_task_completion` on `checklist_instances` (completing/un-completing the linked instance from Today/My Inbox marks/reopens the vehicle task — field completers can't write the office-pool table directly). **Assigning** copies the Checklist Forward pattern ([`submitAssignTask`](../src/components/people/PeopleVehiclesTab.tsx)): one-off `checklist_items` row (`repeat_type 'once'`, `show_until_completed`, title via kernel [`maintenanceChecklistTitle`](../src/lib/vehicleFleet.ts) with a `{{1:vehicle}}` link token → `/people?tab=vehicles`, optional notify-on-complete back to the assigner) + item-assignee (`getNextDisplayOrders`) + instance + instance-assignee, then links + denormalizes onto the task; reassignment replaces the old checklist rows. **UI**: open vehicle gains a **Maintenance** section (checkbox completes — also clears the assignee's checklist — then opens a **prefilled Log service** nudge, Cancel to skip; assignee/Unassigned chips; Assign/Reassign; inline Add; × delete cleans linked checklist rows); open problems gain **Create task** (prefills from the description, links the report); cards wear an amber **N tasks** chip and the board summary counts **N maintenance tasks**; completed tasks land in the ledger as green **Task** rows (`task_done` kind, shown under the Service filter). Kernels `maintenanceTaskCounts`/`openMaintenanceTasks` + ledger rows (+3 tests); render smoke extended (chips, section, both entry points, ledger row). Help guide `manage-company-vehicles` updated. **Deploy**: `supabase db push` with this merge, then `npm run gen-types:linked` (types committed in this PR).
 
 ## Latest Updates (v2.1664)
 

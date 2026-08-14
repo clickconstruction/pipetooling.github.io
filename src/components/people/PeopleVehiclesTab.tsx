@@ -11,8 +11,11 @@ import {
   fleetOilCounts,
   isMotorPoolPossession,
   lastEndedInsurancePeriod,
+  maintenanceChecklistTitle,
+  maintenanceTaskCounts,
   MOTOR_POOL_LABEL,
   oilThresholdsForVehicle,
+  openMaintenanceTasks,
   fleetSummary,
   handOffWrites,
   lastOilChange,
@@ -37,7 +40,9 @@ import {
   type FleetServiceEvent,
   type FleetValueEntry,
   type VehicleLedgerRowKind,
+  type VehicleMaintenanceTask,
 } from '../../lib/vehicleFleet'
+import { getNextDisplayOrders } from '../../utils/checklistOrder'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -154,6 +159,15 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [takeOffDate, setTakeOffDate] = useState(todayYmd)
   const [takeOffSaving, setTakeOffSaving] = useState(false)
 
+  const [maintenanceTasksAll, setMaintenanceTasksAll] = useState<VehicleMaintenanceTask[]>([])
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [taskSaving, setTaskSaving] = useState(false)
+  const [assignTask, setAssignTask] = useState<VehicleMaintenanceTask | null>(null)
+  const [assignUserId, setAssignUserId] = useState('')
+  const [assignDue, setAssignDue] = useState(todayYmd)
+  const [assignNotify, setAssignNotify] = useState(true)
+  const [assignSaving, setAssignSaving] = useState(false)
+
   const [valueFormOpen, setValueFormOpen] = useState(false)
   const [valueDate, setValueDate] = useState(todayYmd)
   const [valueAmount, setValueAmount] = useState('')
@@ -228,6 +242,13 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     () => vehicles.filter((v) => !insuranceByVehicle.get(v.id)).length,
     [vehicles, insuranceByVehicle],
   )
+
+  const taskCounts = useMemo(() => maintenanceTaskCounts(maintenanceTasksAll), [maintenanceTasksAll])
+  const openTaskTotal = useMemo(() => {
+    let n = 0
+    for (const c of taskCounts.values()) n += c.open
+    return n
+  }, [taskCounts])
 
   const summary = useMemo(
     () => fleetSummary(vehicles, holderByVehicle, latestMap, today),
@@ -317,9 +338,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setPossessionsAll([])
       setLatestByVehicle({})
       setInsurancePeriodsAll([])
+      setMaintenanceTasksAll([])
       return
     }
-    const [{ data: possData }, { data: odoData }, { data: oilData }, { data: probData }, { data: insData }] = await Promise.all([
+    const [{ data: possData }, { data: odoData }, { data: oilData }, { data: probData }, { data: insData }, { data: taskData }] = await Promise.all([
       supabase.from('vehicle_possessions').select('*').in('vehicle_id', ids).order('start_date', { ascending: false }),
       supabase
         .from('vehicle_odometer_entries')
@@ -346,8 +368,15 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         .in('vehicle_id', ids)
         .order('start_date', { ascending: false })
         .limit(2000),
+      supabase
+        .from('vehicle_maintenance_tasks')
+        .select('*')
+        .in('vehicle_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(2000),
     ])
     setInsurancePeriodsAll((insData ?? []) as FleetInsurancePeriod[])
+    setMaintenanceTasksAll((taskData ?? []) as VehicleMaintenanceTask[])
     const probCounts: Record<string, number> = {}
     for (const [vid, n] of openProblemCounts((probData ?? []) as FleetProblemReport[])) probCounts[vid] = n
     setOpenProblemsByVehicle(probCounts)
@@ -679,6 +708,144 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
   }
 
+  async function addMaintenanceTask(vehicleId: string, title: string, sourceProblemReportId?: string) {
+    const t = title.trim()
+    if (!t || taskSaving) return
+    setTaskSaving(true)
+    const { error: err } = await supabase.from('vehicle_maintenance_tasks').insert({
+      vehicle_id: vehicleId,
+      title: t,
+      source_problem_report_id: sourceProblemReportId ?? null,
+      created_by: authUser?.id ?? null,
+    })
+    setTaskSaving(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setNewTaskTitle('')
+    showToast('Task added.', 'success')
+    loadFleet()
+  }
+
+  async function completeMaintenanceTask(t: VehicleMaintenanceTask) {
+    const nowIso = new Date().toISOString()
+    const { error: err } = await supabase
+      .from('vehicle_maintenance_tasks')
+      .update({ completed_at: nowIso, completed_by: authUser?.id ?? null })
+      .eq('id', t.id)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    if (t.checklist_instance_id) {
+      // Clear it off the assignee's checklist too (the trigger only syncs the
+      // other direction).
+      await supabase
+        .from('checklist_instances')
+        .update({ completed_at: nowIso, completed_by_user_id: authUser?.id ?? null })
+        .eq('id', t.checklist_instance_id)
+    }
+    setError(null)
+    showToast('Task done.', 'success')
+    loadFleet()
+    // The skippable "log it as a service?" nudge — prefilled, Cancel to skip.
+    setServiceType('repair')
+    setServiceDate(todayYmd())
+    setServiceOdometer('')
+    setServiceCost('')
+    setServiceNote(t.title)
+    setServiceFormOpen(true)
+  }
+
+  async function deleteMaintenanceTask(t: VehicleMaintenanceTask) {
+    if (!window.confirm(`Delete task "${t.title}"?${t.checklist_instance_id ? ' It also comes off the assignee’s checklist.' : ''}`)) return
+    // Best-effort cleanup of the linked checklist rows first.
+    if (t.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', t.checklist_instance_id)
+    if (t.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', t.checklist_item_id)
+    const { error: err } = await supabase.from('vehicle_maintenance_tasks').delete().eq('id', t.id)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    loadFleet()
+  }
+
+  function openAssignTask(t: VehicleMaintenanceTask) {
+    setAssignTask(t)
+    setAssignUserId(t.assigned_user_id ?? '')
+    setAssignDue(t.due_date ?? todayYmd())
+    setAssignNotify(true)
+  }
+
+  async function submitAssignTask() {
+    if (!assignTask || assignSaving || !authUser?.id) return
+    if (!assignUserId) {
+      setError('Select who does it')
+      return
+    }
+    const vehicle = vehicles.find((v) => v.id === assignTask.vehicle_id)
+    setAssignSaving(true)
+    try {
+      // Reassignment replaces the old checklist rows.
+      if (assignTask.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', assignTask.checklist_instance_id)
+      if (assignTask.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', assignTask.checklist_item_id)
+      // The Checklist Forward pattern: one-off item + assignee + instance.
+      const { data: newItem, error: itemErr } = await supabase
+        .from('checklist_items')
+        .insert({
+          title: maintenanceChecklistTitle(vehicle ? vehicleDisplayName(vehicle) : 'Vehicle', assignTask.title),
+          created_by_user_id: authUser.id,
+          repeat_type: 'once',
+          start_date: assignDue,
+          show_until_completed: true,
+          notify_on_complete_user_id: assignNotify ? authUser.id : null,
+          links: ['/people?tab=vehicles'],
+        })
+        .select('id')
+        .single()
+      if (itemErr) throw itemErr
+      const itemId = (newItem as { id: string } | null)?.id
+      if (!itemId) throw new Error('Checklist item was not created')
+      const nextOrders = await getNextDisplayOrders([assignUserId])
+      await supabase.from('checklist_item_assignees').insert({
+        checklist_item_id: itemId,
+        user_id: assignUserId,
+        display_order: nextOrders.get(assignUserId) ?? 1,
+      })
+      const { data: newInst, error: instErr } = await supabase
+        .from('checklist_instances')
+        .insert({ checklist_item_id: itemId, scheduled_date: assignDue })
+        .select('id')
+        .single()
+      if (instErr) throw instErr
+      const instId = (newInst as { id: string } | null)?.id
+      if (instId) {
+        await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: instId, user_id: assignUserId })
+      }
+      const { error: taskErr } = await supabase
+        .from('vehicle_maintenance_tasks')
+        .update({
+          checklist_item_id: itemId,
+          checklist_instance_id: instId ?? null,
+          assigned_user_id: assignUserId,
+          due_date: assignDue,
+        })
+        .eq('id', assignTask.id)
+      if (taskErr) throw taskErr
+      setError(null)
+      showToast(`Assigned to ${userNameById.get(assignUserId) ?? 'assignee'} — it's on their checklist.`, 'success')
+      setAssignTask(null)
+      loadFleet()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAssignSaving(false)
+    }
+  }
+
   function openTakeOff(period: FleetInsurancePeriod, vehicleName: string) {
     setTakeOffPeriod(period)
     setTakeOffVehicleName(vehicleName)
@@ -831,7 +998,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               ? 'vehicle_problem_reports'
               : kind === 'insurance_on' || kind === 'insurance_off'
                 ? 'vehicle_insurance_periods'
-                : 'vehicle_possessions'
+                : kind === 'task_done'
+                  ? 'vehicle_maintenance_tasks'
+                  : 'vehicle_possessions'
     const { error: err } = await supabase.from(table).delete().eq('id', sourceId)
     if (err) {
       setError(err.message)
@@ -851,9 +1020,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       problemReports: panelProblems,
       insurancePeriods: insurancePeriodsAll.filter((p) => p.vehicle_id === selectedVehicleId),
       planNameById,
+      maintenanceTasks: maintenanceTasksAll.filter((t) => t.vehicle_id === selectedVehicleId),
       userNameById,
     })
-  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, possessionsAll, insurancePeriodsAll, planNameById, userNameById])
+  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, possessionsAll, insurancePeriodsAll, planNameById, maintenanceTasksAll, userNameById])
 
   const visibleLedgerRows = useMemo(
     () =>
@@ -864,7 +1034,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               r.kind === ledgerFilter ||
               (ledgerFilter === 'handoff' && r.kind === 'return') ||
               (ledgerFilter === 'problem' && r.kind === 'problem_resolved') ||
-              (ledgerFilter === 'insurance_on' && r.kind === 'insurance_off'),
+              (ledgerFilter === 'insurance_on' && r.kind === 'insurance_off') ||
+              (ledgerFilter === 'service' && r.kind === 'task_done'),
           ),
     [ledgerRows, ledgerFilter],
   )
@@ -977,6 +1148,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             const totalOpen = Object.values(openProblemsByVehicle).reduce((s, n) => s + n, 0)
             return totalOpen > 0 ? <span style={chipStyle('red')}>{totalOpen} open problem{totalOpen === 1 ? '' : 's'}</span> : null
           })()}
+          {openTaskTotal > 0 && <span style={chipStyle('amber')}>{openTaskTotal} maintenance task{openTaskTotal === 1 ? '' : 's'}</span>}
           {weeklyTotal > 0 && <span style={chipStyle('plain')}>${formatCurrency(weeklyTotal)}/wk ins+reg</span>}
         </div>
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
@@ -1178,6 +1350,14 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                           <button
                             type="button"
                             style={{ ...actionBtn, flexShrink: 0 }}
+                            onClick={() => void addMaintenanceTask(p.vehicle_id, p.description, p.id)}
+                            title="Create a maintenance task from this problem"
+                          >
+                            Create task
+                          </button>
+                          <button
+                            type="button"
+                            style={{ ...actionBtn, flexShrink: 0 }}
                             onClick={() => {
                               setResolutionNote('')
                               setResolvingProblem(p)
@@ -1187,6 +1367,103 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {(() => {
+                const open = openMaintenanceTasks(maintenanceTasksAll.filter((t) => t.vehicle_id === selectedVehicle.id))
+                return (
+                  <div style={{ marginBottom: '0.9rem' }}>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+                      Maintenance{open.length > 0 ? ` (${open.length} open)` : ''}
+                    </div>
+                    {open.length > 0 && (
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                        {open.map((t, i) => {
+                          const assigneeName = t.assigned_user_id ? (userNameById.get(t.assigned_user_id) ?? '') : null
+                          return (
+                            <div
+                              key={t.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                padding: '0.55rem 0.9rem',
+                                borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                                fontSize: '0.875rem',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={false}
+                                onChange={() => void completeMaintenanceTask(t)}
+                                aria-label={`Mark done: ${t.title}`}
+                                style={{ width: 16, height: 16, cursor: 'pointer' }}
+                              />
+                              <div style={{ flex: 1, minWidth: 160 }}>
+                                <div>{t.title}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  {t.source_problem_report_id
+                                    ? 'from problem report'
+                                    : `added by ${(t.created_by ? userNameById.get(t.created_by) : null) ?? 'Office'}`}
+                                  {t.created_at ? ` · ${formatYmdShort(t.created_at.slice(0, 10))}` : ''}
+                                </div>
+                              </div>
+                              {assigneeName ? (
+                                <span style={{ ...chipStyle('plain'), background: 'var(--bg-sky-tint)', color: 'var(--text-link)' }}>
+                                  {assigneeName}
+                                  {t.due_date ? ` · due ${formatYmdShort(t.due_date)}` : ''}
+                                </span>
+                              ) : (
+                                <span style={chipStyle('amber')}>Unassigned</span>
+                              )}
+                              <button type="button" style={actionBtn} onClick={() => openAssignTask(t)}>
+                                {assigneeName ? 'Reassign' : 'Assign'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void deleteMaintenanceTask(t)}
+                                title="Delete this task"
+                                style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: open.length > 0 ? '0.5rem' : 0 }}>
+                      <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void addMaintenanceTask(selectedVehicle.id, newTaskTitle)
+                        }}
+                        placeholder="Add a task, e.g. Replace serpentine belt"
+                        aria-label="New maintenance task"
+                        style={{ flex: 1, minWidth: 200, padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void addMaintenanceTask(selectedVehicle.id, newTaskTitle)}
+                        disabled={taskSaving || !newTaskTitle.trim()}
+                        style={{
+                          padding: '0.45rem 0.9rem',
+                          background: taskSaving || !newTaskTitle.trim() ? '#9ca3af' : '#3b82f6',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontWeight: 500,
+                          cursor: taskSaving || !newTaskTitle.trim() ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Add
+                      </button>
                     </div>
                   </div>
                 )
@@ -1237,7 +1514,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       <span
                         style={{
                           ...chipStyle(
-                            r.kind === 'problem' ? 'red' : r.kind === 'problem_resolved' || r.kind === 'service' ? 'green' : 'plain',
+                            r.kind === 'problem' ? 'red' : r.kind === 'problem_resolved' || r.kind === 'service' || r.kind === 'task_done' ? 'green' : 'plain',
                           ),
                           fontSize: '0.6875rem',
                           ...(r.kind === 'handoff' || r.kind === 'return'
@@ -1257,7 +1534,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                   ? 'Resolved'
                                   : r.kind === 'insurance_on' || r.kind === 'insurance_off'
                                     ? 'Insurance'
-                                    : 'Hand-off'}
+                                    : r.kind === 'task_done'
+                                      ? 'Task'
+                                      : 'Hand-off'}
                       </span>
                       <span style={{ flex: 1, minWidth: 0 }}>{r.label}</span>
                       <span style={{ textAlign: 'right', width: 90, flexShrink: 0, color: r.odometer == null && r.amount == null ? 'var(--text-muted)' : undefined }}>
@@ -1327,6 +1606,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     {(openProblemsByVehicle[v.id] ?? 0) > 0 && (
                       <span style={chipStyle('red')}>
                         {openProblemsByVehicle[v.id]} problem{openProblemsByVehicle[v.id] === 1 ? '' : 's'}
+                      </span>
+                    )}
+                    {(taskCounts.get(v.id)?.open ?? 0) > 0 && (
+                      <span style={chipStyle('amber')}>
+                        {taskCounts.get(v.id)!.open} task{taskCounts.get(v.id)!.open === 1 ? '' : 's'}
                       </span>
                     )}
                   </div>
@@ -1908,6 +2192,59 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {assignTask && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>Assign maintenance task</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {assignTask.title}
+              {(() => {
+                const v = vehicles.find((x) => x.id === assignTask.vehicle_id)
+                return v ? ` · ${vehicleDisplayName(v)}` : ''
+              })()}
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Assign to *</label>
+              <select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="">— Select —</option>
+                {[...users].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map((u) => (
+                  <option key={u.id} value={u.id}>{u.name ?? u.email ?? u.id.slice(0, 8)}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Due date</label>
+              <input type="date" value={assignDue} onChange={(e) => setAssignDue(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: '0.6rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={assignNotify} onChange={(e) => setAssignNotify(e.target.checked)} style={{ width: 15, height: 15 }} />
+              Notify me when it's done
+            </label>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Creates a one-time checklist task on their list that stays until completed, linked back to this vehicle.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setAssignTask(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={submitAssignTask}
+                disabled={assignSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: assignSaving ? '#9ca3af' : '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: assignSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {assignSaving ? '…' : assignTask.assigned_user_id ? 'Reassign' : 'Assign'}
+              </button>
+            </div>
           </div>
         </div>
       )}

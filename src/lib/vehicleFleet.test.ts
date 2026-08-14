@@ -3,6 +3,10 @@ import {
   buildVehicleLedger,
   isMotorPoolPossession,
   staleOdometerCallList,
+  maintenanceChecklistTitle,
+  maintenanceTaskCounts,
+  openMaintenanceTasks,
+  type VehicleMaintenanceTask,
   currentInsurancePeriod,
   currentPossession,
   lastEndedInsurancePeriod,
@@ -491,5 +495,43 @@ describe('staleOdometerCallList', () => {
     expect(staleOdometerCallList(vehicles.slice(0, 1), holders, boundary, TODAY)).toEqual([])
     const over = new Map([['v1', reading({ id: 'r1', vehicle_id: 'v1', read_date: '2026-08-06' })]])
     expect(staleOdometerCallList(vehicles.slice(0, 1), holders, over, TODAY).length).toBe(1)
+  })
+})
+
+describe('vehicle maintenance tasks', () => {
+  const task = (over: Partial<VehicleMaintenanceTask>): VehicleMaintenanceTask => ({
+    id: 't1', vehicle_id: 'v1', title: 'Change battery', note: null, source_problem_report_id: null,
+    checklist_item_id: null, checklist_instance_id: null, assigned_user_id: null, due_date: null,
+    created_by: 'u3', created_at: '2026-08-12T10:00:00Z', completed_at: null, completed_by: null,
+    ...over,
+  })
+  it('counts open and unassigned per vehicle, ignoring completed', () => {
+    const counts = maintenanceTaskCounts([
+      task({ id: 'a' }),
+      task({ id: 'b', assigned_user_id: 'u1' }),
+      task({ id: 'c', completed_at: '2026-08-10T12:00:00Z' }),
+      task({ id: 'd', vehicle_id: 'v2' }),
+    ])
+    expect(counts.get('v1')).toEqual({ open: 2, unassigned: 1 })
+    expect(counts.get('v2')).toEqual({ open: 1, unassigned: 1 })
+    expect(openMaintenanceTasks([task({ id: 'a' }), task({ id: 'c', completed_at: '2026-08-10T12:00:00Z' })]).map((t) => t.id)).toEqual(['a'])
+  })
+  it('builds the checklist title with the vehicle link token', () => {
+    expect(maintenanceChecklistTitle('2019 Ford F250', 'Change battery')).toBe('2019 Ford F250 — Change battery {{1:vehicle}}')
+  })
+  it('completed tasks land in the ledger as task_done rows', () => {
+    const rows = buildVehicleLedger({
+      readings: [],
+      possessions: [],
+      valueEntries: [],
+      userNameById: new Map([['u1', 'Abraham']]),
+      maintenanceTasks: [
+        task({ id: 'a', completed_at: '2026-08-10T12:00:00Z', completed_by: 'u1' }),
+        task({ id: 'b', title: 'Wiper blades' }),
+      ],
+    })
+    expect(rows.map((r) => [r.kind, r.dateYmd, r.label])).toEqual([
+      ['task_done', '2026-08-10', 'Task done · Change battery — by Abraham'],
+    ])
   })
 })

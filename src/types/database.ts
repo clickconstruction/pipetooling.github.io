@@ -12002,6 +12002,104 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_maintenance_tasks: {
+        Row: {
+          assigned_user_id: string | null
+          checklist_instance_id: string | null
+          checklist_item_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          note: string | null
+          source_problem_report_id: string | null
+          title: string
+          vehicle_id: string
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          checklist_instance_id?: string | null
+          checklist_item_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          note?: string | null
+          source_problem_report_id?: string | null
+          title: string
+          vehicle_id: string
+        }
+        Update: {
+          assigned_user_id?: string | null
+          checklist_instance_id?: string | null
+          checklist_item_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          note?: string | null
+          source_problem_report_id?: string | null
+          title?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_checklist_instance_id_fkey"
+            columns: ["checklist_instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_source_problem_report_id_fkey"
+            columns: ["source_problem_report_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_problem_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_maintenance_tasks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_odometer_entries: {
         Row: {
           created_at: string | null
