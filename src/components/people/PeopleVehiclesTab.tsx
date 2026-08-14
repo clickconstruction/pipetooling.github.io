@@ -6,17 +6,23 @@ import { useToastContext } from '../../contexts/ToastContext'
 import {
   buildVehicleLedger,
   currentPossession,
+  fleetOilCounts,
   fleetSummary,
   handOffWrites,
+  lastOilChange,
   latestReading,
   odometerAgeLabel,
   odometerFreshness,
+  oilChipLabel,
+  oilStatus,
   parseOdometerInput,
+  SERVICE_TYPE_LABELS,
   vehicleDisplayName,
   vehicleMatchesSearch,
   vinTail,
   type FleetOdometerEntry,
   type FleetPossession,
+  type FleetServiceEvent,
   type FleetValueEntry,
   type VehicleLedgerRowKind,
 } from '../../lib/vehicleFleet'
@@ -36,6 +42,7 @@ type Vehicle = {
   vin: string | null
   weekly_insurance_cost: number
   weekly_registration_cost: number
+  oil_change_interval_miles?: number | null
 }
 
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
@@ -47,6 +54,7 @@ export type PeopleVehiclesTabProps = {
 const LEDGER_FILTERS: Array<{ key: 'all' | VehicleLedgerRowKind; label: string }> = [
   { key: 'all', label: 'All' },
   { key: 'reading', label: 'Odometer' },
+  { key: 'service', label: 'Service' },
   { key: 'handoff', label: 'Holders' },
   { key: 'value', label: 'Value' },
 ]
@@ -111,6 +119,17 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [valueDate, setValueDate] = useState(todayYmd)
   const [valueAmount, setValueAmount] = useState('')
 
+  const [lastOilByVehicle, setLastOilByVehicle] = useState<Record<string, FleetServiceEvent>>({})
+  const [panelServiceEvents, setPanelServiceEvents] = useState<FleetServiceEvent[]>([])
+  const [serviceFormOpen, setServiceFormOpen] = useState(false)
+  const [serviceType, setServiceType] = useState('oil_change')
+  const [serviceDate, setServiceDate] = useState(todayYmd)
+  const [serviceOdometer, setServiceOdometer] = useState('')
+  const [serviceCost, setServiceCost] = useState('')
+  const [serviceNote, setServiceNote] = useState('')
+  const [serviceSaving, setServiceSaving] = useState(false)
+  const [vehicleOilInterval, setVehicleOilInterval] = useState('')
+
   const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name ?? ''])), [users])
   const today = todayYmd()
 
@@ -135,6 +154,17 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const summary = useMemo(
     () => fleetSummary(vehicles, holderByVehicle, latestMap, today),
     [vehicles, holderByVehicle, latestMap, today],
+  )
+
+  const lastOilMap = useMemo(() => {
+    const m = new Map<string, FleetServiceEvent>()
+    for (const [k, v] of Object.entries(lastOilByVehicle)) m.set(k, v)
+    return m
+  }, [lastOilByVehicle])
+
+  const oilCounts = useMemo(
+    () => fleetOilCounts(vehicles, lastOilMap, latestMap),
+    [vehicles, lastOilMap, latestMap],
   )
 
   const weeklyTotal = useMemo(
@@ -171,7 +201,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setLatestByVehicle({})
       return
     }
-    const [{ data: possData }, { data: odoData }] = await Promise.all([
+    const [{ data: possData }, { data: odoData }, { data: oilData }] = await Promise.all([
       supabase.from('vehicle_possessions').select('*').in('vehicle_id', ids).order('start_date', { ascending: false }),
       supabase
         .from('vehicle_odometer_entries')
@@ -179,8 +209,27 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         .in('vehicle_id', ids)
         .order('read_date', { ascending: false })
         .limit(2000),
+      supabase
+        .from('vehicle_service_events')
+        .select('*')
+        .in('vehicle_id', ids)
+        .eq('service_type', 'oil_change')
+        .order('service_date', { ascending: false })
+        .limit(2000),
     ])
     setPossessionsAll((possData ?? []) as FleetPossession[])
+    const lastOil: Record<string, FleetServiceEvent> = {}
+    const oilGrouped = new Map<string, FleetServiceEvent[]>()
+    for (const e of (oilData ?? []) as FleetServiceEvent[]) {
+      const arr = oilGrouped.get(e.vehicle_id) ?? []
+      arr.push(e)
+      oilGrouped.set(e.vehicle_id, arr)
+    }
+    for (const [vid, arr] of oilGrouped) {
+      const best = lastOilChange(arr)
+      if (best) lastOil[vid] = best
+    }
+    setLastOilByVehicle(lastOil)
     const latest: Record<string, FleetOdometerEntry> = {}
     const grouped = new Map<string, FleetOdometerEntry[]>()
     for (const e of (odoData ?? []) as FleetOdometerEntry[]) {
@@ -196,12 +245,14 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   }
 
   async function loadPanel(vehicleId: string) {
-    const [{ data: odoData }, { data: valData }] = await Promise.all([
+    const [{ data: odoData }, { data: valData }, { data: svcData }] = await Promise.all([
       supabase.from('vehicle_odometer_entries').select('*').eq('vehicle_id', vehicleId).order('read_date', { ascending: false }),
       supabase.from('vehicle_replacement_value_entries').select('*').eq('vehicle_id', vehicleId).order('read_date', { ascending: false }),
+      supabase.from('vehicle_service_events').select('*').eq('vehicle_id', vehicleId).order('service_date', { ascending: false }),
     ])
     setPanelReadings((odoData ?? []) as FleetOdometerEntry[])
     setPanelValues((valData ?? []) as FleetValueEntry[])
+    setPanelServiceEvents((svcData ?? []) as FleetServiceEvent[])
   }
 
   useEffect(() => {
@@ -219,6 +270,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     } else {
       setPanelReadings([])
       setPanelValues([])
+      setPanelServiceEvents([])
     }
   }, [selectedVehicleId])
 
@@ -254,6 +306,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setVehicleVin(v?.vin ?? '')
     setVehicleInsCost(v?.weekly_insurance_cost?.toString() ?? '')
     setVehicleRegCost(v?.weekly_registration_cost?.toString() ?? '')
+    setVehicleOilInterval((v?.oil_change_interval_miles ?? 5000).toString())
     setVehicleFormOpen(true)
   }
 
@@ -270,6 +323,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
     const ins = parseFloat(vehicleInsCost) || 0
     const reg = parseFloat(vehicleRegCost) || 0
+    const interval = parseInt(vehicleOilInterval, 10)
     const payload = {
       year,
       make: vehicleMake.trim(),
@@ -277,6 +331,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       vin: vehicleVin.trim() || null,
       weekly_insurance_cost: ins,
       weekly_registration_cost: reg,
+      oil_change_interval_miles: !isNaN(interval) && interval > 0 ? interval : 5000,
     }
     const { error: err } = editingVehicle
       ? await supabase.from('vehicles').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingVehicle.id)
@@ -365,6 +420,49 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
   }
 
+  async function submitService() {
+    if (!selectedVehicleId || serviceSaving) return
+    const odo = serviceOdometer.trim() ? parseOdometerInput(serviceOdometer) : null
+    if (serviceOdometer.trim() && odo == null) {
+      setError('Odometer must be a non-negative number')
+      return
+    }
+    const cost = serviceCost.trim() ? parseFloat(serviceCost) : null
+    if (serviceCost.trim() && (cost == null || isNaN(cost) || cost < 0)) {
+      setError('Cost must be a non-negative number')
+      return
+    }
+    setServiceSaving(true)
+    try {
+      const { error: err } = await supabase.from('vehicle_service_events').insert({
+        vehicle_id: selectedVehicleId,
+        service_type: serviceType,
+        service_date: serviceDate,
+        odometer_value: odo,
+        cost: cost != null && !isNaN(cost) ? cost : null,
+        note: serviceNote.trim() || null,
+        created_by: authUser?.id ?? null,
+      })
+      if (err) {
+        setError(err.message)
+        return
+      }
+      if (odo != null) {
+        // A service visit with miles is also a reading — feed the mileage history.
+        await supabase
+          .from('vehicle_odometer_entries')
+          .insert({ vehicle_id: selectedVehicleId, odometer_value: odo, read_date: serviceDate, created_by: authUser?.id ?? null })
+      }
+      setError(null)
+      setServiceFormOpen(false)
+      showToast('Service logged.', 'success')
+      loadPanel(selectedVehicleId)
+      loadFleet()
+    } finally {
+      setServiceSaving(false)
+    }
+  }
+
   async function submitValueEntry() {
     if (!selectedVehicleId) return
     const val = parseFloat(valueAmount)
@@ -392,7 +490,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         ? 'vehicle_odometer_entries'
         : kind === 'value'
           ? 'vehicle_replacement_value_entries'
-          : 'vehicle_possessions'
+          : kind === 'service'
+            ? 'vehicle_service_events'
+            : 'vehicle_possessions'
     const { error: err } = await supabase.from(table).delete().eq('id', sourceId)
     if (err) {
       setError(err.message)
@@ -408,9 +508,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       readings: panelReadings,
       possessions: possessionsAll.filter((p) => p.vehicle_id === selectedVehicleId),
       valueEntries: panelValues,
+      serviceEvents: panelServiceEvents,
       userNameById,
     })
-  }, [selectedVehicleId, panelReadings, panelValues, possessionsAll, userNameById])
+  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, possessionsAll, userNameById])
 
   const visibleLedgerRows = useMemo(
     () =>
@@ -420,15 +521,20 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     [ledgerRows, ledgerFilter],
   )
 
-  const chipStyle = (tone: 'plain' | 'amber' | 'red'): React.CSSProperties => ({
+  const chipStyle = (tone: 'plain' | 'amber' | 'red' | 'green'): React.CSSProperties => ({
     padding: '0.2rem 0.65rem',
     borderRadius: 999,
     fontSize: '0.8125rem',
     fontWeight: 500,
     whiteSpace: 'nowrap',
-    background: tone === 'amber' ? 'var(--bg-amber-100)' : tone === 'red' ? 'var(--bg-red-100)' : 'var(--bg-subtle)',
-    color: tone === 'amber' ? 'var(--text-amber-800)' : tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)',
+    background:
+      tone === 'amber' ? 'var(--bg-amber-100)' : tone === 'red' ? 'var(--bg-red-100)' : tone === 'green' ? 'var(--bg-green-100)' : 'var(--bg-subtle)',
+    color:
+      tone === 'amber' ? 'var(--text-amber-800)' : tone === 'red' ? 'var(--text-red-700)' : tone === 'green' ? 'var(--text-green-800)' : 'var(--text-muted)',
   })
+
+  const oilChipToneFor = (state: string): 'plain' | 'amber' | 'red' | 'green' =>
+    state === 'ok' ? 'green' : state === 'due_soon' ? 'amber' : state === 'overdue' ? 'red' : 'plain'
 
   const actionBtn: React.CSSProperties = {
     padding: '0.3rem 0.7rem',
@@ -509,6 +615,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
           <span style={chipStyle('plain')}>{summary.total} vehicle{summary.total === 1 ? '' : 's'}</span>
           {summary.unassigned > 0 && <span style={chipStyle('amber')}>{summary.unassigned} unassigned</span>}
           {summary.staleReadings > 0 && <span style={chipStyle('amber')}>{summary.staleReadings} need a reading</span>}
+          {oilCounts.dueSoon > 0 && <span style={chipStyle('amber')}>{oilCounts.dueSoon} oil due soon</span>}
+          {oilCounts.overdue > 0 && <span style={chipStyle('red')}>{oilCounts.overdue} oil overdue</span>}
           {weeklyTotal > 0 && <span style={chipStyle('plain')}>${formatCurrency(weeklyTotal)}/wk ins+reg</span>}
         </div>
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
@@ -541,10 +649,29 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       <span style={chipStyle('amber')}>Unassigned</span>
                     )
                   })()}
+                  {(() => {
+                    const s = oilStatus(lastOilMap.get(selectedVehicle.id) ?? null, selectedVehicle.oil_change_interval_miles, latestMap.get(selectedVehicle.id) ?? null)
+                    if (s.state === 'unknown') return null
+                    return <span style={chipStyle(oilChipToneFor(s.state))}>{oilChipLabel(s)}</span>
+                  })()}
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <button type="button" style={actionBtn} onClick={() => openHandOff(selectedVehicle)}>
                     {holderByVehicle.get(selectedVehicle.id) ? 'Hand off' : 'Assign'}
+                  </button>
+                  <button
+                    type="button"
+                    style={actionBtn}
+                    onClick={() => {
+                      setServiceType('oil_change')
+                      setServiceDate(todayYmd())
+                      setServiceOdometer('')
+                      setServiceCost('')
+                      setServiceNote('')
+                      setServiceFormOpen(true)
+                    }}
+                  >
+                    Log service
                   </button>
                   <button type="button" style={actionBtn} onClick={() => { setValueFormOpen(true); setValueAmount(''); setValueDate(todayYmd()) }}>
                     Update value
@@ -725,6 +852,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       {latest ? `${latest.odometer_value.toLocaleString()} mi · ${odometerAgeLabel(latest, today)}` : 'No reading yet'}
                     </span>
                     {freshness !== 'fresh' && <span style={chipStyle('amber')}>{freshness === 'none' ? 'needs first reading' : 'needs a reading'}</span>}
+                    {(() => {
+                      const s = oilStatus(lastOilMap.get(v.id) ?? null, v.oil_change_interval_miles, latest)
+                      if (s.state === 'unknown') return null
+                      return <span style={chipStyle(oilChipToneFor(s.state))}>{oilChipLabel(s)}</span>
+                    })()}
                   </div>
                 </div>
               )
@@ -765,6 +897,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Weekly registration cost</label>
               <input type="number" min={0} step={0.01} value={vehicleRegCost} onChange={(e) => setVehicleRegCost(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Oil change interval (miles)</label>
+              <input type="number" min={500} step={500} value={vehicleOilInterval} onChange={(e) => setVehicleOilInterval(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={upsertVehicle} style={{ padding: '0.5rem 1rem' }}>Save</button>
@@ -833,6 +969,66 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 }}
               >
                 {handOffSaving ? '…' : holderByVehicle.get(handOffVehicle.id) ? 'Hand off' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {serviceFormOpen && selectedVehicleId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
+            <h3 style={{ marginTop: 0 }}>Log service</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Service type</label>
+              <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                {Object.entries(SERVICE_TYPE_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{key === 'other' ? 'Other' : label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
+              <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Odometer at service</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={serviceOdometer}
+                onChange={(e) => setServiceOdometer(e.target.value)}
+                placeholder={serviceType === 'oil_change' ? 'Needed for oil-due tracking' : 'Optional'}
+                style={{ width: '100%', padding: '0.5rem' }}
+              />
+            </div>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Also saves as an odometer reading.
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Cost ($)</label>
+              <input type="number" min={0} step={0.01} value={serviceCost} onChange={(e) => setServiceCost(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Note</label>
+              <input type="text" value={serviceNote} onChange={(e) => setServiceNote(e.target.value)} placeholder="e.g. Take 5, Bandera Rd" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setServiceFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={submitService}
+                disabled={serviceSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: serviceSaving ? '#9ca3af' : '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: serviceSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {serviceSaving ? '…' : 'Log service'}
               </button>
             </div>
           </div>

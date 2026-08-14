@@ -3,17 +3,22 @@ import {
   buildVehicleLedger,
   currentPossession,
   daysBetweenYmd,
+  fleetOilCounts,
   fleetSummary,
   handOffWrites,
+  lastOilChange,
   latestReading,
   odometerAgeLabel,
   odometerFreshness,
+  oilChipLabel,
+  oilStatus,
   parseOdometerInput,
   vehicleDisplayName,
   vehicleMatchesSearch,
   vinTail,
   type FleetOdometerEntry,
   type FleetPossession,
+  type FleetServiceEvent,
   type FleetValueEntry,
 } from './vehicleFleet'
 
@@ -167,6 +172,72 @@ describe('buildVehicleLedger', () => {
       userNameById: users,
     })
     expect(rows.filter((r) => r.kind === 'return')).toEqual([])
+  })
+})
+
+function svc(over: Partial<FleetServiceEvent>): FleetServiceEvent {
+  return { id: 's1', vehicle_id: 'v1', service_type: 'oil_change', service_date: '2026-05-02', odometer_value: 115000, cost: 89, note: null, created_at: null, ...over }
+}
+
+describe('oil status (v2.1645)', () => {
+  it('finds the newest odometer-bearing oil change', () => {
+    const older = svc({ id: 'a', service_date: '2025-12-19', odometer_value: 104850 })
+    const tires = svc({ id: 'b', service_type: 'tires', service_date: '2026-06-01' })
+    const noOdo = svc({ id: 'c', service_date: '2026-07-01', odometer_value: null })
+    const newest = svc({ id: 'd' })
+    expect(lastOilChange([older, tires, noOdo, newest])?.id).toBe('d')
+    expect(lastOilChange([tires, noOdo])).toBeNull()
+  })
+  it('grades ok / due soon / overdue / unknown', () => {
+    const oil = svc({})
+    const at = (miles: number): FleetOdometerEntry => reading({ read_date: '2026-07-04', odometer_value: miles })
+    expect(oilStatus(oil, 5000, at(118000))).toEqual({ state: 'ok', nextDueAt: 120000, milesRemaining: 2000 })
+    expect(oilStatus(oil, 5000, at(119200))).toEqual({ state: 'due_soon', nextDueAt: 120000, milesRemaining: 800 })
+    expect(oilStatus(oil, 5000, at(121480))).toEqual({ state: 'overdue', nextDueAt: 120000, milesOver: 1480 })
+    expect(oilStatus(null, 5000, at(118000))).toEqual({ state: 'unknown' })
+    expect(oilStatus(oil, 5000, null)).toEqual({ state: 'unknown' })
+    expect(oilStatus(oil, null, at(119500))).toEqual({ state: 'due_soon', nextDueAt: 120000, milesRemaining: 500 })
+  })
+  it('labels each state', () => {
+    expect(oilChipLabel({ state: 'unknown' })).toBe('Oil unknown')
+    expect(oilChipLabel({ state: 'ok', nextDueAt: 120000, milesRemaining: 2000 })).toBe('Oil OK · next 120,000')
+    expect(oilChipLabel({ state: 'due_soon', nextDueAt: 120000, milesRemaining: 800 })).toBe('Oil due in 800 mi')
+    expect(oilChipLabel({ state: 'overdue', nextDueAt: 120000, milesOver: 1480 })).toBe('Oil overdue 1,480 mi')
+  })
+  it('counts due-soon and overdue across the fleet', () => {
+    const vehicles = [
+      { id: 'v1', year: null, make: 'A', model: 'A', vin: null, oil_change_interval_miles: 5000 },
+      { id: 'v2', year: null, make: 'B', model: 'B', vin: null, oil_change_interval_miles: 5000 },
+      { id: 'v3', year: null, make: 'C', model: 'C', vin: null, oil_change_interval_miles: 5000 },
+    ]
+    const lastOil = new Map([
+      ['v1', svc({})],
+      ['v2', svc({ id: 's2', vehicle_id: 'v2' })],
+    ])
+    const latest = new Map([
+      ['v1', reading({ odometer_value: 121480 })],
+      ['v2', reading({ id: 'r2', vehicle_id: 'v2', odometer_value: 119500 })],
+    ])
+    expect(fleetOilCounts(vehicles, lastOil, latest)).toEqual({ dueSoon: 1, overdue: 1 })
+  })
+})
+
+describe('buildVehicleLedger service rows (v2.1645)', () => {
+  it('labels service events with note and cost, ordering above same-day readings', () => {
+    const rows = buildVehicleLedger({
+      readings: [reading({ id: 'r1', read_date: '2026-05-02', odometer_value: 115000 })],
+      possessions: [],
+      valueEntries: [],
+      serviceEvents: [
+        svc({ note: 'Take 5, Bandera Rd' }),
+        svc({ id: 's2', service_type: 'tires', service_date: '2026-03-14', odometer_value: 109300, cost: 612, note: '2 front + alignment' }),
+      ],
+      userNameById: new Map(),
+    })
+    expect(rows.map((r) => r.key)).toEqual(['service-s1', 'reading-r1', 'service-s2'])
+    expect(rows[0]?.label).toBe('Oil change · Take 5, Bandera Rd · $89.00')
+    expect(rows[0]?.odometer).toBe(115000)
+    expect(rows[2]?.label).toBe('Tires · 2 front + alignment · $612.00')
   })
 })
 

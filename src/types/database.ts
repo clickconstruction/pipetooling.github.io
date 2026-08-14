@@ -12001,12 +12001,64 @@ export type Database = {
           },
         ]
       }
+      vehicle_service_events: {
+        Row: {
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          odometer_value: number | null
+          service_date: string
+          service_type: string
+          vehicle_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          odometer_value?: number | null
+          service_date: string
+          service_type: string
+          vehicle_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          odometer_value?: number | null
+          service_date?: string
+          service_type?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_service_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_service_events_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           created_at: string | null
           id: string
           make: string
           model: string
+          oil_change_interval_miles: number
           updated_at: string | null
           vin: string | null
           weekly_insurance_cost: number
@@ -12018,6 +12070,7 @@ export type Database = {
           id?: string
           make?: string
           model?: string
+          oil_change_interval_miles?: number
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
@@ -12029,6 +12082,7 @@ export type Database = {
           id?: string
           make?: string
           model?: string
+          oil_change_interval_miles?: number
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number

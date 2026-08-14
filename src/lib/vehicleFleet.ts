@@ -1,9 +1,12 @@
+import { formatCurrency } from './format'
+
 /**
  * Vehicles fleet kernels (v2.1644, People → Vehicles redesign): pure math for
  * the fleet board cards (current holder, odometer freshness, summary chips),
- * the unified per-vehicle ledger (readings + hand-offs + replacement values
- * merged newest-first), and the one-step hand-off write plan. The component
- * stays thin; everything testable lives here.
+ * the unified per-vehicle ledger (readings + hand-offs + replacement values +
+ * service events merged newest-first), the oil-change due math (v2.1645), and
+ * the one-step hand-off write plan. The component stays thin; everything
+ * testable lives here.
  */
 
 export type FleetVehicle = {
@@ -157,7 +160,98 @@ export function parseOdometerInput(raw: string): number | null {
   return n
 }
 
-export type VehicleLedgerRowKind = 'reading' | 'handoff' | 'return' | 'value'
+export type FleetServiceEvent = {
+  id: string
+  vehicle_id: string
+  service_type: string
+  service_date: string
+  odometer_value: number | null
+  cost: number | null
+  note: string | null
+  created_at: string | null
+  created_by?: string | null
+}
+
+export const SERVICE_TYPE_LABELS: Record<string, string> = {
+  oil_change: 'Oil change',
+  tires: 'Tires',
+  repair: 'Repair',
+  inspection: 'Inspection',
+  registration: 'Registration',
+  other: 'Service',
+}
+
+/** The newest oil_change event that recorded an odometer (due math needs the miles). */
+export function lastOilChange(events: FleetServiceEvent[]): FleetServiceEvent | null {
+  let best: FleetServiceEvent | null = null
+  for (const e of events) {
+    if (e.service_type !== 'oil_change' || e.odometer_value == null) continue
+    if (best == null || e.service_date > best.service_date || (e.service_date === best.service_date && (e.created_at ?? '') > (best.created_at ?? ''))) {
+      best = e
+    }
+  }
+  return best
+}
+
+export type OilStatus =
+  | { state: 'unknown' }
+  | { state: 'ok'; nextDueAt: number; milesRemaining: number }
+  | { state: 'due_soon'; nextDueAt: number; milesRemaining: number }
+  | { state: 'overdue'; nextDueAt: number; milesOver: number }
+
+export const OIL_DUE_SOON_MILES = 1000
+
+/**
+ * Oil due math: last oil change odometer + interval vs the latest reading.
+ * Unknown until BOTH an oil change with miles and a reading exist. Due soon
+ * inside the last 1,000 miles; overdue past the interval.
+ */
+export function oilStatus(
+  lastOil: FleetServiceEvent | null,
+  interval: number | null | undefined,
+  latest: FleetOdometerEntry | null,
+): OilStatus {
+  const iv = interval ?? 5000
+  if (!lastOil || lastOil.odometer_value == null || !latest || iv <= 0) return { state: 'unknown' }
+  const nextDueAt = lastOil.odometer_value + iv
+  const remaining = nextDueAt - latest.odometer_value
+  if (remaining < 0) return { state: 'overdue', nextDueAt, milesOver: -remaining }
+  if (remaining <= OIL_DUE_SOON_MILES) return { state: 'due_soon', nextDueAt, milesRemaining: remaining }
+  return { state: 'ok', nextDueAt, milesRemaining: remaining }
+}
+
+/** Card chip text for an OilStatus. */
+export function oilChipLabel(status: OilStatus): string {
+  switch (status.state) {
+    case 'unknown':
+      return 'Oil unknown'
+    case 'ok':
+      return `Oil OK · next ${status.nextDueAt.toLocaleString()}`
+    case 'due_soon':
+      return `Oil due in ${status.milesRemaining.toLocaleString()} mi`
+    case 'overdue':
+      return `Oil overdue ${status.milesOver.toLocaleString()} mi`
+  }
+}
+
+export type FleetOilCounts = { dueSoon: number; overdue: number }
+
+export function fleetOilCounts(
+  vehicles: Array<FleetVehicle & { oil_change_interval_miles?: number | null }>,
+  lastOilByVehicle: ReadonlyMap<string, FleetServiceEvent>,
+  latestByVehicle: ReadonlyMap<string, FleetOdometerEntry>,
+): FleetOilCounts {
+  let dueSoon = 0
+  let overdue = 0
+  for (const v of vehicles) {
+    const s = oilStatus(lastOilByVehicle.get(v.id) ?? null, v.oil_change_interval_miles, latestByVehicle.get(v.id) ?? null)
+    if (s.state === 'due_soon') dueSoon++
+    if (s.state === 'overdue') overdue++
+  }
+  return { dueSoon, overdue }
+}
+
+export type VehicleLedgerRowKind = 'reading' | 'handoff' | 'return' | 'value' | 'service'
 
 export type VehicleLedgerRow = {
   key: string
@@ -182,8 +276,9 @@ export function buildVehicleLedger(args: {
   possessions: FleetPossession[]
   valueEntries: FleetValueEntry[]
   userNameById: ReadonlyMap<string, string>
+  serviceEvents?: FleetServiceEvent[]
 }): VehicleLedgerRow[] {
-  const { readings, possessions, valueEntries, userNameById } = args
+  const { readings, possessions, valueEntries, userNameById, serviceEvents = [] } = args
   const name = (id: string | null | undefined): string | null => {
     if (!id) return null
     return userNameById.get(id) ?? null
@@ -244,7 +339,21 @@ export function buildVehicleLedger(args: {
       sourceId: e.id,
     })
   }
-  const kindOrder: Record<VehicleLedgerRowKind, number> = { return: 0, handoff: 1, reading: 2, value: 3 }
+  for (const e of serviceEvents) {
+    const typeLabel = SERVICE_TYPE_LABELS[e.service_type] ?? 'Service'
+    const note = (e.note ?? '').trim()
+    const costPart = e.cost != null && e.cost > 0 ? `$${formatCurrency(e.cost)}` : null
+    rows.push({
+      key: `service-${e.id}`,
+      kind: 'service',
+      dateYmd: e.service_date,
+      label: [typeLabel, note || null, costPart].filter(Boolean).join(' · '),
+      odometer: e.odometer_value,
+      amount: null,
+      sourceId: e.id,
+    })
+  }
+  const kindOrder: Record<VehicleLedgerRowKind, number> = { return: 0, handoff: 1, service: 2, reading: 3, value: 4 }
   rows.sort((a, b) => {
     if (a.dateYmd !== b.dateYmd) return b.dateYmd.localeCompare(a.dateYmd)
     return kindOrder[a.kind] - kindOrder[b.kind]

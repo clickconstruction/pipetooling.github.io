@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1645)
+last_updated: 2026-08-14 (v2.1646)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1646)
+
+### Vehicles phase 2: service log + oil-change tracking (2026-08-14)
+Phase 2 of the owner-approved Vehicles plan (v2.1644 shipped the fleet board). New table [`vehicle_service_events`](../supabase/migrations/20260814180643_vehicle_service_events.sql) (oil_change / tires / repair / inspection / registration / other; date, odometer, cost, note, created_by; office RLS pool matching the other vehicle tables + both read-only blocks) and `vehicles.oil_change_interval_miles` (default 5000, editable in the vehicle form). **Log service** on the vehicle panel records the visit and — when miles are entered — also saves an odometer reading, so every service feeds the mileage history. **Oil chips** are pure kernel math ([`oilStatus`](../src/lib/vehicleFleet.ts): last oil change odometer + interval vs latest reading): green `Oil OK · next 120,000`, amber `Oil due in 800 mi` (inside 1,000 mi), red `Oil overdue 1,480 mi`, hidden when unknown — on cards, the panel header, and two new fleet summary chips (due-soon / overdue counts). Service rows join the ledger (label `Oil change · Take 5, Bandera Rd · $89.00`, miles right-aligned, deletable) with a new Service filter pill. Kernel +5 tests (21 total), render smoke extended. Help guide `manage-company-vehicles` updated. **Deploy: `supabase db push` with the merge** — additive table + column, old clients unaffected.
 
 ## Latest Updates (v2.1645)
 
