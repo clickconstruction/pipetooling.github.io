@@ -24,6 +24,8 @@ Owner info is **remembered for the job** — enter it once and every resend (or 
 
 Don't know the owner? Hit **Send to Dispatch — find the owner**: the errand lands in the Dispatch inbox with a one-click **Open Share with supply house** button that brings them right back to this screen. Once they fill the owner and send, the dispatch request closes itself. The modal shows {{chip:blue|Dispatch is on it}} while the request is open, so nobody files it twice.
 
+**Optional but worth doing**: tap the supply house chips under **Send to** *before* hitting the dispatch button — your pick rides along with the errand. The inbox request names the supply house ("…send the job account to Ferguson — Central desk"), and when Dispatch opens this screen to finish, those chips are already selected. Skip it and the flow works exactly as before — Dispatch just chooses the supply house themselves.
+
 ## Sending
 
 Pick who gets it from your **supply house contacts** — tap the chips to select one or more. {{button:outline|+ Add contact}} takes a label and an email ("Ferguson — Central desk") and remembers it for next time; the list is shared with the whole office.

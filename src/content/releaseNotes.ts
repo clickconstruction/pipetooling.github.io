@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1615',
+    date: '2026-08-13',
+    title: 'Tell Dispatch which supply house you want',
+    kind: 'feature',
+    highlights: [
+      'When you send the find-the-owner errand to Dispatch, any supply house chips you picked ride along — the inbox request names them.',
+      'When Dispatch opens the share screen to finish, your supply houses are already selected.',
+      'Totally optional — skip it and the flow works like before.',
+    ],
+  },
+  {
     version: 'v2.1614',
     date: '2026-08-13',
     title: 'Match bank deposits to Stripe bills paid by check',

@@ -2997,6 +2997,7 @@ export type Database = {
           location_lat: number | null
           location_lng: number | null
           pending_action: string | null
+          pending_payload: Json | null
           reference_summary: string | null
           status: string
           title: string
@@ -3014,6 +3015,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           pending_action?: string | null
+          pending_payload?: Json | null
           reference_summary?: string | null
           status?: string
           title: string
@@ -3031,6 +3033,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           pending_action?: string | null
+          pending_payload?: Json | null
           reference_summary?: string | null
           status?: string
           title?: string
