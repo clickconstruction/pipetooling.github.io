@@ -1,6 +1,6 @@
 /** Sub Sheet Ledger ("Sub Labor") domain types, shared across Jobs tabs and the extracted JobsSubLaborTab. */
 
-export type LaborJobPayment = { id: string; amount: number; memo: string | null; created_at: string }
+export type LaborJobPayment = { id: string; amount: number; memo: string | null; created_at: string; payment_date?: string | null }
 
 export type LaborJob = {
   id: string

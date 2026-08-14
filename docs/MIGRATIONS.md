@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-13
+last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 14, 2026
+
+**`20260814060000_labor_payment_date.sql`** _(apply via `supabase db push` **BEFORE the v2.1633 client deploys** — the client selects the new column; additive, invisible to the old client)_
+- **Purpose**: user-set "Date sent" on Sub Labor payments/backcharges (v2.1633) — nullable `people_labor_job_payments.payment_date date`; display falls back to `created_at` on legacy rows.
+- **Category**: Sub Labor / additive column
 
 #### August 13, 2026
 
