@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1658)
+last_updated: 2026-08-14 (v2.1659)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1659)
+
+### Pipeline activity stats stop timing out — precomputed last-note cache (2026-08-14)
+Chronic-statement-timeout fix found while investigating the 2026-08-14 Postgres error spike: `jobs_ledger_thread_note_stats(p_job_ids)` was the **#1 chronic timeout offender** (26% of all statement timeouts Aug 10–14 in the Postgres logs, and the only query that timed out on quiet no-deploy days — 28 of ~40 on Aug 10). Root cause: the RPC ranked every thread note of up to 200 jobs per call (window function + stamp regex) with the per-NOTE `jobs_ledger_thread_notes_select` RLS policy chasing `jobs_ledger` → adoptions/shares/team-members for each row. Migration [`20260814214439_thread_note_stats_cache.sql`](../supabase/migrations/20260814214439_thread_note_stats_cache.sql) adds **`jobs_ledger_thread_note_stats_cache`** — one trigger-maintained row per job (note count + newest substantive note, clock stamps deprioritized by the same `— (Arrived at job|Leaving job)$` rule) written only by SECURITY DEFINER `recompute_jobs_ledger_thread_note_stats(uuid)` via an AFTER trigger on `jobs_ledger_thread_notes`, backfilled in the migration. The RPC keeps its exact signature/result shape but now reads the cache (one indexed row + one job-level RLS check per job, policy mirrors note visibility) and joins `users` for the author name at read time; the reports side is unchanged. **No client change** — [`useJobThreadNotes`](../src/hooks/useJobThreadNotes.ts) callers are untouched. DB-only; deploy order safe either way (old RPC keeps working until push).
 
 ## Latest Updates (v2.1658)
 
