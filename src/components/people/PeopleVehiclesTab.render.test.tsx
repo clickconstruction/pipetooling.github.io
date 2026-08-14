@@ -36,6 +36,13 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   vehicle_problem_reports: [
     { id: 'q1', vehicle_id: 'v1', description: 'Brakes grinding front left', severity: 'needs_service', report_date: '2026-08-09', reported_by: 'u2', resolved_at: null, resolved_by: null, resolution_note: null, created_at: null },
   ],
+  vehicle_insurance_plans: [
+    { id: 'plan1', name: 'Progressive Commercial', carrier: 'Progressive', policy_number: '83-JX2-99', renewal_date: null, note: null },
+  ],
+  vehicle_insurance_periods: [
+    { id: 'i1', vehicle_id: 'v1', plan_id: 'plan1', start_date: '2026-06-12', end_date: null, created_at: null },
+    { id: 'i0', vehicle_id: 'v2', plan_id: 'plan1', start_date: '2026-01-09', end_date: '2026-05-30', created_at: null },
+  ],
 }
 
 vi.mock('../../lib/supabase', () => {
@@ -76,6 +83,18 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByText('1 need a reading')).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Hand off' }).length).toBe(1)
     expect(screen.getAllByRole('button', { name: 'Assign' }).length).toBe(1)
+
+    // Insurance (fleet phase 5): the covered card names its plan with the on
+    // date, the lapsed one shows the amber line with the off date, the summary
+    // row counts it, and the header offers the plans manager.
+    expect(screen.getByText('Progressive Commercial')).toBeTruthy()
+    expect(screen.getByText(/on plan since/)).toBeTruthy()
+    expect(screen.getByText('Not on insurance')).toBeTruthy()
+    expect(screen.getByText(/off since/)).toBeTruthy()
+    expect(screen.getByText('1 not on insurance')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Insurance plans' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add to plan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change' })).toBeTruthy()
 
     // Click through to the panel: quick odometer entry + ledger rows appear.
     fireEvent.click(screen.getByText('2019 Ram ProMaster'))

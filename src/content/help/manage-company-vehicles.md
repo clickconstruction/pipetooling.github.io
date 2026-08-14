@@ -2,10 +2,10 @@
 title: manage company vehicles and track their odometers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN
+keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage
 ---
 
-**People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, and whether that reading is getting old. The chips above the board total it up — how many vehicles, how many are {{chip:yellow|unassigned}}, how many {{chip:yellow|need a reading}}, and the fleet's weekly insurance + registration cost.
+**People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, whether that reading is getting old, and which insurance plan covers it. The chips above the board total it up — how many vehicles, how many are {{chip:yellow|unassigned}}, how many {{chip:yellow|need a reading}}, how many are {{chip:yellow|not on insurance}}, and the fleet's weekly insurance + registration cost.
 
 ## Handing a vehicle to someone
 
@@ -52,6 +52,22 @@ The math is simple: last oil change's odometer plus the vehicle's interval (5,00
 - {{chip:red|Urgent}} — deal with it now
 
 Open problems show as a red chip on the vehicle's card and in an **Open problems** list on the vehicle itself, each with a {{button:outline|Resolve}} button — add a note about how it was fixed and both the report and the resolution stay in the ledger. The chips above the board total the open problems across the fleet, so nothing reported gets forgotten.
+
+## Insurance plans
+
+The company may carry several insurance policies, and vehicles come on and off them as they're driven or parked. {{button:outline|Insurance plans}} above the board manages the plans themselves — name, carrier, policy number, and renewal date — and shows each plan's vehicles with the date they came on.
+
+Each vehicle sits on **at most one plan at a time**, shown on the bottom line of its card: the plan name with the on date, or an amber **Not on insurance** with the date it came off. From there:
+
+- {{button:outline|Add to plan}} — pick the plan and the start date the coverage begins.
+- {{button:outline|Change}} — move to a different plan; the old coverage ends on the new start date, nothing overlaps.
+- **Take off** — from the plans manager or the change dialog; set the end date and the vehicle goes off coverage.
+
+:::example Parking a truck for the winter
+The F650 isn't being driven, so open {{button:outline|Change}} → **Take off insurance…**, set the end date, and the card flips to {{chip:yellow|Not on insurance}}. When it goes back to work in spring, {{button:outline|Add to plan}} starts a fresh coverage period — the ledger keeps both.
+:::
+
+Every on/off lands in the vehicle's ledger as an {{chip:gray|Insurance}} row ("Added to Progressive Commercial", "Taken off …"), so you can always answer "was this truck covered in March?"
 
 ## Vehicle details
 

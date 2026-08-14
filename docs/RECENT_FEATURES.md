@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1659)
+last_updated: 2026-08-14 (v2.1660)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1660)
+
+### Vehicles: insurance plans with dated on/off coverage (2026-08-14)
+Owner-designed (mockup approved): the company may carry several insurance policies; each vehicle sits on **at most one plan at a time** with a dated coverage history as vehicles come on and off (parked trucks, driver changes). Migration [`20260814214226_vehicle_insurance_plans.sql`](../supabase/migrations/20260814214226_vehicle_insurance_plans.sql): `vehicle_insurance_plans` (name/carrier/policy_number/renewal_date/note) + `vehicle_insurance_periods` (vehicle→plan, `start_date`/`end_date` NULL = current — the `vehicle_possessions` pattern), office-pool RLS + both read-only blocks. Kernels in [`vehicleFleet.ts`](../src/lib/vehicleFleet.ts): `currentDatedPeriod` generalizes `currentPossession` (unchanged API) to also power `currentInsurancePeriod`; `lastEndedInsurancePeriod` supplies "off since"; `buildVehicleLedger` gains `insurance_on`/`insurance_off` rows ("Added to / Taken off <plan>", ordered with hand-offs above readings; off-rows undeletable like returns) + an **Insurance** ledger filter pill (+4 kernel tests). [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx): every card gains a bottom insurance line (plan name + "on plan since", or amber **Not on insurance** + "off since") with **Add to plan / Change**; the open-vehicle header gets the matching chip + Insurance action; the board summary counts **N not on insurance**; a header **Insurance plans** button opens the manager modal (plan CRUD + per-plan current vehicles with **Take off**). Add/Change closes any open coverage on the new start date (no overlaps); Take off (also reachable from the change dialog) sets the end date. Render test extended (covered + lapsed cards, summary chip, manager button). Help guide `manage-company-vehicles` + `MIGRATIONS.md` updated. **Deploy**: `supabase db push` with this merge, then `npm run gen-types:linked` (types committed in this PR).
 
 ## Latest Updates (v2.1659)
 

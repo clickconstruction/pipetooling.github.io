@@ -11885,6 +11885,91 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_insurance_periods: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          plan_id: string
+          start_date: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          plan_id: string
+          start_date: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          plan_id?: string
+          start_date?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_insurance_periods_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_insurance_periods_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_insurance_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_insurance_periods_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_insurance_plans: {
+        Row: {
+          carrier: string | null
+          created_at: string
+          id: string
+          name: string
+          note: string | null
+          policy_number: string | null
+          renewal_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          carrier?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          note?: string | null
+          policy_number?: string | null
+          renewal_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          note?: string | null
+          policy_number?: string | null
+          renewal_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vehicle_odometer_entries: {
         Row: {
           created_at: string | null
@@ -13243,10 +13328,10 @@ export type Database = {
       get_user_display_names: {
         Args: { p_user_ids: string[] }
         Returns: {
+          archived: boolean
           id: string
           name: string
           role: string
-          archived: boolean
         }[]
       }
       get_weekly_money_movement_payload: {
@@ -13258,6 +13343,7 @@ export type Database = {
         Returns: Json
       }
       has_payroll_access: { Args: never; Returns: boolean }
+      holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       humanize_job_status: { Args: { p: string }; Returns: string }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }

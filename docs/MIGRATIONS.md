@@ -109,6 +109,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: kill the chronic `jobs_ledger_thread_note_stats` statement timeouts (v2.1659) — new trigger-maintained `jobs_ledger_thread_note_stats_cache` (one row per job: note count + newest substantive note, stamps deprioritized) written only by SECURITY DEFINER `recompute_jobs_ledger_thread_note_stats(uuid)`; the RPC keeps its signature but reads the cache under a job-level SELECT policy (mirrors note visibility) instead of window-ranking every note of 200 jobs under per-note RLS. Ends with both read-only block reapplications (new table).
 - **Category**: Jobs / Performance / RLS
 
+**`20260814214226_vehicle_insurance_plans.sql`** _(apply via `supabase db push` with the v2.1660 merge — additive tables, old clients unaffected)_
+- **Purpose**: vehicle insurance plans (v2.1660, Vehicles fleet phase 5) — `vehicle_insurance_plans` (name/carrier/policy_number/renewal_date/note; the company may carry several) + `vehicle_insurance_periods` (vehicle → plan with `start_date`/`end_date`, NULL end = currently covered; mirrors `vehicle_possessions` so a vehicle sits on at most one plan at a time and the on/off history is kept). Office-pool RLS + both read-only blocks.
+- **Category**: Vehicles / new tables
+
 **`20260814191048_get_user_display_names.sql`** _(apply via `supabase db push` with the v2.1652 merge — additive RPC; clients fail soft until applied)_
 - **Purpose**: id → display-name resolver (v2.1652) — SECURITY DEFINER `get_user_display_names(uuid[])` returns id/name/role/archived (no contact info) to any authenticated caller, so surfaces labeling historical records (Edit Job team chips, vehicle possession history) can name ARCHIVED users the `users` SELECT policy hides from non-dev viewers.
 - **Category**: Users / RPC
