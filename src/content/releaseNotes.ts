@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1635',
+    date: '2026-08-14',
+    title: 'Billing rows get the Stages EDIT tab',
+    kind: 'fix',
+    highlights: [
+      'The action icons on Billing rows are replaced by the thin vertical EDIT tab from Stages edit mode, right of Total Bill.',
+      'One tap opens the Edit Job modal; Drive and Plans links live inside it.',
+    ],
+  },
+  {
     version: 'v2.1634',
     date: '2026-08-14',
     title: 'Itemized sub labor gets readable',

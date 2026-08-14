@@ -96,10 +96,12 @@ export const STAGES_TABLE_MIN_WIDTH = 760
  * (which must be position: relative and add STAGES_EDIT_MODE_RAIL_WIDTH of
  * left padding) rather than as an extra table column, so no colgroup/colSpan
  * bookkeeping; the cell box spans the full row height, so the rail does too.
+ * The Billing tab (v2.1635) reuses it as its whole actions cell with
+ * side: 'right' — rail on the row's right edge, divider on its left.
  */
 export const STAGES_EDIT_MODE_RAIL_WIDTH = 18
 
-export function renderStagesEditModeRail(job: JobWithDetails, openEdit: (job: JobWithDetails) => void) {
+export function renderStagesEditModeRail(job: JobWithDetails, openEdit: (job: JobWithDetails) => void, side: 'left' | 'right' = 'left') {
   const jobNo = job.hcp_number?.trim() || job.click_number?.trim() || ''
   return (
     <button
@@ -114,7 +116,6 @@ export function renderStagesEditModeRail(job: JobWithDetails, openEdit: (job: Jo
         position: 'absolute',
         top: 0,
         bottom: 0,
-        left: 0,
         width: STAGES_EDIT_MODE_RAIL_WIDTH,
         display: 'flex',
         flexDirection: 'column',
@@ -123,7 +124,7 @@ export function renderStagesEditModeRail(job: JobWithDetails, openEdit: (job: Jo
         gap: 1,
         padding: 0,
         border: 'none',
-        borderRight: '1px solid var(--border)',
+        ...(side === 'left' ? { left: 0, borderRight: '1px solid var(--border)' } : { right: 0, borderLeft: '1px solid var(--border)' }),
         background: 'var(--bg-blue-tint)',
         color: 'var(--text-link)',
         fontSize: '0.5625rem',
