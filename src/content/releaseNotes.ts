@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1654',
+    date: '2026-08-14',
+    title: 'Pending sessions folds away',
+    kind: 'fix',
+    highlights: [
+      'People → Hours: the Pending sessions list starts collapsed so the hours grid isn’t pushed below the fold — tap the header to open it.',
+      'Searching sessions still opens it automatically so matches are never hidden.',
+    ],
+  },
+  {
     version: 'v2.1653',
     date: '2026-08-14',
     title: 'Send a bill back from Edit Job',

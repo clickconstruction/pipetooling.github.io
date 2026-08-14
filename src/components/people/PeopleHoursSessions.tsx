@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   AssignSessionJobPopover,
   ClockSessionsTable,
@@ -5,6 +6,7 @@ import {
   formatClockSessionJobOrBidLabel,
   RejectedClockSessionsSection,
 } from '../clock-sessions'
+import { CollapsibleSection } from '../CollapsibleSection'
 import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -75,6 +77,11 @@ export function PeopleHoursSessions({
   onToggleRejected,
 }: PeopleHoursSessionsProps) {
   const { showToast } = useToastContext()
+  // v2.1654: collapsed by default (the list runs 30+ rows and pushed the grid
+  // below the fold); an active session search forces it open so matches are
+  // never hidden — same convention as the Users-tab roster search.
+  const [pendingSectionOpen, setPendingSectionOpen] = useState(false)
+  const pendingSectionEffectiveOpen = pendingSectionOpen || hoursClockSessionsSearching
 
   return (
     <section id="people-hours-sessions" style={HOURS_TAB_SECTION_SHELL}>
@@ -206,12 +213,17 @@ export function PeopleHoursSessions({
               }}
             />
           </div>
-          <div style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
-              {hoursClockSessionsSearching
-                ? `Pending sessions (${pendingApprovalClockSessionsFiltered.length} of ${pendingApprovalClockSessions.length} matching)`
-                : `Pending sessions (${pendingApprovalClockSessions.length})`}
-            </div>
+          <CollapsibleSection
+            title="Pending sessions"
+            count={pendingApprovalClockSessions.length}
+            headerCountLabel={
+              hoursClockSessionsSearching
+                ? `${pendingApprovalClockSessionsFiltered.length} of ${pendingApprovalClockSessions.length} matching`
+                : undefined
+            }
+            open={pendingSectionEffectiveOpen}
+            onToggle={() => setPendingSectionOpen((v) => !v)}
+          >
             <ClockSessionsTable
               sessions={pendingApprovalClockSessionsFiltered}
               showActionsColumn
@@ -285,7 +297,7 @@ export function PeopleHoursSessions({
                 </div>
               )}
             />
-          </div>
+          </CollapsibleSection>
           <ClockSessionsSection
             title="Approved Sessions"
             sessions={approvedClockSessionsFiltered}
