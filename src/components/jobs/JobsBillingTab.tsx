@@ -3,7 +3,6 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatAddressTwoLines } from '../../lib/jobs/jobAddressUrls'
-import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   billingAttentionLabel,
@@ -17,7 +16,7 @@ import {
 } from '../../lib/jobs/billingTab'
 import { jobBilledUnpaidDollars } from '../../lib/jobs/invoiceBilling'
 import { jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
-import { renderStagesJobHcpChip } from './jobsStagesRowShared'
+import { STAGES_EDIT_MODE_RAIL_WIDTH, renderStagesEditModeRail, renderStagesJobHcpChip } from './jobsStagesRowShared'
 
 /**
  * Jobs → Billing tab (Stage B of the Jobs.tsx decomposition — see
@@ -238,7 +237,7 @@ export default function JobsBillingTab({
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: '42%' }}>Specific Work</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: 140 }}>Other job charges</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Bill</th>
-                <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid var(--border)' }} />
+                <th style={{ padding: 0, width: STAGES_EDIT_MODE_RAIL_WIDTH, borderBottom: '1px solid var(--border)' }} />
               </tr>
             </thead>
             <tbody>
@@ -318,52 +317,9 @@ export default function JobsBillingTab({
                       )
                     })()}
                   </td>
-                  <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
-                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                      {(job.google_drive_link?.trim() || job.job_plans_link?.trim()) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.125rem' }}>
-                          {job.google_drive_link?.trim() && (
-                            <a
-                              href={job.google_drive_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(job.google_drive_link!.trim()) }}
-                              title="Google Drive"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.25rem' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                              </svg>
-                            </a>
-                          )}
-                          {job.job_plans_link?.trim() && (
-                            <a
-                              href={job.job_plans_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(job.job_plans_link!.trim()) }}
-                              title="Job Plans"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.25rem' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => openEdit(job)}
-                        title="Edit"
-                        aria-label="Edit"
-                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                          <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                        </svg>
-                      </button>
-                    </div>
+                  {/* v2.1635: the whole actions cell is Stages' vertical EDIT rail (right edge). */}
+                  <td style={{ position: 'relative', padding: 0, width: STAGES_EDIT_MODE_RAIL_WIDTH }}>
+                    {renderStagesEditModeRail(job, openEdit, 'right')}
                   </td>
                 </tr>
               ))}

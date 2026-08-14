@@ -9,7 +9,7 @@ order: 63
 
 ## Reading a row
 
-Each row shows the job number with its trade pill and a **stage chip** ({{chip:yellow|Working}}, {{chip:blue|Billed}}, …), the line items under **Specific Work**, **Other job charges**, the crew, and **Total Bill** — now with the money state underneath in color: {{chip:green|paid $X}}, {{chip:blue|billed $Y open}}, {{chip:yellow|unbilled $Z}}. One glance tells you whether the total has actually been billed and collected.
+Each row shows the job number with its trade pill and a **stage chip** ({{chip:yellow|Working}}, {{chip:blue|Billed}}, …), the line items under **Specific Work**, **Other job charges**, the crew, and **Total Bill** — now with the money state underneath in color: {{chip:green|paid $X}}, {{chip:blue|billed $Y open}}, {{chip:yellow|unbilled $Z}}. One glance tells you whether the total has actually been billed and collected. The thin vertical **EDIT** tab on the row's right edge — the same one Stages wears in edit mode — opens the Edit Job modal.
 
 ## Finding a job by what's on the bill
 

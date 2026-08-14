@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1634)
+last_updated: 2026-08-14 (v2.1635)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1635)
+
+### Billing tab: Stages' vertical EDIT rail replaces the action icons (2026-08-14)
+Owner request ("rather than the icons currently in the actions column, I would like to see the Edit button with the word 'edit' vertical just like in edit mode on Jobs, Stages"). [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): the actions column's Google Drive / Job Plans link icons and pencil Edit button are gone — the whole cell is now the Stages edit-mode rail (`renderStagesEditModeRail` from [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx), v2.1236), a thin full-height vertical E-D-I-T tab right of Total Bill that opens the Edit Job modal (Drive/Plans links remain reachable inside it). The shared rail gains an optional `side: 'left' | 'right'` param (border flips to the inner edge; longhand border override kept AFTER the `border: 'none'` shorthand — the v2.770 gotcha); Stages call sites unchanged. Column shrinks from 100px to the 18px rail. Verified live: rail renders on all 120 rows, click opens Edit Job #926. Render tests 5/5. Help guide `audit-job-bills-on-the-billing-tab` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1634)
 
