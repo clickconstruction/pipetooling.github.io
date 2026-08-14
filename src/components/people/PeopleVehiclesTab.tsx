@@ -901,13 +901,6 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Vehicles</h2>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <input
-              type="search"
-              placeholder="Search vehicles or people"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', minWidth: 200 }}
-            />
             <button type="button" onClick={() => setPlansOpen(true)} style={{ ...actionBtn, whiteSpace: 'nowrap' }}>
               Insurance plans
             </button>
@@ -919,6 +912,15 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               + Add Vehicle
             </button>
           </div>
+        </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <input
+            type="search"
+            placeholder="Search vehicles or people"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', minWidth: 200 }}
+          />
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <span style={chipStyle('plain')}>{summary.total} vehicle{summary.total === 1 ? '' : 's'}</span>
