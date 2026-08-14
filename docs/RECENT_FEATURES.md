@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1638)
+last_updated: 2026-08-14 (v2.1639)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1639)
+
+### AR auto-closes Stripe invoices when the allocation matches the full balance (2026-08-14)
+Owner request following the v2.1614 deep-dive ("if the amount matches, apply the amount and have the app void the stripe invoice"). Mechanism is **paid out-of-band**, not a literal void (the invoice WAS paid; OOB kills the emailed link AND keeps Stripe's books truthful — void would tell the customer the invoice was cancelled). **Order matters**: the allocation RPC applies FIRST (payment row + invoice flips `paid`), THEN the client calls [`record-stripe-invoice-out-of-band-payment`](../supabase/functions/record-stripe-invoice-out-of-band-payment/index.ts) with its new `allow_app_paid` flag (accepts app-status `paid`; default false keeps the classic Billed-only guard) — the webhook's `invoice.paid` handler no-ops on already-paid rows, so **no second payment row**. New kernel [`arStripeAutoClose.ts`](../src/lib/arStripeAutoClose.ts) (+8 tests) picks candidates: direct Stripe-hosted allocations whose per-invoice SUM exactly matches the outstanding (half-cent tolerance; partials never auto-close — OOB is invoice-level); the function re-verifies against Stripe's own `amount_remaining`. [`BankPaymentsModal`](../src/components/jobs/BankPaymentsModal.tsx): the amber confirmation copy turns dynamic ("applying will also mark the Stripe invoice paid" vs the manual reminder), and a Stripe-close failure keeps the modal open on a **Retry Stripe close** panel (the allocation already stands; the function is idempotent so retries are safe). **E2E-verified in Stripe test mode** (dev-login curl session): test job + test Stripe invoice → `mark_invoice_paid` simulated the post-AR state → flag-less call correctly 400'd → `allow_app_paid` call marked Stripe paid → webhook synced `stripe_invoice_status` and payments stayed at exactly 1 → idempotent re-call → test data deleted. Recorded-payment links (the second v2.1614 path) deliberately deferred. Docs: `BILLING_FLOWS.md`, `EDGE_FUNCTIONS.md`, help guide `ready-to-bill-pipeline`. **Deploy: edge function redeployed 2026-08-14 (already live, backward-compatible); client is this PR.** No migration.
 
 ## Latest Updates (v2.1638)
 

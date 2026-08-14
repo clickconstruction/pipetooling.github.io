@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1639',
+    date: '2026-08-14',
+    title: 'AR closes the Stripe invoice for you',
+    kind: 'feature',
+    highlights: [
+      'Allocating a deposit that covers a Stripe-sent bill in full now also marks the Stripe invoice paid — the emailed link can no longer be paid a second time.',
+      'The confirmation checkbox tells you when this will happen; partial allocations still leave the Stripe step to you.',
+      'If Stripe can’t be reached, the payment still applies and a Retry button appears.',
+    ],
+  },
+  {
     version: 'v2.1638',
     date: '2026-08-14',
     title: 'Pick your supply house on takeoff lines',

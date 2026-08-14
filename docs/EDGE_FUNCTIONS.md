@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 61 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-10
+last_updated: 2026-08-14
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -2361,6 +2361,8 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
+> **v2.1639 — AR auto-close (`allow_app_paid`)**: the Accounts Receivable modal calls this after a full-balance Mercury allocation to close the Stripe invoice automatically. The new optional flag accepts app-status `paid` (classic callers keep the Billed-only guard). Deployed 2026-08-14.
+
 **Purpose**: Mark a **Stripe** invoice as paid **outside Stripe** (check, cash, wire, etc.): merges bookkeeping metadata onto the Stripe Invoice, calls **`invoices.pay` with `paid_out_of_band: true`** (no charge through Stripe), then the **`stripe-webhook`** **`invoice.paid`** / **`invoice.payment_succeeded`** handler updates **`jobs_ledger_payments`** via **`mark_invoice_paid_from_stripe`** (including **`payment_type`**, **`reference_number`**, effective date, internal note when present in metadata).
 
 **Endpoint**: `POST /functions/v1/record-stripe-invoice-out-of-band-payment`
@@ -2381,6 +2383,14 @@ interface RecordStripeInvoiceOobBody {
   reference_number?: string
   internal_note?: string
   stripe_mode?: 'test' | 'live'
+  /**
+   * v2.1639 (AR auto-close): accept an invoice already `paid` in the app. The AR
+   * allocation records the payment and flips the invoice to paid FIRST, then calls
+   * here to close the Stripe invoice — the webhook's paid handler no-ops on
+   * already-paid rows, so no second payment row is created. Default false keeps
+   * the classic Billed-only guard.
+   */
+  allow_app_paid?: boolean
 }
 ```
 

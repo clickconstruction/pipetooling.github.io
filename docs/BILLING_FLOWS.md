@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-08-10
+last_updated: 2026-08-14
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -246,7 +246,7 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 | A | RPC `mark_invoice_paid` | `src/components/jobs/BilledPaymentConfirmationModal.tsx` mode `invoice` (non-Stripe lines; Dashboard + Pipeline "Mark Paid") | partial allowed, ≤ invoice remaining; flips invoice/job paid when covered |
 | B | RPC `mark_job_paid` (6-arg; 3-arg legacy appears unused) | same modal, mode `job` | job-level row, `invoice_id` NULL |
 | C | RPC `mark_invoice_paid_from_stripe` (service-role only — EXECUTE revoked from anon/authenticated in v2.1110, A0) | `stripe-webhook` only | full remaining; note defaults `'Stripe'`; also how OOB records land (via `record-stripe-invoice-out-of-band-payment` → Stripe → webhook) |
-| D | RPC `apply_mercury_bank_payment_allocations` | `src/components/jobs/BankPaymentsModal.tsx` ("Accounts Receivable"; Jobs Pipeline + `/accounts-receivable`) | allocations `{invoice_id|job_id, amount}` against a Mercury deposit; caps at deposit remainder; non-Stripe billed targets only; `paid_on` forced to the deposit's posted Chicago day; `reference_number` = `mercury_id` |
+| D | RPC `apply_mercury_bank_payment_allocations` | `src/components/jobs/BankPaymentsModal.tsx` ("Accounts Receivable"; Jobs Pipeline + `/accounts-receivable`) | allocations `{invoice_id|job_id, amount}` against a Mercury deposit; caps at deposit remainder; Stripe-hosted billed targets allowed behind the paid-outside-Stripe confirmation (`p_allow_stripe_hosted`, v2.1614); `paid_on` forced to the deposit's posted Chicago day; `reference_number` = `mercury_id`. **v2.1639**: after a successful apply, exactly-covered Stripe-hosted bills are auto-closed in Stripe — the client calls `record-stripe-invoice-out-of-band-payment` with `allow_app_paid` (kernel `src/lib/arStripeAutoClose.ts` picks the candidates; the webhook no-ops on the already-paid row, so no double payment; failures keep the modal open on a Retry panel) |
 | E | Direct client writes | `src/components/jobs/JobFormModal.tsx` `persistBillingSlice` (edit autosave; `createJob` for new jobs) | Since v2.1121 (B5): **diff-based** — `diffPaymentRows` upserts persist-worthy form rows under stable ids and deletes only ids the form owns; rows born mid-edit (webhook payments) survive. The client no longer writes `payments_made` (B4) — the B3 trigger derives it from rows. Close-time demote paid→billed unchanged. (Pre-v2.1121: delete-all + reinsert with new ids + form-sum overwrite.) |
 
 ### Unlink / reconcile
