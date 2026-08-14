@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1629',
+    date: '2026-08-13',
+    title: 'Database backups include every row',
+    kind: 'fix',
+    highlights: [
+      'The Settings → Data backup downloads were quietly cut off at 1,000 rows per table once a table grew past a server limit — every export now fetches the full table.',
+    ],
+  },
+  {
     version: 'v2.1628',
     date: '2026-08-13',
     title: 'New Sub Labor gets tidier steps',
