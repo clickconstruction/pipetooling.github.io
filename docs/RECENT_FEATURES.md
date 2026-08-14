@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1628)
+last_updated: 2026-08-13 (v2.1629)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1629)
+
+### Settings backup exports page past PostgREST's 1,000-row cap (2026-08-13)
+The spin-off flagged in v2.1625: every Settings → Data backup export (all 10 handlers in [`useSettingsBackupExports`](../src/hooks/useSettingsBackupExports.ts)) fetched whole tables with un-ranged `select('*')`, which PostgREST silently truncates at 1,000 rows — `people_crew_jobs` (~1,504 rows in prod), `people_hours`, `jobs_tally_parts`, and `supply_house_invoices` were all being cut off in the downloaded "backup" JSON with NO error. All 146 table fetches now go through a new `fetchBackupRows` wrapper around the shared [`fetchAllRows`](../src/lib/supabasePaging.ts) kernel: each pages `.range()` with a stable `.order()` on the table's primary key (verified against the migrations — 13 tables order by their non-`id` PK, e.g. `app_settings.key`, `people_crew_jobs (work_date, person_name)`, `user_report_notification_preferences (user_id, template_id)`), and a page failure surfaces through the handlers' existing `{ data, error }` collection instead of throwing. Client-only — no migration.
 
 ## Latest Updates (v2.1628)
 

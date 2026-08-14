@@ -4,8 +4,28 @@
  * Settings.tsx. */
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from '../lib/supabasePaging'
+import type { SupabaseClientResult } from '../utils/errorHandling'
 
 const LAST_FULL_BACKUP_AT_KEY_PREFIX = 'pipetooling_last_full_backup_at'
+
+/**
+ * Pages one table's export past PostgREST's silent 1000-row cap (un-ranged
+ * selects truncate with NO error — the worst failure mode for a backup) and
+ * returns the `{ data, error }` shape the export handlers already collect.
+ * `buildPage` must apply a stable `.order()` on the table's primary key so
+ * pages don't shuffle between requests.
+ */
+async function fetchBackupRows<T>(
+  buildPage: (from: number, to: number) => PromiseLike<SupabaseClientResult<T[]>>,
+  table: string,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  try {
+    return { data: await fetchAllRows(buildPage, `export ${table}`), error: null }
+  } catch (e) {
+    return { data: null, error: { message: e instanceof Error ? e.message : `Failed to export ${table}` } }
+  }
+}
 
 function getLastFullBackupStorageKey(userId: string | undefined): string {
   return userId ? `${LAST_FULL_BACKUP_AT_KEY_PREFIX}_${userId}` : LAST_FULL_BACKUP_AT_KEY_PREFIX
@@ -48,14 +68,14 @@ export function useSettingsBackupExports(userId: string | undefined) {
       const [
         r1, r2, r3, r4, r5, r6, r7, r8,
       ] = await Promise.all([
-        supabase.from('customers').select('*'),
-        supabase.from('projects').select('*'),
-        supabase.from('project_workflows').select('*'),
-        supabase.from('project_workflow_steps').select('*'),
-        supabase.from('project_workflow_step_actions').select('*'),
-        supabase.from('step_subscriptions').select('*'),
-        supabase.from('workflow_step_line_items').select('*'),
-        supabase.from('workflow_projections').select('*'),
+        fetchBackupRows((from, to) => supabase.from('customers').select('*').order('id').range(from, to), 'customers'),
+        fetchBackupRows((from, to) => supabase.from('projects').select('*').order('id').range(from, to), 'projects'),
+        fetchBackupRows((from, to) => supabase.from('project_workflows').select('*').order('id').range(from, to), 'project_workflows'),
+        fetchBackupRows((from, to) => supabase.from('project_workflow_steps').select('*').order('id').range(from, to), 'project_workflow_steps'),
+        fetchBackupRows((from, to) => supabase.from('project_workflow_step_actions').select('*').order('id').range(from, to), 'project_workflow_step_actions'),
+        fetchBackupRows((from, to) => supabase.from('step_subscriptions').select('*').order('id').range(from, to), 'step_subscriptions'),
+        fetchBackupRows((from, to) => supabase.from('workflow_step_line_items').select('*').order('id').range(from, to), 'workflow_step_line_items'),
+        fetchBackupRows((from, to) => supabase.from('workflow_projections').select('*').order('id').range(from, to), 'workflow_projections'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error
       if (err) {
@@ -88,11 +108,11 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportMaterialsLoading(true)
     try {
       const [r1, r2, r3, r4, r5] = await Promise.all([
-        supabase.from('supply_houses').select('*'),
-        supabase.from('material_parts').select('*'),
-        supabase.from('material_part_prices').select('*'),
-        supabase.from('material_templates').select('*'),
-        supabase.from('material_template_items').select('*'),
+        fetchBackupRows((from, to) => supabase.from('supply_houses').select('*').order('id').range(from, to), 'supply_houses'),
+        fetchBackupRows((from, to) => supabase.from('material_parts').select('*').order('id').range(from, to), 'material_parts'),
+        fetchBackupRows((from, to) => supabase.from('material_part_prices').select('*').order('id').range(from, to), 'material_part_prices'),
+        fetchBackupRows((from, to) => supabase.from('material_templates').select('*').order('id').range(from, to), 'material_templates'),
+        fetchBackupRows((from, to) => supabase.from('material_template_items').select('*').order('id').range(from, to), 'material_template_items'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error
       if (err) {
@@ -124,23 +144,23 @@ export function useSettingsBackupExports(userId: string | undefined) {
       const [
         r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17,
       ] = await Promise.all([
-        supabase.from('bids').select('*'),
-        supabase.from('bids_gc_builders').select('*'),
-        supabase.from('bids_count_rows').select('*'),
-        supabase.from('bids_submission_entries').select('*'),
-        supabase.from('cost_estimates').select('*'),
-        supabase.from('cost_estimate_labor_rows').select('*'),
-        supabase.from('fixture_labor_defaults').select('*'),
-        supabase.from('bid_pricing_assignments').select('*'),
-        supabase.from('price_book_versions').select('*'),
-        supabase.from('price_book_entries').select('*'),
-        supabase.from('labor_book_versions').select('*'),
-        supabase.from('labor_book_entries').select('*'),
-        supabase.from('takeoff_book_versions').select('*'),
-        supabase.from('takeoff_book_entries').select('*'),
-        supabase.from('purchase_orders').select('*'),
-        supabase.from('purchase_order_items').select('*'),
-        supabase.from('bid_versions').select('*'),
+        fetchBackupRows((from, to) => supabase.from('bids').select('*').order('id').range(from, to), 'bids'),
+        fetchBackupRows((from, to) => supabase.from('bids_gc_builders').select('*').order('id').range(from, to), 'bids_gc_builders'),
+        fetchBackupRows((from, to) => supabase.from('bids_count_rows').select('*').order('id').range(from, to), 'bids_count_rows'),
+        fetchBackupRows((from, to) => supabase.from('bids_submission_entries').select('*').order('id').range(from, to), 'bids_submission_entries'),
+        fetchBackupRows((from, to) => supabase.from('cost_estimates').select('*').order('id').range(from, to), 'cost_estimates'),
+        fetchBackupRows((from, to) => supabase.from('cost_estimate_labor_rows').select('*').order('id').range(from, to), 'cost_estimate_labor_rows'),
+        fetchBackupRows((from, to) => supabase.from('fixture_labor_defaults').select('*').order('fixture').range(from, to), 'fixture_labor_defaults'),
+        fetchBackupRows((from, to) => supabase.from('bid_pricing_assignments').select('*').order('id').range(from, to), 'bid_pricing_assignments'),
+        fetchBackupRows((from, to) => supabase.from('price_book_versions').select('*').order('id').range(from, to), 'price_book_versions'),
+        fetchBackupRows((from, to) => supabase.from('price_book_entries').select('*').order('id').range(from, to), 'price_book_entries'),
+        fetchBackupRows((from, to) => supabase.from('labor_book_versions').select('*').order('id').range(from, to), 'labor_book_versions'),
+        fetchBackupRows((from, to) => supabase.from('labor_book_entries').select('*').order('id').range(from, to), 'labor_book_entries'),
+        fetchBackupRows((from, to) => supabase.from('takeoff_book_versions').select('*').order('id').range(from, to), 'takeoff_book_versions'),
+        fetchBackupRows((from, to) => supabase.from('takeoff_book_entries').select('*').order('id').range(from, to), 'takeoff_book_entries'),
+        fetchBackupRows((from, to) => supabase.from('purchase_orders').select('*').order('id').range(from, to), 'purchase_orders'),
+        fetchBackupRows((from, to) => supabase.from('purchase_order_items').select('*').order('id').range(from, to), 'purchase_order_items'),
+        fetchBackupRows((from, to) => supabase.from('bid_versions').select('*').order('id').range(from, to), 'bid_versions'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error
       if (err) {
@@ -182,13 +202,13 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportPeopleLoading(true)
     try {
       const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
-        supabase.from('users').select('*'),
-        supabase.from('people').select('*'),
-        supabase.from('master_assistants').select('*'),
-        supabase.from('master_shares').select('*'),
-        supabase.from('master_primaries').select('*'),
-        supabase.from('master_superintendents').select('*'),
-        supabase.from('pay_approved_masters').select('*'),
+        fetchBackupRows((from, to) => supabase.from('users').select('*').order('id').range(from, to), 'users'),
+        fetchBackupRows((from, to) => supabase.from('people').select('*').order('id').range(from, to), 'people'),
+        fetchBackupRows((from, to) => supabase.from('master_assistants').select('*').order('master_id').order('assistant_id').range(from, to), 'master_assistants'),
+        fetchBackupRows((from, to) => supabase.from('master_shares').select('*').order('sharing_master_id').order('viewing_master_id').range(from, to), 'master_shares'),
+        fetchBackupRows((from, to) => supabase.from('master_primaries').select('*').order('master_id').order('primary_id').range(from, to), 'master_primaries'),
+        fetchBackupRows((from, to) => supabase.from('master_superintendents').select('*').order('master_id').order('superintendent_id').range(from, to), 'master_superintendents'),
+        fetchBackupRows((from, to) => supabase.from('pay_approved_masters').select('*').order('master_id').range(from, to), 'pay_approved_masters'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error
       if (err) {
@@ -222,21 +242,21 @@ export function useSettingsBackupExports(userId: string | undefined) {
       const [
         r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15,
       ] = await Promise.all([
-        supabase.from('jobs_ledger').select('*'),
-        supabase.from('jobs_ledger_fixtures').select('*'),
-        supabase.from('jobs_ledger_materials').select('*'),
-        supabase.from('jobs_ledger_team_members').select('*'),
-        supabase.from('people_labor_jobs').select('*'),
-        supabase.from('people_labor_job_items').select('*'),
-        supabase.from('people_crew_jobs').select('*'),
-        supabase.from('people_teams').select('*'),
-        supabase.from('people_team_members').select('*'),
-        supabase.from('people_hours').select('*'),
-        supabase.from('people_hours_display_order').select('*'),
-        supabase.from('people_pay_config').select('*'),
-        supabase.from('jobs_receivables').select('*'),
-        supabase.from('jobs_tally_parts').select('*'),
-        supabase.from('supply_house_invoices').select('*'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger').select('*').order('id').range(from, to), 'jobs_ledger'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger_fixtures').select('*').order('id').range(from, to), 'jobs_ledger_fixtures'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger_materials').select('*').order('id').range(from, to), 'jobs_ledger_materials'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger_team_members').select('*').order('id').range(from, to), 'jobs_ledger_team_members'),
+        fetchBackupRows((from, to) => supabase.from('people_labor_jobs').select('*').order('id').range(from, to), 'people_labor_jobs'),
+        fetchBackupRows((from, to) => supabase.from('people_labor_job_items').select('*').order('id').range(from, to), 'people_labor_job_items'),
+        fetchBackupRows((from, to) => supabase.from('people_crew_jobs').select('*').order('work_date').order('person_name').range(from, to), 'people_crew_jobs'),
+        fetchBackupRows((from, to) => supabase.from('people_teams').select('*').order('id').range(from, to), 'people_teams'),
+        fetchBackupRows((from, to) => supabase.from('people_team_members').select('*').order('team_id').order('person_name').range(from, to), 'people_team_members'),
+        fetchBackupRows((from, to) => supabase.from('people_hours').select('*').order('id').range(from, to), 'people_hours'),
+        fetchBackupRows((from, to) => supabase.from('people_hours_display_order').select('*').order('person_name').range(from, to), 'people_hours_display_order'),
+        fetchBackupRows((from, to) => supabase.from('people_pay_config').select('*').order('person_name').range(from, to), 'people_pay_config'),
+        fetchBackupRows((from, to) => supabase.from('jobs_receivables').select('*').order('id').range(from, to), 'jobs_receivables'),
+        fetchBackupRows((from, to) => supabase.from('jobs_tally_parts').select('*').order('id').range(from, to), 'jobs_tally_parts'),
+        fetchBackupRows((from, to) => supabase.from('supply_house_invoices').select('*').order('id').range(from, to), 'supply_house_invoices'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error
       if (err) {
@@ -276,8 +296,8 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportChecklistLoading(true)
     try {
       const [r1, r2] = await Promise.all([
-        supabase.from('checklist_items').select('*'),
-        supabase.from('checklist_instances').select('*'),
+        fetchBackupRows((from, to) => supabase.from('checklist_items').select('*').order('id').range(from, to), 'checklist_items'),
+        fetchBackupRows((from, to) => supabase.from('checklist_instances').select('*').order('id').range(from, to), 'checklist_instances'),
       ])
       const err = r1.error || r2.error
       if (err) {
@@ -304,11 +324,11 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportReportsLoading(true)
     try {
       const [r1, r2, r3, r4, r5] = await Promise.all([
-        supabase.from('reports').select('*'),
-        supabase.from('report_templates').select('*'),
-        supabase.from('report_template_fields').select('*'),
-        supabase.from('report_enabled_users').select('*'),
-        supabase.from('user_report_notification_preferences').select('*'),
+        fetchBackupRows((from, to) => supabase.from('reports').select('*').order('id').range(from, to), 'reports'),
+        fetchBackupRows((from, to) => supabase.from('report_templates').select('*').order('id').range(from, to), 'report_templates'),
+        fetchBackupRows((from, to) => supabase.from('report_template_fields').select('*').order('id').range(from, to), 'report_template_fields'),
+        fetchBackupRows((from, to) => supabase.from('report_enabled_users').select('*').order('user_id').range(from, to), 'report_enabled_users'),
+        fetchBackupRows((from, to) => supabase.from('user_report_notification_preferences').select('*').order('user_id').order('template_id').range(from, to), 'user_report_notification_preferences'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error
       if (err) {
@@ -338,9 +358,9 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportProspectsLoading(true)
     try {
       const [r1, r2, r3] = await Promise.all([
-        supabase.from('prospects').select('*'),
-        supabase.from('prospect_callbacks').select('*'),
-        supabase.from('prospect_comments').select('*'),
+        fetchBackupRows((from, to) => supabase.from('prospects').select('*').order('id').range(from, to), 'prospects'),
+        fetchBackupRows((from, to) => supabase.from('prospect_callbacks').select('*').order('id').range(from, to), 'prospect_callbacks'),
+        fetchBackupRows((from, to) => supabase.from('prospect_comments').select('*').order('id').range(from, to), 'prospect_comments'),
       ])
       const err = r1.error || r2.error || r3.error
       if (err) {
@@ -370,18 +390,18 @@ export function useSettingsBackupExports(userId: string | undefined) {
       const [
         r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
       ] = await Promise.all([
-        supabase.from('app_settings').select('*'),
-        supabase.from('workflow_templates').select('*'),
-        supabase.from('workflow_template_steps').select('*'),
-        supabase.from('workflow_step_dependencies').select('*'),
-        supabase.from('service_types').select('*'),
-        supabase.from('fixture_types').select('*'),
-        supabase.from('part_types').select('*'),
-        supabase.from('assembly_types').select('*'),
-        supabase.from('counts_fixture_groups').select('*'),
-        supabase.from('counts_fixture_group_items').select('*'),
-        supabase.from('notification_templates').select('*'),
-        supabase.from('email_templates').select('*'),
+        fetchBackupRows((from, to) => supabase.from('app_settings').select('*').order('key').range(from, to), 'app_settings'),
+        fetchBackupRows((from, to) => supabase.from('workflow_templates').select('*').order('id').range(from, to), 'workflow_templates'),
+        fetchBackupRows((from, to) => supabase.from('workflow_template_steps').select('*').order('id').range(from, to), 'workflow_template_steps'),
+        fetchBackupRows((from, to) => supabase.from('workflow_step_dependencies').select('*').order('id').range(from, to), 'workflow_step_dependencies'),
+        fetchBackupRows((from, to) => supabase.from('service_types').select('*').order('id').range(from, to), 'service_types'),
+        fetchBackupRows((from, to) => supabase.from('fixture_types').select('*').order('id').range(from, to), 'fixture_types'),
+        fetchBackupRows((from, to) => supabase.from('part_types').select('*').order('id').range(from, to), 'part_types'),
+        fetchBackupRows((from, to) => supabase.from('assembly_types').select('*').order('id').range(from, to), 'assembly_types'),
+        fetchBackupRows((from, to) => supabase.from('counts_fixture_groups').select('*').order('id').range(from, to), 'counts_fixture_groups'),
+        fetchBackupRows((from, to) => supabase.from('counts_fixture_group_items').select('*').order('id').range(from, to), 'counts_fixture_group_items'),
+        fetchBackupRows((from, to) => supabase.from('notification_templates').select('*').order('id').range(from, to), 'notification_templates'),
+        fetchBackupRows((from, to) => supabase.from('email_templates').select('*').order('id').range(from, to), 'email_templates'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error
       if (err) {
@@ -427,78 +447,78 @@ export function useSettingsBackupExports(userId: string | undefined) {
         r54, r55, r56, r57, r58, r59, r60, r61, r62, r63,
         r64, r65, r66, r67, r68, r69, r70, r71, r72,
       ] = await Promise.all([
-        supabase.from('customers').select('*'),
-        supabase.from('projects').select('*'),
-        supabase.from('project_workflows').select('*'),
-        supabase.from('project_workflow_steps').select('*'),
-        supabase.from('project_workflow_step_actions').select('*'),
-        supabase.from('step_subscriptions').select('*'),
-        supabase.from('workflow_step_line_items').select('*'),
-        supabase.from('workflow_projections').select('*'),
-        supabase.from('supply_houses').select('*'),
-        supabase.from('material_parts').select('*'),
-        supabase.from('material_part_prices').select('*'),
-        supabase.from('material_templates').select('*'),
-        supabase.from('material_template_items').select('*'),
-        supabase.from('bids').select('*'),
-        supabase.from('bids_gc_builders').select('*'),
-        supabase.from('bids_count_rows').select('*'),
-        supabase.from('bids_submission_entries').select('*'),
-        supabase.from('cost_estimates').select('*'),
-        supabase.from('cost_estimate_labor_rows').select('*'),
-        supabase.from('fixture_labor_defaults').select('*'),
-        supabase.from('bid_pricing_assignments').select('*'),
-        supabase.from('price_book_versions').select('*'),
-        supabase.from('price_book_entries').select('*'),
-        supabase.from('labor_book_versions').select('*'),
-        supabase.from('labor_book_entries').select('*'),
-        supabase.from('takeoff_book_versions').select('*'),
-        supabase.from('takeoff_book_entries').select('*'),
-        supabase.from('purchase_orders').select('*'),
-        supabase.from('purchase_order_items').select('*'),
-        supabase.from('users').select('*'),
-        supabase.from('people').select('*'),
-        supabase.from('master_assistants').select('*'),
-        supabase.from('master_shares').select('*'),
-        supabase.from('master_primaries').select('*'),
-        supabase.from('pay_approved_masters').select('*'),
-        supabase.from('jobs_ledger').select('*'),
-        supabase.from('jobs_ledger_fixtures').select('*'),
-        supabase.from('jobs_ledger_materials').select('*'),
-        supabase.from('jobs_ledger_team_members').select('*'),
-        supabase.from('people_labor_jobs').select('*'),
-        supabase.from('people_labor_job_items').select('*'),
-        supabase.from('people_crew_jobs').select('*'),
-        supabase.from('people_teams').select('*'),
-        supabase.from('people_team_members').select('*'),
-        supabase.from('people_hours').select('*'),
-        supabase.from('people_hours_display_order').select('*'),
-        supabase.from('people_pay_config').select('*'),
-        supabase.from('jobs_receivables').select('*'),
-        supabase.from('jobs_tally_parts').select('*'),
-        supabase.from('supply_house_invoices').select('*'),
-        supabase.from('checklist_items').select('*'),
-        supabase.from('checklist_instances').select('*'),
-        supabase.from('reports').select('*'),
-        supabase.from('report_templates').select('*'),
-        supabase.from('report_template_fields').select('*'),
-        supabase.from('report_enabled_users').select('*'),
-        supabase.from('user_report_notification_preferences').select('*'),
-        supabase.from('prospects').select('*'),
-        supabase.from('prospect_callbacks').select('*'),
-        supabase.from('prospect_comments').select('*'),
-        supabase.from('app_settings').select('*'),
-        supabase.from('workflow_templates').select('*'),
-        supabase.from('workflow_template_steps').select('*'),
-        supabase.from('workflow_step_dependencies').select('*'),
-        supabase.from('service_types').select('*'),
-        supabase.from('fixture_types').select('*'),
-        supabase.from('part_types').select('*'),
-        supabase.from('assembly_types').select('*'),
-        supabase.from('counts_fixture_groups').select('*'),
-        supabase.from('counts_fixture_group_items').select('*'),
-        supabase.from('notification_templates').select('*'),
-        supabase.from('email_templates').select('*'),
+        fetchBackupRows((from, to) => supabase.from('customers').select('*').order('id').range(from, to), 'customers'),
+        fetchBackupRows((from, to) => supabase.from('projects').select('*').order('id').range(from, to), 'projects'),
+        fetchBackupRows((from, to) => supabase.from('project_workflows').select('*').order('id').range(from, to), 'project_workflows'),
+        fetchBackupRows((from, to) => supabase.from('project_workflow_steps').select('*').order('id').range(from, to), 'project_workflow_steps'),
+        fetchBackupRows((from, to) => supabase.from('project_workflow_step_actions').select('*').order('id').range(from, to), 'project_workflow_step_actions'),
+        fetchBackupRows((from, to) => supabase.from('step_subscriptions').select('*').order('id').range(from, to), 'step_subscriptions'),
+        fetchBackupRows((from, to) => supabase.from('workflow_step_line_items').select('*').order('id').range(from, to), 'workflow_step_line_items'),
+        fetchBackupRows((from, to) => supabase.from('workflow_projections').select('*').order('id').range(from, to), 'workflow_projections'),
+        fetchBackupRows((from, to) => supabase.from('supply_houses').select('*').order('id').range(from, to), 'supply_houses'),
+        fetchBackupRows((from, to) => supabase.from('material_parts').select('*').order('id').range(from, to), 'material_parts'),
+        fetchBackupRows((from, to) => supabase.from('material_part_prices').select('*').order('id').range(from, to), 'material_part_prices'),
+        fetchBackupRows((from, to) => supabase.from('material_templates').select('*').order('id').range(from, to), 'material_templates'),
+        fetchBackupRows((from, to) => supabase.from('material_template_items').select('*').order('id').range(from, to), 'material_template_items'),
+        fetchBackupRows((from, to) => supabase.from('bids').select('*').order('id').range(from, to), 'bids'),
+        fetchBackupRows((from, to) => supabase.from('bids_gc_builders').select('*').order('id').range(from, to), 'bids_gc_builders'),
+        fetchBackupRows((from, to) => supabase.from('bids_count_rows').select('*').order('id').range(from, to), 'bids_count_rows'),
+        fetchBackupRows((from, to) => supabase.from('bids_submission_entries').select('*').order('id').range(from, to), 'bids_submission_entries'),
+        fetchBackupRows((from, to) => supabase.from('cost_estimates').select('*').order('id').range(from, to), 'cost_estimates'),
+        fetchBackupRows((from, to) => supabase.from('cost_estimate_labor_rows').select('*').order('id').range(from, to), 'cost_estimate_labor_rows'),
+        fetchBackupRows((from, to) => supabase.from('fixture_labor_defaults').select('*').order('fixture').range(from, to), 'fixture_labor_defaults'),
+        fetchBackupRows((from, to) => supabase.from('bid_pricing_assignments').select('*').order('id').range(from, to), 'bid_pricing_assignments'),
+        fetchBackupRows((from, to) => supabase.from('price_book_versions').select('*').order('id').range(from, to), 'price_book_versions'),
+        fetchBackupRows((from, to) => supabase.from('price_book_entries').select('*').order('id').range(from, to), 'price_book_entries'),
+        fetchBackupRows((from, to) => supabase.from('labor_book_versions').select('*').order('id').range(from, to), 'labor_book_versions'),
+        fetchBackupRows((from, to) => supabase.from('labor_book_entries').select('*').order('id').range(from, to), 'labor_book_entries'),
+        fetchBackupRows((from, to) => supabase.from('takeoff_book_versions').select('*').order('id').range(from, to), 'takeoff_book_versions'),
+        fetchBackupRows((from, to) => supabase.from('takeoff_book_entries').select('*').order('id').range(from, to), 'takeoff_book_entries'),
+        fetchBackupRows((from, to) => supabase.from('purchase_orders').select('*').order('id').range(from, to), 'purchase_orders'),
+        fetchBackupRows((from, to) => supabase.from('purchase_order_items').select('*').order('id').range(from, to), 'purchase_order_items'),
+        fetchBackupRows((from, to) => supabase.from('users').select('*').order('id').range(from, to), 'users'),
+        fetchBackupRows((from, to) => supabase.from('people').select('*').order('id').range(from, to), 'people'),
+        fetchBackupRows((from, to) => supabase.from('master_assistants').select('*').order('master_id').order('assistant_id').range(from, to), 'master_assistants'),
+        fetchBackupRows((from, to) => supabase.from('master_shares').select('*').order('sharing_master_id').order('viewing_master_id').range(from, to), 'master_shares'),
+        fetchBackupRows((from, to) => supabase.from('master_primaries').select('*').order('master_id').order('primary_id').range(from, to), 'master_primaries'),
+        fetchBackupRows((from, to) => supabase.from('pay_approved_masters').select('*').order('master_id').range(from, to), 'pay_approved_masters'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger').select('*').order('id').range(from, to), 'jobs_ledger'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger_fixtures').select('*').order('id').range(from, to), 'jobs_ledger_fixtures'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger_materials').select('*').order('id').range(from, to), 'jobs_ledger_materials'),
+        fetchBackupRows((from, to) => supabase.from('jobs_ledger_team_members').select('*').order('id').range(from, to), 'jobs_ledger_team_members'),
+        fetchBackupRows((from, to) => supabase.from('people_labor_jobs').select('*').order('id').range(from, to), 'people_labor_jobs'),
+        fetchBackupRows((from, to) => supabase.from('people_labor_job_items').select('*').order('id').range(from, to), 'people_labor_job_items'),
+        fetchBackupRows((from, to) => supabase.from('people_crew_jobs').select('*').order('work_date').order('person_name').range(from, to), 'people_crew_jobs'),
+        fetchBackupRows((from, to) => supabase.from('people_teams').select('*').order('id').range(from, to), 'people_teams'),
+        fetchBackupRows((from, to) => supabase.from('people_team_members').select('*').order('team_id').order('person_name').range(from, to), 'people_team_members'),
+        fetchBackupRows((from, to) => supabase.from('people_hours').select('*').order('id').range(from, to), 'people_hours'),
+        fetchBackupRows((from, to) => supabase.from('people_hours_display_order').select('*').order('person_name').range(from, to), 'people_hours_display_order'),
+        fetchBackupRows((from, to) => supabase.from('people_pay_config').select('*').order('person_name').range(from, to), 'people_pay_config'),
+        fetchBackupRows((from, to) => supabase.from('jobs_receivables').select('*').order('id').range(from, to), 'jobs_receivables'),
+        fetchBackupRows((from, to) => supabase.from('jobs_tally_parts').select('*').order('id').range(from, to), 'jobs_tally_parts'),
+        fetchBackupRows((from, to) => supabase.from('supply_house_invoices').select('*').order('id').range(from, to), 'supply_house_invoices'),
+        fetchBackupRows((from, to) => supabase.from('checklist_items').select('*').order('id').range(from, to), 'checklist_items'),
+        fetchBackupRows((from, to) => supabase.from('checklist_instances').select('*').order('id').range(from, to), 'checklist_instances'),
+        fetchBackupRows((from, to) => supabase.from('reports').select('*').order('id').range(from, to), 'reports'),
+        fetchBackupRows((from, to) => supabase.from('report_templates').select('*').order('id').range(from, to), 'report_templates'),
+        fetchBackupRows((from, to) => supabase.from('report_template_fields').select('*').order('id').range(from, to), 'report_template_fields'),
+        fetchBackupRows((from, to) => supabase.from('report_enabled_users').select('*').order('user_id').range(from, to), 'report_enabled_users'),
+        fetchBackupRows((from, to) => supabase.from('user_report_notification_preferences').select('*').order('user_id').order('template_id').range(from, to), 'user_report_notification_preferences'),
+        fetchBackupRows((from, to) => supabase.from('prospects').select('*').order('id').range(from, to), 'prospects'),
+        fetchBackupRows((from, to) => supabase.from('prospect_callbacks').select('*').order('id').range(from, to), 'prospect_callbacks'),
+        fetchBackupRows((from, to) => supabase.from('prospect_comments').select('*').order('id').range(from, to), 'prospect_comments'),
+        fetchBackupRows((from, to) => supabase.from('app_settings').select('*').order('key').range(from, to), 'app_settings'),
+        fetchBackupRows((from, to) => supabase.from('workflow_templates').select('*').order('id').range(from, to), 'workflow_templates'),
+        fetchBackupRows((from, to) => supabase.from('workflow_template_steps').select('*').order('id').range(from, to), 'workflow_template_steps'),
+        fetchBackupRows((from, to) => supabase.from('workflow_step_dependencies').select('*').order('id').range(from, to), 'workflow_step_dependencies'),
+        fetchBackupRows((from, to) => supabase.from('service_types').select('*').order('id').range(from, to), 'service_types'),
+        fetchBackupRows((from, to) => supabase.from('fixture_types').select('*').order('id').range(from, to), 'fixture_types'),
+        fetchBackupRows((from, to) => supabase.from('part_types').select('*').order('id').range(from, to), 'part_types'),
+        fetchBackupRows((from, to) => supabase.from('assembly_types').select('*').order('id').range(from, to), 'assembly_types'),
+        fetchBackupRows((from, to) => supabase.from('counts_fixture_groups').select('*').order('id').range(from, to), 'counts_fixture_groups'),
+        fetchBackupRows((from, to) => supabase.from('counts_fixture_group_items').select('*').order('id').range(from, to), 'counts_fixture_group_items'),
+        fetchBackupRows((from, to) => supabase.from('notification_templates').select('*').order('id').range(from, to), 'notification_templates'),
+        fetchBackupRows((from, to) => supabase.from('email_templates').select('*').order('id').range(from, to), 'email_templates'),
       ])
       const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error || r18.error || r19.error || r20.error || r21.error || r22.error || r23.error || r24.error || r25.error || r26.error || r27.error || r28.error || r29.error || r30.error || r31.error || r32.error || r33.error || r34.error || r35.error || r36.error || r37.error || r38.error || r39.error || r40.error || r41.error || r42.error || r43.error || r44.error || r45.error || r46.error || r47.error || r48.error || r49.error || r50.error || r51.error || r52.error || r53.error || r54.error || r55.error || r56.error || r57.error || r58.error || r59.error || r60.error || r61.error || r62.error || r63.error || r64.error || r65.error || r66.error || r67.error || r68.error || r69.error || r70.error || r71.error || r72.error
       if (err) {
