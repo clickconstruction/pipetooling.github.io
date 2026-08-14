@@ -3,6 +3,7 @@ import {
   allocatedInvoiceDollars,
   breakDollarsFromCombinedPct,
   breakOffPrefillAmountStringFromJob,
+  clampTypedBreakOffAmount,
   combinedPctFromTrackRatio,
   snapBreakOffCombinedPctToStep,
   unallocatedBillableDollars,
@@ -58,6 +59,24 @@ describe('snapBreakOffCombinedPctToStep', () => {
     expect(snapBreakOffCombinedPctToStep(53, 0, 100)).toBe(55)
     expect(snapBreakOffCombinedPctToStep(3, 20, 100)).toBe(20) // below min
     expect(snapBreakOffCombinedPctToStep(97, 0, 90)).toBe(90) // above max
+  })
+})
+
+describe('clampTypedBreakOffAmount', () => {
+  it('keeps an exact typed amount that fits within the remaining dollars (no 5% snap)', () => {
+    // The Job 523 repro: 81,916.60 typed on a $123,600 job with $123,600
+    // remaining used to snap to 80,340 (the nearest 5% step). It must survive.
+    expect(clampTypedBreakOffAmount(81916.6, 123600)).toBe(81916.6)
+    expect(clampTypedBreakOffAmount(0.01, 1000)).toBe(0.01)
+  })
+  it('clamps to the remaining unallocated dollars', () => {
+    expect(clampTypedBreakOffAmount(1500, 1000)).toBe(1000)
+    expect(clampTypedBreakOffAmount(700.005, 700)).toBe(700)
+  })
+  it('rounds to cents and floors at zero', () => {
+    expect(clampTypedBreakOffAmount(12.345, 1000)).toBe(12.35)
+    expect(clampTypedBreakOffAmount(-5, 1000)).toBe(0)
+    expect(clampTypedBreakOffAmount(5, 0)).toBe(0)
   })
 })
 

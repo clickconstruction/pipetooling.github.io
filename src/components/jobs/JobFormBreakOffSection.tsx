@@ -8,7 +8,7 @@ import {
   sanitizeMoneyTyping,
 } from '../../lib/jobs/jobFormMoney'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { breakDollarsFromCombinedPct, snapBreakOffCombinedPctToStep } from '../../lib/jobs/jobFormBreakOff'
+import { clampTypedBreakOffAmount } from '../../lib/jobs/jobFormBreakOff'
 
 type JobFormBreakOffSectionProps = {
   breakOff: ReturnType<typeof useBreakOffSlider>
@@ -116,7 +116,6 @@ export function JobFormBreakOffSection({
     breakOffPaidSum,
     breakOffBilledSum,
     breakOffRemaining,
-    breakOffCombinedSliderBounds,
     breakOffInvoiceSharePct,
   } = breakOff
 
@@ -261,18 +260,10 @@ export function JobFormBreakOffSection({
                   setNewInvoiceAmount('')
                   return
                 }
-                const rem = breakOffRemaining
-                const useCents = Math.min(Math.round(n * 100), Math.round(rem * 100))
-                let clamped = useCents / 100
-                const total = jobTotalBidDollars
-                if (total > 0) {
-                  const { min, max } = breakOffCombinedSliderBounds
-                  const base = breakOffPaidSum + breakOffBilledSum
-                  const rawC = Math.min(100, ((base + clamped) / total) * 100)
-                  const snappedC = snapBreakOffCombinedPctToStep(rawC, min, max)
-                  clamped = breakDollarsFromCombinedPct(snappedC, total, base, rem)
-                }
-                setNewInvoiceAmount(String(clamped))
+                // Clamp to the remaining unallocated dollars only — typed
+                // amounts stay exact; the 5% grid belongs to the track drag,
+                // arrow keys, and quick-set buttons.
+                setNewInvoiceAmount(String(clampTypedBreakOffAmount(n, breakOffRemaining)))
               }}
               onChange={(e) => setNewInvoiceAmount(sanitizeMoneyTyping(e.target.value))}
               placeholder="$0"

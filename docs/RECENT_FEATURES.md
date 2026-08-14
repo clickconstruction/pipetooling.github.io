@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1648)
+last_updated: 2026-08-14 (v2.1649)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1649)
+
+### Edit-Job New Invoice amount: typed dollars survive blur (2026-08-14)
+Owner-reported bug (Job 523): typing **81,916.60** into the ② Invoices New Invoice input snapped to **80,340** on blur — the handler converted the typed dollars to a combined percent of the job total and ran it through the break-off track's 5% grid (`snapBreakOffCombinedPctToStep`), rewriting any amount not on a 5% boundary (81,916.60 = 66.28% of the $123,600 job → 65% → 80,340; in the code since April 2026, predating the #434 extraction). The blur now only rounds to cents and clamps to the remaining unallocated dollars via new kernel [`clampTypedBreakOffAmount`](../src/lib/jobs/jobFormBreakOff.ts) (+3 tests); [`useBreakOffSlider`](../src/components/jobs/useBreakOffSlider.ts)'s handle percent drops its matching unfocused-display snap so the thumb/badge sit at the true typed amount. The track drag, arrow keys, and quick-set % buttons keep the 5% grid — it's a pointer affordance, not an input rule. The Stages board's Create-partial-invoice modal was checked and already clamps without snapping. Client-only — no migration.
 
 ## Latest Updates (v2.1648)
 
