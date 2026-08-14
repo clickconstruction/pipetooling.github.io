@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-08-11
+last_updated: 2026-08-14
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -317,7 +317,62 @@ worktrees are not linked — run `supabase inspect` from the main checkout.
 Open item: 4 stalls in 70 minutes is a cluster, not a one-off. If it recurs,
 restart on the Step 0 + CLI-unreachable evidence alone (Mode B is established
 for this signature), and capture Dashboard host metrics for 19:00–20:40 UTC
-while the window is in retention.
+while the window is in retention. *(It recurred 2026-08-14; the entry below
+followed this guidance.)*
+
+### 2026-08-14 — Mode B (10-minute stall 17:13–17:23 UTC, ended by restart)
+
+Third Mode B in 2.5 weeks. Restarted on Step 0 + CLI-unreachable evidence per
+the 08-11 open item; office-visible downtime ~10 minutes.
+
+- **Step 0**: `http-only` 401 in 0.21s; `db-touching` hung to the timeout on
+  three probes over ~3 minutes (20s/20s/25s). Freeze confirmed immediately.
+- **CLI blind**: `supabase inspect` failed initialising its login role —
+  `Failed to create login role: Connection terminated due to connection
+  timeout` — timing out before even an `EAUTHQUERY`, as on 08-11.
+- **Restart** from the Dashboard at ~17:21; Step 0 re-probe returned
+  `200 t=0.24s` by ~17:25. Sampler resumed 17:23:00.
+- **Step 2** (run via the Dashboard SQL editor): single
+  `monitoring.health_checks` gap **17:13:00 → 17:23:00 (599.8s)** — the only
+  gap in 6 hours. **No leading indicator this time**: `sample_duration_ms`
+  was 7–28ms right up to the last pre-gap sample (unlike 07-31's 40–350×
+  spikes). Abrupt onset, with one hiccup at 17:10 — 10 active backends
+  (NULL wait event) and the minute-cron jobs starting 8–9s late — then
+  clean samples 17:11–17:13, then the hard stall.
+- **`cron.job_run_details` shows zero failed rows** — a different
+  presentation from 07-31/08-11's `job startup timeout` entries. Jobs 5 and
+  13 last ran 17:12:00, then nothing until 17:23:00. Read: the stall was
+  ended by a restart, which discards uncommitted in-flight run records —
+  so a *silent* cron gap (no failure rows) is what Mode B looks like when
+  you restart mid-stall, and it does not rule Mode B out.
+- **Zero `wait_event_type = 'Lock'` rows** across the window;
+  `io_wait_backends = 0` in every sample. Post-restart `total_conns`
+  dropped 62 → 26–34 (fresh pools) — a useful recovery marker.
+- **Host metrics** (captured in retention, 16:29–17:29 UTC): memory steady
+  3.73 GB with a free band and no swap growth; CPU mostly <10% with a
+  cluster of ~25–30% bars carrying a visible **IOwait** component at
+  17:15–17:22 — the same "only positive signal is IOwait at onset" as
+  07-31; disk IOPS ~7, throughput ~flat vs the 125 MB/s ceiling; network
+  spike ~1.5 MB/s at 17:23 = client reconnect burst. Idle-host freeze
+  signature, again.
+- **Status page**: nothing for us-east-1 database runtime (again). The only
+  active incident was "Project access, updating and creation impacted in
+  us-east-2" — wrong region, management plane.
+- **Gaps hit during response**: `SUPABASE_DB_PASSWORD` is not in
+  `.env.local` (contrary to the 08-11 note), so the psql session-pooler
+  fallback was unavailable, and the Supabase MCP was unauthenticated in the
+  session. The post-mortem ran through the Dashboard SQL editor instead.
+  Restore the password to `.env.local` to make Step 2 runnable headless.
+
+Escalated: support ticket filed 2026-08-14 (Database unresponsive /
+severity High, project selected, "Allow support access" left on) asking
+Supabase to inspect the underlying instance/volume across the three
+windows and migrate the project to fresh hardware if suspect. Replies go
+to the account email — attach the three incident write-ups when the
+acknowledgment email arrives (the form takes no attachments pre-submit).
+Note: the confirmation screen said "logged for No specific project"
+despite the project being selected; the ticket body leads with the
+project ref, but verify the association in the acknowledgment email.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
