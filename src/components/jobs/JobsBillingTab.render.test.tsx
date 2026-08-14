@@ -106,17 +106,19 @@ describe('JobsBillingTab render smoke', () => {
   it('sort toggle flips row order and persists the per-user localStorage key', () => {
     const { alpha, beta } = twoJobs()
     renderWithProviders(<JobsBillingTab {...makeProps({ jobs: [alpha, beta] })} />)
+    // Merged Job cell (v2.1620): identity + chip + name + address share the cell —
+    // sort assertions read just the leading job number.
     const rowText = () =>
       Array.from(document.querySelectorAll('tbody tr td:first-child')).map((td) =>
-        (td.textContent ?? '').trim(),
+        ((td.textContent ?? '').trim().match(/^J\d+/) ?? [''])[0],
       )
     // Default: highest HCP first (desc)
-    expect(rowText()).toEqual(['J2002Working', 'J2001Working'])
+    expect(rowText()).toEqual(['J2002', 'J2001'])
     fireEvent.click(screen.getByRole('button', { name: 'Sort descending' }))
-    expect(rowText()).toEqual(['J2001Working', 'J2002Working'])
+    expect(rowText()).toEqual(['J2001', 'J2002'])
     expect(localStorage.getItem(`jobs_billing_sort_asc_${AUTH_USER_ID}`)).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Sort ascending' }))
-    expect(rowText()).toEqual(['J2002Working', 'J2001Working'])
+    expect(rowText()).toEqual(['J2002', 'J2001'])
     expect(localStorage.getItem(`jobs_billing_sort_asc_${AUTH_USER_ID}`)).toBe('false')
   })
 })
