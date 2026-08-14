@@ -105,6 +105,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 13, 2026
 
+**`20260814033856_schedule_email_bid_blocks.sql`** _(apply via `supabase db push` after merge; DB-only — deployed edge functions and clients unchanged)_
+- **Purpose**: the v2.1613 deferrals — `list_job_schedule_blocks_for_schedule_email` + `list_schedule_blocks_for_share` include bid-anchored blocks (LEFT JOINs, bid display fallbacks `B<number>`/project/address, bid-visibility branch = assignee self or bids-read roles); `migrate_job_ledger_costs_to_bid_and_delete` converts schedule blocks to bid anchors instead of destroying them (`moved.schedule_blocks`).
+- **Bodies**: copies of the live definitions (20260619160000 / 20260731192514) with only those edits; return shapes unchanged.
+- **Category**: Schedule / Dispatch
+
 **`20260814000431_dispatch_request_pending_payload.sql`** _(apply via `supabase db push` **BEFORE the v2.1615 client deploys** — the client inserts the new column; additive, invisible to the old client)_
 - **Purpose**: generic `dispatch_requests.pending_payload jsonb` for pending-action context (v2.1615). First use: `find_property_owner` stores `{"supply_houses":[{"id","label","email"}]}` — which supply house(s) the requester wants the job account at; the share modal preselects them when Dispatch completes the errand.
 - **Security**: additive column; existing dispatch_requests row policies cover it.
