@@ -48,6 +48,7 @@ import { DashboardContractSigningPromptModal } from '../components/DashboardCont
 import TeamFeedbackWizard from '../components/team-feedback/TeamFeedbackWizard'
 import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
+import DashboardMyVehicleCard from '../components/DashboardMyVehicleCard'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
@@ -1578,6 +1579,9 @@ export default function Dashboard() {
           disableDayEditor={dashboardSelfIsSalary}
         />
       )}
+      {/* v2.1648: field self-service for whoever holds a company vehicle —
+          renders nothing for everyone else. Owner placement: just below My Time. */}
+      {authUser?.id && <DashboardMyVehicleCard userId={authUser.id} />}
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 
