@@ -234,9 +234,9 @@ export default function JobsBillingTab({
             <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractors</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Specific Work</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Other job charges</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractors</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Bill</th>
                 <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid var(--border)' }} />
               </tr>
@@ -291,16 +291,16 @@ export default function JobsBillingTab({
                       )
                     })()}
                   </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {job.team_members.length === 0
+                      ? '—'
+                      : job.team_members.map((t) => t.users?.name ?? 'Unknown').join(', ')}
+                  </td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 180 }}>
                     {billingFixturesCellText(job.fixtures)}
                   </td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 200 }}>
                     {billingMaterialsCellText(job.materials)}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
-                    {job.team_members.length === 0
-                      ? '—'
-                      : job.team_members.map((t) => t.users?.name ?? 'Unknown').join(', ')}
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
