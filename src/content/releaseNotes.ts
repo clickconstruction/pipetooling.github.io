@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1624',
+    date: '2026-08-13',
+    title: 'Bid visits reach schedule emails',
+    kind: 'feature',
+    highlights: [
+      'Daily schedule emails and share links now include bid-scheduled visits, labeled B-number and project.',
+      'Migrating a job into a bid keeps its scheduled visits \u2014 they follow the bid instead of being deleted.',
+    ],
+  },
+  {
     version: 'v2.1623',
     date: '2026-08-13',
     title: 'Billing tab matches Pipeline\u2019s job chip',

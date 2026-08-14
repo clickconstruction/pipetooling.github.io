@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1623)
+last_updated: 2026-08-13 (v2.1624)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1624)
+
+### Bid blocks reach schedule emails, share links, and the job→bid migration (2026-08-13)
+The three deferrals from v2.1613's bid-anchored schedule blocks, closed in one DB-only migration ([`20260814033856_schedule_email_bid_blocks.sql`](../supabase/migrations/20260814033856_schedule_email_bid_blocks.sql)): **(1)** `list_job_schedule_blocks_for_schedule_email` and **(2)** `list_schedule_blocks_for_share` swap their `INNER JOIN jobs_ledger` for LEFT JOINs + a bids join — bid rows render as `B123 · project name · bid address` through the SAME display columns, behind a bid-visibility branch (assignee self, or the bids-read roles dev/master/assistant/estimator/primary); return shapes unchanged, so the deployed `schedule-day-email-dispatch` / `schedule-share-dispatch` edge functions and every client need nothing. **(3)** `migrate_job_ledger_costs_to_bid_and_delete` now **converts** the job's schedule blocks to bid anchors (`job_id → NULL, bid_id → target`, repointed before the job row deletes so the FK cascade never sees them) instead of destroying them — reported under `moved.schedule_blocks`; the Delete-job modal's report renders the new key generically with zero client changes. All three bodies are copies of the live definitions with only these edits. **Deploy: `supabase db push` after merge** — nothing else.
 
 ## Latest Updates (v2.1623)
 
