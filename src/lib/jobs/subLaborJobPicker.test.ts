@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('../supabase', () => ({ supabase: {} }))
+
 import {
   resolveSubLaborJobByNumber,
+  subLaborAssignPickerRows,
   subLaborJobDisplayLabel,
   subLaborJobNumberForStorage,
   subLaborJobPickerOptions,
@@ -58,5 +62,40 @@ describe('subLaborJobNumberForStorage', () => {
     expect(subLaborJobNumberForStorage(keith)).toBe('925')
     expect(subLaborJobNumberForStorage(clickOnly)).toBe('961')
     expect(subLaborJobNumberForStorage(bare)).toBe('')
+  })
+})
+
+
+describe('subLaborAssignPickerRows (v2.1618 standard picker)', () => {
+  const working = {
+    ...keith,
+    created_at: '2026-08-01T12:00:00Z',
+    status: 'working',
+    serviceType: { name: 'Plumbing' },
+  }
+  const paidOld = {
+    ...clickOnly,
+    created_at: '2026-08-10T12:00:00Z',
+    status: 'paid',
+    serviceType: null,
+  }
+
+  it('carries stage + trade pill + subline, finished jobs last', () => {
+    const rows = subLaborAssignPickerRows([working, paidOld], '', '')
+    expect(rows.map((r) => r.id)).toEqual(['j1', 'j2'])
+    expect(rows[0]?.status).toBe('working')
+    expect(rows[0]?.serviceTypeName).toBe('Plumbing')
+    expect(rows[0]?.subline).toContain('106 Lenz Dr')
+    expect(rows[1]?.status).toBe('paid')
+  })
+
+  it('text search matches number, name, customer, and address', () => {
+    expect(subLaborAssignPickerRows([working, paidOld], 'cascade', '').map((r) => r.id)).toEqual(['j2'])
+    expect(subLaborAssignPickerRows([working, paidOld], '925', '').map((r) => r.id)).toEqual(['j1'])
+    expect(subLaborAssignPickerRows([working, paidOld], 'todd', '').map((r) => r.id)).toEqual(['j2'])
+  })
+
+  it('digits-only number query switches to number matching', () => {
+    expect(subLaborAssignPickerRows([working, paidOld], 'ignored', '961').map((r) => r.id)).toEqual(['j2'])
   })
 })

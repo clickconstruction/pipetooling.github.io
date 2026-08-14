@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1617)
+last_updated: 2026-08-13 (v2.1618)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1618)
+
+### Sub Labor's Job field opens the app-standard job picker (2026-08-13)
+Owner follow-up on the v2.1617 wizard ("use the standard search used across the app… the standard search shows what stage jobs are in", and type-in-the-field rather than a dropdown-with-its-own-search). Step 1's SearchableSelect is replaced by a field-styled button that opens [`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx) — the same picker as Schedule's Assign work — stacked above the labor modal (z1003 > z50): autofocused search you type straight into, rows with **trade pills, stage chips (Waiting/Working/Ready to Bill/Billed/Paid), and the date-added | address subline**, finished jobs under their divider, plus the # digits-only chip. New kernel rows builder [`subLaborAssignPickerRows`](../src/lib/jobs/subLaborJobPicker.ts) (filter by number/name/customer/address, `compareJobsByCreatedAtDesc`, `sortJobPickerRowsFinishedLast`; +3 tests, 8 total). Picking still fills Job #, Address, and pre-selects the job's crew; the field then shows `J925 · Keith Stadtmueller` with a "change" affordance. Client-only — no migration.
 
 ## Latest Updates (v2.1617)
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1618',
+    date: '2026-08-13',
+    title: 'Sub Labor uses the standard job search',
+    kind: 'fix',
+    highlights: [
+      'The Job field now opens the same job search as Schedule \u2014 type right into it, with stage chips and trade pills on every result.',
+    ],
+  },
+  {
     version: 'v2.1617',
     date: '2026-08-13',
     title: 'New Sub Labor is three quick steps',
