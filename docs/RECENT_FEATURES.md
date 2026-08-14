@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1631)
+last_updated: 2026-08-14 (v2.1632)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1632)
+
+### Sub Labor step 3: Link Invoice moves below the buttons, total line retired (2026-08-14)
+Owner request ("move Link invoice to below Total Labor Cost and then remove the total labor cost line"). [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx), Work and cost section (wizard + edit mode): **(1)** the **Link Invoice** button leaves the Remove/Add button row and gets its own row directly below it (its expanding link editor opens right under it, "Linked" note unchanged); Remove + Add line item now sit together right-aligned. **(2)** The mostly-redundant **"Total labor cost: $X" paragraph is removed** — the simple-mode subtotal beside "Itemize hours and rate" and the itemize table's totals row still show the same number. Verified live through the wizard (line item typed, no total line, expander opens in place). Render tests 7/7. Client-only — no migration.
 
 ## Latest Updates (v2.1631)
 

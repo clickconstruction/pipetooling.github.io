@@ -1667,46 +1667,12 @@ function JobsSubLaborFormModalInner(
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
+                          justifyContent: 'flex-end',
                           flexWrap: 'wrap',
                           gap: '0.75rem',
                           marginTop: '0.75rem',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', minWidth: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (laborInvoiceLinkExpanded) {
-                                cancelLaborInvoiceLinkDraft()
-                              } else {
-                                setLaborInvoiceLinkDraft(laborInvoiceLinkCommitted)
-                                setLaborInvoiceLinkExpanded(true)
-                              }
-                            }}
-                            style={{
-                              padding: '0.5rem 1.25rem',
-                              background: laborInvoiceLinkExpanded ? 'var(--bg-200)' : 'var(--surface)',
-                              color: 'var(--text-700)',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 6,
-                              fontSize: '0.875rem',
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              flexShrink: 0,
-                            }}
-                          >
-                            Link Invoice
-                          </button>
-                          {!laborInvoiceLinkExpanded && laborInvoiceLinkCommitted.trim() ? (
-                            <span
-                              style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(100%, 280px)' }}
-                              title={laborInvoiceLinkCommitted}
-                            >
-                              Linked
-                            </span>
-                          ) : null}
-                        </div>
                         {!editingLaborJob && laborFixtureEntryMode === 'simple' ? (
                           <button
                             type="button"
@@ -1748,6 +1714,40 @@ function JobsSubLaborFormModalInner(
                         >
                           Add line item
                         </button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', minWidth: 0, marginTop: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (laborInvoiceLinkExpanded) {
+                              cancelLaborInvoiceLinkDraft()
+                            } else {
+                              setLaborInvoiceLinkDraft(laborInvoiceLinkCommitted)
+                              setLaborInvoiceLinkExpanded(true)
+                            }
+                          }}
+                          style={{
+                            padding: '0.5rem 1.25rem',
+                            background: laborInvoiceLinkExpanded ? 'var(--bg-200)' : 'var(--surface)',
+                            color: 'var(--text-700)',
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: 6,
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          Link Invoice
+                        </button>
+                        {!laborInvoiceLinkExpanded && laborInvoiceLinkCommitted.trim() ? (
+                          <span
+                            style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(100%, 280px)' }}
+                            title={laborInvoiceLinkCommitted}
+                          >
+                            Linked
+                          </span>
+                        ) : null}
                       </div>
                       {laborInvoiceLinkExpanded ? (
                         <div
@@ -1809,18 +1809,6 @@ function JobsSubLaborFormModalInner(
                     </>
                   )
                 })()}
-                {laborFixtureRows.some((r) => (r.fixture ?? '').trim()) && (
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    Total labor cost: ${formatCurrency(
-                      laborItemsSubtotal(
-                        laborFixtureRows,
-                        editingLaborJob?.labor_rate ??
-                          laborFixtureRows.find((r) => r.labor_rate != null && r.labor_rate !== 0)?.labor_rate ??
-                          20,
-                      )
-                    )}
-                  </p>
-                )}
               </div>
               {editingLaborJob && (
                 <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
