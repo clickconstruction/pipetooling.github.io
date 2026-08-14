@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1637)
+last_updated: 2026-08-14 (v2.1638)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1638)
+
+### Takeoff Prices modal: "Use" pins a supply house's price on the line (2026-08-14)
+Assistant request via the owner ("I have added Moore's pricing, but it won't let me select my part pricing because it is more expensive"). Part lines auto-price at the LOWEST supply house and the Prices modal only edited the catalog — there was no way to CHOOSE a house (bundle lines already had this via `applyBundleQuoteToLine`; part lines only had silent hand-typing). [`TakeoffPartPricesModal`](../src/components/bids/TakeoffPartPricesModal.tsx): when opened from a takeoff rough line (new optional `lineId` on the open target, passed by [`SortableRoughPartLineRow`](../src/components/bids/SortableRoughPartLineRow.tsx)'s Catalog prices link), every supply-house row gains a blue **Use** button — it sets that price on the line via the new `applyCatalogPriceToLine` in [`BidsTakeoffTab`](../src/components/bids/BidsTakeoffTab.tsx) (bid override, `sourceMaterialPartPriceId` nulled, toast, modal closes). The other open sites (Add Assembly / Edit Template rows) pass no lineId → no button. Verified live on a lost bid: Use on the pricier house set 282.19 + "Bid override" + line total recomputed, Reset to catalog restored. Render tests 4/4. Help guide `create-an-assembly-while-doing-a-takeoff` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1637)
 

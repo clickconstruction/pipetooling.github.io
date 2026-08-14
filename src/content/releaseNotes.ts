@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1638',
+    date: '2026-08-14',
+    title: 'Pick your supply house on takeoff lines',
+    kind: 'feature',
+    highlights: [
+      'In a takeoff line’s Catalog prices window, every supply house now has a Use button — tap it to price the line at that house, even when it isn’t the cheapest.',
+      'The line shows Bid override; Reset to catalog still snaps back to the lowest price.',
+    ],
+  },
+  {
     version: 'v2.1637',
     date: '2026-08-14',
     title: 'Parts tab drops the wall of zeros',
