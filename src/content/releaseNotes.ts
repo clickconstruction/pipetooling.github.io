@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1626',
+    date: '2026-08-13',
+    title: 'Roomier line items on the Billing tab',
+    kind: 'fix',
+    highlights: [
+      'Specific Work now takes most of the row; Contractors and Other job charges shrink to tight fixed columns.',
+    ],
+  },
+  {
     version: 'v2.1625',
     date: '2026-08-13',
     title: 'Team Labor counts every crew day again',
@@ -18,6 +27,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       'The Team Labor tab and the Billing tab’s “Needs labor” audit were quietly missing older crew days once the history grew past a server limit — hours and costs now include everything.',
       'Labor totals in Edit Job, job migrate/combine previews, and Bid Costs are fixed the same way.',
+    ],
+  },
+  {
+    version: 'v2.1624',
+    date: '2026-08-13',
+    title: 'Bid visits reach schedule emails',
+    kind: 'feature',
+    highlights: [
+      'Daily schedule emails and share links now include bid-scheduled visits, labeled B-number and project.',
+      'Migrating a job into a bid keeps its scheduled visits \u2014 they follow the bid instead of being deleted.',
     ],
   },
   {

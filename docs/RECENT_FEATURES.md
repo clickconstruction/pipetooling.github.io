@@ -7,15 +7,25 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1625)
+last_updated: 2026-08-13 (v2.1626)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1626)
+
+### Billing tab: Specific Work gets the width; Contractors stops hogging it (2026-08-13)
+Owner request. [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): Contractors pins to a 130px column (smaller type, names wrap), Other job charges to 140px, and **Specific Work takes 42% of the table** — line items that wrapped across five short lines now read in one or two, and rows are visibly shorter. Verified live against prod. Client-only — no migration.
 
 ## Latest Updates (v2.1625)
 
 ### Team Labor no longer computed from a silently truncated fetch (2026-08-13)
 PostgREST caps un-ranged selects at 1,000 rows with NO error, and `people_crew_jobs` (~1,504 rows in prod) plus the 2-year `people_hours` window are both past it — so the Jobs → Team Labor tab, the Billing tab's "Needs labor" audit (`teamLaborJobIds`), Edit-Job's labor panel, migrate/combine previews, and Bid Costs were all aggregating an arbitrary subset. Fix in [`utils/teamLabor.ts`](../src/utils/teamLabor.ts): `loadTeamLaborData` and `loadTeamLaborDataForBids` now page their crew + hours fetches with the shared `fetchAllRows` kernel (stable `work_date, person_name` order — the PeopleReviewTab v2.976/v2.978 pattern). [`Jobs.tsx`](../src/pages/Jobs.tsx) drops its ~75-line pre-identity inline copy of the same aggregation and delegates to the shared util, so the tab also picks up the person_id-first wage/salary resolution (v2.1010–v2.1123) it had been missing. New regression test [`utils/teamLabor.test.ts`](../src/utils/teamLabor.test.ts) fakes the 1,000-row cap and fails if the fetches stop paging. Swept every other `people_crew_jobs`/`people_hours` fetch in the app: the rest are person- or period-scoped (safely under the cap) or already paged; the Settings backup exports' `select('*')` truncation is spun off as its own task. Client-only — no migration.
+
+## Latest Updates (v2.1624)
+
+### Bid blocks reach schedule emails, share links, and the job→bid migration (2026-08-13)
+The three deferrals from v2.1613's bid-anchored schedule blocks, closed in one DB-only migration ([`20260814033856_schedule_email_bid_blocks.sql`](../supabase/migrations/20260814033856_schedule_email_bid_blocks.sql)): **(1)** `list_job_schedule_blocks_for_schedule_email` and **(2)** `list_schedule_blocks_for_share` swap their `INNER JOIN jobs_ledger` for LEFT JOINs + a bids join — bid rows render as `B123 · project name · bid address` through the SAME display columns, behind a bid-visibility branch (assignee self, or the bids-read roles dev/master/assistant/estimator/primary); return shapes unchanged, so the deployed `schedule-day-email-dispatch` / `schedule-share-dispatch` edge functions and every client need nothing. **(3)** `migrate_job_ledger_costs_to_bid_and_delete` now **converts** the job's schedule blocks to bid anchors (`job_id → NULL, bid_id → target`, repointed before the job row deletes so the FK cascade never sees them) instead of destroying them — reported under `moved.schedule_blocks`; the Delete-job modal's report renders the new key generically with zero client changes. All three bodies are copies of the live definitions with only these edits. **Deploy: `supabase db push` after merge** — nothing else.
 
 ## Latest Updates (v2.1623)
 
