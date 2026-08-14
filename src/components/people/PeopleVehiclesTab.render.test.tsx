@@ -30,6 +30,9 @@ const TABLE_ROWS: Record<string, unknown[]> = {
     { id: 'r1', vehicle_id: 'v1', odometer_value: 121480, read_date: TODAY, created_at: null, created_by: 'u3' },
   ],
   vehicle_replacement_value_entries: [],
+  vehicle_service_events: [
+    { id: 's1', vehicle_id: 'v1', service_type: 'oil_change', service_date: '2026-05-02', odometer_value: 115000, cost: 89, note: 'Take 5', created_at: null, created_by: null },
+  ],
 }
 
 vi.mock('../../lib/supabase', () => {
@@ -80,5 +83,12 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(await screen.findByText('Reading entered by Danielle')).toBeTruthy()
     expect(screen.getByText('Assigned to Tristen')).toBeTruthy()
     expect(screen.getByRole('button', { name: '← All vehicles' })).toBeTruthy()
+
+    // v2.1645: service stream — the Log service action, the ledger row with
+    // note + cost, and the oil chip derived from last oil change vs latest
+    // reading (115,000 + 5,000 interval vs 121,480 → overdue 1,480).
+    expect(screen.getByRole('button', { name: 'Log service' })).toBeTruthy()
+    expect(screen.getByText('Oil change · Take 5 · $89.00')).toBeTruthy()
+    expect(screen.getAllByText('Oil overdue 1,480 mi').length).toBeGreaterThan(0)
   })
 })

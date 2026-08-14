@@ -9,7 +9,7 @@ last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "212 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "213 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 14, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 14, 2026
+
+**`20260814180643_vehicle_service_events.sql`** _(apply via `supabase db push` with the v2.1646 merge — additive table + column, old clients unaffected)_
+- **Purpose**: vehicle service log + oil tracking (v2.1646, Vehicles fleet phase 2) — `vehicle_service_events` (typed service visits with date/odometer/cost/note/created_by; office-pool RLS + both read-only blocks) and `vehicles.oil_change_interval_miles int NOT NULL DEFAULT 5000` for the client-side oil due/overdue math.
+- **Category**: Vehicles / new table
 
 **`20260814174524_vehicle_odometer_created_by.sql`** _(apply via `supabase db push` with the v2.1644 merge — the new client inserts the column; additive, invisible to old clients)_
 - **Purpose**: vehicle ledger attribution (v2.1644, Vehicles fleet phase 1) — nullable `vehicle_odometer_entries.created_by uuid` (FK → users, ON DELETE SET NULL) so readings show "entered by …"; legacy rows show without a name.

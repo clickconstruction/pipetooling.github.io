@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1646',
+    date: '2026-08-14',
+    title: 'Vehicles track oil changes and services',
+    kind: 'feature',
+    highlights: [
+      'Log service on any vehicle records oil changes, tires, repairs, and inspections — with the date, mileage, cost, and shop note kept in the vehicle ledger.',
+      'Oil status chips show on every card: green when OK, amber inside the last 1,000 miles, red when overdue — based on each vehicle’s own interval.',
+      'Logging a service with miles also saves an odometer reading automatically.',
+    ],
+  },
+  {
     version: 'v2.1645',
     date: '2026-08-14',
     title: 'Internal: database type definitions refreshed',
