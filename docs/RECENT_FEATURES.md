@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1630)
+last_updated: 2026-08-13 (v2.1631)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1631)
+
+### Sub Labor retires drive cost: modals removed, legacy miles zeroed (2026-08-13)
+Owner follow-through on v2.1617's distance removal ("now that Sub Labor doesn't care about Drive Settings and Default Labor Rate I would like to remove them… we can remove all the legacy drive rows that were stored"). **Client**: the Drive Settings and Default Labor Rate buttons + their parent-side modals leave the Sub Labor tab ([`JobsSubLaborTab`](../src/components/jobs/JobsSubLaborTab.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx)); the edit-modal's Distance field is gone too (it could only show 0 now). The default-labor-rate VALUE still auto-loads with the tab (it seeds new line-item rates); editing it moves to a future Settings home if ever needed. **Data** (migration [`20260814044113_zero_legacy_drive_miles.sql`](../supabase/migrations/20260814044113_zero_legacy_drive_miles.sql)): `people_labor_jobs.distance_miles` zeroed on every legacy row and the `drive_mileage_cost` / `drive_time_per_mile` app_settings rows deleted — every `laborJobSubCost` consumer (Sub Labor Due, job rollups, Crew P&L, People Review, charges timeline) now computes a **0 drive component**, deliberately changing legacy cost totals. The inert drive-math plumbing (settings loads + formula params across 5 surfaces) is left for a later dedicated sweep. **Deploy: `supabase db push` after merge.**
 
 ## Latest Updates (v2.1630)
 

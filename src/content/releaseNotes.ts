@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1631',
+    date: '2026-08-13',
+    title: 'Sub Labor drops drive cost for good',
+    kind: 'feature',
+    highlights: [
+      'The Drive Settings and Default Labor Rate buttons are gone from Sub Labor, along with the Distance field when editing.',
+      'Stored miles on old entries were cleared \u2014 sub labor costs no longer include any drive component anywhere.',
+    ],
+  },
+  {
     version: 'v2.1630',
     date: '2026-08-13',
     title: 'Line items get room to breathe',

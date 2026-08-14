@@ -22,13 +22,8 @@ export type JobsSubLaborTabProps = {
   laborJobNamesByHcp: Record<string, string>
   subLaborDueTotal: number
   subLaborOutstandingByPerson: SubLaborOutstandingByPerson
-  myRole: string | null
   onNewLaborJob: () => void
   onEditLaborJob: (job: LaborJob) => void
-  /** Load mileage/drive settings (parent-owned) then open the Drive Settings modal. */
-  onOpenDriveSettings: () => void
-  /** Load the default labor rate (parent-owned) then open its modal. Dev only. */
-  onOpenDefaultLaborRate: () => void
   onPrintJobSubSheet: (job: LaborJob) => void
   onUpdateLaborJobDate: (id: string, date: string | null) => void
   /** Seed + open the parent-owned Make Payment modal. */
@@ -46,11 +41,8 @@ export default function JobsSubLaborTab({
   laborJobNamesByHcp,
   subLaborDueTotal,
   subLaborOutstandingByPerson,
-  myRole,
   onNewLaborJob,
   onEditLaborJob,
-  onOpenDriveSettings,
-  onOpenDefaultLaborRate,
   onPrintJobSubSheet,
   onUpdateLaborJobDate,
   onOpenMakePayment,
@@ -96,22 +88,6 @@ export default function JobsSubLaborTab({
         >
           New Sub Labor
         </button>
-        <button
-          type="button"
-          onClick={onOpenDriveSettings}
-          style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-        >
-          Drive Settings
-        </button>
-        {myRole === 'dev' && (
-          <button
-            type="button"
-            onClick={onOpenDefaultLaborRate}
-            style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-          >
-            Default Labor Rate
-          </button>
-        )}
         </div>
         <div style={{ fontSize: '1rem', fontWeight: 600 }}>
           Sub Labor Due: ${formatCurrency(subLaborDueTotal)}

@@ -199,8 +199,6 @@ function JobsSubLaborFormModalInner(
   if (!editingLaborJob && !laborPickedJobId) laborMissingFields.push('Job')
   if (laborAssignedTo.length === 0) laborMissingFields.push('Assigned')
   if (!laborAddress.trim()) laborMissingFields.push('Address')
-  // Distance is edit-only since v2.1617 — new entries save 0 and never show the field.
-  if (editingLaborJob && (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0)) laborMissingFields.push('Distance')
   if (laborFixtureEntryMode === 'simple') {
     if (
       laborFixtureRows.every((r) => {
@@ -1159,8 +1157,8 @@ function JobsSubLaborFormModalInner(
               {editingLaborJob ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
                   {laborFixtureEntryMode === 'simple'
-                    ? 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
-                    : 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
+                    ? 'Required: Address, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
+                    : 'Required: Address, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
                 </p>
               ) : (
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -1253,21 +1251,6 @@ function JobsSubLaborFormModalInner(
                       value={laborAddress}
                       onChange={(e) => setLaborAddress(e.target.value)}
                       placeholder="Job address"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
-                    />
-                  </div>
-                ) : null}
-                {editingLaborJob ? (
-                  <div style={{ flex: '0 0 110px', minWidth: 110 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={9999}
-                      step={0.1}
-                      value={laborDistance}
-                      onChange={(e) => setLaborDistance(e.target.value)}
-                      placeholder="0"
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                     />
                   </div>

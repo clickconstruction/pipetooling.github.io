@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 13, 2026
 
+**`20260814044113_zero_legacy_drive_miles.sql`** _(apply via `supabase db push` after merge; data-only)_
+- **Purpose**: retire drive cost from Sub Labor (v2.1631) — zero `people_labor_jobs.distance_miles` on all legacy rows and delete the `drive_mileage_cost` / `drive_time_per_mile` app_settings rows. Deliberately changes legacy sub-labor cost totals (drive component → 0 everywhere).
+- **Category**: Sub Labor / data cleanup
+
 **`20260814033856_schedule_email_bid_blocks.sql`** _(apply via `supabase db push` after merge; DB-only — deployed edge functions and clients unchanged)_
 - **Purpose**: the v2.1613 deferrals — `list_job_schedule_blocks_for_schedule_email` + `list_schedule_blocks_for_share` include bid-anchored blocks (LEFT JOINs, bid display fallbacks `B<number>`/project/address, bid-visibility branch = assignee self or bids-read roles); `migrate_job_ledger_costs_to_bid_and_delete` converts schedule blocks to bid anchors instead of destroying them (`moved.schedule_blocks`).
 - **Bodies**: copies of the live definitions (20260619160000 / 20260731192514) with only those edits; return shapes unchanged.

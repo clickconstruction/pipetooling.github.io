@@ -116,7 +116,8 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.getByText('Edit Sub Labor')).toBeTruthy()
     expect(hcpInput().value).toBe('HCP-77')
     expect(editAddressInput().value).toBe('500 Oak Ln, Austin, TX')
-    expect(screen.getByDisplayValue('12')).toBeTruthy()
+    // Distance field removed entirely in v2.1631 (legacy miles zeroed in prod).
+    expect(screen.queryByDisplayValue('12')).toBeNull()
     // The one itemized fixture row from the labor job
     expect(screen.getByDisplayValue('Toilet')).toBeTruthy()
     // Assigned contractor chip is pressed (chips since v2.1617; selected row + group = 2)
