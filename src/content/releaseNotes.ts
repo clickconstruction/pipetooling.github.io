@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1636',
+    date: '2026-08-14',
+    title: 'Crew day splits from the clock stop being editable',
+    kind: 'feature',
+    highlights: [
+      'In Crew Jobs / Bids, days built from approved clock sessions now wear a "from clock" badge and lock — edits there were silently overwritten on the next approval anyway.',
+      'Days without clock data stay hand-editable for assigning hours before payroll.',
+      'On Jobs → Team Labor, editing the section is now dev and controller only; Quickfill is unchanged.',
+    ],
+  },
+  {
     version: 'v2.1635',
     date: '2026-08-14',
     title: 'Billing rows get the Stages EDIT tab',
