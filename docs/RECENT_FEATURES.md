@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1663)
+last_updated: 2026-08-14 (v2.1664)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1664)
+
+### Quickfill odometer collection + holder-facing oil change prompts (2026-08-14)
+Owner-designed (mockups approved): two features closing the fleet loop. **(1) Quickfill "Vehicle odometers" station** — new section in the framework (registry + eligibility gate matching Unassigned field time: dev / pay-approved master / assistant-like) listing vehicles **held by a PERSON** with no odometer reading in **over a week** (motor pool + unassigned skipped) — kernel [`staleOdometerCallList`](../src/lib/vehicleFleet.ts) (never-read first, then oldest; boundary day not stale). Each row: vehicle + VIN tail, last reading with amber age, holder as a **tap-to-call `tel:` link** (roster phone; "(no phone)" note when missing), inline Miles box → Save inserts a normal `vehicle_odometer_entries` row credited to the collector and the row drops off; count badge via `useReportQuickfillSectionMetric`. **(2) Oil change prompts in the holder's environment** — the Dashboard [`DashboardMyVehicleCard`](../src/components/DashboardMyVehicleCard.tsx) promotes oil state to banners: amber **"Oil change suggested — due in X mi (next at N)"**, red **"Oil change required — X mi overdue"**; the ok-state chip stays. Thresholds are per-vehicle: migration [`20260814230114_vehicle_oil_thresholds.sql`](../supabase/migrations/20260814230114_vehicle_oil_thresholds.sql) adds `vehicles.oil_suggest_window_miles` (default 1000 = old hardcoded window) + `oil_require_past_due_miles` (default 0 = required at the interval), edited in Edit vehicle ("Suggest within / Require past due by"); [`oilStatus`](../src/lib/vehicleFleet.ts) takes an `OilThresholds` arg (due_soon spans the past-due grace zone with negative `milesRemaining`; `oilChipLabel` renders "Oil due · X mi past") and `oilThresholdsForVehicle` feeds every surface — holder banners, fleet board chips, `fleetOilCounts` (+5 kernel tests). New render smoke for the section (call links, no-phone, skip rules); My Vehicle card smoke extended (both banners). Help guides `quickfill` + `report-a-vehicle-problem` updated. **Deploy**: `supabase db push` with this merge, then `npm run gen-types:linked` (types committed in this PR).
 
 ## Latest Updates (v2.1663)
 

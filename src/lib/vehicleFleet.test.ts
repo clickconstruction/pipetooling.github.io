@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildVehicleLedger,
   isMotorPoolPossession,
+  staleOdometerCallList,
   currentInsurancePeriod,
   currentPossession,
   lastEndedInsurancePeriod,
@@ -428,5 +429,67 @@ describe('motor pool possessions', () => {
       newPossession: { vehicle_id: 'v1', user_id: null, start_date: TODAY },
       odometerEntry: null,
     })
+  })
+})
+
+describe('oil thresholds (suggest window + require past due)', () => {
+  const oil = (odo: number): FleetServiceEvent => ({
+    id: 's1', vehicle_id: 'v1', service_type: 'oil_change', service_date: '2026-05-01',
+    odometer_value: odo, cost: null, note: null, created_at: null,
+  })
+  it('honors a custom suggest window', () => {
+    // due at 120,000; reading 118,200 → 1,800 remaining
+    expect(oilStatus(oil(115000), 5000, reading({ odometer_value: 118200 })).state).toBe('ok')
+    expect(oilStatus(oil(115000), 5000, reading({ odometer_value: 118200 }), { suggestWindowMiles: 2000 }).state).toBe('due_soon')
+  })
+  it('holds "suggested" in the past-due grace zone, then requires', () => {
+    // due at 120,000; reading 120,300 → 300 past due
+    const past300 = reading({ odometer_value: 120300 })
+    expect(oilStatus(oil(115000), 5000, past300).state).toBe('overdue')
+    const graced = oilStatus(oil(115000), 5000, past300, { requirePastDueMiles: 500 })
+    expect(graced.state).toBe('due_soon')
+    expect(graced.state === 'due_soon' && graced.milesRemaining).toBe(-300)
+    expect(oilChipLabel(graced)).toBe('Oil due · 300 mi past')
+    const required = oilStatus(oil(115000), 5000, reading({ odometer_value: 120600 }), { requirePastDueMiles: 500 })
+    expect(required.state).toBe('overdue')
+    expect(required.state === 'overdue' && required.milesOver).toBe(600)
+  })
+  it('defaults preserve the pre-threshold behavior', () => {
+    expect(oilStatus(oil(115000), 5000, reading({ odometer_value: 119500 })).state).toBe('due_soon')
+    expect(oilStatus(oil(115000), 5000, reading({ odometer_value: 120100 })).state).toBe('overdue')
+  })
+})
+
+describe('staleOdometerCallList', () => {
+  const vehicles = [
+    { id: 'v1', year: 2019, make: 'Ram', model: 'ProMaster', vin: null },
+    { id: 'v2', year: 2022, make: 'Ford', model: 'Transit', vin: null },
+    { id: 'v3', year: 2024, make: 'Chevy', model: 'Silverado', vin: null },
+    { id: 'v4', year: 2000, make: 'Ford', model: 'F650', vin: null },
+    { id: 'v5', year: 2007, make: 'Dodge', model: 'Ram', vin: null },
+  ]
+  const holders = new Map([
+    ['v1', poss({ id: 'p1', vehicle_id: 'v1', user_id: 'u1' })],
+    ['v2', poss({ id: 'p2', vehicle_id: 'v2', user_id: 'u2' })],
+    ['v3', poss({ id: 'p3', vehicle_id: 'v3', user_id: 'u3' })],
+    ['v4', poss({ id: 'p4', vehicle_id: 'v4', user_id: null })],
+  ])
+  const latest = new Map([
+    ['v1', reading({ id: 'r1', vehicle_id: 'v1', read_date: '2026-08-02' })],
+    ['v3', reading({ id: 'r3', vehicle_id: 'v3', read_date: '2026-08-10' })],
+  ])
+  it('lists person-held vehicles over a week stale, never-read first then oldest', () => {
+    const rows = staleOdometerCallList(vehicles, holders, latest, TODAY)
+    // v1: 12d stale (in); v2: never read (in, first); v3: 4d fresh (out);
+    // v4: motor pool (out); v5: unassigned (out).
+    expect(rows.map((r) => r.vehicle.id)).toEqual(['v2', 'v1'])
+    expect(rows[0]?.daysStale).toBeNull()
+    expect(rows[1]?.daysStale).toBe(12)
+  })
+  it('a reading exactly at the boundary is not stale', () => {
+    const boundary = new Map([['v1', reading({ id: 'r1', vehicle_id: 'v1', read_date: '2026-08-07' })]])
+    expect(staleOdometerCallList(vehicles.slice(0, 1), holders, boundary, TODAY)).toEqual([])
+    const over = new Map([['v1', reading({ id: 'r1', vehicle_id: 'v1', read_date: '2026-08-06' })]])
+    expect(staleOdometerCallList(vehicles.slice(0, 1), holders, over, TODAY).length).toBe(1)
   })
 })
