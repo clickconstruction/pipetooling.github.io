@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1641',
+    date: '2026-08-14',
+    title: 'Paid dates show when the money arrived',
+    kind: 'fix',
+    highlights: [
+      'When a Stripe bill is paid by check or cash, the bill view now shows the day the deposit actually posted — not the day the office recorded it.',
+      'Bills paid through Stripe itself keep Stripe’s own payment timestamp.',
+    ],
+  },
+  {
     version: 'v2.1640',
     date: '2026-08-14',
     title: 'Pipeline activity reads time-first',

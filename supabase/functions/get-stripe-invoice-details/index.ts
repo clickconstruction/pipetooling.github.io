@@ -13,6 +13,7 @@ import {
   stripeInvoiceFooterFromStripe,
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
+import { STRIPE_OOB_META_PAID_ON } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 import { stripeInvoiceLinesDataForFixtureOrderDisplay } from '../_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts'
 
 const corsHeaders = {
@@ -240,6 +241,16 @@ serve(async (req) => {
     const paid_at =
       typeof paidAtRaw === 'number' && Number.isFinite(paidAtRaw) && paidAtRaw > 0 ? paidAtRaw : null
 
+    // v2.1641: the effective pay date recorded when the invoice was marked paid
+    // out-of-band (check/cash) — the day the money actually arrived, vs
+    // status_transitions.paid_at which Stripe stamps at the API call and cannot
+    // be backdated. Display prefers this for OOB-paid invoices.
+    const oobPaidRaw =
+      inv.metadata && typeof inv.metadata === 'object' && !Array.isArray(inv.metadata)
+        ? (inv.metadata as Record<string, string>)[STRIPE_OOB_META_PAID_ON]?.trim()
+        : undefined
+    const oob_paid_on = oobPaidRaw && /^\d{4}-\d{2}-\d{2}$/.test(oobPaidRaw) ? oobPaidRaw : null
+
     const memoFromStripe = stripeInvoiceDescriptionFromStripe(inv)
     const footerFromStripe = stripeInvoiceFooterFromStripe(inv)
     const memoStored = typeof invRow.stripe_invoice_memo === 'string' ? invRow.stripe_invoice_memo.trim() : ''
@@ -286,6 +297,8 @@ serve(async (req) => {
       amount_paid,
       /** Unix seconds — when Stripe marked the invoice paid (`status_transitions.paid_at`). */
       paid_at,
+      /** YYYY-MM-DD — effective out-of-band pay date from invoice metadata (`pt_paid_on`), when present. */
+      oob_paid_on,
       due_date: typeof inv.due_date === 'number' ? inv.due_date : null,
       invoice_number: typeof num === 'string' && num.trim() ? num.trim() : null,
       customer_name: customer_name_out,

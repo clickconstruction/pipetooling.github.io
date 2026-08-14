@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1640)
+last_updated: 2026-08-14 (v2.1641)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1641)
+
+### Hosted bill shows the day the money arrived, not the day Stripe was told (2026-08-14)
+Owner catch on the v2.1639 production test ("the paid_at should not be the day it is applied, it should be the day the transaction came in"). The app ledger and the Stripe OOB metadata already recorded the deposit's posted day — only Stripe's `status_transitions.paid_at` (stamped at the API call; Stripe offers no backdating) and the Hosted bill panel that displayed it showed the apply day. Fix: [`get-stripe-invoice-details`](../supabase/functions/get-stripe-invoice-details/index.ts) now returns **`oob_paid_on`** (the `pt_paid_on` metadata ymd), [`stripeInvoiceDetailsResponse`](../src/lib/stripeInvoiceDetailsResponse.ts) parses it, and [`HostedStripeBillPanel`](../src/components/jobs/HostedStripeBillPanel.tsx)'s "Amount paid (…)" prefers it whenever the invoice was paid **out-of-band** (`amount_paid === 0` — Stripe collected nothing), rendered as a plain calendar day. Stripe-charged invoices keep the real Stripe timestamp. Verified against the live Keith Stadtmueller invoice: deployed function returns `oob_paid_on: 2026-08-10` (the check's posted day) alongside `paid_at` = the Aug 14 apply instant. **Deploy: `get-stripe-invoice-details` redeployed 2026-08-14 (additive field, old clients unaffected); client is this PR.** No migration.
 
 ## Latest Updates (v2.1640)
 
