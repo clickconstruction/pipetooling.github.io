@@ -1,4 +1,10 @@
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { compareJobsByCreatedAtDesc } from '../assignJobPickerOrder'
+import { sortJobPickerRowsFinishedLast } from '../scheduleDispatchHub'
+import { findJobsByNumber } from './stagesJobNumberJump'
+import { stripTrailingZip } from '../displayAddress'
+import { denverCalendarDaysBetweenInstantAndNow, formatDenverCalendarDayShort } from '../../utils/dateUtils'
+import type { ScheduleDispatchAssignJobPickerRow } from '../../components/schedule/ScheduleDispatchAssignJobPickerModal'
 
 /**
  * Sub Labor job picker (v2.1616): the New Sub Labor modal picks a real job
@@ -70,4 +76,69 @@ export function resolveSubLaborJobByNumber<T extends SubLaborPickerJobSlice>(
 /** The job_number text the form stores for a picked job (schema caps at 10 chars). */
 export function subLaborJobNumberForStorage(job: SubLaborPickerJobSlice): string {
   return effectiveJobLedgerNumber(job.hcp_number, job.click_number ?? null).trim().slice(0, 10)
+}
+
+export type SubLaborAssignPickerJobSlice = SubLaborPickerJobSlice & {
+  created_at?: string | null
+  status?: string | null
+  serviceType?: { name: string } | null
+}
+
+/** Picker subline, hub-style: "Nd Mon D | address" (either part optional). */
+export function subLaborPickerSubline(j: Pick<SubLaborAssignPickerJobSlice, 'created_at' | 'job_address'>): string | undefined {
+  const dt = (j.created_at ?? '').trim()
+  let dateLabel = ''
+  if (dt) {
+    const d = new Date(dt)
+    if (!Number.isNaN(d.getTime())) {
+      dateLabel = `${denverCalendarDaysBetweenInstantAndNow(d.getTime())}d ${formatDenverCalendarDayShort(d.getTime())}`
+    }
+  }
+  const address = stripTrailingZip(j.job_address)
+  const parts = [dateLabel, address].filter(Boolean)
+  return parts.length > 0 ? parts.join(' | ') : undefined
+}
+
+/**
+ * Rows for the app-standard job picker (ScheduleDispatchAssignJobPickerModal,
+ * v2.1618): trade pill + stage chip + date/address subline, newest first with
+ * finished jobs (billed/paid) under their divider. `numberDigits` non-empty
+ * switches to number-only matching (the picker's # chip mode).
+ */
+export function subLaborAssignPickerRows(
+  jobs: readonly SubLaborAssignPickerJobSlice[],
+  search: string,
+  numberDigits: string,
+): ScheduleDispatchAssignJobPickerRow[] {
+  const digits = numberDigits.replace(/\D/g, '')
+  let list: SubLaborAssignPickerJobSlice[]
+  if (digits !== '') {
+    list = findJobsByNumber([...jobs], digits)
+  } else {
+    const q = search.trim().toLowerCase()
+    list = [...jobs]
+    if (q) {
+      list = list.filter((j) => {
+        const num = effectiveJobLedgerNumber(j.hcp_number, j.click_number ?? null).toLowerCase()
+        return (
+          num.includes(q) ||
+          (j.job_name ?? '').toLowerCase().includes(q) ||
+          (j.customer_name ?? '').toLowerCase().includes(q) ||
+          (j.job_address ?? '').toLowerCase().includes(q) ||
+          subLaborJobDisplayLabel(j).toLowerCase().includes(q)
+        )
+      })
+    }
+    list.sort(compareJobsByCreatedAtDesc)
+  }
+  return sortJobPickerRowsFinishedLast(
+    list.map((j) => ({
+      id: j.id,
+      displayTitle: subLaborJobDisplayLabel(j),
+      serviceTypeName: j.serviceType?.name ?? null,
+      subline: subLaborPickerSubline(j),
+      status: j.status ?? null,
+      evidence: null,
+    })),
+  )
 }

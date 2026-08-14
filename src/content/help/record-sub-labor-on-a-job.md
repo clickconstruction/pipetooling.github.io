@@ -11,7 +11,7 @@ Sub labor lives on **Jobs → Sub Labor**. Every entry belongs to a job — the 
 
 {{button:blue|New Sub Labor}} opens a short three-step form (built for phones, same on desktop) with a progress bar up top. Enter moves you forward; {{button:outline|Back}} never loses what you typed.
 
-1. **Job** — search by number, name, address, or customer, exactly like the pickers on Schedule and Accounts Receivable. Picking the job fills the **Address** (editable if the sub worked from somewhere else) and pre-selects the job's crew for the next step. Date and service type live here too.
+1. **Job** — tap the field to open the same job search Schedule uses: type a number, name, address, or customer, and every result shows its trade pill and what stage the job is in ({{chip:yellow|Working}}, {{chip:blue|Billed}}, and so on), finished jobs under their own divider. Picking the job fills the **Address** (editable if the sub worked from somewhere else) and pre-selects the job's crew for the next step. Date and service type live here too.
 2. **Crew** — the job's team arrives pre-selected as tappable chips; tap to add or remove people from External Subs, Internal Subs, or Office Team, or search across all three. {{button:blue|Add Sub}} creates a new external sub on the spot.
 3. **Work and cost** — describe the work and its cost, or flip on **Itemize hours and rate**. The **Labor book** section fills line items from your book prices for the picked service type. {{button:blue|Save}} shows what's still missing right on the button until everything's in.
 

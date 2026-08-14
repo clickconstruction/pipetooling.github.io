@@ -16,10 +16,11 @@ import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborShee
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
 import {
   resolveSubLaborJobByNumber,
+  subLaborAssignPickerRows,
+  subLaborJobDisplayLabel,
   subLaborJobNumberForStorage,
-  subLaborJobPickerOptions,
 } from '../../lib/jobs/subLaborJobPicker'
-import { SearchableSelect } from '../SearchableSelect'
+import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispatchAssignJobPickerModal'
 import type { Database } from '../../types/database'
 import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -170,6 +171,10 @@ function JobsSubLaborFormModalInner(
    * as 0; the drive-cost rollups keep honoring old rows' stored miles).
    */
   const [laborStep, setLaborStep] = useState<1 | 2 | 3>(1)
+  /** v2.1618: the Job field opens the app-standard job picker (stage chips, trade pills). */
+  const [laborJobPickerOpen, setLaborJobPickerOpen] = useState(false)
+  const [laborJobPickerSearch, setLaborJobPickerSearch] = useState('')
+  const [laborJobPickerNumberQuery, setLaborJobPickerNumberQuery] = useState('')
   const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [laborFixtureEntryMode, setLaborFixtureEntryMode] = useState<'simple' | 'itemized'>('simple')
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([
@@ -1173,19 +1178,48 @@ function JobsSubLaborFormModalInner(
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
                     Job <span style={{ color: 'var(--text-red-700)' }}>*</span>
                   </label>
-                  {/* v2.1616: the standard job search replaces hand-typed Job # +
-                      Address — picking fills both and pre-checks the job's crew. */}
-                  <SearchableSelect
-                    value={laborPickedJobId ?? ''}
-                    onChange={(v) => {
-                      const job = jobs.find((j) => j.id === v)
-                      if (job) applyPickedLaborJob(job)
-                    }}
-                    options={subLaborJobPickerOptions(jobs)}
-                    placeholder="Search job # / name / address / customer"
-                    searchable
-                    listAriaLabel="Job for this sub labor"
-                  />
+                  {/* v2.1618: the field opens the app-standard job picker
+                      (ScheduleDispatchAssignJobPickerModal) — type in its search,
+                      rows carry trade pills + stage chips; picking fills the
+                      field, Address, and the crew. */}
+                  {(() => {
+                    const picked = laborPickedJobId ? jobs.find((j) => j.id === laborPickedJobId) : undefined
+                    return (
+                      <button
+                        type="button"
+                        aria-haspopup="dialog"
+                        onClick={() => {
+                          setLaborJobPickerSearch('')
+                          setLaborJobPickerNumberQuery('')
+                          setLaborJobPickerOpen(true)
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.5rem',
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid var(--border-strong)',
+                          borderRadius: 4,
+                          minHeight: 38,
+                          boxSizing: 'border-box',
+                          background: 'var(--surface)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          font: 'inherit',
+                          color: picked ? 'inherit' : 'var(--text-faint)',
+                        }}
+                      >
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {picked ? subLaborJobDisplayLabel(picked) : 'Search job # / name / address / customer'}
+                        </span>
+                        <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {picked ? 'change' : '\u2315'}
+                        </span>
+                      </button>
+                    )
+                  })()}
                 </div>
               )}
               <div style={{ display: laborStepVisible(1) ? 'flex' : 'none', gap: '1rem', flexWrap: 'wrap' }}>
@@ -2108,6 +2142,24 @@ function JobsSubLaborFormModalInner(
               </div>
               )}
             </form>
+            {!editingLaborJob && laborJobPickerOpen ? (
+              <ScheduleDispatchAssignJobPickerModal
+                open
+                onClose={() => setLaborJobPickerOpen(false)}
+                subtitle="Pick the job this sub labor belongs to"
+                jobRows={subLaborAssignPickerRows(jobs, laborJobPickerSearch, laborJobPickerNumberQuery)}
+                searchValue={laborJobPickerSearch}
+                onSearchChange={setLaborJobPickerSearch}
+                numberQuery={laborJobPickerNumberQuery}
+                onNumberQueryChange={setLaborJobPickerNumberQuery}
+                searchPlaceholder="Search HCP, job, address, or customer"
+                onPickJob={(jobId) => {
+                  const job = jobs.find((j) => j.id === jobId)
+                  if (job) applyPickedLaborJob(job)
+                  setLaborJobPickerOpen(false)
+                }}
+              />
+            ) : null}
           </div>
         </div>
       )}
