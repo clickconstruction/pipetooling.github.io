@@ -12247,6 +12247,8 @@ export type Database = {
           make: string
           model: string
           oil_change_interval_miles: number
+          oil_require_past_due_miles: number
+          oil_suggest_window_miles: number
           updated_at: string | null
           vin: string | null
           weekly_insurance_cost: number
@@ -12259,6 +12261,8 @@ export type Database = {
           make?: string
           model?: string
           oil_change_interval_miles?: number
+          oil_require_past_due_miles?: number
+          oil_suggest_window_miles?: number
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
@@ -12271,6 +12275,8 @@ export type Database = {
           make?: string
           model?: string
           oil_change_interval_miles?: number
+          oil_require_past_due_miles?: number
+          oil_suggest_window_miles?: number
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
