@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { type UserRole } from '../../hooks/useAuth'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+
+/** v2.1637: summary money cells show — instead of 0.00 (per-part price cells keep 0.00 — a zero there flags missing pricing). */
+const currencyOrDash = (n: number, withDollar = false) => (n === 0 ? '—' : `${withDollar ? '$' : ''}${formatCurrency(n)}`)
 import { buildPartsPerPersonCostRows } from '../../lib/partsPerPersonCostSummary'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { TallyPartRow } from '../../types/tallyPart'
@@ -291,12 +294,12 @@ export default function JobsPartsTab({
                       </td>
                       <td style={{ padding: '0.75rem' }}>{hcpNumber ?? '—'}</td>
                       <td style={{ padding: '0.75rem' }}>{jobName ?? '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(billedMaterialsSum)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(invoiceAmountByJob[jobId] ?? 0)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(cardCharges)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{currencyOrDash(partsTotal)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{currencyOrDash(billedMaterialsSum)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{currencyOrDash(invoiceAmountByJob[jobId] ?? 0)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{currencyOrDash(cardCharges)}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>
-                        {formatCurrency(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0) + cardCharges)}
+                        {currencyOrDash(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0) + cardCharges)}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>{parts.length}</td>
                     </tr>,
@@ -413,19 +416,19 @@ export default function JobsPartsTab({
                                                   )}
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  ${formatCurrency(row.partsFromTally)}
+                                                  {currencyOrDash(row.partsFromTally, true)}
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  ${formatCurrency(row.otherJobCharges)}
+                                                  {currencyOrDash(row.otherJobCharges, true)}
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  ${formatCurrency(row.invoicesFromSupply)}
+                                                  {currencyOrDash(row.invoicesFromSupply, true)}
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  ${formatCurrency(row.cardCharges)}
+                                                  {currencyOrDash(row.cardCharges, true)}
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>
-                                                  ${formatCurrency(rt)}
+                                                  {currencyOrDash(rt, true)}
                                                 </td>
                                               </tr>
                                             )
@@ -439,24 +442,24 @@ export default function JobsPartsTab({
                                           >
                                             <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              ${formatCurrency(pFooter.partsFromTally)}
+                                              {currencyOrDash(pFooter.partsFromTally, true)}
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              ${formatCurrency(pFooter.otherJobCharges)}
+                                              {currencyOrDash(pFooter.otherJobCharges, true)}
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              ${formatCurrency(pFooter.invoicesFromSupply)}
+                                              {currencyOrDash(pFooter.invoicesFromSupply, true)}
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              ${formatCurrency(pFooter.cardCharges)}
+                                              {currencyOrDash(pFooter.cardCharges, true)}
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              $
-                                              {formatCurrency(
+                                              {currencyOrDash(
                                                 pFooter.partsFromTally +
                                                   pFooter.otherJobCharges +
                                                   pFooter.invoicesFromSupply +
                                                   pFooter.cardCharges,
+                                                true,
                                               )}
                                             </td>
                                           </tr>

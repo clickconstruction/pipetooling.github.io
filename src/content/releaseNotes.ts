@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1637',
+    date: '2026-08-14',
+    title: 'Parts tab drops the wall of zeros',
+    kind: 'fix',
+    highlights: [
+      'On Jobs → Parts, money columns that are $0 now show a dash instead of 0.00, so the real numbers stand out.',
+    ],
+  },
+  {
     version: 'v2.1636',
     date: '2026-08-14',
     title: 'Crew day splits from the clock stop being editable',

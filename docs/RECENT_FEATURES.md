@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1636)
+last_updated: 2026-08-14 (v2.1637)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1637)
+
+### Parts tab: zero money cells read — instead of 0.00 (2026-08-14)
+Owner request ("on jobs?tab=parts, when it is 0.00, show -"). [`JobsPartsTab`](../src/components/jobs/JobsPartsTab.tsx): new module helper `currencyOrDash` renders — for $0 in the five summary money columns of the main job table (Parts from Tally / Other job charges / Invoices from Supply Houses / Card charges / Total Parts Cost) and throughout the expanded **Cost by person** breakdown + its Total footer. Per-part price cells inside the parts detail keep showing 0.00 — a zero there flags missing pricing (the red-tint audit). Verified live: rows with only card charges now read `— — — 475.84 475.84`. Client-only — no migration.
 
 ## Latest Updates (v2.1636)
 
