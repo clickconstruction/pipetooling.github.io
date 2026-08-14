@@ -30,6 +30,7 @@ function makeCtx(over: Partial<StagesRowRenderContext> = {}): StagesRowRenderCon
     jobThreadStatsByJobId: {},
     jobThreadActivityByJobId: {},
     openJobThreadFullscreen: vi.fn(),
+    openJobActivityExpand: vi.fn(),
     openJobCalendar: vi.fn(),
     stagesUpcomingByJobId: {},
     applyStagesInvoiceFocus: vi.fn(() => true),
@@ -113,6 +114,23 @@ describe('JobsStagesActivityBox', () => {
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByLabelText('Note text')).toBeNull()
     expect(screen.getByLabelText("Post a note to this job's activity")).toBeTruthy()
+  })
+
+  it('corner expand button opens the shared full-page modal via ctx', () => {
+    const openJobActivityExpand = vi.fn()
+    const job = makeJob({ job_name: 'Shearer Pinpoint' })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({
+          openJobActivityExpand,
+          jobThreadActivityByJobId: { [job.id]: [] } as StagesRowRenderContext['jobThreadActivityByJobId'],
+        })}
+        submitNoteWithBody={vi.fn(async () => {})}
+      />,
+    )
+    fireEvent.click(screen.getByLabelText('Expand job activity'))
+    expect(openJobActivityExpand).toHaveBeenCalledWith(job)
   })
 
   it('submits through the note pipeline on Enter', async () => {

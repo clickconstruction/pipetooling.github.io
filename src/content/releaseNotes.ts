@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1657',
+    date: '2026-08-14',
+    title: 'Job activity opens full page',
+    kind: 'feature',
+    highlights: [
+      'Jobs → Pipeline: a new expand button in the corner of each row’s Job activity box — and the "N Reports" chip — open the whole job trail as a full-page view, closed with the ✕ or Escape.',
+      'The full page shows everything day by day: numbered notes and full reports, plus schedule, clock, status, and billing events, with the same All/Notes/Reports/Status/Billing/Crew filter as the inline panel.',
+      'Set % complete, see who’s assigned, manage people on the job, and post notes without leaving the view.',
+      'Activity timestamps across the Pipeline now read “Thu 3:45 PM (1d)” instead of “Thu 3:45 PM · 1d ago”.',
+    ],
+  },
+  {
     version: 'v2.1656',
     date: '2026-08-14',
     title: 'Match sessions from Quickfill',

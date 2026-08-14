@@ -53,6 +53,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/billedAwaitingPaymentReport'
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
+import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
@@ -405,6 +406,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Read-only here (loading block + return-to-edit banner); the URL router that WRITES params stays in Jobs.tsx. */
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+
+  // Full-page Job activity modal — opened by the activity box's corner expand
+  // button and the row's "N Reports" chip. One instance for the whole board.
+  const [activityExpandJob, setActivityExpandJob] = useState<JobWithDetails | null>(null)
+  const openJobActivityExpand = useCallback(
+    (job: JobWithDetails) => {
+      if (loadJobThreadNotesForJob) void loadJobThreadNotesForJob(job.id)
+      setActivityExpandJob(job)
+    },
+    [loadJobThreadNotesForJob],
+  )
 
   const canOpenJobScheduleModal = useMemo(
     () =>
@@ -2258,6 +2270,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
+                    openJobActivityExpand={openJobActivityExpand}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -2342,6 +2355,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
+                    openJobActivityExpand={openJobActivityExpand}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -2474,6 +2488,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
+                    openJobActivityExpand={openJobActivityExpand}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -2730,6 +2745,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
+                    openJobActivityExpand={openJobActivityExpand}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -2826,6 +2842,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
+                    openJobActivityExpand={openJobActivityExpand}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -2961,6 +2978,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       jobThreadStatsByJobId={jobThreadStatsByJobId}
                       jobThreadActivityByJobId={jobThreadActivityByJobId}
                       openJobThreadFullscreen={openJobThreadFullscreen}
+                    openJobActivityExpand={openJobActivityExpand}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                       applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -3382,6 +3400,38 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             )
           })()}
         </div>
+      )}
+      {activityExpandJob && (
+        <JobsStagesActivityExpandModal
+          job={activityExpandJob}
+          activity={jobThreadActivityByJobId[activityExpandJob.id] ?? null}
+          upcoming={stagesUpcomingByJobId[activityExpandJob.id] ?? null}
+          onClose={() => setActivityExpandJob(null)}
+          submitNoteWithBody={submitJobThreadNoteWithBody}
+          viewerRole={authRole}
+          pctComplete={activityExpandJob.pct_complete ?? null}
+          canEditPct={canEditJobPctComplete}
+          pctSaving={pctCompleteSavingId === activityExpandJob.id}
+          onCommitPct={async (value, notetext) => {
+            await commitStagesPctWithNote(activityExpandJob.id, value, notetext)
+            // Keep the snapshot's % readout current — the board list refreshes
+            // on its own cadence but this modal holds a copy of the row.
+            setActivityExpandJob((prev) => (prev && prev.id === activityExpandJob.id ? { ...prev, pct_complete: value } : prev))
+          }}
+          teamMembers={activityExpandJob.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+          peopleAction={
+            canManageJobPeople
+              ? {
+                  onClick: () =>
+                    setManageJobPeople({
+                      jobId: activityExpandJob.id,
+                      jobLabel: `${(activityExpandJob.hcp_number ?? '').trim() || '—'} · ${(activityExpandJob.job_name ?? '').trim() || 'Job'}`,
+                      currentTeamUserIds: activityExpandJob.team_members?.map((t) => t.user_id) ?? [],
+                    }),
+                }
+              : undefined
+          }
+        />
       )}
       {calendarJob && (
         <JobCalendarModal

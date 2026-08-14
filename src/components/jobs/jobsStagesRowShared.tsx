@@ -61,6 +61,8 @@ export type StagesRowRenderContext = {
   jobThreadStatsByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadStatsByJobId']
   jobThreadActivityByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadActivityByJobId']
   openJobThreadFullscreen: (jobId: string) => void
+  /** Opens the full-page Job activity modal (the activity box's expand view). */
+  openJobActivityExpand: (job: JobWithDetails) => void
   openJobCalendar: (job: JobWithDetails) => void
   stagesUpcomingByJobId: Record<string, StagesUpcomingAppointment>
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
@@ -820,8 +822,8 @@ export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: 
     <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
       <button
         type="button"
-        onClick={() => ctx.openJobThreadFullscreen(job.id)}
-        title="Open the full-screen job activity / notes view"
+        onClick={() => ctx.openJobActivityExpand(job)}
+        title="Open the full-page job activity view"
         style={{
           padding: '0.2rem 0.5rem',
           fontSize: '0.75rem',
