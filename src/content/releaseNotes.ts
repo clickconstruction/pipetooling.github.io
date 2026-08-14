@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1656',
+    date: '2026-08-14',
+    title: 'Match sessions from Quickfill',
+    kind: 'feature',
+    highlights: [
+      'Quickfill’s Unassigned field time section now has the Match sessions button from People → Hours — the amber count shows clock sessions with no job or bid, and one tap opens the matcher.',
+    ],
+  },
+  {
     version: 'v2.1655',
     date: '2026-08-14',
     title: 'Hours grid works on phones',

@@ -22,6 +22,7 @@ import {
   type MergedCrewMapRow,
 } from '../../utils/crewAssignments'
 import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
+import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../people/MatchClockSessionsModal'
 import { useToastContext } from '../../contexts/ToastContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -213,6 +214,22 @@ export function QuickfillUnassignedFieldTimeSection() {
   const [accessChecked, setAccessChecked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // v2.1656: the People → Hours "Match sessions" flow, reachable from the
+  // assistant's Quickfill pass — the modal is self-contained; this section
+  // only owns the button, its unassigned-count badge, and the open state.
+  const [matchSessionsOpen, setMatchSessionsOpen] = useState(false)
+  const [unassignedSessionCount, setUnassignedSessionCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!canAccess) return
+    let cancelled = false
+    void fetchUnassignedClockSessionCount().then((n) => {
+      if (!cancelled) setUnassignedSessionCount(n)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [canAccess, matchSessionsOpen])
 
   const [windowDays, setWindowDays] = useState<number>(() =>
     readStoredNumber(
@@ -531,6 +548,32 @@ export function QuickfillUnassignedFieldTimeSection() {
         >
           Reload
         </button>
+        <button
+          type="button"
+          onClick={() => setMatchSessionsOpen(true)}
+          aria-label="Match unassigned clock sessions to jobs and bids"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.25rem 0.7rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            borderRadius: 8,
+            cursor: 'pointer',
+            // Amber "needs sorting" voice when sessions wait — same button as People → Hours.
+            ...((unassignedSessionCount ?? 0) > 0
+              ? { border: '1px solid #f59e0b', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+              : { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)' }),
+          }}
+        >
+          Match sessions
+          {(unassignedSessionCount ?? 0) > 0 ? (
+            <span style={{ background: '#d97706', color: '#fff', borderRadius: 999, padding: '0 0.45rem', fontSize: '0.71875rem', fontWeight: 800, lineHeight: 1.5 }}>
+              {unassignedSessionCount}
+            </span>
+          ) : null}
+        </button>
         <span style={summaryStyle}>
           {loading
             ? 'Loading…'
@@ -650,6 +693,14 @@ export function QuickfillUnassignedFieldTimeSection() {
           showToast={showToast}
         />
       )}
+
+      <MatchClockSessionsModal
+        open={matchSessionsOpen}
+        onClose={() => setMatchSessionsOpen(false)}
+        onSessionsChanged={() => {
+          void fetchUnassignedClockSessionCount().then(setUnassignedSessionCount)
+        }}
+      />
     </section>
   )
 }
