@@ -364,9 +364,15 @@ the 08-11 open item; office-visible downtime ~10 minutes.
   session. The post-mortem ran through the Dashboard SQL editor instead.
   Restore the password to `.env.local` to make Step 2 runnable headless.
 
-Open item: three idle-host stalls (07-31, 08-11, 08-14) with zero
-status-page acknowledgment is a platform pattern — escalate to Supabase
-support with the three incident write-ups attached.
+Escalated: support ticket filed 2026-08-14 (Database unresponsive /
+severity High, project selected, "Allow support access" left on) asking
+Supabase to inspect the underlying instance/volume across the three
+windows and migrate the project to fresh hardware if suspect. Replies go
+to the account email — attach the three incident write-ups when the
+acknowledgment email arrives (the form takes no attachments pre-submit).
+Note: the confirmation screen said "logged for No specific project"
+despite the project being selected; the ticket body leads with the
+project ref, but verify the association in the acknowledgment email.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
