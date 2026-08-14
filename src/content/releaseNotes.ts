@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1625',
+    date: '2026-08-13',
+    title: 'Team Labor counts every crew day again',
+    kind: 'fix',
+    highlights: [
+      'The Team Labor tab and the Billing tab’s “Needs labor” audit were quietly missing older crew days once the history grew past a server limit — hours and costs now include everything.',
+      'Labor totals in Edit Job, job migrate/combine previews, and Bid Costs are fixed the same way.',
+    ],
+  },
+  {
     version: 'v2.1623',
     date: '2026-08-13',
     title: 'Billing tab matches Pipeline\u2019s job chip',

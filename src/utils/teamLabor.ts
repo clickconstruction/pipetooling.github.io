@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllRows } from '../lib/supabasePaging'
 
 export type CrewJobAssignment = { job_id: string; pct: number }
 export type CrewJobRow = { job_assignments: CrewJobAssignment[] }
@@ -110,12 +111,21 @@ export async function loadTeamLaborData(
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
-  const [crewRes, hoursRes, configMap] = await Promise.all([
-    supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments'),
-    supabase.from('people_hours').select('person_name, person_id, work_date, hours').gte('work_date', startDate),
+  // Company-wide + 2-year fetches cross PostgREST's silent 1000-row cap
+  // (people_crew_jobs alone is past it) — page them or the tab aggregates an
+  // arbitrary subset with no error.
+  const [crewData, hoursData, configMap] = await Promise.all([
+    fetchAllRows(
+      (from, to) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').order('work_date').order('person_name').range(from, to),
+      'load team labor crew days',
+    ),
+    fetchAllRows(
+      (from, to) => supabase.from('people_hours').select('person_name, person_id, work_date, hours').gte('work_date', startDate).order('work_date').order('person_name').range(from, to),
+      'load team labor hours',
+    ),
     fetchLaborPayConfigMap(supabase),
   ])
-  const crewRows = (crewRes.data ?? []) as Array<{
+  const crewRows = crewData as Array<{
     work_date: string
     person_name: string
     person_id: string | null
@@ -128,7 +138,7 @@ export async function loadTeamLaborData(
     if (r.person_id && !personIdByName[r.person_name]) personIdByName[r.person_name] = r.person_id
   }
   const hoursMap = buildHoursMap(
-    (hoursRes.data ?? []) as Array<{ person_name: string; person_id: string | null; work_date: string; hours: number }>,
+    hoursData as Array<{ person_name: string; person_id: string | null; work_date: string; hours: number }>,
   )
   const crewByDatePerson: Record<string, CrewJobRow> = {}
   for (const r of crewRows) {
@@ -285,19 +295,27 @@ export async function loadTeamLaborDataForBids(
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
-  const [crewRes, hoursRes, configMap] = await Promise.all([
-    supabase.from('people_crew_bids').select('work_date, person_name, person_id, bid_assignments'),
-    supabase.from('people_hours').select('person_name, person_id, work_date, hours').gte('work_date', startDate),
+  // Same 1000-row-cap hazard as loadTeamLaborData — the 2-year hours fetch is
+  // well past the cap even when the crew-bids table itself is small.
+  const [crewData, hoursData, configMap] = await Promise.all([
+    fetchAllRows(
+      (from, to) => supabase.from('people_crew_bids').select('work_date, person_name, person_id, bid_assignments').order('work_date').order('person_name').range(from, to),
+      'load bid labor crew days',
+    ),
+    fetchAllRows(
+      (from, to) => supabase.from('people_hours').select('person_name, person_id, work_date, hours').gte('work_date', startDate).order('work_date').order('person_name').range(from, to),
+      'load bid labor hours',
+    ),
     fetchLaborPayConfigMap(supabase),
   ])
-  const crewRows = (crewRes.data ?? []) as Array<{
+  const crewRows = crewData as Array<{
     work_date: string
     person_name: string
     person_id: string | null
     bid_assignments: CrewBidAssignment[]
   }>
   const hoursMap = buildHoursMap(
-    (hoursRes.data ?? []) as Array<{ person_name: string; person_id: string | null; work_date: string; hours: number }>,
+    hoursData as Array<{ person_name: string; person_id: string | null; work_date: string; hours: number }>,
   )
   const crewByDatePerson: Record<string, CrewBidRow> = {}
   for (const r of crewRows) {

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1623)
+last_updated: 2026-08-13 (v2.1625)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1625)
+
+### Team Labor no longer computed from a silently truncated fetch (2026-08-13)
+PostgREST caps un-ranged selects at 1,000 rows with NO error, and `people_crew_jobs` (~1,504 rows in prod) plus the 2-year `people_hours` window are both past it — so the Jobs → Team Labor tab, the Billing tab's "Needs labor" audit (`teamLaborJobIds`), Edit-Job's labor panel, migrate/combine previews, and Bid Costs were all aggregating an arbitrary subset. Fix in [`utils/teamLabor.ts`](../src/utils/teamLabor.ts): `loadTeamLaborData` and `loadTeamLaborDataForBids` now page their crew + hours fetches with the shared `fetchAllRows` kernel (stable `work_date, person_name` order — the PeopleReviewTab v2.976/v2.978 pattern). [`Jobs.tsx`](../src/pages/Jobs.tsx) drops its ~75-line pre-identity inline copy of the same aggregation and delegates to the shared util, so the tab also picks up the person_id-first wage/salary resolution (v2.1010–v2.1123) it had been missing. New regression test [`utils/teamLabor.test.ts`](../src/utils/teamLabor.test.ts) fakes the 1,000-row cap and fails if the fetches stop paging. Swept every other `people_crew_jobs`/`people_hours` fetch in the app: the rest are person- or period-scoped (safely under the cap) or already paged; the Settings backup exports' `select('*')` truncation is spun off as its own task. Client-only — no migration.
 
 ## Latest Updates (v2.1623)
 
