@@ -132,7 +132,9 @@ In **Accounts Receivable**, each allocation line has a **Billed line / Payment r
 
 ### Customer paid a Stripe invoice by check?
 
-Sometimes you email a Stripe invoice and the customer mails a check anyway. Those bills show in the Accounts Receivable picker marked **· Stripe** — you can allocate the deposit straight to one, but an amber confirmation appears first: check the box acknowledging the customer paid **outside** Stripe, and — this is the important part — afterwards **void the invoice or mark it paid out-of-band in Stripe** so the emailed payment link can't be paid a second time. Until the box is checked, {{button:blue|Apply}} stays disabled.
+Sometimes you email a Stripe invoice and the customer mails a check anyway. Those bills show in the Accounts Receivable picker marked **· Stripe** — you can allocate the deposit straight to one, but an amber confirmation appears first: check the box acknowledging the customer paid **outside** Stripe. Until the box is checked, {{button:blue|Apply}} stays disabled.
+
+**When the allocation matches the bill's full balance, the app finishes the Stripe side for you**: applying also marks the Stripe invoice paid (out-of-band), so the emailed payment link can't be paid a second time — the confirmation text tells you this is about to happen. If Stripe can't be reached, the allocation still applies and the modal stays open with a **Retry Stripe close** button (plus instructions for doing it by hand in Stripe). Only a **partial** allocation leaves the Stripe side to you: the confirmation reverts to the reminder to void or mark the invoice paid out-of-band in Stripe yourself.
 
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest.
 

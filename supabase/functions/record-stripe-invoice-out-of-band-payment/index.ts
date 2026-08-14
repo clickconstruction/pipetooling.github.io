@@ -42,6 +42,13 @@ interface Body {
   reference_number?: string
   internal_note?: string
   stripe_mode?: StripeBillingMode
+  /**
+   * v2.1639 (AR auto-close): accept an invoice already `paid` in the app.
+   * The AR allocation records the payment and flips the invoice to paid FIRST,
+   * then calls here to close the Stripe invoice — the webhook's paid handler
+   * no-ops on already-paid rows, so no second payment row is created.
+   */
+  allow_app_paid?: boolean
 }
 
 serve(async (req) => {
@@ -115,7 +122,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
     }
 
-    if (invRow.status !== 'billed') {
+    if (invRow.status !== 'billed' && !(body.allow_app_paid === true && invRow.status === 'paid')) {
       return jsonResponse({ error: 'Invoice must be in Billed status' }, 400)
     }
 

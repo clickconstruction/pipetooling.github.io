@@ -45,6 +45,12 @@ import {
   arRecordedPaymentSearchLabel,
   type ArRecordedPaymentCandidate,
 } from '../../lib/arRecordedPaymentTargets'
+import {
+  allStripeAllocationsAutoClose,
+  arStripeAutoCloseCandidates,
+  type ArStripeAutoCloseCandidate,
+} from '../../lib/arStripeAutoClose'
+import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type MercuryCandidate =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -465,6 +471,7 @@ export default function BankPaymentsModal({
     setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
     setApplyError(null)
     setStripeOutOfBandConfirmed(false)
+    setStripeCloseResults(null)
   }, [open, selectedId])
 
   // Recorded-payment candidates for the "Payment received" allocation kind
@@ -603,6 +610,15 @@ export default function BankPaymentsModal({
    * also reminds the user to void / mark the invoice out-of-band in Stripe.
    */
   const [stripeOutOfBandConfirmed, setStripeOutOfBandConfirmed] = useState(false)
+  /**
+   * v2.1639: per-invoice results of the post-apply Stripe auto-close. Non-null
+   * with a failure keeps the modal open on a retry panel — the allocation
+   * already applied (correct app-side); only the Stripe closure is pending.
+   */
+  const [stripeCloseResults, setStripeCloseResults] = useState<
+    Array<ArStripeAutoCloseCandidate & { ok: boolean; error?: string }> | null
+  >(null)
+  const [stripeCloseRetrying, setStripeCloseRetrying] = useState(false)
 
   const stripeAllocationSelected = useMemo(() => {
     for (const line of allocLines) {
@@ -615,6 +631,22 @@ export default function BankPaymentsModal({
     }
     return false
   }, [allocLines, targetByKey, recordedPaymentById])
+
+  /** Parsed lines + targets in the kernel's shape (payment-kind lines pass through and are ignored there). */
+  const stripeAutoCloseLines = useMemo(
+    () =>
+      allocLines.map((line) => ({
+        kind: line.kind,
+        targetKey: line.targetKey,
+        amount: line.kind === 'billed' ? parseBankPaymentAllocationAmount(line.amountStr) : 0,
+      })),
+    [allocLines],
+  )
+  /** Every selected Stripe line exactly covered → the apply will close those Stripe invoices itself. */
+  const stripeAutoCloseAll = useMemo(
+    () => allStripeAllocationsAutoClose(stripeAutoCloseLines, targetByKey),
+    [stripeAutoCloseLines, targetByKey],
+  )
 
   const validationMessage = useMemo(() => {
     if (!selected) return null
@@ -651,11 +683,70 @@ export default function BankPaymentsModal({
     !canApply ||
     !selected ||
     applySubmitting ||
+    stripeCloseResults != null ||
     !!validationMessage ||
     (targets.length === 0 && recordedPayments.length === 0) ||
     !paidOnYmdFromMercury ||
     !canAllocateRemaining ||
     (stripeAllocationSelected && !stripeOutOfBandConfirmed)
+
+  /**
+   * v2.1639: mark one exactly-covered Stripe-hosted bill paid out-of-band in
+   * Stripe (kills the emailed link). Runs AFTER the allocation RPC — the app
+   * invoice is already `paid`, so the webhook's paid event no-ops (no second
+   * payment row). The function re-checks the amount against Stripe's
+   * amount_remaining and is idempotent, so retries are always safe.
+   */
+  async function closeStripeInvoiceOob(
+    c: ArStripeAutoCloseCandidate,
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess.session?.access_token
+      if (!token) return { ok: false, error: 'No session' }
+      if (!paidOnYmdFromMercury) return { ok: false, error: 'Missing Mercury posted date' }
+      const { data, error } = await supabase.functions.invoke('record-stripe-invoice-out-of-band-payment', {
+        headers: { Authorization: `Bearer ${token}` },
+        body: {
+          jobs_ledger_invoice_id: c.invoiceId,
+          amount_dollars: c.amountDollars,
+          paid_on: paidOnYmdFromMercury,
+          payment_type: kindPaymentTypeLabel,
+          internal_note:
+            [internalNote.trim(), `AR allocation from Mercury deposit ${selected?.mercury_transaction_id ?? ''}`.trim()]
+              .filter(Boolean)
+              .join(' · ') || undefined,
+          allow_app_paid: true,
+        },
+      })
+      if (error) {
+        const detail = await readEdgeFunctionErrorBody(error)
+        return { ok: false, error: detail ?? (error instanceof Error ? error.message : 'Edge function failed') }
+      }
+      const payload = data as { error?: string } | null
+      if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
+        return { ok: false, error: payload.error }
+      }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  async function retryFailedStripeCloses() {
+    if (!stripeCloseResults) return
+    setStripeCloseRetrying(true)
+    const next = [...stripeCloseResults]
+    for (let i = 0; i < next.length; i++) {
+      const r = next[i]!
+      if (r.ok) continue
+      const res = await closeStripeInvoiceOob(r)
+      next[i] = { ...r, ok: res.ok, error: res.error }
+    }
+    setStripeCloseResults(next)
+    setStripeCloseRetrying(false)
+    if (next.every((r) => r.ok)) onClose()
+  }
 
   async function submitApply() {
     if (!selected || !canApply || !canAllocateRemaining) return
@@ -713,8 +804,28 @@ export default function BankPaymentsModal({
       if (payload && typeof payload === 'object' && typeof payload.error === 'string') {
         throw new Error(payload.error)
       }
+      // v2.1639: allocation applied — now close exactly-covered Stripe-hosted
+      // bills in Stripe so the emailed links die. Failures keep the modal open
+      // on a retry panel (the allocation itself already stands).
+      const candidates = stripeAllocationSelected
+        ? arStripeAutoCloseCandidates(stripeAutoCloseLines, targetByKey)
+        : []
+      if (candidates.length === 0) {
+        await onApplied()
+        onClose()
+        return
+      }
+      const results: Array<ArStripeAutoCloseCandidate & { ok: boolean; error?: string }> = []
+      for (const c of candidates) {
+        const res = await closeStripeInvoiceOob(c)
+        results.push({ ...c, ok: res.ok, error: res.error })
+      }
       await onApplied()
-      onClose()
+      if (results.every((r) => r.ok)) {
+        onClose()
+      } else {
+        setStripeCloseResults(results)
+      }
     } catch (e: unknown) {
       setApplyError(e instanceof Error ? e.message : 'Apply failed')
     } finally {
@@ -1590,11 +1701,62 @@ export default function BankPaymentsModal({
                         style={{ marginTop: 2, flexShrink: 0 }}
                       />
                       <span>
-                        <strong>This bill was sent through Stripe.</strong> The customer paid outside Stripe (check,
-                        cash, ACH) — after applying, void the invoice or mark it paid out-of-band in Stripe so the
-                        emailed link can’t be paid a second time.
+                        {stripeAutoCloseAll ? (
+                          <>
+                            <strong>This bill was sent through Stripe.</strong> The customer paid outside Stripe
+                            (check, cash, ACH). The amount matches the full balance, so applying will also mark the
+                            Stripe invoice paid — the emailed link can’t be paid a second time.
+                          </>
+                        ) : (
+                          <>
+                            <strong>This bill was sent through Stripe.</strong> The customer paid outside Stripe
+                            (check, cash, ACH) — after applying, void the invoice or mark it paid out-of-band in
+                            Stripe so the emailed link can’t be paid a second time.
+                          </>
+                        )}
                       </span>
                     </label>
+                  ) : null}
+                  {stripeCloseResults ? (
+                    <div
+                      style={{
+                        marginTop: '0.75rem',
+                        padding: '0.75rem',
+                        border: '1px solid #f59e0b',
+                        borderRadius: 6,
+                        background: 'var(--bg-amber-tint)',
+                        fontSize: '0.8125rem',
+                      }}
+                    >
+                      <p style={{ margin: '0 0 0.5rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
+                        Allocation applied — but a Stripe invoice could not be closed.
+                      </p>
+                      {stripeCloseResults.map((r) => (
+                        <p key={r.invoiceId} style={{ margin: '0 0 0.35rem', color: r.ok ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
+                          {r.ok ? '✓' : '✗'} {r.label} — {r.ok ? 'Stripe invoice marked paid; link closed.' : r.error ?? 'failed'}
+                        </p>
+                      ))}
+                      <p style={{ margin: '0.25rem 0 0.5rem', color: 'var(--text-amber-800)' }}>
+                        The payment is recorded in the app. Retry, or mark the invoice paid out-of-band in Stripe
+                        yourself so the emailed link can’t be paid again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void retryFailedStripeCloses()}
+                        disabled={stripeCloseRetrying}
+                        style={{
+                          padding: '0.35rem 0.9rem',
+                          borderRadius: 4,
+                          border: 'none',
+                          background: stripeCloseRetrying ? '#9ca3af' : '#3b82f6',
+                          color: 'white',
+                          cursor: stripeCloseRetrying ? 'not-allowed' : 'pointer',
+                          fontSize: '0.8125rem',
+                        }}
+                      >
+                        {stripeCloseRetrying ? 'Retrying…' : 'Retry Stripe close'}
+                      </button>
+                    </div>
                   ) : null}
                   {validationMessage && (
                     <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{validationMessage}</p>
