@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1642)
+last_updated: 2026-08-14 (v2.1643)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1643)
+
+### Billing labor icon narrows to jobs with NO labor of either kind (2026-08-14)
+Owner request ("if a job has either one I would not like to see the icon"). The Billing tab's red icon (and the mirrored **Needs labor** filter/count) flagged a job when **either** the Sub Labor book (by HCP) or Team Job Labor rows were missing (v2.1619/v2.1627); now it flags only when **both** are missing — either kind recorded clears it. [`billingJobNeedsAttention`](../src/lib/jobs/billingTab.ts) flips `||` → `&&`; the graduated `billingAttentionLabel` (three messages naming the missing kinds) collapses to the constant `BILLING_ATTENTION_LABEL` ("No team labor or sub labor recorded for this job.") since the single-kind branches are unreachable, and [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx)'s icon render now calls the shared predicate directly instead of re-deriving the two flags. Kernel tests updated (both-missing is the only flagged case). Help guide `audit-job-bills-on-the-billing-tab` rewritten for the rule (its copy still described the pre-v2.1627 two-icon design). Client-only — no migration.
 
 ## Latest Updates (v2.1642)
 

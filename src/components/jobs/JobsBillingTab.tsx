@@ -5,7 +5,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatAddressTwoLines } from '../../lib/jobs/jobAddressUrls'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
-  billingAttentionLabel,
+  BILLING_ATTENTION_LABEL,
   billingFixturesCellText,
   billingJobMatchesSearch,
   billingJobNeedsAttention,
@@ -257,13 +257,12 @@ export default function JobsBillingTab({
                         )
                       })()}
                     {job.hcp_number && authRole !== 'primary' && !teamLaborLoading && (() => {
-                      // v2.1627: one flag for BOTH audit conditions — mirrors the
-                      // Needs labor filter. Hover names what's missing; click
-                      // toasts it (phones have no hover).
-                      const noSub = !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase())
-                      const noTeam = !teamLaborJobIds.has(job.id)
-                      if (!noSub && !noTeam) return null
-                      const label = billingAttentionLabel(noSub, noTeam)
+                      // v2.1643: icon only when BOTH labor kinds are missing —
+                      // either one recorded clears it. Mirrors the Needs labor
+                      // filter. Hover explains; click toasts it (phones have no
+                      // hover).
+                      if (!billingJobNeedsAttention(job, laborJobHcps, teamLaborJobIds)) return null
+                      const label = BILLING_ATTENTION_LABEL
                       return (
                       <button
                         type="button"

@@ -106,10 +106,11 @@ export type BillingAttentionJob = {
 }
 
 /**
- * The red-icon audit conditions as one predicate (v2.1619): the job has an
- * HCP but no Sub Labor book for it, or no Team Job Labor rows. Mirrors the
- * row icons exactly so the "Needs labor" filter and its count can't drift
- * from what the row shows.
+ * The red-icon audit condition as one predicate (v2.1619): the job has an
+ * HCP but NEITHER a Sub Labor book for it NOR any Team Job Labor rows —
+ * having either kind recorded clears the icon (v2.1643, owner request; was
+ * either-missing before). Mirrors the row icon exactly so the "Needs labor"
+ * filter and its count can't drift from what the row shows.
  */
 export function billingJobNeedsAttention(
   job: BillingAttentionJob,
@@ -118,7 +119,7 @@ export function billingJobNeedsAttention(
 ): boolean {
   const hcp = (job.hcp_number ?? '').trim().toLowerCase()
   if (!hcp) return false
-  return !laborJobHcps.has(hcp) || !teamLaborJobIds.has(job.id)
+  return !laborJobHcps.has(hcp) && !teamLaborJobIds.has(job.id)
 }
 
 export type BillingMoneyJob = {
@@ -164,12 +165,8 @@ export function billingTotals(jobs: ReadonlyArray<BillingMoneyJob>): {
 
 
 /**
- * The red icon's tooltip/toast line (v2.1627): names exactly which labor kinds
- * are missing, in the owner's phrasing. Empty when nothing is missing.
+ * The red icon's tooltip/toast line (v2.1627), in the owner's phrasing. Since
+ * v2.1643 the icon only renders when BOTH labor kinds are missing, so the
+ * graduated single-kind messages are gone with it.
  */
-export function billingAttentionLabel(noSubLabor: boolean, noTeamLabor: boolean): string {
-  if (noSubLabor && noTeamLabor) return 'No team labor or sub labor recorded for this job.'
-  if (noTeamLabor) return 'No team labor recorded for this job.'
-  if (noSubLabor) return 'No sub labor recorded for this job.'
-  return ''
-}
+export const BILLING_ATTENTION_LABEL = 'No team labor or sub labor recorded for this job.'

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1643',
+    date: '2026-08-14',
+    title: 'Billing labor icon only when no labor at all',
+    kind: 'fix',
+    highlights: [
+      'The red icon on Jobs → Billing now appears only when a job has neither team labor nor sub labor recorded — having either one clears it.',
+      'The Needs labor filter and its count follow the same rule.',
+    ],
+  },
+  {
     version: 'v2.1642',
     date: '2026-08-14',
     title: 'Paid jobs leave Collections on their own',
