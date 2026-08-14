@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1616)
+last_updated: 2026-08-13 (v2.1617)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1617)
+
+### New Sub Labor becomes a 3-step sheet; Distance is gone from new entries (2026-08-13)
+Owner picked mockup A from the mobile-friendly options ("remove the distance field and let's go build A"). NEW entries in [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx) now walk **Job → Crew → Work and cost** with a progress bar and step label — same at every viewport (the modal was already phone-width). Mechanics: the existing form regions gate with `display:none` (state stays mounted, Back never loses input); Enter advances a step instead of submitting early; per-step gates replace the old required-fields paragraph (step 1 needs a picked job + address, step 2 needs ≥1 contractor, the step-3 Save button itself names what's missing — "Needs: Fixtures"). **Crew is chips now, in BOTH modes** — the three checkbox groups render as tappable `aria-pressed` chips, with a Selected row on top (the job's pre-selected team shows up front, per the mockup); search + collapsible groups + Add Sub unchanged. **Distance (mi) removed from new entries** — field hidden, validation gated, rows save `distance_miles: 0` so no drive cost is applied to them; EDIT mode keeps the classic single-scroll form incl. the Distance field, and old rows' stored miles keep paying out in every rollup ([`laborJobSubCost`](../src/lib/jobs/subLaborCost.ts) untouched). Render tests updated (wizard-walk case exercises the Next flow; chip assertions replace checkbox checks; 7/7). Help guide [`record-sub-labor-on-a-job`](../src/content/help/record-sub-labor-on-a-job.md) rewritten for the steps. Verified live end-to-end against prod: created a $1 test entry on the Pondhill demo job through all three steps and deleted it. Client-only — no migration.
 
 ## Latest Updates (v2.1616)
 
