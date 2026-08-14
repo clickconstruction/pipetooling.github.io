@@ -80,8 +80,11 @@ function mountHarness(overrides?: Partial<JobsSubLaborFormModalProps>) {
   return { handleRef, view }
 }
 
+// Edit mode keeps the classic fields; new mode replaced them with the job picker (v2.1616).
 const hcpInput = () => screen.getByPlaceholderText('Optional') as HTMLInputElement
-const addressInput = () => screen.getByPlaceholderText('Job address') as HTMLInputElement
+const editAddressInput = () => screen.getByPlaceholderText('Job address') as HTMLInputElement
+const newAddressInput = () => screen.getByPlaceholderText('Fills from the job — edit if needed') as HTMLInputElement
+const jobPickerTrigger = () => screen.getByText('Search job # / name / address / customer')
 
 describe('JobsSubLaborFormModal render smoke', () => {
   it('renders nothing while closed', () => {
@@ -90,12 +93,14 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.queryByText('Edit Sub Labor')).toBeNull()
   })
 
-  it('openNew shows an empty New Sub Labor form', async () => {
+  it('openNew shows an empty New Sub Labor form with the job picker (v2.1616)', async () => {
     const { handleRef } = mountHarness()
     await act(async () => handleRef.current!.openNew())
     expect(screen.getByText('New Sub Labor')).toBeTruthy()
-    expect(hcpInput().value).toBe('')
-    expect(addressInput().value).toBe('')
+    // The hand-typed Job # input is edit-mode-only now; new mode leads with the picker.
+    expect(screen.queryByPlaceholderText('Optional')).toBeNull()
+    expect(jobPickerTrigger()).toBeTruthy()
+    expect(newAddressInput().value).toBe('')
   })
 
   it('openEdit populates the form from the labor job', async () => {
@@ -109,7 +114,7 @@ describe('JobsSubLaborFormModal render smoke', () => {
     await act(async () => handleRef.current!.openEdit(laborJob))
     expect(screen.getByText('Edit Sub Labor')).toBeTruthy()
     expect(hcpInput().value).toBe('HCP-77')
-    expect(addressInput().value).toBe('500 Oak Ln, Austin, TX')
+    expect(editAddressInput().value).toBe('500 Oak Ln, Austin, TX')
     expect(screen.getByDisplayValue('12')).toBeTruthy()
     // The one itemized fixture row from the labor job
     expect(screen.getByDisplayValue('Toilet')).toBeTruthy()
@@ -118,12 +123,21 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(samCheckbox.checked).toBe(true)
   })
 
-  it('openNewWithJobNumber seeds only the HCP field', async () => {
+  it('openNewWithJobNumber resolves a known number to a picked job (v2.1616)', async () => {
+    const { handleRef } = mountHarness()
+    await act(async () => handleRef.current!.openNewWithJobNumber('HCP-12'))
+    expect(screen.getByText('New Sub Labor')).toBeTruthy()
+    // Picker trigger shows the resolved job identity; address fills from the job.
+    expect(screen.getByText(/JHCP-12 · /)).toBeTruthy()
+    expect(newAddressInput().value).toBe('123 Main St, Austin, TX 78701')
+  })
+
+  it('openNewWithJobNumber with an unknown number leaves the picker unset', async () => {
     const { handleRef } = mountHarness()
     await act(async () => handleRef.current!.openNewWithJobNumber('HCP-9'))
     expect(screen.getByText('New Sub Labor')).toBeTruthy()
-    expect(hcpInput().value).toBe('HCP-9')
-    expect(addressInput().value).toBe('')
+    expect(jobPickerTrigger()).toBeTruthy()
+    expect(newAddressInput().value).toBe('')
   })
 
   it('openWithBillingPrefill seeds HCP, address, and roster-known contractors only', async () => {
@@ -136,8 +150,9 @@ describe('JobsSubLaborFormModal render smoke', () => {
       }),
     )
     expect(screen.getByText('New Sub Labor')).toBeTruthy()
-    expect(hcpInput().value).toBe('HCP-12')
-    expect(addressInput().value).toBe('9 Prefill Rd, Austin, TX')
+    // The seed number resolves to the real job — its authoritative address wins (v2.1616).
+    expect(screen.getByText(/JHCP-12 · /)).toBeTruthy()
+    expect(newAddressInput().value).toBe('123 Main St, Austin, TX 78701')
     const samCheckbox = screen.getByLabelText('Sub Sam') as HTMLInputElement
     expect(samCheckbox.checked).toBe(true)
     expect(screen.queryByText('Ghost Not On Roster')).toBeNull()
@@ -145,16 +160,16 @@ describe('JobsSubLaborFormModal render smoke', () => {
 
   it('bare open() preserves prior form state; openNew() resets it (v2.823 quirk)', async () => {
     const { handleRef } = mountHarness()
-    await act(async () => handleRef.current!.openNewWithJobNumber('HCP-9'))
-    fireEvent.change(addressInput(), { target: { value: 'Typed Address 1' } })
-    expect(addressInput().value).toBe('Typed Address 1')
+    await act(async () => handleRef.current!.openNewWithJobNumber('HCP-12'))
+    fireEvent.change(newAddressInput(), { target: { value: 'Typed Address 1' } })
+    expect(newAddressInput().value).toBe('Typed Address 1')
     // Bare open (the `?newJob=` deep-link path) must NOT reset what's in the form
     await act(async () => handleRef.current!.open())
-    expect(hcpInput().value).toBe('HCP-9')
-    expect(addressInput().value).toBe('Typed Address 1')
+    expect(screen.getByText(/JHCP-12 · /)).toBeTruthy()
+    expect(newAddressInput().value).toBe('Typed Address 1')
     // openNew() is the resetting entry point
     await act(async () => handleRef.current!.openNew())
-    expect(hcpInput().value).toBe('')
-    expect(addressInput().value).toBe('')
+    expect(jobPickerTrigger()).toBeTruthy()
+    expect(newAddressInput().value).toBe('')
   })
 })

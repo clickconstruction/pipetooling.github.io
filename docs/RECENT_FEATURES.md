@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1615)
+last_updated: 2026-08-13 (v2.1616)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1616)
+
+### New Sub Labor starts with the standard job search (2026-08-13)
+Owner request with screenshot ("I would rather use the new standard search instead of Job # / Address / Distance… especially since I always want sub labor associated with a job"). NEW entries in [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx) now lead with a **required job picker** (SearchableSelect over the already-loaded jobs list — searches number/name/address/customer, newest first) instead of the hand-typed Job # + Address + "fill" link: picking fills **Job #** (effective number via new kernel [`subLaborJobPicker.ts`](../src/lib/jobs/subLaborJobPicker.ts), +9 tests), **Address** (prefilled, still editable for odd cases), and **pre-checks the job's roster-known crew** (the old fill behavior, automatic). Distance stays — it drives the drive-cost formula in every rollup. **Storage unchanged** (`people_labor_jobs.job_number`/`address` text, so the HCP-matching aggregations in Job Detail / Crew P&L / sub sheets are untouched); **edit mode keeps the classic fields** for legacy rows. Deep-link/billing seeds resolve through `resolveSubLaborJobByNumber` (effective/HCP/Click, trim+case-insensitive) — Billing "Add Labor" now lands with the job picked and its own crew list still winning. Render tests rewritten for the new anatomy (7/7; +1 unknown-number fallback case). Verified live: picked J925 from the picker — address `106 Lenz Dr` filled, footer's missing-fields dropped to `Fixtures` only. New help guide [`record-sub-labor-on-a-job`](../src/content/help/record-sub-labor-on-a-job.md). Client-only — no migration.
 
 ## Latest Updates (v2.1615)
 

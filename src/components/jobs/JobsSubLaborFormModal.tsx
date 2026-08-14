@@ -14,6 +14,12 @@ import { laborItemsSubtotal, lineLaborCost } from '../../lib/peopleLaborJobItemL
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborSheet'
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
+import {
+  resolveSubLaborJobByNumber,
+  subLaborJobNumberForStorage,
+  subLaborJobPickerOptions,
+} from '../../lib/jobs/subLaborJobPicker'
+import { SearchableSelect } from '../SearchableSelect'
 import type { Database } from '../../types/database'
 import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -151,6 +157,12 @@ function JobsSubLaborFormModalInner(
   const [laborAddress, setLaborAddress] = useState('')
   const [laborDistance, setLaborDistance] = useState('0')
   const [laborJobNumber, setLaborJobNumber] = useState('')
+  /**
+   * v2.1616: NEW entries pick the job with the standard search (required) —
+   * Job # and Address derive from the pick. Storage is unchanged (job_number +
+   * address text), so edit mode and every rollup keep working as before.
+   */
+  const [laborPickedJobId, setLaborPickedJobId] = useState<string | null>(null)
   const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [laborFixtureEntryMode, setLaborFixtureEntryMode] = useState<'simple' | 'itemized'>('simple')
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([
@@ -171,6 +183,7 @@ function JobsSubLaborFormModalInner(
   const [savingAddSubcontractor, setSavingAddSubcontractor] = useState(false)
 
   const laborMissingFields: string[] = []
+  if (!editingLaborJob && !laborPickedJobId) laborMissingFields.push('Job')
   if (laborAssignedTo.length === 0) laborMissingFields.push('Assigned')
   if (!laborAddress.trim()) laborMissingFields.push('Address')
   if (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0) laborMissingFields.push('Distance')
@@ -636,6 +649,9 @@ function JobsSubLaborFormModalInner(
     if (assignedNames.length === 0) {
       errors.push('Select at least one subcontractor or team member.')
     }
+    if (!editingLaborJob && !laborPickedJobId) {
+      errors.push('Pick the job this labor belongs to.')
+    }
     if (!address) {
       errors.push('Enter a job address.')
     }
@@ -734,6 +750,7 @@ function JobsSubLaborFormModalInner(
     setLaborAddress('')
     setLaborDistance('0')
     setLaborJobNumber('')
+    setLaborPickedJobId(null)
     setLaborDate(new Date().toLocaleDateString('en-CA'))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
     setLaborFixtureEntryMode('simple')
@@ -777,6 +794,7 @@ function JobsSubLaborFormModalInner(
     setLaborAddress('')
     setLaborDistance('0')
     setLaborJobNumber('')
+    setLaborPickedJobId(null)
     setLaborDate(new Date().toLocaleDateString('en-CA'))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
     setLaborFixtureEntryMode('simple')
@@ -1004,14 +1022,14 @@ function JobsSubLaborFormModalInner(
     )
   }
 
-  function fillLaborFromBilling() {
-    const hcp = laborJobNumber.trim()
-    if (!hcp) return
-    const match = jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === hcp.toLowerCase())
-    if (!match) return
-    setLaborAddress(match.job_address ?? '')
+  /** Picking a job fills Job #, Address, and pre-checks its crew (the old "fill", automatic). */
+  function applyPickedLaborJob(job: JobWithDetails, opts?: { keepAssigned?: boolean }) {
+    setLaborPickedJobId(job.id)
+    setLaborJobNumber(subLaborJobNumberForStorage(job))
+    setLaborAddress(job.job_address ?? '')
+    if (opts?.keepAssigned) return
     const rosterNames = [...rosterNamesSubcontractors(), ...rosterNamesEveryoneElse()]
-    const teamNames = (match.team_members ?? [])
+    const teamNames = (job.team_members ?? [])
       .map((t) => t.users?.name?.trim())
       .filter((n): n is string => !!n && rosterNames.includes(n))
     setLaborAssignedTo(teamNames)
@@ -1047,12 +1065,18 @@ function JobsSubLaborFormModalInner(
     openEdit: (job: LaborJob) => openEditLaborJob(job),
     openNewWithJobNumber: (jobNumber: string) => {
       openNewLaborJob()
-      setLaborJobNumber(jobNumber)
+      const match = resolveSubLaborJobByNumber(jobs, jobNumber)
+      if (match) applyPickedLaborJob(match)
+      else setLaborJobNumber(jobNumber)
     },
     openWithBillingPrefill: (seed) => {
       resetLaborForm()
-      setLaborJobNumber(seed.jobNumber)
-      setLaborAddress(seed.address)
+      const match = resolveSubLaborJobByNumber(jobs, seed.jobNumber)
+      if (match) applyPickedLaborJob(match, { keepAssigned: true })
+      else {
+        setLaborJobNumber(seed.jobNumber)
+        setLaborAddress(seed.address)
+      }
       const rosterNames = [...rosterNamesSubcontractors(), ...rosterNamesEveryoneElse()]
       setLaborAssignedTo(seed.teamMemberNames.filter((n) => rosterNames.includes(n)))
       setLaborModalOpen(true)
@@ -1074,49 +1098,54 @@ function JobsSubLaborFormModalInner(
             >
               {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
               <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
-                {laborFixtureEntryMode === 'simple'
-                  ? 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
-                  : 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
+                {(() => {
+                  const lead = editingLaborJob ? 'Required: Address, Distance (mi)' : 'Required: a Job, Distance (mi)'
+                  return laborFixtureEntryMode === 'simple'
+                    ? `${lead}, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.`
+                    : `${lead}, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).`
+                })()}
               </p>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: '0 0 120px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
-                    <label style={{ fontWeight: 500, margin: 0 }}>Job #</label>
-                    {!editingLaborJob && (
-                      <button
-                        type="button"
-                        onClick={fillLaborFromBilling}
-                        disabled={!laborJobNumber.trim()}
-                        title="Fill Contractors and Address from Billing if HCP matches"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: laborJobNumber.trim() ? 'pointer' : 'default',
-                          fontSize: '0.8125rem',
-                          color: laborJobNumber.trim() ? 'var(--text-link)' : 'var(--text-faint)',
-                        }}
-                      >
-                        fill
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    value={laborJobNumber}
-                    onChange={(e) => setLaborJobNumber(e.target.value)}
-                    maxLength={10}
-                    placeholder="Optional"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+              {!editingLaborJob && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
+                    Job <span style={{ color: 'var(--text-red-700)' }}>*</span>
+                  </label>
+                  {/* v2.1616: the standard job search replaces hand-typed Job # +
+                      Address — picking fills both and pre-checks the job's crew. */}
+                  <SearchableSelect
+                    value={laborPickedJobId ?? ''}
+                    onChange={(v) => {
+                      const job = jobs.find((j) => j.id === v)
+                      if (job) applyPickedLaborJob(job)
+                    }}
+                    options={subLaborJobPickerOptions(jobs)}
+                    placeholder="Search job # / name / address / customer"
+                    searchable
+                    listAriaLabel="Job for this sub labor"
                   />
                 </div>
+              )}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {editingLaborJob ? (
+                  <div style={{ flex: '0 0 120px' }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
+                    <input
+                      type="text"
+                      value={laborJobNumber}
+                      onChange={(e) => setLaborJobNumber(e.target.value)}
+                      maxLength={10}
+                      placeholder="Optional"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ) : null}
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
                   <input
                     type="text"
                     value={laborAddress}
                     onChange={(e) => setLaborAddress(e.target.value)}
-                    placeholder="Job address"
+                    placeholder={editingLaborJob ? 'Job address' : 'Fills from the job — edit if needed'}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
