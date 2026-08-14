@@ -4,6 +4,9 @@ import {
   billingJobMatchesSearch,
   billingMaterialsCellText,
   sortJobsForBilling,
+  billingJobNeedsAttention,
+  billingRowMoneyTokens,
+  billingTotals,
 } from './billingTab'
 
 describe('billingJobMatchesSearch', () => {
@@ -68,5 +71,53 @@ describe('billingMaterialsCellText', () => {
         { description: '', amount: 12.5 },
       ]),
     ).toBe('Permit: $250.00\nItem: $12.50')
+  })
+})
+
+describe('billingJobMatchesSearch — line items (v2.1619)', () => {
+  const job = {
+    hcp_number: '917',
+    job_name: 'John Ingram',
+    job_address: '1 Elm St',
+    customer_name: 'Ingram Family',
+    fixtures: [{ name: 'Water heater', line_description: 'Replaced burner assembly' }],
+    materials: [{ description: 'Permit fee' }],
+  }
+  it('matches fixture names, descriptions, charges, and customer', () => {
+    expect(billingJobMatchesSearch(job, 'water heater')).toBe(true)
+    expect(billingJobMatchesSearch(job, 'burner')).toBe(true)
+    expect(billingJobMatchesSearch(job, 'permit')).toBe(true)
+    expect(billingJobMatchesSearch(job, 'ingram family')).toBe(true)
+    expect(billingJobMatchesSearch(job, 'faucet')).toBe(false)
+  })
+})
+
+describe('billingJobNeedsAttention', () => {
+  const labor = new Set(['917'])
+  const team = new Set(['j1'])
+  it('flags missing sub labor or team labor; no HCP means not auditable', () => {
+    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '917' }, labor, team)).toBe(false)
+    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '917' }, labor, team)).toBe(true)
+    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '999' }, labor, team)).toBe(true)
+    expect(billingJobNeedsAttention({ id: 'j9', hcp_number: null }, labor, team)).toBe(false)
+  })
+})
+
+describe('billingRowMoneyTokens / billingTotals', () => {
+  it('splits paid / billed-open / unbilled and skips zero tokens', () => {
+    const tokens = billingRowMoneyTokens({ revenue: 1000, payments_made: 200 }, 300)
+    expect(tokens).toEqual([
+      { label: 'paid $200.00', tone: 'paid' },
+      { label: 'billed $300.00 open', tone: 'billed' },
+      { label: 'unbilled $500.00', tone: 'unbilled' },
+    ])
+    expect(billingRowMoneyTokens({ revenue: 0, payments_made: 0 }, 0)).toEqual([])
+  })
+  it('totals the filtered rows', () => {
+    expect(billingTotals([{ revenue: 100, payments_made: 40 }, { revenue: 50, payments_made: 0 }])).toEqual({
+      count: 2,
+      totalBill: 150,
+      totalPaid: 40,
+    })
   })
 })

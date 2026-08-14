@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1619',
+    date: '2026-08-13',
+    title: 'Billing tab works as an audit again',
+    kind: 'feature',
+    highlights: [
+      'Every row now shows its stage and whether the total is paid, billed and open, or unbilled.',
+      'Search finds jobs by their line-item text \u2014 type "water heater" and the jobs that billed one appear.',
+      'A "Needs labor" filter surfaces jobs missing Sub Labor or Team Labor, with totals for whatever you\u2019re viewing.',
+    ],
+  },
+  {
     version: 'v2.1618',
     date: '2026-08-13',
     title: 'Sub Labor uses the standard job search',

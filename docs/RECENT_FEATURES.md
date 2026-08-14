@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1618)
+last_updated: 2026-08-13 (v2.1619)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1619)
+
+### Billing tab audit refit — stage context, line-item search, the labor audit surfaced (2026-08-13)
+Owner review ("I don't think the tab serves its original purpose as well as it used to"), direction picked from three options. The tab is the old pre-invoice "ledger" (legacy `?tab=ledger` still redirects here): itemized bills + the two red labor-capture icons — but it never learned the invoice model, its search couldn't reach the line-item text it displays, and the audit had no filter. Refit in [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx) + [`lib/jobs/billingTab.ts`](../src/lib/jobs/billingTab.ts): **(1)** every row wears its **stage chip** (shared `jobPickerStatusChip`) under the trade pill and a colored **money-state stack** under Total Bill — `paid $X` / `billed $Y open` / `unbilled $Z` via new `billingRowMoneyTokens` (invoice-aware through `jobBilledUnpaidDollars`); **(2)** **search matches Specific Work + Other job charges text** (+ customer name) — `billingJobMatchesSearch` extended; **(3)** the red-icon audit becomes a **"Needs labor (N)" toolbar chip** backed by `billingJobNeedsAttention` (exact mirror of the icon conditions so filter and icons can't drift) plus an **All-stages dropdown** — the two compose ("Billed jobs with uncaptured labor"); **(4)** a **footer totals row** (`billingTotals`) sums the filtered rows' count / Total Bill / paid. Kernel tests 8→12; render-smoke expectations updated for the chip text. Verified live against prod: "water heater" found 3 jobs by line text ($1,577.50 footer), Needs labor showed 65 ($313.5k), + Working narrowed to 7 ($128.7k). New help guide [`audit-job-bills-on-the-billing-tab`](../src/content/help/audit-job-bills-on-the-billing-tab.md). Client-only — no migration.
 
 ## Latest Updates (v2.1618)
 

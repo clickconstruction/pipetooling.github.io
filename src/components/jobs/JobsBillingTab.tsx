@@ -8,9 +8,14 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
   billingFixturesCellText,
   billingJobMatchesSearch,
+  billingJobNeedsAttention,
   billingMaterialsCellText,
+  billingRowMoneyTokens,
+  billingTotals,
   sortJobsForBilling,
 } from '../../lib/jobs/billingTab'
+import { jobBilledUnpaidDollars } from '../../lib/jobs/invoiceBilling'
+import { jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 
 /**
  * Jobs → Billing tab (Stage B of the Jobs.tsx decomposition — see
@@ -60,6 +65,9 @@ export default function JobsBillingTab({
 }: JobsBillingTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
+  /** v2.1619 audit refit: 'attention' shows only rows wearing a red labor-capture flag. */
+  const [attentionOnly, setAttentionOnly] = useState(false)
+  const [stageFilter, setStageFilter] = useState<string>('')
 
   // Restore billing sort preference from localStorage (per user)
   useEffect(() => {
@@ -73,12 +81,24 @@ export default function JobsBillingTab({
     }
   }, [authUserId])
 
-  const filteredJobs = jobs.filter((j) => billingJobMatchesSearch(j, searchQuery))
+  const attentionCount = useMemo(
+    () => jobs.filter((j) => billingJobNeedsAttention(j, laborJobHcps, teamLaborJobIds)).length,
+    [jobs, laborJobHcps, teamLaborJobIds],
+  )
+
+  const filteredJobs = jobs.filter(
+    (j) =>
+      billingJobMatchesSearch(j, searchQuery) &&
+      (!stageFilter || (j.status ?? 'working') === stageFilter) &&
+      (!attentionOnly || billingJobNeedsAttention(j, laborJobHcps, teamLaborJobIds)),
+  )
 
   const sortedBillingJobs = useMemo(
     () => sortJobsForBilling(filteredJobs, billingSortAsc),
     [filteredJobs, billingSortAsc],
   )
+
+  const totals = useMemo(() => billingTotals(sortedBillingJobs), [sortedBillingJobs])
 
   return (
     <div>
@@ -155,6 +175,44 @@ export default function JobsBillingTab({
             </svg>
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setAttentionOnly((v) => !v)}
+          aria-pressed={attentionOnly}
+          title="Only jobs missing a Sub Labor book or Team Job Labor (the red flags)"
+          style={{
+            padding: '0.45rem 0.8rem',
+            borderRadius: 999,
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            border: attentionOnly ? '1px solid #b91c1c' : '1px solid var(--border-strong)',
+            background: attentionOnly ? 'var(--bg-red-100)' : 'var(--surface)',
+            color: attentionOnly ? 'var(--text-red-800)' : 'var(--text-700)',
+          }}
+        >
+          {attentionOnly ? '✓ ' : ''}Needs labor{attentionCount > 0 ? ` (${attentionCount})` : ''}
+        </button>
+        <select
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value)}
+          aria-label="Filter by stage"
+          style={{
+            padding: '0.45rem 0.5rem',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 4,
+            fontSize: '0.8125rem',
+            background: 'var(--surface)',
+            color: stageFilter ? 'var(--text-700)' : 'var(--text-muted)',
+          }}
+        >
+          <option value="">All stages</option>
+          <option value="waiting">Waiting</option>
+          <option value="working">Working</option>
+          <option value="ready_to_bill">Ready to Bill</option>
+          <option value="billed">Billed</option>
+        </select>
       </div>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '1rem' }}>
         Assistants see jobs from their master and from other assistants adopted by the same master. If you don&apos;t see a colleague&apos;s jobs, the master must adopt both of you in Settings → Adopt Assistants.
@@ -188,7 +246,18 @@ export default function JobsBillingTab({
               {sortedBillingJobs.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                      <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
+                      {(() => {
+                        const chip = jobPickerStatusChip(job.status ?? 'working')
+                        if (!chip) return null
+                        return (
+                          <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: chip.background, color: chip.color, whiteSpace: 'nowrap' }}>
+                            {chip.label}
+                          </span>
+                        )
+                      })()}
+                    </div>
                     {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
                       <button
                         type="button"
@@ -236,8 +305,20 @@ export default function JobsBillingTab({
                       ? '—'
                       : job.team_members.map((t) => t.users?.name ?? 'Unknown').join(', ')}
                   </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                  <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
+                    {(() => {
+                      const tokens = billingRowMoneyTokens(job, jobBilledUnpaidDollars(job))
+                      if (tokens.length === 0) return null
+                      const tone = { paid: 'var(--text-green-700)', billed: 'var(--text-blue-700)', unbilled: 'var(--text-amber-700)' } as const
+                      return (
+                        <div style={{ fontSize: '0.6875rem', marginTop: '0.15rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                          {tokens.map((t) => (
+                            <span key={t.tone} style={{ color: tone[t.tone] }}>{t.label}</span>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
                     <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -289,6 +370,19 @@ export default function JobsBillingTab({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
+                <td colSpan={5} style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {totals.count} {totals.count === 1 ? 'job' : 'jobs'}
+                  {attentionOnly ? ' needing labor' : ''}
+                </td>
+                <td style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  ${formatCurrency(totals.totalBill)}
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-green-700)' }}>paid ${formatCurrency(totals.totalPaid)}</div>
+                </td>
+                <td style={{ borderTop: '1px solid var(--border)' }} />
+              </tr>
+            </tfoot>
           </table>
         </div>
       ))}
