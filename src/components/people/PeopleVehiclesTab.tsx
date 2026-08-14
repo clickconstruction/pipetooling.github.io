@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchUserDisplayNames, missingUserIds, userDisplayLabel } from '../../lib/userDisplayNames'
 import { formatCurrency } from '../../lib/format'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -145,7 +146,15 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [serviceSaving, setServiceSaving] = useState(false)
   const [vehicleOilInterval, setVehicleOilInterval] = useState('')
 
-  const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name ?? ''])), [users])
+  /** Names for possession/reading users outside the roster prop (archived crew — v2.1652). */
+  const [extraNames, setExtraNames] = useState<Record<string, string>>({})
+  const userNameById = useMemo(() => {
+    const m = new Map(users.map((u) => [u.id, u.name ?? '']))
+    for (const [id, name] of Object.entries(extraNames)) {
+      if (!m.has(id)) m.set(id, name)
+    }
+    return m
+  }, [users, extraNames])
   const today = todayYmd()
 
   const holderByVehicle = useMemo(() => {
@@ -199,6 +208,20 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
   const selectedVehicle = selectedVehicleId ? (vehicles.find((v) => v.id === selectedVehicleId) ?? null) : null
 
+  function resolveExtraNames(ids: Array<string | null | undefined>) {
+    const rosterIds = new Set(users.map((u) => u.id))
+    const unresolved = missingUserIds(ids.filter((id): id is string => !!id), rosterIds)
+    if (unresolved.length === 0) return
+    void fetchUserDisplayNames(unresolved).then((resolved) => {
+      if (resolved.length === 0) return
+      setExtraNames((prev) => {
+        const next = { ...prev }
+        for (const n of resolved) next[n.id] = userDisplayLabel(n)
+        return next
+      })
+    })
+  }
+
   async function loadFleet() {
     setLoading(true)
     setError(null)
@@ -242,6 +265,13 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     for (const [vid, n] of openProblemCounts((probData ?? []) as FleetProblemReport[])) probCounts[vid] = n
     setOpenProblemsByVehicle(probCounts)
     setPossessionsAll((possData ?? []) as FleetPossession[])
+    // Possession/reading history references archived crew invisible to the
+    // roster prop (users SELECT policy) — resolve their names via the
+    // display-name RPC so holders and ledger rows never show a raw id (v2.1652).
+    resolveExtraNames([
+      ...((possData ?? []) as FleetPossession[]).map((p) => p.user_id),
+      ...((odoData ?? []) as FleetOdometerEntry[]).map((e) => e.created_by ?? ''),
+    ])
     const lastOil: Record<string, FleetServiceEvent> = {}
     const oilGrouped = new Map<string, FleetServiceEvent[]>()
     for (const e of (oilData ?? []) as FleetServiceEvent[]) {
@@ -279,11 +309,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setPanelValues((valData ?? []) as FleetValueEntry[])
     setPanelServiceEvents((svcData ?? []) as FleetServiceEvent[])
     setPanelProblems((probData2 ?? []) as FleetProblemReport[])
+    resolveExtraNames([
+      ...((odoData ?? []) as FleetOdometerEntry[]).map((e) => e.created_by),
+      ...((probData2 ?? []) as FleetProblemReport[]).map((p) => p.reported_by),
+    ])
   }
 
   useEffect(() => {
     const t = setTimeout(() => loadFleet(), 80)
     return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-once load; name resolution re-runs via resolveExtraNames on each load
   }, [])
 
   useEffect(() => {
@@ -299,6 +334,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setPanelServiceEvents([])
       setPanelProblems([])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only on vehicle switch
   }, [selectedVehicleId])
 
   async function saveQuickReading() {

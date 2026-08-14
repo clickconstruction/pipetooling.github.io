@@ -12,6 +12,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
+import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
 import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
@@ -958,19 +959,23 @@ export default function JobFormModal({
   // (createInvoice / moveWorkingJobToReadyToBillFromEdit); the rest of the hook
   // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
   const { newInvoiceAmount, setNewInvoiceAmount, setNewInvoiceAmountInputFocused } = breakOff
-  // Team chips can reference users outside the picker's role-filtered list (e.g. a
-  // dev on the crew, invisible to non-dev viewers) — fetch those by id so a chip
-  // never renders a raw uuid.
+  // Team chips can reference users outside the picker's role-filtered list — a
+  // dev on the crew, or an ARCHIVED crew member (the users SELECT policy hides
+  // archived rows from non-dev viewers, so a direct select returned nothing and
+  // assistants saw raw uuids — v2.1652). Resolve through the SECURITY DEFINER
+  // name RPC instead; archived people label as "Name (archived)".
   useEffect(() => {
     const missing = teamMemberIds.filter((id) => !users.some((u) => u.id === id))
     if (missing.length === 0) return
     let cancelled = false
     void (async () => {
-      const { data } = await supabase.from('users').select('id, name, email, role').in('id', missing)
-      if (cancelled || !data?.length) return
+      const resolved = await fetchUserDisplayNames(missing)
+      if (cancelled || resolved.length === 0) return
       setUsers((prev) => {
         const have = new Set(prev.map((u) => u.id))
-        const add = (data as UserRow[]).filter((u) => !have.has(u.id))
+        const add = resolved
+          .filter((n) => !have.has(n.id))
+          .map((n) => ({ id: n.id, name: userDisplayLabel(n), email: null, role: n.role }) as UserRow)
         return add.length ? [...prev, ...add] : prev
       })
     })()

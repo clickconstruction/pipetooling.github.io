@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1652',
+    date: '2026-08-14',
+    title: 'Past crew show by name, not code',
+    kind: 'fix',
+    highlights: [
+      'Edit Job team chips no longer show long letter-number codes for people who have left the company — they now read like "Mario (archived)" for everyone, including assistants.',
+      'Vehicle history gets the same fix: past holders and old readings show the person’s name with an archived tag.',
+    ],
+  },
+  {
     version: 'v2.1651',
     date: '2026-08-14',
     title: 'Internal: smoother database updates',
