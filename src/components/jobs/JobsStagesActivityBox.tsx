@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
-import { buildJobActivityBoxFeed, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
+import { buildJobActivityBoxFeed, stripRedundantStampBody, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import {
   formatDispatchNoteDaysAgoShortPhrase,
@@ -65,12 +65,12 @@ function entryLine(e: JobActivityBoxEntry) {
           WebkitLineClamp: 2,
           lineHeight: 1.45,
         }}
-        title={`(${e.number}) ${e.authorName ?? ''} ${formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} — ${e.body}`}
+        title={`(${e.number}) ${formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} ${e.authorName ?? ''} — ${e.body}`}
       >
-        <strong style={{ color: 'var(--text-strong)' }}>{e.authorName ?? '—'}</strong>{' '}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
           {formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} · {formatDispatchNoteDaysAgoShortPhrase(e.atIso)}
-        </span>
+        </span>{' '}
+        <strong style={{ color: 'var(--text-strong)' }}>{e.authorName ?? '—'}</strong>
         <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
         {e.body}
       </span>
@@ -118,7 +118,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
       atIso: (useReport ? stat.last_report_at : stat.last_note_at) as string,
       body: useReport
         ? (stat.last_report_preview ?? '').trim() || `Report: ${(stat.last_report_template_name ?? '').trim() || 'Report'}`
-        : (stat.last_note_body ?? '').trim(),
+        : stripRedundantStampBody((stat.last_note_body ?? '').trim()),
     }
   })()
 
@@ -196,10 +196,10 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
         ) : teaser ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 2 }}>
             <span style={{ minWidth: 0, color: 'var(--text-700)', overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, lineHeight: 1.45 }}>
-              <strong style={{ color: 'var(--text-strong)' }}>{teaser.authorName ?? '—'}</strong>{' '}
               <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
                 {formatDispatchNoteWeekdayShortTimeChicago(teaser.atIso)} · {formatDispatchNoteDaysAgoShortPhrase(teaser.atIso)}
-              </span>
+              </span>{' '}
+              <strong style={{ color: 'var(--text-strong)' }}>{teaser.authorName ?? '—'}</strong>
               <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
               {teaser.body}
             </span>

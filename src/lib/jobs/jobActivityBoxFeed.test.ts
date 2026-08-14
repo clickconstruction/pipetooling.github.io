@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobActivityBoxFeed } from './jobActivityBoxFeed'
+import { buildJobActivityBoxFeed, stripRedundantStampBody } from './jobActivityBoxFeed'
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { JobThreadNoteRow } from '../../components/JobThreadNotesPanel'
 
@@ -61,5 +61,31 @@ describe('buildJobActivityBoxFeed', () => {
 
   it('empty input → empty feed', () => {
     expect(buildJobActivityBoxFeed([])).toEqual([])
+  })
+
+  it('reduces arrive/leave stamp bodies to their phrase (v2.1640)', () => {
+    const feed = buildJobActivityBoxFeed([
+      note('n1', '2026-08-12T16:58:00Z', 'Abraham · Wed, Aug 12, 2026 at 11:58 AM — Leaving job'),
+      note('n2', '2026-08-12T15:58:00Z', 'Abraham · Wed, Aug 12, 2026 at 10:58 AM — Arrived at job'),
+    ])
+    expect(feed.map((e) => e.body)).toEqual(['Leaving job', 'Arrived at job'])
+  })
+})
+
+describe('stripRedundantStampBody', () => {
+  it('strips the exact stamp shape', () => {
+    expect(stripRedundantStampBody('Abraham · Wed, Aug 12, 2026 at 11:58 AM — Leaving job')).toBe('Leaving job')
+    expect(stripRedundantStampBody('Someone · Thu, Aug 13, 2026 at 9:05 AM — Arrived at job')).toBe('Arrived at job')
+  })
+
+  it('leaves manual notes and near-misses untouched', () => {
+    expect(stripRedundantStampBody('Arrived at 11:20 am')).toBe('Arrived at 11:20 am')
+    expect(stripRedundantStampBody('Leaving job')).toBe('Leaving job')
+    expect(stripRedundantStampBody('Talked to GC — Leaving job site was muddy')).toBe(
+      'Talked to GC — Leaving job site was muddy',
+    )
+    expect(stripRedundantStampBody('As we all like to say, “take the win”')).toBe(
+      'As we all like to say, “take the win”',
+    )
   })
 })

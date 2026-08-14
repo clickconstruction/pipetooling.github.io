@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1639)
+last_updated: 2026-08-14 (v2.1640)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1640)
+
+### Pipeline activity box: time before name, stamp lines deduplicated (2026-08-14)
+Owner request ("[time] [person] | [detail] instead of [person] [time] | [detail]" + "these lines are duplicate in some ways"). [`JobsStagesActivityBox`](../src/components/jobs/JobsStagesActivityBox.tsx): entry lines, the pre-load teaser, and the hover title all reorder to muted time (`Fri 9:25 AM · today`) then bold author then `| body`. The duplication was the arrive/leave **stamp notes** — `buildJobThreadStampBody` stores `"Name · Wed, Aug 12, 2026 at 11:58 AM — Leaving job"` as the note BODY, which this box then prefixed with the same author + time meta. New display-only kernel export [`stripRedundantStampBody`](../src/lib/jobs/jobActivityBoxFeed.ts) (in `jobActivityBoxFeed`): a body matching the exact stamp shape (`^.+ · .+ — (Arrived at job|Leaving job)$`) reduces to its phrase; manual notes and near-misses pass through (+3 tests, 11 total). Applied in the numbered feed AND the teaser; the full thread panel keeps the complete stamp body. Verified live on Pondhill demo: `Fri 9:25 AM · today Abraham | Arrived at job` next to Paige's untouched manual "Arrived at 11:20 am". Client-only — no migration.
 
 ## Latest Updates (v2.1639)
 

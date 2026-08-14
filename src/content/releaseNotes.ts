@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1640',
+    date: '2026-08-14',
+    title: 'Pipeline activity reads time-first',
+    kind: 'fix',
+    highlights: [
+      'Activity lines on the Pipeline board now lead with the time, then the person: "Fri 9:25 AM · today Abraham | …".',
+      'Arrived/Leaving stamps stop repeating the name and date in the message — the line already says who and when.',
+    ],
+  },
+  {
     version: 'v2.1639',
     date: '2026-08-14',
     title: 'AR closes the Stripe invoice for you',

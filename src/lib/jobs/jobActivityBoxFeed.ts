@@ -18,13 +18,28 @@ export type JobActivityBoxEntry = {
   body: string
 }
 
+/**
+ * v2.1640: arrive/leave stamp notes store "Name · Wed, Aug 12, 2026 at 11:58 AM
+ * — Leaving job" as their body (`buildJobThreadStampBody`) — but this box
+ * already prints the author and time as line meta, so the body's copy is pure
+ * duplication. Reduce a recognized stamp body to its phrase; anything that
+ * doesn't match the exact stamp shape (manual notes, edited text) passes
+ * through untouched. Display-only — other surfaces keep the full body.
+ */
+const STAMP_BODY_RE = /^.+ · .+ — (Arrived at job|Leaving job)$/
+
+export function stripRedundantStampBody(body: string): string {
+  const m = STAMP_BODY_RE.exec(body)
+  return m ? m[1]! : body
+}
+
 function entryFromItem(item: JobThreadActivityItem): Omit<JobActivityBoxEntry, 'number'> | null {
   if (item.kind === 'note') {
     return {
       kind: 'note',
       atIso: item.note.created_at,
       authorName: item.note.author?.name?.trim() || null,
-      body: (item.note.body ?? '').trim(),
+      body: stripRedundantStampBody((item.note.body ?? '').trim()),
     }
   }
   if (item.kind === 'report') {
