@@ -163,6 +163,13 @@ function JobsSubLaborFormModalInner(
    * address text), so edit mode and every rollup keep working as before.
    */
   const [laborPickedJobId, setLaborPickedJobId] = useState<string | null>(null)
+  /**
+   * v2.1617: NEW entries walk a 3-step sheet — Job → Crew → Work and cost —
+   * so the phone-width modal shows one decision at a time. Edit mode keeps
+   * the classic single-scroll form. Distance is gone from new entries (saved
+   * as 0; the drive-cost rollups keep honoring old rows' stored miles).
+   */
+  const [laborStep, setLaborStep] = useState<1 | 2 | 3>(1)
   const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [laborFixtureEntryMode, setLaborFixtureEntryMode] = useState<'simple' | 'itemized'>('simple')
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([
@@ -186,7 +193,8 @@ function JobsSubLaborFormModalInner(
   if (!editingLaborJob && !laborPickedJobId) laborMissingFields.push('Job')
   if (laborAssignedTo.length === 0) laborMissingFields.push('Assigned')
   if (!laborAddress.trim()) laborMissingFields.push('Address')
-  if (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0) laborMissingFields.push('Distance')
+  // Distance is edit-only since v2.1617 — new entries save 0 and never show the field.
+  if (editingLaborJob && (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0)) laborMissingFields.push('Distance')
   if (laborFixtureEntryMode === 'simple') {
     if (
       laborFixtureRows.every((r) => {
@@ -751,6 +759,7 @@ function JobsSubLaborFormModalInner(
     setLaborDistance('0')
     setLaborJobNumber('')
     setLaborPickedJobId(null)
+    setLaborStep(1)
     setLaborDate(new Date().toLocaleDateString('en-CA'))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
     setLaborFixtureEntryMode('simple')
@@ -795,6 +804,7 @@ function JobsSubLaborFormModalInner(
     setLaborDistance('0')
     setLaborJobNumber('')
     setLaborPickedJobId(null)
+    setLaborStep(1)
     setLaborDate(new Date().toLocaleDateString('en-CA'))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
     setLaborFixtureEntryMode('simple')
@@ -1083,6 +1093,42 @@ function JobsSubLaborFormModalInner(
     },
   }))
 
+  /** v2.1617 wizard: which region renders. Edit mode shows everything (classic form). */
+  const laborStepVisible = (n: 1 | 2 | 3): boolean => (editingLaborJob ? true : laborStep === n)
+  const LABOR_STEP_TITLES: Record<1 | 2 | 3, string> = { 1: 'Job', 2: 'Crew', 3: 'Work and cost' }
+  const laborStepNextBlocked =
+    laborStep === 1 ? (!laborPickedJobId ? 'Pick the job first' : !laborAddress.trim() ? 'The job has no address — enter one' : null)
+    : laborStep === 2 ? (laborAssignedTo.length === 0 ? 'Pick at least one contractor' : null)
+    : null
+
+  /** Crew chip (v2.1617): tap to toggle; replaces the checkbox rows in every group. */
+  const renderLaborCrewChip = (n: string) => {
+    const on = laborAssignedTo.includes(n)
+    return (
+      <button
+        key={n}
+        type="button"
+        aria-pressed={on}
+        aria-label={n}
+        onClick={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+        style={{
+          padding: '0.35rem 0.8rem',
+          borderRadius: 999,
+          fontSize: '0.8125rem',
+          fontWeight: 500,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          border: on ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+          background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+          color: on ? 'var(--text-blue-700)' : 'var(--text-700)',
+        }}
+      >
+        {on ? '✓ ' : ''}
+        {n}
+      </button>
+    )
+  }
+
   return (
     <>
       {(laborModalOpen || editingLaborJob) && (
@@ -1092,21 +1138,38 @@ function JobsSubLaborFormModalInner(
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                if (editingLaborJob) saveEditedLaborJob(e)
-                else saveLaborJob()
+                if (editingLaborJob) {
+                  saveEditedLaborJob(e)
+                  return
+                }
+                if (laborStep < 3) {
+                  if (!laborStepNextBlocked) setLaborStep((s) => (s === 1 ? 2 : 3))
+                  return
+                }
+                saveLaborJob()
               }}
             >
               {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
-                {(() => {
-                  const lead = editingLaborJob ? 'Required: Address, Distance (mi)' : 'Required: a Job, Distance (mi)'
-                  return laborFixtureEntryMode === 'simple'
-                    ? `${lead}, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.`
-                    : `${lead}, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).`
-                })()}
-              </p>
-              {!editingLaborJob && (
+              {editingLaborJob ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
+                  {laborFixtureEntryMode === 'simple'
+                    ? 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
+                    : 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
+                </p>
+              ) : (
                 <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 6 }} aria-hidden>
+                    {([1, 2, 3] as const).map((n) => (
+                      <div key={n} style={{ flex: 1, height: 4, borderRadius: 2, background: n <= laborStep ? '#2563eb' : 'var(--bg-muted)' }} />
+                    ))}
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Step {laborStep} of 3 · {LABOR_STEP_TITLES[laborStep]}
+                  </p>
+                </div>
+              )}
+              {!editingLaborJob && (
+                <div style={{ marginBottom: '0.75rem', display: laborStepVisible(1) ? undefined : 'none' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
                     Job <span style={{ color: 'var(--text-red-700)' }}>*</span>
                   </label>
@@ -1125,7 +1188,7 @@ function JobsSubLaborFormModalInner(
                   />
                 </div>
               )}
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ display: laborStepVisible(1) ? 'flex' : 'none', gap: '1rem', flexWrap: 'wrap' }}>
                 {editingLaborJob ? (
                   <div style={{ flex: '0 0 120px' }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
@@ -1149,19 +1212,21 @@ function JobsSubLaborFormModalInner(
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
-                <div style={{ flex: '0 0 110px', minWidth: 110 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={9999}
-                    step={0.1}
-                    value={laborDistance}
-                    onChange={(e) => setLaborDistance(e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
-                  />
-                </div>
+                {editingLaborJob ? (
+                  <div style={{ flex: '0 0 110px', minWidth: 110 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={9999}
+                      step={0.1}
+                      value={laborDistance}
+                      onChange={(e) => setLaborDistance(e.target.value)}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ) : null}
                 <div style={{ flex: '0 0 auto' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date of Labor</label>
                   <input
@@ -1186,10 +1251,15 @@ function JobsSubLaborFormModalInner(
                   </div>
                 )}
               </div>
-              <div>
+              <div style={{ display: laborStepVisible(2) ? undefined : 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: 'var(--text-red-700)' }}>*</span></div>
+                    {laborAssignedTo.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: '0.35rem' }}>
+                        {laborAssignedTo.map((n) => renderLaborCrewChip(n))}
+                      </div>
+                    ) : null}
                     <input
                       id="labor-crew-search"
                       type="search"
@@ -1223,18 +1293,8 @@ function JobsSubLaborFormModalInner(
                       <>
                         <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 100, overflowY: 'auto', flex: 1, minWidth: 0 }}>
-                            {laborModalExternalSubsShown.map((n) => (
-                              <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={laborAssignedTo.includes(n)}
-                                  onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                />
-                                <span>{n}</span>
-                              </label>
-                            ))}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 120, overflowY: 'auto', flex: 1, minWidth: 0 }}>
+                            {laborModalExternalSubsShown.map((n) => renderLaborCrewChip(n))}
                             {laborModalExternalSubsAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                           </div>
                           <button
@@ -1274,18 +1334,8 @@ function JobsSubLaborFormModalInner(
                           Internal Subs
                         </button>
                         {laborModalInternalSubsOpen && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                            {laborModalInternalSubsShown.map((n) => (
-                              <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={laborAssignedTo.includes(n)}
-                                  onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                />
-                                <span>{n}</span>
-                              </label>
-                            ))}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 120, overflowY: 'auto' }}>
+                            {laborModalInternalSubsShown.map((n) => renderLaborCrewChip(n))}
                             {laborModalInternalSubsAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                           </div>
                         )}
@@ -1317,18 +1367,8 @@ function JobsSubLaborFormModalInner(
                         Office Team
                       </button>
                       {laborModalOfficeTeamOpen && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                          {laborModalOfficeTeamShown.map((n) => (
-                            <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              <input
-                                type="checkbox"
-                                checked={laborAssignedTo.includes(n)}
-                                onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                                style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                              />
-                              <span>{n}</span>
-                            </label>
-                          ))}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 120, overflowY: 'auto' }}>
+                          {laborModalOfficeTeamShown.map((n) => renderLaborCrewChip(n))}
                           {laborModalOfficeTeamAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                         </div>
                       )}
@@ -1337,7 +1377,7 @@ function JobsSubLaborFormModalInner(
                     </div>
                 </div>
               </div>
-              <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginTop: '1rem', display: laborStepVisible(3) ? undefined : 'none' }}>
                 {(() => {
                   const laborModalLineFallbackRate =
                     editingLaborJob?.labor_rate ??
@@ -1901,6 +1941,80 @@ function JobsSubLaborFormModalInner(
                   </>
                 )}
               </div>
+              {!editingLaborJob ? (
+                <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.25rem', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                  {laborStep === 1 ? (
+                    <button
+                      type="button"
+                      onClick={closeLaborModal}
+                      disabled={laborSaving}
+                      style={{ padding: '0.6rem 1rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setLaborStep((s) => (s === 3 ? 2 : 1))}
+                      disabled={laborSaving}
+                      style={{ padding: '0.6rem 1rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      Back
+                    </button>
+                  )}
+                  {laborStep < 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!laborStepNextBlocked) setLaborStep((s) => (s === 1 ? 2 : 3))
+                      }}
+                      aria-disabled={!!laborStepNextBlocked}
+                      title={laborStepNextBlocked ?? undefined}
+                      style={{
+                        flex: 1,
+                        padding: '0.6rem 1rem',
+                        background: laborStepNextBlocked ? '#9ca3af' : '#2563eb',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        cursor: laborStepNextBlocked ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {laborStepNextBlocked ?? `Next · ${LABOR_STEP_TITLES[(laborStep + 1) as 2 | 3]}`}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => printLaborSubSheet()}
+                        style={{ padding: '0.6rem 1rem', background: '#4b5563', color: 'white', border: '1px solid #4b5563', borderRadius: 6, fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
+                      >
+                        Print
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!laborCanSubmit || laborSaving}
+                        title={!laborCanSubmit ? `Required: ${laborMissingFields.join(', ')}` : undefined}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 1rem',
+                          background: laborCanSubmit && !laborSaving ? '#2563eb' : '#9ca3af',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          cursor: laborCanSubmit && !laborSaving ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {laborSaving ? 'Saving…' : !laborCanSubmit && laborMissingFields.length > 0 ? `Needs: ${laborMissingFields.join(', ')}` : 'Save'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
               <div
                 style={{
                   display: 'flex',
@@ -1992,6 +2106,7 @@ function JobsSubLaborFormModalInner(
                   </button>
                 )}
               </div>
+              )}
             </form>
           </div>
         </div>

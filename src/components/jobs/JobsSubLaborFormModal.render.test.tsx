@@ -118,9 +118,9 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.getByDisplayValue('12')).toBeTruthy()
     // The one itemized fixture row from the labor job
     expect(screen.getByDisplayValue('Toilet')).toBeTruthy()
-    // Assigned contractor checkbox is checked
-    const samCheckbox = screen.getByLabelText('Sub Sam') as HTMLInputElement
-    expect(samCheckbox.checked).toBe(true)
+    // Assigned contractor chip is pressed (chips since v2.1617; selected row + group = 2)
+    const samChips = screen.getAllByRole('button', { name: 'Sub Sam', pressed: true })
+    expect(samChips.length).toBeGreaterThanOrEqual(1)
   })
 
   it('openNewWithJobNumber resolves a known number to a picked job (v2.1616)', async () => {
@@ -153,8 +153,10 @@ describe('JobsSubLaborFormModal render smoke', () => {
     // The seed number resolves to the real job — its authoritative address wins (v2.1616).
     expect(screen.getByText(/JHCP-12 · /)).toBeTruthy()
     expect(newAddressInput().value).toBe('123 Main St, Austin, TX 78701')
-    const samCheckbox = screen.getByLabelText('Sub Sam') as HTMLInputElement
-    expect(samCheckbox.checked).toBe(true)
+    // Walk the v2.1617 wizard to the Crew step, where the chips live.
+    fireEvent.click(screen.getByRole('button', { name: 'Next · Crew' }))
+    const samChips = screen.getAllByRole('button', { name: 'Sub Sam', pressed: true })
+    expect(samChips.length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('Ghost Not On Roster')).toBeNull()
   })
 

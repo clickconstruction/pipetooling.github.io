@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1617',
+    date: '2026-08-13',
+    title: 'New Sub Labor is three quick steps',
+    kind: 'feature',
+    highlights: [
+      'New entries walk Job \u2192 Crew \u2192 Work and cost \u2014 one decision per screen, built for phones.',
+      'Crew is tappable chips now, with the job\u2019s team pre-selected up front.',
+      'The Distance field is gone from new entries; older entries keep theirs.',
+    ],
+  },
+  {
     version: 'v2.1616',
     date: '2026-08-13',
     title: 'New Sub Labor picks the job for you',
