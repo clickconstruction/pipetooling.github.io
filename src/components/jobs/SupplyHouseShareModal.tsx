@@ -28,6 +28,7 @@ import {
   closeOpenFindOwnerRequestsAfterSend,
   fetchOpenFindOwnerRequest,
   submitFindPropertyOwnerDispatchRequestForJob,
+  type OpenFindOwnerRequest,
 } from '../../lib/findPropertyOwnerDispatchRequest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -86,8 +87,10 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   const [priorOpen, setPriorOpen] = useState(false)
   const [issuer, setIssuer] = useState<PhysicalInvoiceIssuer | null>(null)
   /** Open "find the owner" dispatch request for this job (v2.1610) — drives the "Dispatch is on it" state. */
-  const [findOwnerRequest, setFindOwnerRequest] = useState<{ id: string; created_at: string } | null>(null)
+  const [findOwnerRequest, setFindOwnerRequest] = useState<OpenFindOwnerRequest | null>(null)
   const [dispatching, setDispatching] = useState(false)
+  /** One-shot: preselect the requester's wanted supply houses when Dispatch opens this to complete the errand (v2.1615). */
+  const [requestPreselected, setRequestPreselected] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -96,6 +99,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     setAddOpen(false)
     setPriorShares([])
     setPriorOpen(false)
+    setRequestPreselected(false)
     void supabase
       .from('supply_house_job_accounts')
       .select('job_id, contact_label, contact_email, sent_by_name, sent_at')
@@ -166,6 +170,25 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefill once per open
   }, [open])
+
+  // Preselect the requester's wanted supply houses once both the contacts list
+  // and the open request have loaded — the completing desk lands with the
+  // right chips already on. User toggles afterwards are never clobbered.
+  useEffect(() => {
+    if (!open || requestPreselected) return
+    const wanted = findOwnerRequest?.requestedSupplyHouses ?? []
+    if (wanted.length === 0 || contacts.length === 0) return
+    const contactIds = new Set(contacts.map((c) => c.id))
+    const ids = wanted.map((w) => w.id).filter((id) => contactIds.has(id))
+    if (ids.length > 0) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of ids) next.add(id)
+        return next
+      })
+    }
+    setRequestPreselected(true)
+  }, [open, requestPreselected, findOwnerRequest, contacts])
 
   const ownerGaps = useMemo(() => (info ? jobAccountOwnerGaps(info) : []), [info])
   const softGaps = useMemo(() => (info ? jobAccountSoftGaps(info) : []), [info])
@@ -430,11 +453,16 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                         const d = new Date(findOwnerRequest.created_at)
                         return Number.isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
                       })()}
+                      {findOwnerRequest.requestedSupplyHouses.length > 0 ? (
+                        <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-muted)' }}>
+                          wants the account at {findOwnerRequest.requestedSupplyHouses.map((s) => s.label).join(', ')}
+                        </span>
+                      ) : null}
                     </p>
                   ) : (
                     // Centered, in the send-to-dispatch purple of the Job Detail
                     // header's send-as-task icon (v2.1611, owner request).
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <button
                         type="button"
                         disabled={dispatching}
@@ -444,6 +472,9 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                             jobId: job.id,
                             jobLabel,
                             jobAddress: info.address,
+                            // Optional (v2.1615): the Send-to chips picked below ride
+                            // along so Dispatch knows WHERE to set up the account.
+                            supplyHouses: contacts.filter((c) => selectedIds.has(c.id)),
                           }).then((req) => {
                             setDispatching(false)
                             if (req) setFindOwnerRequest(req)
@@ -463,6 +494,14 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                       >
                         {dispatching ? 'Sending…' : 'Send to Dispatch — find the owner'}
                       </button>
+                      <span style={{ margin: '0.15rem 0 0.1rem', fontSize: '0.6875rem', color: 'var(--text-faint)', textAlign: 'center' }}>
+                        {selectedIds.size > 0
+                          ? `Dispatch will be told to use: ${contacts
+                              .filter((c) => selectedIds.has(c.id))
+                              .map((c) => c.label)
+                              .join(', ')}`
+                          : 'Optional: pick the supply house under Send to first — Dispatch will know where to set up the account.'}
+                      </span>
                     </div>
                   )}
                 </>

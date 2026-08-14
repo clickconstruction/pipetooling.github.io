@@ -105,6 +105,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 13, 2026
 
+**`20260814000431_dispatch_request_pending_payload.sql`** _(apply via `supabase db push` **BEFORE the v2.1615 client deploys** — the client inserts the new column; additive, invisible to the old client)_
+- **Purpose**: generic `dispatch_requests.pending_payload jsonb` for pending-action context (v2.1615). First use: `find_property_owner` stores `{"supply_houses":[{"id","label","email"}]}` — which supply house(s) the requester wants the job account at; the share modal preselects them when Dispatch completes the errand.
+- **Security**: additive column; existing dispatch_requests row policies cover it.
+- **Category**: Dispatch / supply houses
+
 **`20260813234538_ar_stripe_hosted_allocations.sql`** _(apply via `supabase db push` **BEFORE the v2.1614 client deploys** — the client calls the 6-arg function; the change is invisible to the old client)_
 - **Purpose**: AR allocations to Stripe-hosted bills, opt-in (v2.1614) — the customer-paid-by-check-instead-of-the-Stripe-link case. `apply_mercury_bank_payment_allocations` gains `p_allow_stripe_hosted boolean DEFAULT false`; when true, BOTH Stripe rejections relax (direct invoice allocations and linking recorded payments applied to Stripe bills). The old 5-arg signature is DROPPED first (a defaulted param would otherwise create a second overload); old clients resolve to the new function with the default → byte-identical guards.
 - **Also**: `list_unlinked_payments_for_bank_payments` dropped + recreated (return-shape change) — payments applied to Stripe-hosted invoices are now listed with a new `stripe_hosted` column; true Stripe webhook payments (`note = 'Stripe'`) stay excluded. Grants restored on both.

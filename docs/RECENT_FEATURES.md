@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1614)
+last_updated: 2026-08-13 (v2.1615)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1615)
+
+### Find-the-owner errand carries WHICH supply house the requester wants (2026-08-13)
+Owner request ("valuable for a user, but not required, to specify what supply house they want a supply house account setup with"). The v2.1610 **Send to Dispatch — find the owner** flow lost the requester's intent about the supply house; now the **Send to** chips picked before filing ride along. Three pieces: **(1)** migration [`20260814000431_dispatch_request_pending_payload.sql`](../supabase/migrations/20260814000431_dispatch_request_pending_payload.sql) adds the generic `dispatch_requests.pending_payload jsonb` (deliberately reusable by other pending actions; existing RLS covers it) — find_property_owner stores `{"supply_houses":[{"id","label","email"}]}`; **(2)** [`findPropertyOwnerDispatchRequest.ts`](../src/lib/findPropertyOwnerDispatchRequest.ts) gains pure kernels `buildFindOwnerPendingPayload` / `parseFindOwnerPendingPayload` / `findOwnerRequestTitle` (+9 tests) — the request **title** also names the wanted houses ("…send the job account to Ferguson — Central desk"), so the Dispatch inbox card carries the intent with zero card changes; **(3)** [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx) — below the dispatch button a faint nudge either lists what Dispatch will be told or suggests picking chips first; "Dispatch is on it" shows "wants the account at …"; and when Dispatch opens the modal to complete the errand, the requested chips are **preselected** (one-shot, never clobbers later toggles; unknown/deleted contacts are skipped). Choice fully optional — empty selection files the exact v2.1610 request. Help guide `share-job-with-supply-house.md` updated. **Deploy: `supabase db push` BEFORE the client** (the client inserts the new column; additive and invisible to the old client).
 
 ## Latest Updates (v2.1614)
 
