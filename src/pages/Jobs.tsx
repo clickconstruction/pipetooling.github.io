@@ -672,7 +672,10 @@ export default function Jobs() {
 
 
   const shouldLoadJobsListForActiveTab =
-    activeTab === 'stages' || activeTab === 'billing' || activeTab === 'parts'
+    // sub_sheet_ledger since v2.1621: the New Sub Labor job picker reads the
+    // shared jobs cache — a deep link straight to the tab used to leave the
+    // picker with zero rows ("No jobs match").
+    activeTab === 'stages' || activeTab === 'billing' || activeTab === 'parts' || activeTab === 'sub_sheet_ledger'
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
