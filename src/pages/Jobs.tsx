@@ -1680,6 +1680,10 @@ export default function Jobs() {
             jobIdsFilter={jobs.map((j) => j.id)}
             showTitle={false}
             collapsibleCrewJobs
+            /* v2.1636: on this tab only devs + controllers edit Crew Jobs / Bids
+               (Quickfill keeps the wider pay-access editing for the
+               unassigned-hours → payroll workflow). */
+            canEdit={authRole === 'dev' || authRole === 'controller' || myRole === 'dev' || myRole === 'controller'}
             focusTeamLaborJobId={activeTab === 'combined-labor' ? teamLaborJobParam : null}
             onFocusTeamLaborConsumed={onFocusTeamLaborConsumed}
           />

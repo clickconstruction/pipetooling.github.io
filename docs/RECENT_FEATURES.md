@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1635)
+last_updated: 2026-08-14 (v2.1636)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1636)
+
+### Crew Jobs / Bids: clock-owned days lock, Team Labor editing narrows to dev + controller (2026-08-14)
+Owner decision after a deep-dive on the section's hybrid nature (clock-synced for days with approved job/bid-anchored sessions, manual-only otherwise). **(1) Clock-derived locking** in the shared [`CrewJobsBlock`](../src/components/CrewJobsBlock.tsx) (Jobs → Team Labor AND Quickfill): `loadCrewJobs` now also fetches the date's approved closed anchored `clock_sessions`; any person with one gets a **⏱ from clock** badge (tooltip explains the overwrite mechanics) and their row renders read-only — `sync_crew_jobs_from_clock` / `sync_crew_bids_from_clock` recompute those days on every approval/adjust, so the previous editability was a silent-overwrite trap. `saveCrewRow` also hard-guards. Fail-soft: if the sessions fetch errors, nothing locks. Unanchored/unclocked days stay editable — they're the unassigned-hours → payroll workflow. **(2) Role gate**: the Jobs → Team Labor mount passes `canEdit` = dev/controller only (UI-level; RLS unchanged), so pay-approved masters see it read-only there; Quickfill keeps the wider pay-access editing. Verified live: Aug 7 rows all badge + lock, yesterday's unapproved rows keep the + button. `ACCESS_CONTROL.md` + `quickfill` help guide updated. Client-only — no migration.
 
 ## Latest Updates (v2.1635)
 

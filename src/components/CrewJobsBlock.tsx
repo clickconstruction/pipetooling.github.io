@@ -145,6 +145,14 @@ export function CrewJobsBlock({
   const [hideZeroHours, setHideZeroHours] = useState(true)
   const [crewDateHours, setCrewDateHours] = useState<Record<string, number>>({})
   const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(true)
+  /**
+   * v2.1636: trimmed person names whose selected-date assignments are owned by the
+   * clock sync (≥1 approved closed job/bid-anchored session that day). Their rows
+   * render locked — `sync_crew_jobs_from_clock` / `sync_crew_bids_from_clock`
+   * recompute the whole day on every approval/adjust, so manual edits would be
+   * silently overwritten. Fail-soft: a fetch error leaves the set empty (no lock).
+   */
+  const [clockDerivedPeople, setClockDerivedPeople] = useState<Set<string>>(new Set())
 
   const canEdit = canEditProp ?? canAccess
 
@@ -305,12 +313,28 @@ export function CrewJobsBlock({
 
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
-    const [jobsRes, bidsRes, hoursRes] = await Promise.all([
+    const [jobsRes, bidsRes, hoursRes, sessionsRes] = await Promise.all([
       supabase.from('people_crew_jobs').select('person_name, person_id, job_assignments').eq('work_date', date),
       supabase.from('people_crew_bids').select('person_name, person_id, bid_assignments').eq('work_date', date),
       supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
+      supabase
+        .from('clock_sessions')
+        .select('job_ledger_id, bid_id, users!clock_sessions_user_id_fkey(name)')
+        .eq('work_date', date)
+        .not('approved_at', 'is', null)
+        .not('clocked_out_at', 'is', null)
+        .is('rejected_at', null)
+        .is('revoked_at', null),
     ])
     setCrewJobsLoading(false)
+    {
+      const derived = new Set<string>()
+      for (const s of (sessionsRes.data ?? []) as Array<{ job_ledger_id: string | null; bid_id: string | null; users: { name: string | null } | null }>) {
+        const name = s.users?.name?.trim()
+        if (name && (s.job_ledger_id || s.bid_id)) derived.add(name)
+      }
+      setClockDerivedPeople(derived)
+    }
     const { data: jobsData, error: jobsErr } = jobsRes
     const { data: bidsData, error: bidsErr } = bidsRes
     if (jobsErr || bidsErr) {
@@ -377,6 +401,7 @@ export function CrewJobsBlock({
 
   async function saveCrewRow(personName: string, row: CrewRow) {
     if (!canEdit) return
+    if (clockDerivedPeople.has(personName.trim())) return
     setCrewJobsData((prev) => ({ ...prev, [personName]: row }))
     const { jobAssignments, bidAssignments } = splitFromUnified(row.unifiedAssignments)
     const [jobsErr, bidsErr] = await Promise.all([
@@ -710,6 +735,7 @@ export function CrewJobsBlock({
               {visiblePeopleForCrew.map((personName) => {
                 const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
                 const effectiveHours = effectiveHoursForCost(cfgForPerson(personName), crewJobsDate, effectiveCrewHours[personName] ?? 0)
+                const isClockDerived = clockDerivedPeople.has(personName.trim())
                 return (
                   <tr key={personName} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>
@@ -717,7 +743,7 @@ export function CrewJobsBlock({
                       {effectiveHours > 0 ? effectiveHours.toFixed(2) : '—'}
                     </td>
                     <td style={{ padding: '0.75rem', background: !canEdit ? 'var(--bg-muted)' : undefined }}>
-                      {canEdit ? (
+                      {canEdit && !isClockDerived ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                           {row.unifiedAssignments.map((a, idx) => {
                             const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
@@ -814,7 +840,27 @@ export function CrewJobsBlock({
                           </button>
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                          {isClockDerived && (
+                            <span
+                              title="This day's split comes from approved clock sessions and recomputes on every approval or time adjustment — manual edits here would be overwritten. Fix the underlying clock sessions instead."
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                padding: '0.1rem 0.45rem',
+                                borderRadius: 999,
+                                background: 'var(--bg-blue-tint)',
+                                color: 'var(--text-link)',
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                cursor: 'help',
+                              }}
+                            >
+                              ⏱ from clock
+                            </span>
+                          )}
                           {row.unifiedAssignments.length > 0
                             ? row.unifiedAssignments
                                 .map((a) => {

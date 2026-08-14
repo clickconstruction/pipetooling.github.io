@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-08-12
+last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -332,6 +332,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Jobs**:
 - Team Labor tab: Hidden from assistants (dev and master only)
+- Team Labor → **Crew Jobs / Bids editing** (v2.1636): UI-level, **dev + controller only** on this tab — pay-approved masters see the section read-only. Quickfill's copy keeps the wider pay-access editing (RLS unchanged). Person/days with approved job/bid-anchored clock sessions are locked everywhere with a "⏱ from clock" badge (the sync RPCs recompute those days on approval, so manual edits would be overwritten).
 - **Reports tab** — **Recurring Email Reports**: schedules and recipients with optional **include costs** (same product as dev/master; **`user_can_manage_recurring_job_report_scope`**)
 
 **Prospects**:
