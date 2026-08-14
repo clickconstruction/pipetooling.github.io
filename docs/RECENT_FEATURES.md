@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1641)
+last_updated: 2026-08-14 (v2.1642)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1642)
+
+### Collections flag clears automatically when a job is paid (2026-08-14)
+Owner decision ("When it goes to Paid, clear the collections flag automatically"), reversing the deliberate sticky-flag semantics from the flag's introduction (`20260704150000_job_collections_flag.sql` — the flag used to survive status transitions so Collections context resurrected on a paid→billed revert; worse, it could not even be cleared manually while Paid because `set_job_collections_flag` requires `billed`). New migration [`20260814171357_clear_collections_on_paid.sql`](../supabase/migrations/20260814171357_clear_collections_on_paid.sql): BEFORE UPDATE trigger `jobs_ledger_clear_collections_on_paid` on `jobs_ledger` — when `status` transitions into `paid` with `collections_at` set, it NULLs `collections_at/by/note` on the same write (no second UPDATE, no recursion) and logs the same `collections_change` activity event a manual unflag writes (summary "Removed from Collections — job paid", `detail.auto=true`, actor NULL for service-role writers like the Stripe webhook). **One writer covers every path to Paid** — Stripe webhook (`mark_invoice_paid_from_stripe`), `mark_invoice_paid`, `mark_job_paid`, AR allocations, `update_job_status` — same single-writer reasoning as the v2.1435 status-event trigger; no RPC gains its own clearing logic. Client-side nothing changes (`jobInCollections` already required `billed`); comment updated in [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts). Docs: `BILLING_FLOWS.md` Collections paragraph + `update_job_status` side-effects note, `MIGRATIONS.md`, help guide `ready-to-bill-pipeline`. **Deploy: `supabase db push` after merge** — behavior-only trigger, no schema change, old clients unaffected.
 
 ## Latest Updates (v2.1641)
 

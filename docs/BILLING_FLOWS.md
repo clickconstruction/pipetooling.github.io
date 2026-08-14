@@ -53,7 +53,7 @@ stateDiagram-v2
     working --> waiting: office send-back
 ```
 
-"Collections" is **not** a status — it is a sticky flag on billed jobs (`collections_at/by/note`, migrations `supabase/migrations/20260704150000_job_collections_flag.sql` + `…160000_collections_flag_row_lock.sql`; RPC `set_job_collections_flag`, client `src/lib/setJobCollectionsFlag.ts`, helper `jobInCollections` in `src/lib/jobsStagesBoard.ts`).
+"Collections" is **not** a status — it is a flag on billed jobs (`collections_at/by/note`, migrations `supabase/migrations/20260704150000_job_collections_flag.sql` + `…160000_collections_flag_row_lock.sql`; RPC `set_job_collections_flag`, client `src/lib/setJobCollectionsFlag.ts`, helper `jobInCollections` in `src/lib/jobsStagesBoard.ts`). The flag clears **automatically when the job transitions to paid** (BEFORE trigger `jobs_ledger_clear_collections_on_paid`, `…20260814171357_clear_collections_on_paid.sql`, v2.1642 — logs the same `collections_change` activity event as a manual unflag, `detail.auto=true`); before v2.1642 it was sticky across status transitions.
 
 ### RPC `update_job_status(p_job_id, p_to_status)`
 
@@ -67,7 +67,7 @@ Latest definition: `supabase/migrations/20260608120000_allow_helpers_working_to_
 | ready_to_bill → working | OFFICE; side effect: **deletes all `ready_to_bill` invoice rows** for the job (count returned as `deleted_ready_to_bill_invoices`) |
 | working → waiting, waiting → working | OFFICE |
 
-Side effects: `jobs_ledger` update + one `job_status_events` insert (`from_status`, `to_status`, `changed_by_user_id`). It does **not** stamp bill/paid timestamps (those live on invoice rows), does not clear the Collections flag, and takes **no row lock** — concurrency is only mitigated client-side (v2.732 per-id mutation locks in `src/hooks/useDashboardBillingInvoices.ts`; serialized pipeline in `src/lib/jobsStagesSerializedPipeline.ts`, driven from `src/hooks/useJobsStagesMutations.ts` / `src/components/jobs/JobsStagesTab.tsx`).
+Side effects: `jobs_ledger` update + one `job_status_events` insert (`from_status`, `to_status`, `changed_by_user_id`). It does **not** stamp bill/paid timestamps (those live on invoice rows) and takes **no row lock** (the Collections flag clears on billed→paid via the v2.1642 trigger, not this RPC) — concurrency is only mitigated client-side (v2.732 per-id mutation locks in `src/hooks/useDashboardBillingInvoices.ts`; serialized pipeline in `src/lib/jobsStagesSerializedPipeline.ts`, driven from `src/hooks/useJobsStagesMutations.ts` / `src/components/jobs/JobsStagesTab.tsx`).
 
 Other server-side status writers:
 
