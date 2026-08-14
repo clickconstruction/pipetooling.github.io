@@ -1230,7 +1230,7 @@ function JobsSubLaborFormModalInner(
                   })()}
                 </div>
               )}
-              <div style={{ display: laborStepVisible(1) ? 'flex' : 'none', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ display: laborStepVisible(1) ? 'flex' : 'none', gap: '1rem', flexWrap: 'wrap', justifyContent: editingLaborJob ? undefined : 'center' }}>
                 {editingLaborJob ? (
                   <div style={{ flex: '0 0 120px' }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
@@ -1271,17 +1271,36 @@ function JobsSubLaborFormModalInner(
                     />
                   </div>
                 ) : null}
-                <div style={{ flex: '0 0 auto' }}>
+                <div style={{ flex: '0 0 auto', textAlign: editingLaborJob ? undefined : 'center' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date of Labor</label>
-                  <input
-                    type="date"
-                    value={laborDate}
-                    onChange={(e) => setLaborDate(e.target.value)}
-                    style={{ width: '11ch', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
-                  />
+                  {editingLaborJob ? (
+                    <input
+                      type="date"
+                      value={laborDate}
+                      onChange={(e) => setLaborDate(e.target.value)}
+                      style={{ width: '11ch', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    />
+                  ) : (
+                    // v2.1628: native date inputs can't render MM/DD/YY, so the
+                    // short date shows as text with the real (invisible) picker
+                    // stretched over it — tapping anywhere opens the calendar.
+                    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '9ch', height: 38, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', cursor: 'pointer' }}>
+                      {(() => {
+                        const [y, m, d] = laborDate.split('-')
+                        return m && d && y ? `${m}/${d}/${y.slice(2)}` : laborDate
+                      })()}
+                      <input
+                        type="date"
+                        value={laborDate}
+                        onChange={(e) => setLaborDate(e.target.value)}
+                        aria-label="Date of Labor"
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                      />
+                    </span>
+                  )}
                 </div>
                 {serviceTypes.length > 1 && (
-                  <div style={{ flex: '0 0 auto' }}>
+                  <div style={{ flex: '0 0 auto', textAlign: editingLaborJob ? undefined : 'center' }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
                     <select
                       value={selectedServiceTypeId}
@@ -1336,22 +1355,45 @@ function JobsSubLaborFormModalInner(
                     {(!laborCrewSearchActive || laborModalExternalSubsShown.length > 0) && (
                       <>
                         <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 120, overflowY: 'auto', flex: 1, minWidth: 0 }}>
-                            {laborModalExternalSubsShown.map((n) => renderLaborCrewChip(n))}
-                            {laborModalExternalSubsAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowAddSubcontractorModal(true)}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }}
-                          >
-                            Add Sub
-                          </button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 120, overflowY: 'auto', minWidth: 0 }}>
+                          {laborModalExternalSubsShown.map((n) => renderLaborCrewChip(n))}
+                          {laborModalExternalSubsAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                         </div>
                       </>
                     )}
-                    {(!laborCrewSearchActive || laborModalInternalSubsShown.length > 0) && (
+                    {/* v2.1628: one control row under the External Subs box — Add New
+                        Sub on the left, the collapsed group toggles beside it.
+                        Expanded groups render below with their own collapse toggle. */}
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem 0.9rem', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddSubcontractorModal(true)}
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8125rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-link)', border: '1px dashed var(--border-strong)', borderRadius: 999, cursor: 'pointer', flexShrink: 0 }}
+                      >
+                        + Add New Sub
+                      </button>
+                      {!laborModalInternalSubsOpen && (!laborCrewSearchActive || laborModalInternalSubsShown.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => setLaborModalInternalSubsOpen(true)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}
+                        >
+                          <span style={{ fontSize: '0.75rem' }}>▶</span>
+                          Internal Subs
+                        </button>
+                      )}
+                      {!laborModalOfficeTeamOpen && (!laborCrewSearchActive || laborModalOfficeTeamShown.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => setLaborModalOfficeTeamOpen(true)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}
+                        >
+                          <span style={{ fontSize: '0.75rem' }}>▶</span>
+                          Office Team
+                        </button>
+                      )}
+                    </div>
+                    {laborModalInternalSubsOpen && (!laborCrewSearchActive || laborModalInternalSubsShown.length > 0) && (
                       <>
                         <button
                           type="button"
@@ -1385,7 +1427,7 @@ function JobsSubLaborFormModalInner(
                         )}
                       </>
                     )}
-                  {(!laborCrewSearchActive || laborModalOfficeTeamShown.length > 0) && (
+                  {laborModalOfficeTeamOpen && (!laborCrewSearchActive || laborModalOfficeTeamShown.length > 0) && (
                     <div>
                       <button
                         type="button"
@@ -1826,7 +1868,8 @@ function JobsSubLaborFormModalInner(
                   })()}
                 </div>
               )}
-              <div style={{ marginTop: '1.5rem' }}>
+              {/* v2.1628: the Labor book belongs to Work and cost — hidden on wizard steps 1–2. */}
+              <div style={{ marginTop: '1.5rem', display: laborStepVisible(3) ? undefined : 'none' }}>
                 <button
                   type="button"
                   onClick={() => setLaborBookSectionOpen((prev) => !prev)}

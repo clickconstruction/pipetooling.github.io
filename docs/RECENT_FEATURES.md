@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1627)
+last_updated: 2026-08-13 (v2.1628)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1628)
+
+### New Sub Labor polish: short date, centered fields, Add New Sub row, Labor book gated (2026-08-13)
+Three owner requests on the wizard, one PR. [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx): **(1)** Date of Labor shows **08/13/26** — native date inputs can't render a two-digit year, so the short date renders as text with the real (invisible) picker stretched over it; tapping anywhere opens the calendar and picks flow through (verified live); Date + Service type sit **centered** on step 1; edit mode keeps the classic input. **(2)** Crew step: the blue "Add Sub" button becomes a dashed **`+ Add New Sub`** pill in ONE control row under the full-width External Subs box, with the collapsed **▶ Internal Subs / ▶ Office Team** toggles inline beside it — expanding moves a group into its own section below (▼ collapses it back); search still auto-opens both. **(3)** The **Labor book** collapsible is gated to step 3 (it floated on every step). All display:none step gating — state survives Back. Render tests 7/7. Client-only — no migration.
 
 ## Latest Updates (v2.1627)
 

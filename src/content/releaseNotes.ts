@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1628',
+    date: '2026-08-13',
+    title: 'New Sub Labor gets tidier steps',
+    kind: 'fix',
+    highlights: [
+      'The date shows as 08/13/26 and sits centered with Service type.',
+      '\u201c+ Add New Sub\u201d moves under the External Subs box, next to the Internal Subs and Office Team toggles.',
+      'The Labor book section only appears on the Work and cost step.',
+    ],
+  },
+  {
     version: 'v2.1627',
     date: '2026-08-13',
     title: 'The Billing tab\u2019s red flag explains itself',
