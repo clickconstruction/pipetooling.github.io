@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1660)
+last_updated: 2026-08-14 (v2.1662)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1662)
+
+### Vehicles: search box moves under the title (2026-08-14)
+Owner request. [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx): the "Search vehicles or people" input moves out of the header's right-side button group to its own left-aligned row directly below the **Vehicles** title (above the summary chips); **Insurance plans** and **+ Add Vehicle** stay on the right of the title row. Layout-only — no behavior change (verified live: filtering works from the new spot). Client-only — no migration.
 
 ## Latest Updates (v2.1660)
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1662',
+    date: '2026-08-14',
+    title: 'Vehicles search under the title',
+    kind: 'fix',
+    highlights: [
+      'People → Vehicles: the search box now sits on the left just below the Vehicles title, instead of in the button row on the right.',
+    ],
+  },
+  {
     version: 'v2.1660',
     date: '2026-08-14',
     title: 'Vehicle insurance plans',
