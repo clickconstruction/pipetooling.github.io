@@ -4,7 +4,9 @@ import type { UserRole } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatAddressTwoLines } from '../../lib/jobs/jobAddressUrls'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { useToastContext } from '../../contexts/ToastContext'
 import {
+  billingAttentionLabel,
   billingFixturesCellText,
   billingJobMatchesSearch,
   billingJobNeedsAttention,
@@ -60,6 +62,7 @@ export default function JobsBillingTab({
   openNew,
   openEdit,
 }: JobsBillingTabProps) {
+  const { showToast } = useToastContext()
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
   /** v2.1619 audit refit: 'attention' shows only rows wearing a red labor-capture flag. */
@@ -254,16 +257,28 @@ export default function JobsBillingTab({
                           </span>
                         )
                       })()}
-                    {job.hcp_number && authRole !== 'primary' && !teamLaborLoading && !teamLaborJobIds.has(job.id) && (
-                      <span
-                        title="No Team Job Labor for this job"
-                        style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                    {job.hcp_number && authRole !== 'primary' && !teamLaborLoading && (() => {
+                      // v2.1627: one flag for BOTH audit conditions — mirrors the
+                      // Needs labor filter. Hover names what's missing; click
+                      // toasts it (phones have no hover).
+                      const noSub = !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase())
+                      const noTeam = !teamLaborJobIds.has(job.id)
+                      if (!noSub && !noTeam) return null
+                      const label = billingAttentionLabel(noSub, noTeam)
+                      return (
+                      <button
+                        type="button"
+                        title={label}
+                        aria-label={label}
+                        onClick={() => showToast(label, 'info')}
+                        style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="#b91c1c" aria-hidden="true">
                           <path d="M240 104C240 73.1 265.1 48 296 48C326.9 48 352 73.1 352 104C352 134.9 326.9 160 296 160C265.1 160 240 134.9 240 104zM42.5 245.3C48.4 233.4 62.8 228.6 74.7 234.6L99.3 246.9L111.5 226.5C130.4 195 164.7 176 201.1 176C247.3 176 288.8 206.5 301.6 251.4L333.8 364.1L426.7 410.5L452.5 367.5C458.3 357.9 468.7 352 479.9 352C491.1 352 501.6 357.9 507.3 367.5L603.3 527.5C609.2 537.4 609.4 549.7 603.7 559.7C598 569.7 587.5 576 576 576L384 576C372.5 576 361.8 569.8 356.2 559.8C350.6 549.8 350.7 537.5 356.6 527.6L402 451.8L53.3 277.5C41.4 271.6 36.6 257.2 42.6 245.3zM126.3 371.4L238.3 427.4C249.1 432.8 256 443.9 256 456L256 544C256 561.7 241.7 576 224 576C206.3 576 192 561.7 192 544L192 475.8L130.7 445.1L94.4 554.1C88.8 570.9 70.7 579.9 53.9 574.3C37.1 568.7 28.1 550.6 33.7 533.9L81.7 389.9C84.6 381.1 91.2 374 99.8 370.5C108.4 367 118.1 367.3 126.4 371.4z" />
                         </svg>
-                      </span>
-                    )}
+                      </button>
+                      )
+                    })()}
                     </div>
                     <div style={{ marginTop: '0.35rem' }}>{job.job_name || '—'}</div>
                     {(() => {
