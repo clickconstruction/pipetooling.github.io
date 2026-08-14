@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1642',
+    date: '2026-08-14',
+    title: 'Paid jobs leave Collections on their own',
+    kind: 'feature',
+    highlights: [
+      'When a job in Collections is paid in full — by Stripe, a bank-deposit allocation, or Mark Paid — the Collections flag now clears automatically and the job lands in Paid in Full like any other.',
+      'The job’s activity thread records that it was removed from Collections, so the history stays visible.',
+      'If a paid job is ever sent back to Billed, it returns to plain Billed Awaiting Payment — flag it for Collections again if it still needs the attention.',
+    ],
+  },
+  {
     version: 'v2.1641',
     date: '2026-08-14',
     title: 'Paid dates show when the money arrived',
