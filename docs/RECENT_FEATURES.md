@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1652)
+last_updated: 2026-08-14 (v2.1653)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1653)
+
+### Edit Job: Send back an unpaid bill from the ② Invoices row (2026-08-14)
+Owner request after a deep-dive on the bills-ahead situation (job 258: 86-day-old partially-paid bill + a new invoice pushing past 100% of a 70%-done job). The Invoices table's billed rows gain **Send back** — the same primitives as the Pipeline/Dashboard send-backs ([`voidStripeInvoiceForRevert`](../src/lib/voidStripeInvoiceForRevert.ts) branch for Stripe-backed bills, RPC `delete_billed_invoice_on_send_back` otherwise, then `syncJobToReadyToBillIfNoBilledInvoicesRemain`), so the bill that shouldn't have gone out is fixable without leaving Edit Job. Guardrails: the button renders **disabled with an explainer when any payment links to the bill** (mirroring the server's hard block — verified live on job 258, whose $8,900 bill turned out to carry the $6,220 payment); the confirm requires an acknowledgment ("customer can no longer pay or reference this bill…") and adds a Stripe void warning when a payment link was emailed. New kernel [`editJobInvoiceSendBack.ts`](../src/lib/jobs/editJobInvoiceSendBack.ts) (+3 tests) also computes the **remedy hint appended to the "Would bill through 100%" warning** ("Or send back the unpaid $8,900.00 bill below and rebill to match the field.") whenever an eligible unpaid bill exists — passed from the shell into [`JobFormBreakOffTrack`](../src/components/jobs/JobFormBreakOffSection.tsx). Render tests +2 (4 total on the list; the pre-existing pair gained the useAuth mock). Docs: `BILLING_FLOWS.md` send-back table, help guide `ready-to-bill-pipeline`. Client-only — no migration.
 
 ## Latest Updates (v2.1652)
 

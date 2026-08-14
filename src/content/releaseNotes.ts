@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1653',
+    date: '2026-08-14',
+    title: 'Send a bill back from Edit Job',
+    kind: 'feature',
+    highlights: [
+      'Sent bills with no payments now have a Send back button right in Edit Job’s Invoices table — it removes the bill, returns the amount to unbilled, and voids the customer’s payment link if one was emailed.',
+      'Bills with payments applied show the button grayed with a note to unlink the payments first.',
+      'The "would bill through 100%" warning now suggests the fix: send back the stale unpaid bill and rebill to match the field.',
+    ],
+  },
+  {
     version: 'v2.1652',
     date: '2026-08-14',
     title: 'Past crew show by name, not code',

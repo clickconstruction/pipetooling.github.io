@@ -13,6 +13,7 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
+import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
 import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
@@ -3283,7 +3284,12 @@ export default function JobFormModal({
               />
               <JobFormSegmentsBar
                 fixtures={fixtures}
-                trackSlot={<JobFormBreakOffTrack breakOff={breakOff} />}
+                trackSlot={
+                  <JobFormBreakOffTrack
+                    breakOff={breakOff}
+                    billsAheadRemedyHint={billsAheadRemedyHint(editing.invoices ?? [], payments)}
+                  />
+                }
                 axisTotalDollars={jobTotalBidDollars}
                 riderFeesDollars={riderFeesDollars}
                 invoiceStatusById={fixtureInvoiceStatusById}
