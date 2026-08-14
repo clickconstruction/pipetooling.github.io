@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1657)
+last_updated: 2026-08-14 (v2.1658)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1658)
+
+### Pipeline: empty Job activity boxes match one-line boxes (2026-08-14)
+Owner request ("for jobs with no activity, I would like the bar to be the same size as jobs with one line of activity"). The [`JobsStagesActivityBox`](../src/components/jobs/JobsStagesActivityBox.tsx) "No activity yet — post the first note" placeholder carried `padding: 6px 0` that real activity lines don't have, rendering empty boxes 48px tall vs 37px for a one-line box. The placeholder now uses the one-line teaser's exact vertical metrics (`marginTop 2`, `lineHeight 1.45`, no vertical padding) — measured live: all plain empty boxes now 37px, matching one-liners. Empty boxes with a pinned green NEXT line stay taller for the same reason scheduled one-line boxes do (real content). Render tests unchanged (placeholder text untouched). Client-only — no migration.
 
 ## Latest Updates (v2.1657)
 
