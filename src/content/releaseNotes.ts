@@ -11,6 +11,111 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1651',
+    date: '2026-08-14',
+    title: 'Internal: smoother database updates',
+    kind: 'infra',
+    highlights: [
+      'Fixed the brief app-wide "canceling statement due to statement timeout" errors that could appear while we shipped database changes (like during today\'s Vehicles updates).',
+      'Database updates that add new tables no longer pause the rest of the app while they apply.',
+    ],
+  },
+  {
+    version: 'v2.1650',
+    date: '2026-08-14',
+    title: 'Assistants see the Vehicles tab',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles now shows for all assistants — the full fleet board with hand-offs, readings, service log, and problem reports.',
+      'Payroll, Housing, and Offsets stay behind the pay gate as before.',
+    ],
+  },
+  {
+    version: 'v2.1649',
+    date: '2026-08-14',
+    title: 'Typed invoice amounts no longer snap to 5% steps',
+    kind: 'fix',
+    highlights: [
+      'In Edit Job → Invoices, a typed New Invoice amount now sticks exactly as entered (it used to jump to the nearest 5% of the job total — e.g. 81,916.60 became 80,340).',
+      'Amounts above what’s left to bill still clamp down to the remaining balance.',
+      'The slider drag, arrow keys, and quick-set percent buttons keep their clean 5% steps.',
+    ],
+  },
+  {
+    version: 'v2.1648',
+    date: '2026-08-14',
+    title: 'My Vehicle card on the Dashboard',
+    kind: 'feature',
+    highlights: [
+      'If a company vehicle is assigned to you, a My Vehicle card now shows on your Dashboard just below My Time.',
+      'Send an odometer reading straight from the card — an amber chip asks for one when the office hasn’t had a number in a while.',
+      'Report a problem in your own words with a severity — it lands on the vehicle’s record for the office immediately.',
+    ],
+  },
+  {
+    version: 'v2.1647',
+    date: '2026-08-14',
+    title: 'Vehicles track reported problems',
+    kind: 'feature',
+    highlights: [
+      'Report a problem on any vehicle — a description plus a severity: Monitor, Needs service, or Urgent.',
+      'Open problems show as red chips on the vehicle cards and in an Open problems list on the vehicle, each with a Resolve button and an optional "how it was fixed" note.',
+      'Reports and their resolutions both land in the vehicle ledger, so the history stays complete.',
+    ],
+  },
+  {
+    version: 'v2.1646',
+    date: '2026-08-14',
+    title: 'Vehicles track oil changes and services',
+    kind: 'feature',
+    highlights: [
+      'Log service on any vehicle records oil changes, tires, repairs, and inspections — with the date, mileage, cost, and shop note kept in the vehicle ledger.',
+      'Oil status chips show on every card: green when OK, amber inside the last 1,000 miles, red when overdue — based on each vehicle’s own interval.',
+      'Logging a service with miles also saves an odometer reading automatically.',
+    ],
+  },
+  {
+    version: 'v2.1645',
+    date: '2026-08-14',
+    title: 'Internal: database type definitions refreshed',
+    kind: 'infra',
+    highlights: [
+      'Behind-the-scenes maintenance — the app’s database type definitions were regenerated to match the live schema. No visible changes.',
+    ],
+  },
+  {
+    version: 'v2.1644',
+    date: '2026-08-14',
+    title: 'Vehicles becomes a fleet board',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles now shows a card per vehicle: who has it, the latest odometer reading, and an amber chip when the reading is over 30 days old or missing.',
+      'Hand off moves a vehicle in one step — it closes the old possession, starts the new one, and records the odometer at hand-off.',
+      'Click a vehicle to open its ledger — every reading, hand-off, and value update in one history — with a quick odometer entry right on top.',
+    ],
+  },
+  {
+    version: 'v2.1643',
+    date: '2026-08-14',
+    title: 'Billing labor icon only when no labor at all',
+    kind: 'fix',
+    highlights: [
+      'The red icon on Jobs → Billing now appears only when a job has neither team labor nor sub labor recorded — having either one clears it.',
+      'The Needs labor filter and its count follow the same rule.',
+    ],
+  },
+  {
+    version: 'v2.1642',
+    date: '2026-08-14',
+    title: 'Paid jobs leave Collections on their own',
+    kind: 'feature',
+    highlights: [
+      'When a job in Collections is paid in full — by Stripe, a bank-deposit allocation, or Mark Paid — the Collections flag now clears automatically and the job lands in Paid in Full like any other.',
+      'The job’s activity thread records that it was removed from Collections, so the history stays visible.',
+      'If a paid job is ever sent back to Billed, it returns to plain Billed Awaiting Payment — flag it for Collections again if it still needs the attention.',
+    ],
+  },
+  {
     version: 'v2.1641',
     date: '2026-08-14',
     title: 'Paid dates show when the money arrived',

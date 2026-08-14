@@ -9,8 +9,8 @@ last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "201 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 10, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "216 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 14, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -104,6 +104,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 14, 2026
+
+**`20260814185815_read_only_stmt_blocks_skip_existing.sql`** _(apply via `supabase db push` after the v2.1651 merge — `CREATE OR REPLACE FUNCTION` only, near-zero lock risk, no client coupling)_
+- **Purpose**: stop migration pushes from freezing app reads (v2.1651) — `apply_read_only_stmt_blocks()` becomes incremental: it now skips tables that already carry the `read_only_block_stmt` trigger instead of DROP+CREATE on all ~250 RLS tables (whose accumulated ACCESS EXCLUSIVE locks blocked every SELECT until commit — the app-wide statement-timeout toasts during the 2026-08-14 Vehicles pushes). Changing the trigger definition itself now needs a one-off migration that DROPs first.
+- **Category**: RLS / read-only training mode / operational safety
+
+**`20260814183650_vehicle_holder_access.sql`** _(apply via `supabase db push` with the v2.1648 merge — policies only, additive)_
+- **Purpose**: vehicle holder self-service (v2.1648, Vehicles fleet phase 4) — SECURITY DEFINER `holds_vehicle(uuid)` + permissive policies letting the current holder SELECT their vehicle/readings/service events/problem reports/own possessions and INSERT attributed odometer readings + problem reports. Powers the Dashboard My Vehicle card.
+- **Category**: Vehicles / RLS
+
+**`20260814182450_vehicle_problem_reports.sql`** _(apply via `supabase db push` with the v2.1647 merge — additive table, old clients unaffected)_
+- **Purpose**: vehicle problem reports (v2.1647, Vehicles fleet phase 3) — description + severity (monitor/needs_service/urgent), reporter, open-until-`resolved_at` model with resolver/note and optional FK to the fixing `vehicle_service_events` row; office-pool RLS + both read-only blocks.
+- **Category**: Vehicles / new table
+
+**`20260814180643_vehicle_service_events.sql`** _(apply via `supabase db push` with the v2.1646 merge — additive table + column, old clients unaffected)_
+- **Purpose**: vehicle service log + oil tracking (v2.1646, Vehicles fleet phase 2) — `vehicle_service_events` (typed service visits with date/odometer/cost/note/created_by; office-pool RLS + both read-only blocks) and `vehicles.oil_change_interval_miles int NOT NULL DEFAULT 5000` for the client-side oil due/overdue math.
+- **Category**: Vehicles / new table
+
+**`20260814174524_vehicle_odometer_created_by.sql`** _(apply via `supabase db push` with the v2.1644 merge — the new client inserts the column; additive, invisible to old clients)_
+- **Purpose**: vehicle ledger attribution (v2.1644, Vehicles fleet phase 1) — nullable `vehicle_odometer_entries.created_by uuid` (FK → users, ON DELETE SET NULL) so readings show "entered by …"; legacy rows show without a name.
+- **Category**: Vehicles / additive column
+
+**`20260814171357_clear_collections_on_paid.sql`** _(apply via `supabase db push` after merge; behavior change, no schema change — old clients unaffected)_
+- **Purpose**: Collections flag auto-clears on Paid (v2.1642) — BEFORE UPDATE trigger `jobs_ledger_clear_collections_on_paid` NULLs `collections_at/by/note` and logs a `collections_change` activity event (`detail.auto=true`, summary "Removed from Collections — job paid") whenever `jobs_ledger.status` transitions into `paid` with the flag set. One writer for every path to Paid (Stripe webhook, mark-paid RPCs, `update_job_status`). Reverses the deliberate sticky-flag semantics from `20260704150000`.
+- **Category**: Jobs / Collections / trigger
 
 **`20260814060000_labor_payment_date.sql`** _(apply via `supabase db push` **BEFORE the v2.1633 client deploys** — the client selects the new column; additive, invisible to the old client)_
 - **Purpose**: user-set "Date sent" on Sub Labor payments/backcharges (v2.1633) — nullable `people_labor_job_payments.payment_date date`; display falls back to `created_at` on legacy rows.

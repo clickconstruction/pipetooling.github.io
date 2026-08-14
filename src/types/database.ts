@@ -4649,6 +4649,47 @@ export type Database = {
           },
         ]
       }
+      job_property_owners: {
+        Row: {
+          company_name: string
+          job_id: string
+          mailing_address: string
+          owner_email: string
+          owner_mode: string
+          owner_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_name?: string
+          job_id: string
+          mailing_address?: string
+          owner_email?: string
+          owner_mode?: string
+          owner_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_name?: string
+          job_id?: string
+          mailing_address?: string
+          owner_email?: string
+          owner_mode?: string
+          owner_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_property_owners_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_schedule_blocks: {
         Row: {
           assignee_user_id: string
@@ -4700,17 +4741,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "job_schedule_blocks_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "job_schedule_blocks_assignee_user_id_fkey"
             columns: ["assignee_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_schedule_blocks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
           {
@@ -10285,6 +10326,30 @@ export type Database = {
         }
         Relationships: []
       }
+      supply_house_contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
       supply_house_invoice_bid_allocations: {
         Row: {
           bid_id: string
@@ -10407,39 +10472,6 @@ export type Database = {
           },
         ]
       }
-      job_property_owners: {
-        Row: {
-          company_name: string
-          job_id: string
-          mailing_address: string
-          owner_email: string
-          owner_mode: string
-          owner_name: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          company_name?: string
-          job_id: string
-          mailing_address?: string
-          owner_email?: string
-          owner_mode?: string
-          owner_name?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          company_name?: string
-          job_id?: string
-          mailing_address?: string
-          owner_email?: string
-          owner_mode?: string
-          owner_name?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       supply_house_job_accounts: {
         Row: {
           contact_email: string
@@ -10468,31 +10500,15 @@ export type Database = {
           sent_by?: string | null
           sent_by_name?: string
         }
-        Relationships: []
-      }
-      supply_house_contacts: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          email: string
-          id: string
-          label: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          email: string
-          id?: string
-          label: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          email?: string
-          id?: string
-          label?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_job_accounts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supply_houses: {
         Row: {
@@ -11872,6 +11888,7 @@ export type Database = {
       vehicle_odometer_entries: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: string
           odometer_value: number
           read_date: string
@@ -11879,6 +11896,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           odometer_value: number
           read_date: string
@@ -11886,12 +11904,20 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           odometer_value?: number
           read_date?: string
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_odometer_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_odometer_entries_vehicle_id_fkey"
             columns: ["vehicle_id"]
@@ -11943,6 +11969,77 @@ export type Database = {
           },
         ]
       }
+      vehicle_problem_reports: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          report_date: string
+          reported_by: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_service_event_id: string | null
+          severity: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          report_date: string
+          reported_by?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_service_event_id?: string | null
+          severity?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          report_date?: string
+          reported_by?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_service_event_id?: string | null
+          severity?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_problem_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_problem_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_problem_reports_resolved_service_event_id_fkey"
+            columns: ["resolved_service_event_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_service_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_problem_reports_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_replacement_value_entries: {
         Row: {
           created_at: string | null
@@ -11975,12 +12072,64 @@ export type Database = {
           },
         ]
       }
+      vehicle_service_events: {
+        Row: {
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          odometer_value: number | null
+          service_date: string
+          service_type: string
+          vehicle_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          odometer_value?: number | null
+          service_date: string
+          service_type: string
+          vehicle_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          odometer_value?: number | null
+          service_date?: string
+          service_type?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_service_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_service_events_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           created_at: string | null
           id: string
           make: string
           model: string
+          oil_change_interval_miles: number
           updated_at: string | null
           vin: string | null
           weekly_insurance_cost: number
@@ -11992,6 +12141,7 @@ export type Database = {
           id?: string
           make?: string
           model?: string
+          oil_change_interval_miles?: number
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
@@ -12003,6 +12153,7 @@ export type Database = {
           id?: string
           make?: string
           model?: string
+          oil_change_interval_miles?: number
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
@@ -13304,8 +13455,12 @@ export type Database = {
           deleted_by: string
           deleted_by_name: string
           group_key: string
+          head_created_at: string
           kind: string
           label: string
+          money_total: number
+          owner_name: string
+          owner_user_id: string
           preview_items: Json
           row_count: number
           table_counts: Json
@@ -13981,7 +14136,7 @@ export type Database = {
       }
       move_job_schedule_block_group: {
         Args: {
-          p_job_id: string | null
+          p_job_id: string
           p_new_work_date: string
           p_shared_block_group_id: string
         }
@@ -14134,6 +14289,21 @@ export type Database = {
           window_start_utc: string
         }[]
       }
+      request_field_job: {
+        Args: {
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_gc_name: string
+          p_job_address: string
+          p_job_name: string
+          p_line_items: string[]
+          p_time_end: string
+          p_time_start: string
+          p_work_date: string
+        }
+        Returns: string
+      }
       resolve_noncard_transaction_attribution: {
         Args: {
           p_mercury_transaction_id: string
@@ -14220,51 +14390,6 @@ export type Database = {
         Args: { p_job_ids: string[]; p_query: string }
         Returns: string[]
       }
-      search_jobs_for_self_schedule: {
-        Args: { p_query: string }
-        Returns: {
-          id: string
-          hcp_number: string
-          click_number: string
-          job_name: string
-          job_address: string
-          status: string
-          customer_name: string
-        }[]
-      }
-      self_schedule_add_block: {
-        Args: {
-          p_job_id: string
-          p_work_date: string
-          p_time_start: string
-          p_time_end: string
-          p_join_crew?: boolean
-        }
-        Returns: string
-      }
-      self_move_schedule_block: {
-        Args: { p_block_id: string; p_work_date: string; p_time_start: string; p_time_end: string }
-        Returns: undefined
-      }
-      self_remove_schedule_block: {
-        Args: { p_block_id: string }
-        Returns: undefined
-      }
-      request_field_job: {
-        Args: {
-          p_job_name: string
-          p_job_address: string
-          p_customer_name: string
-          p_customer_phone: string
-          p_customer_email: string
-          p_gc_name: string
-          p_line_items: string[]
-          p_work_date: string
-          p_time_start: string
-          p_time_end: string
-        }
-        Returns: string
-      }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {
@@ -14273,6 +14398,18 @@ export type Database = {
           hcp_number: string
           id: string
           source: string
+        }[]
+      }
+      search_jobs_for_self_schedule: {
+        Args: { p_query: string }
+        Returns: {
+          click_number: string
+          customer_name: string
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+          status: string
         }[]
       }
       search_jobs_for_tally_mercury_assign: {
@@ -14304,6 +14441,29 @@ export type Database = {
           service_type_id: string
           service_type_name: string
         }[]
+      }
+      self_move_schedule_block: {
+        Args: {
+          p_block_id: string
+          p_time_end: string
+          p_time_start: string
+          p_work_date: string
+        }
+        Returns: undefined
+      }
+      self_remove_schedule_block: {
+        Args: { p_block_id: string }
+        Returns: undefined
+      }
+      self_schedule_add_block: {
+        Args: {
+          p_job_id: string
+          p_join_crew?: boolean
+          p_time_end: string
+          p_time_start: string
+          p_work_date: string
+        }
+        Returns: string
       }
       service_apply_agreed_write_down_from_stripe: {
         Args: {

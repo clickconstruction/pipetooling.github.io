@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  billingAttentionLabel,
+  BILLING_ATTENTION_LABEL,
   billingFixturesCellText,
   billingJobMatchesSearch,
   billingMaterialsCellText,
@@ -96,10 +96,11 @@ describe('billingJobMatchesSearch — line items (v2.1619)', () => {
 describe('billingJobNeedsAttention', () => {
   const labor = new Set(['917'])
   const team = new Set(['j1'])
-  it('flags missing sub labor or team labor; no HCP means not auditable', () => {
+  it('flags only when BOTH sub labor and team labor are missing (v2.1643); no HCP means not auditable', () => {
     expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '917' }, labor, team)).toBe(false)
-    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '917' }, labor, team)).toBe(true)
-    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '999' }, labor, team)).toBe(true)
+    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '917' }, labor, team)).toBe(false)
+    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '999' }, labor, team)).toBe(false)
+    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '999' }, labor, team)).toBe(true)
     expect(billingJobNeedsAttention({ id: 'j9', hcp_number: null }, labor, team)).toBe(false)
   })
 })
@@ -123,11 +124,8 @@ describe('billingRowMoneyTokens / billingTotals', () => {
   })
 })
 
-describe('billingAttentionLabel', () => {
-  it('names exactly the missing labor kinds', () => {
-    expect(billingAttentionLabel(true, true)).toBe('No team labor or sub labor recorded for this job.')
-    expect(billingAttentionLabel(false, true)).toBe('No team labor recorded for this job.')
-    expect(billingAttentionLabel(true, false)).toBe('No sub labor recorded for this job.')
-    expect(billingAttentionLabel(false, false)).toBe('')
+describe('BILLING_ATTENTION_LABEL', () => {
+  it('keeps the owner phrasing for the both-missing icon', () => {
+    expect(BILLING_ATTENTION_LABEL).toBe('No team labor or sub labor recorded for this job.')
   })
 })

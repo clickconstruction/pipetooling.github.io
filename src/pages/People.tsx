@@ -300,7 +300,7 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus } = usePeopleAccess(authUser?.id)
+  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus } = usePeopleAccess(authUser?.id)
   const canOpenHoursTab = canAccessPay || canAccessHours
   const usersTabTags = useUsersTabTags({
     isDev,
@@ -3091,7 +3091,7 @@ export default function People() {
             Offsets
           </button>
         )}
-        {canAccessPay && (
+        {canAccessVehicles && (
           <button
             type="button"
             onClick={() => {
@@ -3976,7 +3976,7 @@ export default function People() {
         />
       )}
 
-      {activeTab === 'vehicles' && canAccessPay && (
+      {activeTab === 'vehicles' && canAccessVehicles && (
         <PeopleVehiclesTab users={users} />
       )}
 
