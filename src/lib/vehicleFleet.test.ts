@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildVehicleLedger,
+  isMotorPoolPossession,
   currentInsurancePeriod,
   currentPossession,
   lastEndedInsurancePeriod,
@@ -107,7 +108,21 @@ describe('fleetSummary', () => {
       ['v1', reading({ read_date: '2026-07-04' })],
       ['v2', reading({ id: 'r2', vehicle_id: 'v2', read_date: '2026-08-10' })],
     ])
-    expect(fleetSummary(vehicles, holders, latest, TODAY)).toEqual({ total: 3, unassigned: 1, staleReadings: 2 })
+    expect(fleetSummary(vehicles, holders, latest, TODAY)).toEqual({ total: 3, unassigned: 1, motorPool: 0, staleReadings: 2 })
+  })
+  it('counts motor-pool vehicles separately from unassigned', () => {
+    const vehicles = [
+      { id: 'v1', year: 2019, make: 'Ram', model: 'ProMaster', vin: null },
+      { id: 'v2', year: 2022, make: 'Ford', model: 'Transit', vin: null },
+      { id: 'v3', year: 2024, make: 'Chevy', model: 'Silverado', vin: null },
+    ]
+    const holders = new Map([
+      ['v1', poss({})],
+      ['v2', poss({ id: 'p2', vehicle_id: 'v2', user_id: null })],
+    ])
+    const s = fleetSummary(vehicles, holders, new Map(), TODAY)
+    expect(s.unassigned).toBe(1)
+    expect(s.motorPool).toBe(1)
   })
 })
 
@@ -366,5 +381,52 @@ describe('buildVehicleLedger insurance rows', () => {
     ])
     expect(rows[0]?.label).toBe('Added to Hartford fleet')
     expect(rows[2]?.label).toBe('Taken off Progressive Commercial')
+  })
+})
+
+describe('motor pool possessions', () => {
+  it('a pool possession is the current holder and resolves same-day parking', () => {
+    const driver = poss({ id: 'a', user_id: 'u1', start_date: '2026-01-01', end_date: TODAY })
+    const pool = poss({ id: 'b', user_id: null, start_date: TODAY })
+    const cur = currentPossession([driver, pool], TODAY)
+    expect(cur?.id).toBe('b')
+    expect(cur && isMotorPoolPossession(cur)).toBe(true)
+  })
+  it('ledger labels park/unpark moves with the Motor pool name and skips pool return rows', () => {
+    const rows = buildVehicleLedger({
+      readings: [],
+      possessions: [
+        poss({ id: 'p1', user_id: 'u2', start_date: '2026-02-01', end_date: '2026-05-01' }),
+        poss({ id: 'p2', user_id: null, start_date: '2026-05-01', end_date: '2026-08-01' }),
+        poss({ id: 'p3', user_id: 'u1', start_date: '2026-08-01' }),
+      ],
+      valueEntries: [],
+      userNameById: new Map([
+        ['u1', 'Malachi'],
+        ['u2', 'Tristen'],
+      ]),
+    })
+    expect(rows.map((r) => [r.kind, r.label])).toEqual([
+      ['handoff', 'Motor pool → Malachi'],
+      ['handoff', 'Tristen → Motor pool'],
+      ['handoff', 'Assigned to Tristen'],
+    ])
+  })
+  it('a first possession that parks the vehicle reads "Parked in the motor pool"', () => {
+    const rows = buildVehicleLedger({
+      readings: [],
+      possessions: [poss({ id: 'p1', user_id: null, start_date: '2026-03-01' })],
+      valueEntries: [],
+      userNameById: new Map(),
+    })
+    expect(rows.map((r) => r.label)).toEqual(['Parked in the motor pool'])
+  })
+  it('handOffWrites carries a null user for parking', () => {
+    const open = poss({ id: 'p1', user_id: 'u1' })
+    expect(handOffWrites({ vehicleId: 'v1', openPossession: open, toUserId: null, dateYmd: TODAY, odometer: null, byUserId: null })).toEqual({
+      endPossession: { id: 'p1', end_date: TODAY },
+      newPossession: { vehicle_id: 'v1', user_id: null, start_date: TODAY },
+      odometerEntry: null,
+    })
   })
 })

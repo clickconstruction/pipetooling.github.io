@@ -12050,7 +12050,7 @@ export type Database = {
           end_date: string | null
           id: string
           start_date: string
-          user_id: string
+          user_id: string | null
           vehicle_id: string
         }
         Insert: {
@@ -12058,7 +12058,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           start_date: string
-          user_id: string
+          user_id?: string | null
           vehicle_id: string
         }
         Update: {
@@ -12066,7 +12066,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           start_date?: string
-          user_id?: string
+          user_id?: string | null
           vehicle_id?: string
         }
         Relationships: [
