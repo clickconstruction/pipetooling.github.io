@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1653)
+last_updated: 2026-08-14 (v2.1654)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1654)
+
+### Hours: Pending sessions collapses, collapsed by default (2026-08-14)
+Owner request — the list runs 30+ rows and pushed the Hours grid below the fold. [`PeopleHoursSessions`](../src/components/people/PeopleHoursSessions.tsx): the Pending sessions block swaps its static header for the shared [`CollapsibleSection`](../src/components/CollapsibleSection.tsx) (the Approved/Rejected sections' chrome), **collapsed by default**; an active session search forces it open so matches are never hidden (the Users-tab roster-search convention), with the same "N of M matching" header label. All pending-row particulars (assign-job popover, Approve/Reject/Edit actions, job/bid label line) unchanged — only the wrapper. Client-only — no migration.
 
 ## Latest Updates (v2.1653)
 
