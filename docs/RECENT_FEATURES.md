@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1655)
+last_updated: 2026-08-14 (v2.1656)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1656)
+
+### Quickfill: Match sessions joins the Unassigned field time station (2026-08-14)
+Owner request ("I would like to add this to the assistant quickfill page"). The People → Hours **Match sessions** button (v2.1584 flow: last-7-days clock sessions with no job/bid, grouped by person, one-tap dispatch/crew/note suggestions) now also lives in Quickfill's **Unassigned field time** section toolbar — the natural neighbor, since both stations chase field time that isn't tied to a job. [`QuickfillUnassignedFieldTimeSection`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) mounts the self-contained [`MatchClockSessionsModal`](../src/components/people/MatchClockSessionsModal.tsx) directly and reuses `fetchUnassignedClockSessionCount` for the same amber count badge (quiet outline at zero); the count refreshes on open/close and after each assignment. No modal or kernel changes — pure second mount point behind the section's existing access gate. Help guide `quickfill` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1655)
 
