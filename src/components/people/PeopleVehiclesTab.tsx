@@ -9,7 +9,9 @@ import {
   currentInsurancePeriod,
   currentPossession,
   fleetOilCounts,
+  isMotorPoolPossession,
   lastEndedInsurancePeriod,
+  MOTOR_POOL_LABEL,
   fleetSummary,
   handOffWrites,
   lastOilChange,
@@ -74,6 +76,9 @@ function todayYmd(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+/** Sentinel value for the hand-off select's "Motor pool" destination. */
+const MOTOR_POOL_OPTION = '__motor_pool__'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -244,10 +249,32 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     () =>
       vehicles.filter((v) => {
         const holder = holderByVehicle.get(v.id)
-        const holderName = holder ? (userNameById.get(holder.user_id) ?? null) : null
+        const holderName = holder
+          ? holder.user_id
+            ? (userNameById.get(holder.user_id) ?? null)
+            : MOTOR_POOL_LABEL
+          : null
         return vehicleMatchesSearch(v, holderName, search)
       }),
     [vehicles, holderByVehicle, userNameById, search],
+  )
+
+  /** Active = a person is using it; Inactive = motor pool or unassigned. */
+  const activeVehicles = useMemo(
+    () =>
+      filteredVehicles.filter((v) => {
+        const h = holderByVehicle.get(v.id)
+        return h != null && !isMotorPoolPossession(h)
+      }),
+    [filteredVehicles, holderByVehicle],
+  )
+  const inactiveVehicles = useMemo(
+    () =>
+      filteredVehicles.filter((v) => {
+        const h = holderByVehicle.get(v.id)
+        return h == null || isMotorPoolPossession(h)
+      }),
+    [filteredVehicles, holderByVehicle],
   )
 
   const selectedVehicle = selectedVehicleId ? (vehicles.find((v) => v.id === selectedVehicleId) ?? null) : null
@@ -492,6 +519,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setError('Odometer must be a non-negative number')
       return
     }
+    const toUserId = handOffUserId === MOTOR_POOL_OPTION ? null : handOffUserId
     const open = currentPossession(
       possessionsAll.filter((p) => p.vehicle_id === handOffVehicle.id),
       today,
@@ -499,7 +527,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     const writes = handOffWrites({
       vehicleId: handOffVehicle.id,
       openPossession: open,
-      toUserId: handOffUserId,
+      toUserId,
       dateYmd: handOffDate,
       odometer: odo,
       byUserId: authUser?.id ?? null,
@@ -529,7 +557,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         }
       }
       setError(null)
-      showToast(`Handed off to ${userNameById.get(handOffUserId) ?? 'new holder'}.`, 'success')
+      showToast(
+        toUserId ? `Handed off to ${userNameById.get(toUserId) ?? 'new holder'}.` : 'Parked in the motor pool.',
+        'success',
+      )
       setHandOffVehicle(null)
       loadFleet()
       if (selectedVehicleId) loadPanel(selectedVehicleId)
@@ -853,7 +884,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
   function renderHolderRow(v: Vehicle) {
     const holder = holderByVehicle.get(v.id)
-    const holderName = holder ? (userNameById.get(holder.user_id) ?? holder.user_id.slice(0, 8)) : null
+    const inPool = holder != null && isMotorPoolPossession(holder)
+    const holderName = holder?.user_id ? (userNameById.get(holder.user_id) ?? holder.user_id.slice(0, 8)) : null
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.6rem 0' }}>
         <div
@@ -867,18 +899,18 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             justifyContent: 'center',
             fontSize: '0.75rem',
             fontWeight: 600,
-            background: holderName ? 'var(--bg-sky-tint)' : 'var(--bg-amber-100)',
-            color: holderName ? 'var(--text-link)' : 'var(--text-amber-800)',
+            background: holderName ? 'var(--bg-sky-tint)' : inPool ? 'var(--bg-subtle)' : 'var(--bg-amber-100)',
+            color: holderName ? 'var(--text-link)' : inPool ? 'var(--text-muted)' : 'var(--text-amber-800)',
           }}
         >
-          {holderName ? initials(holderName) : '?'}
+          {holderName ? initials(holderName) : inPool ? 'P' : '?'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: holderName ? undefined : 'var(--text-amber-800)' }}>
-            {holderName ?? 'Unassigned'}
+          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: holderName ? undefined : inPool ? 'var(--text-muted)' : 'var(--text-amber-800)' }}>
+            {holderName ?? (inPool ? MOTOR_POOL_LABEL : 'Unassigned')}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {holder ? `since ${formatYmdShort(holder.start_date)}` : 'no current holder'}
+            {holder ? `${inPool ? 'parked since' : 'since'} ${formatYmdShort(holder.start_date)}` : 'no current holder'}
           </div>
         </div>
         <button
@@ -889,7 +921,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             openHandOff(v)
           }}
         >
-          {holder ? 'Hand off' : 'Assign'}
+          {holder && !inPool ? 'Hand off' : inPool ? 'Hand off' : 'Assign'}
         </button>
       </div>
     )
@@ -924,6 +956,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <span style={chipStyle('plain')}>{summary.total} vehicle{summary.total === 1 ? '' : 's'}</span>
+          {summary.motorPool > 0 && <span style={chipStyle('plain')}>{summary.motorPool} in motor pool</span>}
           {summary.unassigned > 0 && <span style={chipStyle('amber')}>{summary.unassigned} unassigned</span>}
           {uninsuredCount > 0 && <span style={chipStyle('amber')}>{uninsuredCount} not on insurance</span>}
           {summary.staleReadings > 0 && <span style={chipStyle('amber')}>{summary.staleReadings} need a reading</span>}
@@ -956,7 +989,14 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   )}
                   {(() => {
                     const holder = holderByVehicle.get(selectedVehicle.id)
-                    const nm = holder ? (userNameById.get(holder.user_id) ?? '') : null
+                    if (holder && isMotorPoolPossession(holder)) {
+                      return (
+                        <span style={chipStyle('plain')}>
+                          {MOTOR_POOL_LABEL} · parked since {formatYmdShort(holder.start_date)}
+                        </span>
+                      )
+                    }
+                    const nm = holder?.user_id ? (userNameById.get(holder.user_id) ?? '') : null
                     return nm ? (
                       <span style={{ ...chipStyle('plain'), background: 'var(--bg-sky-tint)', color: 'var(--text-link)' }}>
                         {nm} · since {formatYmdShort(holder!.start_date)}
@@ -1224,10 +1264,13 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '0.75rem' }}>
-            {filteredVehicles.map((v) => {
+          (() => {
+            const renderVehicleCard = (v: Vehicle) => {
               const latest = latestMap.get(v.id) ?? null
               const freshness = odometerFreshness(latest, today)
+              const holder = holderByVehicle.get(v.id)
+              const inactive = holder == null || isMotorPoolPossession(holder)
+              const inPool = holder != null && isMotorPoolPossession(holder)
               return (
                 <div
                   key={v.id}
@@ -1244,7 +1287,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     border: '1px solid var(--border)',
                     borderRadius: 10,
                     padding: '0.8rem 0.95rem',
-                    background: 'var(--surface)',
+                    background: inactive ? 'var(--bg-subtle)' : 'var(--surface)',
                     cursor: 'pointer',
                   }}
                 >
@@ -1283,6 +1326,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                             <>
                               <span style={{ fontWeight: 600 }}>{planNameById.get(cur.plan_id) ?? 'Insurance plan'}</span>
                               <span style={{ color: 'var(--text-muted)' }}> · on plan since {formatYmdShort(cur.start_date)}</span>
+                              {inPool && (
+                                <span style={{ color: 'var(--text-amber-800)' }}> · still insured while parked</span>
+                              )}
                             </>
                           ) : (
                             <>
@@ -1308,13 +1354,38 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   })()}
                 </div>
               )
-            })}
-            {filteredVehicles.length === 0 && (
-              <p style={{ color: 'var(--text-muted)', margin: 0, padding: '0.5rem 0' }}>
-                {vehicles.length === 0 ? 'No vehicles yet. Add one to get started.' : 'No vehicles match the search.'}
-              </p>
-            )}
-          </div>
+            }
+            const groupHeader = (label: string, count: number, hint: string) => (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', margin: '0 0 0.5rem' }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>
+                  {label} ({count})
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{hint}</span>
+              </div>
+            )
+            const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '0.75rem' }
+            return (
+              <>
+                {activeVehicles.length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    {groupHeader('Active', activeVehicles.length, 'someone is using these')}
+                    <div style={grid}>{activeVehicles.map(renderVehicleCard)}</div>
+                  </div>
+                )}
+                {inactiveVehicles.length > 0 && (
+                  <div>
+                    {groupHeader('Inactive', inactiveVehicles.length, 'parked or waiting for a holder')}
+                    <div style={grid}>{inactiveVehicles.map(renderVehicleCard)}</div>
+                  </div>
+                )}
+                {filteredVehicles.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', margin: 0, padding: '0.5rem 0' }}>
+                    {vehicles.length === 0 ? 'No vehicles yet. Add one to get started.' : 'No vehicles match the search.'}
+                  </p>
+                )}
+              </>
+            )
+          })()
         )}
       </div>
 
@@ -1368,7 +1439,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               {vehicleDisplayName(handOffVehicle)}
               {(() => {
                 const holder = holderByVehicle.get(handOffVehicle.id)
-                const nm = holder ? userNameById.get(holder.user_id) : null
+                if (!holder) return ' · currently unassigned'
+                if (isMotorPoolPossession(holder)) return ' · currently in the motor pool'
+                const nm = holder.user_id ? userNameById.get(holder.user_id) : null
                 return nm ? ` · currently ${nm}` : ' · currently unassigned'
               })()}
             </p>
@@ -1376,6 +1449,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               <label style={{ display: 'block', marginBottom: 4 }}>New holder *</label>
               <select value={handOffUserId} onChange={(e) => setHandOffUserId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
                 <option value="">— Select —</option>
+                {(() => {
+                  const holder = holderByVehicle.get(handOffVehicle.id)
+                  const inPool = holder != null && isMotorPoolPossession(holder)
+                  return inPool ? null : <option value={MOTOR_POOL_OPTION}>Motor pool — parked, no one using it</option>
+                })()}
                 {[...users].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map((u) => (
                   <option key={u.id} value={u.id}>{u.name ?? u.email ?? u.id.slice(0, 8)}</option>
                 ))}
@@ -1397,9 +1475,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               />
             </div>
             <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {holderByVehicle.get(handOffVehicle.id)
-                ? 'Ends the current possession on the hand-off date and saves the reading.'
-                : 'Starts the possession on the hand-off date and saves the reading.'}
+              {handOffUserId === MOTOR_POOL_OPTION
+                ? 'Ends the current possession and parks the vehicle in the motor pool — no one is using it.'
+                : holderByVehicle.get(handOffVehicle.id)
+                  ? 'Ends the current possession on the hand-off date and saves the reading.'
+                  : 'Starts the possession on the hand-off date and saves the reading.'}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setHandOffVehicle(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>

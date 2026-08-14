@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1662)
+last_updated: 2026-08-14 (v2.1663)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1663)
+
+### Vehicles: motor pool + Active/Inactive board groups (2026-08-14)
+Owner-designed (both mockups approved): "Motor pool" becomes a real hand-off destination — deliberately parked, no one using it — distinct from amber **Unassigned** (never tracked / unknown). Migration [`20260814223807_vehicle_motor_pool_possessions.sql`](../supabase/migrations/20260814223807_vehicle_motor_pool_possessions.sql): `vehicle_possessions.user_id` drops NOT NULL; **NULL user = the pool holds it** (metadata-only ALTER; every other consumer — Dashboard My Vehicle card, payroll vehicle lookups, `holds_vehicle()` RLS — filters by a specific user_id, so pool rows are invisible to them). Kernels ([`vehicleFleet.ts`](../src/lib/vehicleFleet.ts)): `FleetPossession.user_id` nullable + `isMotorPoolPossession`/`MOTOR_POOL_LABEL`; ledger labels park/unpark moves ("Parked in the motor pool", "Trace → Motor pool", "Motor pool → Abraham"; pool rows emit no return row); `fleetSummary` gains `motorPool` and excludes pool vehicles from `unassigned`; `handOffWrites` takes `toUserId: null` (+5 kernel tests). [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx): the board splits into **Active (N)** "someone is using these" / **Inactive (N)** "parked or waiting for a holder" groups (inactive cards on the subtle background); pool cards show a calm gray **Motor pool · parked since** holder row ('P' avatar) with Hand off; the hand-off dialog's New holder select gains **"Motor pool — parked, no one using it"** at the top (hidden when already parked) with its own explainer + "Parked in the motor pool." toast; summary chips add a quiet **N in motor pool**; the open-vehicle header chip and search ("pool") follow. Insurance nudge: a parked card still on a plan appends amber **"still insured while parked"** to its insurance line — parked trucks burning premium are visible at a glance. Render test extended (groups, pool card, chip, nudge). Help guide `manage-company-vehicles` + `MIGRATIONS.md` updated. **Deploy**: `supabase db push` with this merge, then `npm run gen-types:linked` (types committed in this PR).
 
 ## Latest Updates (v2.1662)
 

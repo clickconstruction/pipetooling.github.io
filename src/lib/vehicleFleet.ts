@@ -20,10 +20,19 @@ export type FleetVehicle = {
 export type FleetPossession = {
   id: string
   vehicle_id: string
-  user_id: string
+  /** NULL = parked in the motor pool (deliberately held by no one). */
+  user_id: string | null
   start_date: string
   end_date: string | null
   created_at: string | null
+}
+
+/** Display label for the person-less "holder" of a parked vehicle. */
+export const MOTOR_POOL_LABEL = 'Motor pool'
+
+/** True when this possession row parks the vehicle in the motor pool. */
+export function isMotorPoolPossession(p: Pick<FleetPossession, 'user_id'>): boolean {
+  return p.user_id == null
 }
 
 export type FleetOdometerEntry = {
@@ -161,7 +170,10 @@ export function odometerAgeLabel(latest: FleetOdometerEntry | null, todayYmd: st
 
 export type FleetSummary = {
   total: number
+  /** No possession at all — unknown, needs an answer (amber). */
   unassigned: number
+  /** Deliberately parked (possession with no person) — calm, not a warning. */
+  motorPool: number
   /** Vehicles whose latest reading is >30 days old or missing entirely. */
   staleReadings: number
 }
@@ -173,12 +185,15 @@ export function fleetSummary(
   todayYmd: string,
 ): FleetSummary {
   let unassigned = 0
+  let motorPool = 0
   let staleReadings = 0
   for (const v of vehicles) {
-    if (!holderByVehicle.get(v.id)) unassigned++
+    const holder = holderByVehicle.get(v.id)
+    if (!holder) unassigned++
+    else if (isMotorPoolPossession(holder)) motorPool++
     if (odometerFreshness(latestByVehicle.get(v.id) ?? null, todayYmd) !== 'fresh') staleReadings++
   }
-  return { total: vehicles.length, unassigned, staleReadings }
+  return { total: vehicles.length, unassigned, motorPool, staleReadings }
 }
 
 /** Card/search predicate: matches year/make/model/VIN and the holder's name. */
@@ -387,8 +402,10 @@ export function buildVehicleLedger(args: {
     })
   }
   const byStart = [...possessions].sort((a, b) => a.start_date.localeCompare(b.start_date))
+  const holderLabel = (p: FleetPossession): string =>
+    isMotorPoolPossession(p) ? MOTOR_POOL_LABEL : (name(p.user_id) ?? 'Unknown')
   byStart.forEach((p, i) => {
-    const holder = name(p.user_id) ?? 'Unknown'
+    const holder = holderLabel(p)
     const prev = byStart
       .slice(0, i)
       .reverse()
@@ -397,12 +414,16 @@ export function buildVehicleLedger(args: {
       key: `handoff-${p.id}`,
       kind: 'handoff',
       dateYmd: p.start_date,
-      label: prev ? `${name(prev.user_id) ?? 'Unknown'} → ${holder}` : `Assigned to ${holder}`,
+      label: prev
+        ? `${holderLabel(prev)} → ${holder}`
+        : isMotorPoolPossession(p)
+          ? 'Parked in the motor pool'
+          : `Assigned to ${holder}`,
       odometer: null,
       amount: null,
       sourceId: p.id,
     })
-    if (p.end_date != null) {
+    if (p.end_date != null && !isMotorPoolPossession(p)) {
       const successor = byStart.find((q) => q.id !== p.id && q.start_date >= p.end_date! && q.start_date <= p.end_date!)
       const hasLaterStart = byStart.some((q) => q.id !== p.id && q.start_date >= p.end_date!)
       if (!successor && !hasLaterStart) {
@@ -511,7 +532,7 @@ export function buildVehicleLedger(args: {
 export type HandOffWrites = {
   /** Close the departing holder's possession (end = hand-off date). Absent when unassigned. */
   endPossession: { id: string; end_date: string } | null
-  newPossession: { vehicle_id: string; user_id: string; start_date: string }
+  newPossession: { vehicle_id: string; user_id: string | null; start_date: string }
   /** Optional reading captured during the hand-off. */
   odometerEntry: { vehicle_id: string; odometer_value: number; read_date: string; created_by: string | null } | null
 }
@@ -520,11 +541,12 @@ export type HandOffWrites = {
  * The one-step hand-off as a pure write plan: end the open possession on the
  * hand-off date, start the new one the same day (currentPossession resolves
  * the overlap day to the newer start), and record the odometer if given.
+ * toUserId null = park the vehicle in the motor pool.
  */
 export function handOffWrites(args: {
   vehicleId: string
   openPossession: FleetPossession | null
-  toUserId: string
+  toUserId: string | null
   dateYmd: string
   odometer: number | null
   byUserId: string | null

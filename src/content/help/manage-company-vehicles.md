@@ -2,10 +2,10 @@
 title: manage company vehicles and track their odometers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage
+keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive
 ---
 
-**People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, whether that reading is getting old, and which insurance plan covers it. The chips above the board total it up — how many vehicles, how many are {{chip:yellow|unassigned}}, how many {{chip:yellow|need a reading}}, how many are {{chip:yellow|not on insurance}}, and the fleet's weekly insurance + registration cost.
+**People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, whether that reading is getting old, and which insurance plan covers it. The board groups into **Active** (someone is using the vehicle) and **Inactive** (parked in the motor pool, or waiting for a holder). The chips above the board total it up — how many vehicles, how many are in the motor pool, how many are {{chip:yellow|unassigned}}, how many {{chip:yellow|need a reading}}, how many are {{chip:yellow|not on insurance}}, and the fleet's weekly insurance + registration cost.
 
 ## Handing a vehicle to someone
 
@@ -20,6 +20,16 @@ New holder: **Roxi** · Hand-off date: **today** · Odometer at hand-off: **84,3
 :::
 
 Confirming ends the current holder's possession on that date, starts the new one, and saves the odometer reading — no separate steps, and the vehicle can never end up with two holders.
+
+## Parking a vehicle in the motor pool
+
+When a vehicle isn't being driven, hand it to the **Motor pool** — the first option in the same New holder dropdown. The card flips to a calm gray **Motor pool** state with the date it was parked, and the vehicle moves to the **Inactive** group. This is different from {{chip:yellow|Unassigned}}: amber means "nobody has told the system who has this"; Motor pool means "we parked it on purpose."
+
+Taking it back out is just another hand-off — open {{button:outline|Hand off}} on the parked card and pick the person. The ledger records every move ("Trace → Motor pool", "Motor pool → Abraham"), so you can always see when a truck sat idle and who took it out.
+
+:::example Spotting money parked in the lot
+A parked vehicle that's still on an insurance plan shows **still insured while parked** on its card — if it's going to sit for the season, consider taking it off the plan (see *Insurance plans* below) and adding it back when it returns to work.
+:::
 
 ## The vehicle ledger
 

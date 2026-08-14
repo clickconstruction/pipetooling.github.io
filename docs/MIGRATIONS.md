@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 14, 2026
 
+**`20260814223807_vehicle_motor_pool_possessions.sql`** _(apply via `supabase db push` with the v2.1663 merge — metadata-only ALTER, old clients unaffected)_
+- **Purpose**: motor pool (v2.1663, Vehicles fleet phase 6) — `vehicle_possessions.user_id` drops NOT NULL; NULL user = the vehicle is deliberately parked in the motor pool (distinct from having no open possession = Unassigned). Other consumers filter by a specific user_id, so pool rows are invisible to them.
+- **Category**: Vehicles / column change
+
 **`20260814214439_thread_note_stats_cache.sql`** _(apply via `supabase db push` after the v2.1659 merge — CREATE TABLE + backfill + `CREATE OR REPLACE` of the stats RPC; no client coupling, prefer a quiet window since the backfill scans `jobs_ledger_thread_notes` once)_
 - **Purpose**: kill the chronic `jobs_ledger_thread_note_stats` statement timeouts (v2.1659) — new trigger-maintained `jobs_ledger_thread_note_stats_cache` (one row per job: note count + newest substantive note, stamps deprioritized) written only by SECURITY DEFINER `recompute_jobs_ledger_thread_note_stats(uuid)`; the RPC keeps its signature but reads the cache under a job-level SELECT policy (mirrors note visibility) instead of window-ranking every note of 200 jobs under per-note RLS. Ends with both read-only block reapplications (new table).
 - **Category**: Jobs / Performance / RLS

@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1663',
+    date: '2026-08-14',
+    title: 'Motor pool for parked vehicles',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles: hand a vehicle to the Motor pool when no one is using it — a calm gray "parked since" state, separate from amber Unassigned.',
+      'The board now groups into Active (someone is using it) and Inactive (parked or waiting for a holder).',
+      'Parked vehicles still on an insurance plan show a "still insured while parked" nudge so idle trucks don\'t quietly burn premium.',
+      'The ledger records every park and un-park: "Trace → Motor pool", "Motor pool → Abraham".',
+    ],
+  },
+  {
     version: 'v2.1662',
     date: '2026-08-14',
     title: 'Vehicles search under the title',

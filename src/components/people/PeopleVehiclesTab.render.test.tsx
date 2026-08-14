@@ -22,9 +22,11 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   vehicles: [
     { id: 'v1', year: 2019, make: 'Ram', model: 'ProMaster', vin: '3C6TRVDG7KE503K92', weekly_insurance_cost: 48, weekly_registration_cost: 13.5 },
     { id: 'v2', year: 2024, make: 'Chevy', model: 'Silverado', vin: null, weekly_insurance_cost: 0, weekly_registration_cost: 0 },
+    { id: 'v3', year: 2000, make: 'Ford', model: 'F650', vin: null, weekly_insurance_cost: 0, weekly_registration_cost: 0 },
   ],
   vehicle_possessions: [
     { id: 'p1', vehicle_id: 'v1', user_id: 'u2', start_date: '2026-01-03', end_date: null, created_at: null },
+    { id: 'p2', vehicle_id: 'v3', user_id: null, start_date: '2026-08-01', end_date: null, created_at: null },
   ],
   vehicle_odometer_entries: [
     { id: 'r1', vehicle_id: 'v1', odometer_value: 121480, read_date: TODAY, created_at: null, created_by: 'u3' },
@@ -42,6 +44,7 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   vehicle_insurance_periods: [
     { id: 'i1', vehicle_id: 'v1', plan_id: 'plan1', start_date: '2026-06-12', end_date: null, created_at: null },
     { id: 'i0', vehicle_id: 'v2', plan_id: 'plan1', start_date: '2026-01-09', end_date: '2026-05-30', created_at: null },
+    { id: 'i2', vehicle_id: 'v3', plan_id: 'plan1', start_date: '2026-02-01', end_date: null, created_at: null },
   ],
 }
 
@@ -77,24 +80,35 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByText('2024 Chevy Silverado')).toBeTruthy()
     expect(screen.getByText('Tristen')).toBeTruthy()
     expect(screen.getByText('Unassigned')).toBeTruthy()
-    expect(screen.getByText('2 vehicles')).toBeTruthy()
+    expect(screen.getByText('3 vehicles')).toBeTruthy()
     expect(await screen.findByText(/121,480 mi · today/)).toBeTruthy()
     expect(screen.getByText('1 unassigned')).toBeTruthy()
-    expect(screen.getByText('1 need a reading')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'Hand off' }).length).toBe(1)
+    expect(screen.getByText('2 need a reading')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Hand off' }).length).toBe(2)
     expect(screen.getAllByRole('button', { name: 'Assign' }).length).toBe(1)
+
+    // Motor pool (fleet phase 6): the board groups Active vs Inactive; the
+    // parked card reads Motor pool (calm, dated) while Unassigned stays amber,
+    // and the summary counts the pool separately.
+    expect(screen.getByText('Active (1)')).toBeTruthy()
+    expect(screen.getByText('Inactive (2)')).toBeTruthy()
+    expect(screen.getByText('Motor pool')).toBeTruthy()
+    expect(screen.getByText(/parked since/)).toBeTruthy()
+    expect(screen.getByText('1 in motor pool')).toBeTruthy()
 
     // Insurance (fleet phase 5): the covered card names its plan with the on
     // date, the lapsed one shows the amber line with the off date, the summary
-    // row counts it, and the header offers the plans manager.
-    expect(screen.getByText('Progressive Commercial')).toBeTruthy()
-    expect(screen.getByText(/on plan since/)).toBeTruthy()
+    // row counts it, and the header offers the plans manager. The parked-but-
+    // covered card carries the "still insured while parked" nudge.
+    expect(screen.getAllByText('Progressive Commercial').length).toBe(2)
+    expect(screen.getAllByText(/on plan since/).length).toBe(2)
     expect(screen.getByText('Not on insurance')).toBeTruthy()
     expect(screen.getByText(/off since/)).toBeTruthy()
     expect(screen.getByText('1 not on insurance')).toBeTruthy()
+    expect(screen.getByText(/still insured while parked/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Insurance plans' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add to plan' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Change' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Change' }).length).toBe(2)
 
     // Click through to the panel: quick odometer entry + ledger rows appear.
     fireEvent.click(screen.getByText('2019 Ram ProMaster'))
