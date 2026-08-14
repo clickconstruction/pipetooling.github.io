@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1651',
+    date: '2026-08-14',
+    title: 'Internal: smoother database updates',
+    kind: 'infra',
+    highlights: [
+      'Fixed the brief app-wide "canceling statement due to statement timeout" errors that could appear while we shipped database changes (like during today\'s Vehicles updates).',
+      'Database updates that add new tables no longer pause the rest of the app while they apply.',
+    ],
+  },
+  {
     version: 'v2.1649',
     date: '2026-08-14',
     title: 'Typed invoice amounts no longer snap to 5% steps',

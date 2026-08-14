@@ -9,7 +9,7 @@ last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "215 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "216 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 14, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 14, 2026
+
+**`20260814185815_read_only_stmt_blocks_skip_existing.sql`** _(apply via `supabase db push` after the v2.1651 merge — `CREATE OR REPLACE FUNCTION` only, near-zero lock risk, no client coupling)_
+- **Purpose**: stop migration pushes from freezing app reads (v2.1651) — `apply_read_only_stmt_blocks()` becomes incremental: it now skips tables that already carry the `read_only_block_stmt` trigger instead of DROP+CREATE on all ~250 RLS tables (whose accumulated ACCESS EXCLUSIVE locks blocked every SELECT until commit — the app-wide statement-timeout toasts during the 2026-08-14 Vehicles pushes). Changing the trigger definition itself now needs a one-off migration that DROPs first.
+- **Category**: RLS / read-only training mode / operational safety
 
 **`20260814183650_vehicle_holder_access.sql`** _(apply via `supabase db push` with the v2.1648 merge — policies only, additive)_
 - **Purpose**: vehicle holder self-service (v2.1648, Vehicles fleet phase 4) — SECURITY DEFINER `holds_vehicle(uuid)` + permissive policies letting the current holder SELECT their vehicle/readings/service events/problem reports/own possessions and INSERT attributed odometer readings + problem reports. Powers the Dashboard My Vehicle card.
