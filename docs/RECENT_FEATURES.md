@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1643)
+last_updated: 2026-08-14 (v2.1644)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1644)
+
+### Vehicles becomes a fleet board: cards, one-step hand-off, per-vehicle ledger (2026-08-14)
+Owner-approved plan (Phase 1 of 4 — the mockup session's "assistants better manage who has what vehicle" goal). [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx) drops the admin table + three flat sub-lists for: **(1) a card per vehicle** — name + VIN tail, current holder with since-date (amber Unassigned when nobody), latest odometer + age, amber `needs a reading` chip past 30 days — with summary chips (total / unassigned / need-a-reading / weekly ins+reg cost) and a search box (matches vehicle AND holder). **(2) One-step hand-off** — the card's Hand off/Assign button ends the open possession on the hand-off date, starts the new one, and saves the odometer reading in one dialog (previously a manual end-one-add-one dance that allowed overlapping possessions). **(3) The vehicle ledger** — clicking a card opens a panel whose FIRST control is a quick odometer entry (autofocused, Enter saves) above a unified newest-first ledger merging readings ("Reading entered by Danielle"), hand-offs ("Malachi → Tristen", return rows), and replacement-value updates, with filter pills. New kernel [`vehicleFleet.ts`](../src/lib/vehicleFleet.ts) (+16 tests: holder resolution incl. same-day hand-off overlap, freshness at the 30-day line, ledger merge/chaining/return suppression, hand-off write plan) + a render smoke (2 more). Migration [`20260814174524_vehicle_odometer_created_by.sql`](../supabase/migrations/20260814174524_vehicle_odometer_created_by.sql) adds `vehicle_odometer_entries.created_by` (nullable, additive) for ledger attribution. Edit-vehicle fields, weekly ins/reg costs (pay stubs consume them), and replacement-value tracking all preserved. Help guide `manage-company-vehicles` (new). Phases 2–4 (service log + oil tracking, problem reports, tech dashboard card) follow. **Deploy: `supabase db push` with the merge** — the client inserts the new column.
 
 ## Latest Updates (v2.1643)
 

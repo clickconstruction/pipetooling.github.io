@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1644',
+    date: '2026-08-14',
+    title: 'Vehicles becomes a fleet board',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles now shows a card per vehicle: who has it, the latest odometer reading, and an amber chip when the reading is over 30 days old or missing.',
+      'Hand off moves a vehicle in one step — it closes the old possession, starts the new one, and records the odometer at hand-off.',
+      'Click a vehicle to open its ledger — every reading, hand-off, and value update in one history — with a quick odometer entry right on top.',
+    ],
+  },
+  {
     version: 'v2.1643',
     date: '2026-08-14',
     title: 'Billing labor icon only when no labor at all',

@@ -1,11 +1,42 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
+import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
+import {
+  buildVehicleLedger,
+  currentPossession,
+  fleetSummary,
+  handOffWrites,
+  latestReading,
+  odometerAgeLabel,
+  odometerFreshness,
+  parseOdometerInput,
+  vehicleDisplayName,
+  vehicleMatchesSearch,
+  vinTail,
+  type FleetOdometerEntry,
+  type FleetPossession,
+  type FleetValueEntry,
+  type VehicleLedgerRowKind,
+} from '../../lib/vehicleFleet'
 
-type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
-type VehicleOdometerEntry = { id: string; vehicle_id: string; odometer_value: number; read_date: string; created_at: string | null }
-type VehicleReplacementValueEntry = { id: string; vehicle_id: string; replacement_value: number; read_date: string; created_at: string | null }
-type VehiclePossession = { id: string; vehicle_id: string; user_id: string; start_date: string; end_date: string | null; created_at: string | null }
+/**
+ * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
+ * "who has it / how many miles / is the reading fresh", with a click-through
+ * ledger (readings + hand-offs + value updates merged) and a quick odometer
+ * entry as the panel's first control. Kernels in src/lib/vehicleFleet.ts.
+ */
+
+type Vehicle = {
+  id: string
+  year: number | null
+  make: string
+  model: string
+  vin: string | null
+  weekly_insurance_cost: number
+  weekly_registration_cost: number
+}
 
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
 
@@ -13,104 +44,206 @@ export type PeopleVehiclesTabProps = {
   users: UserRow[]
 }
 
+const LEDGER_FILTERS: Array<{ key: 'all' | VehicleLedgerRowKind; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'reading', label: 'Odometer' },
+  { key: 'handoff', label: 'Holders' },
+  { key: 'value', label: 'Value' },
+]
+
+function todayYmd(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
+}
+
+function formatYmdShort(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  if (!y || !m || !d) return ymd
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  const currentYear = new Date().getFullYear()
+  return dt.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(y !== currentYear ? { year: 'numeric' } : {}),
+    timeZone: 'UTC',
+  })
+}
+
 export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
+  const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [vehiclesLoading, setVehiclesLoading] = useState(false)
-  const [vehiclesError, setVehiclesError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [possessionsAll, setPossessionsAll] = useState<FleetPossession[]>([])
+  const [latestByVehicle, setLatestByVehicle] = useState<Record<string, FleetOdometerEntry>>({})
+  const [search, setSearch] = useState('')
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
+  const [panelReadings, setPanelReadings] = useState<FleetOdometerEntry[]>([])
+  const [panelValues, setPanelValues] = useState<FleetValueEntry[]>([])
+  const [ledgerFilter, setLedgerFilter] = useState<'all' | VehicleLedgerRowKind>('all')
+  const [quickOdoValue, setQuickOdoValue] = useState('')
+  const [quickOdoDate, setQuickOdoDate] = useState(todayYmd)
+  const [savingReading, setSavingReading] = useState(false)
+  const quickOdoRef = useRef<HTMLInputElement | null>(null)
+
   const [vehicleFormOpen, setVehicleFormOpen] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
-  const [odometerEntries, setOdometerEntries] = useState<VehicleOdometerEntry[]>([])
-  const [replacementValueEntries, setReplacementValueEntries] = useState<VehicleReplacementValueEntry[]>([])
-  const [possessions, setPossessions] = useState<VehiclePossession[]>([])
-  const [vehicleAssignees, setVehicleAssignees] = useState<Record<string, string>>({})
   const [vehicleYear, setVehicleYear] = useState('')
   const [vehicleMake, setVehicleMake] = useState('')
   const [vehicleModel, setVehicleModel] = useState('')
   const [vehicleVin, setVehicleVin] = useState('')
   const [vehicleInsCost, setVehicleInsCost] = useState('')
   const [vehicleRegCost, setVehicleRegCost] = useState('')
-  const [odometerFormOpen, setOdometerFormOpen] = useState(false)
-  const [odometerDate, setOdometerDate] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const [odometerValue, setOdometerValue] = useState('')
-  const [replacementValueFormOpen, setReplacementValueFormOpen] = useState(false)
-  const [replacementValueDate, setReplacementValueDate] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const [replacementValueValue, setReplacementValueValue] = useState('')
-  const [possessionFormOpen, setPossessionFormOpen] = useState(false)
-  const [possessionUserId, setPossessionUserId] = useState('')
-  const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const [possessionEndDate, setPossessionEndDate] = useState('')
 
-  async function loadVehicles() {
-    setVehiclesLoading(true)
-    setVehiclesError(null)
-    const today = new Date().toLocaleDateString('en-CA')
-    const { data: vehiclesData, error: vehiclesErr } = await supabase.from('vehicles').select('*').order('year', { ascending: false })
-    setVehiclesLoading(false)
-    if (vehiclesErr) {
-      setVehiclesError(vehiclesErr.message)
+  const [handOffVehicle, setHandOffVehicle] = useState<Vehicle | null>(null)
+  const [handOffUserId, setHandOffUserId] = useState('')
+  const [handOffDate, setHandOffDate] = useState(todayYmd)
+  const [handOffOdometer, setHandOffOdometer] = useState('')
+  const [handOffSaving, setHandOffSaving] = useState(false)
+
+  const [valueFormOpen, setValueFormOpen] = useState(false)
+  const [valueDate, setValueDate] = useState(todayYmd)
+  const [valueAmount, setValueAmount] = useState('')
+
+  const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name ?? ''])), [users])
+  const today = todayYmd()
+
+  const holderByVehicle = useMemo(() => {
+    const m = new Map<string, FleetPossession>()
+    for (const v of vehicles) {
+      const p = currentPossession(
+        possessionsAll.filter((x) => x.vehicle_id === v.id),
+        today,
+      )
+      if (p) m.set(v.id, p)
+    }
+    return m
+  }, [vehicles, possessionsAll, today])
+
+  const latestMap = useMemo(() => {
+    const m = new Map<string, FleetOdometerEntry>()
+    for (const [k, v] of Object.entries(latestByVehicle)) m.set(k, v)
+    return m
+  }, [latestByVehicle])
+
+  const summary = useMemo(
+    () => fleetSummary(vehicles, holderByVehicle, latestMap, today),
+    [vehicles, holderByVehicle, latestMap, today],
+  )
+
+  const weeklyTotal = useMemo(
+    () => vehicles.reduce((s, v) => s + (v.weekly_insurance_cost ?? 0) + (v.weekly_registration_cost ?? 0), 0),
+    [vehicles],
+  )
+
+  const filteredVehicles = useMemo(
+    () =>
+      vehicles.filter((v) => {
+        const holder = holderByVehicle.get(v.id)
+        const holderName = holder ? (userNameById.get(holder.user_id) ?? null) : null
+        return vehicleMatchesSearch(v, holderName, search)
+      }),
+    [vehicles, holderByVehicle, userNameById, search],
+  )
+
+  const selectedVehicle = selectedVehicleId ? (vehicles.find((v) => v.id === selectedVehicleId) ?? null) : null
+
+  async function loadFleet() {
+    setLoading(true)
+    setError(null)
+    const { data: vehiclesData, error: vErr } = await supabase.from('vehicles').select('*').order('year', { ascending: false })
+    setLoading(false)
+    if (vErr) {
+      setError(vErr.message)
       return
     }
-    setVehicles((vehiclesData ?? []) as Vehicle[])
-    const ids = (vehiclesData ?? []).map((v: { id: string }) => v.id)
+    const list = (vehiclesData ?? []) as Vehicle[]
+    setVehicles(list)
+    const ids = list.map((v) => v.id)
     if (ids.length === 0) {
-      setVehicleAssignees({})
+      setPossessionsAll([])
+      setLatestByVehicle({})
       return
     }
-    const { data: possData } = await supabase
-      .from('vehicle_possessions')
-      .select('vehicle_id, user_id')
-      .in('vehicle_id', ids)
-      .lte('start_date', today)
-      .or(`end_date.is.null,end_date.gte.${today}`)
-    const possByVehicle: Record<string, string[]> = {}
-    for (const p of (possData ?? []) as { vehicle_id: string; user_id: string }[]) {
-      const arr = possByVehicle[p.vehicle_id] ??= []
-      arr.push(p.user_id)
+    const [{ data: possData }, { data: odoData }] = await Promise.all([
+      supabase.from('vehicle_possessions').select('*').in('vehicle_id', ids).order('start_date', { ascending: false }),
+      supabase
+        .from('vehicle_odometer_entries')
+        .select('*')
+        .in('vehicle_id', ids)
+        .order('read_date', { ascending: false })
+        .limit(2000),
+    ])
+    setPossessionsAll((possData ?? []) as FleetPossession[])
+    const latest: Record<string, FleetOdometerEntry> = {}
+    const grouped = new Map<string, FleetOdometerEntry[]>()
+    for (const e of (odoData ?? []) as FleetOdometerEntry[]) {
+      const arr = grouped.get(e.vehicle_id) ?? []
+      arr.push(e)
+      grouped.set(e.vehicle_id, arr)
     }
-    const userIds = [...new Set((possData ?? []).map((p: { user_id: string }) => p.user_id))]
-    const { data: usersData } = userIds.length > 0
-      ? await supabase.from('users').select('id, name').is('archived_at', null).in('id', userIds)
-      : { data: [] }
-    const userNames: Record<string, string> = {}
-    for (const u of (usersData ?? []) as { id: string; name: string }[]) {
-      userNames[u.id] = u.name ?? ''
+    for (const [vid, arr] of grouped) {
+      const best = latestReading(arr)
+      if (best) latest[vid] = best
     }
-    const assignees: Record<string, string> = {}
-    for (const [vid, uids] of Object.entries(possByVehicle)) {
-      assignees[vid] = uids.map((uid) => userNames[uid] || uid.slice(0, 8)).join(', ')
-    }
-    setVehicleAssignees(assignees)
+    setLatestByVehicle(latest)
   }
 
-  async function loadOdometerEntries(vehicleId: string) {
-    const { data, error } = await supabase
+  async function loadPanel(vehicleId: string) {
+    const [{ data: odoData }, { data: valData }] = await Promise.all([
+      supabase.from('vehicle_odometer_entries').select('*').eq('vehicle_id', vehicleId).order('read_date', { ascending: false }),
+      supabase.from('vehicle_replacement_value_entries').select('*').eq('vehicle_id', vehicleId).order('read_date', { ascending: false }),
+    ])
+    setPanelReadings((odoData ?? []) as FleetOdometerEntry[])
+    setPanelValues((valData ?? []) as FleetValueEntry[])
+  }
+
+  useEffect(() => {
+    const t = setTimeout(() => loadFleet(), 80)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (selectedVehicleId) {
+      setLedgerFilter('all')
+      setQuickOdoValue('')
+      setQuickOdoDate(todayYmd())
+      loadPanel(selectedVehicleId)
+      setTimeout(() => quickOdoRef.current?.focus(), 50)
+    } else {
+      setPanelReadings([])
+      setPanelValues([])
+    }
+  }, [selectedVehicleId])
+
+  async function saveQuickReading() {
+    if (!selectedVehicleId || savingReading) return
+    const val = parseOdometerInput(quickOdoValue)
+    if (val == null) {
+      setError('Odometer must be a non-negative number')
+      return
+    }
+    setSavingReading(true)
+    const { error: err } = await supabase
       .from('vehicle_odometer_entries')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .order('read_date', { ascending: false })
-    if (error) return
-    setOdometerEntries((data ?? []) as VehicleOdometerEntry[])
-  }
-
-  async function loadReplacementValueEntries(vehicleId: string) {
-    const { data, error } = await supabase
-      .from('vehicle_replacement_value_entries')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .order('read_date', { ascending: false })
-    if (error) return
-    setReplacementValueEntries((data ?? []) as VehicleReplacementValueEntry[])
-  }
-
-  async function loadPossessions(vehicleId: string) {
-    const { data, error } = await supabase
-      .from('vehicle_possessions')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .order('start_date', { ascending: false })
-    if (error) return
-    setPossessions((data ?? []) as VehiclePossession[])
+      .insert({ vehicle_id: selectedVehicleId, odometer_value: val, read_date: quickOdoDate, created_by: authUser?.id ?? null })
+    setSavingReading(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setQuickOdoValue('')
+    setQuickOdoDate(todayYmd())
+    showToast('Odometer reading saved.', 'success')
+    loadPanel(selectedVehicleId)
+    loadFleet()
   }
 
   function openVehicleForm(v?: Vehicle) {
@@ -127,264 +260,480 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   function closeVehicleForm() {
     setVehicleFormOpen(false)
     setEditingVehicle(null)
-    setVehicleYear('')
-    setVehicleMake('')
-    setVehicleModel('')
-    setVehicleVin('')
-    setVehicleInsCost('')
-    setVehicleRegCost('')
   }
 
   async function upsertVehicle() {
     const year = parseInt(vehicleYear, 10)
     if (isNaN(year) || year < 1900 || year > 2100) {
-      setVehiclesError('Year must be 1900–2100')
+      setError('Year must be 1900–2100')
       return
     }
     const ins = parseFloat(vehicleInsCost) || 0
     const reg = parseFloat(vehicleRegCost) || 0
-    if (editingVehicle) {
-      const { error: err } = await supabase.from('vehicles').update({ year, make: vehicleMake.trim(), model: vehicleModel.trim(), vin: vehicleVin.trim() || null, weekly_insurance_cost: ins, weekly_registration_cost: reg, updated_at: new Date().toISOString() }).eq('id', editingVehicle.id)
-      if (err) setVehiclesError(err.message)
-      else {
-        closeVehicleForm()
-        loadVehicles()
-      }
-    } else {
-      const { error: err } = await supabase.from('vehicles').insert({ year, make: vehicleMake.trim(), model: vehicleModel.trim(), vin: vehicleVin.trim() || null, weekly_insurance_cost: ins, weekly_registration_cost: reg })
-      if (err) setVehiclesError(err.message)
-      else {
-        closeVehicleForm()
-        loadVehicles()
-      }
+    const payload = {
+      year,
+      make: vehicleMake.trim(),
+      model: vehicleModel.trim(),
+      vin: vehicleVin.trim() || null,
+      weekly_insurance_cost: ins,
+      weekly_registration_cost: reg,
     }
+    const { error: err } = editingVehicle
+      ? await supabase.from('vehicles').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingVehicle.id)
+      : await supabase.from('vehicles').insert(payload)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    closeVehicleForm()
+    loadFleet()
   }
 
   async function deleteVehicle(v: Vehicle) {
-    if (!window.confirm(`Delete ${v.year} ${v.make} ${v.model}?`)) return
+    if (!window.confirm(`Delete ${vehicleDisplayName(v)}? Its readings and history delete with it.`)) return
     const { error: err } = await supabase.from('vehicles').delete().eq('id', v.id)
-    if (err) setVehiclesError(err.message)
-    else {
-      setSelectedVehicleId((prev) => (prev === v.id ? null : prev))
-      loadVehicles()
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setSelectedVehicleId((prev) => (prev === v.id ? null : prev))
+    loadFleet()
+  }
+
+  function openHandOff(v: Vehicle) {
+    setHandOffVehicle(v)
+    setHandOffUserId('')
+    setHandOffDate(todayYmd())
+    setHandOffOdometer('')
+  }
+
+  async function submitHandOff() {
+    if (!handOffVehicle || handOffSaving) return
+    if (!handOffUserId) {
+      setError('Select the new holder')
+      return
+    }
+    const odo = handOffOdometer.trim() ? parseOdometerInput(handOffOdometer) : null
+    if (handOffOdometer.trim() && odo == null) {
+      setError('Odometer must be a non-negative number')
+      return
+    }
+    const open = currentPossession(
+      possessionsAll.filter((p) => p.vehicle_id === handOffVehicle.id),
+      today,
+    )
+    const writes = handOffWrites({
+      vehicleId: handOffVehicle.id,
+      openPossession: open,
+      toUserId: handOffUserId,
+      dateYmd: handOffDate,
+      odometer: odo,
+      byUserId: authUser?.id ?? null,
+    })
+    setHandOffSaving(true)
+    try {
+      if (writes.endPossession) {
+        const { error: err } = await supabase
+          .from('vehicle_possessions')
+          .update({ end_date: writes.endPossession.end_date })
+          .eq('id', writes.endPossession.id)
+        if (err) {
+          setError(err.message)
+          return
+        }
+      }
+      const { error: insErr } = await supabase.from('vehicle_possessions').insert(writes.newPossession)
+      if (insErr) {
+        setError(insErr.message)
+        return
+      }
+      if (writes.odometerEntry) {
+        const { error: odoErr } = await supabase.from('vehicle_odometer_entries').insert(writes.odometerEntry)
+        if (odoErr) {
+          setError(odoErr.message)
+          return
+        }
+      }
+      setError(null)
+      showToast(`Handed off to ${userNameById.get(handOffUserId) ?? 'new holder'}.`, 'success')
+      setHandOffVehicle(null)
+      loadFleet()
+      if (selectedVehicleId) loadPanel(selectedVehicleId)
+    } finally {
+      setHandOffSaving(false)
     }
   }
 
-  async function insertOdometerEntry() {
+  async function submitValueEntry() {
     if (!selectedVehicleId) return
-    const val = parseFloat(odometerValue)
+    const val = parseFloat(valueAmount)
     if (isNaN(val) || val < 0) {
-      setVehiclesError('Odometer value must be a non-negative number')
+      setError('Replacement value must be a non-negative number')
       return
     }
-    const { error: err } = await supabase.from('vehicle_odometer_entries').insert({ vehicle_id: selectedVehicleId, odometer_value: val, read_date: odometerDate })
-    if (err) setVehiclesError(err.message)
-    else {
-      setOdometerFormOpen(false)
-      setOdometerDate(new Date().toLocaleDateString('en-CA'))
-      setOdometerValue('')
-      loadOdometerEntries(selectedVehicleId)
-    }
-  }
-
-  async function deleteOdometerEntry(entry: VehicleOdometerEntry) {
-    const { error: err } = await supabase.from('vehicle_odometer_entries').delete().eq('id', entry.id)
-    if (err) setVehiclesError(err.message)
-    else if (selectedVehicleId) loadOdometerEntries(selectedVehicleId)
-  }
-
-  async function insertReplacementValueEntry() {
-    if (!selectedVehicleId) return
-    const val = parseFloat(replacementValueValue)
-    if (isNaN(val) || val < 0) {
-      setVehiclesError('Replacement value must be a non-negative number')
+    const { error: err } = await supabase
+      .from('vehicle_replacement_value_entries')
+      .insert({ vehicle_id: selectedVehicleId, replacement_value: val, read_date: valueDate })
+    if (err) {
+      setError(err.message)
       return
     }
-    const { error: err } = await supabase.from('vehicle_replacement_value_entries').insert({ vehicle_id: selectedVehicleId, replacement_value: val, read_date: replacementValueDate })
-    if (err) setVehiclesError(err.message)
-    else {
-      setReplacementValueFormOpen(false)
-      setReplacementValueDate(new Date().toLocaleDateString('en-CA'))
-      setReplacementValueValue('')
-      loadReplacementValueEntries(selectedVehicleId)
-    }
+    setError(null)
+    setValueFormOpen(false)
+    setValueAmount('')
+    setValueDate(todayYmd())
+    loadPanel(selectedVehicleId)
   }
 
-  async function deleteReplacementValueEntry(entry: VehicleReplacementValueEntry) {
-    const { error: err } = await supabase.from('vehicle_replacement_value_entries').delete().eq('id', entry.id)
-    if (err) setVehiclesError(err.message)
-    else if (selectedVehicleId) loadReplacementValueEntries(selectedVehicleId)
-  }
-
-  async function upsertPossession() {
-    if (!selectedVehicleId || !possessionUserId) {
-      setVehiclesError('Select a user')
+  async function deleteLedgerRow(kind: VehicleLedgerRowKind, sourceId: string) {
+    const table =
+      kind === 'reading'
+        ? 'vehicle_odometer_entries'
+        : kind === 'value'
+          ? 'vehicle_replacement_value_entries'
+          : 'vehicle_possessions'
+    const { error: err } = await supabase.from(table).delete().eq('id', sourceId)
+    if (err) {
+      setError(err.message)
       return
     }
-    const { error: err } = await supabase.from('vehicle_possessions').insert({ vehicle_id: selectedVehicleId, user_id: possessionUserId, start_date: possessionStartDate, end_date: possessionEndDate.trim() || null })
-    if (err) setVehiclesError(err.message)
-    else {
-      setPossessionFormOpen(false)
-      setPossessionUserId('')
-      setPossessionStartDate(new Date().toLocaleDateString('en-CA'))
-      setPossessionEndDate('')
-      loadPossessions(selectedVehicleId)
-      loadVehicles()
-    }
+    if (selectedVehicleId) loadPanel(selectedVehicleId)
+    loadFleet()
   }
 
-  async function deletePossession(p: VehiclePossession) {
-    const { error: err } = await supabase.from('vehicle_possessions').delete().eq('id', p.id)
-    if (err) setVehiclesError(err.message)
-    else {
-      if (selectedVehicleId) loadPossessions(selectedVehicleId)
-      loadVehicles()
-    }
+  const ledgerRows = useMemo(() => {
+    if (!selectedVehicleId) return []
+    return buildVehicleLedger({
+      readings: panelReadings,
+      possessions: possessionsAll.filter((p) => p.vehicle_id === selectedVehicleId),
+      valueEntries: panelValues,
+      userNameById,
+    })
+  }, [selectedVehicleId, panelReadings, panelValues, possessionsAll, userNameById])
+
+  const visibleLedgerRows = useMemo(
+    () =>
+      ledgerFilter === 'all'
+        ? ledgerRows
+        : ledgerRows.filter((r) => r.kind === ledgerFilter || (ledgerFilter === 'handoff' && r.kind === 'return')),
+    [ledgerRows, ledgerFilter],
+  )
+
+  const chipStyle = (tone: 'plain' | 'amber' | 'red'): React.CSSProperties => ({
+    padding: '0.2rem 0.65rem',
+    borderRadius: 999,
+    fontSize: '0.8125rem',
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    background: tone === 'amber' ? 'var(--bg-amber-100)' : tone === 'red' ? 'var(--bg-red-100)' : 'var(--bg-subtle)',
+    color: tone === 'amber' ? 'var(--text-amber-800)' : tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)',
+  })
+
+  const actionBtn: React.CSSProperties = {
+    padding: '0.3rem 0.7rem',
+    fontSize: '0.8125rem',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 6,
+    background: 'var(--surface)',
+    cursor: 'pointer',
   }
 
-  useEffect(() => {
-    const t = setTimeout(() => loadVehicles(), 80)
-    return () => clearTimeout(t)
-  }, [])
-
-  useEffect(() => {
-    if (selectedVehicleId) {
-      loadOdometerEntries(selectedVehicleId)
-      loadReplacementValueEntries(selectedVehicleId)
-      loadPossessions(selectedVehicleId)
-    } else {
-      setOdometerEntries([])
-      setReplacementValueEntries([])
-      setPossessions([])
-    }
-  }, [selectedVehicleId])
+  function renderHolderRow(v: Vehicle) {
+    const holder = holderByVehicle.get(v.id)
+    const holderName = holder ? (userNameById.get(holder.user_id) ?? holder.user_id.slice(0, 8)) : null
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.6rem 0' }}>
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            background: holderName ? 'var(--bg-sky-tint)' : 'var(--bg-amber-100)',
+            color: holderName ? 'var(--text-link)' : 'var(--text-amber-800)',
+          }}
+        >
+          {holderName ? initials(holderName) : '?'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: holderName ? undefined : 'var(--text-amber-800)' }}>
+            {holderName ?? 'Unassigned'}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {holder ? `since ${formatYmdShort(holder.start_date)}` : 'no current holder'}
+          </div>
+        </div>
+        <button
+          type="button"
+          style={actionBtn}
+          onClick={(e) => {
+            e.stopPropagation()
+            openHandOff(v)
+          }}
+        >
+          {holder ? 'Hand off' : 'Assign'}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <>
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Vehicles</h2>
-          <button
-            type="button"
-            onClick={() => openVehicleForm()}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
-          >
-            + Add Vehicle
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="search"
+              placeholder="Search vehicles or people"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', minWidth: 200 }}
+            />
+            <button
+              type="button"
+              onClick={() => openVehicleForm()}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              + Add Vehicle
+            </button>
+          </div>
         </div>
-        {vehiclesError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{vehiclesError}</p>}
-        {vehiclesLoading ? (
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <span style={chipStyle('plain')}>{summary.total} vehicle{summary.total === 1 ? '' : 's'}</span>
+          {summary.unassigned > 0 && <span style={chipStyle('amber')}>{summary.unassigned} unassigned</span>}
+          {summary.staleReadings > 0 && <span style={chipStyle('amber')}>{summary.staleReadings} need a reading</span>}
+          {weeklyTotal > 0 && <span style={chipStyle('plain')}>${formatCurrency(weeklyTotal)}/wk ins+reg</span>}
+        </div>
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
+        {loading ? (
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-        ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: 'var(--bg-subtle)' }}>
-                <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Year</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Make</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Model</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>VIN</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Ins/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Reg/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assigned to</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vehicles.map((v) => (
-                  <Fragment key={v.id}>
-                    <tr
-                      key={v.id}
-                      style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedVehicleId === v.id ? 'var(--bg-sky-tint)' : undefined }}
-                      onClick={() => setSelectedVehicleId((prev) => (prev === v.id ? null : v.id))}
+        ) : selectedVehicle ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setSelectedVehicleId(null)}
+              style={{ ...actionBtn, marginBottom: '0.75rem' }}
+            >
+              ← All vehicles
+            </button>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--surface)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '1.0625rem', fontWeight: 600 }}>{vehicleDisplayName(selectedVehicle)}</span>
+                  {selectedVehicle.vin && (
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>VIN {selectedVehicle.vin}</span>
+                  )}
+                  {(() => {
+                    const holder = holderByVehicle.get(selectedVehicle.id)
+                    const nm = holder ? (userNameById.get(holder.user_id) ?? '') : null
+                    return nm ? (
+                      <span style={{ ...chipStyle('plain'), background: 'var(--bg-sky-tint)', color: 'var(--text-link)' }}>
+                        {nm} · since {formatYmdShort(holder!.start_date)}
+                      </span>
+                    ) : (
+                      <span style={chipStyle('amber')}>Unassigned</span>
+                    )
+                  })()}
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <button type="button" style={actionBtn} onClick={() => openHandOff(selectedVehicle)}>
+                    {holderByVehicle.get(selectedVehicle.id) ? 'Hand off' : 'Assign'}
+                  </button>
+                  <button type="button" style={actionBtn} onClick={() => { setValueFormOpen(true); setValueAmount(''); setValueDate(todayYmd()) }}>
+                    Update value
+                  </button>
+                  <button type="button" style={actionBtn} onClick={() => openVehicleForm(selectedVehicle)}>Edit</button>
+                  <button type="button" style={{ ...actionBtn, color: 'var(--text-red-700)' }} onClick={() => deleteVehicle(selectedVehicle)}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  flexWrap: 'wrap',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.7rem 0.9rem',
+                  marginBottom: '0.9rem',
+                  background: 'var(--bg-subtle)',
+                }}
+              >
+                <div style={{ flex: '1 1 160px', minWidth: 150 }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Current odometer</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {(() => {
+                      const latest = latestMap.get(selectedVehicle.id) ?? null
+                      return latest
+                        ? `last ${latest.odometer_value.toLocaleString()} mi · ${odometerAgeLabel(latest, today)}`
+                        : 'no reading yet'
+                    })()}
+                  </div>
+                </div>
+                <input
+                  ref={quickOdoRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Miles"
+                  value={quickOdoValue}
+                  onChange={(e) => setQuickOdoValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveQuickReading()
+                  }}
+                  style={{ width: 110, padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
+                />
+                <input
+                  type="date"
+                  value={quickOdoDate}
+                  onChange={(e) => setQuickOdoDate(e.target.value)}
+                  style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.8125rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={saveQuickReading}
+                  disabled={savingReading}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    background: savingReading ? '#9ca3af' : '#3b82f6',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontWeight: 500,
+                    cursor: savingReading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {savingReading ? '…' : 'Save reading'}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Ledger</span>
+                <div style={{ display: 'flex', gap: '0.3rem' }}>
+                  {LEDGER_FILTERS.map((f) => (
+                    <button
+                      key={f.key}
+                      type="button"
+                      onClick={() => setLedgerFilter(f.key)}
+                      style={{
+                        padding: '0.2rem 0.65rem',
+                        borderRadius: 999,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        border: ledgerFilter === f.key ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                        background: ledgerFilter === f.key ? '#3b82f6' : 'var(--surface)',
+                        color: ledgerFilter === f.key ? '#fff' : 'var(--text-muted)',
+                      }}
                     >
-                      <td style={{ padding: '0.75rem' }}>{v.year ?? '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{v.make || '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{v.model || '—'}</td>
-                      <td style={{ padding: '0.75rem', fontFamily: 'monospace', fontSize: '0.8125rem' }}>{v.vin ? (v.vin.length <= 8 ? v.vin : `${v.vin.slice(0, 4)}...${v.vin.slice(-4)}`) : '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(v.weekly_insurance_cost)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(v.weekly_registration_cost)}</td>
-                      <td style={{ padding: '0.75rem' }}>{vehicleAssignees[v.id] || '—'}</td>
-                      <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                        <button type="button" onClick={() => openVehicleForm(v)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>Edit</button>
-                        <button type="button" onClick={() => deleteVehicle(v)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>Delete</button>
-                      </td>
-                    </tr>
-                    {selectedVehicleId === v.id && (
-                      <tr key={`${v.id}-detail`}>
-                        <td colSpan={8} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Odometer entries</h4>
-                              <button type="button" onClick={() => { setOdometerFormOpen(true); setOdometerValue(''); setOdometerDate(new Date().toLocaleDateString('en-CA')) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add odometer entry</button>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                                <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
-                                <tbody>
-                                  {odometerEntries.map((e) => (
-                                    <tr key={e.id} style={{ borderTop: '1px solid var(--border)' }}>
-                                      <td style={{ padding: '0.5rem' }}>{e.read_date}</td>
-                                      <td style={{ padding: '0.5rem', textAlign: 'right' }}>{e.odometer_value.toLocaleString()}</td>
-                                      <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteOdometerEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                            <div>
-                              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Replacement value</h4>
-                              <button type="button" onClick={() => { setReplacementValueFormOpen(true); setReplacementValueValue(''); setReplacementValueDate(new Date().toLocaleDateString('en-CA')) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add replacement value</button>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                                <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
-                                <tbody>
-                                  {replacementValueEntries.map((e) => (
-                                    <tr key={e.id} style={{ borderTop: '1px solid var(--border)' }}>
-                                      <td style={{ padding: '0.5rem' }}>{e.read_date}</td>
-                                      <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(e.replacement_value)}</td>
-                                      <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteReplacementValueEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                            <div>
-                              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Possessions</h4>
-                              <button type="button" onClick={() => { setPossessionFormOpen(true); setPossessionUserId(''); setPossessionStartDate(new Date().toLocaleDateString('en-CA')); setPossessionEndDate('') }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Assign to user</button>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                                <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>User</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Start</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>End</th><th></th></tr></thead>
-                                <tbody>
-                                  {possessions.map((p) => {
-                                    const u = users.find((x) => x.id === p.user_id)
-                                    return (
-                                      <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '0.5rem' }}>{u?.name ?? p.user_id.slice(0, 8)}</td>
-                                        <td style={{ padding: '0.5rem' }}>{p.start_date}</td>
-                                        <td style={{ padding: '0.5rem' }}>{p.end_date ?? '—'}</td>
-                                        <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deletePossession(p)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
-                                      </tr>
-                                    )
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                {visibleLedgerRows.length === 0 ? (
+                  <p style={{ padding: '0.9rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    Nothing here yet — save a reading above to start the ledger.
+                  </p>
+                ) : (
+                  visibleLedgerRows.map((r, i) => (
+                    <div
+                      key={r.key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.55rem 0.9rem',
+                        borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <span style={{ color: 'var(--text-muted)', width: 88, flexShrink: 0, fontSize: '0.8125rem' }}>{formatYmdShort(r.dateYmd)}</span>
+                      <span
+                        style={{
+                          ...chipStyle('plain'),
+                          fontSize: '0.6875rem',
+                          background: r.kind === 'handoff' || r.kind === 'return' ? 'var(--bg-sky-tint)' : 'var(--bg-subtle)',
+                          color: r.kind === 'handoff' || r.kind === 'return' ? 'var(--text-link)' : 'var(--text-muted)',
+                        }}
+                      >
+                        {r.kind === 'reading' ? 'Odometer' : r.kind === 'value' ? 'Value' : 'Hand-off'}
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>{r.label}</span>
+                      <span style={{ textAlign: 'right', width: 90, flexShrink: 0, color: r.odometer == null && r.amount == null ? 'var(--text-muted)' : undefined }}>
+                        {r.odometer != null ? `${r.odometer.toLocaleString()} mi` : r.amount != null ? `$${formatCurrency(r.amount)}` : '—'}
+                      </span>
+                      {r.kind !== 'return' && (
+                        <button
+                          type="button"
+                          onClick={() => deleteLedgerRow(r.kind, r.sourceId)}
+                          title={r.kind === 'handoff' ? 'Delete this possession row' : 'Delete this entry'}
+                          style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '0.75rem' }}>
+            {filteredVehicles.map((v) => {
+              const latest = latestMap.get(v.id) ?? null
+              const freshness = odometerFreshness(latest, today)
+              return (
+                <div
+                  key={v.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedVehicleId(v.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setSelectedVehicleId(v.id)
+                    }
+                  }}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    padding: '0.8rem 0.95rem',
+                    background: 'var(--surface)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{vehicleDisplayName(v)}</span>
+                    {vinTail(v.vin) && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{vinTail(v.vin)}</span>
                     )}
-                  </Fragment>
-                ))}
-              </tbody>
-              {vehicles.length > 0 && (
-                <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
-                  <tr>
-                    <td colSpan={4} style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }}>Total</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_insurance_cost ?? 0), 0))}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_registration_cost ?? 0), 0))}</td>
-                    <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }} />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-            {vehicles.length === 0 && <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>No vehicles yet. Add one to get started.</p>}
+                  </div>
+                  {renderHolderRow(v)}
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8125rem', color: freshness === 'fresh' ? 'var(--text-muted)' : 'var(--text-amber-800)' }}>
+                      {latest ? `${latest.odometer_value.toLocaleString()} mi · ${odometerAgeLabel(latest, today)}` : 'No reading yet'}
+                    </span>
+                    {freshness !== 'fresh' && <span style={chipStyle('amber')}>{freshness === 'none' ? 'needs first reading' : 'needs a reading'}</span>}
+                  </div>
+                </div>
+              )
+            })}
+            {filteredVehicles.length === 0 && (
+              <p style={{ color: 'var(--text-muted)', margin: 0, padding: '0.5rem 0' }}>
+                {vehicles.length === 0 ? 'No vehicles yet. Add one to get started.' : 'No vehicles match the search.'}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -425,70 +774,86 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         </div>
       )}
 
-      {odometerFormOpen && selectedVehicleId && (
+      {handOffVehicle && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
-            <h3 style={{ marginTop: 0 }}>Add odometer entry</h3>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>
+              {holderByVehicle.get(handOffVehicle.id) ? 'Hand off vehicle' : 'Assign vehicle'}
+            </h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {vehicleDisplayName(handOffVehicle)}
+              {(() => {
+                const holder = holderByVehicle.get(handOffVehicle.id)
+                const nm = holder ? userNameById.get(holder.user_id) : null
+                return nm ? ` · currently ${nm}` : ' · currently unassigned'
+              })()}
+            </p>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
-              <input type="date" value={odometerDate} onChange={(e) => setOdometerDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Value</label>
-              <input type="number" min={0} step={1} value={odometerValue} onChange={(e) => setOdometerValue(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={insertOdometerEntry} style={{ padding: '0.5rem 1rem' }}>Add</button>
-              <button type="button" onClick={() => { setOdometerFormOpen(false); setOdometerValue('') }} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {replacementValueFormOpen && selectedVehicleId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
-            <h3 style={{ marginTop: 0 }}>Add replacement value</h3>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
-              <input type="date" value={replacementValueDate} onChange={(e) => setReplacementValueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Value ($)</label>
-              <input type="number" min={0} step={0.01} value={replacementValueValue} onChange={(e) => setReplacementValueValue(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={insertReplacementValueEntry} style={{ padding: '0.5rem 1rem' }}>Add</button>
-              <button type="button" onClick={() => { setReplacementValueFormOpen(false); setReplacementValueValue('') }} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {possessionFormOpen && selectedVehicleId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
-            <h3 style={{ marginTop: 0 }}>Assign to user</h3>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>User *</label>
-              <select value={possessionUserId} onChange={(e) => setPossessionUserId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>New holder *</label>
+              <select value={handOffUserId} onChange={(e) => setHandOffUserId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
                 <option value="">— Select —</option>
-                {users.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map((u) => (
+                {[...users].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map((u) => (
                   <option key={u.id} value={u.id}>{u.name ?? u.email ?? u.id.slice(0, 8)}</option>
                 ))}
               </select>
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Start date</label>
-              <input type="date" value={possessionStartDate} onChange={(e) => setPossessionStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+              <label style={{ display: 'block', marginBottom: 4 }}>Hand-off date</label>
+              <input type="date" value={handOffDate} onChange={(e) => setHandOffDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Odometer at hand-off</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={handOffOdometer}
+                onChange={(e) => setHandOffOdometer(e.target.value)}
+                placeholder="Optional"
+                style={{ width: '100%', padding: '0.5rem' }}
+              />
+            </div>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {holderByVehicle.get(handOffVehicle.id)
+                ? 'Ends the current possession on the hand-off date and saves the reading.'
+                : 'Starts the possession on the hand-off date and saves the reading.'}
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setHandOffVehicle(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={submitHandOff}
+                disabled={handOffSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: handOffSaving ? '#9ca3af' : '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: handOffSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {handOffSaving ? '…' : holderByVehicle.get(handOffVehicle.id) ? 'Hand off' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {valueFormOpen && selectedVehicleId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+            <h3 style={{ marginTop: 0 }}>Update replacement value</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
+              <input type="date" value={valueDate} onChange={(e) => setValueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>End date (optional)</label>
-              <input type="date" value={possessionEndDate} onChange={(e) => setPossessionEndDate(e.target.value)} placeholder="Leave blank if still in possession" style={{ width: '100%', padding: '0.5rem' }} />
+              <label style={{ display: 'block', marginBottom: 4 }}>Value ($)</label>
+              <input type="number" min={0} step={0.01} value={valueAmount} onChange={(e) => setValueAmount(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={upsertPossession} style={{ padding: '0.5rem 1rem' }}>Assign</button>
-              <button type="button" onClick={() => setPossessionFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button type="button" onClick={submitValueEntry} style={{ padding: '0.5rem 1rem' }}>Save</button>
+              <button type="button" onClick={() => setValueFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
             </div>
           </div>
         </div>

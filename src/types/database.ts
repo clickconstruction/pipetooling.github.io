@@ -11872,6 +11872,7 @@ export type Database = {
       vehicle_odometer_entries: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: string
           odometer_value: number
           read_date: string
@@ -11879,6 +11880,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           odometer_value: number
           read_date: string
@@ -11886,12 +11888,20 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           odometer_value?: number
           read_date?: string
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_odometer_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_odometer_entries_vehicle_id_fkey"
             columns: ["vehicle_id"]
