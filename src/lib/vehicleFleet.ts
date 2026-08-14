@@ -347,6 +347,49 @@ export function fleetOilCounts(
   return { dueSoon, overdue }
 }
 
+export type VehicleMaintenanceTask = {
+  id: string
+  vehicle_id: string
+  title: string
+  note: string | null
+  source_problem_report_id: string | null
+  checklist_item_id: string | null
+  checklist_instance_id: string | null
+  assigned_user_id: string | null
+  due_date: string | null
+  created_by: string | null
+  created_at: string | null
+  completed_at: string | null
+  completed_by: string | null
+}
+
+export function openMaintenanceTasks(tasks: VehicleMaintenanceTask[]): VehicleMaintenanceTask[] {
+  return tasks.filter((t) => t.completed_at == null)
+}
+
+export type MaintenanceTaskCounts = { open: number; unassigned: number }
+
+/** Open/unassigned maintenance counts per vehicle for the cards and summary chips. */
+export function maintenanceTaskCounts(tasks: VehicleMaintenanceTask[]): Map<string, MaintenanceTaskCounts> {
+  const m = new Map<string, MaintenanceTaskCounts>()
+  for (const t of tasks) {
+    if (t.completed_at != null) continue
+    const cur = m.get(t.vehicle_id) ?? { open: 0, unassigned: 0 }
+    cur.open++
+    if (t.assigned_user_id == null) cur.unassigned++
+    m.set(t.vehicle_id, cur)
+  }
+  return m
+}
+
+/**
+ * The checklist item title for an assigned maintenance task: vehicle name,
+ * task, and a named link token back to the fleet board (links[0]).
+ */
+export function maintenanceChecklistTitle(vehicleName: string, taskTitle: string): string {
+  return `${vehicleName} — ${taskTitle} {{1:vehicle}}`
+}
+
 export const ODOMETER_STALE_DAYS = 7
 
 export type StaleOdometerRow = {
@@ -429,6 +472,7 @@ export type VehicleLedgerRowKind =
   | 'problem_resolved'
   | 'insurance_on'
   | 'insurance_off'
+  | 'task_done'
 
 export type VehicleLedgerRow = {
   key: string
@@ -457,8 +501,9 @@ export function buildVehicleLedger(args: {
   problemReports?: FleetProblemReport[]
   insurancePeriods?: FleetInsurancePeriod[]
   planNameById?: ReadonlyMap<string, string>
+  maintenanceTasks?: VehicleMaintenanceTask[]
 }): VehicleLedgerRow[] {
-  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [], insurancePeriods = [], planNameById } = args
+  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [], insurancePeriods = [], planNameById, maintenanceTasks = [] } = args
   const name = (id: string | null | undefined): string | null => {
     if (!id) return null
     return userNameById.get(id) ?? null
@@ -586,6 +631,19 @@ export function buildVehicleLedger(args: {
       })
     }
   }
+  for (const t of maintenanceTasks) {
+    if (t.completed_at == null) continue
+    const by = name(t.completed_by)
+    rows.push({
+      key: `task-done-${t.id}`,
+      kind: 'task_done',
+      dateYmd: t.completed_at.slice(0, 10),
+      label: by ? `Task done · ${t.title} — by ${by}` : `Task done · ${t.title}`,
+      odometer: null,
+      amount: null,
+      sourceId: t.id,
+    })
+  }
   const kindOrder: Record<VehicleLedgerRowKind, number> = {
     return: 0,
     handoff: 1,
@@ -593,9 +651,10 @@ export function buildVehicleLedger(args: {
     insurance_on: 3,
     problem_resolved: 4,
     problem: 5,
-    service: 6,
-    reading: 7,
-    value: 8,
+    task_done: 6,
+    service: 7,
+    reading: 8,
+    value: 9,
   }
   rows.sort((a, b) => {
     if (a.dateYmd !== b.dateYmd) return b.dateYmd.localeCompare(a.dateYmd)

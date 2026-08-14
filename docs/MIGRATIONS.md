@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 14, 2026
 
+**`20260814233006_vehicle_maintenance_tasks.sql`** _(apply via `supabase db push` with the v2.1665 merge — additive table + trigger, old clients unaffected)_
+- **Purpose**: vehicle maintenance tasks (v2.1665, Vehicles fleet phase 8) — `vehicle_maintenance_tasks` (per-vehicle to-dos with optional problem-report source and links to a one-off checklist item/instance created on assignment; assignee/due denormalized) with office-pool RLS + both read-only blocks, plus SECURITY DEFINER trigger `sync_vehicle_maintenance_task_completion` on `checklist_instances` syncing completion (and un-completion) from the assignee's checklist back to the vehicle task.
+- **Category**: Vehicles / new table + trigger
+
 **`20260814230114_vehicle_oil_thresholds.sql`** _(apply via `supabase db push` with the v2.1664 merge — additive columns with defaults, old clients unaffected)_
 - **Purpose**: per-vehicle oil prompt thresholds (v2.1664, Vehicles fleet phase 7) — `vehicles.oil_suggest_window_miles` (default 1000, the previously hardcoded due-soon window) + `vehicles.oil_require_past_due_miles` (default 0 = required at the interval). Drive the holder-facing "Oil change suggested/required" Dashboard banners and all office oil chips.
 - **Category**: Vehicles / column change

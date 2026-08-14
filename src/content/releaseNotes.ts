@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1665',
+    date: '2026-08-14',
+    title: 'Vehicle maintenance tasks',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles: every vehicle now has a Maintenance list — add to-dos like "change battery", assign them to a person with a due date, and check them off.',
+      'Assigning puts the task on that person\'s existing checklist (Dashboard My Inbox and Checklist → Today), where it stays until completed — checking it off there completes it on the vehicle too.',
+      'Open problem reports get a Create task button, completed tasks offer a prefilled Log service form, and everything lands in the vehicle\'s ledger.',
+    ],
+  },
+  {
     version: 'v2.1664',
     date: '2026-08-14',
     title: 'Odometer calls and oil prompts',

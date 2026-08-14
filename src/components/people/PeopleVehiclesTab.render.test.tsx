@@ -41,6 +41,11 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   vehicle_insurance_plans: [
     { id: 'plan1', name: 'Progressive Commercial', carrier: 'Progressive', policy_number: '83-JX2-99', renewal_date: null, note: null },
   ],
+  vehicle_maintenance_tasks: [
+    { id: 't1', vehicle_id: 'v1', title: 'Change battery', note: null, source_problem_report_id: null, checklist_item_id: 'ci1', checklist_instance_id: 'cin1', assigned_user_id: 'u2', due_date: '2026-08-21', created_by: 'u3', created_at: '2026-08-12T10:00:00Z', completed_at: null, completed_by: null },
+    { id: 't2', vehicle_id: 'v1', title: 'Fix door handle', note: null, source_problem_report_id: 'q1', checklist_item_id: null, checklist_instance_id: null, assigned_user_id: null, due_date: null, created_by: 'u3', created_at: '2026-08-13T10:00:00Z', completed_at: null, completed_by: null },
+    { id: 't3', vehicle_id: 'v1', title: 'Rotate tires', note: null, source_problem_report_id: null, checklist_item_id: null, checklist_instance_id: null, assigned_user_id: null, due_date: null, created_by: 'u3', created_at: '2026-08-01T10:00:00Z', completed_at: '2026-08-08T15:00:00Z', completed_by: 'u2' },
+  ],
   vehicle_insurance_periods: [
     { id: 'i1', vehicle_id: 'v1', plan_id: 'plan1', start_date: '2026-06-12', end_date: null, created_at: null },
     { id: 'i0', vehicle_id: 'v2', plan_id: 'plan1', start_date: '2026-01-09', end_date: '2026-05-30', created_at: null },
@@ -106,6 +111,11 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByText(/off since/)).toBeTruthy()
     expect(screen.getByText('1 not on insurance')).toBeTruthy()
     expect(screen.getByText(/still insured while parked/)).toBeTruthy()
+
+    // Maintenance tasks (fleet phase 8): the card wears an open-task chip and
+    // the summary row totals them (completed t3 doesn't count).
+    expect(screen.getByText('2 tasks')).toBeTruthy()
+    expect(screen.getByText('2 maintenance tasks')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Insurance plans' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add to plan' })).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Change' }).length).toBe(2)
@@ -134,5 +144,19 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByText('Needs service')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Resolve' })).toBeTruthy()
     expect(screen.getByText('Brakes grinding front left — reported by Tristen')).toBeTruthy()
+
+    // Maintenance section: open tasks with assignee/unassigned chips, the
+    // assign + create-from-problem entry points, the add-task input, and the
+    // completed task's ledger row.
+    expect(screen.getByText('Maintenance (2 open)')).toBeTruthy()
+    expect(screen.getByText('Change battery')).toBeTruthy()
+    expect(screen.getByText(/Tristen · due/)).toBeTruthy()
+    expect(screen.getByText('Fix door handle')).toBeTruthy()
+    expect(screen.getByText(/from problem report/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reassign' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Create task' })).toBeTruthy()
+    expect(screen.getByLabelText('New maintenance task')).toBeTruthy()
+    expect(screen.getByText('Task done · Rotate tires — by Tristen')).toBeTruthy()
   })
 })
