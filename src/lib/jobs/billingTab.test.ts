@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  billingAttentionLabel,
   billingFixturesCellText,
   billingJobMatchesSearch,
   billingMaterialsCellText,
@@ -119,5 +120,14 @@ describe('billingRowMoneyTokens / billingTotals', () => {
       totalBill: 150,
       totalPaid: 40,
     })
+  })
+})
+
+describe('billingAttentionLabel', () => {
+  it('names exactly the missing labor kinds', () => {
+    expect(billingAttentionLabel(true, true)).toBe('No team labor or sub labor recorded for this job.')
+    expect(billingAttentionLabel(false, true)).toBe('No team labor recorded for this job.')
+    expect(billingAttentionLabel(true, false)).toBe('No sub labor recorded for this job.')
+    expect(billingAttentionLabel(false, false)).toBe('')
   })
 })

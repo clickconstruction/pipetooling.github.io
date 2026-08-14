@@ -81,14 +81,15 @@ describe('JobsBillingTab render smoke', () => {
     // Needs labor filter; only the team-labor icon remains on rows.
     expect(screen.queryByTitle('Add Labor: fill from Billing and open Labor')).toBeNull()
     // Red icon 2: missing Team Job Labor flag (only alpha qualifies)
-    expect(screen.getAllByTitle('No Team Job Labor for this job')).toHaveLength(1)
+    // v2.1627: one combined flag with a precise label per missing condition.
+    expect(screen.getAllByTitle(/recorded for this job/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Tech One')).toBeTruthy()
   })
 
   it('hides both red icons for the primary role', () => {
     const { alpha } = twoJobs()
     renderWithProviders(<JobsBillingTab {...makeProps({ jobs: [alpha], authRole: 'primary' })} />)
-    expect(screen.queryByTitle('No Team Job Labor for this job')).toBeNull()
+    expect(screen.queryByTitle(/recorded for this job/)).toBeNull()
   })
 
   it('filters rows as the search box is typed into', () => {

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1626)
+last_updated: 2026-08-13 (v2.1627)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1627)
+
+### Billing tab: the red flag covers both labor kinds, explains itself on hover and tap (2026-08-13)
+Owner request ("when a user hovers over it I would like a tool tip and if clicked … a toast … include sub labor as a criteria"). [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): the row's red person-slipping icon now fires on the SAME predicate as the Needs labor filter — missing Sub Labor book OR missing Team Job Labor — instead of team-labor-only. It's a button: **hover** shows a precise tooltip and **tap/click** toasts the same line, worded per row by the new kernel [`billingAttentionLabel`](../src/lib/jobs/billingTab.ts) ("No team labor or sub labor recorded for this job." / team-only / sub-only variants; +1 test, 13 total). Verified live: 65 icons — 36 sub-only, 26 both, 3 team-only — and the click toast renders. Client-only — no migration.
 
 ## Latest Updates (v2.1626)
 

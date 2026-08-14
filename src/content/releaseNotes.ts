@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1627',
+    date: '2026-08-13',
+    title: 'The Billing tab\u2019s red flag explains itself',
+    kind: 'fix',
+    highlights: [
+      'The red icon now covers missing sub labor too, and says why on hover \u2014 or tap it for a toast.',
+    ],
+  },
+  {
     version: 'v2.1626',
     date: '2026-08-13',
     title: 'Roomier line items on the Billing tab',

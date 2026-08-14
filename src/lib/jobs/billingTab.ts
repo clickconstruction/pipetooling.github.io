@@ -161,3 +161,15 @@ export function billingTotals(jobs: ReadonlyArray<BillingMoneyJob>): {
   }
   return { count: jobs.length, totalBill, totalPaid }
 }
+
+
+/**
+ * The red icon's tooltip/toast line (v2.1627): names exactly which labor kinds
+ * are missing, in the owner's phrasing. Empty when nothing is missing.
+ */
+export function billingAttentionLabel(noSubLabor: boolean, noTeamLabor: boolean): string {
+  if (noSubLabor && noTeamLabor) return 'No team labor or sub labor recorded for this job.'
+  if (noTeamLabor) return 'No team labor recorded for this job.'
+  if (noSubLabor) return 'No sub labor recorded for this job.'
+  return ''
+}
