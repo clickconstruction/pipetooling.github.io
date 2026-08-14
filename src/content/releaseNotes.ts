@@ -20,6 +20,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1621',
+    date: '2026-08-13',
+    title: 'Sub Labor shows the job address in place',
+    kind: 'fix',
+    highlights: [
+      'The picked job\u2019s address now shows right under its name \u2014 read-only, since it comes from the job.',
+      'Opening the Sub Labor tab from a link no longer leaves the job search empty.',
+    ],
+  },
+  {
     version: 'v2.1620',
     date: '2026-08-13',
     title: 'Tighter Billing tab rows',

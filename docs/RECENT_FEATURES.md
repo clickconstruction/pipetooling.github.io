@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Billing tab: Contractors column moves next to Job (2026-08-13)
 Owner follow-up on the v2.1620 column merge. [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): column order becomes Job · Contractors · Specific Work · Other job charges · Total Bill — who's on the job reads immediately after which job it is. Header + body cells reordered; nothing else changes. Client-only — no migration.
 
+## Latest Updates (v2.1621)
+
+### Sub Labor step 1: address is the job's — read-only, under the name (2026-08-13)
+Owner request ("address non editable since it is set by the job, and to show up below the job name"). [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx): the new-entry Address input is gone — the picked job's address renders as a muted read-only line INSIDE the Job field, under `J964 · Pondhill demo`; the address-less-job gate message now points at Edit Job ("add it in Edit Job first"). Edit mode keeps its editable Address field for legacy rows. **Rode along — deep-link bug fix**: `/jobs?tab=sub_sheet_ledger` opened cold left the job picker with ZERO rows ("No jobs match") because the shared jobs cache only loaded for stages/billing/parts; `sub_sheet_ledger` joins `shouldLoadJobsListForActiveTab` in [`Jobs.tsx`](../src/pages/Jobs.tsx). Render tests updated (7/7); help guide wording follows. Verified live on a cold deep link: picker found Pondhill, field shows name + address subline. (Entry restored after the v2.1622 branch-update merge silently dropped it — same-anchor insertion.) Client-only — no migration.
+
 ## Latest Updates (v2.1620)
 
 ### Billing tab: Job # and Job columns merge into one (2026-08-13)
