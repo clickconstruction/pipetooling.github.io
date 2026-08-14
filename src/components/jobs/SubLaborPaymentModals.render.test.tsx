@@ -84,7 +84,7 @@ describe('SubLaborPaymentModals render smoke', () => {
     const { ref } = mountWithRef()
     act(() =>
       ref.current!.openEditPayment(
-        { id: 'pay-1', jobId: 'labor-1', amount: 50, memo: 'first draw', isBackcharge: false },
+        { id: 'pay-1', jobId: 'labor-1', amount: 50, memo: 'first draw', isBackcharge: false, paymentDate: '2026-08-10', createdAt: '2026-08-01T12:00:00Z' },
         '50',
         'first draw',
       ),
@@ -92,6 +92,7 @@ describe('SubLaborPaymentModals render smoke', () => {
     expect(screen.getByText('Edit Payment')).toBeTruthy()
     expect((screen.getByPlaceholderText('0') as HTMLInputElement).value).toBe('50')
     expect((screen.getByPlaceholderText('Optional note') as HTMLTextAreaElement).value).toBe('first draw')
+    expect((document.querySelector('input[type="date"]') as HTMLInputElement).value).toBe('2026-08-10')
     fireEvent.click(screen.getByText('Cancel'))
     expect(screen.queryByText('Edit Payment')).toBeNull()
   })
@@ -100,7 +101,7 @@ describe('SubLaborPaymentModals render smoke', () => {
     const { ref } = mountWithRef()
     act(() =>
       ref.current!.openEditPayment(
-        { id: 'pay-2', jobId: 'labor-1', amount: 25, memo: 'damage', isBackcharge: true },
+        { id: 'pay-2', jobId: 'labor-1', amount: 25, memo: 'damage', isBackcharge: true, paymentDate: null, createdAt: null },
         '25',
         'damage',
       ),

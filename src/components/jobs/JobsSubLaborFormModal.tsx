@@ -1844,12 +1844,12 @@ function JobsSubLaborFormModalInner(
                             <tbody>
                               {(editingLaborJob.payments ?? []).map((p) => (
                                 <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
                                   <td style={{ padding: '0.5rem' }}>
-                                    <button type="button" onClick={() => onOpenEditPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0 }, String(Math.abs(Number(p.amount))), p.memo ?? '')} style={{ padding: '0.25rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
+                                    <button type="button" onClick={() => onOpenEditPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null }, String(Math.abs(Number(p.amount))), p.memo ?? '')} style={{ padding: '0.25rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
                                   </td>
                                 </tr>
                               ))}

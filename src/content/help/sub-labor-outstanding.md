@@ -39,3 +39,5 @@ If more than eight contractors are owed money, the summary shows the top eight a
 ## Paying it down
 
 Nothing here changes: use {{button:green|Payment}} and {{button:red|Backcharge}} on a ledger row as before. The summary and totals update the moment a payment or backcharge is saved.
+
+When you record a payment, the **Date sent** field lets you backdate it to the day the money actually went out (it starts on today). The ledger's Payments list shows that date, and you can fix it later with **Edit** on the payment row.

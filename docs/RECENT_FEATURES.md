@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1632)
+last_updated: 2026-08-14 (v2.1633)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1633)
+
+### Sub Labor payments get a user-set "Date sent" (2026-08-14)
+Owner request on the Make Payment modal ("I would like to be able to set the date the payment was sent"). New nullable `people_labor_job_payments.payment_date date` (migration [`20260814060000_labor_payment_date.sql`](../supabase/migrations/20260814060000_labor_payment_date.sql)). [`SubLaborPaymentModals`](../src/components/jobs/SubLaborPaymentModals.tsx): **Make Payment** gains a **Date sent** date input (defaults to today) and **Edit Payment/Backcharge** gains the same field seeded from the stored date (falling back to the recorded timestamp's day), so wrong dates are fixable. [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) record/update functions carry the new param; both Payments tables ([`JobsSubLaborTab`](../src/components/jobs/JobsSubLaborTab.tsx) expanded row + the form modal's edit-mode list) display `payment_date` when set, else `created_at` as before (plain-date rendering avoids the UTC off-by-one). The Backcharge modal itself is unchanged (its rows can be dated via Edit). Help guide `sub-labor-outstanding` updated. **Deploy: `supabase db push` BEFORE the client** — additive column, old client unaffected.
 
 ## Latest Updates (v2.1632)
 

@@ -7713,6 +7713,7 @@ export type Database = {
           id: string
           job_id: string
           memo: string | null
+          payment_date: string | null
           sequence_order: number
         }
         Insert: {
@@ -7721,6 +7722,7 @@ export type Database = {
           id?: string
           job_id: string
           memo?: string | null
+          payment_date?: string | null
           sequence_order?: number
         }
         Update: {
@@ -7729,6 +7731,7 @@ export type Database = {
           id?: string
           job_id?: string
           memo?: string | null
+          payment_date?: string | null
           sequence_order?: number
         }
         Relationships: [

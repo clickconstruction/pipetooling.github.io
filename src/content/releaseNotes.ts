@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1633',
+    date: '2026-08-14',
+    title: 'Sub labor payments remember when they were sent',
+    kind: 'feature',
+    highlights: [
+      'Make Payment now has a Date sent field (defaults to today) so you can backdate a payment to the day the money went out.',
+      'Editing a payment or backcharge lets you fix the date; the Payments list shows it.',
+    ],
+  },
+  {
     version: 'v2.1632',
     date: '2026-08-14',
     title: 'Link Invoice finds its own row',

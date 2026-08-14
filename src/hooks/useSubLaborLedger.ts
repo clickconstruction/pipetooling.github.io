@@ -76,7 +76,7 @@ export function useSubLaborLedger({
           .order('sequence_order', { ascending: true }),
         supabase
           .from('people_labor_job_payments')
-          .select('id, job_id, amount, memo, created_at')
+          .select('id, job_id, amount, memo, created_at, payment_date')
           .in('job_id', jobIds)
           .order('sequence_order', { ascending: true }),
         hcpNumbers.length > 0 ? supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: hcpNumbers }) : { data: [] },
@@ -115,9 +115,9 @@ export function useSubLaborLedger({
         })
       }
       const paymentsByJob = new Map<string, LaborJobPayment[]>()
-      for (const p of (paymentsData ?? []) as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string }>) {
+      for (const p of (paymentsData ?? []) as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null }>) {
         if (!paymentsByJob.has(p.job_id)) paymentsByJob.set(p.job_id, [])
-        paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at })
+        paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at, payment_date: p.payment_date })
       }
       const jobNamesByHcp: Record<string, string> = {}
       for (const j of (ledgerJobs ?? []) as Array<{ hcp_number: string; job_name: string }>) {
@@ -174,11 +174,11 @@ export function useSubLaborLedger({
     }
   }
 
-  async function recordLaborJobPayment(jobId: string, amount: number, memo: string | null) {
+  async function recordLaborJobPayment(jobId: string, amount: number, memo: string | null, paymentDate: string | null) {
     setError(null)
     const { data: existing } = await supabase.from('people_labor_job_payments').select('sequence_order').eq('job_id', jobId).order('sequence_order', { ascending: false }).limit(1)
     const nextOrder = existing?.length ? (Number((existing[0] as { sequence_order: number }).sequence_order) + 1) : 0
-    const { error: err } = await supabase.from('people_labor_job_payments').insert({ job_id: jobId, amount, memo: memo?.trim() || null, sequence_order: nextOrder })
+    const { error: err } = await supabase.from('people_labor_job_payments').insert({ job_id: jobId, amount, memo: memo?.trim() || null, sequence_order: nextOrder, payment_date: paymentDate?.trim() || null })
     if (err) setError(err.message)
     else await loadLaborJobs()
   }
@@ -203,13 +203,14 @@ export function useSubLaborLedger({
     paymentId: string,
     amount: number,
     memo: string | null,
-    isBackcharge: boolean
+    isBackcharge: boolean,
+    paymentDate: string | null
   ) {
     setError(null)
     const amt = isBackcharge ? -Math.abs(amount) : Math.abs(amount)
     const { error: err } = await supabase
       .from('people_labor_job_payments')
-      .update({ amount: amt, memo: memo?.trim() || null })
+      .update({ amount: amt, memo: memo?.trim() || null, payment_date: paymentDate?.trim() || null })
       .eq('id', paymentId)
     if (err) setError(err.message)
     else await loadLaborJobs()
