@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1648',
+    date: '2026-08-14',
+    title: 'My Vehicle card on the Dashboard',
+    kind: 'feature',
+    highlights: [
+      'If a company vehicle is assigned to you, a My Vehicle card now shows on your Dashboard just below My Time.',
+      'Send an odometer reading straight from the card — an amber chip asks for one when the office hasn’t had a number in a while.',
+      'Report a problem in your own words with a severity — it lands on the vehicle’s record for the office immediately.',
+    ],
+  },
+  {
     version: 'v2.1647',
     date: '2026-08-14',
     title: 'Vehicles track reported problems',

@@ -5,7 +5,7 @@ file: docs/DASHBOARD_SECTIONS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the Dashboard.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every role-gated section of src/pages/Dashboard.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs, realtime, cross-section coupling) to drive the multi-PR extraction.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-14
 ---
 
 ## Overview
@@ -56,6 +56,7 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 | 16b | Sub money ("Your money" card) | [`DashboardSubMoneySection`](../src/components/dashboard/DashboardSubMoneySection.tsx) | **extracted from birth (v2.1212)** — self-contained | 0 in parent (sole prop `visible={isSubcontractorLikeRole(role)}`; loads its own sheets/commitments, fail-soft) | none | — | Done (mounted between Projects and My Team) |
 | 17 | My Team | `DashboardMyTeamSection` (lazy) | extracted | 0 (hook in parent) | high (shares `myTeam` with strip cluster) | n/a | Done; `myTeam` hook stays in parent |
 | 18 | Me / My Time | `id="dash-me"` / `DashboardMyTimeSection` | extracted | 0 | low (`hoursDaysCorrectSet`, `dashboardSelfIsSalary` props) | n/a | Done |
+| 18b | My Vehicle (v2.1648) | `DashboardMyVehicleCard`, directly below My Time | extracted (born external) | 0 | none (`userId` prop only; renders null unless the user holds a vehicle) | n/a | Done |
 | 19 | Modal tail | `ApplyScheduleApprovedConfirmModal` → send-back job modal | mixed | (owned by opener sections) | shared modals opened from 2+ sections stay | — | Inline confirm modals (Send to Billing, send-back ×2, fwd; reject/skip/set-start moved with the Projects card v2.721) extract as components; openers stay in parent |
 
 > Status legend: `inline` = rendered directly in `Dashboard.tsx`; `partial` = major children extracted but section state/JSX still inline; `extracted` = section is a thin wrapper around an imported component.

@@ -9,7 +9,7 @@ last_updated: 2026-08-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "214 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "215 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 14, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 14, 2026
+
+**`20260814183650_vehicle_holder_access.sql`** _(apply via `supabase db push` with the v2.1648 merge — policies only, additive)_
+- **Purpose**: vehicle holder self-service (v2.1648, Vehicles fleet phase 4) — SECURITY DEFINER `holds_vehicle(uuid)` + permissive policies letting the current holder SELECT their vehicle/readings/service events/problem reports/own possessions and INSERT attributed odometer readings + problem reports. Powers the Dashboard My Vehicle card.
+- **Category**: Vehicles / RLS
 
 **`20260814182450_vehicle_problem_reports.sql`** _(apply via `supabase db push` with the v2.1647 merge — additive table, old clients unaffected)_
 - **Purpose**: vehicle problem reports (v2.1647, Vehicles fleet phase 3) — description + severity (monitor/needs_service/urgent), reporter, open-until-`resolved_at` model with resolver/note and optional FK to the fixing `vehicle_service_events` row; office-pool RLS + both read-only blocks.

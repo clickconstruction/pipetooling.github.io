@@ -29,6 +29,8 @@ Click any card to open the vehicle. The **Current odometer** box sits right on t
 Open each card wearing a {{chip:yellow|needs a reading}} chip, ask the holder for their dash number, type it, Enter — the chip clears and the fleet stays current.
 :::
 
+You often won't need to ask: everyone holding a vehicle has a **My Vehicle** card on their own Dashboard where they send readings and report problems themselves — see the guide *report a problem with my truck or send an odometer reading*.
+
 ## Oil changes and services
 
 {{button:outline|Log service}} on an open vehicle records a shop visit — oil change, tires, repair, inspection, or registration — with the date, the odometer at the visit, what it cost, and a note about where. A service logged with miles **also saves an odometer reading**, so the mileage history stays current for free.

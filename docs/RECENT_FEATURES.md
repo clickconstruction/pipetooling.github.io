@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1647)
+last_updated: 2026-08-14 (v2.1648)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1648)
+
+### Vehicles phase 4: the Dashboard "My Vehicle" card — field self-service (2026-08-14)
+Final phase of the owner-approved Vehicles plan ("for the on the tech's dashboard, I would like it to show up at the bottom just below my time"). New [`DashboardMyVehicleCard`](../src/components/DashboardMyVehicleCard.tsx) renders **directly below My Time** for whoever currently holds a company vehicle (open possession) and nothing for everyone else: vehicle name + mileage/oil/open-problem chips, an **Odometer today** input (Enter or Send reading → writes an attributed reading), and **Report problem** (inline description + severity pills → files a `vehicle_problem_reports` row the office sees on the fleet board). A `reading requested` amber chip nudges when the last reading is >30 days old. RLS (migration [`20260814183650_vehicle_holder_access.sql`](../supabase/migrations/20260814183650_vehicle_holder_access.sql)): new SECURITY DEFINER `holds_vehicle(uuid)` (open possession on the company calendar day) powers additional permissive policies — holders SELECT their vehicle/readings/service events/problem reports/own possessions and INSERT readings (`created_by = auth.uid()`) + problem reports (`reported_by = auth.uid()`); no UPDATE/DELETE, office pool untouched, read-only training blocks still apply. Render smoke (chips, actions, inline report form). Docs: `ACCESS_CONTROL.md` holder note, `DASHBOARD_SECTIONS_ARCHITECTURE.md` section 18b; new field help guide `report-a-vehicle-problem`. **Deploy: `supabase db push` with the merge** — policies only, additive.
 
 ## Latest Updates (v2.1647)
 
