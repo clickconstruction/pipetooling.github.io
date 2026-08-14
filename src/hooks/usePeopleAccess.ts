@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
  */
 export function usePeopleAccess(authUserId: string | undefined) {
   const [canAccessPay, setCanAccessPay] = useState(false)
+  const [canAccessVehicles, setCanAccessVehicles] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [canAccessLicenses, setCanAccessLicenses] = useState(false)
   const [canAccessContracts, setCanAccessContracts] = useState(false)
@@ -27,6 +28,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
       const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
       if (role === 'dev') {
         setCanAccessPay(true)
+        setCanAccessVehicles(true)
         setCanAccessHours(true)
         setCanAccessLicenses(true)
         setCanAccessContracts(true)
@@ -38,6 +40,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
         // Assistant-like + dev-level financial visibility (v2.662): full pay/hours access,
         // but not dev admin (isDev stays false).
         setCanAccessPay(true)
+        setCanAccessVehicles(true)
         setCanAccessHours(true)
         setCanAccessLicenses(true)
         setCanAccessContracts(true)
@@ -46,6 +49,10 @@ export function usePeopleAccess(authUserId: string | undefined) {
       }
       if (role === 'assistant') {
         setIsAssistant(true)
+        // Vehicles split off the pay gate (v2.1650, owner decision): fleet
+        // management is assistant work and the table RLS always admitted
+        // is_assistant() — only the tab was hidden by the v2.660 pay bundle.
+        setCanAccessVehicles(true)
         setCanAccessHours(true)
         setCanAccessLicenses(true)
         setCanAccessContracts(true)
@@ -57,6 +64,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
         setCanAccessContracts(true)
         if (approvedIds.has(authUserId)) {
           setCanAccessPay(true)
+          setCanAccessVehicles(true)
           setCanAccessHours(true)
           setCanAccessLicenses(true)
         }
@@ -67,6 +75,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
 
   return {
     canAccessPay,
+    canAccessVehicles,
     canAccessHours,
     canAccessLicenses,
     canAccessContracts,

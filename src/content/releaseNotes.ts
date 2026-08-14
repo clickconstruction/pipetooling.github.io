@@ -21,6 +21,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1650',
+    date: '2026-08-14',
+    title: 'Assistants see the Vehicles tab',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles now shows for all assistants — the full fleet board with hand-offs, readings, service log, and problem reports.',
+      'Payroll, Housing, and Offsets stay behind the pay gate as before.',
+    ],
+  },
+  {
     version: 'v2.1649',
     date: '2026-08-14',
     title: 'Typed invoice amounts no longer snap to 5% steps',
