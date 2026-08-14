@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1629)
+last_updated: 2026-08-13 (v2.1630)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1630)
+
+### Sub Labor step 3: line items wrap, Cost self-sizes, one bottom Remove (2026-08-13)
+Owner request on the wizard's Work and cost table. [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx), simple mode: **(1)** the per-row Remove column is gone in the wizard — a bottom **Remove** button beside Add line item drops the LAST row (edit mode keeps per-row Remove for legacy entries); **(2)** the Specific Work cell is a **wrapping auto-growing textarea** (`field-sizing: content` — auto-grows in Chromium, degrades to a fixed one-row textarea elsewhere); **(3)** the **Cost input sizes itself in `ch` units to the longest entered amount**, so Specific Work takes all the freed width. Verified live: an 11-word line wrapped to 86px tall, Cost hugged `12345.67`, bottom Remove dropped only the last row. Render tests 7/7. Client-only — no migration.
 
 ## Latest Updates (v2.1629)
 

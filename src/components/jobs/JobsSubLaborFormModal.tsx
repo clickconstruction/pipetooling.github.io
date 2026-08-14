@@ -3,6 +3,7 @@ import {
   useEffect,
   useImperativeHandle,
   useState,
+  type CSSProperties,
   type Dispatch,
   type ForwardedRef,
   type SetStateAction,
@@ -1508,22 +1509,24 @@ function JobsSubLaborFormModalInner(
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                                   Specific Work (Line Items) <span style={{ color: 'var(--text-red-700)' }}>*</span>
                                 </th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)', width: 1, whiteSpace: 'nowrap' }}>
                                   Cost ($) <span style={{ color: 'var(--text-red-700)' }}>*</span>
                                 </th>
-                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid var(--border)' }} />
+                                {editingLaborJob ? <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid var(--border)' }} /> : null}
                               </tr>
                             </thead>
                             <tbody>
                               {laborFixtureRows.map((row) => (
                                 <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
-                                    <input
-                                      type="text"
+                                    {/* v2.1629: wraps as you type (field-sizing: content
+                                        auto-grows in Chromium; elsewhere it's a 1-row textarea). */}
+                                    <textarea
+                                      rows={1}
                                       value={row.fixture}
                                       onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
                                       placeholder="e.g. Toilet, Sink"
-                                      style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                                      style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'none', font: 'inherit', lineHeight: 1.35, boxSizing: 'border-box', ...({ fieldSizing: 'content' } as CSSProperties) }}
                                     />
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -1540,33 +1543,35 @@ function JobsSubLaborFormModalInner(
                                       }}
                                       onWheel={(e) => e.currentTarget.blur()}
                                       placeholder="0"
-                                      style={{ width: '6rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                                      style={{ width: `${Math.max(5, ...laborFixtureRows.map((r) => String(r.direct_labor_amount ?? '').length + 3))}ch`, padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                                     />
                                   </td>
-                                  <td style={{ padding: '0.5rem' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeLaborFixtureRow(row.id)}
-                                      disabled={laborFixtureRows.length <= 1}
-                                      style={{
-                                        padding: '0.25rem',
-                                        background: 'var(--bg-red-100)',
-                                        color: '#991b1c',
-                                        border: 'none',
-                                        borderRadius: 4,
-                                        cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer',
-                                        fontSize: '0.8125rem',
-                                      }}
-                                    >
-                                      Remove
-                                    </button>
-                                  </td>
+                                  {editingLaborJob ? (
+                                    <td style={{ padding: '0.5rem' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeLaborFixtureRow(row.id)}
+                                        disabled={laborFixtureRows.length <= 1}
+                                        style={{
+                                          padding: '0.25rem',
+                                          background: 'var(--bg-red-100)',
+                                          color: '#991b1c',
+                                          border: 'none',
+                                          borderRadius: 4,
+                                          cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer',
+                                          fontSize: '0.8125rem',
+                                        }}
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  ) : null}
                                 </tr>
                               ))}
                               <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                                 {itemizeTotalsFirstCell}
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborModalLinesSubtotal)}</td>
-                                <td style={{ padding: '0.5rem' }} />
+                                {editingLaborJob ? <td style={{ padding: '0.5rem' }} /> : null}
                               </tr>
                             </tbody>
                           </table>
@@ -1719,6 +1724,30 @@ function JobsSubLaborFormModalInner(
                             </span>
                           ) : null}
                         </div>
+                        {!editingLaborJob && laborFixtureEntryMode === 'simple' ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const last = laborFixtureRows[laborFixtureRows.length - 1]
+                              if (last && laborFixtureRows.length > 1) removeLaborFixtureRow(last.id)
+                            }}
+                            disabled={laborFixtureRows.length <= 1}
+                            title="Remove the last line item"
+                            style={{
+                              padding: '0.5rem 1.25rem',
+                              background: laborFixtureRows.length <= 1 ? 'var(--bg-muted)' : 'var(--bg-red-100)',
+                              color: laborFixtureRows.length <= 1 ? 'var(--text-faint)' : '#991b1c',
+                              border: 'none',
+                              borderRadius: 6,
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer',
+                              flexShrink: 0,
+                            }}
+                          >
+                            Remove
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={addLaborFixtureRow}

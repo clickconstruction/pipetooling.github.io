@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1630',
+    date: '2026-08-13',
+    title: 'Line items get room to breathe',
+    kind: 'fix',
+    highlights: [
+      'Specific Work wraps as you type and takes most of the row; Cost hugs its numbers.',
+      'One Remove button at the bottom drops the last row \u2014 no more per-row buttons.',
+    ],
+  },
+  {
     version: 'v2.1629',
     date: '2026-08-13',
     title: 'Database backups include every row',
