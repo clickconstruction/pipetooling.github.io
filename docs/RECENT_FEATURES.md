@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1646)
+last_updated: 2026-08-14 (v2.1647)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1647)
+
+### Vehicles phase 3: reported problems (2026-08-14)
+Phase 3 of the owner-approved Vehicles plan. New table [`vehicle_problem_reports`](../supabase/migrations/20260814182450_vehicle_problem_reports.sql) — description, severity (`monitor` / `needs_service` / `urgent`), report date + reporter; open until `resolved_at` is stamped (with resolver, optional resolution note, and an optional FK to the `vehicle_service_events` row that fixed it); office RLS pool + both read-only blocks. **Report problem** on the vehicle panel (description + severity pills); the **Open problems** block sits above the ledger with per-problem severity chips, reporter/date, and a **Resolve** button (optional "how was it fixed" note). Open counts surface as red chips on the cards and a fleet-total summary chip, so nothing reported gets forgotten. The ledger gains `Problem` (red) and `Resolved` (green) rows — a resolution shows on its own date with the note — plus a Problems filter pill. Kernel [`openProblems`/`openProblemCounts`](../src/lib/vehicleFleet.ts) + ledger stream (+2 tests, 23 total); render smoke extended. Help guide `manage-company-vehicles` updated. Phase 4 (tech dashboard card + holder RLS) is next. **Deploy: `supabase db push` with the merge** — additive table, old clients unaffected.
 
 ## Latest Updates (v2.1646)
 
