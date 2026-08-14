@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1649)
+last_updated: 2026-08-14 (v2.1651)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1651)
+
+### Migration pushes stop freezing app reads — stmt-blocks reruns go incremental (2026-08-14)
+Root-cause fix for the office-visible "Failed to load …: canceling statement due to statement timeout" toasts during today's Vehicles migration pushes (Roxi hit one at 18:42 UTC, ~4 min after the v2.1647 merge → push). [`apply_read_only_stmt_blocks()`](../supabase/migrations/20260814185815_read_only_stmt_blocks_skip_existing.sql) — which every CREATE TABLE migration must call — ran `DROP TRIGGER` + `CREATE TRIGGER` on **all ~250 RLS-enabled tables unconditionally**; DROP TRIGGER takes an ACCESS EXCLUSIVE lock (blocks even SELECTs) and every lock is held until the migration transaction commits, so each push queued all reads app-wide past `statement_timeout`. The migration's `lock_timeout = '3s'` guards the DDL from waiting on the app, not the app from waiting on the DDL. Redefined to skip tables that already carry the `read_only_block_stmt` trigger (matching `apply_read_only_write_blocks()`'s existing IF-NOT-EXISTS discipline), so the routine new-table rerun locks exactly the new table; changing the trigger definition itself now requires a one-off migration that DROPs first (the established pattern — `20260728235607` dropped `clock_sessions`' trigger explicitly). Migration is `CREATE OR REPLACE FUNCTION` + a self-test rerun — near-zero lock risk to apply. **Deploy: `supabase db push` after merge** (any time; no client coupling).
 
 ## Latest Updates (v2.1649)
 
