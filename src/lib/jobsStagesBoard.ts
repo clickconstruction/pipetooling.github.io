@@ -407,7 +407,7 @@ export type JobsStagesBoardLists = {
   collectionsRows: StageRow[]
 }
 
-/** In Collections = billed AND flagged; the flag alone is ignored on non-billed jobs (sticky flag semantics). */
+/** In Collections = billed AND flagged; a DB trigger clears the flag when the job transitions to paid (v2.1642). */
 export function jobInCollections(j: Pick<JobWithDetails, 'status' | 'collections_at'>): boolean {
   return ((j.status ?? 'working') as string) === 'billed' && j.collections_at != null
 }
