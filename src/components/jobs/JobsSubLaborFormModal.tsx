@@ -1457,34 +1457,39 @@ function JobsSubLaborFormModalInner(
                     (s, r) => s + lineLaborCost(r, laborModalLineFallbackRate),
                     0
                   )
-                  const itemizeTotalsFirstCell = (
-                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle' }}>
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          fontSize: '0.875rem',
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                          margin: 0,
-                          fontWeight: 500,
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={laborFixtureEntryMode === 'itemized'}
-                          onChange={(e) => handleLaborFixtureEntryModeToggle(e.target.checked)}
-                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                        />
-                        <span>Itemize hours and rate</span>
-                      </label>
-                    </td>
+                  const itemizeToggleLabel = (
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.875rem',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        margin: 0,
+                        fontWeight: 500,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={laborFixtureEntryMode === 'itemized'}
+                        onChange={(e) => handleLaborFixtureEntryModeToggle(e.target.checked)}
+                        style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                      />
+                      <span>Itemize hours and rate</span>
+                    </label>
                   )
+                  const itemizeTotalsFirstCell = (
+                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle' }}>{itemizeToggleLabel}</td>
+                  )
+                  const laborModalTotalHrs = laborFixtureRows.reduce((s, r) => {
+                    const hrs = Number(r.hrs_per_unit) || 0
+                    return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
+                  }, 0)
                   return (
                     <>
-                      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={laborFixtureEntryMode === 'simple' ? { border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' } : undefined}>
                         {laborFixtureEntryMode === 'simple' ? (
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                             <thead style={{ background: 'var(--bg-subtle)' }}>
@@ -1559,46 +1564,45 @@ function JobsSubLaborFormModalInner(
                             </tbody>
                           </table>
                         ) : (
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead style={{ background: 'var(--bg-subtle)' }}>
-                              <tr>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Specific Work (Line Items) <span style={{ color: 'var(--text-red-700)' }}>*</span></th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>hrs/unit</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>_</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Labor Hours</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Rate ($/hr)</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Cost</th>
-                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid var(--border)' }} />
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {laborFixtureRows.map((row) => {
-                                const hrsPerUnit = Number(row.hrs_per_unit) || 0
-                                const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
-                                return (
-                                  <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                                      <input
-                                        type="text"
-                                        value={row.fixture}
-                                        onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
-                                        placeholder="e.g. Toilet, Sink"
-                                        style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                                      />
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        step={1}
-                                        value={row.count || ''}
-                                        onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
-                                        onWheel={(e) => e.currentTarget.blur()}
-                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
-                                      />
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <div>
+                            {laborFixtureRows.map((row) => {
+                              const isFixed = row.is_fixed ?? false
+                              const hrsPerUnit = Number(row.hrs_per_unit) || 0
+                              const laborHrs = isFixed ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
+                              const tinyLabel: CSSProperties = { display: 'block', marginBottom: 2, fontSize: '0.6875rem', color: 'var(--text-muted)' }
+                              const numInput: CSSProperties = { padding: '0.3rem 0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', boxSizing: 'border-box' }
+                              return (
+                                <div key={row.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', marginBottom: '0.5rem' }}>
+                                  <label style={tinyLabel}>
+                                    Specific Work <span style={{ color: 'var(--text-red-700)' }}>*</span>
+                                  </label>
+                                  <textarea
+                                    rows={1}
+                                    value={row.fixture}
+                                    onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
+                                    placeholder="e.g. Toilet, Sink"
+                                    style={{ width: '100%', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'none', font: 'inherit', lineHeight: 1.35, boxSizing: 'border-box', ...({ fieldSizing: 'content' } as CSSProperties) }}
+                                  />
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.6rem', marginTop: '0.5rem' }}>
+                                    {!isFixed && (
+                                      <>
+                                        <div>
+                                          <label style={tinyLabel}>Count</label>
+                                          <input
+                                            type="number"
+                                            min={0}
+                                            step={1}
+                                            value={row.count || ''}
+                                            onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
+                                            onWheel={(e) => e.currentTarget.blur()}
+                                            style={{ ...numInput, width: '3.5rem' }}
+                                          />
+                                        </div>
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', paddingBottom: '0.45rem' }}>×</span>
+                                      </>
+                                    )}
+                                    <div>
+                                      <label style={tinyLabel}>{isFixed ? 'Hrs' : 'Hrs each'}</label>
                                       <input
                                         type="number"
                                         min={0}
@@ -1606,22 +1610,11 @@ function JobsSubLaborFormModalInner(
                                         value={row.hrs_per_unit || ''}
                                         onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                         onWheel={(e) => e.currentTarget.blur()}
-                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                                        style={{ ...numInput, width: '4rem' }}
                                       />
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={!!row.is_fixed}
-                                          onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
-                                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                        />
-                                        <span style={{ color: 'var(--text-muted)' }}>fixed</span>
-                                      </label>
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                    </div>
+                                    <div>
+                                      <label style={tinyLabel}>Rate $/hr</label>
                                       <input
                                         type="number"
                                         min={0}
@@ -1630,37 +1623,55 @@ function JobsSubLaborFormModalInner(
                                         onChange={(e) => updateLaborFixtureRow(row.id, { labor_rate: parseFloat(e.target.value) || 0 })}
                                         onWheel={(e) => e.currentTarget.blur()}
                                         placeholder="0"
-                                        style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                                        style={{ ...numInput, width: '4.5rem' }}
                                       />
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>
-                                      ${formatCurrency(lineLaborCost(row, laborModalLineFallbackRate))}
-                                    </td>
-                                    <td style={{ padding: '0.5rem' }}>
-                                      <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateLaborFixtureRow(row.id, { is_fixed: !isFixed })}
+                                      title="Fixed hours: enter total hours directly instead of count × hours"
+                                      style={{
+                                        padding: '0.25rem 0.7rem',
+                                        marginBottom: '0.15rem',
+                                        background: 'transparent',
+                                        color: isFixed ? 'var(--text-blue-500)' : 'var(--text-muted)',
+                                        border: isFixed ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                                        borderRadius: 999,
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        flexShrink: 0,
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {isFixed ? '✓ Fixed hrs' : 'Fixed hrs'}
+                                    </button>
+                                    <span style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{laborHrs.toFixed(2)} hrs</span>
+                                      <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>${formatCurrency(lineLaborCost(row, laborModalLineFallbackRate))}</span>
+                                    </span>
+                                    {editingLaborJob ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeLaborFixtureRow(row.id)}
+                                        disabled={laborFixtureRows.length <= 1}
+                                        style={{ padding: '0.25rem 0.5rem', marginBottom: '0.15rem', background: 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', flexShrink: 0 }}
+                                      >
                                         Remove
                                       </button>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                              <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
-                                {itemizeTotalsFirstCell}
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                                  {laborFixtureRows.reduce((s, r) => {
-                                    const hrs = Number(r.hrs_per_unit) || 0
-                                    return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
-                                  }, 0).toFixed(2)} hrs
-                                </td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborModalLinesSubtotal)}</td>
-                                <td style={{ padding: '0.5rem' }} />
-                              </tr>
-                            </tbody>
-                          </table>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+                              {itemizeToggleLabel}
+                              <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{laborFixtureRows.length} {laborFixtureRows.length === 1 ? 'item' : 'items'} · {laborModalTotalHrs.toFixed(2)} hrs · </span>
+                                ${formatCurrency(laborModalLinesSubtotal)}
+                              </span>
+                            </div>
+                          </div>
                         )}
                       </div>
                       <div
@@ -1673,7 +1684,7 @@ function JobsSubLaborFormModalInner(
                           marginTop: '0.75rem',
                         }}
                       >
-                        {!editingLaborJob && laborFixtureEntryMode === 'simple' ? (
+                        {!editingLaborJob ? (
                           <button
                             type="button"
                             onClick={() => {

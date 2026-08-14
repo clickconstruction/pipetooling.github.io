@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1634',
+    date: '2026-08-14',
+    title: 'Itemized sub labor gets readable',
+    kind: 'fix',
+    highlights: [
+      'Itemize hours and rate now shows one card per line item instead of a cramped table — nothing cut off on phones.',
+      'Each line labels its own Count, Hrs each, and Rate fields; a Fixed hrs pill switches a line to direct hours.',
+      'A totals bar sums items, hours, and dollars as you type.',
+    ],
+  },
+  {
     version: 'v2.1633',
     date: '2026-08-14',
     title: 'Sub labor payments remember when they were sent',
