@@ -259,7 +259,9 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           </div>
         ) : null}
         {empty ? (
-          <div style={{ color: 'var(--text-faint)', padding: '6px 0', textAlign: 'center' }}>
+          // Same vertical metrics as the one-line teaser so empty boxes match
+          // the height of boxes with one line of activity.
+          <div style={{ color: 'var(--text-faint)', marginTop: 2, lineHeight: 1.45, textAlign: 'center' }}>
             No activity yet — post the first note
           </div>
         ) : null}

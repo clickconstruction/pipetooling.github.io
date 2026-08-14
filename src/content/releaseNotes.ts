@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1658',
+    date: '2026-08-14',
+    title: 'Tidier Pipeline activity boxes',
+    kind: 'fix',
+    highlights: [
+      'Jobs → Pipeline: rows with no activity yet now show the same compact activity box as rows with one note, so the board lines up evenly.',
+    ],
+  },
+  {
     version: 'v2.1657',
     date: '2026-08-14',
     title: 'Job activity opens full page',
