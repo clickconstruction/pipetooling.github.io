@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildVehicleLedger,
+  currentInsurancePeriod,
   currentPossession,
+  lastEndedInsurancePeriod,
+  type FleetInsurancePeriod,
   daysBetweenYmd,
   fleetOilCounts,
   fleetSummary,
@@ -309,5 +312,59 @@ describe('handOffWrites', () => {
       newPossession: { vehicle_id: 'v1', user_id: 'u2', start_date: TODAY },
       odometerEntry: null,
     })
+  })
+})
+
+function insPeriod(over: Partial<FleetInsurancePeriod>): FleetInsurancePeriod {
+  return { id: 'i1', vehicle_id: 'v1', plan_id: 'plan1', start_date: '2026-01-09', end_date: null, created_at: null, ...over }
+}
+
+describe('insurance periods', () => {
+  it('finds the current coverage and ignores ended/future ones', () => {
+    const ended = insPeriod({ id: 'a', end_date: '2026-05-30' })
+    const open = insPeriod({ id: 'b', start_date: '2026-06-12' })
+    const future = insPeriod({ id: 'c', start_date: '2026-12-01' })
+    expect(currentInsurancePeriod([ended, open, future], TODAY)?.id).toBe('b')
+    expect(currentInsurancePeriod([ended], TODAY)).toBeNull()
+    expect(currentInsurancePeriod([], TODAY)).toBeNull()
+  })
+  it('same-day plan change resolves to the open-ended row', () => {
+    const old = insPeriod({ id: 'a', start_date: '2026-01-01', end_date: TODAY })
+    const now = insPeriod({ id: 'b', start_date: TODAY })
+    expect(currentInsurancePeriod([old, now], TODAY)?.id).toBe('b')
+  })
+  it('lastEndedInsurancePeriod picks the latest end date for "off since"', () => {
+    const first = insPeriod({ id: 'a', start_date: '2025-02-01', end_date: '2025-11-15' })
+    const second = insPeriod({ id: 'b', start_date: '2026-01-09', end_date: '2026-05-30' })
+    expect(lastEndedInsurancePeriod([first, second])?.id).toBe('b')
+    expect(lastEndedInsurancePeriod([insPeriod({ id: 'c' })])).toBeNull()
+    expect(lastEndedInsurancePeriod([])).toBeNull()
+  })
+})
+
+describe('buildVehicleLedger insurance rows', () => {
+  it('adds on/off rows with plan names, ordered with hand-offs above readings', () => {
+    const rows = buildVehicleLedger({
+      readings: [reading({ id: 'r1', read_date: '2026-06-12', odometer_value: 120000 })],
+      possessions: [],
+      valueEntries: [],
+      userNameById: new Map(),
+      insurancePeriods: [
+        insPeriod({ id: 'a', start_date: '2026-01-09', end_date: '2026-05-30' }),
+        insPeriod({ id: 'b', start_date: '2026-06-12', plan_id: 'plan2' }),
+      ],
+      planNameById: new Map([
+        ['plan1', 'Progressive Commercial'],
+        ['plan2', 'Hartford fleet'],
+      ]),
+    })
+    expect(rows.map((r) => [r.kind, r.dateYmd])).toEqual([
+      ['insurance_on', '2026-06-12'],
+      ['reading', '2026-06-12'],
+      ['insurance_off', '2026-05-30'],
+      ['insurance_on', '2026-01-09'],
+    ])
+    expect(rows[0]?.label).toBe('Added to Hartford fleet')
+    expect(rows[2]?.label).toBe('Taken off Progressive Commercial')
   })
 })

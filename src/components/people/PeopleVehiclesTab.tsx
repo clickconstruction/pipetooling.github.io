@@ -6,8 +6,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   buildVehicleLedger,
+  currentInsurancePeriod,
   currentPossession,
   fleetOilCounts,
+  lastEndedInsurancePeriod,
   fleetSummary,
   handOffWrites,
   lastOilChange,
@@ -24,6 +26,8 @@ import {
   vehicleDisplayName,
   vehicleMatchesSearch,
   vinTail,
+  type FleetInsurancePeriod,
+  type FleetInsurancePlan,
   type FleetOdometerEntry,
   type FleetPossession,
   type FleetProblemReport,
@@ -62,6 +66,7 @@ const LEDGER_FILTERS: Array<{ key: 'all' | VehicleLedgerRowKind; label: string }
   { key: 'service', label: 'Service' },
   { key: 'problem', label: 'Problems' },
   { key: 'handoff', label: 'Holders' },
+  { key: 'insurance_on', label: 'Insurance' },
   { key: 'value', label: 'Value' },
 ]
 
@@ -121,6 +126,26 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [handOffOdometer, setHandOffOdometer] = useState('')
   const [handOffSaving, setHandOffSaving] = useState(false)
 
+  const [insurancePlans, setInsurancePlans] = useState<FleetInsurancePlan[]>([])
+  const [insurancePeriodsAll, setInsurancePeriodsAll] = useState<FleetInsurancePeriod[]>([])
+  const [plansOpen, setPlansOpen] = useState(false)
+  const [planFormOpen, setPlanFormOpen] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<FleetInsurancePlan | null>(null)
+  const [planName, setPlanName] = useState('')
+  const [planCarrier, setPlanCarrier] = useState('')
+  const [planPolicy, setPlanPolicy] = useState('')
+  const [planRenewal, setPlanRenewal] = useState('')
+  const [planNote, setPlanNote] = useState('')
+  const [planSaving, setPlanSaving] = useState(false)
+  const [insVehicle, setInsVehicle] = useState<Vehicle | null>(null)
+  const [insPlanId, setInsPlanId] = useState('')
+  const [insStartDate, setInsStartDate] = useState(todayYmd)
+  const [insSaving, setInsSaving] = useState(false)
+  const [takeOffPeriod, setTakeOffPeriod] = useState<FleetInsurancePeriod | null>(null)
+  const [takeOffVehicleName, setTakeOffVehicleName] = useState('')
+  const [takeOffDate, setTakeOffDate] = useState(todayYmd)
+  const [takeOffSaving, setTakeOffSaving] = useState(false)
+
   const [valueFormOpen, setValueFormOpen] = useState(false)
   const [valueDate, setValueDate] = useState(todayYmd)
   const [valueAmount, setValueAmount] = useState('')
@@ -174,6 +199,25 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     for (const [k, v] of Object.entries(latestByVehicle)) m.set(k, v)
     return m
   }, [latestByVehicle])
+
+  const insuranceByVehicle = useMemo(() => {
+    const m = new Map<string, FleetInsurancePeriod>()
+    for (const v of vehicles) {
+      const p = currentInsurancePeriod(
+        insurancePeriodsAll.filter((x) => x.vehicle_id === v.id),
+        today,
+      )
+      if (p) m.set(v.id, p)
+    }
+    return m
+  }, [vehicles, insurancePeriodsAll, today])
+
+  const planNameById = useMemo(() => new Map(insurancePlans.map((p) => [p.id, p.name])), [insurancePlans])
+
+  const uninsuredCount = useMemo(
+    () => vehicles.filter((v) => !insuranceByVehicle.get(v.id)).length,
+    [vehicles, insuranceByVehicle],
+  )
 
   const summary = useMemo(
     () => fleetSummary(vehicles, holderByVehicle, latestMap, today),
@@ -233,13 +277,17 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
     const list = (vehiclesData ?? []) as Vehicle[]
     setVehicles(list)
+    // Plans load regardless of fleet size — the manager works with zero vehicles.
+    const { data: plansData } = await supabase.from('vehicle_insurance_plans').select('*').order('name')
+    setInsurancePlans((plansData ?? []) as FleetInsurancePlan[])
     const ids = list.map((v) => v.id)
     if (ids.length === 0) {
       setPossessionsAll([])
       setLatestByVehicle({})
+      setInsurancePeriodsAll([])
       return
     }
-    const [{ data: possData }, { data: odoData }, { data: oilData }, { data: probData }] = await Promise.all([
+    const [{ data: possData }, { data: odoData }, { data: oilData }, { data: probData }, { data: insData }] = await Promise.all([
       supabase.from('vehicle_possessions').select('*').in('vehicle_id', ids).order('start_date', { ascending: false }),
       supabase
         .from('vehicle_odometer_entries')
@@ -260,7 +308,14 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         .in('vehicle_id', ids)
         .is('resolved_at', null)
         .limit(2000),
+      supabase
+        .from('vehicle_insurance_periods')
+        .select('*')
+        .in('vehicle_id', ids)
+        .order('start_date', { ascending: false })
+        .limit(2000),
     ])
+    setInsurancePeriodsAll((insData ?? []) as FleetInsurancePeriod[])
     const probCounts: Record<string, number> = {}
     for (const [vid, n] of openProblemCounts((probData ?? []) as FleetProblemReport[])) probCounts[vid] = n
     setOpenProblemsByVehicle(probCounts)
@@ -483,6 +538,129 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
   }
 
+  function openPlanForm(p?: FleetInsurancePlan) {
+    setEditingPlan(p ?? null)
+    setPlanName(p?.name ?? '')
+    setPlanCarrier(p?.carrier ?? '')
+    setPlanPolicy(p?.policy_number ?? '')
+    setPlanRenewal(p?.renewal_date ?? '')
+    setPlanNote(p?.note ?? '')
+    setPlanFormOpen(true)
+  }
+
+  async function savePlan() {
+    if (planSaving) return
+    if (!planName.trim()) {
+      setError('Name the plan first')
+      return
+    }
+    const payload = {
+      name: planName.trim(),
+      carrier: planCarrier.trim() || null,
+      policy_number: planPolicy.trim() || null,
+      renewal_date: planRenewal || null,
+      note: planNote.trim() || null,
+    }
+    setPlanSaving(true)
+    const { error: err } = editingPlan
+      ? await supabase.from('vehicle_insurance_plans').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingPlan.id)
+      : await supabase.from('vehicle_insurance_plans').insert(payload)
+    setPlanSaving(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setPlanFormOpen(false)
+    setEditingPlan(null)
+    showToast(editingPlan ? 'Plan updated.' : 'Plan added.', 'success')
+    loadFleet()
+  }
+
+  async function deletePlan(p: FleetInsurancePlan) {
+    if (!window.confirm(`Delete plan "${p.name}"? Its coverage history deletes with it.`)) return
+    const { error: err } = await supabase.from('vehicle_insurance_plans').delete().eq('id', p.id)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    loadFleet()
+  }
+
+  function openAddToPlan(v: Vehicle) {
+    const cur = insuranceByVehicle.get(v.id)
+    setInsVehicle(v)
+    setInsPlanId(cur?.plan_id ?? insurancePlans[0]?.id ?? '')
+    setInsStartDate(todayYmd())
+  }
+
+  async function submitAddToPlan() {
+    if (!insVehicle || insSaving) return
+    if (!insPlanId) {
+      setError('Select a plan')
+      return
+    }
+    const open = currentInsurancePeriod(
+      insurancePeriodsAll.filter((p) => p.vehicle_id === insVehicle.id),
+      today,
+    )
+    setInsSaving(true)
+    try {
+      if (open) {
+        // Plan change: close the current coverage on the new start date.
+        const { error: endErr } = await supabase
+          .from('vehicle_insurance_periods')
+          .update({ end_date: insStartDate })
+          .eq('id', open.id)
+        if (endErr) {
+          setError(endErr.message)
+          return
+        }
+      }
+      const { error: insErr } = await supabase.from('vehicle_insurance_periods').insert({
+        vehicle_id: insVehicle.id,
+        plan_id: insPlanId,
+        start_date: insStartDate,
+        created_by: authUser?.id ?? null,
+      })
+      if (insErr) {
+        setError(insErr.message)
+        return
+      }
+      setError(null)
+      showToast(`Added to ${planNameById.get(insPlanId) ?? 'plan'}.`, 'success')
+      setInsVehicle(null)
+      loadFleet()
+    } finally {
+      setInsSaving(false)
+    }
+  }
+
+  function openTakeOff(period: FleetInsurancePeriod, vehicleName: string) {
+    setTakeOffPeriod(period)
+    setTakeOffVehicleName(vehicleName)
+    setTakeOffDate(todayYmd())
+  }
+
+  async function submitTakeOff() {
+    if (!takeOffPeriod || takeOffSaving) return
+    setTakeOffSaving(true)
+    const { error: err } = await supabase
+      .from('vehicle_insurance_periods')
+      .update({ end_date: takeOffDate })
+      .eq('id', takeOffPeriod.id)
+    setTakeOffSaving(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setTakeOffPeriod(null)
+    showToast('Taken off insurance.', 'success')
+    loadFleet()
+  }
+
   async function submitService() {
     if (!selectedVehicleId || serviceSaving) return
     const odo = serviceOdometer.trim() ? parseOdometerInput(serviceOdometer) : null
@@ -609,7 +787,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             ? 'vehicle_service_events'
             : kind === 'problem' || kind === 'problem_resolved'
               ? 'vehicle_problem_reports'
-              : 'vehicle_possessions'
+              : kind === 'insurance_on' || kind === 'insurance_off'
+                ? 'vehicle_insurance_periods'
+                : 'vehicle_possessions'
     const { error: err } = await supabase.from(table).delete().eq('id', sourceId)
     if (err) {
       setError(err.message)
@@ -627,9 +807,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       valueEntries: panelValues,
       serviceEvents: panelServiceEvents,
       problemReports: panelProblems,
+      insurancePeriods: insurancePeriodsAll.filter((p) => p.vehicle_id === selectedVehicleId),
+      planNameById,
       userNameById,
     })
-  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, possessionsAll, userNameById])
+  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, possessionsAll, insurancePeriodsAll, planNameById, userNameById])
 
   const visibleLedgerRows = useMemo(
     () =>
@@ -639,7 +821,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             (r) =>
               r.kind === ledgerFilter ||
               (ledgerFilter === 'handoff' && r.kind === 'return') ||
-              (ledgerFilter === 'problem' && r.kind === 'problem_resolved'),
+              (ledgerFilter === 'problem' && r.kind === 'problem_resolved') ||
+              (ledgerFilter === 'insurance_on' && r.kind === 'insurance_off'),
           ),
     [ledgerRows, ledgerFilter],
   )
@@ -725,6 +908,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               onChange={(e) => setSearch(e.target.value)}
               style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', minWidth: 200 }}
             />
+            <button type="button" onClick={() => setPlansOpen(true)} style={{ ...actionBtn, whiteSpace: 'nowrap' }}>
+              Insurance plans
+            </button>
             <button
               type="button"
               onClick={() => openVehicleForm()}
@@ -737,6 +923,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <span style={chipStyle('plain')}>{summary.total} vehicle{summary.total === 1 ? '' : 's'}</span>
           {summary.unassigned > 0 && <span style={chipStyle('amber')}>{summary.unassigned} unassigned</span>}
+          {uninsuredCount > 0 && <span style={chipStyle('amber')}>{uninsuredCount} not on insurance</span>}
           {summary.staleReadings > 0 && <span style={chipStyle('amber')}>{summary.staleReadings} need a reading</span>}
           {oilCounts.dueSoon > 0 && <span style={chipStyle('amber')}>{oilCounts.dueSoon} oil due soon</span>}
           {oilCounts.overdue > 0 && <span style={chipStyle('red')}>{oilCounts.overdue} oil overdue</span>}
@@ -781,10 +968,23 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     if (s.state === 'unknown') return null
                     return <span style={chipStyle(oilChipToneFor(s.state))}>{oilChipLabel(s)}</span>
                   })()}
+                  {(() => {
+                    const cur = insuranceByVehicle.get(selectedVehicle.id)
+                    return cur ? (
+                      <span style={chipStyle('green')}>
+                        {planNameById.get(cur.plan_id) ?? 'Insurance plan'} · since {formatYmdShort(cur.start_date)}
+                      </span>
+                    ) : (
+                      <span style={chipStyle('amber')}>Not on insurance</span>
+                    )
+                  })()}
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <button type="button" style={actionBtn} onClick={() => openHandOff(selectedVehicle)}>
                     {holderByVehicle.get(selectedVehicle.id) ? 'Hand off' : 'Assign'}
+                  </button>
+                  <button type="button" style={actionBtn} onClick={() => openAddToPlan(selectedVehicle)}>
+                    Insurance
                   </button>
                   <button
                     type="button"
@@ -997,13 +1197,15 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                 ? 'Problem'
                                 : r.kind === 'problem_resolved'
                                   ? 'Resolved'
-                                  : 'Hand-off'}
+                                  : r.kind === 'insurance_on' || r.kind === 'insurance_off'
+                                    ? 'Insurance'
+                                    : 'Hand-off'}
                       </span>
                       <span style={{ flex: 1, minWidth: 0 }}>{r.label}</span>
                       <span style={{ textAlign: 'right', width: 90, flexShrink: 0, color: r.odometer == null && r.amount == null ? 'var(--text-muted)' : undefined }}>
                         {r.odometer != null ? `${r.odometer.toLocaleString()} mi` : r.amount != null ? `$${formatCurrency(r.amount)}` : '—'}
                       </span>
-                      {r.kind !== 'return' && r.kind !== 'problem_resolved' && (
+                      {r.kind !== 'return' && r.kind !== 'problem_resolved' && r.kind !== 'insurance_off' && (
                         <button
                           type="button"
                           onClick={() => deleteLedgerRow(r.kind, r.sourceId)}
@@ -1067,6 +1269,41 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       </span>
                     )}
                   </div>
+                  {(() => {
+                    const cur = insuranceByVehicle.get(v.id)
+                    const lastEnded = cur
+                      ? null
+                      : lastEndedInsurancePeriod(insurancePeriodsAll.filter((x) => x.vehicle_id === v.id))
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem' }}>
+                          {cur ? (
+                            <>
+                              <span style={{ fontWeight: 600 }}>{planNameById.get(cur.plan_id) ?? 'Insurance plan'}</span>
+                              <span style={{ color: 'var(--text-muted)' }}> · on plan since {formatYmdShort(cur.start_date)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontWeight: 600, color: 'var(--text-amber-800)' }}>Not on insurance</span>
+                              {lastEnded?.end_date && (
+                                <span style={{ color: 'var(--text-muted)' }}> · off since {formatYmdShort(lastEnded.end_date)}</span>
+                              )}
+                            </>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          style={{ ...actionBtn, flexShrink: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openAddToPlan(v)
+                          }}
+                        >
+                          {cur ? 'Change' : 'Add to plan'}
+                        </button>
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
@@ -1355,6 +1592,248 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={submitValueEntry} style={{ padding: '0.5rem 1rem' }}>Save</button>
               <button type="button" onClick={() => setValueFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {plansOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 560, width: '92%', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0 }}>Insurance plans</h3>
+              <button type="button" style={actionBtn} onClick={() => openPlanForm()}>
+                + Add plan
+              </button>
+            </div>
+            {insurancePlans.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                No plans yet. Add the company's insurance plans, then put each vehicle on one from its card.
+              </p>
+            ) : (
+              insurancePlans.map((plan) => {
+                const onPlan = vehicles.filter((v) => insuranceByVehicle.get(v.id)?.plan_id === plan.id)
+                const meta = [plan.carrier, plan.policy_number ? `Policy ${plan.policy_number}` : null, plan.renewal_date ? `renews ${formatYmdShort(plan.renewal_date)}` : null]
+                  .filter(Boolean)
+                  .join(' · ')
+                return (
+                  <div key={plan.id} style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: '0.75rem', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.9rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{plan.name}</div>
+                        {(meta || plan.note) && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{meta || plan.note}</div>
+                        )}
+                      </div>
+                      <span style={chipStyle(onPlan.length > 0 ? 'green' : 'plain')}>
+                        {onPlan.length} vehicle{onPlan.length === 1 ? '' : 's'}
+                      </span>
+                      <button type="button" style={actionBtn} onClick={() => openPlanForm(plan)}>Edit</button>
+                      <button type="button" style={{ ...actionBtn, color: 'var(--text-red-700)' }} onClick={() => deletePlan(plan)}>
+                        Delete
+                      </button>
+                    </div>
+                    {onPlan.length > 0 && (
+                      <div style={{ borderTop: '1px solid var(--border)' }}>
+                        {onPlan.map((v) => {
+                          const period = insuranceByVehicle.get(v.id)
+                          if (!period) return null
+                          return (
+                            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.9rem', fontSize: '0.8125rem', borderTop: '1px solid var(--border)' }}>
+                              <span style={{ flex: 1, minWidth: 0 }}>{vehicleDisplayName(v)}</span>
+                              <span style={{ color: 'var(--text-muted)' }}>since {formatYmdShort(period.start_date)}</span>
+                              <button type="button" style={actionBtn} onClick={() => openTakeOff(period, vehicleDisplayName(v))}>
+                                Take off
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setPlansOpen(false)} style={{ padding: '0.5rem 1rem' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {planFormOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
+            <h3 style={{ marginTop: 0 }}>{editingPlan ? 'Edit plan' : 'Add insurance plan'}</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Name *</label>
+              <input type="text" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="e.g. Progressive Commercial" style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Carrier</label>
+              <input type="text" value={planCarrier} onChange={(e) => setPlanCarrier(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Policy number</label>
+              <input type="text" value={planPolicy} onChange={(e) => setPlanPolicy(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Renewal date</label>
+              <input type="date" value={planRenewal} onChange={(e) => setPlanRenewal(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Note</label>
+              <input type="text" value={planNote} onChange={(e) => setPlanNote(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setPlanFormOpen(false); setEditingPlan(null) }} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={savePlan}
+                disabled={planSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: planSaving ? '#9ca3af' : '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: planSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {planSaving ? '…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {insVehicle && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>
+              {insuranceByVehicle.get(insVehicle.id) ? 'Change insurance plan' : 'Add to insurance'}
+            </h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {vehicleDisplayName(insVehicle)}
+              {(() => {
+                const cur = insuranceByVehicle.get(insVehicle.id)
+                if (cur) return ` · currently ${planNameById.get(cur.plan_id) ?? 'on a plan'}`
+                const lastEnded = lastEndedInsurancePeriod(insurancePeriodsAll.filter((x) => x.vehicle_id === insVehicle.id))
+                return lastEnded?.end_date ? ` · off insurance since ${formatYmdShort(lastEnded.end_date)}` : ' · not on insurance'
+              })()}
+            </p>
+            {insurancePlans.length === 0 ? (
+              <>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
+                  No plans yet — add the company's insurance plans first.
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setInsVehicle(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsVehicle(null)
+                      setPlansOpen(true)
+                      openPlanForm()
+                    }}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                  >
+                    Add a plan
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Plan *</label>
+                  <select value={insPlanId} onChange={(e) => setInsPlanId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                    <option value="">— Select —</option>
+                    {insurancePlans.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Start date</label>
+                  <input type="date" value={insStartDate} onChange={(e) => setInsStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                </div>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {insuranceByVehicle.get(insVehicle.id)
+                    ? 'Ends the current coverage on the start date and keeps the history.'
+                    : 'Starts the coverage on this date.'}
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  {(() => {
+                    const cur = insuranceByVehicle.get(insVehicle.id)
+                    if (!cur) return null
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const name = vehicleDisplayName(insVehicle)
+                          setInsVehicle(null)
+                          openTakeOff(cur, name)
+                        }}
+                        style={{ ...actionBtn, marginRight: 'auto', color: 'var(--text-amber-800)' }}
+                      >
+                        Take off insurance…
+                      </button>
+                    )
+                  })()}
+                  <button type="button" onClick={() => setInsVehicle(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                  <button
+                    type="button"
+                    onClick={submitAddToPlan}
+                    disabled={insSaving}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: insSaving ? '#9ca3af' : '#3b82f6',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: insSaving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {insSaving ? '…' : insuranceByVehicle.get(insVehicle.id) ? 'Change plan' : 'Add to plan'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {takeOffPeriod && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>Take off insurance</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {takeOffVehicleName} · {planNameById.get(takeOffPeriod.plan_id) ?? 'plan'} since {formatYmdShort(takeOffPeriod.start_date)}
+            </p>
+            <div style={{ marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>End date</label>
+              <input type="date" value={takeOffDate} onChange={(e) => setTakeOffDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Ends the coverage on this date. The history stays on the vehicle's ledger, and the vehicle can go back on a plan any time.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setTakeOffPeriod(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={submitTakeOff}
+                disabled={takeOffSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: takeOffSaving ? '#9ca3af' : '#d97706',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: takeOffSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {takeOffSaving ? '…' : 'Take off'}
+              </button>
             </div>
           </div>
         </div>

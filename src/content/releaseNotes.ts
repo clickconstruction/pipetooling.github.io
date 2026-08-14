@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1660',
+    date: '2026-08-14',
+    title: 'Vehicle insurance plans',
+    kind: 'feature',
+    highlights: [
+      'People → Vehicles: every card now shows which insurance plan covers the vehicle and since when — or an amber "Not on insurance" with the date it came off.',
+      'A new Insurance plans button manages the company\'s plans (carrier, policy number, renewal date) and lists each plan\'s vehicles.',
+      'Add to plan, Change, and Take off set dated coverage — vehicles keep a full on/off history in their ledger as they\'re driven or parked.',
+    ],
+  },
+  {
     version: 'v2.1659',
     date: '2026-08-14',
     title: 'Faster Pipeline activity loading',

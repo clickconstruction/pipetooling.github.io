@@ -43,6 +43,24 @@ export type FleetValueEntry = {
   created_at: string | null
 }
 
+export type FleetInsurancePlan = {
+  id: string
+  name: string
+  carrier: string | null
+  policy_number: string | null
+  renewal_date: string | null
+  note: string | null
+}
+
+export type FleetInsurancePeriod = {
+  id: string
+  vehicle_id: string
+  plan_id: string
+  start_date: string
+  end_date: string | null
+  created_at: string | null
+}
+
 export function vehicleDisplayName(v: Pick<FleetVehicle, 'year' | 'make' | 'model'>): string {
   return [v.year != null ? String(v.year) : '', v.make, v.model].map((s) => (s ?? '').trim()).filter(Boolean).join(' ') || 'Vehicle'
 }
@@ -54,13 +72,15 @@ export function vinTail(vin: string | null | undefined): string | null {
   return t.length <= 4 ? t : `…${t.slice(-4)}`
 }
 
+type DatedPeriod = { start_date: string; end_date: string | null; created_at: string | null }
+
 /**
- * The possession that holds the vehicle today: started on/before today and not
- * ended before today. Overlaps resolve to the open-ended one first, then the
- * latest start (so a same-day hand-off puts the vehicle with the new holder).
+ * The period active today: started on/before today and not ended before today.
+ * Overlaps resolve to the open-ended one first, then the latest start (so a
+ * same-day hand-off puts the vehicle with the new holder/plan).
  */
-export function currentPossession(possessions: FleetPossession[], todayYmd: string): FleetPossession | null {
-  const open = possessions.filter((p) => p.start_date <= todayYmd && (p.end_date == null || p.end_date >= todayYmd))
+function currentDatedPeriod<T extends DatedPeriod>(periods: T[], todayYmd: string): T | null {
+  const open = periods.filter((p) => p.start_date <= todayYmd && (p.end_date == null || p.end_date >= todayYmd))
   if (open.length === 0) return null
   open.sort((a, b) => {
     const aOpenEnded = a.end_date == null ? 1 : 0
@@ -70,6 +90,31 @@ export function currentPossession(possessions: FleetPossession[], todayYmd: stri
     return (b.created_at ?? '').localeCompare(a.created_at ?? '')
   })
   return open[0] ?? null
+}
+
+/** The possession that holds the vehicle today (see currentDatedPeriod). */
+export function currentPossession(possessions: FleetPossession[], todayYmd: string): FleetPossession | null {
+  return currentDatedPeriod(possessions, todayYmd)
+}
+
+/** The insurance coverage active today — a vehicle sits on at most one plan at a time. */
+export function currentInsurancePeriod(periods: FleetInsurancePeriod[], todayYmd: string): FleetInsurancePeriod | null {
+  return currentDatedPeriod(periods, todayYmd)
+}
+
+/**
+ * The most recently ended coverage — powers "off insurance since <date>" on
+ * cards with no current plan. Null when the vehicle was never on a plan.
+ */
+export function lastEndedInsurancePeriod(periods: FleetInsurancePeriod[]): FleetInsurancePeriod | null {
+  let best: FleetInsurancePeriod | null = null
+  for (const p of periods) {
+    if (p.end_date == null) continue
+    if (best == null || p.end_date > (best.end_date ?? '') || (p.end_date === best.end_date && (p.created_at ?? '') > (best.created_at ?? ''))) {
+      best = p
+    }
+  }
+  return best
 }
 
 /** Latest reading by read date (entry order breaks same-day ties). */
@@ -284,7 +329,16 @@ export function openProblemCounts(reports: FleetProblemReport[]): Map<string, nu
   return m
 }
 
-export type VehicleLedgerRowKind = 'reading' | 'handoff' | 'return' | 'value' | 'service' | 'problem' | 'problem_resolved'
+export type VehicleLedgerRowKind =
+  | 'reading'
+  | 'handoff'
+  | 'return'
+  | 'value'
+  | 'service'
+  | 'problem'
+  | 'problem_resolved'
+  | 'insurance_on'
+  | 'insurance_off'
 
 export type VehicleLedgerRow = {
   key: string
@@ -311,8 +365,10 @@ export function buildVehicleLedger(args: {
   userNameById: ReadonlyMap<string, string>
   serviceEvents?: FleetServiceEvent[]
   problemReports?: FleetProblemReport[]
+  insurancePeriods?: FleetInsurancePeriod[]
+  planNameById?: ReadonlyMap<string, string>
 }): VehicleLedgerRow[] {
-  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [] } = args
+  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [], insurancePeriods = [], planNameById } = args
   const name = (id: string | null | undefined): string | null => {
     if (!id) return null
     return userNameById.get(id) ?? null
@@ -411,14 +467,39 @@ export function buildVehicleLedger(args: {
       })
     }
   }
+  for (const p of insurancePeriods) {
+    const plan = planNameById?.get(p.plan_id) ?? 'insurance'
+    rows.push({
+      key: `insurance-on-${p.id}`,
+      kind: 'insurance_on',
+      dateYmd: p.start_date,
+      label: `Added to ${plan}`,
+      odometer: null,
+      amount: null,
+      sourceId: p.id,
+    })
+    if (p.end_date != null) {
+      rows.push({
+        key: `insurance-off-${p.id}`,
+        kind: 'insurance_off',
+        dateYmd: p.end_date,
+        label: `Taken off ${plan}`,
+        odometer: null,
+        amount: null,
+        sourceId: p.id,
+      })
+    }
+  }
   const kindOrder: Record<VehicleLedgerRowKind, number> = {
     return: 0,
     handoff: 1,
-    problem_resolved: 2,
-    problem: 3,
-    service: 4,
-    reading: 5,
-    value: 6,
+    insurance_off: 2,
+    insurance_on: 3,
+    problem_resolved: 4,
+    problem: 5,
+    service: 6,
+    reading: 7,
+    value: 8,
   }
   rows.sort((a, b) => {
     if (a.dateYmd !== b.dateYmd) return b.dateYmd.localeCompare(a.dateYmd)
