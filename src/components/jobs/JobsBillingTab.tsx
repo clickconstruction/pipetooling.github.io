@@ -233,11 +233,10 @@ export default function JobsBillingTab({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job #</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractors</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Specific Work</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Other job charges</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractors</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Bill</th>
                 <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid var(--border)' }} />
               </tr>
@@ -245,8 +244,8 @@ export default function JobsBillingTab({
             <tbody>
               {sortedBillingJobs.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                  <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                       <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
                       {(() => {
                         const chip = jobPickerStatusChip(job.status ?? 'working')
@@ -257,7 +256,6 @@ export default function JobsBillingTab({
                           </span>
                         )
                       })()}
-                    </div>
                     {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
                       <button
                         type="button"
@@ -280,9 +278,8 @@ export default function JobsBillingTab({
                         </svg>
                       </span>
                     )}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <div>{job.job_name || '—'}</div>
+                    </div>
+                    <div style={{ marginTop: '0.35rem' }}>{job.job_name || '—'}</div>
                     {(() => {
                       const fmt = formatAddressTwoLines(job.job_address)
                       if (!fmt) return null
@@ -294,16 +291,16 @@ export default function JobsBillingTab({
                       )
                     })()}
                   </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {job.team_members.length === 0
+                      ? '—'
+                      : job.team_members.map((t) => t.users?.name ?? 'Unknown').join(', ')}
+                  </td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 180 }}>
                     {billingFixturesCellText(job.fixtures)}
                   </td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 200 }}>
                     {billingMaterialsCellText(job.materials)}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
-                    {job.team_members.length === 0
-                      ? '—'
-                      : job.team_members.map((t) => t.users?.name ?? 'Unknown').join(', ')}
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
@@ -372,7 +369,7 @@ export default function JobsBillingTab({
             </tbody>
             <tfoot>
               <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
-                <td colSpan={5} style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                <td colSpan={4} style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   {totals.count} {totals.count === 1 ? 'job' : 'jobs'}
                   {attentionOnly ? ' needing labor' : ''}
                 </td>

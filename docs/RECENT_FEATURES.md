@@ -7,10 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1619)
+last_updated: 2026-08-13 (v2.1622)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1622)
+
+### Billing tab: Contractors column moves next to Job (2026-08-13)
+Owner follow-up on the v2.1620 column merge. [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): column order becomes Job · Contractors · Specific Work · Other job charges · Total Bill — who's on the job reads immediately after which job it is. Header + body cells reordered; nothing else changes. Client-only — no migration.
+
+## Latest Updates (v2.1620)
+
+### Billing tab: Job # and Job columns merge into one (2026-08-13)
+Owner follow-up on the v2.1619 refit. [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): the identity cell (trade pill + number + stage chip + the red labor-capture icons) and the name/address cell become ONE Job column — identity row on top, name and muted two-line address beneath; the freed width goes to Specific Work / Other job charges. Footer colSpan follows (5→4); render-smoke sort assertions read the leading job number from the merged cell. Verified live against prod. Client-only — no migration.
 
 ## Latest Updates (v2.1619)
 

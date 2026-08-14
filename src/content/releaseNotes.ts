@@ -11,6 +11,24 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1622',
+    date: '2026-08-13',
+    title: 'Billing tab: contractors next to the job',
+    kind: 'fix',
+    highlights: [
+      'The Contractors column now sits right after the Job column.',
+    ],
+  },
+  {
+    version: 'v2.1620',
+    date: '2026-08-13',
+    title: 'Tighter Billing tab rows',
+    kind: 'fix',
+    highlights: [
+      'The Job # and Job columns are now one \u2014 number, stage, name, and address together, with more room for the line items.',
+    ],
+  },
+  {
     version: 'v2.1619',
     date: '2026-08-13',
     title: 'Billing tab works as an audit again',
