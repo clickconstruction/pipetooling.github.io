@@ -3,6 +3,8 @@ import type { UserRow } from '../../hooks/usePeopleRoster'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { decimalToHms, hmsToDecimal } from '../../lib/people/hoursGridTime'
 import { shouldOfferManualHoursSession } from '../../lib/people/shouldOfferManualHoursSession'
+import { formatDaySheetDayLabel, hoursGridCellStatus } from '../../lib/people/hoursGridDaySheet'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import {
   type PeopleHoursPendingByCellMap,
   type PeopleHoursPendingCellEntry,
@@ -78,6 +80,12 @@ export function PeopleHoursGrid({
   // Escape routes through blur (the single commit path) but must not commit; a ref, not
   // state, because blur fires synchronously after the keydown that sets it.
   const cancelNextCommitRef = useRef(false)
+  // v2.1655 mobile day sheet: below 640px the cell is ONE tap target and its
+  // actions (hours edit, pending approve, My Time, day audit) live in a bottom
+  // sheet — the 72px input, !N badge, and 24px corner are unhittable on phones.
+  const isNarrow = useNarrowViewport640()
+  const [daySheetCell, setDaySheetCell] = useState<{ personName: string; workDate: string } | null>(null)
+  const [daySheetHoursValue, setDaySheetHoursValue] = useState('')
 
   return (
     <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
@@ -275,7 +283,70 @@ export function PeopleHoursGrid({
                         : {}),
                     }}
                   >
-                    {!canEdit ? (
+                    {isNarrow ? (
+                      (() => {
+                        const status = hoursGridCellStatus({
+                          pendingCount: showPendingBadge && pendingEntry ? pendingEntry.count : 0,
+                          missingJob,
+                        })
+                        return (
+                          <button
+                            type="button"
+                            aria-label={`Open day actions for ${personName} on ${d}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDaySheetCell({ personName, workDate: d })
+                              setDaySheetHoursValue(decimalToHms(gridDisplayHrs) || '')
+                            }}
+                            style={{
+                              width: '100%',
+                              minHeight: 44,
+                              padding: '0.2rem 0.1rem',
+                              border: 'none',
+                              background: 'none',
+                              font: 'inherit',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 1,
+                              position: 'relative',
+                            }}
+                          >
+                            <span style={{ color: dayLocked ? 'var(--text-600)' : undefined }}>
+                              {decimalToHms(gridDisplayHrs) || '-'}
+                            </span>
+                            {status.word ? (
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
+                                  lineHeight: 1,
+                                  color: status.tone === 'missing' ? 'var(--text-red-700)' : 'var(--text-amber-800)',
+                                }}
+                              >
+                                {status.word}
+                              </span>
+                            ) : null}
+                            {showMyTimeCorner ? (
+                              <span
+                                aria-hidden
+                                style={{
+                                  position: 'absolute',
+                                  left: 3,
+                                  bottom: 3,
+                                  width: 7,
+                                  height: 7,
+                                  borderRadius: '50%',
+                                  background: '#0f766e',
+                                }}
+                              />
+                            ) : null}
+                          </button>
+                        )
+                      })()
+                    ) : !canEdit ? (
                       <span style={{ color: 'var(--text-muted)' }}>{decimalToHms(gridDisplayHrs) || '-'}</span>
                     ) : dayLocked ? (
                       canEdit ? (
@@ -358,7 +429,7 @@ export function PeopleHoursGrid({
                         style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                       />
                     )}
-                    {showMyTimeCorner ? (
+                    {!isNarrow && showMyTimeCorner ? (
                       <div
                         style={{
                           position: 'absolute',
@@ -405,7 +476,7 @@ export function PeopleHoursGrid({
                         </button>
                       </div>
                     ) : null}
-                    {showPendingBadge && pendingEntry ? (
+                    {!isNarrow && showPendingBadge && pendingEntry ? (
                       <button
                         type="button"
                         aria-label={`${pendingEntry.count} pending session${pendingEntry.count === 1 ? '' : 's'} for ${personName} on ${d} — adds ${pendingEntry.diffHours.toFixed(2)} hours to payroll. Click to review and approve.`}
@@ -613,6 +684,156 @@ export function PeopleHoursGrid({
         })()}
       </tfoot>
     </table>
+    {daySheetCell ? (() => {
+      const { personName, workDate } = daySheetCell
+      const pendingEntry = peopleHoursPendingByCellMap.get(pendingByCellKey(personName, workDate))
+      const showPending = !!pendingEntry && (canAccessHours || canAccessPay)
+      const missingJob = isCorrectDayMissingJob(personName, workDate)
+      const dayLocked = hoursDaysCorrect.has(workDate)
+      const canEdit = canEditHours(personName)
+      const sheetUser = users.find((x) => (x.name ?? '').trim() === personName.trim())
+      const rowBtn = (tone: 'amber' | 'teal' | 'plain'): React.CSSProperties => ({
+        width: '100%',
+        minHeight: 52,
+        textAlign: 'left',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.6rem',
+        borderRadius: 10,
+        padding: '0.5rem 0.75rem',
+        marginBottom: '0.5rem',
+        cursor: 'pointer',
+        font: 'inherit',
+        background: tone === 'amber' ? 'var(--bg-amber-tint)' : tone === 'teal' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)',
+        border: tone === 'amber' ? '1px solid var(--border-amber)' : tone === 'teal' ? '1px solid #5eead4' : '1px solid var(--border)',
+        color: tone === 'amber' ? 'var(--text-amber-800)' : tone === 'teal' ? 'var(--text-green-800)' : 'var(--text-700)',
+      })
+      const commitSheetHours = () => {
+        const v = hmsToDecimal(daySheetHoursValue)
+        const offer = shouldOfferManualHoursSession({
+          hoursDecimal: v,
+          canAccessHours,
+          canAccessPay,
+          canEditHours: canEdit,
+          dayIsMarkedCorrect: dayLocked,
+        })
+        setDaySheetCell(null)
+        if (offer) openManualHoursDraftFromBlur(personName, workDate, v)
+        else void saveHours(personName, workDate, v)
+      }
+      return (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDaySheetCell(null)
+          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 40, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Day actions for ${personName} on ${workDate}`}
+            style={{
+              width: '100%',
+              background: 'var(--surface)',
+              borderRadius: '14px 14px 0 0',
+              padding: '0.6rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+              boxShadow: '0 -8px 24px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div aria-hidden style={{ width: 36, height: 4, borderRadius: 999, background: 'var(--border-strong)', margin: '0 auto 0.6rem' }} />
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>
+                {personName} · {formatDaySheetDayLabel(workDate)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDaySheetCell(null)}
+                aria-label="Close"
+                style={{ border: 'none', background: 'none', fontSize: '1rem', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.2rem' }}
+              >
+                ✕
+              </button>
+            </div>
+            {canEdit && !dayLocked ? (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={daySheetHoursValue}
+                  onChange={(e) => setDaySheetHoursValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitSheetHours()
+                  }}
+                  placeholder="-"
+                  style={{ flex: 1, minWidth: 0, height: 44, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, textAlign: 'right', fontSize: '1rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={commitSheetHours}
+                  style={{ height: 44, padding: '0 1.1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textAlign: 'right' }}>
+                {decimalToHms(getHoursGridDisplayHours(personName, workDate)) || '-'} h
+              </div>
+            )}
+            {missingJob ? (
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--bg-red-200)', borderRadius: 8, padding: '0.45rem 0.7rem', marginBottom: '0.5rem' }}>
+                Hours but no job assignment — assign in Crew Jobs / Bids.
+              </div>
+            ) : null}
+            {showPending && pendingEntry ? (
+              <button
+                type="button"
+                onClick={(e) => setPendingCellPopover({ anchorEl: e.currentTarget, entry: pendingEntry })}
+                style={rowBtn('amber')}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>
+                    {pendingEntry.count} pending session{pendingEntry.count === 1 ? '' : 's'} · +{pendingEntry.diffHours.toFixed(2)} h
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.75rem' }}>Review and approve</span>
+                </span>
+                <span aria-hidden>›</span>
+              </button>
+            ) : null}
+            {sheetUser?.id ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setDaySheetCell(null)
+                  openHoursMyTimeForGridCell(personName, workDate)
+                }}
+                style={rowBtn('teal')}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>Open My Time</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem' }}>Sessions, jobs, and the day editor</span>
+                </span>
+                <span aria-hidden>›</span>
+              </button>
+            ) : null}
+            {dayLocked && canEdit ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setDaySheetCell(null)
+                  setHoursDayAuditModal({ personName, workDate })
+                }}
+                style={rowBtn('plain')}
+              >
+                <span style={{ flex: 1, minWidth: 0, fontSize: '0.875rem' }}>Day marked Correct — view audit</span>
+                <span aria-hidden>›</span>
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )
+    })() : null}
     </div>
   )
 }

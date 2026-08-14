@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1655',
+    date: '2026-08-14',
+    title: 'Hours grid works on phones',
+    kind: 'feature',
+    highlights: [
+      'On a phone, every Hours-grid cell is now one big tap target — no more tiny badges and corner icons to hit.',
+      'Tapping a day slides up a sheet with a full-size hours box, a Review-and-approve row for pending sessions, and Open My Time.',
+      'Desktop keeps the inline editing and badges exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1654',
     date: '2026-08-14',
     title: 'Pending sessions folds away',

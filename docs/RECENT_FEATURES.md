@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1654)
+last_updated: 2026-08-14 (v2.1655)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1655)
+
+### Hours grid on phones: one tap target per cell, actions in a day sheet (2026-08-14)
+Owner-approved mockup ("these icons are okay on desktop but hard to click on mobile"). Below 640px ([`useNarrowViewport640`](../src/hooks/useNarrowViewport640.ts)), each [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx) cell becomes ONE 44px-min button — the 72px inline input, the `!N` pending badge, and the 24px My Time corner are gone from cells, replaced by passive status (the existing tints + a small word: amber `2 pending`, red `no job`, a teal dot for My Time) with precedence pinned by kernel [`hoursGridCellStatus`](../src/lib/people/hoursGridDaySheet.ts). Tapping opens a **bottom day sheet** ("Bryan · Wed Aug 12", locale-safe label from `formatDaySheetDayLabel`): a full-size hours box + Save that commits through the exact desktop blur path (`shouldOfferManualHoursSession` → manual-session offer or `saveHours`), an amber **Review and approve** row opening the same pending popover (anchored to the row, z-under the popover's 50), a teal **Open My Time** row, a **view audit** row on Correct-locked days, and the missing-job notice. Desktop is untouched (`!isNarrow` guards the old overlays; existing keyboard-commit render tests unchanged). Kernel +2 tests; new render smoke mocks the hook narrow and walks cell → sheet → pending/My Time wiring. Verified live at 375px on real data (Bryan Aug 12: 3 pending +1.42h → popover with the session list) and desktop restored (105 inputs / 42 corners / 25 badges). Help guide `work-the-hours-grid-on-a-phone` (new). Client-only — no migration.
 
 ## Latest Updates (v2.1654)
 
