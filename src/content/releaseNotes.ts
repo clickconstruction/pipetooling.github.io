@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1616',
+    date: '2026-08-13',
+    title: 'New Sub Labor picks the job for you',
+    kind: 'feature',
+    highlights: [
+      'New Sub Labor entries start with the standard job search — pick the job and the number, address, and crew fill themselves.',
+      'A job is now required on new entries; old entries keep their typed fields when edited.',
+    ],
+  },
+  {
     version: 'v2.1615',
     date: '2026-08-13',
     title: 'Tell Dispatch which supply house you want',
