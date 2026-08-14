@@ -1,4 +1,3 @@
-import { JobIdentityCell } from '../search/JobIdentityCell'
 import { useEffect, useMemo, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
@@ -16,6 +15,7 @@ import {
 } from '../../lib/jobs/billingTab'
 import { jobBilledUnpaidDollars } from '../../lib/jobs/invoiceBilling'
 import { jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
+import { renderStagesJobHcpChip } from './jobsStagesRowShared'
 
 /**
  * Jobs → Billing tab (Stage B of the Jobs.tsx decomposition — see
@@ -43,8 +43,6 @@ export type JobsBillingTabProps = {
   teamLaborLoading: boolean
   openNew: () => void
   openEdit: (job: JobWithDetails) => void
-  /** Switch to Sub Labor with the labor form prefilled from this job (parent-owned cross-tab flow). */
-  onFillLaborFromBilling: (job: JobWithDetails) => void
 }
 
 export default function JobsBillingTab({
@@ -61,7 +59,6 @@ export default function JobsBillingTab({
   teamLaborLoading,
   openNew,
   openEdit,
-  onFillLaborFromBilling,
 }: JobsBillingTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
@@ -246,7 +243,8 @@ export default function JobsBillingTab({
                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
+                      {/* v2.1623: the Pipeline "926 PLUM" merged chip — one unwrappable badge. */}
+                      {renderStagesJobHcpChip(job) ?? <span>—</span>}
                       {(() => {
                         const chip = jobPickerStatusChip(job.status ?? 'working')
                         if (!chip) return null
@@ -256,18 +254,6 @@ export default function JobsBillingTab({
                           </span>
                         )
                       })()}
-                    {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
-                      <button
-                        type="button"
-                        onClick={() => onFillLaborFromBilling(job)}
-                        title="Add Labor: fill from Billing and open Labor"
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="#b91c1c" aria-hidden="true">
-                          <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
-                        </svg>
-                      </button>
-                    )}
                     {job.hcp_number && authRole !== 'primary' && !teamLaborLoading && !teamLaborJobIds.has(job.id) && (
                       <span
                         title="No Team Job Labor for this job"

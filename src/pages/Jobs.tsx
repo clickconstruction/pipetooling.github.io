@@ -1494,22 +1494,6 @@ export default function Jobs() {
   }
 
 
-  function fillLaborFromBillingJobAndSwitch(job: JobWithDetails) {
-    setActiveTab('sub_sheet_ledger')
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.set('tab', 'sub_sheet_ledger')
-      return next
-    })
-    subLaborFormRef.current?.openWithBillingPrefill({
-      jobNumber: job.hcp_number ?? '',
-      address: job.job_address ?? '',
-      teamMemberNames: (job.team_members ?? [])
-        .map((t) => t.users?.name?.trim())
-        .filter((n): n is string => !!n),
-    })
-  }
-
    
 
   // updateJobPctComplete / commitStagesPctWithNote / setInvoiceEstimatedBillDate /
@@ -1838,7 +1822,6 @@ export default function Jobs() {
           teamLaborLoading={teamLaborLoading}
           openNew={openNew}
           openEdit={openEdit}
-          onFillLaborFromBilling={fillLaborFromBillingJobAndSwitch}
         />
       )}
 

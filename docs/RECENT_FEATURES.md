@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-13 (v2.1622)
+last_updated: 2026-08-13 (v2.1623)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1623)
+
+### Billing tab: Pipeline's merged number chip; Add-Labor icon retired (2026-08-13)
+Owner request ("remove the add labor button… plum J926 can become plum J926 like on jobs pipeline"). [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx): the identity swaps from `JobIdentityCell` (separate pill + `J926`, which could stack in the narrow merged cell) to Pipeline's **merged `926 PLUM` chip** (`renderStagesJobHcpChip` — one unwrappable badge, trade color, `Job: N` fallback). The **red Add-Labor fill icon is removed** — labor-capture gaps still surface through the v2.1619 "Needs labor" filter (predicate unchanged) and Sub Labor's own job picker made the fill flow redundant; the no-Team-Job-Labor icon stays. Dead code swept: `onFillLaborFromBilling` prop and Jobs.tsx's `fillLaborFromBillingJobAndSwitch` (the Sub Labor modal's `openWithBillingPrefill` handle remains for the ?editLabor deep link). Render tests updated (5/5). Client-only — no migration.
 
 ## Latest Updates (v2.1622)
 

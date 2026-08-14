@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1623',
+    date: '2026-08-13',
+    title: 'Billing tab matches Pipeline\u2019s job chip',
+    kind: 'fix',
+    highlights: [
+      'Job numbers show as the same one-piece \u201c926 PLUM\u201d chip Pipeline uses.',
+      'The little red Add-Labor icon is gone \u2014 use the Needs labor filter to find jobs missing labor.',
+    ],
+  },
+  {
     version: 'v2.1622',
     date: '2026-08-13',
     title: 'Billing tab: contractors next to the job',
