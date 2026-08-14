@@ -33,8 +33,7 @@ function makeProps(overrides: Partial<JobsBillingTabProps> = {}): JobsBillingTab
     teamLaborLoading: false,
     openNew: vi.fn(),
     openEdit: vi.fn(),
-    onFillLaborFromBilling: vi.fn(),
-    ...overrides,
+        ...overrides,
   }
 }
 
@@ -78,8 +77,9 @@ describe('JobsBillingTab render smoke', () => {
     )
     expect(screen.getByText('Alpha Remodel')).toBeTruthy()
     expect(screen.getByText('Beta Repipe')).toBeTruthy()
-    // Red icon 1: Add Labor fill button (only alpha qualifies)
-    expect(screen.getAllByTitle('Add Labor: fill from Billing and open Labor')).toHaveLength(1)
+    // The Add Labor fill button is gone (v2.1623) — labor gaps surface via the
+    // Needs labor filter; only the team-labor icon remains on rows.
+    expect(screen.queryByTitle('Add Labor: fill from Billing and open Labor')).toBeNull()
     // Red icon 2: missing Team Job Labor flag (only alpha qualifies)
     expect(screen.getAllByTitle('No Team Job Labor for this job')).toHaveLength(1)
     expect(screen.getByText('Tech One')).toBeTruthy()
@@ -88,7 +88,6 @@ describe('JobsBillingTab render smoke', () => {
   it('hides both red icons for the primary role', () => {
     const { alpha } = twoJobs()
     renderWithProviders(<JobsBillingTab {...makeProps({ jobs: [alpha], authRole: 'primary' })} />)
-    expect(screen.queryByTitle('Add Labor: fill from Billing and open Labor')).toBeNull()
     expect(screen.queryByTitle('No Team Job Labor for this job')).toBeNull()
   })
 
@@ -110,15 +109,15 @@ describe('JobsBillingTab render smoke', () => {
     // sort assertions read just the leading job number.
     const rowText = () =>
       Array.from(document.querySelectorAll('tbody tr td:first-child')).map((td) =>
-        ((td.textContent ?? '').trim().match(/^J\d+/) ?? [''])[0],
+        ((td.textContent ?? '').trim().match(/\d+/) ?? [''])[0],
       )
     // Default: highest HCP first (desc)
-    expect(rowText()).toEqual(['J2002', 'J2001'])
+    expect(rowText()).toEqual(['2002', '2001'])
     fireEvent.click(screen.getByRole('button', { name: 'Sort descending' }))
-    expect(rowText()).toEqual(['J2001', 'J2002'])
+    expect(rowText()).toEqual(['2001', '2002'])
     expect(localStorage.getItem(`jobs_billing_sort_asc_${AUTH_USER_ID}`)).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Sort ascending' }))
-    expect(rowText()).toEqual(['J2002', 'J2001'])
+    expect(rowText()).toEqual(['2002', '2001'])
     expect(localStorage.getItem(`jobs_billing_sort_asc_${AUTH_USER_ID}`)).toBe('false')
   })
 })
