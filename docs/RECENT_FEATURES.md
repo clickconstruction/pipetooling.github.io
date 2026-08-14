@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1633)
+last_updated: 2026-08-14 (v2.1634)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1634)
+
+### Sub Labor itemize view: line-item cards replace the 8-column table (2026-08-14)
+Owner request ("in the itemize hours and rate view, on desktop and mobile it looks horrible") — built from an approved mockup. [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx): the itemized `<table>` (8 columns, wrapping headers, horizontal cut-off on phones) becomes **one card per line item** — Specific Work as the v2.1630 wrap-as-you-type textarea on top, then a self-labeled math row (**Count × Hrs each**, **Rate $/hr**) with the line's computed hrs + cost right-aligned; the cryptic per-row `fixed` checkbox is now a **Fixed hrs pill** that hides Count and relabels to plain **Hrs** when active. A totals bar under the cards holds the Itemize checkbox (shared `itemizeToggleLabel` with the simple-mode table) plus `N items · X hrs · $Y`. The wizard's bottom **Remove** (last row) now covers itemized mode too; per-card Remove renders in edit mode only. Simple mode untouched. Verified live at desktop + 375px mobile (wrap, live math, pill toggle both ways, add/remove). Render tests 7/7. Help guide `record-sub-labor-on-a-job` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1633)
 
