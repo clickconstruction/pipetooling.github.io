@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../pay/PersonOffsetFormModal'
+import { personOffsetBalances } from '../../lib/people/personMoneyLedger'
+import PersonMoneyLedgerModal from './PersonMoneyLedgerModal'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
@@ -30,6 +32,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
   const [offsetToApply, setOffsetToApply] = useState<PersonOffset | null>(null)
   const [offsetApplyPayStubId, setOffsetApplyPayStubId] = useState('')
   const [offsetsTabSearch, setOffsetsTabSearch] = useState('')
+  const [ledgerPersonName, setLedgerPersonName] = useState<string | null>(null)
 
   const offsetPersonNameOptions = useMemo(
     () =>
@@ -91,6 +94,13 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     if (err) setOffsetsError(err.message)
     else loadOffsets()
   }
+
+  const balances = useMemo(() => personOffsetBalances(offsets), [offsets])
+  const filteredBalances = useMemo(() => {
+    const q = offsetsTabSearch.trim().toLowerCase()
+    if (!q) return balances
+    return balances.filter((b) => b.personName.toLowerCase().includes(q))
+  }, [balances, offsetsTabSearch])
 
   const offsetsTabSearching = offsetsTabSearch.trim().length > 0
   const filteredOffsets = useMemo(() => {
@@ -188,6 +198,63 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Balances</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  pending offsets not yet applied to a pay report — click a person for their full ledger
+                </span>
+              </div>
+              {filteredBalances.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+                  {balances.length === 0 ? 'No offsets recorded yet.' : 'No people match the search.'}
+                </p>
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                  {filteredBalances.map((b, i) => (
+                    <div
+                      key={b.personName}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setLedgerPersonName(b.personName)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setLedgerPersonName(b.personName)
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.5rem 0.9rem',
+                        borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        background: 'var(--surface)',
+                      }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>{b.personName}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {b.pendingCount > 0 ? `${b.pendingCount} pending` : 'settled'}
+                      </span>
+                      <span
+                        style={{
+                          width: 110,
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontWeight: 600,
+                          color: b.pendingNet < 0 ? 'var(--text-red-700)' : b.pendingNet > 0 ? 'var(--text-green-800)' : 'var(--text-muted)',
+                        }}
+                      >
+                        {b.pendingNet < 0 ? '−' : b.pendingNet > 0 ? '+' : ''}${formatCurrency(Math.abs(b.pendingNet))}
+                      </span>
+                      <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>›</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {offsetsTabSearching && offsets.length > 0 && filteredOffsets.length === 0 ? (
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No offsets match this search.</p>
             ) : null}
@@ -346,6 +413,15 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
             </div>
           </div>
         </div>
+      )}
+
+      {ledgerPersonName != null && (
+        <PersonMoneyLedgerModal
+          personName={ledgerPersonName}
+          offsets={offsets.filter((o) => o.person_name.trim().toLowerCase() === ledgerPersonName.trim().toLowerCase())}
+          payStubs={payStubs.filter((s) => s.person_name.trim().toLowerCase() === ledgerPersonName.trim().toLowerCase())}
+          onClose={() => setLedgerPersonName(null)}
+        />
       )}
     </>
   )
