@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1667',
+    date: '2026-08-14',
+    title: 'Ledger shows every pay state',
+    kind: 'fix',
+    highlights: [
+      'The person money ledger now reads the payments actually recorded on Payroll — each installment shows as Paid with its real date and memo, and partially paid reports show the balance remaining.',
+      'Pending now means exactly one thing: no payment has been recorded for that report.',
+      'A third state joins the timeline: weeks with approved hours but no pay report at all show as red "No report" rows, with a header count so nothing worked ever slips through unreported.',
+      'The pay statement lists each recorded payment with its date and amount.',
+    ],
+  },
+  {
     version: 'v2.1666',
     date: '2026-08-14',
     title: 'People balances and pay statements',

@@ -24,8 +24,20 @@ export type PayStubLike = {
   period_end: string
   hours_total: number
   gross_pay: number
+  /** LEGACY paid marker — modern payments live in pay_stub_payments rows. */
   paid_at: string | null
 }
+
+/** A recorded payment installment against a pay report (pay_stub_payments). */
+export type StubPaymentLike = {
+  id: string
+  pay_stub_id: string
+  amount: number
+  paid_at: string
+  memo: string | null
+}
+
+const FULLY_PAID_TOLERANCE = 0.01
 
 export const OFFSET_TYPE_LABELS: Record<string, string> = {
   backcharge: 'Backcharge',
@@ -78,24 +90,72 @@ export function personOffsetBalances(offsets: PersonOffsetLike[]): PersonBalance
 
 export type PersonLedgerRow = {
   key: string
-  kind: 'offset' | 'payment' | 'payment_pending'
+  kind: 'offset' | 'payment' | 'payment_pending' | 'unreported'
   dateYmd: string
   typeLabel: string
   label: string
-  /** Signed: offsets carry their sign; payments are positive. */
+  /** Signed: offsets carry their sign; payments are positive; unreported rows carry 0. */
   amount: number
   /** Offsets only: already applied to a pay report. */
   applied?: boolean
+  /** Unreported rows: approved hours in the week with no pay report. */
+  hours?: number
+}
+
+/** One approved-hours day from the Hours grid (people_hours). */
+export type ApprovedDayHours = { workDate: string; hours: number }
+
+export type UncoveredWeek = { weekStart: string; weekEnd: string; hours: number }
+
+function ymdAddDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days))
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
+}
+
+/** The Sunday on/before ymd (pay report periods run Sunday–Saturday). */
+function weekStartSunday(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dow = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()
+  return ymdAddDays(ymd, -dow)
 }
 
 /**
- * The person ledger's date-interleaved timeline: every offset (signed) and
- * every pay report (paid → its paid date; unpaid → period end, flagged
- * pending), newest first.
+ * Approved worked days covered by NO pay report period, grouped into
+ * Sunday–Saturday weeks — the "worked but never rolled into a pay report"
+ * state the office needs to see. Newest week first.
+ */
+export function uncoveredApprovedWeeks(args: {
+  dayHours: ApprovedDayHours[]
+  payStubs: Array<Pick<PayStubLike, 'period_start' | 'period_end'>>
+}): UncoveredWeek[] {
+  const byWeek = new Map<string, number>()
+  for (const d of args.dayHours) {
+    const hours = Number(d.hours)
+    if (!Number.isFinite(hours) || hours <= 0) continue
+    const covered = args.payStubs.some((s) => d.workDate >= s.period_start && d.workDate <= s.period_end)
+    if (covered) continue
+    const ws = weekStartSunday(d.workDate)
+    byWeek.set(ws, (byWeek.get(ws) ?? 0) + hours)
+  }
+  return [...byWeek.entries()]
+    .map(([weekStart, hours]) => ({ weekStart, weekEnd: ymdAddDays(weekStart, 6), hours: Math.round(hours * 100) / 100 }))
+    .sort((a, b) => b.weekStart.localeCompare(a.weekStart))
+}
+
+/**
+ * The person ledger's date-interleaved timeline: every offset (signed), every
+ * RECORDED payment (pay_stub_payments — one row per installment, dated by its
+ * actual paid date), a remaining-balance pending row for partially paid
+ * reports, legacy stub.paid_at-only reports as paid, and reports with no
+ * payment at all as pending (dated period end). Newest first.
  */
 export function buildOffsetPaymentTimeline(args: {
   offsets: PersonOffsetLike[]
   payStubs: PayStubLike[]
+  stubPayments?: StubPaymentLike[]
+  /** Weeks of approved hours with no pay report (uncoveredApprovedWeeks). */
+  uncoveredWeeks?: UncoveredWeek[]
 }): PersonLedgerRow[] {
   const rows: PersonLedgerRow[] = []
   for (const o of args.offsets) {
@@ -109,19 +169,93 @@ export function buildOffsetPaymentTimeline(args: {
       applied: o.pay_stub_id != null,
     })
   }
+  const paymentsByStub = new Map<string, StubPaymentLike[]>()
+  for (const p of args.stubPayments ?? []) {
+    const arr = paymentsByStub.get(p.pay_stub_id) ?? []
+    arr.push(p)
+    paymentsByStub.set(p.pay_stub_id, arr)
+  }
   for (const s of args.payStubs) {
-    const paid = s.paid_at != null
+    const stubLabel = `Pay report ${s.period_start} – ${s.period_end} · ${s.hours_total} h`
+    const payments = paymentsByStub.get(s.id) ?? []
+    if (payments.length > 0) {
+      let paidSum = 0
+      for (const p of payments) {
+        paidSum += Number(p.amount)
+        const memo = (p.memo ?? '').trim()
+        rows.push({
+          key: `stubpay-${p.id}`,
+          kind: 'payment',
+          dateYmd: p.paid_at.slice(0, 10),
+          typeLabel: 'Paid',
+          label: memo ? `${stubLabel} · ${memo}` : stubLabel,
+          amount: p.amount,
+        })
+      }
+      const remaining = Math.round((s.gross_pay - paidSum) * 100) / 100
+      if (remaining > FULLY_PAID_TOLERANCE) {
+        rows.push({
+          key: `stub-remaining-${s.id}`,
+          kind: 'payment_pending',
+          dateYmd: s.period_end,
+          typeLabel: 'Pending',
+          label: `Balance remaining · ${stubLabel}`,
+          amount: remaining,
+        })
+      }
+    } else if (s.paid_at != null) {
+      // Legacy: marked paid before per-payment rows existed.
+      rows.push({
+        key: `stub-${s.id}`,
+        kind: 'payment',
+        dateYmd: s.paid_at.slice(0, 10),
+        typeLabel: 'Paid',
+        label: stubLabel,
+        amount: s.gross_pay,
+      })
+    } else {
+      rows.push({
+        key: `stub-${s.id}`,
+        kind: 'payment_pending',
+        dateYmd: s.period_end,
+        typeLabel: 'Pending',
+        label: stubLabel,
+        amount: s.gross_pay,
+      })
+    }
+  }
+  for (const w of args.uncoveredWeeks ?? []) {
     rows.push({
-      key: `stub-${s.id}`,
-      kind: paid ? 'payment' : 'payment_pending',
-      dateYmd: paid ? (s.paid_at as string).slice(0, 10) : s.period_end,
-      typeLabel: paid ? 'Paid' : 'Pending',
-      label: `Pay report ${s.period_start} – ${s.period_end} · ${s.hours_total} h`,
-      amount: s.gross_pay,
+      key: `unreported-${w.weekStart}`,
+      kind: 'unreported',
+      dateYmd: w.weekEnd,
+      typeLabel: 'No report',
+      label: `No pay report yet · ${w.weekStart} – ${w.weekEnd} · ${w.hours} h approved`,
+      amount: 0,
+      hours: w.hours,
     })
   }
   rows.sort((a, b) => (a.dateYmd !== b.dateYmd ? b.dateYmd.localeCompare(a.dateYmd) : a.key.localeCompare(b.key)))
   return rows
+}
+
+/** Sum of recorded payments (plus legacy paid_at-only stub grosses) inside a range. */
+export function paidTotalInRange(args: {
+  payStubs: PayStubLike[]
+  stubPayments: StubPaymentLike[]
+  rangeStart: string | null
+  rangeEnd: string | null
+}): number {
+  const inRange = (ymd: string) => (args.rangeStart == null || ymd >= args.rangeStart) && (args.rangeEnd == null || ymd <= args.rangeEnd)
+  const stubsWithPayments = new Set(args.stubPayments.map((p) => p.pay_stub_id))
+  let total = 0
+  for (const p of args.stubPayments) {
+    if (inRange(p.paid_at.slice(0, 10))) total += Number(p.amount)
+  }
+  for (const s of args.payStubs) {
+    if (s.paid_at != null && !stubsWithPayments.has(s.id) && inRange(s.paid_at.slice(0, 10))) total += s.gross_pay
+  }
+  return Math.round(total * 100) / 100
 }
 
 export type PersonWorkDay = { workDate: string; hours: number; jobLabel: string }
@@ -139,25 +273,44 @@ export type PayStatementPayment = {
 }
 
 /**
- * Statement content: every PAID report in range, each with the period's job
- * hours (from the person's per-day labor allocation) and its applied offsets.
+ * Statement content: every RECORDED payment in range (pay_stub_payments,
+ * dated by its actual paid date; legacy paid_at-only reports count whole),
+ * each carrying its report period's job hours (from the person's per-day
+ * labor allocation) and the report's applied offsets (listed once, on the
+ * newest payment of that report).
  */
 export function buildPayStatementPayments(args: {
   payStubs: PayStubLike[]
   offsets: PersonOffsetLike[]
   workDays: PersonWorkDay[]
+  stubPayments?: StubPaymentLike[]
   rangeStart: string | null
   rangeEnd: string | null
 }): PayStatementPayment[] {
-  const paid = args.payStubs.filter((s) => {
-    if (s.paid_at == null) return false
+  const inRange = (ymd: string) => (args.rangeStart == null || ymd >= args.rangeStart) && (args.rangeEnd == null || ymd <= args.rangeEnd)
+  const stubById = new Map(args.payStubs.map((s) => [s.id, s]))
+  const stubsWithPayments = new Set((args.stubPayments ?? []).map((p) => p.pay_stub_id))
+
+  type Entry = { paidAtYmd: string; amount: number; stub: PayStubLike; sortKey: string }
+  const entries: Entry[] = []
+  for (const p of args.stubPayments ?? []) {
+    const stub = stubById.get(p.pay_stub_id)
+    if (!stub) continue
+    const ymd = p.paid_at.slice(0, 10)
+    if (!inRange(ymd)) continue
+    entries.push({ paidAtYmd: ymd, amount: p.amount, stub, sortKey: p.paid_at })
+  }
+  for (const s of args.payStubs) {
+    if (s.paid_at == null || stubsWithPayments.has(s.id)) continue
     const ymd = s.paid_at.slice(0, 10)
-    if (args.rangeStart != null && ymd < args.rangeStart) return false
-    if (args.rangeEnd != null && ymd > args.rangeEnd) return false
-    return true
-  })
-  paid.sort((a, b) => (b.paid_at as string).localeCompare(a.paid_at as string))
-  return paid.map((s) => {
+    if (!inRange(ymd)) continue
+    entries.push({ paidAtYmd: ymd, amount: s.gross_pay, stub: s, sortKey: s.paid_at })
+  }
+  entries.sort((a, b) => b.sortKey.localeCompare(a.sortKey))
+
+  const offsetsListed = new Set<string>()
+  return entries.map((e) => {
+    const s = e.stub
     const byJob = new Map<string, number>()
     for (const d of args.workDays) {
       if (d.workDate < s.period_start || d.workDate > s.period_end) continue
@@ -167,15 +320,19 @@ export function buildPayStatementPayments(args: {
       .map(([label, hours]) => ({ label, hours: Math.round(hours * 100) / 100 }))
       .filter((l) => l.hours > 0)
       .sort((a, b) => b.hours - a.hours)
-    const offsets = args.offsets
-      .filter((o) => o.pay_stub_id === s.id)
-      .map((o) => ({
-        label: (o.description ?? '').trim() || (OFFSET_TYPE_LABELS[o.type] ?? o.type),
-        amount: offsetSignedAmount(o.type, o.amount),
-      }))
+    // The report's offsets appear once — on its newest payment in the list.
+    const offsets = offsetsListed.has(s.id)
+      ? []
+      : args.offsets
+          .filter((o) => o.pay_stub_id === s.id)
+          .map((o) => ({
+            label: (o.description ?? '').trim() || (OFFSET_TYPE_LABELS[o.type] ?? o.type),
+            amount: offsetSignedAmount(o.type, o.amount),
+          }))
+    offsetsListed.add(s.id)
     return {
-      paidAtYmd: (s.paid_at as string).slice(0, 10),
-      gross: s.gross_pay,
+      paidAtYmd: e.paidAtYmd,
+      gross: e.amount,
       periodStart: s.period_start,
       periodEnd: s.period_end,
       hoursTotal: s.hours_total,

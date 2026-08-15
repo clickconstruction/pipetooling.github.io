@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1666)
+last_updated: 2026-08-14 (v2.1667)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1667)
+
+### Person ledger: recorded payments + "no pay report yet" weeks (2026-08-14)
+Owner caught it minutes after v2.1666 shipped ("what does pending mean?"): the ledger read only the LEGACY `pay_stubs.paid_at` marker, but the Payroll **Record payment** flow writes `pay_stub_payments` rows (date/amount/memo) without setting it — so every modern-paid report showed amber Pending. [`personMoneyLedger.ts`](../src/lib/people/personMoneyLedger.ts): `buildOffsetPaymentTimeline` takes `stubPayments` — one green **Paid** row per recorded installment dated by its actual paid date (memo appended, e.g. "· Cashapp"), a **Balance remaining** pending row for partially paid reports (tolerance $0.01 matching `isPayStubFullyPaid`), legacy `paid_at`-only reports still count whole, and truly unrecorded reports stay Pending (now meaningful). New `paidTotalInRange` (payments + legacy without double counting) powers the stat card; `buildPayStatementPayments` emits one statement entry per recorded payment (report offsets listed once, on its newest payment). [`PersonMoneyLedgerModal`](../src/components/people/PersonMoneyLedgerModal.tsx) fetches `pay_stub_payments` for the person's reports. **Plus the third state (owner follow-up "paid, unpaid, and un-recorded as a pay report yet")**: kernel `uncoveredApprovedWeeks` groups approved Hours-grid days (`people_hours` by person) covered by NO pay report period into Sunday–Saturday weeks → red **No report** timeline rows ("No pay report yet · 2026-03-08 – 2026-03-14 · 32.21 h approved", dated by week end, no dollar figure) and a red header chip ("6 weeks with no pay report"). +7 kernel tests. Verified live: Tristen flipped from all-Pending to $12,079.23 paid in range with Cashapp memos, one genuinely unrecorded report surfaced, and six pre-first-report weeks (Feb–Mar, ~194 h) came out of hiding. Client-only — no migration.
 
 ## Latest Updates (v2.1666)
 
