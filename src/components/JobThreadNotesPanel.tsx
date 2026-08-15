@@ -1,17 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { type ReportForView } from './ReportViewModal'
 import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
-import {
-  formatStagesCompactWindow,
-  formatStagesNextDateLabel,
-  type StagesUpcomingAppointment,
-} from '../lib/stagesUpcomingSchedule'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
 import { ACTIVITY_FILTERS, countActivityByFilter, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
@@ -43,7 +36,7 @@ export type JobThreadStampActions = {
 }
 
 type JobThreadNotesPanelProps = {
-  /** Merged notes + job field reports (Jobs Stages / Workflow). When set, `notes` is ignored. */
+  /** Merged notes + job field reports (Job detail modal / Job Mode). When set, `notes` is ignored. */
   activity?: JobThreadActivityItem[]
   /** Note-only (e.g. Job detail modal). Used when `activity` is omitted. */
   notes?: JobThreadNoteRow[]
@@ -62,21 +55,13 @@ type JobThreadNotesPanelProps = {
   showEmptyPlaceholder?: boolean
   /** When false, hide the visible "Add a note" label; textarea keeps placeholder / aria-label. */
   showComposerLabel?: boolean
-  /** Jobs Stages: open Schedule modal (planner roles only). */
-  scheduleAction?: { onClick: () => void; disabled?: boolean }
-  /** Week grid: navigate to Schedule dispatch (same roles + superintendent when job has team). */
-  scheduleDispatchAction?: { onClick: () => void; disabled?: boolean }
   /** Quick stamps for job ledger thread notes (typically Job Detail modal via **`jobThreadStampActions`**). */
   jobThreadStampActions?: JobThreadStampActions
-  /** Max height for the scrollable activity list (newest items at bottom). */
-  activityListMaxHeight?: string
   /** Passed to {@link displayReportTemplateName} for report row titles and ReportViewModal. */
   viewerRole?: UserRole | null
-  /** Show the All/Notes/Status/Billing/Crew segmented filter. Defaults on when `activity` is provided. */
-  showFilter?: boolean
-  /** Stages % complete (jobs_ledger.pct_complete); null when never set. Enables the "Set % complete" control. */
+  /** Pipeline % complete (jobs_ledger.pct_complete); null when never set. Enables the "Set % complete" control. */
   pctComplete?: number | null
-  /** Whether the viewer may edit the percent (dev / master / assistant / primary on Stages). */
+  /** Whether the viewer may edit the percent (dev / master / assistant / primary). */
   canEditPct?: boolean
   /** True while the percent commit is in flight. */
   pctSaving?: boolean
@@ -88,79 +73,9 @@ type JobThreadNotesPanelProps = {
   onCommitPct?: (value: number, note: string) => void | Promise<void>
   /** People assigned to the job (jobs_ledger_team_members). Shown top-left. */
   teamMembers?: Array<{ user_id: string; name: string | null }>
-  /** Far-left "people" button — opens the add/remove-people modal. Editors only. */
-  peopleAction?: { onClick: () => void; disabled?: boolean }
-  /**
-   * Fullscreen toggle (Jobs Stages): shows an expand/compress button in the
-   * header; while active the panel PORTALS to document.body as a fixed
-   * overlay at z 1001 — above the app chrome (top bar 50, mobile bottom nav
-   * 1000) and the table's sticky cells, below the modals it can spawn
-   * (people 1002, schedule 1002). The portal is required: inline, the
-   * table's position:sticky wrapper traps the overlay in a low stacking
-   * context and the chrome paints over it.
-   */
-  fullscreenControl?: { active: boolean; onToggle: () => void }
-  /** Rendered at the very top ONLY while fullscreen is active (job number / service type / name / address on Stages). */
-  fullscreenHeader?: ReactNode
-  /** Pinned "Next appointment" strip above the feed (Jobs Stages): the job's next upcoming schedule block. */
-  nextAppointment?: StagesUpcomingAppointment | null
 }
 
-const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
-
-function JobThreadScheduleButton({
-  action,
-}: {
-  action: NonNullable<JobThreadNotesPanelProps['scheduleAction']>
-}) {
-  return (
-    <button
-      type="button"
-      onClick={action.onClick}
-      disabled={action.disabled}
-      style={{
-        padding: '0.3rem 0.65rem',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        background: action.disabled ? 'var(--bg-200)' : '#15803d',
-        color: action.disabled ? 'var(--text-muted)' : '#ffffff',
-        border: `1px solid ${action.disabled ? '#d1d5db' : '#166534'}`,
-        borderRadius: 4,
-        cursor: action.disabled ? 'not-allowed' : 'pointer',
-        flexShrink: 0,
-      }}
-    >
-      Schedule
-    </button>
-  )
-}
-
-function JobThreadWeekDispatchButton({
-  action,
-}: {
-  action: NonNullable<JobThreadNotesPanelProps['scheduleDispatchAction']>
-}) {
-  return (
-    <button
-      type="button"
-      onClick={action.onClick}
-      disabled={action.disabled}
-      style={{
-        padding: '0.3rem 0.65rem',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        background: action.disabled ? 'var(--bg-200)' : 'var(--surface)',
-        color: action.disabled ? 'var(--text-muted)' : 'var(--text-blue-700)',
-        border: `1px solid ${action.disabled ? '#d1d5db' : '#2563eb'}`,
-        borderRadius: 4,
-        cursor: action.disabled ? 'not-allowed' : 'pointer',
-        flexShrink: 0,
-      }}
-    >
-      Week dispatch
-    </button>
-  )
-}
+const ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
 
 function JobThreadStampButtons({
   actions,
@@ -221,21 +136,13 @@ export function JobThreadNotesPanel({
   showSectionTitle = true,
   showEmptyPlaceholder = true,
   showComposerLabel = true,
-  scheduleAction,
-  scheduleDispatchAction,
   jobThreadStampActions,
-  activityListMaxHeight = DEFAULT_ACTIVITY_LIST_MAX_HEIGHT,
   viewerRole,
-  showFilter,
   pctComplete,
   canEditPct = false,
   pctSaving = false,
   onCommitPct,
   teamMembers,
-  peopleAction,
-  fullscreenControl,
-  fullscreenHeader,
-  nextAppointment,
 }: JobThreadNotesPanelProps) {
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
@@ -293,7 +200,7 @@ export function JobThreadNotesPanel({
   )
 
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
-  const filterEnabled = showFilter ?? activityProp != null
+  const filterEnabled = activityProp != null
   const visibleActivity = useMemo(
     () => (filterEnabled ? filterActivity(activity, activityFilter) : activity),
     [filterEnabled, activity, activityFilter],
@@ -322,9 +229,7 @@ export function JobThreadNotesPanel({
     return `s:${last.schedule.dedupeKey}`
   }, [visibleActivity])
 
-  const isFullscreen = fullscreenControl?.active === true
-
-  // isFullscreen dep: the portal move recreates the list DOM (scrollTop resets) — re-pin to newest.
+  // Re-pin the list to newest whenever the tail changes.
   useLayoutEffect(() => {
     if (loading) return
     const el = activityScrollRef.current
@@ -334,100 +239,28 @@ export function JobThreadNotesPanel({
       if (!box) return
       box.scrollTop = box.scrollHeight
     })
-  }, [loading, visibleActivity.length, activityTailKey, isFullscreen])
-  const exitFullscreen = fullscreenControl?.onToggle
+  }, [loading, visibleActivity.length, activityTailKey])
 
-  useEffect(() => {
-    if (!isFullscreen || !exitFullscreen) return
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') exitFullscreen()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    // Lock the page behind the overlay (matters on phones — the reason fullscreen exists).
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [isFullscreen, exitFullscreen])
-
-  const panelShellStyle: CSSProperties = isFullscreen
-    ? {
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1001,
-        display: 'flex',
-        flexDirection: 'column',
-        padding:
-          'calc(0.75rem + env(safe-area-inset-top)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom))',
-        background: 'var(--surface)',
-        border: 'none',
-        borderRadius: 0,
-        overflow: 'hidden',
-      }
-    : {
+  return (
+    <div
+      style={{
         padding: '0.75rem',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 6,
-      }
-
-  const panelContent = (
-    <div style={panelShellStyle}>
-      {isFullscreen && fullscreenHeader ? fullscreenHeader : null}
-      {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle || fullscreenControl ? (
+      }}
+    >
+      {(teamMembers && teamMembers.length > 0) || showSectionTitle ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-          {peopleAction ? (
-            <button
-              type="button"
-              onClick={peopleAction.onClick}
-              disabled={peopleAction.disabled}
-              title="Add or remove people on this job"
-              aria-label="Manage people on this job"
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, padding: 0, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-link)', cursor: peopleAction.disabled ? 'not-allowed' : 'pointer' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                <path d="M144 192C144 156.7 172.7 128 208 128C243.3 128 272 156.7 272 192C272 227.3 243.3 256 208 256C172.7 256 144 227.3 144 192zM32 448C32 386.6 81.6 337 143 337L177 337C238.4 337 288 386.6 288 448C288 465.7 273.7 480 256 480L64 480C46.3 480 32 465.7 32 448zM368 192C368 156.7 396.7 128 432 128C467.3 128 496 156.7 496 192C496 227.3 467.3 256 432 256C396.7 256 368 227.3 368 192zM352 448C352 386.6 401.6 337 463 337L497 337C558.4 337 608 386.6 608 448C608 465.7 593.7 480 576 480L384 480C366.3 480 352 465.7 352 448z" />
-              </svg>
-            </button>
-          ) : null}
           {teamMembers && teamMembers.length > 0 ? (
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
               {teamMembers.map((m) => (m.name?.trim() ? m.name.trim() : 'Unknown')).join(', ')}
             </span>
-          ) : peopleAction ? (
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No one assigned</span>
           ) : null}
           {showSectionTitle ? (
             <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
               {sectionTitle}
             </span>
-          ) : null}
-          {fullscreenControl ? (
-            <button
-              type="button"
-              onClick={fullscreenControl.onToggle}
-              title={isFullscreen ? 'Exit full screen' : 'Expand to full screen'}
-              aria-label={isFullscreen ? 'Exit full screen' : 'Expand activity to full screen'}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 28,
-                height: 28,
-                flexShrink: 0,
-                marginLeft: showSectionTitle ? undefined : 'auto',
-                padding: 0,
-                border: '1px solid var(--border-strong)',
-                borderRadius: 6,
-                background: 'var(--surface)',
-                color: 'var(--text-link)',
-                cursor: 'pointer',
-              }}
-            >
-              {isFullscreen ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
-            </button>
           ) : null}
         </div>
       ) : null}
@@ -512,44 +345,13 @@ export function JobThreadNotesPanel({
           ) : null}
         </div>
       ) : null}
-      {nextAppointment ? (
-        /* Pinned above the scrolling feed: "when are we there next?" is always
-           answered without hunting the SCHEDULE entry in the timeline. */
-        <div
-          style={{
-            borderLeft: '3px solid var(--border-green)',
-            padding: '0.25rem 0.5rem',
-            marginBottom: '0.5rem',
-            background: 'var(--bg-subtle)',
-            borderRadius: '0 4px 4px 0',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d' }}>
-              Next
-            </span>
-            <span style={{ margin: '0 0.35rem' }}>·</span>
-            {nextAppointment.assigneeNames.join(', ')}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {formatStagesNextDateLabel(nextAppointment.ymd)} {formatStagesCompactWindow(nextAppointment.timeStart, nextAppointment.timeEnd)}
-          </div>
-          {nextAppointment.note ? (
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {nextAppointment.note}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
       {loading ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem 0', ...(isFullscreen ? { flex: '1 1 auto' } : null) }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
       ) : (
         <div
           ref={activityScrollRef}
           style={{
-            maxHeight: isFullscreen ? 'none' : activityListMaxHeight,
-            ...(isFullscreen ? { flex: '1 1 auto' } : null),
+            maxHeight: ACTIVITY_LIST_MAX_HEIGHT,
             overflowY: 'auto',
             marginBottom: '0.75rem',
             minHeight: 0,
@@ -790,20 +592,6 @@ export function JobThreadNotesPanel({
           </ul>
         </div>
       )}
-      {!canPost && (scheduleAction || scheduleDispatchAction) ? (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-            gap: '0.35rem',
-            marginTop: '0.5rem',
-          }}
-        >
-          {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
-          {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
-        </div>
-      ) : null}
       {canPost && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
           {pctEditorOpen && canEditPct ? (
@@ -932,7 +720,7 @@ export function JobThreadNotesPanel({
                   lineHeight: 1.35,
                 }}
               />
-              {/* Flat, wrapping action row: Schedule / Week dispatch / stamps / % complete on the left,
+              {/* Flat, wrapping action row: stamps / % complete on the left,
                   Post note pushed right. "Set % complete" opens the editor above (replacing this composer). */}
               <div
                 style={{
@@ -943,8 +731,6 @@ export function JobThreadNotesPanel({
                   width: '100%',
                 }}
               >
-                {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
-                {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
                 {jobThreadStampActions ? (
                   <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
                 ) : null}
@@ -988,6 +774,4 @@ export function JobThreadNotesPanel({
       )}
     </div>
   )
-  // Portal escapes the Stages table's sticky-cell stacking context (see fullscreenControl doc).
-  return isFullscreen ? createPortal(panelContent, document.body) : panelContent
 }

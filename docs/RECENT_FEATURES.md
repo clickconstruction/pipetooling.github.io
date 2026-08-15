@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1677)
+last_updated: 2026-08-15 (v2.1678)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1678)
+
+### JobThreadNotesPanel sheds its dead Stages-era props (2026-08-15)
+Cleanup behind the v2.1673 activity unification: with every Pipeline (Stages) shell now on [`JobsStagesThreadPanel`](../src/components/jobs/JobsStagesThreadPanel.tsx) / the shared Job Activity view, [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) is down to four callers (Job detail modal, Job Mode details, Quickfill complete-no-bill, Estimates ×2 call sites) — none of which used the Stages-only surface. Removed: `fullscreenControl` + `fullscreenHeader` and the whole createPortal fullscreen overlay path (body scroll lock, Esc handler, z-1001 shell), `nextAppointment` pinned strip, `peopleAction` button, `scheduleAction` / `scheduleDispatchAction` buttons (and their two private button components), `showFilter` (the filter row now simply follows `activity` being provided), and `activityListMaxHeight` (all callers used the default; now a constant). Still-used props are untouched: `teamMembers`, `pctComplete` / `canEditPct` editor, `jobThreadStampActions`. Docstrings scrubbed of stale Stages references. −216 net lines, no behavior change for any remaining caller. Client-only — no migration.
 
 ## Latest Updates (v2.1677)
 
