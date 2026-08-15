@@ -7,6 +7,8 @@ type JobFormPeoplePickerProps = {
   users: PickerUser[]
   teamMemberIds: string[]
   setTeamMemberIds: Dispatch<SetStateAction<string[]>>
+  /** Fact-rows mode (v2.1681): chips only — no "Team:" label, no bottom margin (the row provides both). */
+  bare?: boolean
 }
 
 /** Above the Edit-Job overlay (JOB_FORM_OVERLAY_Z_INDEX 1010) so the picker stacks correctly. */
@@ -19,14 +21,14 @@ const PEOPLE_PICKER_OVERLAY_Z_INDEX = 1011
  * pinned to top). Selections mutate the form's teamMemberIds only; nothing is
  * written until the job is saved. Each chip's × removes that person.
  */
-export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds }: JobFormPeoplePickerProps) {
+export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds, bare = false }: JobFormPeoplePickerProps) {
   const [addOpen, setAddOpen] = useState(false)
 
   return (
-    <div style={{ marginBottom: '1rem' }}>
+    <div style={bare ? undefined : { marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
         {/* Same header style as the form's field labels (e.g. "Job Address"). */}
-        <span style={{ fontWeight: 500, fontSize: '0.875rem', marginRight: '0.15rem' }}>Team:</span>
+        {!bare && <span style={{ fontWeight: 500, fontSize: '0.875rem', marginRight: '0.15rem' }}>Team:</span>}
         <button
           type="button"
           onClick={() => setAddOpen(true)}

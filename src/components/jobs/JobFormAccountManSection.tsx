@@ -18,6 +18,7 @@ export function JobFormAccountManSection({
   setAccountManagerUserId,
   accountManagerRelationship,
   setAccountManagerRelationship,
+  bare = false,
 }: {
   users: Array<{ id: string; name: string }>
   teamMemberIds: string[]
@@ -25,6 +26,8 @@ export function JobFormAccountManSection({
   setAccountManagerUserId: (v: string | null) => void
   accountManagerRelationship: string | null
   setAccountManagerRelationship: (v: string) => void
+  /** Fact-rows mode (v2.1681): selects only — no box, no icon header (the row provides both). */
+  bare?: boolean
 }) {
   const teamUsers = users
     .filter((u) => teamMemberIds.includes(u.id))
@@ -43,11 +46,13 @@ export function JobFormAccountManSection({
   }
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.85rem', background: 'var(--bg-subtle)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-        <AccountManIcon size={15} />
-        Account Man
-      </div>
+    <div style={bare ? undefined : { border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.85rem', background: 'var(--bg-subtle)' }}>
+      {!bare && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+          <AccountManIcon size={15} />
+          Account Man
+        </div>
+      )}
       {teamUsers.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Add team members below first — the Account Man must be on the team.

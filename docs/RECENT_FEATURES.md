@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1680)
+last_updated: 2026-08-15 (v2.1681)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1681)
+
+### Edit tab: people, customer, and links read as fact rows (2026-08-15)
+Owner call after a three-option mockup round ("option C"): the Edit tab's middle — previously the boxed Account Man section, the Team chip row, the collapsible Customer block (link picker, GC, name/phone/email, Date Met, two raw Drive URLs), and the "Project | Plans | Bid | Development" fold — now reads as a settings-style list of twelve rows: **Account man · Team · Customer · Phone · Email · GC/Builder · Date met · Folders · Project · Plans · Bid · Development**. Each row shows label · current value (muted **—** when unset) · pencil; tapping opens the classic editor for that field inline, so behavior and autosave semantics are unchanged. The Folders and Plans rows keep their Drive links clickable without expanding. New [`JobFormFactRow`](../src/components/jobs/JobFormFactRow.tsx) primitive + [`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx) composition + pure kernel [`jobFormFactRows.ts`](../src/lib/jobs/jobFormFactRows.ts) (unit-tested value formatting). The classic editors were extracted for reuse — `JobFormCustomerLinkPicker`/`JobFormGcPicker` out of [`JobFormCustomerSection`](../src/components/jobs/JobFormCustomerSection.tsx), `JobFormProjectEditor`/`JobFormBidEditor`/`JobFormDevelopmentEditor` out of [`JobFormLinksSection`](../src/components/jobs/JobFormLinksSection.tsx) — so the **New Job form keeps the classic always-open layout** (first entry is typing-first). Guided gates still work: the billing "link a customer" and pictures highlights force the matching row open with the shell's scroll/focus refs attached; the project-link modal's onLinked opens the Project row. Edit-mode only, all roles that can edit; render smokes + kernel tests; help guides `job-window-tabs` (new "The Edit tab reads as rows" section) and `set-an-account-man-on-a-job` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1680)
 

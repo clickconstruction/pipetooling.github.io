@@ -10,7 +10,7 @@ Every job can name an **Account Man** — the team member who owns the customer 
 ## Set it on Edit Job
 
 1. Open the job and click {{button:outline|Edit}}.
-2. The **Account Man** box sits right below Job Address. Pick **Who** — the list shows only people already on the job's **Team** (add them below first if it's empty).
+2. The **Account man** row sits right below Job Address — tap it to open the picker. **Who** lists only people already on the job's **Team** (add them on the Team row first if it's empty).
 3. Pick the **Relationship**:
    - **Primary communicator** — the default point of contact. Shows quietly on the job.
    - **Preferred communicator** — route conversations through them when you can. Shows as an amber chip.

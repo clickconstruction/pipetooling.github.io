@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1681',
+    date: '2026-08-15',
+    title: 'Edit tab: at-a-glance rows',
+    kind: 'feature',
+    highlights: [
+      'The Edit tab\'s middle section is now a compact list — Account man, Team, Customer, Phone, Email, GC/Builder, Date met, Folders, Project, Plans, Bid, and Development each show their current value on one line, with a dash where nothing is set.',
+      'Tap any row to open the familiar editor for just that field; tap again to fold it away. Everything saves exactly as before.',
+      'Customer Files, Pictures, and Job Plans links open straight from their rows — no expanding required.',
+      'The New Job form is unchanged — it keeps the full form for fast first entry.',
+    ],
+  },
+  {
     version: 'v2.1680',
     date: '2026-08-15',
     title: 'Service type list shows real trades only',

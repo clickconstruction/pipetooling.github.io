@@ -159,6 +159,7 @@ import { JobFormHeaderRow } from './JobFormHeaderRow'
 import { JobFormIdentityFields } from './JobFormIdentityFields'
 import { JobFormLinksSection } from './JobFormLinksSection'
 import { JobFormCustomerSection } from './JobFormCustomerSection'
+import { JobFormEditFactRows } from './JobFormEditFactRows'
 import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
@@ -3161,19 +3162,18 @@ export default function JobFormModal({
               })()
             }}
           />
-          <JobFormAccountManSection
-            users={users}
-            teamMemberIds={teamMemberIds}
-            accountManagerUserId={accountManagerUserId}
-            setAccountManagerUserId={setAccountManagerUserId}
-            accountManagerRelationship={accountManagerRelationship}
-            setAccountManagerRelationship={setAccountManagerRelationship}
-          />
-          <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
-            <JobFormCustomerSection
-              expanded={customerExpanded}
-              setExpanded={setCustomerExpanded}
+          {editing ? (
+            /* Edit mode (v2.1681, "option C"): people + customer read as fact
+               rows — label · value · pencil — with the classic editors inside
+               each opened row. New Job keeps the always-open form below. */
+            <JobFormEditFactRows
+              users={users}
+              teamMemberIds={teamMemberIds}
+              setTeamMemberIds={setTeamMemberIds}
+              accountManagerUserId={accountManagerUserId}
+              setAccountManagerUserId={setAccountManagerUserId}
+              accountManagerRelationship={accountManagerRelationship}
+              setAccountManagerRelationship={setAccountManagerRelationship}
               customerId={customerId}
               setCustomerId={setCustomerId}
               gcCustomerId={gcCustomerId}
@@ -3203,6 +3203,7 @@ export default function JobFormModal({
                 authUser?.id ??
                 ''
               }
+              customerExpandedGate={customerExpanded}
               billingCustomerHighlight={billingCustomerHighlight}
               jobPicturesLinkHighlight={jobPicturesLinkHighlight}
               billingCustomerHighlightRef={billingCustomerHighlightRef}
@@ -3211,14 +3212,8 @@ export default function JobFormModal({
               googleDriveInputRef={jobFormGoogleDriveInputRef}
               onImport={handleCustomerImport}
               onOpenCreateCustomerModal={() => setCreateCustomerFromJobModalOpen(true)}
-            />
-            <JobFormLinksSection
-              expanded={projectFilesPlansExpanded}
-              setExpanded={setProjectFilesPlansExpanded}
               projectId={projectId}
               setProjectId={setProjectId}
-              customerId={customerId}
-              setCustomerId={setCustomerId}
               projects={projects}
               jobPlansLink={jobPlansLink}
               setJobPlansLink={setJobPlansLink}
@@ -3232,7 +3227,87 @@ export default function JobFormModal({
               setDevelopmentId={setDevelopmentId}
               developments={developments}
               onCreateDevelopment={createDevelopmentFromPicker}
+              projectLinksGate={projectFilesPlansExpanded}
             />
+          ) : (
+            <>
+              <JobFormAccountManSection
+                users={users}
+                teamMemberIds={teamMemberIds}
+                accountManagerUserId={accountManagerUserId}
+                setAccountManagerUserId={setAccountManagerUserId}
+                accountManagerRelationship={accountManagerRelationship}
+                setAccountManagerRelationship={setAccountManagerRelationship}
+              />
+              <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
+            </>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
+            {!editing ? (
+              <JobFormCustomerSection
+                expanded={customerExpanded}
+                setExpanded={setCustomerExpanded}
+                customerId={customerId}
+                setCustomerId={setCustomerId}
+                gcCustomerId={gcCustomerId}
+                setGcCustomerId={setGcCustomerId}
+                linkedBidGc={linkedBidGc}
+                customerSearch={customerSearch}
+                setCustomerSearch={setCustomerSearch}
+                customerName={customerName}
+                setCustomerName={setCustomerName}
+                customerEmail={customerEmail}
+                setCustomerEmail={setCustomerEmail}
+                customerPhone={customerPhone}
+                setCustomerPhone={setCustomerPhone}
+                dateMet={dateMet}
+                setDateMet={setDateMet}
+                googleDriveLink={googleDriveLink}
+                setGoogleDriveLink={setGoogleDriveLink}
+                jobPicturesLink={jobPicturesLink}
+                setJobPicturesLink={setJobPicturesLink}
+                jobAddress={jobAddress}
+                setJobAddress={setJobAddress}
+                customers={customers}
+                customersLoading={customersLoading}
+                masterForFormCustomer={
+                  (projectId ? projects.find((p) => p.id === projectId) : undefined)?.master_user_id ??
+                  authUser?.id ??
+                  ''
+                }
+                billingCustomerHighlight={billingCustomerHighlight}
+                jobPicturesLinkHighlight={jobPicturesLinkHighlight}
+                billingCustomerHighlightRef={billingCustomerHighlightRef}
+                jobPicturesLinkHighlightRef={jobPicturesLinkHighlightRef}
+                jobPicturesLinkInputRef={jobPicturesLinkInputRef}
+                googleDriveInputRef={jobFormGoogleDriveInputRef}
+                onImport={handleCustomerImport}
+                onOpenCreateCustomerModal={() => setCreateCustomerFromJobModalOpen(true)}
+              />
+            ) : null}
+            {!editing ? (
+              <JobFormLinksSection
+                expanded={projectFilesPlansExpanded}
+                setExpanded={setProjectFilesPlansExpanded}
+                projectId={projectId}
+                setProjectId={setProjectId}
+                customerId={customerId}
+                setCustomerId={setCustomerId}
+                projects={projects}
+                jobPlansLink={jobPlansLink}
+                setJobPlansLink={setJobPlansLink}
+                bidId={bidId}
+                setBidId={setBidId}
+                linkedBidSummary={linkedBidSummary}
+                setLinkedBidSummary={setLinkedBidSummary}
+                onOpenBidLinkChoice={() => setJobBidLinkChoiceOpen(true)}
+                projectDisconnectRef={jobFormProjectDisconnectRef}
+                developmentId={developmentId}
+                setDevelopmentId={setDevelopmentId}
+                developments={developments}
+                onCreateDevelopment={createDevelopmentFromPicker}
+              />
+            ) : null}
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
           {/* Line items live with the job's SCOPE (owner call on the Job-window
