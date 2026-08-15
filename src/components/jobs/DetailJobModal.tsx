@@ -43,6 +43,7 @@ import type { JobShareFields } from '../../lib/jobShare'
 import { ScheduleJobModal } from './ScheduleJobModal'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { JOB_WINDOW_HEADER_LINKS_SLOT_ID } from './jobWindowHeaderSlot'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
@@ -1291,10 +1292,20 @@ export default function DetailJobModal({
               flexWrap: 'wrap',
               gap: narrowViewport ? '0.3rem' : '0.15rem',
               flexShrink: 0,
-              maxWidth: narrowViewport ? '100%' : '55%',
-              ...(narrowViewport ? { width: '100%' } : {}),
+              // Pane mode: full-width row — pill + icons left, the portaled
+              // "Link to" cluster right (its marginLeft:auto splits the row).
+              maxWidth: narrowViewport || paneMode ? '100%' : '55%',
+              ...(narrowViewport || paneMode ? { width: '100%' } : {}),
             }}
           >
+            {/* Job window: the embedded form portals its "Link to: Bid | Project"
+                cluster here, at the far right of the icon row (v2.1677). */}
+            {paneMode ? (
+              <span
+                id={JOB_WINDOW_HEADER_LINKS_SLOT_ID}
+                style={{ order: 99, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}
+              />
+            ) : null}
             {showDetailHeaderRightCluster && headerTradePill ? (
               <span style={{ marginRight: '0.25rem', display: 'inline-flex' }}>
                 {tradePillOpensStages ? (

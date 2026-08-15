@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
+import { JOB_WINDOW_HEADER_LINKS_SLOT_ID } from './jobWindowHeaderSlot'
 
 type JobFormHeaderRowProps = {
   mode: 'new' | 'edit'
@@ -47,6 +49,13 @@ export function JobFormHeaderRow({
 }: JobFormHeaderRowProps) {
   const [hcpHelpOpen, setHcpHelpOpen] = useState(false)
   const hcpHelpRef = useRef<HTMLDivElement | null>(null)
+  // Job window: the "Link to" cluster portals into the shared header's slot
+  // (rendered by the Job pane), so it rides the icon row on every tab.
+  const [headerLinksSlot, setHeaderLinksSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!embedded) return
+    setHeaderLinksSlot(document.getElementById(JOB_WINDOW_HEADER_LINKS_SLOT_ID))
+  }, [embedded])
   useEffect(() => {
     if (!hcpHelpOpen) return
     function onDocMouseDown(e: globalThis.MouseEvent) {
@@ -63,8 +72,18 @@ export function JobFormHeaderRow({
     }
   }, [hcpHelpOpen])
 
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+  const row = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+        // Embedded, the row reduces to the "Link to" cluster living inside the
+        // window header's slot — no block margin of its own.
+        marginBottom: embedded ? 0 : '1rem',
+      }}
+    >
       {!embedded ? (
         <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{isEditing ? 'Edit Job' : 'New Job'}</h2>
       ) : null}
@@ -217,9 +236,9 @@ export function JobFormHeaderRow({
             Job Detail
           </button>
         </div>
-      ) : (
+      ) : !embedded ? (
         <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
-      )}
+      ) : null}
       <div
         style={{
           display: 'flex',
@@ -310,4 +329,12 @@ export function JobFormHeaderRow({
       </div>
     </div>
   )
+
+  // Job window: the whole (reduced) row portals into the shared header's slot,
+  // so "Link to: Bid | Project" rides the icon row on every tab while its
+  // handlers stay wired to this form.
+  if (embedded) {
+    return headerLinksSlot ? createPortal(row, headerLinksSlot) : null
+  }
+  return row
 }
