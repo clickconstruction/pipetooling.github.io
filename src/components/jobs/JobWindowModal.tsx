@@ -187,7 +187,9 @@ export function JobWindowModal({
           </button>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '1.25rem' }}>
+        {/* Top padding stays slimmer than the sides: the tab bar's own bottom
+            padding already separates it from the title (v2.1679). */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0.5rem 1.25rem 1.25rem' }}>
           {/* Job pane — ALWAYS visible (v2.1676): its title, action icons, and
               Street View / map band are the window's shared header on every
               tab. Only its read-view body hides on Edit/Bill (paneBodyHidden),
