@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1670',
+    date: '2026-08-15',
+    title: 'Offsets fold and wider activity',
+    kind: 'fix',
+    highlights: [
+      'People → Offsets: the full offset entry list now sits under a collapsed "All offset entries" section below the Settle-up board — searching opens it automatically.',
+      'Jobs → Pipeline: the Job activity box now appears on screens about 1100px and wider, not just very wide desktops.',
+    ],
+  },
+  {
     version: 'v2.1669',
     date: '2026-08-14',
     title: 'Archived users fold away',

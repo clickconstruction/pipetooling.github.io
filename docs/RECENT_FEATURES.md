@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1669)
+last_updated: 2026-08-15 (v2.1670)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1670)
+
+### Offsets entry list folds away; Pipeline activity box at 1100px (2026-08-15)
+Two owner requests in one pass. **(1)** The Offsets tab's raw entry table (Person/Type/Amount/Description/Date/Status/Actions) now sits under a titled, collapsed-by-default **"All offset entries (N)"** toggle below the Settle-up board ([`PeopleOffsetsTab`](../src/components/people/PeopleOffsetsTab.tsx)); an active search forces it open (the roster-search convention) so matches are never hidden. **(2)** The Pipeline **Job activity box** appears at much smaller viewports: the gate hook renamed [`useWideViewport1440` → `useWideViewport1100`](../src/hooks/useWideViewport1100.ts) (`min-width: 1100px`), consumers + box docs + help guide `ready-to-bill-pipeline` updated ("about 1100px and up"). Verified live: boxes render at 1200px and vanish below 1100 on fresh load; the fold shows "All offset entries (31)" collapsed with the full table on expand. Render smoke extended (fold hidden-until-toggle). Help guide `see-where-someone-stands-on-pay` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1669)
 

@@ -189,6 +189,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     [filteredSettleRows, archivedNameSet],
   )
   const [archivedOpen, setArchivedOpen] = useState(false)
+  const [offsetsTableOpen, setOffsetsTableOpen] = useState(false)
 
   const offsetsTabSearching = offsetsTabSearch.trim().length > 0
   const filteredOffsets = useMemo(() => {
@@ -402,6 +403,30 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                 </p>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setOffsetsTableOpen((v) => !v)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.5rem 0.75rem',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                background: 'var(--surface)',
+                color: 'var(--text-muted)',
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+                marginBottom: '0.5rem',
+              }}
+            >
+              <span aria-hidden="true" style={{ display: 'inline-block', transform: offsetsTableOpen || offsetsTabSearching ? 'rotate(90deg)' : 'none', transition: 'transform 0.1s' }}>›</span>
+              All offset entries ({offsets.length}){offsetsTabSearching ? ' — showing search matches' : ''}
+            </button>
+            {(offsetsTableOpen || offsetsTabSearching) && (
+            <>
             {offsetsTabSearching && offsets.length > 0 && filteredOffsets.length === 0 ? (
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No offsets match this search.</p>
             ) : null}
@@ -521,6 +546,8 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
               </p>
             )}
           </div>
+            </>
+            )}
           </>
         )}
       </div>
