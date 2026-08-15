@@ -20,6 +20,8 @@ import {
   offsetSignedAmount,
   paidTotalInRange,
   personOffsetBalances,
+  uncoveredApprovedWeeks,
+  type ApprovedDayHours,
   type PayStubLike,
   type PersonOffsetLike,
   type PersonWorkDay,
@@ -83,6 +85,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
   const [jobs, setJobs] = useState<JobRow[] | null>(null)
   const [roster, setRoster] = useState<CrewPnlRosterPerson[]>([])
   const [stubPayments, setStubPayments] = useState<StubPaymentLike[]>([])
+  const [approvedDayHours, setApprovedDayHours] = useState<ApprovedDayHours[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [preset, setPreset] = useState<CrewPnlRangePreset>('this_year')
   const [filter, setFilter] = useState<LedgerFilter>('all')
@@ -92,16 +95,22 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
     void (async () => {
       try {
         const stubIds = payStubs.map((s) => s.id)
-        const [labor, peopleRes, paymentsRes] = await Promise.all([
+        const [labor, peopleRes, paymentsRes, hoursRes] = await Promise.all([
           loadTeamLaborData(supabase),
           supabase.from('people').select('id, name, account_user_id'),
           stubIds.length > 0
             ? supabase.from('pay_stub_payments').select('id, pay_stub_id, amount, paid_at, memo').in('pay_stub_id', stubIds)
             : Promise.resolve({ data: [], error: null }),
+          // Approved day hours (the Hours grid, payroll's source of truth) —
+          // days here with no covering pay report = "no pay report yet".
+          supabase.from('people_hours').select('work_date, hours').eq('person_name', personName.trim()),
         ])
         if (cancelled) return
         setTeamLabor(labor)
         setStubPayments((paymentsRes.data ?? []) as StubPaymentLike[])
+        setApprovedDayHours(
+          ((hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>).map((h) => ({ workDate: h.work_date, hours: h.hours })),
+        )
         setRoster(
           ((peopleRes.data ?? []) as Array<{ id: string; name: string | null; account_user_id: string | null }>).map((p) => ({
             id: p.id,
@@ -177,9 +186,14 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
     return out
   }, [teamLabor, personName])
 
+  const uncoveredWeeks = useMemo(
+    () => uncoveredApprovedWeeks({ dayHours: approvedDayHours, payStubs }),
+    [approvedDayHours, payStubs],
+  )
+
   const timeline = useMemo(
-    () => buildOffsetPaymentTimeline({ offsets, payStubs, stubPayments }),
-    [offsets, payStubs, stubPayments],
+    () => buildOffsetPaymentTimeline({ offsets, payStubs, stubPayments, uncoveredWeeks }),
+    [offsets, payStubs, stubPayments, uncoveredWeeks],
   )
 
   const inRange = (ymd: string) => (range.start == null || ymd >= range.start) && (range.end == null || ymd <= range.end)
@@ -289,6 +303,8 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
           {pendingBalance !== 0
             ? chip(pendingBalance < 0 ? 'red' : 'green', `balance ${signedMoney(pendingBalance)}`)
             : chip('plain', 'settled')}
+          {uncoveredWeeks.length > 0 &&
+            chip('red', `${uncoveredWeeks.length} week${uncoveredWeeks.length === 1 ? '' : 's'} with no pay report`)}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <select
               value={preset}
@@ -371,7 +387,15 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
               <div key={r.key} style={{ display: 'flex', gap: '0.6rem', padding: '0.5rem 0.9rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', fontSize: '0.8125rem', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)', width: 66, flexShrink: 0 }}>{formatYmdShort(r.dateYmd)}</span>
                 {chip(
-                  r.kind === 'payment' ? 'green' : r.kind === 'payment_pending' ? 'amber' : r.amount < 0 ? 'red' : 'green',
+                  r.kind === 'payment'
+                    ? 'green'
+                    : r.kind === 'payment_pending'
+                      ? 'amber'
+                      : r.kind === 'unreported'
+                        ? 'red'
+                        : r.amount < 0
+                          ? 'red'
+                          : 'green',
                   r.typeLabel,
                 )}
                 <span style={{ flex: 1, minWidth: 0 }}>
@@ -385,7 +409,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                     color: r.kind === 'offset' ? (r.amount < 0 ? 'var(--text-red-700)' : 'var(--text-green-800)') : r.kind === 'payment_pending' ? 'var(--text-muted)' : undefined,
                   }}
                 >
-                  {r.kind === 'offset' ? signedMoney(r.amount) : `$${formatCurrency(r.amount)}`}
+                  {r.kind === 'unreported' ? '—' : r.kind === 'offset' ? signedMoney(r.amount) : `$${formatCurrency(r.amount)}`}
                 </span>
               </div>
             ))}

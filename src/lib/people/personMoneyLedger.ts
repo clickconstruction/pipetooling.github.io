@@ -90,14 +90,57 @@ export function personOffsetBalances(offsets: PersonOffsetLike[]): PersonBalance
 
 export type PersonLedgerRow = {
   key: string
-  kind: 'offset' | 'payment' | 'payment_pending'
+  kind: 'offset' | 'payment' | 'payment_pending' | 'unreported'
   dateYmd: string
   typeLabel: string
   label: string
-  /** Signed: offsets carry their sign; payments are positive. */
+  /** Signed: offsets carry their sign; payments are positive; unreported rows carry 0. */
   amount: number
   /** Offsets only: already applied to a pay report. */
   applied?: boolean
+  /** Unreported rows: approved hours in the week with no pay report. */
+  hours?: number
+}
+
+/** One approved-hours day from the Hours grid (people_hours). */
+export type ApprovedDayHours = { workDate: string; hours: number }
+
+export type UncoveredWeek = { weekStart: string; weekEnd: string; hours: number }
+
+function ymdAddDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days))
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
+}
+
+/** The Sunday on/before ymd (pay report periods run Sunday–Saturday). */
+function weekStartSunday(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dow = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()
+  return ymdAddDays(ymd, -dow)
+}
+
+/**
+ * Approved worked days covered by NO pay report period, grouped into
+ * Sunday–Saturday weeks — the "worked but never rolled into a pay report"
+ * state the office needs to see. Newest week first.
+ */
+export function uncoveredApprovedWeeks(args: {
+  dayHours: ApprovedDayHours[]
+  payStubs: Array<Pick<PayStubLike, 'period_start' | 'period_end'>>
+}): UncoveredWeek[] {
+  const byWeek = new Map<string, number>()
+  for (const d of args.dayHours) {
+    const hours = Number(d.hours)
+    if (!Number.isFinite(hours) || hours <= 0) continue
+    const covered = args.payStubs.some((s) => d.workDate >= s.period_start && d.workDate <= s.period_end)
+    if (covered) continue
+    const ws = weekStartSunday(d.workDate)
+    byWeek.set(ws, (byWeek.get(ws) ?? 0) + hours)
+  }
+  return [...byWeek.entries()]
+    .map(([weekStart, hours]) => ({ weekStart, weekEnd: ymdAddDays(weekStart, 6), hours: Math.round(hours * 100) / 100 }))
+    .sort((a, b) => b.weekStart.localeCompare(a.weekStart))
 }
 
 /**
@@ -111,6 +154,8 @@ export function buildOffsetPaymentTimeline(args: {
   offsets: PersonOffsetLike[]
   payStubs: PayStubLike[]
   stubPayments?: StubPaymentLike[]
+  /** Weeks of approved hours with no pay report (uncoveredApprovedWeeks). */
+  uncoveredWeeks?: UncoveredWeek[]
 }): PersonLedgerRow[] {
   const rows: PersonLedgerRow[] = []
   for (const o of args.offsets) {
@@ -178,6 +223,17 @@ export function buildOffsetPaymentTimeline(args: {
         amount: s.gross_pay,
       })
     }
+  }
+  for (const w of args.uncoveredWeeks ?? []) {
+    rows.push({
+      key: `unreported-${w.weekStart}`,
+      kind: 'unreported',
+      dateYmd: w.weekEnd,
+      typeLabel: 'No report',
+      label: `No pay report yet · ${w.weekStart} – ${w.weekEnd} · ${w.hours} h approved`,
+      amount: 0,
+      hours: w.hours,
+    })
   }
   rows.sort((a, b) => (a.dateYmd !== b.dateYmd ? b.dateYmd.localeCompare(a.dateYmd) : a.key.localeCompare(b.key)))
   return rows

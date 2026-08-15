@@ -6,6 +6,7 @@ import {
   offsetSignedAmount,
   paidTotalInRange,
   personOffsetBalances,
+  uncoveredApprovedWeeks,
   type PayStubLike,
   type PersonOffsetLike,
 } from './personMoneyLedger'
@@ -176,5 +177,33 @@ describe('recorded payments (pay_stub_payments)', () => {
     ])
     expect(entries[0]?.offsets).toEqual([{ label: 'Windshield', amount: -425 }])
     expect(entries[1]?.offsets).toEqual([])
+  })
+})
+
+describe('uncoveredApprovedWeeks (approved hours, no pay report)', () => {
+  it('groups uncovered worked days into Sunday weeks, skipping covered and zero days', () => {
+    const weeks = uncoveredApprovedWeeks({
+      dayHours: [
+        { workDate: '2026-07-29', hours: 8 },
+        { workDate: '2026-08-10', hours: 8 },
+        { workDate: '2026-08-12', hours: 7.5 },
+        { workDate: '2026-08-14', hours: 0 },
+        { workDate: '2026-08-04', hours: 6 },
+      ],
+      payStubs: [
+        { period_start: '2026-07-26', period_end: '2026-08-01' },
+        { period_start: '2026-08-02', period_end: '2026-08-08' },
+      ],
+    })
+    expect(weeks).toEqual([{ weekStart: '2026-08-09', weekEnd: '2026-08-15', hours: 15.5 }])
+  })
+  it('unreported weeks land in the timeline as red no-report rows dated by week end', () => {
+    const rows = buildOffsetPaymentTimeline({
+      offsets: [],
+      payStubs: [],
+      uncoveredWeeks: [{ weekStart: '2026-08-09', weekEnd: '2026-08-15', hours: 15.5 }],
+    })
+    expect(rows.map((r) => [r.kind, r.dateYmd, r.hours])).toEqual([['unreported', '2026-08-15', 15.5]])
+    expect(rows[0]?.label).toBe('No pay report yet · 2026-08-09 – 2026-08-15 · 15.5 h approved')
   })
 })
