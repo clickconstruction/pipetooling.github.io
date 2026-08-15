@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1673)
+last_updated: 2026-08-15 (v2.1674)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1674)
+
+### Pipeline: schedule lines name their scheduler; clock/schedule notes open by default (2026-08-15)
+Owner report on the unified Job Activity view (v2.1673): a schedule line's assignee floated in the body while the name column sat empty — "is this a bug?" It read as one because the mockup showed the scheduler there, but the app never plumbed that name through. Now it does: [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts) joins the creator (`job_schedule_blocks.created_by` → `users`, FK + trigger already in the baseline) alongside the assignee, [`jobThreadScheduleActivity.ts`](../src/lib/jobThreadScheduleActivity.ts) carries it as `createdByName`, and the [`jobActivityLine`](../src/lib/jobs/jobActivityLine.ts) kernel puts it in the name column — who **scheduled** it on the left (consistent with every other line's actor), who's **assigned to go** in the body. Rows predating the `created_by` trigger fall back to a blank column. Second owner call in the same pass: **clock and schedule notes now show expanded by default** in [`JobActivityFeed`](../src/components/jobs/JobActivityFeed.tsx) — they're a sentence, not a report; only report answers still fold (clicking a default-open line collapses it, so the toggle now stores deviations from each line's default). Kernel + mapper + render tests extended. Help guide `open-job-activity-full-screen` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1673)
 

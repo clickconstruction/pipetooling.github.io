@@ -136,9 +136,13 @@ export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
               {g.agoLabel ? ` · ${g.agoLabel}` : ''}
             </div>
             {g.lines.map((line) => {
-              const open = openKeys.has(line.key)
               const hasDetail = line.detail.length > 0
               const msg = isConversationalLine(line)
+              // Report answers fold (they're long); schedule/clock notes are a
+              // sentence and show by default (owner call). openKeys therefore
+              // stores TOGGLES away from each line's default, not "open".
+              const defaultOpen = hasDetail && line.kind !== 'report'
+              const open = openKeys.has(line.key) ? !defaultOpen : defaultOpen
 
               const onRowClick = (e: MouseEvent<HTMLDivElement>) => {
                 // Clicks inside the opened detail select/copy; they don't collapse.

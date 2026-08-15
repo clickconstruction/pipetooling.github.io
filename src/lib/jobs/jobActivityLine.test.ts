@@ -51,7 +51,7 @@ const clock = (
   },
 })
 
-const schedule = (key: string, at: string, assignees: string, blockNote = ''): JobThreadActivityItem => ({
+const schedule = (key: string, at: string, assignees: string, blockNote = '', createdBy = 'Robert'): JobThreadActivityItem => ({
   kind: 'schedule_block',
   schedule: {
     dedupeKey: key,
@@ -61,6 +61,7 @@ const schedule = (key: string, at: string, assignees: string, blockNote = ''): J
     time_end: '12:00',
     note: blockNote,
     assigneeLabels: assignees,
+    createdByName: createdBy,
   },
 })
 
@@ -137,11 +138,16 @@ describe('buildJobActivityLines', () => {
     expect(lines[1]).toMatchObject({ body: '8:00a → still on the clock', pending: false })
   })
 
-  it('puts schedule assignees in the body because the row has no actor', () => {
+  it('puts the scheduler in the name column and the assignees in the body', () => {
     const [line] = buildJobActivityLines([schedule('s1', '2026-08-11T19:50:00Z', 'Abraham, Paige', 'pinpoint')])
-    expect(line).toMatchObject({ kind: 'schedule_block', who: '' })
+    expect(line).toMatchObject({ kind: 'schedule_block', who: 'Robert' })
     expect(line!.body).toContain('Abraham, Paige')
     expect(line!.detail).toEqual([{ value: 'pinpoint' }])
+  })
+
+  it('leaves the scheduler blank on rows that predate the created_by trigger', () => {
+    const [line] = buildJobActivityLines([schedule('s1', '2026-08-11T19:50:00Z', 'Abraham', '', '')])
+    expect(line).toMatchObject({ kind: 'schedule_block', who: '' })
   })
 
   it('falls back to System when an event records no actor', () => {

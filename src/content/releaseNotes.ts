@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1674',
+    date: '2026-08-15',
+    title: 'Schedule lines show who scheduled them',
+    kind: 'fix',
+    highlights: [
+      'Jobs → Pipeline activity: a schedule line now shows who scheduled it in the name column, with who\'s assigned to go in the line itself — the name column no longer sits empty on schedule rows.',
+      'Clock and schedule notes show expanded by default — they\'re a sentence, not a report. Report answers still fold until you click.',
+    ],
+  },
+  {
     version: 'v2.1673',
     date: '2026-08-15',
     title: 'One Job Activity view, numbered and compact',

@@ -105,10 +105,12 @@ export function scheduleBlockAnchorFromId(anchorId: string): { job_id: string | 
     : { job_id: anchorId, bid_id: null }
 }
 
-const SELECT_FIELDS_WITH_ASSIGNEE_NAME = `${SELECT_FIELDS}, users!job_schedule_blocks_assignee_user_id_fkey(name)`
+const SELECT_FIELDS_WITH_ASSIGNEE_NAME = `${SELECT_FIELDS}, users!job_schedule_blocks_assignee_user_id_fkey(name), creator:users!job_schedule_blocks_created_by_fkey(name)`
 
 export type JobScheduleBlockWithAssigneeName = JobScheduleBlockRow & {
   users: { name: string | null } | null
+  /** Joined scheduler name (`created_by` → users); null when unset or the row predates the trigger. */
+  creator: { name: string | null } | null
 }
 
 /** All schedule blocks for a job (RLS-limited), ordered by day and start time. Capped at 101 rows so callers can detect truncation. */
