@@ -68,6 +68,9 @@ export function JobFormHeaderRow({
       {!embedded ? (
         <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{isEditing ? 'Edit Job' : 'New Job'}</h2>
       ) : null}
+      {/* The HCP#/C# help popover stays on the standalone form only — in the
+          Job window the pill above already shows the resolved number (v2.1677). */}
+      {embedded ? null : (
       <div ref={hcpHelpRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
         <button
           type="button"
@@ -156,6 +159,7 @@ export function JobFormHeaderRow({
           </div>
         ) : null}
       </div>
+      )}
       {mode === 'new' && !isEditing && !importBlocked ? (
         <div
           style={{

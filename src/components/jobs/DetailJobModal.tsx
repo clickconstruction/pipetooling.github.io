@@ -741,6 +741,17 @@ export default function DetailJobModal({
     ? `${modalTitleParts.num} · ${modalTitleParts.name}`
     : modalTitleParts.name
 
+  /**
+   * Job window (v2.1677): the display number for the trade pill — HCP first,
+   * else C# (the app-wide precedence) — so the pill reads "961 PLUM" on every
+   * tab even for Click-numbered jobs, whose title carries no number chip.
+   */
+  const paneJobNumber = useMemo(() => {
+    const hcp = ((fullJob ?? limitedJob)?.hcp_number ?? '').trim()
+    if (hcp) return hcp
+    return (fullJob?.click_number ?? '').trim()
+  }, [fullJob, limitedJob])
+
   const mapsAddressLine = useMemo(() => {
     const fromJob = (fullJob ?? limitedJob)?.job_address?.trim()
     if (fromJob) return fromJob
@@ -1214,7 +1225,9 @@ export default function DetailJobModal({
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
-          padding: '1.25rem',
+          // Pane mode: the Job window's scroll container already pads 1.25rem —
+          // padding here too doubled the whitespace under the tab bar (v2.1677).
+          padding: paneMode ? 0 : '1.25rem',
           ...(accountManDisplay?.variant === 'only'
             ? { borderTop: '3px solid #dc2626', borderBottom: '3px solid #dc2626' }
             : {}),
@@ -1254,7 +1267,9 @@ export default function DetailJobModal({
               paddingRight: showDetailHeaderRightCluster ? '0.5rem' : 0,
             }}
           >
-            {modalTitleParts.num ? (
+            {/* Pane mode: the trade pill below carries the number ("961 PLUM"),
+                so the title chip would show it twice (v2.1677). */}
+            {modalTitleParts.num && !paneMode ? (
               <span
                 style={{
                   display: 'inline-block',
@@ -1301,11 +1316,14 @@ export default function DetailJobModal({
                     aria-label={`${headerTradePillTitleText ?? headerTradePill.label}: open this job in Jobs → Stages`}
                     style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer' }}
                   >
-                    {headerTradePill.label}
+                    {/* Job window: the pill carries the job number ("961 PLUM") —
+                        C#-numbered jobs have no title chip, so this is where the
+                        number lives (v2.1677). */}
+                    {paneMode && paneJobNumber ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
                   </button>
                 ) : (
                   <span style={{ ...headerTradePill.style, marginTop: 0 }} title={headerTradePillTitleText}>
-                    {headerTradePill.label}
+                    {paneMode && paneJobNumber ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
                   </span>
                 )}
               </span>
