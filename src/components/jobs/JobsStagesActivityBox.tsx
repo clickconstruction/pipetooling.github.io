@@ -14,7 +14,7 @@ function entryMetaLabel(atIso: string): string {
 }
 
 /**
- * The Pipeline row "Job activity" box (wide desktop ≥1440px only): fills the
+ * The Pipeline row "Job activity" box (viewports ≥1100px): fills the
  * Job cell's dead middle with the job's conversational trail. Anatomy (owner-
  * approved mockup): pinned NEXT line, a SCROLLING feed of numbered entries
  * (1 = oldest — numbers are stable references: "check note 3" never shifts),

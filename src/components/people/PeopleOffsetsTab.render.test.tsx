@@ -78,15 +78,21 @@ describe('PeopleOffsetsTab settle-up board', () => {
     expect((await findExact('$840.00')).length).toBeGreaterThan(0)
     expect((await findExact('−$425.00')).length).toBeGreaterThan(0)
     expect((await findExact('pay $415.00')).length).toBeGreaterThan(0)
+    // Malachi: everything applied → settled, sorted last in the active table.
+    expect((await findExact('settled')).length).toBeGreaterThan(0)
+    const nameCells = screen.getAllByRole('row').map((r) => r.textContent ?? '')
+    expect(nameCells[nameCells.length - 1]).toContain('Malachi')
     // Trace is archived → folded into the collapsed Archived users section;
     // his row is hidden until the section expands.
     expect(screen.queryByText('pay $150.00')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Archived users \(1\)/ }))
     expect((await findExact('pay $150.00')).length).toBeGreaterThan(0)
-    // Malachi: everything applied → settled, sorted last.
-    expect((await findExact('settled')).length).toBeGreaterThan(0)
-    const nameCells = screen.getAllByRole('row').map((r) => r.textContent ?? '')
-    expect(nameCells[nameCells.length - 1]).toContain('Malachi')
+
+    // v2.1670: the raw offsets table is folded behind a titled toggle,
+    // collapsed by default (its Actions header only appears once expanded).
+    expect(screen.queryByText('Actions')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /All offset entries \(3\)/ }))
+    expect(await screen.findByText('Actions')).toBeTruthy()
 
     // Click Abraham → the ledger: equation banner, Needs action rows with
     // verbs, folded History and Jobs toggles, Pay statement.

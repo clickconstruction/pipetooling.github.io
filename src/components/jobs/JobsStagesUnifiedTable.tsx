@@ -33,7 +33,7 @@ import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
-import { useWideViewport1440 } from '../../hooks/useWideViewport1440'
+import { useWideViewport1100 } from '../../hooks/useWideViewport1100'
 import {
   accountManOnlyStripeStyle,
   renderJobAddressWithMap,
@@ -235,7 +235,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     setWhenInvoiceBillModal,
     setWhenInvoiceBillModalDate,
   } = props
-  const wideViewport = useWideViewport1440()
+  const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const checklistAddModal = useChecklistAddModal()
