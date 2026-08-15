@@ -188,12 +188,16 @@ export function JobWindowModal({
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '1.25rem' }}>
-          {/* Job pane — display-toggled, never unmounted, so satellites and
-              scroll position survive tab switches. */}
-          <div style={tab === 'job' ? undefined : { display: 'none' }} role="tabpanel" aria-label="Job">
+          {/* Job pane — ALWAYS visible (v2.1676): its title, action icons, and
+              Street View / map band are the window's shared header on every
+              tab. Only its read-view body hides on Edit/Bill (paneBodyHidden),
+              so the icon handlers and their satellite modals stay live from
+              any tab. */}
+          <div role="tabpanel" aria-label="Job">
             <DetailJobModal
               open
               paneMode
+              paneBodyHidden={tab !== 'job'}
               onClose={onClose}
               jobId={jobId}
               scheduleContext={scheduleContext}

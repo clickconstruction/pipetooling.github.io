@@ -7,6 +7,8 @@ order: 65
 ---
 A job now opens as **one window with three tabs** — no more separate Job Detail and Edit Job modals bouncing you between each other. One **✕** (or **Escape**) closes the whole thing.
 
+Under the tab bar, **every tab** shows the same job header: the job name, the action icons (share · supply house · send as task · calendar · mail · ⚙), and the **Street View photo** with the 📍 map link. The icons work from any tab — open the job calendar while billing, share the job while editing — and the address stays one glance away so you always know which house you're on.
+
 ## The three tabs
 
 - {{chip:blue|Job}} — the read view: photo and address, customer and contacts, the numbered activity feed, work/bill dates, and the profit summary. This is where "open job detail" lands.

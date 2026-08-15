@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1676',
+    date: '2026-08-15',
+    title: 'Job header on every tab',
+    kind: 'feature',
+    highlights: [
+      'The job window\'s Edit and Bill tabs now show the same header the Job tab has — the job name, the action icons (share, supply house, send as task, calendar, mail, ⚙), and the Street View photo with the map link.',
+      'The icons are live from any tab: open the job calendar while billing, share while editing. The address stays one glance away so you always know which house you\'re working on.',
+    ],
+  },
+  {
     version: 'v2.1675',
     date: '2026-08-15',
     title: 'One job window: Job · Edit · Bill',
