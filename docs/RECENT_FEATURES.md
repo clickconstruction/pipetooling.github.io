@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1671)
+last_updated: 2026-08-15 (v2.1672)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1672)
+
+### Vehicles: Trim field (2026-08-15)
+Owner request ("as a full row above the VIN"). Migration [`20260815154623_vehicle_trim.sql`](../supabase/migrations/20260815154623_vehicle_trim.sql) adds nullable `vehicles.trim`; the Add/Edit vehicle dialog gains a full-width **Trim** row above VIN (placeholder "XLT Crew Cab Long Bed"), and the open vehicle shows the trim muted beside the VIN. Fleet was already smuggling trim into model names ("2015 Chevy 2500HD Regular Cab Long Bed 4x4 5.3l") — now it has a home. Help guide `manage-company-vehicles` updated. **Deploy**: `supabase db push` with this merge (applied), `gen-types` committed.
 
 ## Latest Updates (v2.1671)
 

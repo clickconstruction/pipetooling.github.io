@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1672',
+    date: '2026-08-15',
+    title: 'Vehicle trim field',
+    kind: 'feature',
+    highlights: [
+      'The Add/Edit vehicle dialog has a Trim field above the VIN — "XLT Crew Cab Long Bed" gets its own home instead of crowding the model name, and shows beside the VIN on the open vehicle.',
+    ],
+  },
+  {
     version: 'v2.1671',
     date: '2026-08-15',
     title: 'Vehicle form fits every screen',
