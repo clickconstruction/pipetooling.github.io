@@ -18,7 +18,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       'The job window\'s header sits snug under the tabs — the extra whitespace above the job name is gone.',
       'The service pill now carries the job number ("961 PLUM"), so the number is always in view even on jobs numbered with a C# — and it no longer repeats next to the job name.',
-      'The old HCP#/C# info bubble is gone from the window\'s Edit tab (the New Job form keeps it).',
+      'The old HCP#/C# info bubble and the ⚙ edit gear are gone from the window — the Edit tab does the gear\'s job now (the New Job form keeps its info bubble).',
     ],
   },
   {

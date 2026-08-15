@@ -110,8 +110,6 @@ type Props = {
    * overlay/card, no Escape listener, no ✕/Close (the window owns them).
    */
   paneMode?: boolean
-  /** Pane mode: the ⚙ Edit switches the window to its Edit tab instead of swapping modals. */
-  onRequestEditTab?: (() => void) | null
   /** Pane mode: bump to re-run loadDetail after the Edit/Bill tabs save (autosave slices flush). */
   externalRefreshKey?: number
   /** Pane mode: reports the stacked-satellite state so the window's Escape owner can hold fire. */
@@ -612,7 +610,6 @@ export default function DetailJobModal({
   onEditJobSaved,
   autoOpenSupplyHouseShare = false,
   paneMode = false,
-  onRequestEditTab = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
@@ -1132,9 +1129,9 @@ export default function DetailJobModal({
 
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
-    // Pane mode switches tabs and needs no form context; standalone needs the
-    // Edit Job singleton to exist.
-    (paneMode ? Boolean(onRequestEditTab) : Boolean(jobFormModal)) &&
+    // Pane mode: no ⚙ — the window's Edit tab replaced it (v2.1677).
+    !paneMode &&
+    Boolean(jobFormModal) &&
     !loading &&
     !error &&
     Boolean(jobId) &&
@@ -1143,11 +1140,6 @@ export default function DetailJobModal({
 
   const handleEditJobClick = () => {
     if (!jobId || isSubcontractorLikeRole(authRole as UserRole)) return
-    // Pane mode: the Edit tab is a sibling pane — just switch to it.
-    if (paneMode && onRequestEditTab) {
-      onRequestEditTab()
-      return
-    }
     if (!jobFormModal) return
     jobFormModal.openEditJob(jobId, {
       ...(fullJob ? { initialJob: fullJob } : {}),

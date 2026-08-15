@@ -206,7 +206,6 @@ export function JobWindowModal({
               prefillRowLabel={prefillRowLabel ?? undefined}
               prefillAddress={prefillAddress ?? undefined}
               autoOpenSupplyHouseShare={autoOpenSupplyHouseShare}
-              onRequestEditTab={() => setTab('edit')}
               externalRefreshKey={detailRefreshKey}
               onEscBlockedChange={setDetailEscBlocked}
             />
