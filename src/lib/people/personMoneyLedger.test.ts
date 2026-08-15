@@ -4,6 +4,7 @@ import {
   buildPayStatementHtml,
   buildPayStatementPayments,
   offsetSignedAmount,
+  paidTotalInRange,
   personOffsetBalances,
   type PayStubLike,
   type PersonOffsetLike,
@@ -110,5 +111,70 @@ describe('pay statement build', () => {
     expect(html).toContain('−$425.00')
     expect(html).not.toContain('billing')
     expect(html).not.toContain('revenue')
+  })
+})
+
+describe('recorded payments (pay_stub_payments)', () => {
+  const payments = [
+    { id: 'p1', pay_stub_id: 's1', amount: 1000, paid_at: '2026-08-05T12:00:00Z', memo: 'cashapp' },
+    { id: 'p2', pay_stub_id: 's1', amount: 840, paid_at: '2026-08-08T12:00:00Z', memo: null },
+  ]
+  it('timeline shows one row per recorded payment, dated by actual paid date', () => {
+    const rows = buildOffsetPaymentTimeline({
+      offsets: [],
+      payStubs: [stub({ id: 's1', paid_at: null })],
+      stubPayments: payments,
+    })
+    expect(rows.map((r) => [r.kind, r.dateYmd, r.amount])).toEqual([
+      ['payment', '2026-08-08', 840],
+      ['payment', '2026-08-05', 1000],
+    ])
+    expect(rows[1]?.label).toContain('cashapp')
+  })
+  it('partially paid reports show a remaining-balance pending row', () => {
+    const rows = buildOffsetPaymentTimeline({
+      offsets: [],
+      payStubs: [stub({ id: 's1', paid_at: null })],
+      stubPayments: [payments[0]!],
+    })
+    expect(rows.map((r) => [r.kind, r.amount])).toEqual([
+      ['payment', 1000],
+      ['payment_pending', 840],
+    ])
+    expect(rows[1]?.label).toContain('Balance remaining')
+  })
+  it('legacy paid_at-only stubs still show paid; payment rows win over legacy', () => {
+    const rows = buildOffsetPaymentTimeline({
+      offsets: [],
+      payStubs: [stub({ id: 's1' })],
+      stubPayments: payments,
+    })
+    expect(rows.filter((r) => r.kind === 'payment').length).toBe(2)
+    expect(rows.reduce((s, r) => (r.kind === 'payment' ? s + r.amount : s), 0)).toBe(1840)
+  })
+  it('paidTotalInRange sums payments plus legacy-only stubs without double counting', () => {
+    const total = paidTotalInRange({
+      payStubs: [stub({ id: 's1' }), stub({ id: 's2', gross_pay: 500, paid_at: '2026-08-10T12:00:00Z' })],
+      stubPayments: payments,
+      rangeStart: null,
+      rangeEnd: null,
+    })
+    expect(total).toBe(2340)
+  })
+  it('statement entries come from recorded payments, offsets listed once per report', () => {
+    const entries = buildPayStatementPayments({
+      payStubs: [stub({ id: 's1', paid_at: null })],
+      offsets: [offset({ id: 'a', pay_stub_id: 's1', type: 'damage', amount: 425, description: 'Windshield' })],
+      workDays: [],
+      stubPayments: payments,
+      rangeStart: null,
+      rangeEnd: null,
+    })
+    expect(entries.map((e) => [e.paidAtYmd, e.gross])).toEqual([
+      ['2026-08-08', 840],
+      ['2026-08-05', 1000],
+    ])
+    expect(entries[0]?.offsets).toEqual([{ label: 'Windshield', amount: -425 }])
+    expect(entries[1]?.offsets).toEqual([])
   })
 })

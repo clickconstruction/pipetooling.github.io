@@ -18,10 +18,12 @@ import {
   buildPayStatementHtml,
   buildPayStatementPayments,
   offsetSignedAmount,
+  paidTotalInRange,
   personOffsetBalances,
   type PayStubLike,
   type PersonOffsetLike,
   type PersonWorkDay,
+  type StubPaymentLike,
 } from '../../lib/people/personMoneyLedger'
 import { openPayStubWindow } from '../../lib/peopleDocuments/buildPayStubHtml'
 
@@ -80,6 +82,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
   const [teamLabor, setTeamLabor] = useState<TeamLaborRow[] | null>(null)
   const [jobs, setJobs] = useState<JobRow[] | null>(null)
   const [roster, setRoster] = useState<CrewPnlRosterPerson[]>([])
+  const [stubPayments, setStubPayments] = useState<StubPaymentLike[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [preset, setPreset] = useState<CrewPnlRangePreset>('this_year')
   const [filter, setFilter] = useState<LedgerFilter>('all')
@@ -88,12 +91,17 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
     let cancelled = false
     void (async () => {
       try {
-        const [labor, peopleRes] = await Promise.all([
+        const stubIds = payStubs.map((s) => s.id)
+        const [labor, peopleRes, paymentsRes] = await Promise.all([
           loadTeamLaborData(supabase),
           supabase.from('people').select('id, name, account_user_id'),
+          stubIds.length > 0
+            ? supabase.from('pay_stub_payments').select('id, pay_stub_id, amount, paid_at, memo').in('pay_stub_id', stubIds)
+            : Promise.resolve({ data: [], error: null }),
         ])
         if (cancelled) return
         setTeamLabor(labor)
+        setStubPayments((paymentsRes.data ?? []) as StubPaymentLike[])
         setRoster(
           ((peopleRes.data ?? []) as Array<{ id: string; name: string | null; account_user_id: string | null }>).map((p) => ({
             id: p.id,
@@ -169,7 +177,10 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
     return out
   }, [teamLabor, personName])
 
-  const timeline = useMemo(() => buildOffsetPaymentTimeline({ offsets, payStubs }), [offsets, payStubs])
+  const timeline = useMemo(
+    () => buildOffsetPaymentTimeline({ offsets, payStubs, stubPayments }),
+    [offsets, payStubs, stubPayments],
+  )
 
   const inRange = (ymd: string) => (range.start == null || ymd >= range.start) && (range.end == null || ymd <= range.end)
   const visibleTimeline = useMemo(
@@ -182,14 +193,8 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
   )
 
   const paidInRange = useMemo(
-    () =>
-      payStubs.reduce((s, p) => {
-        if (p.paid_at == null) return s
-        const ymd = p.paid_at.slice(0, 10)
-        return inRange(ymd) ? s + p.gross_pay : s
-      }, 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- inRange derives from range
-    [payStubs, range],
+    () => paidTotalInRange({ payStubs, stubPayments, rangeStart: range.start, rangeEnd: range.end }),
+    [payStubs, stubPayments, range],
   )
   const offsetsNetInRange = useMemo(
     () => offsets.reduce((s, o) => (inRange(o.occurred_date) ? s + offsetSignedAmount(o.type, o.amount) : s), 0),
@@ -203,6 +208,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
       payStubs,
       offsets,
       workDays,
+      stubPayments,
       rangeStart: range.start,
       rangeEnd: range.end,
     })
