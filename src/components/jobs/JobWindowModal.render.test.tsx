@@ -96,11 +96,10 @@ describe('JobWindowModal', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
-  it('the Job pane ⚙ switches to the Edit tab instead of swapping modals', async () => {
+  it('carries no ⚙ Edit gear — the Edit tab replaced it (v2.1677)', async () => {
     renderWindow(vi.fn(), 'job')
-    const editGear = await screen.findByLabelText('Edit job')
-    fireEvent.click(editGear)
-    expect(tab('Edit').getAttribute('aria-selected')).toBe('true')
+    await screen.findByRole('button', { name: 'Share with supply house' })
+    expect(screen.queryByLabelText('Edit job')).toBeNull()
   })
 
   it('keeps the job header — title + live action icons — on the Bill tab (v2.1676)', async () => {
@@ -111,8 +110,8 @@ describe('JobWindowModal', () => {
     // …the read-view body itself is display-toggled off…
     const jobPane = document.querySelector('[role="tabpanel"][aria-label="Job"]')!
     expect(jobPane.querySelector('div[style*="none"]')).toBeTruthy()
-    // …and a header icon still WORKS from Bill: the ⚙ switches to Edit.
-    fireEvent.click(screen.getByLabelText('Edit job'))
-    expect(tab('Edit').getAttribute('aria-selected')).toBe('true')
+    // …and a header icon still WORKS from Bill: the calendar opens on top.
+    fireEvent.click(screen.getByLabelText('Open the job calendar'))
+    await screen.findByText('Open week dispatch')
   })
 })

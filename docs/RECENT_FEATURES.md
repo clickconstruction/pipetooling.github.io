@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1676)
+last_updated: 2026-08-15 (v2.1677)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1677)
+
+### Job window: tighter header, the pill carries the job number ("961 PLUM"), old ⓘ retired (2026-08-15)
+Three owner calls on the fresh shared header (v2.1676). **(1) Whitespace**: in pane mode [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)'s card kept its own `1.25rem` padding on top of the window scroll container's — doubled space under the tab bar. Pane padding drops to 0 (the shell provides it); tab-bar-to-title gap measured 20px after (was ~55px). **(2) The trade pill reads "961 PLUM"**: new `paneJobNumber` (HCP first, else C# — the app-wide precedence) prefixes the pill label in pane mode; the title's HCP number chip hides in pane mode so jobs like 523 don't show the number twice. Standalone Job Detail is unchanged. **(3) The HCP#/C# ⓘ help popover** ([`JobFormHeaderRow`](../src/components/jobs/JobFormHeaderRow.tsx)) hides in embedded mode — the pill above already shows the resolved number; the standalone New Job form keeps it. **(4) The ⚙ Edit gear** leaves the pane-mode icon cluster (with its `onRequestEditTab` plumbing) — the window's Edit tab replaced it. **(5) The Edit tab's Service type shrinks** ([`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx) `embedded` prop): the select caps near the label's width instead of flexing across the row, and the label-side trade pill hides — the window header's "523 PLUM" already says it. **(6) "Link to: Bid | Project" moves into the shared header's icon row**: the cluster's state and link-choice modals live in the form shell, so the embedded [`JobFormHeaderRow`](../src/components/jobs/JobFormHeaderRow.tsx) PORTALS it into a slot the Job pane renders at the far right of the icon row ([`jobWindowHeaderSlot.ts`](../src/components/jobs/jobWindowHeaderSlot.ts) — a portal because the two components sit across an import cycle); the pane's action row goes full-width in pane mode so pill+icons sit left, links right, one line, on every tab. Verified live on jobs 961 · Cop Properties (C#) and 523 · Mission Hills (HCP). Client-only — no migration.
 
 ## Latest Updates (v2.1676)
 

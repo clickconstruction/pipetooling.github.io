@@ -43,6 +43,7 @@ import type { JobShareFields } from '../../lib/jobShare'
 import { ScheduleJobModal } from './ScheduleJobModal'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { JOB_WINDOW_HEADER_LINKS_SLOT_ID } from './jobWindowHeaderSlot'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
@@ -110,8 +111,6 @@ type Props = {
    * overlay/card, no Escape listener, no ✕/Close (the window owns them).
    */
   paneMode?: boolean
-  /** Pane mode: the ⚙ Edit switches the window to its Edit tab instead of swapping modals. */
-  onRequestEditTab?: (() => void) | null
   /** Pane mode: bump to re-run loadDetail after the Edit/Bill tabs save (autosave slices flush). */
   externalRefreshKey?: number
   /** Pane mode: reports the stacked-satellite state so the window's Escape owner can hold fire. */
@@ -612,7 +611,6 @@ export default function DetailJobModal({
   onEditJobSaved,
   autoOpenSupplyHouseShare = false,
   paneMode = false,
-  onRequestEditTab = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
@@ -740,6 +738,17 @@ export default function DetailJobModal({
   const modalTitle = modalTitleParts.num
     ? `${modalTitleParts.num} · ${modalTitleParts.name}`
     : modalTitleParts.name
+
+  /**
+   * Job window (v2.1677): the display number for the trade pill — HCP first,
+   * else C# (the app-wide precedence) — so the pill reads "961 PLUM" on every
+   * tab even for Click-numbered jobs, whose title carries no number chip.
+   */
+  const paneJobNumber = useMemo(() => {
+    const hcp = ((fullJob ?? limitedJob)?.hcp_number ?? '').trim()
+    if (hcp) return hcp
+    return (fullJob?.click_number ?? '').trim()
+  }, [fullJob, limitedJob])
 
   const mapsAddressLine = useMemo(() => {
     const fromJob = (fullJob ?? limitedJob)?.job_address?.trim()
@@ -1121,9 +1130,9 @@ export default function DetailJobModal({
 
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
-    // Pane mode switches tabs and needs no form context; standalone needs the
-    // Edit Job singleton to exist.
-    (paneMode ? Boolean(onRequestEditTab) : Boolean(jobFormModal)) &&
+    // Pane mode: no ⚙ — the window's Edit tab replaced it (v2.1677).
+    !paneMode &&
+    Boolean(jobFormModal) &&
     !loading &&
     !error &&
     Boolean(jobId) &&
@@ -1132,11 +1141,6 @@ export default function DetailJobModal({
 
   const handleEditJobClick = () => {
     if (!jobId || isSubcontractorLikeRole(authRole as UserRole)) return
-    // Pane mode: the Edit tab is a sibling pane — just switch to it.
-    if (paneMode && onRequestEditTab) {
-      onRequestEditTab()
-      return
-    }
     if (!jobFormModal) return
     jobFormModal.openEditJob(jobId, {
       ...(fullJob ? { initialJob: fullJob } : {}),
@@ -1214,7 +1218,9 @@ export default function DetailJobModal({
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
-          padding: '1.25rem',
+          // Pane mode: the Job window's scroll container already pads 1.25rem —
+          // padding here too doubled the whitespace under the tab bar (v2.1677).
+          padding: paneMode ? 0 : '1.25rem',
           ...(accountManDisplay?.variant === 'only'
             ? { borderTop: '3px solid #dc2626', borderBottom: '3px solid #dc2626' }
             : {}),
@@ -1254,7 +1260,9 @@ export default function DetailJobModal({
               paddingRight: showDetailHeaderRightCluster ? '0.5rem' : 0,
             }}
           >
-            {modalTitleParts.num ? (
+            {/* Pane mode: the trade pill below carries the number ("961 PLUM"),
+                so the title chip would show it twice (v2.1677). */}
+            {modalTitleParts.num && !paneMode ? (
               <span
                 style={{
                   display: 'inline-block',
@@ -1284,10 +1292,20 @@ export default function DetailJobModal({
               flexWrap: 'wrap',
               gap: narrowViewport ? '0.3rem' : '0.15rem',
               flexShrink: 0,
-              maxWidth: narrowViewport ? '100%' : '55%',
-              ...(narrowViewport ? { width: '100%' } : {}),
+              // Pane mode: full-width row — pill + icons left, the portaled
+              // "Link to" cluster right (its marginLeft:auto splits the row).
+              maxWidth: narrowViewport || paneMode ? '100%' : '55%',
+              ...(narrowViewport || paneMode ? { width: '100%' } : {}),
             }}
           >
+            {/* Job window: the embedded form portals its "Link to: Bid | Project"
+                cluster here, at the far right of the icon row (v2.1677). */}
+            {paneMode ? (
+              <span
+                id={JOB_WINDOW_HEADER_LINKS_SLOT_ID}
+                style={{ order: 99, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}
+              />
+            ) : null}
             {showDetailHeaderRightCluster && headerTradePill ? (
               <span style={{ marginRight: '0.25rem', display: 'inline-flex' }}>
                 {tradePillOpensStages ? (
@@ -1301,11 +1319,14 @@ export default function DetailJobModal({
                     aria-label={`${headerTradePillTitleText ?? headerTradePill.label}: open this job in Jobs → Stages`}
                     style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer' }}
                   >
-                    {headerTradePill.label}
+                    {/* Job window: the pill carries the job number ("961 PLUM") —
+                        C#-numbered jobs have no title chip, so this is where the
+                        number lives (v2.1677). */}
+                    {paneMode && paneJobNumber ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
                   </button>
                 ) : (
                   <span style={{ ...headerTradePill.style, marginTop: 0 }} title={headerTradePillTitleText}>
-                    {headerTradePill.label}
+                    {paneMode && paneJobNumber ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
                   </span>
                 )}
               </span>

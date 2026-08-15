@@ -66,6 +66,12 @@ type JobFormIdentityFieldsProps = {
   tradePill: { label: string; style: CSSProperties } | null
   /** Closes the form (autosave flush) then navigates to the job on Jobs → Stages. */
   onTradePillClick: () => void
+  /**
+   * Job window (v2.1677): the window header already shows the "961 PLUM" pill,
+   * so the label-side pill is redundant and the select shrinks to roughly the
+   * label's width instead of flexing across the row.
+   */
+  embedded?: boolean
 }
 
 /**
@@ -90,6 +96,7 @@ export function JobFormIdentityFields({
   serviceTypeOptions,
   tradePill,
   onTradePillClick,
+  embedded = false,
 }: JobFormIdentityFieldsProps) {
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
@@ -122,7 +129,7 @@ export function JobFormIdentityFields({
             style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
         </div>
-        <div style={{ flex: '1 1 170px', minWidth: 0 }}>
+        <div style={embedded ? { flex: '0 1 auto', minWidth: 0 } : { flex: '1 1 170px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minHeight: '1.4rem', marginBottom: 4, minWidth: 0 }}>
             <label
               htmlFor="job-form-service-type"
@@ -130,7 +137,7 @@ export function JobFormIdentityFields({
             >
               Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
             </label>
-            {tradePill ? (
+            {tradePill && !embedded ? (
               <button
                 type="button"
                 onClick={onTradePillClick}
@@ -142,7 +149,7 @@ export function JobFormIdentityFields({
               </button>
             ) : null}
           </div>
-          <div style={{ width: '100%', maxWidth: 240, minWidth: 0 }}>
+          <div style={{ width: '100%', maxWidth: embedded ? 130 : 240, minWidth: embedded ? 110 : 0 }}>
             <SearchableSelect
               id="job-form-service-type"
               value={formServiceTypeId}

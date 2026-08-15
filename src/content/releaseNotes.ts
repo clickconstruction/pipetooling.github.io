@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1677',
+    date: '2026-08-15',
+    title: 'Job window: tighter header, numbered pill',
+    kind: 'fix',
+    highlights: [
+      'The job window\'s header sits snug under the tabs — the extra whitespace above the job name is gone.',
+      'The service pill now carries the job number ("961 PLUM"), so the number is always in view even on jobs numbered with a C# — and it no longer repeats next to the job name.',
+      'The old HCP#/C# info bubble and the ⚙ edit gear are gone from the window — the Edit tab does the gear\'s job now (the New Job form keeps its info bubble).',
+      'On the Edit tab, Service type is now a compact picker and its duplicate service pill is gone — and the "Link to: Bid | Project" shortcuts moved up beside the header icons, available from every tab.',
+    ],
+  },
+  {
     version: 'v2.1676',
     date: '2026-08-15',
     title: 'Job header on every tab',
