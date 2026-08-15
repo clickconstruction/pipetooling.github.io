@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1673',
+    date: '2026-08-15',
+    title: 'One Job Activity view, numbered and compact',
+    kind: 'feature',
+    highlights: [
+      'Jobs → Pipeline: the floating Job activity window, the panel under a row, and its full-screen mode now show the same feed — one line per item with the circled numbers the row preview uses, so "check note 3" means the same thing everywhere.',
+      'Long reports fold to their title ("Status Report · ▸ 3 answers") — click the line to read the answers in place, click again to fold them back.',
+      'Day headers carry the date and how long ago ("Wed, Aug 12 · 3d ago"), so each line only needs the clock time — about four times more history fits on screen.',
+      'Schedule and Week dispatch now sit in the activity window too, and a failed note post puts your typed text back instead of losing it.',
+    ],
+  },
+  {
     version: 'v2.1672',
     date: '2026-08-15',
     title: 'Vehicle trim field',

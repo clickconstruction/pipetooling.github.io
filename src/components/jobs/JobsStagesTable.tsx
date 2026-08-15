@@ -7,7 +7,7 @@ import { jobBilledUnpaidDollars, stagesJobLevelStripeEmailedHintInvoice } from '
 import { jobBillingUnallocatedDollars } from '../../lib/jobsStagesBoard'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
-import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
@@ -149,10 +149,6 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     canManageJobPeople,
     setManageJobPeople,
     jobThreadNotesLoadingId,
-    jobThreadDraft,
-    jobThreadSubmittingId,
-    setJobThreadDraft,
-    submitJobThreadNote,
     submitJobThreadNoteWithBody,
     loadJobThreadNotesForJob,
     authUser,
@@ -511,44 +507,39 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     }}
                   >
                     {renderStagesExpandedRowPanel(
-                    <JobThreadNotesPanel
-                      fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
+                    <JobsStagesThreadPanel
+                      job={j}
+                      activity={jobThreadActivityByJobId[j.id] ?? []}
+                      loading={jobThreadNotesLoadingId === j.id}
+                      upcoming={stagesUpcomingByJobId[j.id] ?? null}
+                      viewerRole={authRole}
+                      {...(authUser ? { submitNoteWithBody: submitJobThreadNoteWithBody } : {})}
+                      fullscreen={jobThreadFullscreen}
+                      onToggleFullscreen={() => setJobThreadFullscreen(!jobThreadFullscreen)}
                       fullscreenHeader={renderStagesThreadFullscreenJobHeader(j)}
-                      nextAppointment={stagesUpcomingByJobId[j.id] ?? null}
                       pctComplete={j.pct_complete ?? null}
                       canEditPct={canEditJobPctComplete}
                       pctSaving={pctCompleteSavingId === j.id}
                       onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
                       teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
-                      peopleAction={
-                        canManageJobPeople
-                          ? {
+                      {...(canManageJobPeople
+                        ? {
+                            peopleAction: {
                               onClick: () =>
                                 setManageJobPeople({
                                   jobId: j.id,
                                   jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
                                   currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
                                 }),
-                            }
-                          : undefined
-                      }
-                      activity={jobThreadActivityByJobId[j.id] ?? []}
-                      loading={jobThreadNotesLoadingId === j.id}
-                      canPost={!!authUser}
-                      draft={jobThreadDraft}
-                      submitting={jobThreadSubmittingId === j.id}
-                      onDraftChange={setJobThreadDraft}
-                      onSubmit={() => void submitJobThreadNote(j.id)}
-                      scheduleAction={
-                        canOpenJobScheduleModal
-                          ? // Opens the dispatch Assign work sheet pre-picked to this job (v2.1543);
+                            },
+                          }
+                        : {})}
+                      {...(canOpenJobScheduleModal
+                        ? {
+                            // Opens the dispatch Assign work sheet pre-picked to this job (v2.1543);
                             // no team requirement — the sheet offers the whole roster.
-                            { onClick: () => openQuickAssignForJob(j) }
-                          : undefined
-                      }
-                      scheduleDispatchAction={
-                        canOpenJobScheduleModal
-                          ? {
+                            scheduleAction: { onClick: () => openQuickAssignForJob(j) },
+                            scheduleDispatchAction: {
                               onClick: () => {
                                 const week = getDefaultWeekRange().start
                                 navigate(
@@ -556,10 +547,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                                 )
                               },
                               disabled: (j.team_members?.length ?? 0) === 0,
-                            }
-                          : undefined
-                      }
-                      viewerRole={authRole}
+                            },
+                          }
+                        : {})}
                     />,
                     )}
                   </td>

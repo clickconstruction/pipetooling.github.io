@@ -3431,6 +3431,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 }
               : undefined
           }
+          {...(canOpenJobScheduleModal
+            ? {
+                // Same toolbar shortcuts the expanded-row panel carries — the
+                // two surfaces render one body and must offer the same actions.
+                scheduleAction: { onClick: () => openQuickAssignForJob(activityExpandJob) },
+                scheduleDispatchAction: {
+                  onClick: () => {
+                    const week = getDefaultWeekRange().start
+                    navigate(
+                      `/schedule-dispatch?jobId=${encodeURIComponent(activityExpandJob.id)}&week=${encodeURIComponent(week)}`,
+                    )
+                  },
+                  disabled: (activityExpandJob.team_members?.length ?? 0) === 0,
+                },
+              }
+            : {})}
         />
       )}
       {calendarJob && (

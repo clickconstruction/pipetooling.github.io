@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1672)
+last_updated: 2026-08-15 (v2.1673)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1673)
+
+### Pipeline: one Job Activity view — numbered, compact, shared by every shell (2026-08-15)
+Owner request ("unify the content of both to what the floating modal currently is … make all the lines more compact and numbered just like the preview"), mockup approved. The same job thread rendered three ways — the numbered row preview box, the roomier numbered floating modal, and the expanded-row [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) (unnumbered, two lines per item, no day separators). Now ONE body serves every Pipeline shell: new kernel [`jobActivityLine.ts`](../src/lib/jobs/jobActivityLine.ts) (16 tests) collapses each activity item to a single column-aligned line (number · clock time · kind tag · person · body; report answers and clock/schedule notes fold into a click-to-open `detail`), numbering notes+reports with the box's exact comparator (pre-filter, ties keep input order) so numbers agree across every surface; day groups carry date + age ("Wed, Aug 12 · 3d ago"), which is what lets lines drop to bare clock times. Rendered by [`JobActivityFeed`](../src/components/jobs/JobActivityFeed.tsx) inside [`JobActivityView`](../src/components/jobs/JobActivityView.tsx) (toolbar: crew + % complete pinned to ONE row at every width — owner follow-up; filter pills + Schedule/Week dispatch on the next row — decision 04; pinned Next strip; pill composer with the % editor). Shells: [`JobsStagesActivityExpandModal`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) reduced to the floating frame (goes edge-to-edge ≤700px) and new [`JobsStagesThreadPanel`](../src/components/jobs/JobsStagesThreadPanel.tsx) replaces `JobThreadNotesPanel` in both Stages tables + the mobile card list (inline + portal fullscreen; `JobThreadNotesPanel` itself is untouched for Job Detail/Job Mode/Quickfill/Estimates). Fixes shipped with it: `submitJobThreadNoteWithBody` now reports success so a failed post **restores the typed draft** (box + view; it used to eat the note); the fullscreen scroll lock moved to the shared ref-counted [`useBodyScrollLock`](../src/hooks/useBodyScrollLock.ts) — billed jobs mount the panel twice (job row + invoice row) and the old hand-rolled save/restore left the page **unscrollable after exit** (caught live); unparseable timestamps render "—" instead of throwing (caught by a ported kernel test). Dead modal-item builders removed from [`jobActivityBoxFeed.ts`](../src/lib/jobs/jobActivityBoxFeed.ts). Render smokes: panel (8) + modal rewritten. Help guide `open-job-activity-full-screen` rewritten. Client-only — no migration.
 
 ## Latest Updates (v2.1672)
 

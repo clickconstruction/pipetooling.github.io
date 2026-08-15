@@ -89,7 +89,7 @@ type Props = {
   /** Lazy full-feed loader — the thread expand's loader, fired on first pointer interaction. */
   loadActivityForJob?: (jobId: string) => void
   /** The thread-note pipeline (optimistic + realtime). Absent → no Post pill (read-only box). */
-  submitNoteWithBody?: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<void>
+  submitNoteWithBody?: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<boolean>
 }
 
 export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNoteWithBody }: Props) {
@@ -146,8 +146,9 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
     }
     setSubmitting(true)
     try {
-      await submitNoteWithBody(job.id, body, 'draft')
-      closeComposer()
+      // Only dismiss the composer when the note actually landed — a failed post
+      // used to close the bar and take the typed text with it (v2.1673).
+      if (await submitNoteWithBody(job.id, body, 'draft')) closeComposer()
     } finally {
       setSubmitting(false)
     }

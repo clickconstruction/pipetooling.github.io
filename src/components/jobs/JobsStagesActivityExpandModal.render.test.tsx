@@ -46,11 +46,11 @@ describe('JobsStagesActivityExpandModal', () => {
         activity={mixedActivity}
         upcoming={null}
         onClose={onClose}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
-    expect(screen.getByLabelText('Expanded job activity for Shearer Pinpoint')).toBeTruthy()
-    expect(screen.getByText('Wed, Aug 12')).toBeTruthy()
+    expect(screen.getByLabelText('Job activity for Shearer Pinpoint')).toBeTruthy()
+    expect(screen.getByText(/Wed, Aug 12/)).toBeTruthy()
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
     expect(screen.getByLabelText('Entry 2')).toBeTruthy()
     // The status event renders as an unnumbered timeline row.
@@ -70,7 +70,7 @@ describe('JobsStagesActivityExpandModal', () => {
         activity={mixedActivity}
         upcoming={null}
         onClose={vi.fn()}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
     fireEvent.click(screen.getByRole('tab', { name: /Notes/ }))
@@ -90,7 +90,7 @@ describe('JobsStagesActivityExpandModal', () => {
         activity={[]}
         upcoming={null}
         onClose={vi.fn()}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
         pctComplete={45}
         teamMembers={[
           { user_id: 'u1', name: 'Abraham' },
@@ -113,7 +113,7 @@ describe('JobsStagesActivityExpandModal', () => {
         activity={[]}
         upcoming={null}
         onClose={vi.fn()}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
         pctComplete={20}
         canEditPct
         onCommitPct={onCommitPct}
@@ -146,7 +146,7 @@ describe('JobsStagesActivityExpandModal', () => {
   })
 
   it('composer posts through the pipeline on Enter; Escape in the composer blurs without closing', async () => {
-    const submitNoteWithBody = vi.fn(async () => {})
+    const submitNoteWithBody = vi.fn(async () => true)
     const onClose = vi.fn()
     const job = makeJob({ job_name: 'Shearer Pinpoint' })
     renderWithProviders(

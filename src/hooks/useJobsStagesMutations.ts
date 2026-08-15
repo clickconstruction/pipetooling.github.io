@@ -84,7 +84,7 @@ export function useJobsStagesMutations({
   /** "Follow cards I move" — page closure over `stagesFollowMoves` + the section/focus/flash states. */
   followMovedJob: (jobId: string, toStatus: string) => void
   /** From the shared `useJobThreadNotes` engine — `commitStagesPctWithNote` posts its note through it (v2.757). */
-  submitJobThreadNoteWithBody: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<void>
+  submitJobThreadNoteWithBody: (jobId: string, body: string, source: 'draft' | 'stamp') => Promise<boolean>
 }) {
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
