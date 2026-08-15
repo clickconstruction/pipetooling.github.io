@@ -3138,6 +3138,7 @@ export default function JobFormModal({
               tab switches never lose state. */}
           <div style={{ display: !embedded || embeddedRegion === 'edit' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
           <JobFormIdentityFields
+            embedded={embedded}
             hcpNumber={hcpNumber}
             setHcpNumber={setHcpNumber}
             hideHcpNumberField={hideHcpEntryField}
