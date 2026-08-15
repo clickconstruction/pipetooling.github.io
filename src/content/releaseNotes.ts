@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1679',
+    date: '2026-08-15',
+    title: 'Job window: title tucks under the tabs',
+    kind: 'fix',
+    highlights: [
+      'The job name now sits right under the Job · Edit · Bill tab bar — the leftover strip of whitespace between them is gone, on every tab.',
+    ],
+  },
+  {
     version: 'v2.1678',
     date: '2026-08-15',
     title: 'Under the hood: leaner job notes panel',

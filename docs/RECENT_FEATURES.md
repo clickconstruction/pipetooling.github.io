@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1678)
+last_updated: 2026-08-15 (v2.1679)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1679)
+
+### Job window: the title tucks up under the tab bar (2026-08-15)
+Owner follow-up on the v2.1677 whitespace pass: the gap between the Job · Edit · Bill tab bar and the job title still read as excessive. The remaining space was the window's scroll container ([`JobWindowModal`](../src/components/jobs/JobWindowModal.tsx)) padding `1.25rem` on all four sides — 20px of it above the title, on top of the tab bar's own bottom padding. The container's top padding drops to `0.5rem` (sides and bottom keep `1.25rem`); tab-bar-to-title gap measured 8px after (was 20px), verified live on job 961 from the Edit tab. Client-only — no migration.
 
 ## Latest Updates (v2.1678)
 
