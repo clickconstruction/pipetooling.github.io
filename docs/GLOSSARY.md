@@ -239,6 +239,9 @@ User clock-in/clock-out records from the Dashboard. Each session has `clocked_in
 
 **Database**: `job_schedule_blocks` — migration **`20260407061043`** adds **`shared_block_group_id`**; **`20260407052651`** enforces minimum 30-minute duration.
 
+### Job window (Job · Edit · Bill)
+One modal per job (v2.1675) with three tabs and a single ✕, replacing the separate Job Detail and Edit Job modals for roles that can edit jobs: **Job** = the read view (`DetailJobModal` in pane mode), **Edit** = identity/Account Man/Team/Customer/links/Line Items, **Bill** = the billing half (summary bar, segments + break-off slider, invoices, payments, Labor & Parts Cost). Edit + Bill are ONE `JobFormModal` instance (embedded, display-toggled regions) so tab switches never lose typed state; autosave runs throughout and ✕/Esc route through the guarded close-flush. Shell: [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx), owned by `JobDetailModalContext`; `openEditJob` delegates in via the opener bridge. Subcontractor-like roles keep the plain read-only Job Detail; **New Job** keeps the standalone form.
+
 ### Job Mode (Dashboard)
 A per-user, per-device toggle in the header gear menu (**[`Layout.tsx`](../src/components/Layout.tsx)**) that swaps the top of the Dashboard for a focused mobile-first card. When **Job Mode** is on, **[`Dashboard.tsx`](../src/pages/Dashboard.tsx)** takes an early-return path that renders only the tally / pinned-tabs banner, **[`DashboardJobModeCard`](../src/components/jobMode/DashboardJobModeCard.tsx)**, the existing `AdditionalReportModal`, and a **Show full dashboard** link (component-local state, resets every page load).
 

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1675',
+    date: '2026-08-15',
+    title: 'One job window: Job · Edit · Bill',
+    kind: 'feature',
+    highlights: [
+      'A job now opens as one window with three tabs — Job (the read view), Edit (numbers, name, customer, team, links, line items), and Bill (the billing bar, break-off slider, invoices, payments, and costs) — with a single ✕ to close.',
+      'The old bounce between the Job Detail and Edit Job windows is gone: the ⚙ and Edit buttons just switch tabs, and switching never loses what you typed.',
+      'Closing still finishes any pending autosave first, and edits show up on the Job tab immediately. Creating a new job keeps the plain New Job form.',
+    ],
+  },
+  {
     version: 'v2.1674',
     date: '2026-08-15',
     title: 'Schedule lines show who scheduled them',

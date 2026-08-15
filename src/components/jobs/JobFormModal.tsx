@@ -208,6 +208,27 @@ export type JobFormModalProps = {
   onSaved: (() => void) | null
   /** New job only: called with created id after insert succeeds. */
   onCreatedJobId?: ((jobId: string) => void) | null
+  /**
+   * Job-window embedding (v2.1675): the tabbed Job window renders this form as
+   * its Edit + Bill panes. When set, the form skips its own overlay/card chrome
+   * (the window provides them), hides the header title / Job Detail bridge /
+   * footer Close, and shows ONE region at a time — everything stays mounted
+   * (display-toggled) so tab switches never lose state. 'edit' = identity,
+   * team, customer, links, line items; 'bill' = the billing half (segment bar,
+   * invoices, payments, labor + parts cost).
+   */
+  embeddedRegion?: 'edit' | 'bill' | null
+  /**
+   * Embedding only: receives the guarded close (autosave flush) so the window's
+   * ✕ can route through it. Called with null on unmount.
+   */
+  registerRequestClose?: ((fn: (() => Promise<boolean>) | null) => void) | null
+  /**
+   * Embedding only: true while the Job tab has a stacked satellite open
+   * (Reports / Calendar / …) — folded into the Escape gate so Esc closes the
+   * satellite, never the whole window underneath it.
+   */
+  externalEscBlocked?: boolean
 }
 
 export default function JobFormModal({
@@ -223,7 +244,11 @@ export default function JobFormModal({
   onClose,
   onSaved,
   onCreatedJobId = null,
+  embeddedRegion = null,
+  registerRequestClose = null,
+  externalEscBlocked = false,
 }: JobFormModalProps) {
+  const embedded = embeddedRegion !== null
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
@@ -498,6 +523,7 @@ export default function JobFormModal({
   // bannerOverlayOpen and owns its own Escape). closeForm is hoisted; the ref
   // keeps the listener on the current render's closure.
   const escCloseBlocked =
+    externalEscBlocked ||
     jobBidLinkChoiceOpen ||
     jobImportSourceOpen ||
     jobProjectLinkChoiceOpen ||
@@ -519,6 +545,14 @@ export default function JobFormModal({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [escCloseBlocked])
+
+  // Job-window embedding: hand the shell the guarded close (autosave flush) so
+  // its ✕ routes through the same path as the Close button and Escape.
+  useEffect(() => {
+    if (!registerRequestClose) return
+    registerRequestClose(() => closeFormRef.current?.() ?? Promise.resolve(true))
+    return () => registerRequestClose(null)
+  }, [registerRequestClose])
 
   function addGeneratedSegmentsToJob(lines: SegmentGeneratorPayloadLine[]) {
     if (lines.length > 0) {
@@ -2997,6 +3031,13 @@ export default function JobFormModal({
   }
 
   if (!initDone) {
+    if (embedded) {
+      return (
+        <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
+          Loading…
+        </div>
+      )
+    }
     return (
       <div
         style={{
@@ -3014,40 +3055,52 @@ export default function JobFormModal({
     )
   }
 
+  // Job-window embedding: the shell owns the overlay/card/scroll, so both
+  // wrapper divs go style-less; everything inside stays byte-identical.
   return (
     <>
 
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: JOB_FORM_OVERLAY_Z_INDEX,
-        padding: '1rem',
-      }}
+      style={
+        embedded
+          ? undefined
+          : {
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: JOB_FORM_OVERLAY_Z_INDEX,
+              padding: '1rem',
+            }
+      }
       onClick={(e) => {
-        if (e.target === e.currentTarget) void closeForm()
+        if (!embedded && e.target === e.currentTarget) void closeForm()
       }}
     >
       <div
-        style={{
-          background: 'var(--surface)',
-          borderRadius: 8,
-          padding: '1.5rem',
-          maxWidth: 560,
-          width: '100%',
-          maxHeight: '90vh',
-          overflow: 'auto',
-        }}
+        style={
+          embedded
+            ? undefined
+            : {
+                background: 'var(--surface)',
+                borderRadius: 8,
+                padding: '1.5rem',
+                maxWidth: 560,
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+              }
+        }
         onClick={(e) => e.stopPropagation()}
       >
+        <div style={!embedded || embeddedRegion === 'edit' ? undefined : { display: 'none' }}>
         <JobFormHeaderRow
           mode={mode}
           isEditing={!!editing}
           editingId={editing?.id ?? null}
+          embedded={embedded}
           importBlocked={newJobImportBlockedByContent}
           bidId={bidId}
           projectId={projectId}
@@ -3065,6 +3118,7 @@ export default function JobFormModal({
           nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
         />
         <JobFormSourceEstimateBanner jobId={editing?.id ?? null} onOverlayOpenChange={setBannerOverlayOpen} />
+        </div>
         {error && (
           <p
             style={{
@@ -3079,6 +3133,10 @@ export default function JobFormModal({
           </p>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* EDIT region — identity, team, customer, links, line items. In the
+              Job window only one region shows at a time; both stay mounted so
+              tab switches never lose state. */}
+          <div style={{ display: !embedded || embeddedRegion === 'edit' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
           <JobFormIdentityFields
             hcpNumber={hcpNumber}
             setHcpNumber={setHcpNumber}
@@ -3176,6 +3234,30 @@ export default function JobFormModal({
             />
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
+          {/* Line items live with the job's SCOPE (owner call on the Job-window
+              mockup, decision 02), so they sit above the billing region — which
+              also makes the two regions contiguous for the tab split. */}
+          <JobFormFixturesSection
+            fixtures={fixtures}
+            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} onBillSeparately={(row) => void billHazmatFeeSeparately(row)} billSeparatelyBusyId={billingFeeSeparatelyId} /> : null}
+            riderFeesDollars={riderFeesDollars}
+            fixtureScopeExpandedById={fixtureScopeExpandedById}
+            setFixtureScopeExpandedById={setFixtureScopeExpandedById}
+            fixturesSectionHighlight={fixturesSectionHighlight}
+            fixturesSectionHighlightRef={fixturesSectionHighlightRef}
+            updateFixtureRow={updateFixtureRow}
+            addFixtureRow={addFixtureRow}
+            removeFixtureRow={removeFixtureRow}
+            moveFixtureRow={moveFixtureRowInList}
+            invoiceStatusById={fixtureInvoiceStatusById}
+            onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
+            onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
+            jobTotalDollars={jobTotalBidDollars}
+          />
+          </div>
+          {/* BILL region — the billing half: summary bar, segments + break-off,
+              invoices, payments, labor + parts cost. */}
+          <div style={{ display: !embedded || embeddedRegion === 'bill' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ marginBottom: '1rem' }}>
             <div
               style={{
@@ -3258,23 +3340,6 @@ export default function JobFormModal({
               }}
             />
           </div>
-          <JobFormFixturesSection
-            fixtures={fixtures}
-            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} onBillSeparately={(row) => void billHazmatFeeSeparately(row)} billSeparatelyBusyId={billingFeeSeparatelyId} /> : null}
-            riderFeesDollars={riderFeesDollars}
-            fixtureScopeExpandedById={fixtureScopeExpandedById}
-            setFixtureScopeExpandedById={setFixtureScopeExpandedById}
-            fixturesSectionHighlight={fixturesSectionHighlight}
-            fixturesSectionHighlightRef={fixturesSectionHighlightRef}
-            updateFixtureRow={updateFixtureRow}
-            addFixtureRow={addFixtureRow}
-            removeFixtureRow={removeFixtureRow}
-            moveFixtureRow={moveFixtureRowInList}
-            invoiceStatusById={fixtureInvoiceStatusById}
-            onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
-            onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
-            jobTotalDollars={jobTotalBidDollars}
-          />
           <div style={{ marginBottom: '1rem' }}>
           {editing && (
             <>
@@ -3379,6 +3444,7 @@ export default function JobFormModal({
             updateMaterialRow={updateMaterialRow}
             removeMaterialRow={removeMaterialRow}
           />
+          </div>
         </div>
         {closeFlushState === 'error' && (
           <div
@@ -3454,7 +3520,8 @@ export default function JobFormModal({
           // centered status line over one deliberate [Delete][Undo][Close] row.
           const narrowEditFooter = editing && narrowViewport
           const deleteButton =
-            editing && authRole !== 'primary' ? (
+            // In the Job window Delete lives on the Edit tab only (owner call).
+            editing && authRole !== 'primary' && (!embedded || embeddedRegion === 'edit') ? (
               <button
                 type="button"
                 onClick={() => setDeleteJobConfirmOpen(true)}
@@ -3583,7 +3650,9 @@ export default function JobFormModal({
                       : 'All changes saved'}
             </span>
           )
-          const closeButton = (
+          // Embedded: the window's ✕ (wired to the same guarded close) replaces
+          // the footer Close.
+          const closeButton = embedded ? null : (
             <button
               type="button"
               onClick={() => void closeForm()}

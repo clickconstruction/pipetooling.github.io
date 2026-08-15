@@ -11,6 +11,8 @@ last_updated: 2026-08-01
 
 ## What this surface is
 
+> **v2.1675 — the tabbed Job window.** `DetailJobModal` and `JobFormModal` now usually render inside [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) (Job · Edit · Bill tabs, one ✕) for editor roles: the detail modal gains a `paneMode` (no own overlay/Esc/✕, ⚙ → tab switch, `externalRefreshKey`, `onEscBlockedChange`), the form gains `embeddedRegion`/`registerRequestClose`/`externalEscBlocked`. Both keep their standalone renders (non-editor roles, New Job, fallback paths), so everything in this map still applies — the window is chrome around unchanged internals.
+
 Two Jobs-area modal "God components", mapped together because they are the Jobs area's two biggest remaining files after the page-level decompositions, but **they are independent surfaces** — they share no state, no selection pointer, and no supabase tables beyond the app-wide `jobs_ledger`/`users` reads. Line counts at 2026-07-29:
 
 | File | Lines | What it is | Mounted by |
