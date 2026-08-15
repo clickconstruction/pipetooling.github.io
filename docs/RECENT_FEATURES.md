@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1665)
+last_updated: 2026-08-14 (v2.1666)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1666)
+
+### Offsets: Balances board, person money ledger, shareable pay statement (2026-08-14)
+Owner-designed (mockup approved): People → Offsets opens with a **Balances** board — one row per person with offset history, headline = **pending** net (credits +green / backcharges+damages −red; what hits the next pay report), settled people last; the existing offset table is unchanged below. Kernels ([`personMoneyLedger.ts`](../src/lib/people/personMoneyLedger.ts), +6 tests): `personOffsetBalances` (pending/lifetime split + sort), `buildOffsetPaymentTimeline` (offsets signed + pay reports dated by paid_at, unpaid flagged pending), `buildPayStatementPayments`/`buildPayStatementHtml` (statement build — asserts NO revenue words in output). Clicking a person opens [`PersonMoneyLedgerModal`](../src/components/people/PersonMoneyLedgerModal.tsx): balance chip, range presets (reusing `crewPnlRangeForPreset`), stat cards (**Paid in range / Billing credit / Offsets net**), All/Offsets/Payments/Jobs pills — the Jobs table reuses **Crew P&L attribution** ([`buildCrewPnlSummary`](../src/lib/crewPnlSummary.ts)) with the tab's own paginated jobs fetch (v2.978 lesson) + `loadTeamLaborData`, subLabor `[]` for now (footnoted: clocked crew labor only). **Pay statement** button builds a printable per-range document via the pay-report window helper: each payment's paid date + gross, the period's per-job hours from the person's day-level labor allocation, and offsets applied to that report ("Less: windshield damage") — hours and job names only, deliberately no company revenue. New render smoke (balances signs/sort → ledger open → timeline + statement button). Help guide `see-where-someone-stands-on-pay` (new). Client-only — no migration.
 
 ## Latest Updates (v2.1665)
 

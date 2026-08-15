@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1666',
+    date: '2026-08-14',
+    title: 'People balances and pay statements',
+    kind: 'feature',
+    highlights: [
+      'People → Offsets opens with a Balances board: every person\'s position at a glance — green when the company owes them, red when they owe the company.',
+      'Click a person for their full money ledger: offsets, every payment with its paid date, and the jobs they worked with hours and billing credit.',
+      'A Pay statement button builds a printable statement to share with the person — when they were paid and the job hours that earned it, with no company revenue numbers.',
+    ],
+  },
+  {
     version: 'v2.1665',
     date: '2026-08-14',
     title: 'Vehicle maintenance tasks',
