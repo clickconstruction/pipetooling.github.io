@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1680',
+    date: '2026-08-15',
+    title: 'Service type list shows real trades only',
+    kind: 'fix',
+    highlights: [
+      'Opening the Service type picker on a job no longer offers "Select service type…" as a choice — the list goes straight to Plumbing, Electrical, HVAC.',
+    ],
+  },
+  {
     version: 'v2.1679',
     date: '2026-08-15',
     title: 'Job window: title tucks under the tabs',
