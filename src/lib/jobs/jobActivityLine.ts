@@ -1,7 +1,6 @@
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { UserRole } from '../../hooks/useAuth'
 import { activityItemMatchesFilter, type ActivityFilter } from '../jobActivityFilter'
-import { eventRenderMeta, type JobActivityEventType } from '../jobActivityEvent'
 import { allReportFieldLinesForThread } from '../reportForViewFromJobLedgerRow'
 import { displayReportTemplateName } from '../reportTemplateDisplayName'
 import { formatDecimalWorkHoursToHhMm } from '../formatDecimalWorkHoursHhMm'
@@ -20,16 +19,18 @@ import {
 /**
  * One compact line per activity item — the shape the unified Job activity view
  * renders (v2.1673). Every kind collapses to a SINGLE scannable line whose
- * columns line up down the page (number · time · kind · person · body); the
- * long tail of a report's answers or a clock/schedule note moves to `detail`,
- * revealed only when the reader opens that line.
+ * columns line up down the page (number · time · person · body); the long tail
+ * of a report's answers or a clock/schedule note moves to `detail`, revealed
+ * only when the reader opens that line.
  *
- * Numbering matches {@link buildJobActivityBoxFeed}: 1 = the oldest note or
- * report, assigned before any filtering, so "check note 3" means note 3 in the
- * row preview box, the floating modal and the full-screen panel alike.
- * Schedule / clock / event rows are timeline texture and stay unnumbered —
- * pass `numberEveryLine` to number them too (they then no longer agree with the
- * preview box, which never shows those kinds).
+ * EVERY line is numbered (owner call on the approved mockup), oldest-first
+ * across the whole thread and assigned before any filtering, so a line's
+ * number never moves when the reader changes buckets. Note the deliberate
+ * mismatch with the row preview box: the box numbers notes/reports only (it
+ * never shows the other kinds), so "note 3" in the box lands on a different
+ * number here. There is no kind/tag column — the body text says what each
+ * line is, and the renderer mutes system-recorded rows instead (notes and
+ * reports are the conversation; see {@link isConversationalLine}).
  *
  * Times carry the clock only ("9:45a"); the day header supplies the date and
  * how long ago it was, so the same words never repeat on thirteen rows.
@@ -40,13 +41,9 @@ export type JobActivityDetailLine = { label?: string; value: string }
 export type JobActivityLine = {
   /** Stable React key. */
   key: string
-  /** Conversational number; null when this kind isn't numbered. */
-  number: number | null
+  /** Thread number, 1 = oldest; every line has one. */
+  number: number
   kind: JobThreadActivityItem['kind']
-  /** Event discriminator — lets the renderer pick the tag color. */
-  eventType: JobActivityEventType | null
-  /** Column tag, e.g. "Report" / "Status" / "Clock"; '' for plain notes. */
-  kindLabel: string
   atIso: string
   /** Clock time only, e.g. "9:45a" / "2:47p". */
   timeLabel: string
@@ -96,8 +93,6 @@ function lineFromItem(
       ...base,
       key: `n-${n.id}`,
       kind: 'note',
-      eventType: null,
-      kindLabel: '',
       who: n.author?.name?.trim() || 'Unknown',
       body: stripRedundantStampBody((n.body ?? '').trim()),
       detail: [],
@@ -112,8 +107,6 @@ function lineFromItem(
       ...base,
       key: `r-${r.id}`,
       kind: 'report',
-      eventType: null,
-      kindLabel: 'Report',
       who: (r.created_by_name ?? '').trim() || 'Unknown',
       body: displayReportTemplateName(r.template_name, viewerRole),
       detail: allReportFieldLinesForThread(r).map((l) => ({
@@ -130,8 +123,6 @@ function lineFromItem(
       ...base,
       key: s.dedupeKey,
       kind: 'schedule_block',
-      eventType: null,
-      kindLabel: 'Sched',
       // Schedule rows record no actor — the assignees are the useful names, and
       // they belong in the body where there's room for several.
       who: '',
@@ -149,8 +140,6 @@ function lineFromItem(
       ...base,
       key: c.dedupeKey,
       kind: 'clock_session',
-      eventType: null,
-      kindLabel: 'Clock',
       who: c.personName,
       body: outLabel
         ? `${inLabel} → ${outLabel}${durLabel ? ` · ${durLabel}` : ''}`
@@ -165,50 +154,40 @@ function lineFromItem(
     ...base,
     key: ev.dedupeKey,
     kind: 'event',
-    eventType: ev.type,
-    kindLabel: eventRenderMeta(ev.type).tag,
     who: ev.actorName?.trim() || 'System',
     body: ev.summary,
     detail: [],
   }
 }
 
-/** Notes and reports are the conversation; everything else is texture. */
-function isConversational(item: JobThreadActivityItem): boolean {
-  return item.kind === 'note' || item.kind === 'report'
+/**
+ * Notes and reports are a person talking to the reader; everything else is
+ * system-recorded texture the renderer mutes.
+ */
+export function isConversationalLine(line: Pick<JobActivityLine, 'kind'>): boolean {
+  return line.kind === 'note' || line.kind === 'report'
 }
 
 export type BuildJobActivityLinesOptions = {
   viewerRole?: UserRole | null
-  /** Number every kind, not just notes and reports. Breaks parity with the row preview box. */
-  numberEveryLine?: boolean
 }
 
 /**
- * Chronological lines, oldest → newest, numbered before any filter is applied
- * (time ascending, input order on ties — the same comparator the preview box
- * uses, so the numbers always agree).
+ * Chronological lines, oldest → newest, every line numbered before any filter
+ * is applied (time ascending, input order on ties).
  */
 export function buildJobActivityLines(
   items: JobThreadActivityItem[],
   options: BuildJobActivityLinesOptions = {},
 ): JobActivityLine[] {
-  const { viewerRole, numberEveryLine = false } = options
+  const { viewerRole } = options
   const ordered = items
     .map((item, inputIndex) => ({ item, inputIndex, t: Date.parse(jobActivityItemTimeIso(item)) }))
     .sort((a, b) =>
       a.t === b.t || Number.isNaN(a.t) || Number.isNaN(b.t) ? a.inputIndex - b.inputIndex : a.t - b.t,
     )
 
-  let number = 0
-  return ordered.map(({ item }) => {
-    const line = lineFromItem(item, viewerRole)
-    if (numberEveryLine || isConversational(item)) {
-      number += 1
-      return { ...line, number }
-    }
-    return { ...line, number: null }
-  })
+  return ordered.map(({ item }, i) => ({ ...lineFromItem(item, viewerRole), number: i + 1 }))
 }
 
 /** Narrow to one of the panel's buckets. Numbers were assigned pre-filter, so they don't move. */

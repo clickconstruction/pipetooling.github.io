@@ -19,8 +19,10 @@ import { pctNoteRequired, validatePctCommit } from '../../lib/jobs/stagesPctNote
  *
  * Toolbar order is deliberate: the crew and the % complete share the top row at
  * every width (owner call — "when it looks like this the 100% should be on the
- * same line as the people"), the filter pills take the row below with Schedule /
- * Week dispatch trailing them, and the composer stays a single pill.
+ * same line as the people"), the filter pills take the row below, and the
+ * composer stays a single pill. There are NO Schedule / Week dispatch buttons
+ * here (owner call): scheduling lives on its own surfaces, and the pinned Next
+ * strip still shows the upcoming block inside the thread.
  */
 
 const ACTION_BTN: CSSProperties = {
@@ -55,10 +57,6 @@ export type JobActivityViewProps = {
   teamMembers?: Array<{ user_id: string; name: string | null }>
   /** Opens the add/remove-people modal (editors only). */
   peopleAction?: { onClick: () => void; disabled?: boolean }
-  /** Opens the dispatch Assign work sheet pre-picked to this job. */
-  scheduleAction?: { onClick: () => void; disabled?: boolean }
-  /** Navigates to the Schedule dispatch week grid for this job. */
-  scheduleDispatchAction?: { onClick: () => void; disabled?: boolean }
 }
 
 export function JobActivityView({
@@ -74,8 +72,6 @@ export function JobActivityView({
   onCommitPct,
   teamMembers,
   peopleAction,
-  scheduleAction,
-  scheduleDispatchAction,
 }: JobActivityViewProps) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -174,7 +170,7 @@ export function JobActivityView({
         ) : null}
       </div>
 
-      {/* Row 2 — the filter buckets, with the schedule shortcuts trailing. */}
+      {/* Row 2 — the filter buckets. */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', padding: '0.4rem 0.9rem 0' }}>
         <div role="tablist" aria-label="Filter activity" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
           {ACTIVITY_FILTERS.map((f) => {
@@ -226,43 +222,6 @@ export function JobActivityView({
             )
           })}
         </div>
-        {scheduleAction || scheduleDispatchAction ? (
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-            {scheduleAction ? (
-              <button
-                type="button"
-                onClick={scheduleAction.onClick}
-                disabled={scheduleAction.disabled}
-                style={{
-                  ...ACTION_BTN,
-                  background: scheduleAction.disabled ? 'var(--bg-200)' : '#15803d',
-                  color: scheduleAction.disabled ? 'var(--text-muted)' : '#fff',
-                  border: `1px solid ${scheduleAction.disabled ? '#d1d5db' : '#166534'}`,
-                  cursor: scheduleAction.disabled ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Schedule
-              </button>
-            ) : null}
-            {scheduleDispatchAction ? (
-              <button
-                type="button"
-                onClick={scheduleDispatchAction.onClick}
-                disabled={scheduleDispatchAction.disabled}
-                title={scheduleDispatchAction.disabled ? 'Assign someone to this job first' : undefined}
-                style={{
-                  ...ACTION_BTN,
-                  background: 'var(--surface)',
-                  color: scheduleDispatchAction.disabled ? 'var(--text-muted)' : 'var(--text-blue-700)',
-                  border: `1px solid ${scheduleDispatchAction.disabled ? '#d1d5db' : '#2563eb'}`,
-                  cursor: scheduleDispatchAction.disabled ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Week dispatch
-              </button>
-            ) : null}
-          </span>
-        ) : null}
       </div>
 
       {upcoming ? (

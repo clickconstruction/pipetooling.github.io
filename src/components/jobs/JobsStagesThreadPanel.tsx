@@ -68,8 +68,6 @@ export type JobsStagesThreadPanelProps = {
   onCommitPct?: (value: number, note: string) => void | Promise<void>
   teamMembers?: Array<{ user_id: string; name: string | null }>
   peopleAction?: { onClick: () => void; disabled?: boolean }
-  scheduleAction?: { onClick: () => void; disabled?: boolean }
-  scheduleDispatchAction?: { onClick: () => void; disabled?: boolean }
 }
 
 export function JobsStagesThreadPanel({
@@ -88,8 +86,6 @@ export function JobsStagesThreadPanel({
   onCommitPct,
   teamMembers,
   peopleAction,
-  scheduleAction,
-  scheduleDispatchAction,
 }: JobsStagesThreadPanelProps) {
   // Inline the panel spans the whole row (colSpan = every column), so both
   // shells are as wide as the viewport and share one breakpoint.
@@ -172,8 +168,6 @@ export function JobsStagesThreadPanel({
         {...(onCommitPct ? { onCommitPct } : {})}
         {...(teamMembers ? { teamMembers } : {})}
         {...(peopleAction ? { peopleAction } : {})}
-        {...(scheduleAction ? { scheduleAction } : {})}
-        {...(scheduleDispatchAction ? { scheduleDispatchAction } : {})}
       />
     </div>
   )

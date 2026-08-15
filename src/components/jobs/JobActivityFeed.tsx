@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { eventRenderMeta } from '../../lib/jobActivityEvent'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react'
 import type { JobActivityLine } from '../../lib/jobs/jobActivityLine'
-import { groupJobActivityLinesByDay } from '../../lib/jobs/jobActivityLine'
+import { groupJobActivityLinesByDay, isConversationalLine } from '../../lib/jobs/jobActivityLine'
 
 /**
  * The shared Job activity feed (v2.1673) — ONE rendering used by every Pipeline
@@ -9,40 +8,39 @@ import { groupJobActivityLinesByDay } from '../../lib/jobs/jobActivityLine'
  * panel's full-screen mode. Before this, the same thread had three different
  * looks and only two of them numbered anything.
  *
- * Anatomy (owner-approved mockup): day headers carrying the date AND the age,
- * then one line per item on a column grid — number · time · kind · person ·
- * body. The columns are the compaction: the meta stacks down the page instead
- * of running inline through every row, so thirteen items fit where the old
- * modal showed three. Long report answers and clock/schedule notes fold into
- * `detail`, opened by clicking the line.
+ * Anatomy (owner-approved mockup): left-aligned day headers carrying the date
+ * AND the age, then one line per item — EVERY line numbered. There is no
+ * kind/tag column; the hierarchy is carried by treatment instead. Notes and
+ * reports (a person talking) sit on a faint tinted band so speech reads as
+ * blocks in the system stream; system-recorded rows (clock, schedule, crew,
+ * status) render muted between them, their names de-emphasised too — on
+ * "Paige added to crew" the event is the news, not the author. Long report
+ * answers and clock/schedule notes fold into `detail`, opened by clicking the
+ * line.
  *
- * Numbering comes from the kernel and matches the row preview box, so
- * "check note 3" means note 3 on every surface.
+ * Wide shells align number · time · person · body into columns. Narrow shells
+ * (≤700px) render each line as ONE FLOWING LINE — number gutter, then
+ * time name — body with a hanging indent — instead of spending a whole row on
+ * metadata; ragged body starts are fine at phone width (the row preview box
+ * has always read this way).
+ *
+ * Rows are divs with a keyboard handler, NOT buttons: notes can contain links
+ * and an opened report needs selectable text, and nested interactives inside a
+ * button are invalid. Clicks inside the opened detail select text; they don't
+ * collapse the line.
  */
 
-const KIND_TAG_COLOR: Record<string, string> = {
-  report: '#2563eb',
-  schedule_block: '#15803d',
-  clock_session: '#4f46e5',
-}
-
-function tagColor(line: JobActivityLine): string {
-  if (line.kind === 'event' && line.eventType) return eventRenderMeta(line.eventType).tagColor
-  return KIND_TAG_COLOR[line.kind] ?? 'var(--text-muted)'
-}
-
 const dayHeadStyle: CSSProperties = {
-  textAlign: 'center',
+  textAlign: 'left',
   color: 'var(--text-faint)',
   fontSize: '0.65rem',
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
-  padding: '0.7rem 0 0.2rem',
+  padding: '0.7rem 2px 0.2rem',
 }
 
 const numStyle: CSSProperties = {
-  justifySelf: 'start',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -55,6 +53,15 @@ const numStyle: CSSProperties = {
   fontWeight: 700,
   lineHeight: 1,
   fontVariantNumeric: 'tabular-nums',
+  flexShrink: 0,
+}
+
+const timeStyle: CSSProperties = {
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+  fontSize: '0.6875rem',
+  color: 'var(--text-muted)',
+  fontVariantNumeric: 'tabular-nums',
+  whiteSpace: 'nowrap',
 }
 
 const pendingChipStyle: CSSProperties = {
@@ -75,26 +82,26 @@ type Props = {
   lines: JobActivityLine[] | null
   /** True when a filter is hiding everything (changes the empty copy). */
   filtered: boolean
-  /**
-   * Narrow shells (full screen on a phone) drop the columns and put the body on
-   * its own row underneath the meta — five columns can't fit at 380px.
-   */
+  /** Narrow shells (≤700px) switch to the flowing-line layout. */
   narrow?: boolean
 }
 
 export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // Whether the reader is parked at the newest item. New arrivals re-pin only
+  // then — a filter change or a realtime insert must never yank someone who
+  // scrolled up to read an old report.
+  const atBottomRef = useRef(true)
 
   const loaded = lines != null
   const groups = loaded ? groupJobActivityLinesByDay(lines) : []
   const count = lines?.length ?? 0
 
-  // Newest sits at the bottom (transcript order) — start there. Opening a line
-  // must NOT re-pin, or reading an old report would yank you back to today.
+  // Newest sits at the bottom (transcript order) — start there.
   useEffect(() => {
     const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (el && atBottomRef.current) el.scrollTop = el.scrollHeight
   }, [loaded, count])
 
   const toggle = (key: string) => {
@@ -109,6 +116,10 @@ export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
   return (
     <div
       ref={scrollRef}
+      onScroll={(e) => {
+        const el = e.currentTarget
+        atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+      }}
       style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0.2rem 0.9rem 0.8rem', scrollbarWidth: 'thin' }}
     >
       {!loaded ? (
@@ -127,84 +138,50 @@ export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
             {g.lines.map((line) => {
               const open = openKeys.has(line.key)
               const hasDetail = line.detail.length > 0
-              return (
-                <button
-                  key={line.key}
-                  type="button"
-                  onClick={() => toggle(line.key)}
-                  aria-expanded={open}
+              const msg = isConversationalLine(line)
+
+              const onRowClick = (e: MouseEvent<HTMLDivElement>) => {
+                // Clicks inside the opened detail select/copy; they don't collapse.
+                if ((e.target as HTMLElement).closest('[data-activity-detail]')) return
+                toggle(line.key)
+              }
+              const onRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                  e.preventDefault()
+                  toggle(line.key)
+                }
+              }
+
+              const num = (
+                <span style={numStyle} aria-label={`Entry ${line.number}`}>
+                  {line.number}
+                </span>
+              )
+              const time = <span style={timeStyle}>{line.timeLabel}</span>
+              const who = (
+                <span
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: narrow ? '20px 46px minmax(0, 1fr)' : '22px 52px 48px 70px minmax(0, 1fr)',
-                    columnGap: 8,
-                    rowGap: narrow ? 2 : 0,
-                    alignItems: 'baseline',
-                    width: '100%',
-                    textAlign: 'left',
-                    font: 'inherit',
-                    fontSize: '0.8125rem',
-                    color: 'var(--text-700)',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: '1px dashed var(--border)',
-                    padding: '3px 2px',
-                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    // The strong name is reserved for speech; on system rows
+                    // the body is the news, not the author.
+                    fontWeight: msg ? 650 : 500,
+                    color: msg ? 'var(--text-strong)' : 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
+                    ...(narrow ? null : { overflow: 'hidden', textOverflow: 'ellipsis' }),
                   }}
                 >
-                  <span
-                    style={{
-                      ...numStyle,
-                      ...(line.number == null ? { borderColor: 'transparent' } : null),
-                      ...(narrow ? { gridColumn: 1, gridRow: 1 } : null),
-                    }}
-                    {...(line.number == null ? { 'aria-hidden': true } : { 'aria-label': `Entry ${line.number}` })}
-                  >
-                    {line.number ?? ''}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                      fontSize: '0.6875rem',
-                      color: 'var(--text-muted)',
-                      fontVariantNumeric: 'tabular-nums',
-                      whiteSpace: 'nowrap',
-                      ...(narrow ? { gridColumn: 2, gridRow: 1 } : null),
-                    }}
-                  >
-                    {line.timeLabel}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '0.625rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      whiteSpace: 'nowrap',
-                      color: tagColor(line),
-                      ...(narrow ? { gridColumn: 3, gridRow: 1, justifySelf: 'end' } : null),
-                    }}
-                  >
-                    {line.kindLabel}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 650,
-                      color: 'var(--text-strong)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      ...(narrow ? { gridColumn: 3, gridRow: 1, justifySelf: 'start' } : null),
-                    }}
-                  >
-                    {line.who}
-                  </span>
-                  <span
-                    style={{
-                      minWidth: 0,
-                      lineHeight: 1.5,
-                      ...(narrow ? { gridColumn: '2 / 4', gridRow: 2 } : null),
-                      ...(open
+                  {line.who}
+                </span>
+              )
+              const body = (
+                <span
+                  style={{
+                    minWidth: 0,
+                    lineHeight: 1.5,
+                    color: msg ? 'var(--text-700)' : 'var(--text-muted)',
+                    ...(narrow
+                      ? { display: 'inline' }
+                      : open
                         ? null
                         : {
                             overflow: 'hidden',
@@ -212,44 +189,111 @@ export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
                             WebkitBoxOrient: 'vertical' as const,
                             WebkitLineClamp: 1,
                           }),
-                    }}
-                  >
-                    {line.body}
-                    {line.pending ? <span style={pendingChipStyle}>Pending</span> : null}
-                    {hasDetail && !open ? (
-                      <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.6875rem', marginLeft: '0.35rem' }}>
-                        {line.kind === 'report'
-                          ? `▸ ${line.detail.length} answer${line.detail.length === 1 ? '' : 's'}`
-                          : '▸ note'}
-                      </span>
-                    ) : null}
-                  </span>
-                  {hasDetail && open ? (
-                    <span
-                      style={{
-                        display: 'block',
-                        margin: '4px 0 5px',
-                        ...(narrow ? { gridColumn: '2 / 4', gridRow: 3 } : { gridColumn: 5 }),
-                      }}
-                    >
-                      {line.detail.map((d, i) => (
-                        <span
-                          key={`${d.label ?? ''}-${i}`}
-                          style={{
-                            display: 'block',
-                            marginTop: 3,
-                            color: 'var(--text-gray-800)',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {d.label ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{d.label} — </span> : null}
-                          {d.value}
-                        </span>
-                      ))}
+                  }}
+                >
+                  {narrow && line.who ? <span style={{ color: 'var(--text-faint)' }}>{'— '}</span> : null}
+                  {line.body}
+                  {line.pending ? <span style={pendingChipStyle}>Pending</span> : null}
+                  {hasDetail && !open ? (
+                    <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.6875rem', marginLeft: '0.35rem' }}>
+                      {line.kind === 'report'
+                        ? `▸ ${line.detail.length} answer${line.detail.length === 1 ? '' : 's'}`
+                        : '▸ note'}
                     </span>
                   ) : null}
-                </button>
+                </span>
+              )
+              const detail =
+                hasDetail && open ? (
+                  <span data-activity-detail style={{ display: 'block', margin: '4px 0 5px', cursor: 'text' }}>
+                    {line.detail.map((d, i) => (
+                      <span
+                        key={`${d.label ?? ''}-${i}`}
+                        style={{
+                          display: 'block',
+                          marginTop: 3,
+                          color: 'var(--text-gray-800)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {d.label ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{d.label} — </span> : null}
+                        {d.value}
+                      </span>
+                    ))}
+                  </span>
+                ) : null
+
+              const rowShellStyle: CSSProperties = {
+                width: '100%',
+                textAlign: 'left',
+                font: 'inherit',
+                fontSize: '0.8125rem',
+                borderBottom: `1px dashed ${msg ? 'transparent' : 'var(--border)'}`,
+                padding: '3px 4px',
+                cursor: 'pointer',
+                // Tier 1: speech sits on a faint band so what people actually
+                // said stands out of the system stream.
+                ...(msg ? { background: 'var(--bg-subtle)', borderRadius: 6 } : null),
+              }
+
+              return (
+                <div
+                  key={line.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={onRowClick}
+                  onKeyDown={onRowKeyDown}
+                  aria-expanded={open}
+                  style={
+                    narrow
+                      ? { ...rowShellStyle, display: 'flex', gap: 8, alignItems: 'flex-start' }
+                      : {
+                          ...rowShellStyle,
+                          display: 'grid',
+                          gridTemplateColumns: '22px 52px 70px minmax(0, 1fr)',
+                          columnGap: 8,
+                          alignItems: 'baseline',
+                        }
+                  }
+                >
+                  {narrow ? (
+                    <>
+                      <span style={{ marginTop: 2, display: 'inline-flex' }}>{num}</span>
+                      {/* One flowing line: time name — body, wrapping with a
+                          hanging indent after the number gutter. */}
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span
+                          style={
+                            open
+                              ? { display: 'block' }
+                              : {
+                                  overflow: 'hidden',
+                                  display: '-webkit-box',
+                                  WebkitBoxOrient: 'vertical' as const,
+                                  WebkitLineClamp: 1,
+                                }
+                          }
+                        >
+                          <span style={{ ...timeStyle, marginRight: 7 }}>{line.timeLabel}</span>
+                          <span style={{ marginRight: line.who ? 7 : 0, display: 'inline' }}>{who}</span>
+                          {body}
+                        </span>
+                        {detail}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ justifySelf: 'start', display: 'inline-flex' }}>{num}</span>
+                      {time}
+                      {who}
+                      <span style={{ minWidth: 0 }}>
+                        {body}
+                        {detail}
+                      </span>
+                    </>
+                  )}
+                </div>
               )
             })}
           </div>

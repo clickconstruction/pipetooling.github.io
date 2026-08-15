@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { JobActivityView } from './JobActivityView'
 import { renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
 import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
@@ -38,8 +39,6 @@ type Props = {
   teamMembers?: Array<{ user_id: string; name: string | null }>
   /** Opens the add/remove-people modal (editors only; it stacks above at z 1002). */
   peopleAction?: { onClick: () => void }
-  scheduleAction?: { onClick: () => void; disabled?: boolean }
-  scheduleDispatchAction?: { onClick: () => void; disabled?: boolean }
 }
 
 export function JobsStagesActivityExpandModal({
@@ -55,11 +54,14 @@ export function JobsStagesActivityExpandModal({
   onCommitPct,
   teamMembers,
   peopleAction,
-  scheduleAction,
-  scheduleDispatchAction,
 }: Props) {
   const narrow = useMatchMedia('(max-width: 700px)')
   const jobName = (job.job_name ?? '').trim() || 'this job'
+
+  // A fixed full-viewport overlay — lock the page behind it (ref-counted, same
+  // hook the thread panel's fullscreen mode uses) or phones keep scrolling the
+  // Pipeline underneath the card.
+  useBodyScrollLock(true)
 
   // Escape anywhere in the modal closes it; the composer's own Escape handler
   // stops propagation before this listener sees it (blur-first behavior).
@@ -141,8 +143,6 @@ export function JobsStagesActivityExpandModal({
           {...(onCommitPct ? { onCommitPct } : {})}
           {...(teamMembers ? { teamMembers } : {})}
           {...(peopleAction ? { peopleAction } : {})}
-          {...(scheduleAction ? { scheduleAction } : {})}
-          {...(scheduleDispatchAction ? { scheduleDispatchAction } : {})}
         />
       </div>
     </div>

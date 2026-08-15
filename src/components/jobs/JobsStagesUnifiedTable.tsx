@@ -24,7 +24,6 @@ import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
-import { getDefaultWeekRange } from '../../utils/dateUtils'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -877,22 +876,6 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 },
                               }
                             : {})}
-                          {...(canOpenJobScheduleModal
-                            ? {
-                                // Opens the dispatch Assign work sheet pre-picked to this job (v2.1543);
-                                // no team requirement — the sheet offers the whole roster.
-                                scheduleAction: { onClick: () => openQuickAssignForJob(j) },
-                                scheduleDispatchAction: {
-                                  onClick: () => {
-                                    const week = getDefaultWeekRange().start
-                                    navigate(
-                                      `/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`,
-                                    )
-                                  },
-                                  disabled: (j.team_members?.length ?? 0) === 0,
-                                },
-                              }
-                            : {})}
                         />,
                         )}
                       </td>
@@ -1289,22 +1272,6 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                       jobLabel: `${(job.hcp_number ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`,
                                       currentTeamUserIds: job.team_members?.map((t) => t.user_id) ?? [],
                                     }),
-                                },
-                              }
-                            : {})}
-                          {...(canOpenJobScheduleModal
-                            ? {
-                                // Opens the dispatch Assign work sheet pre-picked to this job (v2.1543);
-                                // no team requirement — the sheet offers the whole roster.
-                                scheduleAction: { onClick: () => openQuickAssignForJob(job) },
-                                scheduleDispatchAction: {
-                                  onClick: () => {
-                                    const week = getDefaultWeekRange().start
-                                    navigate(
-                                      `/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`,
-                                    )
-                                  },
-                                  disabled: (job.team_members?.length ?? 0) === 0,
                                 },
                               }
                             : {})}

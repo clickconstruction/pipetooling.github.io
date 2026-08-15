@@ -38,7 +38,7 @@ const mixedActivity = [
 ]
 
 describe('JobsStagesActivityExpandModal', () => {
-  it('renders day groups with numbered notes AND unnumbered timeline events; ✕ and Escape close', () => {
+  it('renders day groups with every line numbered; ✕ and Escape close', () => {
     const onClose = vi.fn()
     renderWithProviders(
       <JobsStagesActivityExpandModal
@@ -53,9 +53,9 @@ describe('JobsStagesActivityExpandModal', () => {
     expect(screen.getByText(/Wed, Aug 12/)).toBeTruthy()
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
     expect(screen.getByLabelText('Entry 2')).toBeTruthy()
-    // The status event renders as an unnumbered timeline row.
+    // The status event is numbered too — every line carries its thread number.
     expect(screen.getByText('Status: waiting → working')).toBeTruthy()
-    expect(screen.queryByLabelText('Entry 3')).toBeNull()
+    expect(screen.getByLabelText('Entry 3')).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText('Close job activity'))
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -75,10 +75,14 @@ describe('JobsStagesActivityExpandModal', () => {
     )
     fireEvent.click(screen.getByRole('tab', { name: /Notes/ }))
     expect(screen.queryByText('Status: waiting → working')).toBeNull()
+    // Numbers were assigned pre-filter across the whole thread, so the second
+    // note keeps its 3 — the hidden status change stays Entry 2.
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
-    expect(screen.getByLabelText('Entry 2')).toBeTruthy()
+    expect(screen.queryByLabelText('Entry 2')).toBeNull()
+    expect(screen.getByLabelText('Entry 3')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: /Status/ }))
     expect(screen.getByText('Status: waiting → working')).toBeTruthy()
+    expect(screen.getByLabelText('Entry 2')).toBeTruthy()
     expect(screen.queryByLabelText('Entry 1')).toBeNull()
   })
 

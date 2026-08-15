@@ -3,9 +3,9 @@
  * Render tests for the Pipeline row's Job activity panel (v2.1673) — the
  * surface that used to be JobThreadNotesPanel with its own unnumbered feed.
  * What matters here is that the panel and the floating modal now render the
- * SAME body: numbered notes, unnumbered timeline texture, folded report
- * answers, Schedule / Week dispatch, and a fullscreen toggle that keeps all of
- * it. Line shaping is covered in src/lib/jobs/jobActivityLine.test.ts.
+ * SAME body: every line numbered, folded report answers, and a fullscreen
+ * toggle that keeps all of it. Line shaping is covered in
+ * src/lib/jobs/jobActivityLine.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -62,13 +62,12 @@ const baseProps = {
 }
 
 describe('JobsStagesThreadPanel', () => {
-  it('numbers notes and reports and leaves timeline events unnumbered', () => {
+  it('numbers every line — the status change included', () => {
     renderWithProviders(<JobsStagesThreadPanel {...baseProps} onToggleFullscreen={vi.fn()} />)
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
     expect(screen.getByLabelText('Entry 2')).toBeTruthy()
     expect(screen.getByLabelText('Entry 3')).toBeTruthy()
-    // Four items, three numbers — the status change is texture.
-    expect(screen.queryByLabelText('Entry 4')).toBeNull()
+    expect(screen.getByLabelText('Entry 4')).toBeTruthy()
     expect(screen.getByText('Working → Ready to Bill')).toBeTruthy()
   })
 
@@ -95,19 +94,10 @@ describe('JobsStagesThreadPanel', () => {
     expect(onToggleFullscreen).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps Schedule and Week dispatch, disabling dispatch with no crew', () => {
-    const onSchedule = vi.fn()
-    renderWithProviders(
-      <JobsStagesThreadPanel
-        {...baseProps}
-        onToggleFullscreen={vi.fn()}
-        scheduleAction={{ onClick: onSchedule }}
-        scheduleDispatchAction={{ onClick: vi.fn(), disabled: true }}
-      />,
-    )
-    fireEvent.click(screen.getByText('Schedule'))
-    expect(onSchedule).toHaveBeenCalled()
-    expect(screen.getByText('Week dispatch').hasAttribute('disabled')).toBe(true)
+  it('carries no Schedule / Week dispatch buttons (owner call — scheduling lives elsewhere)', () => {
+    renderWithProviders(<JobsStagesThreadPanel {...baseProps} onToggleFullscreen={vi.fn()} />)
+    expect(screen.queryByText('Schedule')).toBeNull()
+    expect(screen.queryByText('Week dispatch')).toBeNull()
   })
 
   it('puts the crew and the % complete on the same row', () => {

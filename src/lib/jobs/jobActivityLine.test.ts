@@ -86,7 +86,7 @@ describe('compactChicagoClockTime', () => {
 })
 
 describe('buildJobActivityLines', () => {
-  it('numbers notes and reports oldest-first and leaves texture unnumbered', () => {
+  it('numbers EVERY line oldest-first — crew, clock and status included', () => {
     const lines = buildJobActivityLines([
       statusEvent('e1', '2026-08-12T14:58:00Z', 'Working → Ready to Bill'),
       note('n1', '2026-08-12T14:45:00Z', 'Arrived 9am end 9:20', 'Abraham'),
@@ -96,24 +96,12 @@ describe('buildJobActivityLines', () => {
     expect(lines.map((l) => [l.kind, l.number])).toEqual([
       ['note', 1],
       ['report', 2],
-      ['event', null],
-      ['note', 3],
+      ['event', 3],
+      ['note', 4],
     ])
   })
 
-  it('numbers every line when asked, without reordering anything', () => {
-    const lines = buildJobActivityLines(
-      [
-        note('n1', '2026-08-12T14:45:00Z', 'first'),
-        statusEvent('e1', '2026-08-12T14:58:00Z', 'Working → Ready to Bill'),
-        note('n2', '2026-08-14T16:53:00Z', 'second'),
-      ],
-      { numberEveryLine: true },
-    )
-    expect(lines.map((l) => l.number)).toEqual([1, 2, 3])
-  })
-
-  it('matches the preview box numbering: 1 is the oldest note, ties keep input order', () => {
+  it('1 is the oldest line, ties keep input order', () => {
     const lines = buildJobActivityLines([
       note('n-b', '2026-08-12T14:45:00Z', 'Arrived at job', 'Abraham'),
       note('n-c', '2026-08-12T14:45:00Z', 'Leaving job', 'Abraham'),
@@ -126,7 +114,7 @@ describe('buildJobActivityLines', () => {
 
   it('folds a report to its template name and moves every answer into detail', () => {
     const [line] = buildJobActivityLines([report('r1', '2026-08-12T14:57:00Z', 'Status Report')])
-    expect(line).toMatchObject({ kind: 'report', kindLabel: 'Report', who: 'Abraham', body: 'Status Report' })
+    expect(line).toMatchObject({ kind: 'report', who: 'Abraham', body: 'Status Report' })
     expect(line!.detail.length).toBeGreaterThan(0)
     // The long prose is behind the fold, never on the line itself.
     expect(line!.body).not.toContain('cleanout')
@@ -136,7 +124,7 @@ describe('buildJobActivityLines', () => {
     const [line] = buildJobActivityLines([
       note('n1', '2026-08-12T14:45:00Z', 'Abraham · Wed, Aug 12, 2026 at 9:45 AM — Leaving job', 'Abraham'),
     ])
-    expect(line).toMatchObject({ body: 'Leaving job', kindLabel: '' })
+    expect(line).toMatchObject({ body: 'Leaving job', kind: 'note' })
   })
 
   it('summarises a closed clock session and flags a pending one', () => {
@@ -144,21 +132,21 @@ describe('buildJobActivityLines', () => {
       clock('c1', '2026-08-12T12:26:00Z', 'Paige', { out: '2026-08-12T19:47:00Z', hours: 7.35, pending: true, note: 'Work' }),
       clock('c2', '2026-08-12T13:00:00Z', 'Abraham'),
     ])
-    expect(lines[0]).toMatchObject({ kindLabel: 'Clock', who: 'Paige', body: '7:26a → 2:47p · 7h 21m', pending: true })
+    expect(lines[0]).toMatchObject({ kind: 'clock_session', who: 'Paige', body: '7:26a → 2:47p · 7h 21m', pending: true })
     expect(lines[0]!.detail).toEqual([{ value: 'Work' }])
     expect(lines[1]).toMatchObject({ body: '8:00a → still on the clock', pending: false })
   })
 
   it('puts schedule assignees in the body because the row has no actor', () => {
     const [line] = buildJobActivityLines([schedule('s1', '2026-08-11T19:50:00Z', 'Abraham, Paige', 'pinpoint')])
-    expect(line).toMatchObject({ kindLabel: 'Sched', who: '' })
+    expect(line).toMatchObject({ kind: 'schedule_block', who: '' })
     expect(line!.body).toContain('Abraham, Paige')
     expect(line!.detail).toEqual([{ value: 'pinpoint' }])
   })
 
-  it('labels events from the shared render registry and falls back to System', () => {
+  it('falls back to System when an event records no actor', () => {
     const lines = buildJobActivityLines([statusEvent('e1', '2026-08-12T14:58:00Z', 'Working → Ready to Bill', null)])
-    expect(lines[0]).toMatchObject({ kindLabel: 'Status', who: 'System', body: 'Working → Ready to Bill' })
+    expect(lines[0]).toMatchObject({ kind: 'event', who: 'System', body: 'Working → Ready to Bill' })
   })
 })
 
@@ -175,7 +163,7 @@ describe('filterJobActivityLines', () => {
   })
 
   it('keeps numbers stable across filters — they were assigned pre-filter', () => {
-    expect(filterJobActivityLines(lines, 'notes').map((l) => l.number)).toEqual([1, 3])
+    expect(filterJobActivityLines(lines, 'notes').map((l) => l.number)).toEqual([1, 4])
   })
 })
 

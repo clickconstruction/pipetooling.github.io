@@ -533,18 +533,6 @@ function renderCardThreadPanel(p: StagesCardThreadProps, ctx: StagesRowRenderCon
               },
             }
           : {})}
-        {...(p.canOpenJobScheduleModal
-          ? {
-              scheduleAction: { onClick: () => ctx.openQuickAssignForJob(j) },
-              scheduleDispatchAction: {
-                onClick: () => {
-                  const week = getDefaultWeekRange().start
-                  ctx.navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
-                },
-                disabled: (j.team_members?.length ?? 0) === 0,
-              },
-            }
-          : {})}
       />
     </div>
   )
