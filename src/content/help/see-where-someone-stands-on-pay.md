@@ -12,7 +12,7 @@ keywords: offsets, balance, settle up, backcharge, damage, credit, ledger, pay s
 - **Credits** and **Charges** — pending offsets, split by direction
 - **Settle up** — the answer: {{chip:green|pay $1,499.82}} or {{chip:red|owes $3,082.49}}, everything above netted together
 
-Everything is **all-time** — old charges can't hide behind a date filter. Rows needing the most attention sort first; settled people sink to the bottom. A `*` means the person has unreported hours but no wage on file, so those hours aren't priced in.
+Everything is **all-time** — old charges can't hide behind a date filter. Rows needing the most attention sort first; settled people sink to the bottom. A `*` means the person has unreported hours but no wage on file, so those hours aren't priced in. People who've been archived fold into a collapsed **Archived users** section below the table — out of the way, but their balances don't vanish.
 
 ## The person ledger
 

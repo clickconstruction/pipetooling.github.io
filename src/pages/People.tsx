@@ -2333,9 +2333,9 @@ export default function People() {
     }
   }, [activeTab, isDev])
 
-  /** Contracts groups archived people at the bottom (v2.1409) — it needs the archived-user-name set, which otherwise only loads for pay/hours/review surfaces. */
+  /** Contracts groups archived people at the bottom (v2.1409) and Offsets folds them into an Archived users section (v2.1669) — both need the archived-user-name set, which otherwise only loads for pay/hours/review surfaces. */
   useEffect(() => {
-    if (activeTab === 'contracts' && canAccessContracts) {
+    if ((activeTab === 'contracts' && canAccessContracts) || activeTab === 'offsets') {
       const t = setTimeout(() => {
         void loadArchivedUserNames()
       }, 80)
@@ -3985,7 +3985,14 @@ export default function People() {
       )}
 
       {activeTab === 'offsets' && canAccessPay && (
-        <PeopleOffsetsTab people={people} users={users} payStubs={payStubs} loadPayStubs={loadPayStubs} />
+        <PeopleOffsetsTab
+          people={people}
+          users={users}
+          payStubs={payStubs}
+          loadPayStubs={loadPayStubs}
+          archivedUserNames={archivedUserNames}
+          archivedPeople={archivedPeople}
+        />
       )}
 
       {activeTab === 'licenses' && canAccessLicenses && (

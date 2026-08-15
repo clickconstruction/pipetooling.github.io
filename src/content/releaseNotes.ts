@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1669',
+    date: '2026-08-14',
+    title: 'Archived users fold away',
+    kind: 'fix',
+    highlights: [
+      'The Settle-up table now shows current people up top, with archived users folded into a collapsed "Archived users" section below — their balances stay visible when you want them, out of the way when you don\'t.',
+    ],
+  },
+  {
     version: 'v2.1668',
     date: '2026-08-14',
     title: 'Settle up does the math',

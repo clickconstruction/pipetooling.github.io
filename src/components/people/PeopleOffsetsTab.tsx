@@ -20,9 +20,13 @@ export type PeopleOffsetsTabProps = {
   users: UserRow[]
   payStubs: PayStubRow[]
   loadPayStubs: () => Promise<unknown>
+  /** Archived account-user names (RPC get_archived_user_names) — fold into the Archived users section. */
+  archivedUserNames?: Set<string>
+  /** Archived roster people (people.archived_at set) — same treatment. */
+  archivedPeople?: Person[]
 }
 
-export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs }: PeopleOffsetsTabProps) {
+export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs, archivedUserNames, archivedPeople }: PeopleOffsetsTabProps) {
   const [offsets, setOffsets] = useState<PersonOffset[]>([])
   const [offsetsLoading, setOffsetsLoading] = useState(false)
   const [offsetsError, setOffsetsError] = useState<string | null>(null)
@@ -166,6 +170,26 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     return settleRows.filter((b) => b.personName.toLowerCase().includes(q))
   }, [settleRows, offsetsTabSearch])
 
+  const archivedNameSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const n of archivedUserNames ?? []) set.add(n.trim().toLowerCase())
+    for (const p of archivedPeople ?? []) {
+      const n = (p.name ?? '').trim().toLowerCase()
+      if (n) set.add(n)
+    }
+    return set
+  }, [archivedUserNames, archivedPeople])
+
+  const activeSettleRows = useMemo(
+    () => filteredSettleRows.filter((b) => !archivedNameSet.has(b.personName.trim().toLowerCase())),
+    [filteredSettleRows, archivedNameSet],
+  )
+  const archivedSettleRows = useMemo(
+    () => filteredSettleRows.filter((b) => archivedNameSet.has(b.personName.trim().toLowerCase())),
+    [filteredSettleRows, archivedNameSet],
+  )
+  const [archivedOpen, setArchivedOpen] = useState(false)
+
   const offsetsTabSearching = offsetsTabSearch.trim().length > 0
   const filteredOffsets = useMemo(() => {
     const q = offsetsTabSearch.trim().toLowerCase()
@@ -212,6 +236,72 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-once load
   }, [])
+
+  function settleTable(rows: typeof settleRows) {
+    return (
+      <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 640 }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Person</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Unpaid reports</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>No report yet</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Credits</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Charges</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Settle up</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {rows.map((b) => {
+                        const settled = b.net === 0 && b.unpaidCount === 0 && b.unreportedWeeks === 0 && b.credits === 0 && b.charges === 0
+                        return (
+                          <tr
+                            key={b.personName}
+                            onClick={() => setLedgerPersonName(b.personName)}
+                            style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', color: settled ? 'var(--text-muted)' : undefined }}
+                          >
+                            <td style={{ padding: '0.5rem 0.75rem', fontWeight: settled ? 400 : 600 }}>{b.personName}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unpaidRemaining > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+                              {b.unpaidRemaining > 0 ? `$${formatCurrency(b.unpaidRemaining)}` : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unreportedWeeks > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                              {b.unreportedWeeks > 0
+                                ? `${b.unreportedWeeks} wk · ${b.unreportedHours} h${b.unreportedEst != null ? ` · ~$${formatCurrency(b.unreportedEst)}` : ''}`
+                                : boardLoading
+                                  ? '…'
+                                  : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.credits > 0 ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
+                              {b.credits > 0 ? `+$${formatCurrency(b.credits)}` : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.charges > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                              {b.charges > 0 ? `−$${formatCurrency(b.charges)}` : '—'}
+                            </td>
+                            <td
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                textAlign: 'right',
+                                fontWeight: 600,
+                                color: b.net > 0 ? 'var(--text-green-800)' : b.net < 0 ? 'var(--text-red-700)' : 'var(--text-muted)',
+                              }}
+                            >
+                              {settled
+                                ? 'settled'
+                                : b.net > 0
+                                  ? `pay $${formatCurrency(b.net)}`
+                                  : b.net < 0
+                                    ? `owes $${formatCurrency(Math.abs(b.net))}`
+                                    : '$0.00'}
+                              {b.netMissingUnpricedHours ? ' *' : ''}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+    )
+  }
 
   return (
     <>
@@ -276,67 +366,35 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                   {settleRows.length === 0 ? 'Nothing to settle — no offsets, unpaid reports, or unreported hours.' : 'No people match the search.'}
                 </p>
               ) : (
-                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 640 }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Person</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Unpaid reports</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>No report yet</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Credits</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Charges</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Settle up</th>
-                      </tr>
-                    </thead>
-                    <tbody style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {filteredSettleRows.map((b) => {
-                        const settled = b.net === 0 && b.unpaidCount === 0 && b.unreportedWeeks === 0 && b.credits === 0 && b.charges === 0
-                        return (
-                          <tr
-                            key={b.personName}
-                            onClick={() => setLedgerPersonName(b.personName)}
-                            style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', color: settled ? 'var(--text-muted)' : undefined }}
-                          >
-                            <td style={{ padding: '0.5rem 0.75rem', fontWeight: settled ? 400 : 600 }}>{b.personName}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unpaidRemaining > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-                              {b.unpaidRemaining > 0 ? `$${formatCurrency(b.unpaidRemaining)}` : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unreportedWeeks > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                              {b.unreportedWeeks > 0
-                                ? `${b.unreportedWeeks} wk · ${b.unreportedHours} h${b.unreportedEst != null ? ` · ~$${formatCurrency(b.unreportedEst)}` : ''}`
-                                : boardLoading
-                                  ? '…'
-                                  : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.credits > 0 ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
-                              {b.credits > 0 ? `+$${formatCurrency(b.credits)}` : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.charges > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                              {b.charges > 0 ? `−$${formatCurrency(b.charges)}` : '—'}
-                            </td>
-                            <td
-                              style={{
-                                padding: '0.5rem 0.75rem',
-                                textAlign: 'right',
-                                fontWeight: 600,
-                                color: b.net > 0 ? 'var(--text-green-800)' : b.net < 0 ? 'var(--text-red-700)' : 'var(--text-muted)',
-                              }}
-                            >
-                              {settled
-                                ? 'settled'
-                                : b.net > 0
-                                  ? `pay $${formatCurrency(b.net)}`
-                                  : b.net < 0
-                                    ? `owes $${formatCurrency(Math.abs(b.net))}`
-                                    : '$0.00'}
-                              {b.netMissingUnpricedHours ? ' *' : ''}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                {settleTable(activeSettleRows)}
+                {archivedSettleRows.length > 0 && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setArchivedOpen((v) => !v)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        background: 'var(--surface)',
+                        color: 'var(--text-muted)',
+                        fontSize: '0.8125rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span aria-hidden="true" style={{ display: 'inline-block', transform: archivedOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.1s' }}>›</span>
+                      Archived users ({archivedSettleRows.length})
+                    </button>
+                    {archivedOpen && <div style={{ marginTop: '0.5rem' }}>{settleTable(archivedSettleRows)}</div>}
+                  </div>
+                )}
+                </>
               )}
               {filteredSettleRows.some((b) => b.netMissingUnpricedHours) && (
                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
