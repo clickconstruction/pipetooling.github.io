@@ -56,6 +56,7 @@ type Vehicle = {
   year: number | null
   make: string
   model: string
+  trim?: string | null
   vin: string | null
   weekly_insurance_cost: number
   weekly_registration_cost: number
@@ -129,6 +130,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [vehicleYear, setVehicleYear] = useState('')
   const [vehicleMake, setVehicleMake] = useState('')
   const [vehicleModel, setVehicleModel] = useState('')
+  const [vehicleTrim, setVehicleTrim] = useState('')
   const [vehicleVin, setVehicleVin] = useState('')
   const [vehicleInsCost, setVehicleInsCost] = useState('')
   const [vehicleRegCost, setVehicleRegCost] = useState('')
@@ -482,6 +484,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setVehicleYear(v?.year?.toString() ?? '')
     setVehicleMake(v?.make ?? '')
     setVehicleModel(v?.model ?? '')
+    setVehicleTrim(v?.trim ?? '')
     setVehicleVin(v?.vin ?? '')
     setVehicleInsCost(v?.weekly_insurance_cost?.toString() ?? '')
     setVehicleRegCost(v?.weekly_registration_cost?.toString() ?? '')
@@ -523,6 +526,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       year,
       make: vehicleMake.trim(),
       model: vehicleModel.trim(),
+      trim: vehicleTrim.trim() || null,
       vin: vehicleVin.trim() || null,
       weekly_insurance_cost: ins,
       weekly_registration_cost: reg,
@@ -1179,6 +1183,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '1.0625rem', fontWeight: 600 }}>{vehicleDisplayName(selectedVehicle)}</span>
+                  {(selectedVehicle.trim ?? '').trim() && (
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{selectedVehicle.trim}</span>
+                  )}
                   {selectedVehicle.vin && (
                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>VIN {selectedVehicle.vin}</span>
                   )}
@@ -1731,6 +1738,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Model *</label>
                 <input type="text" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
               </div>
+            </div>
+            <div style={{ marginBottom: '0.7rem' }}>
+              <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Trim</label>
+              <input
+                type="text"
+                value={vehicleTrim}
+                onChange={(e) => setVehicleTrim(e.target.value)}
+                placeholder="XLT Crew Cab Long Bed"
+                style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }}
+              />
             </div>
             <div style={{ marginBottom: '0.7rem' }}>
               <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>VIN</label>

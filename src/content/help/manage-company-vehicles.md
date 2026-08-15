@@ -93,4 +93,4 @@ Every on/off lands in the vehicle's ledger as an {{chip:gray|Insurance}} row ("A
 
 ## Vehicle details
 
-{{button:outline|Edit}} on an open vehicle changes year, make, model, VIN, and the weekly insurance and registration costs (those print on pay stubs and feed the fleet total). {{button:outline|Update value}} records what replacing the vehicle would cost today — the history stays in the ledger. Deleting a vehicle removes its whole history with it, so park old vehicles as **Unassigned** instead unless you really mean delete.
+{{button:outline|Edit}} on an open vehicle changes year, make, model, trim, VIN, and the weekly insurance and registration costs (those print on pay stubs and feed the fleet total). {{button:outline|Update value}} records what replacing the vehicle would cost today — the history stays in the ledger. Deleting a vehicle removes its whole history with it, so park old vehicles as **Unassigned** instead unless you really mean delete.
