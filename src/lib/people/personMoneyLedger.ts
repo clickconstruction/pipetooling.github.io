@@ -239,6 +239,218 @@ export function buildOffsetPaymentTimeline(args: {
   return rows
 }
 
+export type PricedWeek = UncoveredWeek & { estAmount: number | null }
+
+/** Price unreported weeks at the person's hourly wage; null when no usable wage. */
+export function priceUncoveredWeeks(weeks: UncoveredWeek[], hourlyWage: number | null | undefined): PricedWeek[] {
+  const wage = hourlyWage != null && hourlyWage > 0 ? hourlyWage : null
+  return weeks.map((w) => ({ ...w, estAmount: wage == null ? null : Math.round(w.hours * wage * 100) / 100 }))
+}
+
+export type PersonSettleUp = {
+  /** Sum of what's still owed on existing reports (gross − recorded payments; legacy paid_at = fully paid). */
+  unpaidRemaining: number
+  unpaidCount: number
+  unreportedHours: number
+  unreportedWeeks: number
+  /** Priced value of unreported hours; null when hours exist but no wage is known. */
+  unreportedEst: number | null
+  /** Pending offsets only (not yet applied to a report). */
+  credits: number
+  charges: number
+  /** unpaidRemaining + (unreportedEst ?? 0) + credits − charges. Positive = pay them. */
+  net: number
+  /** True when unreported hours exist but could not be priced into net. */
+  netMissingUnpricedHours: boolean
+}
+
+/** The settle-up equation: everything owed each way, priced where possible. */
+export function personSettleUp(args: {
+  payStubs: PayStubLike[]
+  stubPayments: StubPaymentLike[]
+  offsets: PersonOffsetLike[]
+  pricedWeeks: PricedWeek[]
+}): PersonSettleUp {
+  const paymentsByStub = new Map<string, number>()
+  for (const p of args.stubPayments) {
+    paymentsByStub.set(p.pay_stub_id, (paymentsByStub.get(p.pay_stub_id) ?? 0) + Number(p.amount))
+  }
+  let unpaidRemaining = 0
+  let unpaidCount = 0
+  for (const s of args.payStubs) {
+    const paid = paymentsByStub.get(s.id)
+    if (paid == null && s.paid_at != null) continue
+    const remaining = Math.round((s.gross_pay - (paid ?? 0)) * 100) / 100
+    if (remaining > FULLY_PAID_TOLERANCE) {
+      unpaidRemaining += remaining
+      unpaidCount++
+    }
+  }
+  unpaidRemaining = Math.round(unpaidRemaining * 100) / 100
+  let credits = 0
+  let charges = 0
+  for (const o of args.offsets) {
+    if (o.pay_stub_id != null) continue
+    const signed = offsetSignedAmount(o.type, o.amount)
+    if (signed >= 0) credits += signed
+    else charges += -signed
+  }
+  credits = Math.round(credits * 100) / 100
+  charges = Math.round(charges * 100) / 100
+  let unreportedHours = 0
+  let unreportedEst: number | null = 0
+  for (const w of args.pricedWeeks) {
+    unreportedHours += w.hours
+    if (unreportedEst != null) unreportedEst = w.estAmount == null ? null : unreportedEst + w.estAmount
+  }
+  unreportedHours = Math.round(unreportedHours * 100) / 100
+  if (unreportedEst != null) unreportedEst = Math.round(unreportedEst * 100) / 100
+  if (args.pricedWeeks.length === 0) unreportedEst = 0
+  const net = Math.round((unpaidRemaining + (unreportedEst ?? 0) + credits - charges) * 100) / 100
+  return {
+    unpaidRemaining,
+    unpaidCount,
+    unreportedHours,
+    unreportedWeeks: args.pricedWeeks.length,
+    unreportedEst,
+    credits,
+    charges,
+    net,
+    netMissingUnpricedHours: unreportedHours > 0 && unreportedEst == null,
+  }
+}
+
+export type SettleUpRow = PersonSettleUp & { personName: string }
+
+/**
+ * The board: one settle-up row per person appearing in offsets, reports, or
+ * uncovered approved hours. Action rows first (most negative net upward),
+ * fully settled people last, alphabetically.
+ */
+export function buildSettleUpBoard(args: {
+  offsets: PersonOffsetLike[]
+  payStubs: PayStubLike[]
+  stubPayments: StubPaymentLike[]
+  dayHours: Array<{ personName: string; workDate: string; hours: number }>
+  wageForPerson: (name: string) => number | null
+}): SettleUpRow[] {
+  const names = new Set<string>()
+  for (const o of args.offsets) if (o.person_name.trim()) names.add(o.person_name.trim())
+  for (const s of args.payStubs) if (s.person_name.trim()) names.add(s.person_name.trim())
+  for (const d of args.dayHours) if (d.personName.trim()) names.add(d.personName.trim())
+  const stubIdsByPerson = new Map<string, Set<string>>()
+  for (const s of args.payStubs) {
+    const key = s.person_name.trim().toLowerCase()
+    const set = stubIdsByPerson.get(key) ?? new Set()
+    set.add(s.id)
+    stubIdsByPerson.set(key, set)
+  }
+  const rows: SettleUpRow[] = []
+  for (const name of names) {
+    const key = name.toLowerCase()
+    const personStubs = args.payStubs.filter((s) => s.person_name.trim().toLowerCase() === key)
+    const stubIds = stubIdsByPerson.get(key) ?? new Set()
+    const personPayments = args.stubPayments.filter((p) => stubIds.has(p.pay_stub_id))
+    const personOffsets = args.offsets.filter((o) => o.person_name.trim().toLowerCase() === key)
+    const personDays = args.dayHours
+      .filter((d) => d.personName.trim().toLowerCase() === key)
+      .map((d) => ({ workDate: d.workDate, hours: d.hours }))
+    const weeks = uncoveredApprovedWeeks({ dayHours: personDays, payStubs: personStubs })
+    const priced = priceUncoveredWeeks(weeks, args.wageForPerson(name))
+    rows.push({ personName: name, ...personSettleUp({ payStubs: personStubs, stubPayments: personPayments, offsets: personOffsets, pricedWeeks: priced }) })
+  }
+  const settled = (r: SettleUpRow) => r.net === 0 && r.unpaidCount === 0 && r.unreportedWeeks === 0 && r.credits === 0 && r.charges === 0
+  rows.sort((a, b) => {
+    const aS = settled(a) ? 1 : 0
+    const bS = settled(b) ? 1 : 0
+    if (aS !== bS) return aS - bS
+    if (aS === 1) return a.personName.localeCompare(b.personName)
+    if (a.net !== b.net) return a.net - b.net
+    return a.personName.localeCompare(b.personName)
+  })
+  return rows
+}
+
+export type WeeklyHistoryGroup = {
+  weekStart: string
+  weekEnd: string
+  /** Report totals for the week; null when the week has offsets only. */
+  reportGross: number | null
+  reportHours: number | null
+  payments: Array<{ dateYmd: string; amount: number; memo: string | null }>
+  offsets: Array<{ dateYmd: string; label: string; amount: number; applied: boolean; typeLabel: string }>
+  /** Still owed on the week's report(s); null when no report. */
+  remaining: number | null
+  legacyPaid: boolean
+}
+
+/**
+ * History grouped by Sunday week: the week's report(s), their recorded
+ * payments, and any offsets dated inside the week — one block per week so a
+ * report and its companion weekly credit read as a single story.
+ */
+export function buildWeeklyHistoryGroups(args: {
+  payStubs: PayStubLike[]
+  stubPayments: StubPaymentLike[]
+  offsets: PersonOffsetLike[]
+}): WeeklyHistoryGroup[] {
+  const groups = new Map<string, WeeklyHistoryGroup>()
+  const groupFor = (weekStart: string): WeeklyHistoryGroup => {
+    const existing = groups.get(weekStart)
+    if (existing) return existing
+    const g: WeeklyHistoryGroup = {
+      weekStart,
+      weekEnd: ymdAddDays(weekStart, 6),
+      reportGross: null,
+      reportHours: null,
+      payments: [],
+      offsets: [],
+      remaining: null,
+      legacyPaid: false,
+    }
+    groups.set(weekStart, g)
+    return g
+  }
+  const paymentsByStub = new Map<string, StubPaymentLike[]>()
+  for (const p of args.stubPayments) {
+    const arr = paymentsByStub.get(p.pay_stub_id) ?? []
+    arr.push(p)
+    paymentsByStub.set(p.pay_stub_id, arr)
+  }
+  for (const s of args.payStubs) {
+    const g = groupFor(weekStartSunday(s.period_start))
+    g.reportGross = Math.round(((g.reportGross ?? 0) + s.gross_pay) * 100) / 100
+    g.reportHours = Math.round(((g.reportHours ?? 0) + s.hours_total) * 100) / 100
+    const payments = paymentsByStub.get(s.id) ?? []
+    let paidSum = 0
+    for (const p of payments) {
+      paidSum += Number(p.amount)
+      g.payments.push({ dateYmd: p.paid_at.slice(0, 10), amount: p.amount, memo: p.memo })
+    }
+    if (payments.length === 0 && s.paid_at != null) {
+      g.legacyPaid = true
+      paidSum = s.gross_pay
+    }
+    const remaining = Math.max(0, Math.round((s.gross_pay - paidSum) * 100) / 100)
+    g.remaining = Math.round(((g.remaining ?? 0) + remaining) * 100) / 100
+  }
+  for (const o of args.offsets) {
+    const g = groupFor(weekStartSunday(o.occurred_date))
+    g.offsets.push({
+      dateYmd: o.occurred_date,
+      label: (o.description ?? '').trim() || (OFFSET_TYPE_LABELS[o.type] ?? o.type),
+      amount: offsetSignedAmount(o.type, o.amount),
+      applied: o.pay_stub_id != null,
+      typeLabel: OFFSET_TYPE_LABELS[o.type] ?? o.type,
+    })
+  }
+  for (const g of groups.values()) {
+    g.payments.sort((a, b) => b.dateYmd.localeCompare(a.dateYmd))
+    g.offsets.sort((a, b) => b.dateYmd.localeCompare(a.dateYmd))
+  }
+  return [...groups.values()].sort((a, b) => b.weekStart.localeCompare(a.weekStart))
+}
+
 /** Sum of recorded payments (plus legacy paid_at-only stub grosses) inside a range. */
 export function paidTotalInRange(args: {
   payStubs: PayStubLike[]

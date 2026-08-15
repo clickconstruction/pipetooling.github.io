@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1667)
+last_updated: 2026-08-14 (v2.1668)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1668)
+
+### Offsets: Settle-up redesign — the equation, priced unreported weeks, action verbs (2026-08-14)
+Owner clicked through prod in Chrome with the agent and called it: the v2.1666 page was a history viewer, not the "quickly identify pay and compare against offsets" tool intended (board showed offset nets only; the all-time balance chip contradicted range-scoped stat cards; the signal drowned under green Paid rows; nobody did the math). Redesign (mockups approved, "price in the unreported weeks too"): **Board → Settle-up table** — per person: Unpaid reports (gross − recorded payments), **No report yet priced at the hourly wage** (`fetchLaborPayConfigMap` now exported from [`teamLabor.ts`](../src/utils/teamLabor.ts); `* = hours with no wage on file, unpriced`), Credits, Charges, and **Settle up** = unpaid + unreported-est + credits − charges ("pay $X" green / "owes $X" red / settled last), everything **all-time** (no range picker to hide 2025 charges); inputs paged past the 1000-row cap (`people_hours`, `pay_stub_payments`). Kernels ([`personMoneyLedger.ts`](../src/lib/people/personMoneyLedger.ts), 18 tests total): `priceUncoveredWeeks`, `personSettleUp`, `buildSettleUpBoard` (action rows most-negative-first), `buildWeeklyHistoryGroups` (week block = report + its payments + same-week offsets — ends Darren's two-green-rows-per-week confusion). **Ledger modal rewritten** ([`PersonMoneyLedgerModal`](../src/components/people/PersonMoneyLedgerModal.tsx)): equation banner in words ("… = Tristen owes the company $3,082.49"), **Needs action** list with verbs — Unpaid → **Record payment** (deep-links `?tab=payroll`), No-report weeks → **Draft reports**, Charges → **Apply to report** (closes the ledger into the existing apply dialog via new `onApplyOffset` prop), Credits annotated "counts toward next payment" — with History (weekly blocks) and Jobs (Crew P&L attribution, own range select) folded behind toggles; the pay statement is now always all-payments. Render smoke rewritten (column pricing, sort, equation, verbs, week blocks). Help guide `see-where-someone-stands-on-pay` rewritten. Client-only — no migration.
 
 ## Latest Updates (v2.1667)
 

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../pay/PersonOffsetFormModal'
-import { personOffsetBalances } from '../../lib/people/personMoneyLedger'
+import { buildSettleUpBoard, type StubPaymentLike } from '../../lib/people/personMoneyLedger'
+import { fetchLaborPayConfigMap } from '../../utils/teamLabor'
 import PersonMoneyLedgerModal from './PersonMoneyLedgerModal'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
@@ -33,6 +34,10 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
   const [offsetApplyPayStubId, setOffsetApplyPayStubId] = useState('')
   const [offsetsTabSearch, setOffsetsTabSearch] = useState('')
   const [ledgerPersonName, setLedgerPersonName] = useState<string | null>(null)
+  const [allStubPayments, setAllStubPayments] = useState<StubPaymentLike[]>([])
+  const [allDayHours, setAllDayHours] = useState<Array<{ personName: string; workDate: string; hours: number }>>([])
+  const [wageMap, setWageMap] = useState<Record<string, { hourly_wage: number; is_salary: boolean }>>({})
+  const [boardLoading, setBoardLoading] = useState(true)
 
   const offsetPersonNameOptions = useMemo(
     () =>
@@ -41,6 +46,52 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
         .sort((a, b) => a.localeCompare(b)),
     [people, users],
   )
+
+  async function loadBoardInputs() {
+    setBoardLoading(true)
+    try {
+      // Recorded payments + approved day hours + wages feed the settle-up
+      // columns. people_hours crosses PostgREST's 1000-row cap — page it.
+      const PAGE = 1000
+      const hours: Array<{ personName: string; workDate: string; hours: number }> = []
+      const twoYearsAgo = new Date()
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+      const startDate = twoYearsAgo.toLocaleDateString('en-CA')
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('people_hours')
+          .select('person_name, work_date, hours')
+          .gte('work_date', startDate)
+          .order('work_date')
+          .order('person_name')
+          .range(from, from + PAGE - 1)
+        if (error) throw error
+        const rows = (data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
+        hours.push(...rows.map((r) => ({ personName: r.person_name, workDate: r.work_date, hours: r.hours })))
+        if (rows.length < PAGE) break
+      }
+      const payments: StubPaymentLike[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('pay_stub_payments')
+          .select('id, pay_stub_id, amount, paid_at, memo')
+          .order('paid_at')
+          .range(from, from + PAGE - 1)
+        if (error) throw error
+        const rows = (data ?? []) as StubPaymentLike[]
+        payments.push(...rows)
+        if (rows.length < PAGE) break
+      }
+      const wages = await fetchLaborPayConfigMap(supabase)
+      setAllDayHours(hours)
+      setAllStubPayments(payments)
+      setWageMap(wages)
+    } catch (e) {
+      setOffsetsError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBoardLoading(false)
+    }
+  }
 
   async function loadOffsets() {
     setOffsetsLoading(true)
@@ -95,12 +146,25 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     else loadOffsets()
   }
 
-  const balances = useMemo(() => personOffsetBalances(offsets), [offsets])
-  const filteredBalances = useMemo(() => {
+  const settleRows = useMemo(
+    () =>
+      buildSettleUpBoard({
+        offsets,
+        payStubs,
+        stubPayments: allStubPayments,
+        dayHours: allDayHours,
+        wageForPerson: (name) => {
+          const wage = wageMap[name.trim()]?.hourly_wage
+          return wage != null && wage > 0 ? wage : null
+        },
+      }),
+    [offsets, payStubs, allStubPayments, allDayHours, wageMap],
+  )
+  const filteredSettleRows = useMemo(() => {
     const q = offsetsTabSearch.trim().toLowerCase()
-    if (!q) return balances
-    return balances.filter((b) => b.personName.toLowerCase().includes(q))
-  }, [balances, offsetsTabSearch])
+    if (!q) return settleRows
+    return settleRows.filter((b) => b.personName.toLowerCase().includes(q))
+  }, [settleRows, offsetsTabSearch])
 
   const offsetsTabSearching = offsetsTabSearch.trim().length > 0
   const filteredOffsets = useMemo(() => {
@@ -143,8 +207,10 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     const t = setTimeout(() => {
       loadOffsets()
       loadPayStubs()
+      void loadBoardInputs()
     }, 80)
     return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-once load
   }, [])
 
   return (
@@ -200,59 +266,82 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
           <>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Balances</span>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Settle up</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  pending offsets not yet applied to a pay report — click a person for their full ledger
+                  unpaid reports + unreported hours + credits − charges, all-time — click a person for the full story
                 </span>
               </div>
-              {filteredBalances.length === 0 ? (
+              {filteredSettleRows.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-                  {balances.length === 0 ? 'No offsets recorded yet.' : 'No people match the search.'}
+                  {settleRows.length === 0 ? 'Nothing to settle — no offsets, unpaid reports, or unreported hours.' : 'No people match the search.'}
                 </p>
               ) : (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                  {filteredBalances.map((b, i) => (
-                    <div
-                      key={b.personName}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setLedgerPersonName(b.personName)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setLedgerPersonName(b.personName)
-                        }
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.6rem',
-                        padding: '0.5rem 0.9rem',
-                        borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        background: 'var(--surface)',
-                      }}
-                    >
-                      <span style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>{b.personName}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {b.pendingCount > 0 ? `${b.pendingCount} pending` : 'settled'}
-                      </span>
-                      <span
-                        style={{
-                          width: 110,
-                          textAlign: 'right',
-                          fontVariantNumeric: 'tabular-nums',
-                          fontWeight: 600,
-                          color: b.pendingNet < 0 ? 'var(--text-red-700)' : b.pendingNet > 0 ? 'var(--text-green-800)' : 'var(--text-muted)',
-                        }}
-                      >
-                        {b.pendingNet < 0 ? '−' : b.pendingNet > 0 ? '+' : ''}${formatCurrency(Math.abs(b.pendingNet))}
-                      </span>
-                      <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>›</span>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 640 }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Person</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Unpaid reports</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>No report yet</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Credits</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Charges</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Settle up</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {filteredSettleRows.map((b) => {
+                        const settled = b.net === 0 && b.unpaidCount === 0 && b.unreportedWeeks === 0 && b.credits === 0 && b.charges === 0
+                        return (
+                          <tr
+                            key={b.personName}
+                            onClick={() => setLedgerPersonName(b.personName)}
+                            style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', color: settled ? 'var(--text-muted)' : undefined }}
+                          >
+                            <td style={{ padding: '0.5rem 0.75rem', fontWeight: settled ? 400 : 600 }}>{b.personName}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unpaidRemaining > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+                              {b.unpaidRemaining > 0 ? `$${formatCurrency(b.unpaidRemaining)}` : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unreportedWeeks > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                              {b.unreportedWeeks > 0
+                                ? `${b.unreportedWeeks} wk · ${b.unreportedHours} h${b.unreportedEst != null ? ` · ~$${formatCurrency(b.unreportedEst)}` : ''}`
+                                : boardLoading
+                                  ? '…'
+                                  : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.credits > 0 ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
+                              {b.credits > 0 ? `+$${formatCurrency(b.credits)}` : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.charges > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                              {b.charges > 0 ? `−$${formatCurrency(b.charges)}` : '—'}
+                            </td>
+                            <td
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                textAlign: 'right',
+                                fontWeight: 600,
+                                color: b.net > 0 ? 'var(--text-green-800)' : b.net < 0 ? 'var(--text-red-700)' : 'var(--text-muted)',
+                              }}
+                            >
+                              {settled
+                                ? 'settled'
+                                : b.net > 0
+                                  ? `pay $${formatCurrency(b.net)}`
+                                  : b.net < 0
+                                    ? `owes $${formatCurrency(Math.abs(b.net))}`
+                                    : '$0.00'}
+                              {b.netMissingUnpricedHours ? ' *' : ''}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
+              )}
+              {filteredSettleRows.some((b) => b.netMissingUnpricedHours) && (
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                  * has unreported hours with no hourly wage on file — not priced into the settle-up number.
+                </p>
               )}
             </div>
             {offsetsTabSearching && offsets.length > 0 && filteredOffsets.length === 0 ? (
@@ -421,6 +510,14 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
           offsets={offsets.filter((o) => o.person_name.trim().toLowerCase() === ledgerPersonName.trim().toLowerCase())}
           payStubs={payStubs.filter((s) => s.person_name.trim().toLowerCase() === ledgerPersonName.trim().toLowerCase())}
           onClose={() => setLedgerPersonName(null)}
+          onApplyOffset={(offsetId) => {
+            const o = offsets.find((x) => x.id === offsetId)
+            if (!o) return
+            setLedgerPersonName(null)
+            setOffsetToApply(o)
+            setOffsetApplyPayStubId('')
+            setOffsetApplyModalOpen(true)
+          }}
         />
       )}
     </>

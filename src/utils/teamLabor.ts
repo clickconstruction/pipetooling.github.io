@@ -45,7 +45,7 @@ export type TeamLaborBidRow = {
  * `hourly_wage` comes from a direct select that RLS empties for assistants, so labor DOLLARS
  * read $0 for them by design (surfaces that would show those dollars are role-gated anyway).
  */
-async function fetchLaborPayConfigMap(
+export async function fetchLaborPayConfigMap(
   supabase: SupabaseClient,
   personNames?: string[],
 ): Promise<Record<string, { hourly_wage: number; is_salary: boolean }>> {

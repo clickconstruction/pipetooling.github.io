@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Offsets tab Balances board (v2.1666): per-person
- * pending nets render signed and sorted (negative first, settled last), and
- * clicking a person opens the money ledger modal with the offset + payment
- * timeline and the Pay statement action.
+ * Render smoke for the Offsets Settle-up board (v2.1668 redesign): per-person
+ * rows price unpaid reports, unreported hours, credits, and charges into one
+ * settle-up number (action rows first, settled last); clicking a person opens
+ * the equation-first ledger with a Needs-action list and folded History/Jobs.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -21,9 +21,13 @@ const TABLE_ROWS: Record<string, unknown[]> = {
     { id: 'o2', person_name: 'Trace', type: 'employee_credit', amount: 150, description: 'Referral bonus', occurred_date: '2026-07-30', pay_stub_id: null, created_at: null },
     { id: 'o3', person_name: 'Malachi', type: 'backcharge', amount: 50, description: null, occurred_date: '2026-06-01', pay_stub_id: 'applied-stub', created_at: null },
   ],
+  pay_stub_payments: [
+    { id: 'p1', pay_stub_id: 's1', amount: 1000, paid_at: '2026-08-05T12:00:00Z', memo: 'cashapp', created_at: null, created_by: null },
+  ],
+  people_hours: [],
   people: [],
   people_crew_jobs: [],
-  people_hours: [],
+  people_pay_config: [],
   jobs_ledger: [],
 }
 
@@ -47,36 +51,51 @@ vi.mock('../../lib/supabase', () => {
 })
 
 const PAY_STUBS = [
-  { id: 's1', person_name: 'Abraham', period_start: '2026-07-28', period_end: '2026-08-03', hours_total: 41.5, gross_pay: 1840, created_at: null, paid_at: '2026-08-08T15:00:00Z', paid_by: null, paid_note: null },
+  // s1: gross 1840, $1,000 recorded → $840 remaining (Unpaid reports column).
+  { id: 's1', person_name: 'Abraham', period_start: '2026-07-26', period_end: '2026-08-01', hours_total: 41.5, gross_pay: 1840, created_at: null, paid_at: null, paid_by: null, paid_note: null },
 ]
 
-describe('PeopleOffsetsTab Balances board', () => {
-  it('renders signed balances sorted negative-first and opens the person ledger', async () => {
+async function findExact(want: string) {
+  return screen.findAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === want)
+}
+
+describe('PeopleOffsetsTab settle-up board', () => {
+  it('prices each column, sorts action rows first, and opens the equation-first ledger', async () => {
     renderWithProviders(
       <PeopleOffsetsTab people={[]} users={[]} payStubs={PAY_STUBS} loadPayStubs={() => Promise.resolve()} />,
     )
 
-    expect(await screen.findByText('Balances')).toBeTruthy()
-    // The tab defers loadOffsets by 80ms — wait for the first row to land.
+    expect((await screen.findAllByText('Settle up')).length).toBeGreaterThan(0)
     expect((await screen.findAllByText('Abraham')).length).toBeGreaterThan(0)
-    // Abraham −425 pending (red, first), Trace +150 (green), Malachi settled last.
-    const byExactText = (want: string) => screen.getAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === want)
-    expect(byExactText('−$425.00').length).toBeGreaterThan(0)
-    expect(byExactText('+$150.00').length).toBeGreaterThan(0)
-    expect(screen.getByText('settled')).toBeTruthy()
-    const rows = screen.getAllByText(/^(\d+ pending|settled)$/).map((el) => el.parentElement?.textContent ?? '')
-    expect(rows[0]).toContain('Abraham')
-    expect(rows[rows.length - 1]).toContain('Malachi')
 
-    // Click Abraham → ledger modal: balance chip, stat cards, timeline rows
-    // (damage offset + paid report), and the Pay statement button.
+    // Abraham: $840 unpaid − $425 charge = owes... no: 840 − 425 = pay $415.
+    expect((await findExact('$840.00')).length).toBeGreaterThan(0)
+    expect((await findExact('−$425.00')).length).toBeGreaterThan(0)
+    expect((await findExact('pay $415.00')).length).toBeGreaterThan(0)
+    // Trace: credit only → pay $150.
+    expect((await findExact('pay $150.00')).length).toBeGreaterThan(0)
+    // Malachi: everything applied → settled, sorted last.
+    expect((await findExact('settled')).length).toBeGreaterThan(0)
+    const nameCells = screen.getAllByRole('row').map((r) => r.textContent ?? '')
+    expect(nameCells[nameCells.length - 1]).toContain('Malachi')
+
+    // Click Abraham → the ledger: equation banner, Needs action rows with
+    // verbs, folded History and Jobs toggles, Pay statement.
     fireEvent.click(screen.getAllByText('Abraham')[0]!)
-    expect(await screen.findByText((_, el) => el?.childElementCount === 0 && el?.textContent === 'balance −$425.00')).toBeTruthy()
-    expect(screen.getByText('Paid in range')).toBeTruthy()
-    expect(screen.getByText('Billing credit (jobs)')).toBeTruthy()
-    expect(screen.getAllByText('Cracked windshield').length).toBeGreaterThan(1)
-    expect(screen.getByText(/Pay report 2026-07-28/)).toBeTruthy()
+    expect(await screen.findByText(/pay Abraham \$415\.00/)).toBeTruthy()
+    expect(screen.getByText('Needs action')).toBeTruthy()
+    expect(screen.getByText('Partly paid')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Record payment' })).toBeTruthy()
+    expect(screen.getByText('Charge')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Apply to report' })).toBeTruthy()
+    expect(screen.getByText(/History — /)).toBeTruthy()
+    expect(screen.getByText(/Jobs worked — /)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Pay statement' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Jobs' })).toBeTruthy()
+
+    // Expand History: the week block shows the report, its payment, and status.
+    fireEvent.click(screen.getByText(/History — /))
+    expect((await screen.findAllByText(/Week /)).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Paid Aug 5.*cashapp/)).toBeTruthy()
+    expect(screen.getByText('$840.00 still owed')).toBeTruthy()
   })
 })
