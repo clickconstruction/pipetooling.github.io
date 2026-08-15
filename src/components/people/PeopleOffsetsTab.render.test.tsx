@@ -62,7 +62,13 @@ async function findExact(want: string) {
 describe('PeopleOffsetsTab settle-up board', () => {
   it('prices each column, sorts action rows first, and opens the equation-first ledger', async () => {
     renderWithProviders(
-      <PeopleOffsetsTab people={[]} users={[]} payStubs={PAY_STUBS} loadPayStubs={() => Promise.resolve()} />,
+      <PeopleOffsetsTab
+        people={[]}
+        users={[]}
+        payStubs={PAY_STUBS}
+        loadPayStubs={() => Promise.resolve()}
+        archivedUserNames={new Set(['Trace'])}
+      />,
     )
 
     expect((await screen.findAllByText('Settle up')).length).toBeGreaterThan(0)
@@ -72,7 +78,10 @@ describe('PeopleOffsetsTab settle-up board', () => {
     expect((await findExact('$840.00')).length).toBeGreaterThan(0)
     expect((await findExact('−$425.00')).length).toBeGreaterThan(0)
     expect((await findExact('pay $415.00')).length).toBeGreaterThan(0)
-    // Trace: credit only → pay $150.
+    // Trace is archived → folded into the collapsed Archived users section;
+    // his row is hidden until the section expands.
+    expect(screen.queryByText('pay $150.00')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Archived users \(1\)/ }))
     expect((await findExact('pay $150.00')).length).toBeGreaterThan(0)
     // Malachi: everything applied → settled, sorted last.
     expect((await findExact('settled')).length).toBeGreaterThan(0)

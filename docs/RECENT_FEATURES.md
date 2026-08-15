@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-14 (v2.1668)
+last_updated: 2026-08-14 (v2.1669)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1669)
+
+### Settle-up board folds archived people into a collapsed section (2026-08-14)
+Owner request. [`PeopleOffsetsTab`](../src/components/people/PeopleOffsetsTab.tsx) splits the Settle-up table: current people render as before; anyone matching the archived-user-name set (RPC `get_archived_user_names`, the v2.1409 Contracts pattern) or an archived roster person (`people.archived_at`) folds into a collapsed-by-default **"Archived users (N)"** section below — same table, out of the way, balances preserved. New props `archivedUserNames`/`archivedPeople` from [`People.tsx`](../src/pages/People.tsx), whose archived-names loader effect now also fires on the offsets tab; the table markup extracted to a shared `settleTable(rows)` helper. Render smoke covers the fold (archived row hidden until the toggle). Verified live: 19 current people up top, 9 archived folded — including the Kyle/Chelsea/Joseph unreported-week balances v2.1668 surfaced, now explained (they're departed crew). Help guide updated. Client-only — no migration.
 
 ## Latest Updates (v2.1668)
 
