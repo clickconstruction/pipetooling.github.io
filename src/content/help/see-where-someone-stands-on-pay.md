@@ -2,31 +2,35 @@
 title: see where someone stands and share a pay statement
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: offsets, balance, backcharge, damage, credit, ledger, pay statement, payments, jobs worked, share
+keywords: offsets, balance, settle up, backcharge, damage, credit, ledger, pay statement, payments, unpaid, unreported, jobs worked, share
 ---
 
-**People → Offsets** now opens with a **Balances** board: one row per person with offset history, showing their net position — {{chip:green|+$150.00}} when the company owes them (credits), {{chip:red|−$425.00}} when they owe the company (backcharges and damages). The headline number is **pending** offsets — what would hit their next pay report; people with nothing pending show as settled at the bottom. The offset list you already use is unchanged below.
+**People → Offsets** opens with the **Settle up** table: one row per person, with the whole pay picture priced into columns —
+
+- **Unpaid reports** — what's still owed on pay reports (gross minus recorded payments)
+- **No report yet** — weeks of approved hours that never became a pay report, priced at their hourly wage (`3 wk · 79.16 h · ~$1,187`)
+- **Credits** and **Charges** — pending offsets, split by direction
+- **Settle up** — the answer: {{chip:green|pay $1,499.82}} or {{chip:red|owes $3,082.49}}, everything above netted together
+
+Everything is **all-time** — old charges can't hide behind a date filter. Rows needing the most attention sort first; settled people sink to the bottom. A `*` means the person has unreported hours but no wage on file, so those hours aren't priced in.
 
 ## The person ledger
 
-Click any person to open their money ledger — one dated timeline of everything:
+Click any row. The ledger leads with the equation in plain words:
 
-- {{chip:red|Damage}} / {{chip:red|Backcharge}} / {{chip:green|Credit}} — every offset, signed, with an "applied" note once it's on a pay report
-- {{chip:green|Paid}} — every pay report with its paid date, period, hours, and gross; unpaid reports show as {{chip:yellow|Pending}}
-- **Jobs** — the jobs they worked in the range, with hours and **billing credit** (their share of job revenue, the same Crew P&L math used on Jobs → Crew P&L; clocked crew labor only)
+:::example The settle-up banner
+Unpaid reports $620.06 + unreported ~$2,914.95 + credits $0.00 − charges $6,617.50 = **Tristen owes the company $3,082.49**
+:::
 
-Three cards up top total the picture for the selected range: **Paid in range**, **Billing credit**, and **Offsets net** — pay them, what they earned the company, and where the offsets stand. The range selector (this month / quarter / year / all time) drives everything.
+Below it, **Needs action** lists every open item with its verb:
+
+- {{chip:yellow|Unpaid}} reports → {{button:outline|Record payment}} (jumps to Payroll)
+- {{chip:red|No report}} weeks → {{button:outline|Draft reports}}
+- {{chip:red|Charge}} offsets → {{button:outline|Apply to report}} (opens the apply dialog)
+- {{chip:green|Credit}} offsets — counted toward the next payment automatically
+
+**History** folds away until you want it: one block per week showing the report, each recorded payment with its date and memo, and any offsets from that week — so a report and its companion weekly credit read as one story with one status ({{chip:green|paid}} or {{chip:yellow|$840.00 still owed}}). **Jobs worked** folds too: hours and billing credit per job (Crew P&L attribution), with its own date range.
 
 ## Sharing a pay statement
 
-{{button:outline|Pay statement}} in the ledger opens a printable statement for the selected range — safe to hand to the person:
-
-:::example What they see
-**Paid Aug 8, 2026 — $1,840.00** · Period Jul 28 – Aug 3 · 41.5 hours
-
-Terrell Road sewer repair — 16 h · Shearer pinpoint — 6 h
-
-Less: windshield damage — −$425.00
-:::
-
-Each payment shows its paid date, the job hours that earned it, and any offsets applied to that report. It deliberately shows **hours and job names only** — never company revenue or margins. Print it or save as PDF from the print dialog, same as pay report documents.
+{{button:outline|Pay statement}} builds a printable statement of every recorded payment — its paid date and amount, the period's job hours that earned it, and offsets applied to that report ("Less: windshield damage"). It shows **hours and job names only** — never company revenue — so it's safe to hand to the person. Print or save as PDF from the dialog.

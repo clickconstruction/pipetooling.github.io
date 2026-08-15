@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1668',
+    date: '2026-08-14',
+    title: 'Settle up does the math',
+    kind: 'feature',
+    highlights: [
+      'People → Offsets is now a Settle-up table: unpaid reports, unreported weeks priced at each person\'s wage, credits, and charges — netted into one number per person: pay them, or they owe.',
+      'The person ledger leads with the equation in plain words, then a Needs-action list where every line has its button: Record payment, Draft reports, Apply to report.',
+      'History folds into one block per week — the report, its payments, and that week\'s offsets together — and everything is all-time, so old charges can\'t hide behind a date filter.',
+    ],
+  },
+  {
     version: 'v2.1667',
     date: '2026-08-14',
     title: 'Ledger shows every pay state',

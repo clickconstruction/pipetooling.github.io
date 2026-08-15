@@ -7,6 +7,10 @@ import {
   paidTotalInRange,
   personOffsetBalances,
   uncoveredApprovedWeeks,
+  buildSettleUpBoard,
+  buildWeeklyHistoryGroups,
+  personSettleUp,
+  priceUncoveredWeeks,
   type PayStubLike,
   type PersonOffsetLike,
 } from './personMoneyLedger'
@@ -205,5 +209,89 @@ describe('uncoveredApprovedWeeks (approved hours, no pay report)', () => {
     })
     expect(rows.map((r) => [r.kind, r.dateYmd, r.hours])).toEqual([['unreported', '2026-08-15', 15.5]])
     expect(rows[0]?.label).toBe('No pay report yet · 2026-08-09 – 2026-08-15 · 15.5 h approved')
+  })
+})
+
+describe('settle-up math', () => {
+  it('personSettleUp prices every side of the equation', () => {
+    const s = personSettleUp({
+      payStubs: [
+        stub({ id: 's1', paid_at: null, gross_pay: 620.06 }),
+        stub({ id: 's2', gross_pay: 500 }),
+        stub({ id: 's3', paid_at: null, gross_pay: 300 }),
+      ],
+      stubPayments: [{ id: 'p1', pay_stub_id: 's3', amount: 250, paid_at: '2026-08-01T12:00:00Z', memo: null }],
+      offsets: [
+        offset({ id: 'a', type: 'damage', amount: 1800 }),
+        offset({ id: 'b', type: 'employee_credit', amount: 200 }),
+        offset({ id: 'c', type: 'backcharge', amount: 100, pay_stub_id: 'applied' }),
+      ],
+      pricedWeeks: [
+        { weekStart: '2026-02-01', weekEnd: '2026-02-07', hours: 40, estAmount: 600 },
+        { weekStart: '2026-02-08', weekEnd: '2026-02-14', hours: 10, estAmount: 150 },
+      ],
+    })
+    expect(s.unpaidRemaining).toBe(670.06)
+    expect(s.unpaidCount).toBe(2)
+    expect(s.unreportedHours).toBe(50)
+    expect(s.unreportedEst).toBe(750)
+    expect(s.credits).toBe(200)
+    expect(s.charges).toBe(1800)
+    expect(s.net).toBe(-179.94)
+    expect(s.netMissingUnpricedHours).toBe(false)
+  })
+  it('flags unpriced hours when no wage is known', () => {
+    const weeks = priceUncoveredWeeks([{ weekStart: '2026-02-01', weekEnd: '2026-02-07', hours: 40 }], null)
+    expect(weeks[0]?.estAmount).toBeNull()
+    const s = personSettleUp({ payStubs: [], stubPayments: [], offsets: [], pricedWeeks: weeks })
+    expect(s.unreportedEst).toBeNull()
+    expect(s.netMissingUnpricedHours).toBe(true)
+    expect(s.net).toBe(0)
+  })
+  it('buildSettleUpBoard sorts action rows most-negative first and settled last', () => {
+    const rows = buildSettleUpBoard({
+      offsets: [
+        offset({ id: 'a', person_name: 'Tristen', type: 'damage', amount: 6617.5 }),
+        offset({ id: 'b', person_name: 'Zack', type: 'employee_credit', amount: 335.61 }),
+        offset({ id: 'c', person_name: 'Malachi', type: 'backcharge', amount: 50, pay_stub_id: 'applied' }),
+      ],
+      payStubs: [stub({ id: 's1', person_name: 'Darren', paid_at: null, gross_pay: 49.1 })],
+      stubPayments: [],
+      dayHours: [{ personName: 'Tristen', workDate: '2026-02-02', hours: 10 }],
+      wageForPerson: (name) => (name === 'Tristen' ? 15 : null),
+    })
+    expect(rows.map((r) => r.personName)).toEqual(['Tristen', 'Darren', 'Zack', 'Malachi'])
+    expect(rows[0]?.net).toBe(150 - 6617.5)
+    expect(rows[0]?.unreportedEst).toBe(150)
+    expect(rows[3]?.net).toBe(0)
+  })
+})
+
+describe('buildWeeklyHistoryGroups', () => {
+  it('groups a report, its payments, and same-week offsets into one block', () => {
+    const groups = buildWeeklyHistoryGroups({
+      payStubs: [stub({ id: 's1', period_start: '2026-08-02', period_end: '2026-08-08', gross_pay: 300, hours_total: 10.2, paid_at: null })],
+      stubPayments: [{ id: 'p1', pay_stub_id: 's1', amount: 127.48, paid_at: '2026-08-07T12:00:00Z', memo: 'cashapp' }],
+      offsets: [offset({ id: 'a', occurred_date: '2026-08-07', type: 'employee_credit', amount: 172.52, description: 'weekly' })],
+    })
+    expect(groups.length).toBe(1)
+    const g = groups[0]!
+    expect([g.weekStart, g.weekEnd]).toEqual(['2026-08-02', '2026-08-08'])
+    expect(g.reportGross).toBe(300)
+    expect(g.remaining).toBe(172.52)
+    expect(g.payments).toEqual([{ dateYmd: '2026-08-07', amount: 127.48, memo: 'cashapp' }])
+    expect(g.offsets[0]?.amount).toBe(172.52)
+  })
+  it('offset-only weeks stand alone; legacy paid reports show no remaining', () => {
+    const groups = buildWeeklyHistoryGroups({
+      payStubs: [stub({ id: 's1', period_start: '2026-07-26', period_end: '2026-08-01', gross_pay: 500 })],
+      stubPayments: [],
+      offsets: [offset({ id: 'a', occurred_date: '2025-10-20', type: 'damage', amount: 1800, description: 'Skid steer' })],
+    })
+    expect(groups.length).toBe(2)
+    expect(groups[0]?.legacyPaid).toBe(true)
+    expect(groups[0]?.remaining).toBe(0)
+    expect(groups[1]?.reportGross).toBeNull()
+    expect(groups[1]?.offsets[0]?.label).toBe('Skid steer')
   })
 })
