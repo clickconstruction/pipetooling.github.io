@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1679)
+last_updated: 2026-08-15 (v2.1680)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1680)
+
+### Job form: the Service type list drops its "Select service type…" row (2026-08-15)
+Owner call: opening the Service type picker (Job window Edit tab / New Job form) offered "Select service type…" as the first selectable row — a placeholder masquerading as an option on a required field. [`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx) drops the `emptyOption` from its [`SearchableSelect`](../src/components/SearchableSelect.tsx); the text survives only as the trigger placeholder while nothing is selected, and the open list offers real trades only (Plumbing / Electrical / HVAC). A set value can no longer be cleared back to empty from the list — intended, the field is required. The Bid form's service type picker keeps the same old pattern for now (separate surface, separate call). Verified live on job 961. Client-only — no migration.
 
 ## Latest Updates (v2.1679)
 

@@ -155,7 +155,9 @@ export function JobFormIdentityFields({
               value={formServiceTypeId}
               onChange={setFormServiceTypeId}
               options={serviceTypeOptions.map((st) => ({ value: st.id, label: st.name }))}
-              emptyOption={{ value: '', label: 'Select service type…' }}
+              // No emptyOption row: the field is required, so "Select service
+              // type…" lives only on the trigger as placeholder — the open list
+              // offers real trades only (owner call, v2.1680).
               placeholder="Select service type…"
               required
               listAriaLabel="Service type"
