@@ -35,7 +35,7 @@ import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesC
 import { useShareJob } from './ShareJobButton'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
-import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
@@ -492,10 +492,7 @@ type StagesCardThreadProps = Pick<
   | 'canManageJobPeople'
   | 'setManageJobPeople'
   | 'jobThreadNotesLoadingId'
-  | 'jobThreadDraft'
-  | 'jobThreadSubmittingId'
-  | 'setJobThreadDraft'
-  | 'submitJobThreadNote'
+  | 'submitJobThreadNoteWithBody'
   | 'authUser'
   | 'jobThreadFullscreen'
   | 'setJobThreadFullscreen'
@@ -507,51 +504,35 @@ type StagesCardThreadProps = Pick<
 function renderCardThreadPanel(p: StagesCardThreadProps, ctx: StagesRowRenderContext, j: JobWithDetails) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', background: 'var(--bg-subtle)', margin: '0 -0.75rem -0.6rem', padding: '0.5rem 0.75rem 0.6rem' }}>
-      <JobThreadNotesPanel
-        fullscreenControl={{ active: p.jobThreadFullscreen, onToggle: () => p.setJobThreadFullscreen(!p.jobThreadFullscreen) }}
+      <JobsStagesThreadPanel
+        job={j}
+        activity={ctx.jobThreadActivityByJobId[j.id] ?? []}
+        loading={p.jobThreadNotesLoadingId === j.id}
+        upcoming={ctx.stagesUpcomingByJobId[j.id] ?? null}
+        viewerRole={p.authRole}
+        {...(p.authUser && p.submitJobThreadNoteWithBody
+          ? { submitNoteWithBody: p.submitJobThreadNoteWithBody }
+          : {})}
+        fullscreen={p.jobThreadFullscreen}
+        onToggleFullscreen={() => p.setJobThreadFullscreen(!p.jobThreadFullscreen)}
         fullscreenHeader={renderStagesThreadFullscreenJobHeader(j)}
-        nextAppointment={ctx.stagesUpcomingByJobId[j.id] ?? null}
         pctComplete={j.pct_complete ?? null}
         canEditPct={p.canEditJobPctComplete}
         pctSaving={p.pctCompleteSavingId === j.id}
         onCommitPct={(value, note) => p.commitStagesPctWithNote(j.id, value, note)}
         teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
-        peopleAction={
-          p.canManageJobPeople
-            ? {
+        {...(p.canManageJobPeople
+          ? {
+              peopleAction: {
                 onClick: () =>
                   p.setManageJobPeople({
                     jobId: j.id,
-                    jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+                    jobLabel: `${(j.hcp_number ?? '').trim() || '\u2014'} \u00b7 ${(j.job_name ?? '').trim() || 'Job'}`,
                     currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
                   }),
-              }
-            : undefined
-        }
-        activity={ctx.jobThreadActivityByJobId[j.id] ?? []}
-        loading={p.jobThreadNotesLoadingId === j.id}
-        canPost={!!p.authUser}
-        draft={p.jobThreadDraft}
-        submitting={p.jobThreadSubmittingId === j.id}
-        onDraftChange={p.setJobThreadDraft}
-        onSubmit={() => void p.submitJobThreadNote(j.id)}
-        scheduleAction={
-          p.canOpenJobScheduleModal
-            ? { onClick: () => ctx.openQuickAssignForJob(j) }
-            : undefined
-        }
-        scheduleDispatchAction={
-          p.canOpenJobScheduleModal
-            ? {
-                onClick: () => {
-                  const week = getDefaultWeekRange().start
-                  ctx.navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
-                },
-                disabled: (j.team_members?.length ?? 0) === 0,
-              }
-            : undefined
-        }
-        viewerRole={p.authRole}
+              },
+            }
+          : {})}
       />
     </div>
   )

@@ -396,9 +396,15 @@ export function useJobThreadNotes(
   }, [authUserId, loadJobThreadNotesForJob, mergeJobThreadStatsForJobIds, realtimeChannelId])
 
   const submitJobThreadNoteWithBody = useCallback(
-    async (jobId: string, body: string, source: 'draft' | 'stamp') => {
+    /**
+     * Resolves TRUE only when the note actually landed. Surfaces that own their
+     * composer draft locally (the unified Job activity view, the row's activity
+     * box) restore the typed text on FALSE — before v2.1673 a failed post
+     * silently ate whatever had been typed on those surfaces.
+     */
+    async (jobId: string, body: string, source: 'draft' | 'stamp'): Promise<boolean> => {
       const trimmed = body.trim()
-      if (!authUserId || !trimmed) return
+      if (!authUserId || !trimmed) return false
       const optimistic = makeOptimisticThreadNote(trimmed, authorDisplayName ?? null)
       inFlightThreadNoteRef.current = { jobId, optimisticId: optimistic.id }
       const optimisticItem: JobThreadActivityItem = { kind: 'note', note: optimistic }
@@ -484,6 +490,7 @@ export function useJobThreadNotes(
         } catch {
           /* leave optimistic stats */
         }
+        return true
       } catch (e: unknown) {
         inFlightThreadNoteRef.current = null
         setJobThreadActivityByJobId((prev) => ({
@@ -502,6 +509,7 @@ export function useJobThreadNotes(
             : formatErrorMessage(e, 'Failed to post note'),
           'error',
         )
+        return false
       } finally {
         setJobThreadSubmittingId(null)
       }

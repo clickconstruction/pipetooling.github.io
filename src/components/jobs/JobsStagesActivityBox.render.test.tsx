@@ -70,7 +70,7 @@ describe('JobsStagesActivityBox', () => {
           } as StagesRowRenderContext['jobThreadStatsByJobId'],
         })}
         loadActivityForJob={loadActivityForJob}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
     expect(screen.getByText(/I think the job is 1% complete/)).toBeTruthy()
@@ -104,7 +104,7 @@ describe('JobsStagesActivityBox', () => {
       <JobsStagesActivityBox
         job={job}
         ctx={makeCtx({ jobThreadActivityByJobId: { [job.id]: [] } as StagesRowRenderContext['jobThreadActivityByJobId'] })}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
     expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
@@ -126,7 +126,7 @@ describe('JobsStagesActivityBox', () => {
           openJobActivityExpand,
           jobThreadActivityByJobId: { [job.id]: [] } as StagesRowRenderContext['jobThreadActivityByJobId'],
         })}
-        submitNoteWithBody={vi.fn(async () => {})}
+        submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
     fireEvent.click(screen.getByLabelText('Expand job activity'))
@@ -134,7 +134,7 @@ describe('JobsStagesActivityBox', () => {
   })
 
   it('submits through the note pipeline on Enter', async () => {
-    const submitNoteWithBody = vi.fn(async () => {})
+    const submitNoteWithBody = vi.fn(async () => true)
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(
       <JobsStagesActivityBox

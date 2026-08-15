@@ -125,25 +125,21 @@ describe('JobsStagesTable render smoke', () => {
     expect(boxed[0]?.title).toContain('has a hazmat fee')
   })
 
-  it('expanded thread panel: Schedule opens the Assign work sheet, enabled without a team (v2.1543)', () => {
+  it('expanded thread panel carries no Schedule / Week dispatch buttons (owner call, v2.1673)', () => {
     const teamless = makeJob({ job_name: 'Thread Panel Job', team_members: [] })
-    const openQuickAssignForJob = vi.fn()
-    const setScheduleModalJob = vi.fn()
     renderWithProviders(
       <JobsStagesTable
         {...makeProps({
           jobList: [teamless],
           expandedJobThreadId: teamless.id,
-          openQuickAssignForJob,
-          setScheduleModalJob,
         })}
       />,
     )
-    const btn = screen.getByText('Schedule') as HTMLButtonElement
-    expect(btn.disabled).toBe(false)
-    btn.click()
-    expect(openQuickAssignForJob).toHaveBeenCalledWith(expect.objectContaining({ id: teamless.id }))
-    expect(setScheduleModalJob).not.toHaveBeenCalled()
+    // The panel is open (its empty-state copy is on screen) but the scheduling
+    // shortcuts are gone — scheduling lives on its own surfaces.
+    expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
+    expect(screen.queryByText('Schedule')).toBeNull()
+    expect(screen.queryByText('Week dispatch')).toBeNull()
   })
 
   it('schedule quick action opens the Assign work sheet, even with no team members (v2.1536)', () => {
