@@ -11,6 +11,8 @@ export type JobScheduleBlockActivityRow = {
   time_end: string
   note: string
   assigneeLabels: string
+  /** Who scheduled the block (`created_by` join); '' when unknown. */
+  createdByName: string
 }
 
 export type JobThreadScheduleActivityItem = {
@@ -28,6 +30,10 @@ function assigneeLabel(row: JobScheduleBlockWithAssigneeName): string {
   const n = row.users?.name?.trim()
   if (n) return n
   return row.assignee_user_id?.trim() || 'Unknown'
+}
+
+function creatorName(row: JobScheduleBlockWithAssigneeName): string {
+  return row.creator?.name?.trim() ?? ''
 }
 
 /** Rows with non-empty trimmed schedule note. */
@@ -87,6 +93,7 @@ export function scheduleBlocksToScheduleActivityItems(
         time_end: canonical.time_end,
         note,
         assigneeLabels: names.join(', '),
+        createdByName: creatorName(canonical),
       },
     }
   })
@@ -101,6 +108,7 @@ export function scheduleBlocksToScheduleActivityItems(
       time_end: r.time_end,
       note: (r.note ?? '').trim(),
       assigneeLabels: assigneeLabel(r),
+      createdByName: creatorName(r),
     },
   }))
 

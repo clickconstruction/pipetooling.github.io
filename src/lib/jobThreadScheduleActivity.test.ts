@@ -18,9 +18,10 @@ const block = (over: Partial<JobScheduleBlockWithAssigneeName>): JobScheduleBloc
     note: null,
     shared_block_group_id: null,
     created_at: '2026-01-01T12:00:00Z',
-    created_by: null,
+    created_by: 'u-robert',
     updated_at: '2026-01-01T12:00:00Z',
     users: { name: 'Alex' },
+    creator: { name: 'Robert' },
     ...over,
   }) as JobScheduleBlockWithAssigneeName
 
@@ -70,9 +71,10 @@ describe('scheduleBlocksToScheduleActivityItems', () => {
     expect(first.schedule.sortAt).toBe('2026-01-06T15:00:00Z')
     expect(first.schedule.note).toBe('Meet GC')
     expect(first.schedule.dedupeKey).toBe(`sb-group:${gid}`)
+    expect(first.schedule.createdByName).toBe('Robert')
   })
 
-  it('solo block gets sb-solo key', () => {
+  it('solo block gets sb-solo key and carries the scheduler name', () => {
     const items = scheduleBlocksToScheduleActivityItems([
       block({
         id: 'solo99',
@@ -84,6 +86,14 @@ describe('scheduleBlocksToScheduleActivityItems', () => {
     const first = items[0]!
     expect(first.schedule.dedupeKey).toBe('sb-solo:solo99')
     expect(first.schedule.sortAt).toBe('2026-03-02T18:00:00Z')
+    expect(first.schedule.createdByName).toBe('Robert')
+  })
+
+  it("createdByName falls back to '' when the creator join is absent", () => {
+    const items = scheduleBlocksToScheduleActivityItems([
+      block({ id: 'old1', note: 'Legacy row', creator: null }),
+    ])
+    expect(items[0]!.schedule.createdByName).toBe('')
   })
 
   it('sort order vs thread note uses updated_at', () => {

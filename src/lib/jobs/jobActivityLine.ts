@@ -123,9 +123,10 @@ function lineFromItem(
       ...base,
       key: s.dedupeKey,
       kind: 'schedule_block',
-      // Schedule rows record no actor — the assignees are the useful names, and
-      // they belong in the body where there's room for several.
-      who: '',
+      // Who SCHEDULED it goes in the name column (consistent with every other
+      // line's actor); who's assigned to GO stays in the body, where several
+      // names fit. '' when the row predates the created_by trigger.
+      who: s.createdByName,
       body: s.assigneeLabels ? `${when} · ${s.assigneeLabels}` : when,
       detail: detailFromNote(s.note ?? ''),
     }

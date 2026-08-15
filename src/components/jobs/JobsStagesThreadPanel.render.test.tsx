@@ -44,6 +44,21 @@ const report = (id: string, at: string) =>
     },
   }) as unknown as JobThreadActivityItem
 
+const clockWithNote = (dedupeKey: string, at: string) =>
+  ({
+    kind: 'clock_session',
+    clock: {
+      dedupeKey,
+      sortAt: at,
+      personName: 'Paige',
+      clockedInAt: at,
+      clockedOutAt: null,
+      durationHours: null,
+      status: 'approved',
+      note: 'Punch list walk',
+    },
+  }) as unknown as JobThreadActivityItem
+
 const activity = [
   note('n1', '2026-08-12T14:45:00Z', 'Arrived at job', 'Abraham'),
   statusEvent('ev1', '2026-08-12T15:00:00Z', 'Working → Ready to Bill'),
@@ -77,6 +92,20 @@ describe('JobsStagesThreadPanel', () => {
     expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
     fireEvent.click(screen.getByText('Status Report'))
     expect(screen.getByText(/Front cleanout is broken/)).toBeTruthy()
+  })
+
+  it('shows clock/schedule notes expanded by default (only reports fold)', () => {
+    renderWithProviders(
+      <JobsStagesThreadPanel
+        {...baseProps}
+        activity={[...activity, clockWithNote('c1', '2026-08-14T17:00:00Z')]}
+        onToggleFullscreen={vi.fn()}
+      />,
+    )
+    // Visible without any click — the note is a sentence, not a report.
+    expect(screen.getByText('Punch list walk')).toBeTruthy()
+    // The report still folds.
+    expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
   })
 
   it('shows the fullscreen toggle and swaps its label once active', () => {
