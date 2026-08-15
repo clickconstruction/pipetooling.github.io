@@ -21,15 +21,15 @@ The bottom-right corner of Edit Job shows where your changes stand:
 Job numbers, name, address, customer info, links, line items, payments, Other job charges, and Team changes — each saves on its own as you edit it.
 :::
 
-## Closing the modal
+## Closing the window
 
-Click {{button:gray|Close}}, press the **Escape** key, click outside the modal, or jump to another view — if anything is still waiting to save, the close **finishes the save first** (the button briefly shows "Saving…"). Escape never closes the job window while a smaller window sits on top of it (like a preview or the create-customer window), so you won't lose your place by accident.
+Click the **✕** in the top-right, press the **Escape** key, click outside the window, or jump to another view — if anything is still waiting to save, the close **finishes the save first**. Switching between the **Job**, **Edit**, and **Bill** tabs never needs a save at all — your work stays put across tabs. Escape never closes the job window while a smaller window sits on top of it (like a preview or the create-customer window), so you won't lose your place by accident.
 
 If the server doesn't respond, the modal stays open and asks what to do: **Retry and close**, **Keep editing**, or **Close without saving**. Your edits are never dropped silently.
 
 ## Made a mess? Undo
 
-The {{button:gray|Undo changes}} button (bottom-left, next to Close) reverts **everything** back to how the job looked when you opened the modal. It asks before reverting, and the revert then auto-saves like any other edit.
+The {{button:gray|Undo changes}} button (bottom-left on the Edit tab) reverts **everything** back to how the job looked when you opened the window. It asks before reverting, and the revert then auto-saves like any other edit.
 
 :::example Where the restore point sits
 Undo goes back to when you opened Edit Job — or, if you've created or deleted an invoice since, to just after that. Invoice work is never unwound by Undo.

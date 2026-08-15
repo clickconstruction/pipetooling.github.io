@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState } from 'react'
 import JobFormModal from '../components/jobs/JobFormModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
+import { useJobDetailOpenerBridge } from './JobDetailOpenerBridgeContext'
 
 export type OpenEditJobOptions = {
   initialJob?: JobWithDetails
@@ -12,6 +13,8 @@ export type OpenEditJobOptions = {
   jobPicturesLinkHighlight?: boolean
   /** After opening edit, open "Create customer from job" when customer name is present (billing flow). */
   alsoOpenCreateCustomerModal?: boolean
+  /** Which Job-window tab to land on (v2.1675). Default 'edit'. */
+  initialTab?: 'edit' | 'bill'
 }
 
 export type OpenNewJobOptions = {
@@ -58,21 +61,39 @@ let jobFormModalInstanceSeed = 0
 export function JobFormModalProvider({ children }: { children: React.ReactNode }) {
   const [openState, setOpenState] = useState<InternalOpenState>({ kind: 'closed' })
   const [instanceKey, setInstanceKey] = useState(0)
+  const openerBridge = useJobDetailOpenerBridge()
 
-  const openEditJob = useCallback((jobId: string, options?: OpenEditJobOptions) => {
-    jobFormModalInstanceSeed += 1
-    setInstanceKey(jobFormModalInstanceSeed)
-    setOpenState({
-      kind: 'edit',
-      job_id: jobId,
-      initialJob: options?.initialJob ?? null,
-      billingCustomerHighlight: options?.billingCustomerHighlight ?? false,
-      fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
-      jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
-      alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
-      onSaved: options?.onSaved ?? null,
-    })
-  }, [])
+  const openEditJob = useCallback(
+    (jobId: string, options?: OpenEditJobOptions) => {
+      // v2.1675: edit opens land on the tabbed Job window (owned by
+      // JobDetailModalProvider, below — reached through the bridge). The
+      // standalone form remains as the fallback when no window is registered
+      // (providers mounted alone in tests, or a partial tree).
+      const delegated = openerBridge?.requestOpenJobWindowEdit(jobId, {
+        ...(options?.initialJob ? { initialJob: options.initialJob } : {}),
+        ...(options?.onSaved ? { onSaved: options.onSaved } : {}),
+        ...(options?.billingCustomerHighlight ? { billingCustomerHighlight: true } : {}),
+        ...(options?.fixturesSectionHighlight ? { fixturesSectionHighlight: true } : {}),
+        ...(options?.jobPicturesLinkHighlight ? { jobPicturesLinkHighlight: true } : {}),
+        ...(options?.alsoOpenCreateCustomerModal ? { alsoOpenCreateCustomerModal: true } : {}),
+        ...(options?.initialTab ? { initialTab: options.initialTab } : {}),
+      })
+      if (delegated) return
+      jobFormModalInstanceSeed += 1
+      setInstanceKey(jobFormModalInstanceSeed)
+      setOpenState({
+        kind: 'edit',
+        job_id: jobId,
+        initialJob: options?.initialJob ?? null,
+        billingCustomerHighlight: options?.billingCustomerHighlight ?? false,
+        fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
+        jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
+        alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
+        onSaved: options?.onSaved ?? null,
+      })
+    },
+    [openerBridge],
+  )
 
   const openNewJob = useCallback((options?: OpenNewJobOptions) => {
     jobFormModalInstanceSeed += 1

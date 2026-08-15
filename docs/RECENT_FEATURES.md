@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1674)
+last_updated: 2026-08-15 (v2.1675)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1675)
+
+### Jobs: the tabbed Job window — Job · Edit · Bill in one modal (2026-08-15)
+Owner request (mockup approved): the Job Detail and Edit Job modals — which bridged into each other with buttons — merge into **one window with three tabs and one ✕**. New shell [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) mounts both existing components as display-toggled panes (nothing unmounts on tab switch, so typed-but-unsaved form state survives): **Job** = [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) in new `paneMode` (no own overlay/Esc/✕; its ⚙ becomes a tab switch; new `externalRefreshKey` reloads it after form saves); **Edit** + **Bill** = ONE [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) in new embedded mode (`embeddedRegion`) showing one region at a time — Edit carries identity/Account Man/Team/Customer/links/**Line Items** (moved above the Billing header, decision 02 — scope with scope, and it makes the regions contiguous), Bill carries the billing half (summary bar, segments + break-off slider, invoices, payments, Labor & Parts Cost + Cost Timeline, decision 03). **Wiring**: the window lives in [`JobDetailModalContext`](../src/contexts/JobDetailModalContext.tsx) (editor roles only — subcontractor-like roles keep the plain read-only Job Detail unchanged); `openEditJob` delegates down through a new opener on [`JobDetailOpenerBridgeContext`](../src/contexts/JobDetailOpenerBridgeContext.tsx) (standalone-form fallback when no window is registered keeps partial trees + tests working); `openNewJob` is untouched (a new job has no Job/Bill content). `OpenEditJobOptions` gains `initialTab: 'edit' | 'bill'`. **Close semantics**: ✕/Esc/backdrop all route through the form's guarded autosave flush; the Job pane reports its stacked-satellite state up (new `onEscBlockedChange` → `externalEscBlocked`) so Esc closes Reports/Calendar/etc., never the window underneath. Delete lives on the Edit tab only; the footer Close and both modal-to-modal bridge buttons retire inside the window. The save engine, autosave slices, and every satellite modal are untouched — the diff is chrome and wrappers. Render smoke `JobWindowModal.render.test.tsx` (4: tabs, region split, state survival, guarded ✕). Help guide `job-window-tabs` added; `edit-job-autosave` updated. Verified live on job 951: all three tabs, typed-state survival across switches, autosave flush on Esc, row-Edit delegation, New Job unchanged. Client-only — no migration.
 
 ## Latest Updates (v2.1674)
 

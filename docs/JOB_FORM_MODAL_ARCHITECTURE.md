@@ -10,6 +10,8 @@ last_updated: 2026-08-02
 
 ## Overview
 
+> **v2.1675 — the tabbed Job window.** In edit mode the form now usually renders embedded inside [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) as its Edit + Bill tabs: `embeddedRegion: 'edit' | 'bill'` display-toggles two contiguous region wrappers (everything stays mounted — the fixtures section moved ABOVE the Billing header to make the regions contiguous), the shell chrome/backdrop/footer-Close/header-title are skipped, and the window's ✕ routes through `closeForm` via `registerRequestClose`. New-job mode and the no-window fallback still render standalone, so this map's lifecycle/save-engine sections apply unchanged.
+
 [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is a ~4,096-line shell — down from ~7,137 lines at v2.736 when this map was written. **Every form section is now an extracted component** (v2.1094 closed the queue); what remains inline is the lifecycle, the shared form state, the shared/tail modals, and the save engine (`createJob` + the four `persist*Slice` autosave writers) — the save-engine seam is the only remaining extraction work. It is still the **largest component in the repo that is a modal, not a page**. This map follows [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the dossier format of [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md); the billing behavior it implements (invoice lifecycle, payment channels, delete/archive) is flow-mapped in [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) — this doc cross-references that one and does not restate it.
 
 ### Key structural differences from the page maps

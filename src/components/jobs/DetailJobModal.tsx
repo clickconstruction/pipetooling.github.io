@@ -105,6 +105,17 @@ type Props = {
   onEditJobSaved?: () => void
   /** Auto-open the Share-with-supply-house modal once the job loads (v2.1610 — Dispatch inbox one-click). */
   autoOpenSupplyHouseShare?: boolean
+  /**
+   * Job-window embedding (v2.1675): render as the window's Job tab — no own
+   * overlay/card, no Escape listener, no ✕/Close (the window owns them).
+   */
+  paneMode?: boolean
+  /** Pane mode: the ⚙ Edit switches the window to its Edit tab instead of swapping modals. */
+  onRequestEditTab?: (() => void) | null
+  /** Pane mode: bump to re-run loadDetail after the Edit/Bill tabs save (autosave slices flush). */
+  externalRefreshKey?: number
+  /** Pane mode: reports the stacked-satellite state so the window's Escape owner can hold fire. */
+  onEscBlockedChange?: ((blocked: boolean) => void) | null
 }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
@@ -593,6 +604,10 @@ export default function DetailJobModal({
   prefillAddress = null,
   onEditJobSaved,
   autoOpenSupplyHouseShare = false,
+  paneMode = false,
+  onRequestEditTab = null,
+  externalRefreshKey = 0,
+  onEscBlockedChange = null,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -677,7 +692,9 @@ export default function DetailJobModal({
       return
     }
     void loadDetail()
-  }, [open, jobId, loadDetail])
+    // externalRefreshKey: the Job window bumps it when the Edit/Bill tabs save,
+    // so the read view never shows stale data after a tab switch.
+  }, [open, jobId, loadDetail, externalRefreshKey])
 
   useEffect(() => {
     if (!open) setScheduleTimeSectionOpen(false)
@@ -1074,18 +1091,31 @@ export default function DetailJobModal({
   const detailEscBlocked =
     paidEmailModalOpen || reportsModalOpen || jobCalendarOpen || detailScheduleModalOpen || stackedAddFilesOpen
   useEffect(() => {
-    if (!open || detailEscBlocked) return
+    // Pane mode: the Job window (or the embedded form's own listener) owns
+    // Escape — a second listener here would double-close and skip the flush.
+    if (!open || detailEscBlocked || paneMode) return
     const onKeyDown = (ev: KeyboardEvent) => {
       if (ev.key !== 'Escape' || ev.defaultPrevented) return
       onClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, detailEscBlocked, onClose])
+  }, [open, detailEscBlocked, onClose, paneMode])
+
+  // Pane mode: report the stacked-overlay state up so the window's Escape owner
+  // (the embedded form) never closes the window underneath Reports / Calendar /
+  // Schedule / paid-email / Add-files.
+  useEffect(() => {
+    if (!paneMode || !onEscBlockedChange) return
+    onEscBlockedChange(detailEscBlocked)
+    return () => onEscBlockedChange(false)
+  }, [paneMode, onEscBlockedChange, detailEscBlocked])
 
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
-    Boolean(jobFormModal) &&
+    // Pane mode switches tabs and needs no form context; standalone needs the
+    // Edit Job singleton to exist.
+    (paneMode ? Boolean(onRequestEditTab) : Boolean(jobFormModal)) &&
     !loading &&
     !error &&
     Boolean(jobId) &&
@@ -1093,7 +1123,13 @@ export default function DetailJobModal({
     authRole !== null
 
   const handleEditJobClick = () => {
-    if (!jobFormModal || !jobId || isSubcontractorLikeRole(authRole as UserRole)) return
+    if (!jobId || isSubcontractorLikeRole(authRole as UserRole)) return
+    // Pane mode: the Edit tab is a sibling pane — just switch to it.
+    if (paneMode && onRequestEditTab) {
+      onRequestEditTab()
+      return
+    }
+    if (!jobFormModal) return
     jobFormModal.openEditJob(jobId, {
       ...(fullJob ? { initialJob: fullJob } : {}),
       onSaved: () => {
@@ -1143,21 +1179,25 @@ export default function DetailJobModal({
   // made Reports → "Add additional report" look like a dead button (v2.1167).
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1004,
-        // Safe-area aware (v2.1607): in the installed app the webview runs under
-        // the iOS status bar / call pill, which clipped the title. env() is 0 in
-        // plain browsers, so desktop keeps the plain 1rem.
-        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
-        ...(narrowViewport ? { overscrollBehavior: 'contain' as const } : {}),
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={
+        paneMode
+          ? undefined
+          : {
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1004,
+              // Safe-area aware (v2.1607): in the installed app the webview runs under
+              // the iOS status bar / call pill, which clipped the title. env() is 0 in
+              // plain browsers, so desktop keeps the plain 1rem.
+              padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+              ...(narrowViewport ? { overscrollBehavior: 'contain' as const } : {}),
+            }
+      }
+      onClick={(e) => !paneMode && e.target === e.currentTarget && onClose()}
       role="presentation"
     >
       <div
@@ -1167,14 +1207,19 @@ export default function DetailJobModal({
           background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
-          maxWidth: 560,
           ...(accountManDisplay?.variant === 'only'
             ? { borderTop: '3px solid #dc2626', borderBottom: '3px solid #dc2626' }
             : {}),
           width: '100%',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          // Pane mode: the Job window's card provides size, scroll and shadow.
+          ...(paneMode
+            ? null
+            : {
+                maxWidth: 560,
+                maxHeight: '90vh',
+                overflow: 'auto',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+              }),
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1427,31 +1472,33 @@ export default function DetailJobModal({
               ) : null}
             </div>
             ) : null}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClose()
-              }}
-              title="Close"
-              aria-label="Close job detail"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0.3rem 0.5rem',
-                margin: 0,
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-                fontSize: '1.15rem',
-                lineHeight: 1,
-                borderRadius: 4,
-              }}
-            >
-              ✕
-            </button>
+            {!paneMode ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+                title="Close"
+                aria-label="Close job detail"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.3rem 0.5rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  fontSize: '1.15rem',
+                  lineHeight: 1,
+                  borderRadius: 4,
+                }}
+              >
+                ✕
+              </button>
+            ) : null}
           </div>
         </div>
         {accountManDisplay ? (
@@ -2085,7 +2132,7 @@ export default function DetailJobModal({
         <div
           style={{
             marginTop: '1rem',
-            display: 'flex',
+            display: paneMode ? 'none' : 'flex',
             justifyContent: 'flex-end',
             width: '100%',
           }}

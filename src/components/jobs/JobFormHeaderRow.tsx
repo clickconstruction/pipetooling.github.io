@@ -16,6 +16,12 @@ type JobFormHeaderRowProps = {
   onOpenProjectLinkChoice: () => void
   /** The shell's JOB_FORM_NESTED_OVERLAY_Z_INDEX — the help popover sits above the form. */
   nestedOverlayZIndex: number
+  /**
+   * Job-window embedding (v2.1675): the tab bar already names the surface, so
+   * hide the title and the Job Detail bridge — the Job tab replaced it. The
+   * "Link to: Bid | Project" cluster stays.
+   */
+  embedded?: boolean
 }
 
 /**
@@ -37,6 +43,7 @@ export function JobFormHeaderRow({
   onOpenBidLinkChoice,
   onOpenProjectLinkChoice,
   nestedOverlayZIndex,
+  embedded = false,
 }: JobFormHeaderRowProps) {
   const [hcpHelpOpen, setHcpHelpOpen] = useState(false)
   const hcpHelpRef = useRef<HTMLDivElement | null>(null)
@@ -58,7 +65,9 @@ export function JobFormHeaderRow({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-      <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{isEditing ? 'Edit Job' : 'New Job'}</h2>
+      {!embedded ? (
+        <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{isEditing ? 'Edit Job' : 'New Job'}</h2>
+      ) : null}
       <div ref={hcpHelpRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
         <button
           type="button"
@@ -175,7 +184,7 @@ export function JobFormHeaderRow({
             Import
           </button>
         </div>
-      ) : editingId ? (
+      ) : editingId && !embedded ? (
         <div
           style={{
             flex: 1,

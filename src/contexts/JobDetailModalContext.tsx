@@ -11,9 +11,11 @@ import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
 } from '../components/jobs/DetailJobModal'
-import { useAuth } from '../hooks/useAuth'
+import { JobWindowModal, type JobWindowTab } from '../components/jobs/JobWindowModal'
+import { useAuth, type UserRole } from '../hooks/useAuth'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import type { JobWithDetails } from '../types/jobWithDetails'
-import { useJobDetailOpenerBridge } from './JobDetailOpenerBridgeContext'
+import { useJobDetailOpenerBridge, type JobWindowEditOpenOptions } from './JobDetailOpenerBridgeContext'
 import { useJobsListCache } from './JobsListCacheContext'
 
 export type OpenJobDetailOptions = {
@@ -56,6 +58,8 @@ type OpenState =
       kind: 'open'
       instanceKey: number
       jobId: string
+      /** Which tab the Job window starts on ('job' for detail opens). */
+      initialTab: JobWindowTab
       scheduleContext: DetailJobScheduleContext | null
       prefillRowLabel: string | null | undefined
       prefillAddress: string | null | undefined
@@ -63,6 +67,8 @@ type OpenState =
       explicitAssignedRows: DetailJobModalAssignedJobRow[] | null
       onEditJobSaved?: () => void
       openSupplyHouseShare?: boolean
+      /** Set when the open came through `openEditJob` (form options ride along). */
+      editOptions: JobWindowEditOpenOptions | null
     }
 
 let jobDetailModalInstanceSeed = 0
@@ -92,22 +98,46 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       kind: 'open',
       instanceKey: jobDetailModalInstanceSeed,
       jobId: options.jobId,
+      initialTab: 'job',
       scheduleContext: options.scheduleContext ?? null,
       prefillRowLabel: options.prefillRowLabel,
       prefillAddress: options.prefillAddress,
       explicitAssignedRows,
       onEditJobSaved: options.onEditJobSaved,
       openSupplyHouseShare: options.openSupplyHouseShare,
+      editOptions: null,
     })
   }, [])
 
-  // Let components above this provider (e.g. the Edit Job singleton) open Job Detail.
+  /** `openEditJob` delegates here (via the bridge) — same window, Edit tab. */
+  const openJobWindowEdit = useCallback((jobId: string, options: JobWindowEditOpenOptions) => {
+    jobDetailModalInstanceSeed += 1
+    setOpenState({
+      kind: 'open',
+      instanceKey: jobDetailModalInstanceSeed,
+      jobId,
+      initialTab: options.initialTab ?? 'edit',
+      scheduleContext: null,
+      prefillRowLabel: undefined,
+      prefillAddress: undefined,
+      explicitAssignedRows: null,
+      editOptions: options,
+    })
+  }, [])
+
+  // Let components above this provider (e.g. the Edit Job singleton) open Job Detail,
+  // and let `openEditJob` (the form provider, above) open the Job window's Edit tab.
   const openerBridge = useJobDetailOpenerBridge()
   useEffect(() => {
     if (!openerBridge) return
     openerBridge.registerJobDetailOpener((jobId) => openJobDetail({ jobId }))
     return () => openerBridge.registerJobDetailOpener(null)
   }, [openerBridge, openJobDetail])
+  useEffect(() => {
+    if (!openerBridge) return
+    openerBridge.registerJobWindowEditOpener(openJobWindowEdit)
+    return () => openerBridge.registerJobWindowEditOpener(null)
+  }, [openerBridge, openJobWindowEdit])
 
   const value = useMemo(
     (): JobDetailModalContextValue => ({
@@ -118,27 +148,66 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
     [openJobDetail, closeJobDetail, openState.kind],
   )
 
+  // Roles that can edit jobs get the tabbed Job window (v2.1675); everyone else
+  // keeps the plain read-only Job Detail modal, unchanged.
+  const canEditJobs = authRole !== null && !isSubcontractorLikeRole(authRole as UserRole)
+
+  const handleSaved = useCallback(() => {
+    if (openState.kind !== 'open') return
+    let handled = false
+    if (openState.editOptions?.onSaved) {
+      openState.editOptions.onSaved()
+      handled = true
+    }
+    if (openState.onEditJobSaved) {
+      openState.onEditJobSaved()
+      handled = true
+    }
+    if (!handled) void runFetchJobs(null)
+  }, [openState, runFetchJobs])
+
   return (
     <JobDetailModalContext.Provider value={value}>
       {children}
       {openState.kind === 'open' ? (
-        <DetailJobModal
-          key={openState.instanceKey}
-          open
-          onClose={closeJobDetail}
-          jobId={openState.jobId}
-          scheduleContext={openState.scheduleContext}
-          authRole={authRole}
-          assignedJobsRows={assignedRowsForModal}
-          prefillRowLabel={openState.prefillRowLabel ?? undefined}
-          prefillAddress={openState.prefillAddress ?? undefined}
-          autoOpenSupplyHouseShare={openState.openSupplyHouseShare ?? false}
-          onEditJobSaved={() => {
-            if (openState.kind !== 'open') return
-            if (openState.onEditJobSaved) openState.onEditJobSaved()
-            else void runFetchJobs(null)
-          }}
-        />
+        canEditJobs ? (
+          <JobWindowModal
+            key={openState.instanceKey}
+            jobId={openState.jobId}
+            initialTab={openState.initialTab}
+            onClose={closeJobDetail}
+            authRole={authRole}
+            scheduleContext={openState.scheduleContext}
+            assignedJobsRows={assignedRowsForModal}
+            prefillRowLabel={openState.prefillRowLabel ?? null}
+            prefillAddress={openState.prefillAddress ?? null}
+            autoOpenSupplyHouseShare={openState.openSupplyHouseShare ?? false}
+            initialJob={openState.editOptions?.initialJob ?? null}
+            billingCustomerHighlightInitial={openState.editOptions?.billingCustomerHighlight ?? false}
+            fixturesSectionHighlightInitial={openState.editOptions?.fixturesSectionHighlight ?? false}
+            jobPicturesLinkHighlightInitial={openState.editOptions?.jobPicturesLinkHighlight ?? false}
+            alsoOpenCreateCustomerModal={openState.editOptions?.alsoOpenCreateCustomerModal ?? false}
+            onSaved={handleSaved}
+          />
+        ) : (
+          <DetailJobModal
+            key={openState.instanceKey}
+            open
+            onClose={closeJobDetail}
+            jobId={openState.jobId}
+            scheduleContext={openState.scheduleContext}
+            authRole={authRole}
+            assignedJobsRows={assignedRowsForModal}
+            prefillRowLabel={openState.prefillRowLabel ?? undefined}
+            prefillAddress={openState.prefillAddress ?? undefined}
+            autoOpenSupplyHouseShare={openState.openSupplyHouseShare ?? false}
+            onEditJobSaved={() => {
+              if (openState.kind !== 'open') return
+              if (openState.onEditJobSaved) openState.onEditJobSaved()
+              else void runFetchJobs(null)
+            }}
+          />
+        )
       ) : null}
     </JobDetailModalContext.Provider>
   )
