@@ -496,6 +496,18 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setEditingVehicle(null)
   }
 
+  // Escape closes the vehicle form — small viewports could once clip both
+  // buttons with no way out (v2.1671).
+  useEffect(() => {
+    if (!vehicleFormOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeVehicleForm()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- closeVehicleForm is stable state-setters only
+  }, [vehicleFormOpen])
+
   async function upsertVehicle() {
     const year = parseInt(vehicleYear, 10)
     if (isNaN(year) || year < 1900 || year > 2100) {
@@ -1690,51 +1702,88 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       </div>
 
       {vehicleFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>{editingVehicle ? 'Edit vehicle' : 'Add vehicle'}</h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Year *</label>
-              <input type="number" min={1900} max={2100} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
+          {/* Compact layout (v2.1671): short fields share rows and the dialog
+              caps at 90vh with its own scroll, so small viewports can always
+              reach Save/Cancel (the old stacked form clipped both). */}
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, 94vw)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0 }}>{editingVehicle ? 'Edit vehicle' : 'Add vehicle'}</h3>
+              <button
+                type="button"
+                onClick={closeVehicleForm}
+                aria-label="Close"
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', padding: '0 0.2rem' }}
+              >
+                ✕
+              </button>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Make *</label>
-              <input type="text" value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: '0.6rem', marginBottom: '0.7rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Year *</label>
+                <input type="number" min={1900} max={2100} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Make *</label>
+                <input type="text" value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Model *</label>
+                <input type="text" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+              </div>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Model *</label>
-              <input type="text" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            <div style={{ marginBottom: '0.7rem' }}>
+              <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>VIN</label>
+              <input
+                type="text"
+                value={vehicleVin}
+                onChange={(e) => setVehicleVin(e.target.value)}
+                placeholder="Optional"
+                style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '0.8125rem' }}
+              />
             </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>VIN</label>
-              <input type="text" value={vehicleVin} onChange={(e) => setVehicleVin(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', marginBottom: '0.7rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Weekly costs ($)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Insurance</label>
+                  <input type="number" min={0} step={0.01} value={vehicleInsCost} onChange={(e) => setVehicleInsCost(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registration</label>
+                  <input type="number" min={0} step={0.01} value={vehicleRegCost} onChange={(e) => setVehicleRegCost(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+                </div>
+              </div>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Weekly insurance cost</label>
-              <input type="number" min={0} step={0.01} value={vehicleInsCost} onChange={(e) => setVehicleInsCost(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Oil change reminders (miles)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Interval</label>
+                  <input type="number" min={500} step={500} value={vehicleOilInterval} onChange={(e) => setVehicleOilInterval(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Suggest within</label>
+                  <input type="number" min={0} step={100} value={vehicleOilSuggestWindow} onChange={(e) => setVehicleOilSuggestWindow(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Require past</label>
+                  <input type="number" min={0} step={100} value={vehicleOilRequirePastDue} onChange={(e) => setVehicleOilRequirePastDue(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
+                </div>
+              </div>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Weekly registration cost</label>
-              <input type="number" min={0} step={0.01} value={vehicleRegCost} onChange={(e) => setVehicleRegCost(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Oil change interval (miles)</label>
-              <input type="number" min={500} step={500} value={vehicleOilInterval} onChange={(e) => setVehicleOilInterval(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Suggest oil change within (miles of due)</label>
-              <input type="number" min={0} step={100} value={vehicleOilSuggestWindow} onChange={(e) => setVehicleOilSuggestWindow(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '0.35rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Require oil change past due by (miles)</label>
-              <input type="number" min={0} step={100} value={vehicleOilRequirePastDue} onChange={(e) => setVehicleOilRequirePastDue(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              0 = required the moment it hits the interval. These drive the holder's Dashboard prompts.
+            <p style={{ margin: '0 0 0.9rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+              Require past 0 = required the moment it hits the interval. These drive the holder's Dashboard prompts.
             </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={upsertVehicle} style={{ padding: '0.5rem 1rem' }}>Save</button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" onClick={closeVehicleForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={upsertVehicle}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
