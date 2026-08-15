@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1675)
+last_updated: 2026-08-15 (v2.1676)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1676)
+
+### Job window: the job header — name, action icons, Street View — rides along on every tab (2026-08-15)
+Owner request on the fresh Job window (v2.1675), mockup approved: the Edit and Bill tabs should carry the same job-name line, action-icon cluster (share · supply house · send-task · calendar · mail · ⚙), and the Street View / map band the Job tab has. Implementation is "stop hiding the header": [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) gains `paneBodyHidden` — a display-toggle wrapper from the customer band down — and [`JobWindowModal`](../src/components/jobs/JobWindowModal.tsx) now renders the Job pane on EVERY tab, passing `paneBodyHidden={tab !== 'job'}` instead of hiding the whole pane. The title, icons, and Street View stay the SAME live elements (one fetch, real handlers): clicking 🗓 from the Bill tab opens the Job Calendar on top, and the existing `onEscBlockedChange` gate means Esc closes the satellite, never the window under it (verified live from Bill). ~10-line diff + shell wiring; render smoke extended (header visible + ⚙ works from Bill, body hidden). Help guide `job-window-tabs` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1675)
 

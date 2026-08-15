@@ -102,4 +102,17 @@ describe('JobWindowModal', () => {
     fireEvent.click(editGear)
     expect(tab('Edit').getAttribute('aria-selected')).toBe('true')
   })
+
+  it('keeps the job header — title + live action icons — on the Bill tab (v2.1676)', async () => {
+    renderWindow(vi.fn(), 'bill')
+    // The header's icon cluster renders even though the read-view body is hidden…
+    const share = await screen.findByRole('button', { name: 'Share with supply house' })
+    expect(share.closest('div[style*="none"]')).toBeNull()
+    // …the read-view body itself is display-toggled off…
+    const jobPane = document.querySelector('[role="tabpanel"][aria-label="Job"]')!
+    expect(jobPane.querySelector('div[style*="none"]')).toBeTruthy()
+    // …and a header icon still WORKS from Bill: the ⚙ switches to Edit.
+    fireEvent.click(screen.getByLabelText('Edit job'))
+    expect(tab('Edit').getAttribute('aria-selected')).toBe('true')
+  })
 })

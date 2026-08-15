@@ -116,6 +116,13 @@ type Props = {
   externalRefreshKey?: number
   /** Pane mode: reports the stacked-satellite state so the window's Escape owner can hold fire. */
   onEscBlockedChange?: ((blocked: boolean) => void) | null
+  /**
+   * Pane mode (v2.1676): hide everything BELOW the title/icons/Street-View
+   * header. The Job window keeps this component mounted on every tab so the
+   * shared header (and its live icon handlers + satellites) ride along; only
+   * the read-view body yields to the Edit/Bill panes.
+   */
+  paneBodyHidden?: boolean
 }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
@@ -608,6 +615,7 @@ export default function DetailJobModal({
   onRequestEditTab = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
+  paneBodyHidden = false,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1637,6 +1645,10 @@ export default function DetailJobModal({
           </div>
         ) : null}
 
+        {/* Job-window header split (v2.1676): everything ABOVE this line —
+            title, action icons, Street View / map band — stays visible on
+            every tab; the read-view body below hides on Edit/Bill. */}
+        <div style={paneBodyHidden ? { display: 'none' } : undefined}>
         {showTopBand ? (
           <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -2152,6 +2164,7 @@ export default function DetailJobModal({
           >
             Close
           </button>
+        </div>
         </div>
       </div>
 
