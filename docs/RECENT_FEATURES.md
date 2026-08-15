@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1681)
+last_updated: 2026-08-15 (v2.1682)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1682)
+
+### Edit tab: the Customer row wears the contact-card icon (2026-08-15)
+Owner follow-up on the v2.1681 fact rows: the Customer row now carries the same address-card glyph the Pipeline job column, Assigned Jobs, and Builder Review use beside customer names — so the row list's icons (person = Account man, card = Customer, hard hat = GC/Builder, house = Development) match the vocabulary everywhere else. The glyph was inline-duplicated SVG in four files; it's now extracted as [`CustomerContactCardIcon`](../src/components/icons/CustomerContactCardIcon.tsx) (the four older copies are unchanged for now). Client-only — no migration.
 
 ## Latest Updates (v2.1681)
 

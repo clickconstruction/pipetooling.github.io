@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1682',
+    date: '2026-08-15',
+    title: 'Customer row gets its icon',
+    kind: 'fix',
+    highlights: [
+      'On the Edit tab, the Customer row now shows the same contact-card icon that marks customers on the Pipeline — one glyph for customers everywhere.',
+    ],
+  },
+  {
     version: 'v2.1681',
     date: '2026-08-15',
     title: 'Edit tab: at-a-glance rows',
