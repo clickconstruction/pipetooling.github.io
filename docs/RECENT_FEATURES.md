@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1670)
+last_updated: 2026-08-15 (v2.1671)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1671)
+
+### Vehicles: compact Add/Edit vehicle dialog that always fits (2026-08-15)
+Owner report: on some viewports the nine stacked full-width fields clipped the dialog top and bottom with no scroll — no way to reach Save or escape. Redesign (mockup approved) in [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx): Year/Make/Model share a row (90px year), VIN full-width mono, **Weekly costs ($)** as a labeled Insurance/Registration pair, **Oil change reminders (miles)** as a labeled Interval/Suggest-within/Require-past trio — roughly half the height. The dialog itself caps at `90vh` with internal scroll (`width: min(440px, 94vw)`, overlay padding), gains a ✕ close button and a **window Escape handler**, and the footer moves to right-aligned Cancel/**Save** (primary). Verified live at 1280×560: every row visible, Save reachable, Escape closes. Client-only — no migration.
 
 ## Latest Updates (v2.1670)
 

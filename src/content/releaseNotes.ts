@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1671',
+    date: '2026-08-15',
+    title: 'Vehicle form fits every screen',
+    kind: 'fix',
+    highlights: [
+      'The Add/Edit vehicle dialog is half the height — short fields share rows under labeled sections — and it now scrolls inside itself on small screens, with a ✕ button and Escape to close.',
+    ],
+  },
+  {
     version: 'v2.1670',
     date: '2026-08-15',
     title: 'Offsets fold and wider activity',
