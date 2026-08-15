@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1678',
+    date: '2026-08-15',
+    title: 'Under the hood: leaner job notes panel',
+    kind: 'fix',
+    highlights: [
+      'Internal cleanup after the Job Activity unification: the older notes panel (Job window, Job Mode, Quickfill, Estimates) dropped the unused Pipeline-only machinery it no longer needs.',
+      'No visible changes — the panel looks and works the same everywhere it appears.',
+    ],
+  },
+  {
     version: 'v2.1677',
     date: '2026-08-15',
     title: 'Job window: tighter header, numbered pill',
