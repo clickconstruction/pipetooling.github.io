@@ -41,12 +41,95 @@ export function visualsPeriodStartYmd(period: VisualsPeriod, todayYmd: string): 
 
 /** Drop duplicates always; apply the period lower bound when there is one. */
 export function filterVisualsTxs(txs: VisualsTxRow[], period: VisualsPeriod, todayYmd: string): VisualsTxRow[] {
-  const start = visualsPeriodStartYmd(period, todayYmd)
+  return filterVisualsTxsByWindow(txs, { startYmd: visualsPeriodStartYmd(period, todayYmd), endYmd: null })
+}
+
+// ————————————————————————————————— Period zoom (v2.1716) —————————————————————————————————
+
+export type VisualsZoom = { year: number; quarter: 1 | 2 | 3 | 4 | null }
+export type VisualsSelection = { kind: 'preset'; preset: VisualsPeriod } | { kind: 'zoom'; zoom: VisualsZoom }
+/** Inclusive YMD bounds; null = unbounded on that side. */
+export type VisualsWindow = { startYmd: string | null; endYmd: string | null }
+
+const QUARTER_BOUNDS = [
+  { start: '01-01', end: '03-31', range: 'Jan 1 – Mar 31' },
+  { start: '04-01', end: '06-30', range: 'Apr 1 – Jun 30' },
+  { start: '07-01', end: '09-30', range: 'Jul 1 – Sep 30' },
+  { start: '10-01', end: '12-31', range: 'Oct 1 – Dec 31' },
+] as const
+
+/** Absolute window + display labels for a year / quarter zoom. */
+export function visualsZoomWindow(zoom: VisualsZoom): {
+  startYmd: string
+  endYmd: string
+  label: string
+  rangeLabel: string
+} {
+  if (zoom.quarter == null) {
+    return {
+      startYmd: `${zoom.year}-01-01`,
+      endYmd: `${zoom.year}-12-31`,
+      label: String(zoom.year),
+      rangeLabel: `Jan 1 – Dec 31, ${zoom.year}`,
+    }
+  }
+  const q = QUARTER_BOUNDS[zoom.quarter - 1]!
+  return {
+    startYmd: `${zoom.year}-${q.start}`,
+    endYmd: `${zoom.year}-${q.end}`,
+    label: `Q${zoom.quarter} ${zoom.year}`,
+    rangeLabel: `${q.range}, ${zoom.year}`,
+  }
+}
+
+/** Resolve either selection kind to one window. */
+export function visualsSelectionWindow(sel: VisualsSelection, todayYmd: string): VisualsWindow {
+  if (sel.kind === 'zoom') {
+    const w = visualsZoomWindow(sel.zoom)
+    return { startYmd: w.startYmd, endYmd: w.endYmd }
+  }
+  return { startYmd: visualsPeriodStartYmd(sel.preset, todayYmd), endYmd: null }
+}
+
+/** Drop duplicates always; bounded windows also drop rows with unknown dates. */
+export function filterVisualsTxsByWindow(txs: VisualsTxRow[], window: VisualsWindow): VisualsTxRow[] {
   return txs.filter((t) => {
     if (t.isDuplicate) return false
-    if (start === null) return true
-    return t.postedYmd !== '' && t.postedYmd >= start
+    if (window.startYmd === null && window.endYmd === null) return true
+    if (t.postedYmd === '') return false
+    if (window.startYmd !== null && t.postedYmd < window.startYmd) return false
+    if (window.endYmd !== null && t.postedYmd > window.endYmd) return false
+    return true
   })
+}
+
+/** `?period=` URL forms: preset names, `2025` (year), `2025q2` (quarter). */
+export function parseVisualsPeriodParam(raw: string | null): VisualsSelection | null {
+  if (raw == null) return null
+  if (raw === 'month' || raw === 'quarter' || raw === 'ytd' || raw === 'all') {
+    return { kind: 'preset', preset: raw }
+  }
+  const m = /^(\d{4})(?:q([1-4]))?$/.exec(raw)
+  if (!m) return null
+  return {
+    kind: 'zoom',
+    zoom: { year: Number(m[1]), quarter: m[2] ? (Number(m[2]) as 1 | 2 | 3 | 4) : null },
+  }
+}
+
+export function serializeVisualsSelection(sel: VisualsSelection): string {
+  if (sel.kind === 'preset') return sel.preset
+  return sel.zoom.quarter == null ? String(sel.zoom.year) : `${sel.zoom.year}q${sel.zoom.quarter}`
+}
+
+/** Distinct calendar years with (non-duplicate) activity, ascending. */
+export function visualsYearsPresent(txs: VisualsTxRow[]): number[] {
+  const years = new Set<number>()
+  for (const t of txs) {
+    if (t.isDuplicate || t.postedYmd === '') continue
+    years.add(Number(t.postedYmd.slice(0, 4)))
+  }
+  return [...years].sort((a, b) => a - b)
 }
 
 // ————————————————————————————————— A · Where the money goes —————————————————————————————————

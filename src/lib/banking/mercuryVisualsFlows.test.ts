@@ -4,8 +4,14 @@ import {
   buildMoneyFlowSankey,
   buildTransferSankey,
   filterVisualsTxs,
+  filterVisualsTxsByWindow,
   pairInternalTransfers,
+  parseVisualsPeriodParam,
+  serializeVisualsSelection,
   visualsPeriodStartYmd,
+  visualsSelectionWindow,
+  visualsYearsPresent,
+  visualsZoomWindow,
   type VisualsTxRow,
 } from './mercuryVisualsFlows'
 
@@ -31,6 +37,78 @@ describe('visualsPeriodStartYmd / filterVisualsTxs', () => {
     ]
     expect(filterVisualsTxs(rows, 'quarter', '2026-08-16').map((t) => t.id)).toEqual(['keep'])
     expect(filterVisualsTxs(rows, 'all', '2026-08-16').map((t) => t.id)).toEqual(['keep', 'old', 'undated'])
+  })
+})
+
+describe('period zoom windows', () => {
+  it('resolves year and quarter zooms to inclusive bounds with labels', () => {
+    expect(visualsZoomWindow({ year: 2025, quarter: null })).toEqual({
+      startYmd: '2025-01-01',
+      endYmd: '2025-12-31',
+      label: '2025',
+      rangeLabel: 'Jan 1 – Dec 31, 2025',
+    })
+    expect(visualsZoomWindow({ year: 2025, quarter: 2 })).toEqual({
+      startYmd: '2025-04-01',
+      endYmd: '2025-06-30',
+      label: 'Q2 2025',
+      rangeLabel: 'Apr 1 – Jun 30, 2025',
+    })
+    expect(visualsZoomWindow({ year: 2026, quarter: 4 }).endYmd).toBe('2026-12-31')
+  })
+
+  it('visualsSelectionWindow handles both selection kinds', () => {
+    expect(visualsSelectionWindow({ kind: 'preset', preset: 'ytd' }, '2026-08-16')).toEqual({
+      startYmd: '2026-01-01',
+      endYmd: null,
+    })
+    expect(visualsSelectionWindow({ kind: 'preset', preset: 'all' }, '2026-08-16')).toEqual({
+      startYmd: null,
+      endYmd: null,
+    })
+    expect(visualsSelectionWindow({ kind: 'zoom', zoom: { year: 2024, quarter: 1 } }, '2026-08-16')).toEqual({
+      startYmd: '2024-01-01',
+      endYmd: '2024-03-31',
+    })
+  })
+
+  it('filterVisualsTxsByWindow applies both inclusive bounds', () => {
+    const rows = [
+      tx({ id: 'before', amount: -1, postedYmd: '2025-03-31' }),
+      tx({ id: 'first', amount: -1, postedYmd: '2025-04-01' }),
+      tx({ id: 'last', amount: -1, postedYmd: '2025-06-30' }),
+      tx({ id: 'after', amount: -1, postedYmd: '2025-07-01' }),
+      tx({ id: 'undated', amount: -1, postedYmd: '' }),
+      tx({ id: 'dup', amount: -1, postedYmd: '2025-05-05', isDuplicate: true }),
+    ]
+    const win = { startYmd: '2025-04-01', endYmd: '2025-06-30' }
+    expect(filterVisualsTxsByWindow(rows, win).map((t) => t.id)).toEqual(['first', 'last'])
+    // Unbounded window keeps undated rows but never duplicates.
+    expect(filterVisualsTxsByWindow(rows, { startYmd: null, endYmd: null }).map((t) => t.id)).toContain('undated')
+    expect(filterVisualsTxsByWindow(rows, { startYmd: null, endYmd: null }).map((t) => t.id)).not.toContain('dup')
+  })
+
+  it('period URL param round-trips both selection kinds and rejects junk', () => {
+    const q2: Parameters<typeof serializeVisualsSelection>[0] = { kind: 'zoom', zoom: { year: 2025, quarter: 2 } }
+    expect(serializeVisualsSelection(q2)).toBe('2025q2')
+    expect(parseVisualsPeriodParam('2025q2')).toEqual(q2)
+    expect(parseVisualsPeriodParam('2025')).toEqual({ kind: 'zoom', zoom: { year: 2025, quarter: null } })
+    expect(parseVisualsPeriodParam('ytd')).toEqual({ kind: 'preset', preset: 'ytd' })
+    expect(serializeVisualsSelection({ kind: 'preset', preset: 'all' })).toBe('all')
+    expect(parseVisualsPeriodParam('2025q5')).toBeNull()
+    expect(parseVisualsPeriodParam('bogus')).toBeNull()
+    expect(parseVisualsPeriodParam(null)).toBeNull()
+  })
+
+  it('visualsYearsPresent lists distinct years ascending, skipping duplicates and undated rows', () => {
+    const rows = [
+      tx({ id: 'a', amount: -1, postedYmd: '2026-08-01' }),
+      tx({ id: 'b', amount: -1, postedYmd: '2024-02-01' }),
+      tx({ id: 'c', amount: -1, postedYmd: '2024-11-11' }),
+      tx({ id: 'd', amount: -1, postedYmd: '' }),
+      tx({ id: 'e', amount: -1, postedYmd: '2025-01-01', isDuplicate: true }),
+    ]
+    expect(visualsYearsPresent(rows)).toEqual([2024, 2026])
   })
 })
 

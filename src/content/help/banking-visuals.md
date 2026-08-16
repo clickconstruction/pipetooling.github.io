@@ -4,7 +4,9 @@ category: Billing & Money
 roles: assistant, controller, master_technician
 keywords: banking, mercury, visuals, sankey, money flow, transfers, accounts, card spend, diagram
 ---
-Banking → Mercury → **Visuals** draws your money as rivers: the wider the band, the more dollars moved. Three views answer three different questions, and two rows of buttons at the top switch the view and the time window ({{button:outline|This month}} · {{button:outline|Quarter}} · {{button:blue|YTD}} · {{button:outline|All time}}).
+Banking → Mercury → **Visuals** draws your money as rivers: the wider the band, the more dollars moved. Three views answer three different questions, and the buttons at the top switch the view and the time window ({{button:outline|This month}} · {{button:outline|Quarter}} · {{button:blue|YTD}} · {{button:outline|All time}}).
+
+Want a specific stretch instead? The **Zoom** chips at the end of the period row list your years — pick one, then {{button:outline|Full year}} or {{button:outline|Q1}}–{{button:outline|Q4}}, and every view redraws to exactly that window, with the dates spelled out beside the chips. Quarters that haven't started yet are grayed out, and the zoomed window is part of the page address, so a bookmark or shared link opens straight to "Q2 2025".
 
 Hover any band or bar to see the exact dollar amount — and **click a band** to open the transactions behind it: a list with date, counterparty, account, and amount, plus the count and total up top.
 
