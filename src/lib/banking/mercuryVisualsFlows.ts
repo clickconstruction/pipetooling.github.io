@@ -324,7 +324,10 @@ export function buildTransferSankey(args: {
     const key = `${p.fromAccountId}→${p.toAccountId}`
     const edge = edgeTotals.get(key) ?? { from: p.fromAccountId, to: p.toAccountId, value: 0, txIds: [] }
     edge.value += p.amount
-    edge.txIds.push(...p.txIds)
+    // Drill-down carries only the OUT leg: its row already names the destination
+    // (the counterparty text is the receiving account), and listing both legs
+    // would make the modal total read double the ribbon's value.
+    edge.txIds.push(p.txIds[0])
     edgeTotals.set(key, edge)
   }
 

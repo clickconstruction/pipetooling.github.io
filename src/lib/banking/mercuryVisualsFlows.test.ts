@@ -153,8 +153,9 @@ describe('pairInternalTransfers / buildTransferSankey', () => {
     expect(r.pairedTotal).toBe(800)
     const edge = r.input.links.find((l) => l.source === 'from:A' && l.target === 'to:B')
     expect(edge?.value).toBe(800)
-    // Click-through: the edge carries both legs of both transfers.
-    expect([...(edge?.txIds ?? [])].sort()).toEqual(['i1', 'i2', 'o1', 'o2'])
+    // Click-through: the edge carries only the OUT leg of each transfer, so the
+    // drill-down total matches the ribbon value instead of doubling it.
+    expect([...(edge?.txIds ?? [])].sort()).toEqual(['o1', 'o2'])
     // A appears only on the left here, B only on the right — but if both sides
     // existed the tone would match; assert tones are assigned alphabetically.
     const fromA = r.input.nodes.find((n) => n.id === 'from:A')!
