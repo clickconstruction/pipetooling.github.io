@@ -3309,10 +3309,12 @@ export default function JobFormModal({
               />
             ) : null}
           </div>
-          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
-          {/* Line items live with the job's SCOPE (owner call on the Job-window
-              mockup, decision 02), so they sit above the billing region — which
-              also makes the two regions contiguous for the tab split. */}
+          </div>
+          {/* BILL region — the money half: line items (the job's scope and
+              Job Total — moved here from Edit, owner call v2.1683), summary
+              bar, segments + break-off, invoices, payments, labor + parts
+              cost. */}
+          <div style={{ display: !embedded || embeddedRegion === 'bill' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
           <JobFormFixturesSection
             fixtures={fixtures}
             riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} onBillSeparately={(row) => void billHazmatFeeSeparately(row)} billSeparatelyBusyId={billingFeeSeparatelyId} /> : null}
@@ -3330,10 +3332,7 @@ export default function JobFormModal({
             onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
           />
-          </div>
-          {/* BILL region — the billing half: summary bar, segments + break-off,
-              invoices, payments, labor + parts cost. */}
-          <div style={{ display: !embedded || embeddedRegion === 'bill' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
+          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
           <div style={{ marginBottom: '1rem' }}>
             <div
               style={{

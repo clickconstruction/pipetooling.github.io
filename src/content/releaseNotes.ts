@@ -20,6 +20,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1683',
+    date: '2026-08-15',
+    title: 'Line Items lead the Bill tab',
+    kind: 'feature',
+    highlights: [
+      'Line Items moved from the Edit tab to the top of the Bill tab — the job\'s scope and Job Total now sit right where you cut invoices.',
+      'Flows that jump you to line items (like "add a line item to set the job total") now open the Bill tab directly.',
+    ],
+  },
+  {
     version: 'v2.1682',
     date: '2026-08-15',
     title: 'Customer row gets its icon',
