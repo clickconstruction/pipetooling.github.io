@@ -64,6 +64,17 @@ export type JobFollowupReview = {
   reviewedAt: string
   /** YYYY-MM-DD; null = plain "Looks fine". */
   snoozedUntil: string | null
+  /** Reviewer user id — used by the history view (v2.1722); queue math ignores it. */
+  reviewedBy?: string | null
+}
+
+/** History row action label: '✓ Looks fine' or 'Snoozed until Aug 19'. */
+export function jobFollowupReviewActionLabel(snoozedUntil: string | null): string {
+  if (snoozedUntil == null) return '✓ Looks fine'
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(snoozedUntil)
+  if (!m) return 'Snoozed'
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `Snoozed until ${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}`
 }
 
 export type JobFollowupQueueEntry = {

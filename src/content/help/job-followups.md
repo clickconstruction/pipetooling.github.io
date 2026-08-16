@@ -38,3 +38,7 @@ The **⚙ Review periods** button on the deck opens the rules — how many quiet
 - and how long **✓ Looks fine** rests a job (3 days)
 
 The numbers are org-wide — one queue, one definition of "too quiet" for the whole office. Master and dev can change them; changes take effect immediately.
+
+## Seeing who reviewed what
+
+The **History** view (next to Deck and List) is the paper trail: every {{chip:green|✓ Looks fine}} and snooze, newest first, with the time, who did it, and which job. Snoozes show their wake-up date. Notes aren't repeated here — they live on each job's activity thread, where the field can see them too.

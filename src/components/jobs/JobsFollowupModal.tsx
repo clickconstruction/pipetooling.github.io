@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchStreetViewImageBlob, fetchStreetViewMeta, googleStreetViewPanoUrl } from '../../lib/fetchStreetViewPreview'
 import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
 import {
@@ -12,6 +12,7 @@ import {
   JOB_FOLLOWUP_STAGE_LABELS,
   computeJobFollowupQueue,
   jobFollowupQuietSeverity,
+  jobFollowupReviewActionLabel,
   jobFollowupStageCounts,
   type JobFollowupCandidate,
   type JobFollowupReview,
@@ -20,6 +21,8 @@ import {
 } from '../../lib/jobs/jobFollowupQueue'
 import {
   fetchJobFollowupCandidates,
+  fetchJobFollowupJobLabels,
+  fetchJobFollowupReviewerNames,
   fetchJobFollowupReviews,
   fetchJobFollowupSettings,
   recordJobFollowupReview,
@@ -133,7 +136,30 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
   // Queue list view (v2.1721): a row's "Review →" pins its job so the deck
   // deals from there; once the job leaves the queue, the pin clears and the
   // deck resumes stalest-first.
-  const [viewMode, setViewMode] = useState<'deck' | 'list'>('deck')
+  const [viewMode, setViewMode] = useState<'deck' | 'list' | 'history'>('deck')
+  // History view (v2.1722): reviewer display names + labels for reviewed jobs
+  // that have since left the open stages. Loaded when History first opens.
+  const [reviewerNames, setReviewerNames] = useState<Record<string, string>>({})
+  const [closedJobLabels, setClosedJobLabels] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (viewMode !== 'history' || reviews.length === 0) return
+    let cancelled = false
+    const reviewerIds = [...new Set(reviews.map((r) => r.reviewedBy).filter((v): v is string => v != null))]
+    const candidateIds = new Set(candidates.map((c) => c.id))
+    const missingJobIds = [...new Set(reviews.map((r) => r.jobId).filter((id) => !candidateIds.has(id)))]
+    void (async () => {
+      const [names, labels] = await Promise.all([
+        fetchJobFollowupReviewerNames(reviewerIds),
+        fetchJobFollowupJobLabels(missingJobIds),
+      ])
+      if (cancelled) return
+      setReviewerNames(names)
+      setClosedJobLabels(labels)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [viewMode, reviews, candidates])
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(null)
   const pinnedEntry = pinnedJobId ? queue.find((e) => e.job.id === pinnedJobId) ?? null : null
   useEffect(() => {
@@ -209,7 +235,10 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
       setBusy(true)
       try {
         await recordJobFollowupReview(current.job.id, user?.id ?? null, snoozedUntil)
-        setReviews((prev) => [...prev, { jobId: current.job.id, reviewedAt: new Date().toISOString(), snoozedUntil }])
+        setReviews((prev) => [
+          ...prev,
+          { jobId: current.job.id, reviewedAt: new Date().toISOString(), snoozedUntil, reviewedBy: user?.id ?? null },
+        ])
         setReviewedCount((n) => n + 1)
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Failed to save review', 'error')
@@ -297,7 +326,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
           {filterChip('all', `All (${fullQueue.length})`)}
           {JOB_FOLLOWUP_STAGES.filter((s) => counts[s] > 0).map((s) => filterChip(s, `${JOB_FOLLOWUP_STAGE_LABELS[s]} (${counts[s]})`))}
           <span role="group" aria-label="Follow-ups view" style={{ display: 'inline-flex', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-strong)', marginLeft: '0.2rem' }}>
-            {(['deck', 'list'] as const).map((m) => (
+            {(['deck', 'list', 'history'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -313,7 +342,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                   cursor: 'pointer',
                 }}
               >
-                {m === 'deck' ? 'Deck' : 'List'}
+                {m === 'deck' ? 'Deck' : m === 'list' ? 'List' : 'History'}
               </button>
             ))}
           </span>
@@ -524,7 +553,54 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
           </div>
         ) : null}
 
-        {!loading && queue.length === 0 ? (
+        {!loading && viewMode === 'history' ? (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '0.9rem 1.2rem 1.1rem' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.4rem' }}>
+              Review history · {reviews.length.toLocaleString()} review{reviews.length === 1 ? '' : 's'}
+            </div>
+            {reviews.length === 0 ? (
+              <div style={{ fontSize: '0.84rem', color: 'var(--text-slate-500)' }}>
+                No reviews yet — they'll appear here as the office works the deck. (Notes posted from cards live on
+                each job's activity thread.)
+              </div>
+            ) : (
+              <>
+                {[...reviews]
+                  .sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt))
+                  .slice(0, 200)
+                  .map((r, i) => {
+                    const cand = candidates.find((c) => c.id === r.jobId)
+                    const jobLabel = cand ? `${cand.hcpNumber} · ${cand.jobName}` : closedJobLabels[r.jobId] ?? 'Job'
+                    const who = (r.reviewedBy && reviewerNames[r.reviewedBy]) || '—'
+                    const action = jobFollowupReviewActionLabel(r.snoozedUntil)
+                    const isFine = r.snoozedUntil == null
+                    return (
+                      <div
+                        key={`${r.jobId}-${r.reviewedAt}-${i}`}
+                        style={{ display: 'flex', alignItems: 'baseline', gap: '0.7rem', fontSize: '0.82rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
+                      >
+                        <span style={{ minWidth: '9.5rem', color: 'var(--text-slate-500)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                          {new Date(r.reviewedAt).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                        <span style={{ minWidth: '7rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobLabel}</span>
+                        <span style={isFine ? chipStyle('var(--bg-green-tint)', 'var(--text-green-800)') : chipStyle('var(--bg-slate-100)', 'var(--text-slate-600)')}>
+                          {action}
+                        </span>
+                      </div>
+                    )
+                  })}
+                {reviews.length > 200 ? (
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-slate-400)', paddingTop: '0.5rem' }}>
+                    Showing the 200 most recent.
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+        ) : null}
+
+        {!loading && viewMode !== 'history' && queue.length === 0 ? (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '2rem 1.2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '1.4rem', marginBottom: '0.3rem' }}>🎉</div>
             <div style={{ fontWeight: 800 }}>All caught up</div>

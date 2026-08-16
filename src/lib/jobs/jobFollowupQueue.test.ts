@@ -4,6 +4,7 @@ import {
   computeJobFollowupQueue,
   jobFollowupQuietDays,
   jobFollowupQuietSeverity,
+  jobFollowupReviewActionLabel,
   jobFollowupStageCounts,
   jobFollowupThresholdDays,
   type JobFollowupCandidate,
@@ -111,6 +112,12 @@ describe('computeJobFollowupQueue', () => {
     ]
     // Latest (plain review, 6d ago) wins over the older long snooze.
     expect(computeJobFollowupQueue([stale], reviews, s, TODAY)).toHaveLength(1)
+  })
+
+  it('history action labels: looks-fine vs snoozed-until', () => {
+    expect(jobFollowupReviewActionLabel(null)).toBe('✓ Looks fine')
+    expect(jobFollowupReviewActionLabel('2026-08-19')).toBe('Snoozed until Aug 19')
+    expect(jobFollowupReviewActionLabel('junk')).toBe('Snoozed')
   })
 
   it('quiet severity bands: soft under 7, amber 7–13, red 14+', () => {

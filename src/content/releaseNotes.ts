@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1722',
+    date: '2026-08-16',
+    title: 'Follow-up history: who reviewed what',
+    kind: 'feature',
+    highlights: [
+      'A History view joins Deck and List on the follow-ups screen: every "Looks fine" and snooze, newest first, with the time, the reviewer\'s name, and the job.',
+      'Snoozes show their wake-up date, so you can see what\'s parked and until when.',
+    ],
+  },
+  {
     version: 'v2.1721',
     date: '2026-08-16',
     title: 'Follow-ups, the whole queue at a glance',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1721)
+last_updated: 2026-08-16 (v2.1722)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1722)
+
+### Follow-ups: review history — who reviewed what (2026-08-16)
+Owner request. The follow-ups toggle grows a third view — **Deck | List | History** — listing every review stamp newest-first: company-tz time, reviewer name, job (pill + name; jobs that have since left the open stages resolve via [`fetchJobFollowupJobLabels`](../src/lib/jobs/jobFollowupStore.ts)), and an action chip (green **✓ Looks fine** / slate **Snoozed until Aug 19**, via kernel `jobFollowupReviewActionLabel`, +1 test → 11). The reviews fetch now selects `reviewed_by` (`JobFollowupReview.reviewedBy`, optional — queue math ignores it); reviewer names load on first History open. Session actions appear immediately (local pushes carry the operator id). Notes posted from cards aren't duplicated here — they live on each job's thread, and the empty state says so. 200-row render cap. Client-only — no migration.
 
 ## Latest Updates (v2.1721)
 
