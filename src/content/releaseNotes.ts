@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1710',
+    date: '2026-08-16',
+    title: 'Your color on the Bid Board',
+    kind: 'feature',
+    highlights: [
+      'A small color wheel at the right end of the Bid Board\'s jump row (next to Health) lets you pick how your own name is highlighted when you\'re a bid\'s Estimator or Account Man — box color and text color, with an Auto option that keeps the text readable.',
+      'Set it separately for light mode and dark mode — and if you never touch it, the new defaults finally make the highlight visible at night (the old box vanished on the dark theme).',
+      'Your colors follow your account to any device, and every change saves as you click.',
+    ],
+  },
+  {
     version: 'v2.1709',
     date: '2026-08-16',
     title: 'Timeline up top, icons settled',

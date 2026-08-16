@@ -22,6 +22,7 @@ import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
+import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -129,6 +130,14 @@ export function BidsBidBoardTab({
   onSaveLossReason,
   workingBoardArchivedBids,
 }: BidsBidBoardTabProps) {
+  // How the viewer's OWN name is boxed on the board (per-account, per-theme —
+  // picked via the color wheel on the Health line, v2.1710).
+  const {
+    pref: selfHighlightPref,
+    savePref: saveSelfHighlightPref,
+    previewName: selfHighlightPreviewName,
+    selfHighlightStyle,
+  } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
@@ -786,8 +795,9 @@ export function BidsBidBoardTab({
               )
               const showAmLine = Boolean(amNorm) && !sameStaff
               const selfLineStyle = {
-                backgroundColor: '#111827',
-                color: '#ffffff',
+                // Per-user, per-theme pick (color wheel on the Health line);
+                // theme-aware default when the viewer never chose (v2.1710).
+                ...selfHighlightStyle,
                 padding: '0.125rem 0.35rem',
                 borderRadius: 4,
                 display: 'inline-block' as const,
@@ -1080,6 +1090,15 @@ export function BidsBidBoardTab({
                 ) : null}
               </button>
             ))}
+            {/* Far right of the Health line: pick how YOUR name is boxed when
+                you're a bid's Estimator or Account Man (v2.1710). */}
+            <span style={{ marginLeft: 'auto', display: 'inline-flex' }}>
+              <BidBoardSelfHighlightWheel
+                pref={selfHighlightPref}
+                onSave={saveSelfHighlightPref}
+                previewName={selfHighlightPreviewName}
+              />
+            </span>
           </nav>
           {BID_BOARD_SECTION_CONFIG.map(({ key, label }) => {
             const sectionBids = bidBoardBuckets[key]
