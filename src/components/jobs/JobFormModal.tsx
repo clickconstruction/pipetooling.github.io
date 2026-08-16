@@ -1298,7 +1298,9 @@ export default function JobFormModal({
       if (customerId && dateMet.trim()) {
         const c = customers.find((x) => x.id === customerId)
         if (c && !c.date_met) {
-          await supabase.from('customers').update({ date_met: dateMet.trim() }).eq('id', customerId)
+          // A typed date is a human call — stamp it manual so the clock-session
+          // fill (v2.1696) never overwrites it.
+          await supabase.from('customers').update({ date_met: dateMet.trim(), date_met_source: 'manual' }).eq('id', customerId)
         }
       }
     } catch (dateMetErr) {
@@ -1671,7 +1673,7 @@ export default function JobFormModal({
               async () =>
                 await supabase
                   .from('customers')
-                  .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
+                  .select('id, name, address, contact_info, date_met, date_met_source, master_user_id, customer_type, archived_at')
                   .eq('id', estimateCustomerId)
                   .maybeSingle(),
               'job form import estimate customer',
@@ -1746,7 +1748,7 @@ export default function JobFormModal({
           { data: meRow },
           { data: devData },
         ] = await Promise.all([
-          supabase.from('customers').select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at').order('name'),
+          supabase.from('customers').select('id, name, address, contact_info, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')
@@ -2700,6 +2702,7 @@ export default function JobFormModal({
           contact_info: contactInfo,
           customer_type: customerType,
           date_met: dateMet.trim() || null,
+          date_met_source: dateMet.trim() ? 'manual' : null,
           master_user_id: customerMasterId,
         })
         .select('id')
@@ -2897,7 +2900,9 @@ export default function JobFormModal({
       if (customerId && dateMet.trim()) {
         const c = customers.find((x) => x.id === customerId)
         if (c && !c.date_met) {
-          await supabase.from('customers').update({ date_met: dateMet.trim() }).eq('id', customerId)
+          // A typed date is a human call — stamp it manual so the clock-session
+          // fill (v2.1696) never overwrites it.
+          await supabase.from('customers').update({ date_met: dateMet.trim(), date_met_source: 'manual' }).eq('id', customerId)
         }
       }
       await closeForm()

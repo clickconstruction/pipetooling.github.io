@@ -149,6 +149,7 @@ export default function CustomerForm() {
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
       date_met: dateMet.trim() || null,
+      date_met_source: dateMet.trim() ? 'manual' : null,
     }
     if (customerMasterId) {
       payload.master_user_id = customerMasterId
