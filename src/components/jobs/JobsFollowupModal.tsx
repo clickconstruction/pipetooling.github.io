@@ -358,7 +358,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
               const severity = jobFollowupQuietSeverity(e.quietDays)
               const badge =
                 severity === 'red'
-                  ? { background: '#fee2e2', color: '#b91c1c' }
+                  ? { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' }
                   : severity === 'amber'
                     ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
                     : { background: 'var(--bg-slate-100)', color: 'var(--text-slate-600)' }
