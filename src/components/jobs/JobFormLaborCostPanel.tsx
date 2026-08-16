@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
+import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
+import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 
 type JobFormLaborCostPanelProps = {
   editing: JobWithDetails | null
@@ -40,6 +43,7 @@ export function JobFormLaborCostPanel({
   onClose,
 }: JobFormLaborCostPanelProps) {
   const navigate = useNavigate()
+  const { role: authRole } = useAuth()
   if (!editing?.id) return null
 
   return (
@@ -48,6 +52,9 @@ export function JobFormLaborCostPanel({
               <div style={{ ...JOB_FORM_SECTION_HEADER_STYLE, marginBottom: '0.75rem' }}>
                 Labor and Parts Cost
               </div>
+              {/* Cost Timeline leads the section (owner call, v2.1709) — moved
+                  up from the tail of the parts accordions. */}
+              <JobChargesTimelineStandalone job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} />
               <div
                 style={{
                   background: 'var(--bg-subtle)',

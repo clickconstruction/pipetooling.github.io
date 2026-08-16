@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useAuth } from '../../hooks/useAuth'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { MaterialRow } from '../../lib/jobs/jobFormTypes'
@@ -7,14 +6,12 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { materialRowHasUserContent } from '../../lib/jobs/jobFormRows'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
-import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
 import {
   type JobMercuryAllocLine,
   type JobSupplyInvoiceLine,
   type JobTallyPartLine,
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
-import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import type { MaterialsAccordionKey } from './useJobCostSnapshot'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 
@@ -72,7 +69,6 @@ export function JobFormPartsCostSection({
   removeMaterialRow,
   hideTitle,
 }: JobFormPartsCostSectionProps) {
-  const { role: authRole } = useAuth()
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   // v2.1142: empty charge rows stay hidden until "+ Add other charge" summons
   // one — the accordion opens to just the button when nothing is entered yet.
@@ -340,7 +336,6 @@ export function JobFormPartsCostSection({
                   </div>
                 </div>
               </MaterialsCostAccordionRow>
-              {editing ? <JobChargesTimelineStandalone job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} /> : null}
           </div>
     </>
   )
