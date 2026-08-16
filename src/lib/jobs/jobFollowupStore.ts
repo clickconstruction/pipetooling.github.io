@@ -10,15 +10,10 @@ import {
 } from './jobFollowupQueue'
 
 /**
- * IO for Job Follow-Up Mode (v2.1718). The `job_followup_*` tables and the
- * `list_job_followup_activity` RPC are new — until `gen-types` runs after the
- * migration is pushed, their names are cast (same pattern as
- * `list_people_with_kind_for_banking_attribution`, Banking quirk #17).
- * Every fetch degrades to defaults/empty so the client deployed ahead of the
- * migration renders an empty queue instead of crashing.
+ * IO for Job Follow-Up Mode (v2.1718). Every fetch degrades to
+ * defaults/empty so a client deployed ahead of the migration renders an
+ * empty queue instead of crashing.
  */
-
-const followupTable = (name: string) => supabase.from(name as unknown as 'jobs_ledger')
 
 type SettingsRow = {
   working_days: number
@@ -55,7 +50,7 @@ export function followupSettingsToRow(s: JobFollowupSettings): SettingsRow {
 export async function fetchJobFollowupSettings(): Promise<JobFollowupSettings> {
   try {
     const data = await withSupabaseRetry(
-      async () => followupTable('job_followup_settings').select('*').limit(1),
+      async () => supabase.from('job_followup_settings').select('*').limit(1),
       'followup settings',
     )
     return followupSettingsFromRow(((data ?? []) as unknown as SettingsRow[])[0])
@@ -67,7 +62,7 @@ export async function fetchJobFollowupSettings(): Promise<JobFollowupSettings> {
 export async function saveJobFollowupSettings(s: JobFollowupSettings, userId: string | null): Promise<void> {
   await withSupabaseRetry(
     async () =>
-      followupTable('job_followup_settings')
+      supabase.from('job_followup_settings')
         .update({ ...followupSettingsToRow(s), updated_at: new Date().toISOString(), updated_by: userId } as never)
         .eq('id' as never, true as never),
     'save followup settings',
@@ -78,7 +73,7 @@ export async function fetchJobFollowupReviews(): Promise<JobFollowupReview[]> {
   try {
     const data = await withSupabaseRetry(
       async () =>
-        followupTable('job_followup_reviews')
+        supabase.from('job_followup_reviews')
           .select('job_id, reviewed_at, snoozed_until')
           .order('reviewed_at', { ascending: false })
           .limit(5000),
@@ -99,7 +94,7 @@ export async function recordJobFollowupReview(
 ): Promise<void> {
   await withSupabaseRetry(
     async () =>
-      followupTable('job_followup_reviews').insert({
+      supabase.from('job_followup_reviews').insert({
         job_id: jobId,
         reviewed_by: userId,
         snoozed_until: snoozedUntil,
@@ -120,7 +115,7 @@ export async function fetchJobFollowupCandidates(todayYmd: string): Promise<JobF
     ),
     withSupabaseRetry(
       async () =>
-        supabase.rpc('list_job_followup_activity' as unknown as 'list_users_for_banking_attribution', {
+        supabase.rpc('list_job_followup_activity', {
           p_today: todayYmd,
         } as never),
       'followup activity',
