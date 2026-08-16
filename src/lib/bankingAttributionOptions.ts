@@ -20,9 +20,15 @@ export function bankingPersonKindTag(kind: string | null): string {
   return PERSON_KIND_SHORT_LABEL[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1)
 }
 
-export type BankingAttributionPersonRow = { id: string; name: string; kind: string | null }
+export type BankingAttributionPersonRow = { id: string; name: string; kind: string | null; archived?: boolean }
 
-/** Combined picker options: users (`u:<id>`) first, then people (`p:<id>`, tagged by kind). */
+/**
+ * Combined picker options: users (`u:<id>`) first, then active people
+ * (`p:<id>`, tagged by kind), then — behind an "Archived" separator — archived
+ * people tagged "· archived" (v2.1728). Archived people stay selectable so
+ * departed subs remain taggable on historical transactions, without letting
+ * them blend in with the active roster.
+ */
 export function buildBankingAttributionOptions(
   users: SearchableSelectOption[],
   people: BankingAttributionPersonRow[],
@@ -32,10 +38,20 @@ export function buildBankingAttributionOptions(
     if (!isSelectableOption(o)) continue
     userOpts.push({ value: `u:${o.value}`, label: o.label })
   }
-  const personOpts: SearchableSelectOption[] = [...people]
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const sorted = [...people].sort((a, b) => a.name.localeCompare(b.name))
+  const personOpts: SearchableSelectOption[] = sorted
+    .filter((p) => p.archived !== true)
     .map((p) => ({ value: `p:${p.id}`, label: `${p.name} · ${bankingPersonKindTag(p.kind)}` }))
-  return [...userOpts, ...personOpts]
+  const archivedOpts: SearchableSelectOption[] = sorted
+    .filter((p) => p.archived === true)
+    .map((p) => ({ value: `p:${p.id}`, label: `${p.name} · ${bankingPersonKindTag(p.kind)} · archived` }))
+  return [
+    ...userOpts,
+    ...personOpts,
+    ...(archivedOpts.length > 0
+      ? [{ kind: 'separator', id: 'archived-people', label: 'Archived' } as SearchableSelectOption, ...archivedOpts]
+      : []),
+  ]
 }
 
 /** Decode a picker value into the attribution columns. Empty → clear (both null). */
