@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1717)
+last_updated: 2026-08-16 (v2.1718)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1718)
+
+### Jobs: Follow-Up Mode — review quiet jobs one card at a time (2026-08-16)
+Owner request ("jobs fall through the cracks"), built from the approved deck mockup. New **Follow-ups** button on the Jobs Pipeline toolbar opens a full-screen deck ([`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx)): the queue is every open job **quiet too long for its stage**, stalest first — each card shows the job pill + stage + "quiet N days" chip, the **Street View banner with address pill** (same `fetchStreetViewPreview` kernel as the Job window; click → pano), a "Why it's here" line, money chips, the last 3 thread notes, and a pre-focused note box. **Enter posts to the job's real activity thread** (`postJobThreadNoteBody`) and advances; **✓ Looks fine** stamps a quiet review (rests the job `rest_days`); **Snooze** 3d/1w/2w; **Open job ↗** via the job-detail opener bridge. Stage filter chips + **⚙ Review periods** (org-wide per-stage day steppers; RLS lets Master/dev write). Pure kernel [`jobFollowupQueue.ts`](../src/lib/jobs/jobFollowupQueue.ts) (8 tests): per-stage thresholds, reviews count as activity, snooze/rest exclusion windows, future-scheduled Waiting/Working jobs exempt. IO [`jobFollowupStore.ts`](../src/lib/jobs/jobFollowupStore.ts) — table/RPC names cast until `gen-types` runs post-push (Banking quirk-#17 pattern); every fetch degrades so a client deployed ahead of the migration shows an empty queue, never a crash. **Migration** [`20260816193117_job_followups.sql`](../supabase/migrations/20260816193117_job_followups.sql) (see `MIGRATIONS.md`). **Deploy**: `supabase db push` with this merge; regen types after. Follow-ups (planned): Dashboard attention card + queue list view.
 
 ## Latest Updates (v2.1717)
 
