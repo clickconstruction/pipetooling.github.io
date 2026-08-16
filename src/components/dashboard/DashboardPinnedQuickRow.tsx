@@ -15,6 +15,7 @@ import DashboardTallyStaleBanner from '../DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../DashboardTallyStaleStaffBanner'
 import DashboardLostBidsMissingReasonBanner from '../DashboardLostBidsMissingReasonBanner'
 import DashboardTeamReviewsDueBanner from '../DashboardTeamReviewsDueBanner'
+import DashboardJobFollowupsBanner from '../DashboardJobFollowupsBanner'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
@@ -481,6 +482,10 @@ export function DashboardPinnedQuickRow({
         />
       )}
       {!hideBanners && <DashboardTeamReviewsDueBanner authUserId={authUserId} />}
+      {/* Job Follow-Up Mode (v2.1720): office roles only; self-gates to nothing when the queue is empty. */}
+      {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
+        <DashboardJobFollowupsBanner />
+      )}
       {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardTallyStaleStaffBanner
           peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}

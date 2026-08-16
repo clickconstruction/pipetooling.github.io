@@ -677,6 +677,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesSearchBarFocused, setStagesSearchBarFocused] = useState(false)
   /** Job Follow-Up Mode deck (v2.1718). */
   const [followupOpen, setFollowupOpen] = useState(false)
+  // Dashboard card entry (v2.1720): ?followups=1 opens the deck once, then
+  // strips itself so refresh/back doesn't re-open it.
+  const followupParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (followupParamConsumedRef.current) return
+    if (searchParams.get('followups') === '1') {
+      followupParamConsumedRef.current = true
+      setFollowupOpen(true)
+      const p = new URLSearchParams(searchParams)
+      p.delete('followups')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)

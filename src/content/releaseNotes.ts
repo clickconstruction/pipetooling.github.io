@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1720',
+    date: '2026-08-16',
+    title: 'The Dashboard nudges you to follow up',
+    kind: 'feature',
+    highlights: [
+      'A new amber card on the Dashboard counts the jobs waiting on a follow-up — billed with no nudge, working with no recent notes, waiting with nothing scheduled — for office roles.',
+      'Tap Start review and you land straight in the follow-up deck, on the job that\'s waited longest. When the queue is empty, the card disappears.',
+    ],
+  },
+  {
     version: 'v2.1719',
     date: '2026-08-16',
     title: 'Cleaner follow-up cards',
