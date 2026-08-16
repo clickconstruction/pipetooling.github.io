@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1711',
+    date: '2026-08-16',
+    title: 'Quieter Customer row on Edit Job',
+    kind: 'fix',
+    highlights: [
+      'The green "linked" chip is gone from the Customer row on the job window\'s Edit tab — a linked customer is the normal state and doesn\'t need a badge.',
+      'The amber "Not in Customers" warning still appears when a job only has typed-in contact info, so a chip on that row now always means something needs fixing.',
+    ],
+  },
+  {
     version: 'v2.1710',
     date: '2026-08-16',
     title: 'Your color on the Bid Board',

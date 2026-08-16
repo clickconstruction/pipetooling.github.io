@@ -251,17 +251,16 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
 
   const createCustomerName = resolveCreateCustomerName({ customerName, customerSearch, customerId })
 
-  const chipStyle = (variant: 'linked' | 'warn') => ({
+  const warnChipStyle = {
     padding: '0.1rem 0.4rem',
     fontSize: '0.6875rem',
     fontWeight: 500,
     borderRadius: 999,
     flexShrink: 0,
     whiteSpace: 'nowrap' as const,
-    ...(variant === 'linked'
-      ? { background: 'var(--bg-subtle)', color: '#15803d', border: '1px solid var(--border-green)' }
-      : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }),
-  })
+    background: 'var(--bg-amber-100)',
+    color: 'var(--text-amber-800)',
+  }
 
   /**
    * Tap-to-call / tap-to-email (owner call, v2.1705): the displayed number or
@@ -406,12 +405,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           ) : null
         }
         valueTail={
-          customerSummary != null ? (
-            customerSummary.linked ? (
-              <span style={chipStyle('linked')}>linked</span>
-            ) : customerSummary.notInCustomers ? (
-              <span style={chipStyle('warn')}>Not in Customers</span>
-            ) : null
+          customerSummary?.notInCustomers ? (
+            <span style={warnChipStyle}>Not in Customers</span>
           ) : null
         }
         expanded={openRows.has('customer')}
