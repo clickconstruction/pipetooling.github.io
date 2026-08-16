@@ -6,7 +6,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { isInternalTransfersLabel } from '../../lib/dragSortDefaultLabels'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
-import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
+import { SearchableSelect, type SearchableSelectOption, type SearchableSelectSelectableOption } from '../SearchableSelect'
 import {
   MercuryTransactionAllocationsModal,
   type MercuryJobSplit,
@@ -148,6 +148,7 @@ export function BankingMercuryTxDetailModal({
   nicknameByDebitCard,
   usersOptions,
   attributionOptions,
+  onCreatePerson,
   operatorUserId,
   personLabel,
   onClose,
@@ -162,6 +163,8 @@ export function BankingMercuryTxDetailModal({
   usersOptions: { value: string; label: string }[]
   /** Combined people + users (u:/p: values) for the inline Person picker (v2.1725). */
   attributionOptions: SearchableSelectOption[]
+  /** "Add …" on no matches (v2.1727): mints a roster person, returns its option. */
+  onCreatePerson?: (name: string) => Promise<SearchableSelectSelectableOption | null>
   /** Logged-in operator's auth user id (enables recent-person chips in the splits modal). */
   operatorUserId: string | null
   /** Display name from the tab's attribution cache, for the splits summary. */
@@ -284,6 +287,13 @@ export function BankingMercuryTxDetailModal({
 
   const attributionValue =
     relations == null ? '' : relations.personId ? `p:${relations.personId}` : relations.userId ? `u:${relations.userId}` : ''
+
+  /** People minted from this picker's Add action (v2.1727). */
+  const [createdPersonOptions, setCreatedPersonOptions] = useState<SearchableSelectSelectableOption[]>([])
+  const personOptions = useMemo(
+    () => [...attributionOptions, ...createdPersonOptions],
+    [attributionOptions, createdPersonOptions],
+  )
 
   /** Person-only change goes through the same RPC the splits window uses — current splits pass through untouched. */
   const handlePersonChange = useCallback(
@@ -475,7 +485,24 @@ export function BankingMercuryTxDetailModal({
                     <SearchableSelect
                       value={attributionValue}
                       onChange={(v) => void handlePersonChange(v)}
-                      options={attributionOptions}
+                      options={personOptions}
+                      noMatchesAction={
+                        onCreatePerson
+                          ? {
+                              label: (q) => `Add “${q.trim()}” to People as a sub`,
+                              onSelect: (q) => {
+                                void (async () => {
+                                  const created = await onCreatePerson(q.trim())
+                                  if (!created) return
+                                  setCreatedPersonOptions((prev) =>
+                                    prev.some((o) => o.value === created.value) ? prev : [...prev, created],
+                                  )
+                                  void handlePersonChange(created.value)
+                                })()
+                              },
+                            }
+                          : undefined
+                      }
                       placeholder={relations == null ? 'Loading…' : 'No person — pick one'}
                       disabled={relations == null || personSaving}
                       emptyOption={{ value: '', label: 'No person' }}

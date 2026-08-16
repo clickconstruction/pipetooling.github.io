@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
-import { buildBankingAttributionOptions } from '../../lib/bankingAttributionOptions'
+import { bankingPersonKindTag, buildBankingAttributionOptions } from '../../lib/bankingAttributionOptions'
 import { BankingMercuryTxDetailModal, type TxDetailChange } from './BankingMercuryTxDetailModal'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -621,6 +621,28 @@ export function BankingMercuryVisualsTab() {
     return buildLabelFocusSankey({ title: focus.name, tone: FAMILY_TONES[family] ?? 'neutral', txs })
   }, [data, view, focus, periodTxs])
 
+  /** "Add …" from the detail modal's Person picker (v2.1727): mints a roster sub. */
+  const createPersonFromPicker = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim()
+      if (trimmed === '' || !user?.id) return null
+      try {
+        const rows = await withSupabaseRetry(
+          async () => supabase.from('people').insert({ master_user_id: user.id, kind: 'sub', name: trimmed }).select('id, name').limit(1),
+          'visuals create person from picker',
+        )
+        const row = ((rows ?? []) as { id: string; name: string }[])[0]
+        if (!row) return null
+        showToast(`Added ${row.name} to People (sub).`, 'success')
+        return { value: `p:${row.id}`, label: `${row.name} · ${bankingPersonKindTag('sub')}` }
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not add person', 'error')
+        return null
+      }
+    },
+    [user?.id, showToast],
+  )
+
   const handleNodeFocus = useCallback((nodeId: string) => {
     if (nodeId.startsWith('fam:')) setFocus({ type: 'family', name: nodeId.slice(4) })
     else if (nodeId.startsWith('label:')) setFocus({ type: 'label', name: nodeId.slice(6) })
@@ -824,6 +846,7 @@ export function BankingMercuryVisualsTab() {
               nicknameByDebitCard={data.nicknameByDebitCard}
               usersOptions={data.usersOptions}
               attributionOptions={data.attributionOptions}
+              onCreatePerson={createPersonFromPicker}
               operatorUserId={user?.id ?? null}
               personLabel={data.personLabelByTxId.get(detailTxId) ?? null}
               onClose={() => setDetailTxId(null)}

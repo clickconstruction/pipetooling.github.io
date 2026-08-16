@@ -10,7 +10,7 @@ import {
   parseAccountingLabelRuleCriteria,
 } from '../../lib/accountingLabelRuleMatch'
 import { parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
-import type { SearchableSelectOption } from '../SearchableSelect'
+import type { SearchableSelectOption, SearchableSelectSelectableOption } from '../SearchableSelect'
 import type { Json } from '../../types/database'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 
@@ -163,6 +163,11 @@ export type AccountingRuleFormModalProps = {
   onSaveAndApply?: (draft: AccountingRuleSaveDraft) => Promise<void>
   /** People/users for the optional "Also attribute to person" field (v2.1725); omit to hide it. */
   attributionOptions?: SearchableSelectOption[]
+  /**
+   * When set, the person picker offers "Add …" on no matches (v2.1727): creates
+   * a roster person and resolves to a ready-to-select option (null = failed).
+   */
+  onCreatePerson?: (name: string) => Promise<SearchableSelectSelectableOption | null>
   /** Disables actions while parent apply-rules is running (toolbar). */
   applyRulesBusy?: boolean
   /** When set and `editingRuleId !== null`, renders a trash icon in the header that opens a nested confirm modal. */
@@ -182,6 +187,7 @@ export function AccountingRuleFormModal({
   onSave,
   onSaveAndApply,
   attributionOptions,
+  onCreatePerson,
   applyRulesBusy = false,
   onDelete,
   zIndex = 1200,
@@ -202,6 +208,22 @@ export function AccountingRuleFormModal({
     () => buildSortedAccountingLabelSelectOptions(labels, labelAssignmentCountById),
     [labels, labelAssignmentCountById],
   )
+
+  /** People minted from the picker's Add action this session (v2.1727). */
+  const [createdPersonOptions, setCreatedPersonOptions] = useState<SearchableSelectSelectableOption[]>([])
+  const personOptions = useMemo(
+    () => (attributionOptions ? [...attributionOptions, ...createdPersonOptions] : createdPersonOptions),
+    [attributionOptions, createdPersonOptions],
+  )
+  const handleCreatePersonFromPicker = (query: string) => {
+    if (!onCreatePerson) return
+    void (async () => {
+      const created = await onCreatePerson(query.trim())
+      if (!created) return
+      setCreatedPersonOptions((prev) => (prev.some((o) => o.value === created.value) ? prev : [...prev, created]))
+      setForm((f) => ({ ...f, attribution: created.value }))
+    })()
+  }
 
   // Escape closes the modal, but never while a save/apply/delete is running —
   // tearing it down mid-operation would leave the write in flight and fire
@@ -453,7 +475,12 @@ export function AccountingRuleFormModal({
               <SearchableSelect
                 value={form.attribution}
                 onChange={(v) => setForm((f) => ({ ...f, attribution: v }))}
-                options={attributionOptions}
+                options={personOptions}
+                noMatchesAction={
+                  onCreatePerson
+                    ? { label: (q) => `Add “${q.trim()}” to People as a sub`, onSelect: handleCreatePersonFromPicker }
+                    : undefined
+                }
                 emptyOption={{ value: '', label: ' - no person - ' }}
                 hideEmptyOptionInListWhenUnset={false}
                 searchReplacesTrigger

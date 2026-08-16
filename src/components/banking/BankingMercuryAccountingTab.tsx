@@ -69,7 +69,8 @@ import { BankingMercuryAccountingOverlapsModal } from './BankingMercuryAccountin
 import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercuryAccountingApplyRulesConfirmModal'
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
 import { AccountingApprovalCard } from './AccountingApprovalCard'
-import type { SearchableSelectOption } from '../SearchableSelect'
+import type { SearchableSelectOption, SearchableSelectSelectableOption } from '../SearchableSelect'
+import { bankingPersonKindTag } from '../../lib/bankingAttributionOptions'
 import {
   BACKFILL_READ_CHUNK,
   BACKFILL_WRITE_CHUNK,
@@ -720,7 +721,8 @@ export function BankingMercuryAccountingTab({
           ruleName: draft.name,
           personId: draft.attributedPersonId,
           userId: draft.attributedUserId,
-          personName: attributionNameByValue.get(value) ?? 'this person',
+          personName:
+            attributionNameByValue.get(value) ?? mintedPersonNameByValueRef.current.get(value) ?? 'this person',
           candidateTxIds: ids,
         })
       } catch {
@@ -728,6 +730,34 @@ export function BankingMercuryAccountingTab({
       }
     },
     [attributionNameByValue],
+  )
+
+  /** Names of people minted from the rule form this session — the parent's
+   * options list only refreshes on reload, so the backfill prompt reads from
+   * here first (v2.1727). */
+  const mintedPersonNameByValueRef = useRef(new Map<string, string>())
+
+  /** "Add …" from the rule form's person picker (v2.1727): mints a roster sub. */
+  const createPersonFromRuleForm = useCallback(
+    async (name: string): Promise<SearchableSelectSelectableOption | null> => {
+      const trimmed = name.trim()
+      if (trimmed === '') return null
+      try {
+        const rows = await withSupabaseRetry(
+          async () => supabase.from('people').insert({ master_user_id: userId, kind: 'sub', name: trimmed }).select('id, name').limit(1),
+          'accounting create person from rule form',
+        )
+        const row = ((rows ?? []) as { id: string; name: string }[])[0]
+        if (!row) return null
+        showToast(`Added ${row.name} to People (sub).`, 'success')
+        mintedPersonNameByValueRef.current.set(`p:${row.id}`, row.name)
+        return { value: `p:${row.id}`, label: `${row.name} · ${bankingPersonKindTag('sub')}` }
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not add person', 'error')
+        return null
+      }
+    },
+    [showToast, userId],
   )
 
   const runAttributionBackfill = useCallback(async () => {
@@ -2358,6 +2388,7 @@ export function BankingMercuryAccountingTab({
           onSave={saveRuleDraft}
           onSaveAndApply={saveRuleDraftAndApply}
           attributionOptions={attributionOptions}
+          onCreatePerson={createPersonFromRuleForm}
           applyRulesBusy={applyRulesBusy}
           onDelete={
             editingRuleId
