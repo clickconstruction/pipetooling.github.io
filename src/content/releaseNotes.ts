@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1704',
+    date: '2026-08-16',
+    title: 'Pipeline button reads "Edit"',
+    kind: 'fix',
+    highlights: [
+      'The "Edit Job" button on Pipeline rows is now just "Edit" — the row already is a job.',
+    ],
+  },
+  {
     version: 'v2.1703',
     date: '2026-08-16',
     title: 'Bill tab: cleaner % done row',
