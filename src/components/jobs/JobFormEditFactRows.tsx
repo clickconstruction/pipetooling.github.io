@@ -6,6 +6,7 @@ import { parseAccountManRelationship } from '../../lib/jobs/accountMan'
 import {
   accountManRowValue,
   customerRowSummary,
+  dateMetRowAgo,
   dateMetRowValue,
   folderRowLinks,
   teamRowValue,
@@ -237,6 +238,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   })
   const folders = folderRowLinks(googleDriveLink, jobPicturesLink)
   const dateMetValue = dateMetRowValue(dateMet)
+  const dateMetAgo = dateMetRowAgo(dateMet)
   const dateMetCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
   const dateMetLocked = !!dateMetCustomer?.date_met
   /** v2.1698: the date came from the first clock session (v2.1696), not a person. */
@@ -436,16 +438,16 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         <input type="email" aria-label="Customer Email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={fieldInputStyle} />
       </JobFormFactRow>
       {/* Date met rides with the customer-contact sub-rows — it lives on the
-          customers record like phone/email (owner call, v2.1697). */}
+          customers record like phone/email (owner call, v2.1697). Collapsed it
+          reads "06/09/26 (2 months ago)" (owner call, v2.1700); the lock and
+          first-clock-in provenance moved into the opened editor. */}
       <JobFormFactRow
         label="Date met"
         labelIcon={CUSTOMER_SUBROW_INDENT}
         value={dateMetValue}
         valueTail={
-          dateMetLocked ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-              {dateMetFromClock ? '(first clock-in · edit in Customers)' : '(edit in Customers)'}
-            </span>
+          dateMetAgo ? (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>({dateMetAgo})</span>
           ) : null
         }
         expanded={openRows.has('dateMet')}
@@ -464,6 +466,13 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             cursor: dateMetLocked ? 'not-allowed' : 'text',
           }}
         />
+        {dateMetLocked ? (
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {dateMetFromClock
+              ? 'Set automatically from the first clock-in — edit it in Customers.'
+              : 'Set on the linked customer — edit it in Customers.'}
+          </p>
+        ) : null}
       </JobFormFactRow>
       <JobFormFactRow
         label="GC/Builder"
