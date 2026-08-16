@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1722)
+last_updated: 2026-08-16 (v2.1724)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1724)
+
+### Banking Visuals: Bank description joins the transaction detail (2026-08-16)
+Owner request: the raw bank description ("CASH APP*ABE WHITES", "Send Money transaction initiated on Mercury") is often the most identifying line on a transaction and was only visible inside the Raw JSON disclosure. [`BankingMercuryTxDetailModal`](../src/components/banking/BankingMercuryTxDetailModal.tsx) now shows **Bank description** as its own read-only fact, directly above Bank memo (typed read of `raw.bankDescription`; em-dash when absent). Client-only — no migration.
 
 ## Latest Updates (v2.1722)
 
