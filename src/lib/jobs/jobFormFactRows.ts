@@ -3,6 +3,7 @@ import {
   parseAccountManRelationship,
 } from './accountMan'
 import { customerListImpliesLinkedRow } from './jobFormCustomerDisplay'
+import { formatTimeSince } from './jobFormatting'
 import type { Database } from '../../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -77,10 +78,24 @@ export function folderRowLinks(googleDriveLink: string, jobPicturesLink: string)
   }
 }
 
-/** "8/15/2026" from the form's YYYY-MM-DD; string math so no timezone shift. */
+/** "08/15/26" from the form's YYYY-MM-DD; string math so no timezone shift. */
 export function dateMetRowValue(dateMet: string): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateMet.trim())
   if (!m) return null
   const [, y, mo, d] = m
-  return `${Number(mo)}/${Number(d)}/${y}`
+  return `${mo}/${d}/${(y ?? '').slice(2)}`
+}
+
+/**
+ * "(2 months ago)"-style age for the Date met row (v2.1700) — the same
+ * day/week/month/year buckets as the Pipeline's "Open N" (formatTimeSince).
+ * Sub-day ages collapse to "today": Date met is a calendar date, so "5 hours
+ * ago" would just be noise.
+ */
+export function dateMetRowAgo(dateMet: string, now = new Date()): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateMet.trim())
+  if (!m) return null
+  const since = formatTimeSince(`${m[1]}-${m[2]}-${m[3]}T00:00:00`, now)
+  if (since === '—' || since === 'just now' || /minute|hour/.test(since)) return 'today'
+  return `${since} ago`
 }

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1700',
+    date: '2026-08-16',
+    title: 'Date met shows its age',
+    kind: 'fix',
+    highlights: [
+      'The Date met row now reads like "06/09/26 (2 months ago)" — the same day/week/month style as the Pipeline\'s Open counter.',
+      'Where the date came from (first clock-in vs typed) now shows when you open the row to edit it.',
+    ],
+  },
+  {
     version: 'v2.1699',
     date: '2026-08-16',
     title: 'Line Items header tidied',

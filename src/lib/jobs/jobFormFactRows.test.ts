@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   accountManRowValue,
   customerRowSummary,
+  dateMetRowAgo,
   dateMetRowValue,
   folderRowLinks,
   teamRowValue,
@@ -116,12 +117,28 @@ describe('folderRowLinks', () => {
 })
 
 describe('dateMetRowValue', () => {
-  it('formats without timezone shifting', () => {
-    expect(dateMetRowValue('2026-08-15')).toBe('8/15/2026')
-    expect(dateMetRowValue('2026-01-02')).toBe('1/2/2026')
+  it('formats zero-padded MM/DD/YY without timezone shifting', () => {
+    expect(dateMetRowValue('2026-08-15')).toBe('08/15/26')
+    expect(dateMetRowValue('2026-01-02')).toBe('01/02/26')
   })
   it('is null for blank or malformed input', () => {
     expect(dateMetRowValue('')).toBeNull()
     expect(dateMetRowValue('08/15/2026')).toBeNull()
+  })
+})
+
+describe('dateMetRowAgo', () => {
+  const now = new Date('2026-08-16T12:00:00')
+  it('buckets into days, weeks, and months like the Pipeline "Open N"', () => {
+    expect(dateMetRowAgo('2026-08-14', now)).toBe('2 days ago')
+    expect(dateMetRowAgo('2026-07-30', now)).toBe('2 weeks ago')
+    expect(dateMetRowAgo('2026-06-09', now)).toBe('2 months ago')
+  })
+  it('collapses sub-day ages to today', () => {
+    expect(dateMetRowAgo('2026-08-16', now)).toBe('today')
+  })
+  it('is null for blank or malformed input', () => {
+    expect(dateMetRowAgo('', now)).toBeNull()
+    expect(dateMetRowAgo('junk', now)).toBeNull()
   })
 })

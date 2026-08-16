@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1699)
+last_updated: 2026-08-16 (v2.1700)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1700)
+
+### Date met reads as an age: "06/09/26 (2 months ago)" (2026-08-16)
+Owner call: the Edit tab's Date met row goes from "6/9/2026 (edit in Customers)" to **zero-padded MM/DD/YY plus a relative age** — "(2 days ago)", "(2 weeks ago)", "(2 months ago)", "(today)" for same-day — using the same buckets as the Pipeline's "Open N" (`formatTimeSince`). New kernel fn `dateMetRowAgo` in [`jobFormFactRows.ts`](../src/lib/jobs/jobFormFactRows.ts) (unit-tested, injectable now). The lock and first-clock-in provenance didn't vanish — they moved into the opened editor as a one-line note ("Set automatically from the first clock-in — edit it in Customers."). Client-only — no migration.
 
 ## Latest Updates (v2.1699)
 
