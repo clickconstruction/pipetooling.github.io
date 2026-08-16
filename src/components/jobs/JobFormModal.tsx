@@ -3332,34 +3332,57 @@ export default function JobFormModal({
             onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
           />
-          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
+          {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
+              tab reads as ONE section from Line Items down. The standalone/New
+              Job form keeps both (it has no tab to say "Bill" for it). */}
+          {!embedded && (
+            <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
+          )}
           <div style={{ marginBottom: '1rem' }}>
-            <div
-              style={{
-                ...JOB_FORM_SECTION_HEADER_STYLE,
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: '0.5rem',
-                flexWrap: 'wrap',
-                marginBottom: '0.75rem',
-              }}
-            >
-              <span>Billing</span>
-              {/* v2.1144: the steady-state "Saved" is noise — only in-flight and
-                  failure states earn header space. */}
-              {editing?.id && (billingAutosaveStatus === 'saving' || billingAutosaveStatus === 'error') && (
-                <span
+            {!embedded ? (
+              <div
+                style={{
+                  ...JOB_FORM_SECTION_HEADER_STYLE,
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <span>Billing</span>
+                {/* v2.1144: the steady-state "Saved" is noise — only in-flight and
+                    failure states earn header space. */}
+                {editing?.id && (billingAutosaveStatus === 'saving' || billingAutosaveStatus === 'error') && (
+                  <span
+                    aria-live="polite"
+                    style={{
+                      fontSize: '0.75rem',
+                      color: billingAutosaveStatus === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {billingAutosaveStatus === 'saving' ? 'Saving…' : 'Autosave failed — edit again to retry'}
+                  </span>
+                )}
+              </div>
+            ) : (
+              /* Titleless Bill tab still surfaces autosave trouble — the status
+                 line renders only while saving or failed. */
+              editing?.id && (billingAutosaveStatus === 'saving' || billingAutosaveStatus === 'error') ? (
+                <div
                   aria-live="polite"
                   style={{
+                    textAlign: 'right',
                     fontSize: '0.75rem',
+                    marginBottom: '0.5rem',
                     color: billingAutosaveStatus === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)',
                   }}
                 >
                   {billingAutosaveStatus === 'saving' ? 'Saving…' : 'Autosave failed — edit again to retry'}
-                </span>
-              )}
-            </div>
+                </div>
+              ) : null
+            )}
             <MoneyLifecycleBar
               hasBar={billingBar.hasBar}
               barTitle={[

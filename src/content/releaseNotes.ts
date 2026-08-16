@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1687',
+    date: '2026-08-15',
+    title: 'Bill tab reads as one section',
+    kind: 'fix',
+    highlights: [
+      'The Bill tab\'s divider and "Billing" heading are gone — Line Items now flow straight into the money bar and invoices as one continuous section (the tab already says Bill).',
+      'The "Saving…" autosave note still appears in the top right while a change is in flight.',
+    ],
+  },
+  {
     version: 'v2.1686',
     date: '2026-08-15',
     title: 'Pipeline rows get an Edit Job button',
