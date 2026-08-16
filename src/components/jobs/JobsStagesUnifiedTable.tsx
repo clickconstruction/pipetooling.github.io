@@ -722,7 +722,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             title="Open the Edit tab for this job"
                             style={{ ...stagesSecondaryOutlineButtonBase, width: '100%', minWidth: '7.5rem', padding: '0.4rem 0.75rem', cursor: 'pointer', color: 'var(--text-700)' }}
                           >
-                            Edit Job
+                            Edit
                           </button>
                           <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                               <ShareJobButton

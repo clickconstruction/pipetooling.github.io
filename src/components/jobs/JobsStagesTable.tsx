@@ -429,7 +429,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             cursor: 'pointer',
                           }}
                         >
-                          Edit Job
+                          Edit
                         </button>
                         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                             <button

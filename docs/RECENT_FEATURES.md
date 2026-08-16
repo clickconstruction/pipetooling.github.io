@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1703)
+last_updated: 2026-08-16 (v2.1704)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1704)
+
+### Pipeline: the row button reads "Edit" (2026-08-16)
+Owner call: the v2.1686 "Edit Job" button on Pipeline rows shortens to **"Edit"** — the row is already a job, so "Job" was noise ([`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) + [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx); tooltip unchanged). Client-only — no migration.
 
 ## Latest Updates (v2.1703)
 
