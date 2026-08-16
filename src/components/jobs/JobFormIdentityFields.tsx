@@ -103,10 +103,11 @@ export function JobFormIdentityFields({
 
   return (
     <>
-      {/* Single line even on phones: nowrap so the fields shrink instead of wrapping.
-          The number fields shrink three times as fast (flex-shrink 3) so the Service type
-          column keeps room for its one-line label + trade pill at 375px. */}
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
+      {/* One row on desktop: numbers · Service type · Job Name (owner call,
+          v2.1697). Wrap lets Job Name (min 200px) drop to its own line on
+          phones; the number fields still shrink three times as fast so the
+          Service type column keeps its one-line label at 375px. */}
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         {hideHcpNumberField ? null : (
           <div style={{ flex: '0 3 90px', minWidth: 52 }}>
             <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
@@ -115,18 +116,23 @@ export function JobFormIdentityFields({
               value={hcpNumber}
               onChange={(e) => setHcpNumber(e.target.value)}
               placeholder="HCP"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+              style={{ width: '100%', boxSizing: 'border-box', height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
             />
           </div>
         )}
-        <div style={{ flex: '0 3 90px', minWidth: 52 }}>
+        {/* 99% of C#s are under 5 digits (owner call, v2.1697) — a fixed
+            ~5-digit box instead of a flexing column. */}
+        <div style={{ flex: '0 0 4.5rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>C#</label>
+          {/* height 36 = the SearchableSelect trigger's rendered height
+              (0.5rem×2 padding + text line + border) — the owner wants the
+              two boxes flush (v2.1697). */}
           <input
             type="text"
             value={clickNumber}
             onChange={(e) => setClickNumber(e.target.value)}
             placeholder="C#"
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+            style={{ width: '100%', boxSizing: 'border-box', height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
         </div>
         <div style={embedded ? { flex: '0 1 auto', minWidth: 0 } : { flex: '1 1 170px', minWidth: 0 }}>
@@ -168,10 +174,8 @@ export function JobFormIdentityFields({
             />
           </div>
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
+        <div style={{ flex: '1 1 200px', minWidth: 200 }}>
+          <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: 'var(--text-red-700)', marginLeft: '0.25rem' }}>*</span></label>
           <div style={{ ...JOB_FIELD_CLIPBOARD_WRAPPER_STYLE, position: 'relative' }}>
             <input
               ref={jobNameInputRef}
