@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1700)
+last_updated: 2026-08-16 (v2.1701)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1701)
+
+### Edit tab: the GC/Builder grows Phone / Email / Date met sub-rows (2026-08-16)
+Owner call: a linked GC now reads like the Customer block — the **GC/Builder** row carries the GC's name **· address**, and beneath it indented **Phone**, **Email**, and **Date met** (with the "(2 months ago)" age) pulled straight off the GC's customers record. The sub-rows are **read-only** — no pencil, no click — because the job keeps no copy of GC contact info (unlike the customer fields); edits happen in Customers. [`JobFormFactRow`](../src/components/jobs/JobFormFactRow.tsx) gains a static-row variant (`onToggle`/`children` optional → no toggle button, default cursor); the rows render only while a GC is linked. Render smoke covers values + the no-pencil contract. Client-only — no migration.
 
 ## Latest Updates (v2.1700)
 
