@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1711)
+last_updated: 2026-08-16 (v2.1712)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1712)
+
+### Banking: Visuals sub-tab — three Sankey money-flow views (2026-08-16)
+Owner picked all three mockups from the Sankey proposal round. New **Banking → Mercury → Visuals** tab (self-contained, Reconciliation mold — zero props, own fetches; the parent dispatcher skips the master 15k list while it's active) with a view switcher + period picker (This month / Quarter / YTD / All time, bounded by `APP_CALENDAR_TZ` wall dates): **(A) Where the money goes** — income → expense families → Drag Sort labels, with automatic "From reserves" (spend > money in) and "Kept" (money in > spend) bands and an "Unlabeled" band that nudges toward Drag Sort; **(B) Between accounts** — internal-transfer legs paired into account→account edges (same cents, opposite signs, ≤3-day gap, different accounts; unmatched legs surfaced, never guessed); **(C) Cards → jobs** — `debitCardTransaction` spend by attributed person → job splits, remainder to an amber "⚠ No job yet" band (kind is the RAW value — the Ledger's "Debit Card" is display formatting; first cut used the display string and drew $0). Pure kernels + 18 tests: [`mercurySankeyLayout.ts`](../src/lib/banking/mercurySankeyLayout.ts) (column layout, ribbon paths, tones — no chart library) and [`mercuryVisualsFlows.ts`](../src/lib/banking/mercuryVisualsFlows.ts) (period filter, family map with unknown-label fallback, transfer pairing, top-N folding; tones assigned alphabetically so period changes never repaint an entity). Component [`BankingMercuryVisualsTab`](../src/components/banking/BankingMercuryVisualsTab.tsx); router union + tab button + dispatcher early-return in [`Banking.tsx`](../src/pages/Banking.tsx). Books rules: duplicates excluded everywhere; Internal Transfers excluded from A, the subject of B. Help guide `banking-visuals` added. Client-only — no migration.
 
 ## Latest Updates (v2.1711)
 

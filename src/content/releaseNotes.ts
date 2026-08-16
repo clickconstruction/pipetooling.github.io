@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1712',
+    date: '2026-08-16',
+    title: 'See where money flows',
+    kind: 'feature',
+    highlights: [
+      'New Visuals tab on Banking → Mercury draws your money as rivers — the wider the band, the more dollars moved — with a time window picker (This month / Quarter / YTD / All time).',
+      '"Where the money goes" fans income out through expense families to your accounting labels, and shows honest bands for money drawn from reserves, money kept, and spend nobody has labeled yet.',
+      '"Between accounts" draws every internal transfer account-to-account, so you can see which account feeds which.',
+      '"Cards → jobs" follows card spend from each person to the jobs it was split to — the amber "No job yet" band is the purchases still waiting to be sorted.',
+    ],
+  },
+  {
     version: 'v2.1711',
     date: '2026-08-16',
     title: 'Quieter Customer row on Edit Job',
