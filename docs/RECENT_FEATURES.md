@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1714)
+last_updated: 2026-08-16 (v2.1715)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1715)
+
+### Banking Visuals: transaction detail modal — dig in and fix from the drill-down (2026-08-16)
+Owner picked mockup Option 2 (two panes). Drill-down rows on Banking → Mercury → Visuals are now buttons; clicking one opens [`BankingMercuryTxDetailModal`](../src/components/banking/BankingMercuryTxDetailModal.tsx): **left pane** = Mercury's record, read-only (posted in `APP_CALENDAR_TZ`, status, kind via `formatMercuryKind`, card nickname via `mercuryDebitCardIdFromRaw`, counterparty, bank memo, source, raw-JSON disclosure, "Open in Mercury ↗" from `dashboard_link`); **right pane** = the qualities the app computes from: **accounting label** (SearchableSelect over the Drag Sort labels; same `{mercury_transaction_id, label_id}` upsert; the Internal-Transfers × job-splits guard via `isInternalTransfersLabel` becomes its fifth call site), **person & job splits** (summary + Edit splits button opening the shared [`MercuryTransactionAllocationsModal`](../src/components/MercuryTransactionAllocationsModal.tsx) unchanged), and **note** (`mercury_transactions.note`). The modal self-fetches its full row + relations on open (the list loads narrow columns). Label saves patch the tab's caches so the Sankey behind the modals updates instantly (verified live: labeling an unlabeled tx moved Office Expense $25K→$26K, clearing reverted it); splits saves trigger a **silent** full refresh (`load({silent})` keeps open modals mounted). Z-stack: drill-down 1080 → detail 1100 → splits modal 1150 (its hardcoded z made the layers-below approach the only safe one). Tab now also fetches debit-card nicknames + `list_users_for_banking_attribution`. Help guide `banking-visuals` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1714)
 

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1715',
+    date: '2026-08-16',
+    title: 'Fix a transaction right from the picture',
+    kind: 'feature',
+    highlights: [
+      'Click any transaction in a Visuals drill-down list to open it: the bank\'s record on the left (with a link to Mercury and the raw detail), your books on the right.',
+      'Change the accounting label, edit the person and job splits, or add a note without leaving the chart — the rivers redraw the moment you save.',
+      'The same guardrails apply as everywhere else: Internal Transfers can\'t be put on a transaction that\'s split to jobs.',
+    ],
+  },
+  {
     version: 'v2.1714',
     date: '2026-08-16',
     title: 'The whole route, drawn',

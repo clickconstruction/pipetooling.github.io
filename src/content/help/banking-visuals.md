@@ -8,6 +8,8 @@ Banking → Mercury → **Visuals** draws your money as rivers: the wider the ba
 
 Hover any band or bar to see the exact dollar amount — and **click a band** to open the transactions behind it: a list with date, counterparty, account, and amount, plus the count and total up top.
 
+**Click a transaction in that list to open it.** The left side is the bank's record — posted time, card, memo, the raw detail, and an *Open in Mercury* link — and it's read-only. The right side is your books, and it's editable: change the **accounting label**, edit the **person and job splits** (the same Link-to-person-and-jobs window used everywhere else), or add a **note**. The moment you save, the rivers behind the window redraw — label a stray purchase and you'll see the dollars slide from the gray Unlabeled band into the right category.
+
 ## Where the money goes
 
 The profit-and-loss as a picture: money in on the left, fanning out through expense families (People, Job costs, Vehicles, Overhead) to the same accounting labels you maintain in Drag Sort.
