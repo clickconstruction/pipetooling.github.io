@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1704)
+last_updated: 2026-08-16 (v2.1705)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1705)
+
+### Edit tab: phone numbers call, emails open mail (2026-08-16)
+Owner call: the Phone and Email values on the Edit tab's fact rows — the Customer block and the GC block alike — are now `tel:` / `mailto:` links: tap the number to call, tap the address to email ([`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx) `contactLink`; tel strips formatting to digits). Taps stopPropagation so they don't also open the row's editor; the pencil still edits. Render test pins the hrefs. Client-only — no migration.
 
 ## Latest Updates (v2.1704)
 

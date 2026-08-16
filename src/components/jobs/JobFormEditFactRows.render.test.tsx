@@ -123,6 +123,14 @@ describe('JobFormEditFactRows', () => {
     expect(screen.queryByRole('link', { name: 'Pictures' })).toBeNull()
   })
 
+  it('phone and email values are tap-to-call / tap-to-email links (v2.1705)', () => {
+    renderWithProviders(<Harness />)
+    const phone = screen.getByRole('link', { name: '(210) 415-5375' }) as HTMLAnchorElement
+    expect(phone.getAttribute('href')).toBe('tel:2104155375')
+    const email = screen.getByRole('link', { name: 'Todd@CopProperties.com' }) as HTMLAnchorElement
+    expect(email.getAttribute('href')).toBe('mailto:Todd@CopProperties.com')
+  })
+
   it('opening the Phone row reveals the editor and edits flow to state', () => {
     renderWithProviders(<Harness />)
     fireEvent.click(screen.getByRole('button', { name: 'Edit Phone' }))

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1705',
+    date: '2026-08-16',
+    title: 'Tap to call or email from Edit',
+    kind: 'feature',
+    highlights: [
+      'On the Edit tab, tapping a phone number now starts a call and tapping an email opens a message — for both the customer and the GC.',
+      'The pencil still opens the field for editing.',
+    ],
+  },
+  {
     version: 'v2.1704',
     date: '2026-08-16',
     title: 'Pipeline button reads "Edit"',

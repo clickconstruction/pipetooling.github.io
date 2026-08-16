@@ -263,6 +263,21 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }),
   })
 
+  /**
+   * Tap-to-call / tap-to-email (owner call, v2.1705): the displayed number or
+   * address IS the link. stopPropagation so tapping it doesn't also open the
+   * row's editor; no preventDefault — the tel:/mailto: proceeds natively.
+   */
+  const contactLink = (kind: 'tel' | 'mailto', raw: string) => (
+    <a
+      href={kind === 'tel' ? `tel:${raw.replace(/[^+\d]/g, '')}` : `mailto:${raw.trim()}`}
+      onClick={(e) => e.stopPropagation()}
+      style={{ color: 'var(--text-link)', textDecoration: 'none' }}
+    >
+      {raw.trim()}
+    </a>
+  )
+
   const folderLink = (label: string, url: string) => (
     <a
       href={url}
@@ -476,7 +491,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       <JobFormFactRow
         label="Phone"
         labelIcon={CUSTOMER_SUBROW_INDENT}
-        value={customerPhone.trim() || null}
+        value={customerPhone.trim() ? contactLink('tel', customerPhone) : null}
         expanded={openRows.has('phone')}
         onToggle={() => toggleRow('phone')}
       >
@@ -488,7 +503,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       <JobFormFactRow
         label="Email"
         labelIcon={CUSTOMER_SUBROW_INDENT}
-        value={customerEmail.trim() || null}
+        value={customerEmail.trim() ? contactLink('mailto', customerEmail) : null}
         expanded={openRows.has('email')}
         onToggle={() => toggleRow('email')}
       >
@@ -565,8 +580,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           happen in Customers). */}
       {gcCustomer ? (
         <>
-          <JobFormFactRow label="Phone" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.phone.trim() || null} />
-          <JobFormFactRow label="Email" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.email.trim() || null} />
+          <JobFormFactRow label="Phone" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.phone.trim() ? contactLink('tel', gcContact.phone) : null} />
+          <JobFormFactRow label="Email" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.email.trim() ? contactLink('mailto', gcContact.email) : null} />
           <JobFormFactRow
             label="Date met"
             labelIcon={CUSTOMER_SUBROW_INDENT}
