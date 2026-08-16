@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1698)
+last_updated: 2026-08-16 (v2.1699)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1699)
+
+### Line Items: tidier header, Stripe preview above the Job Total (2026-08-16)
+Three owner calls on the Bill tab's ① Line Items section ([`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx)): the "ⓘ What are line items?" helper toggle retires (the help guide covers it; its `helperOpen` state is gone), **Multiple Segment Generator** moves to the header's right edge (`marginLeft: auto`), and **Stripe preview** swaps above the **Job Total** in the footer's right column. Client-only — no migration.
 
 ## Latest Updates (v2.1698)
 

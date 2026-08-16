@@ -79,7 +79,6 @@ export function JobFormFixturesSection({
   riderRows,
   riderFeesDollars = 0,
 }: JobFormFixturesSectionProps) {
-  const [helperOpen, setHelperOpen] = useState(false)
   // Phone-width focus expansion (v2.1229): while a row's name field (or any
   // field in that row) holds focus on a narrow viewport, the name spans the
   // full grid width and the ×/$ inputs drop to their own row below, so the
@@ -135,29 +134,15 @@ export function JobFormFixturesSection({
                 : {}),
             }}
           >
+            {/* Title left, Segment Generator right; the "What are line items?"
+                helper retired (owner call, v2.1699 — the help guide covers it). */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
               <span style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)' }}>① Line Items</span>
               <button
                 type="button"
-                onClick={() => setHelperOpen((v) => !v)}
-                aria-expanded={helperOpen}
-                style={{
-                  padding: 0,
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-link)',
-                  fontSize: '0.6875rem',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ⓘ What are line items?
-              </button>
-              <button
-                type="button"
                 onClick={onOpenSegmentGenerator}
                 style={{
+                  marginLeft: 'auto',
                   padding: 0,
                   background: 'transparent',
                   border: 'none',
@@ -172,14 +157,6 @@ export function JobFormFixturesSection({
                 Multiple Segment Generator
               </button>
             </div>
-            {helperOpen && (
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Specific segments of work{riderFeesDollars > 0 ? ' — plus riders (hazmat fees)' : ''} add to the{' '}
-                  <strong>Job Total</strong>. Each line can carry its own scope notes and be billed on its own invoice.
-                </span>
-              </div>
-            )}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               {/* No header band (v2.1149) — the inputs self-label: count and unit
                   price carry muted "×" / "$" prefixes inside their own borders
@@ -688,21 +665,9 @@ export function JobFormFixturesSection({
               >
                 + Add line item
               </button>
-              {/* Stripe preview rides with the number it previews (owner call,
-                  v2.1689) — moved down from the title row. */}
+              {/* Stripe preview rides with the number it previews (v2.1689),
+                  sitting ABOVE the Job Total (owner call, v2.1699). */}
               <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
-                <span
-                  aria-live="polite"
-                  title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
-                  style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
-                >
-                  Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
-                  {riderFeesDollars > 0 ? (
-                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
-                    </span>
-                  ) : null}
-                </span>
                 <button
                   type="button"
                   aria-haspopup="dialog"
@@ -730,6 +695,18 @@ export function JobFormFixturesSection({
                   </svg>
                   Stripe preview
                 </button>
+                <span
+                  aria-live="polite"
+                  title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
+                  style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                >
+                  Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
+                  {riderFeesDollars > 0 ? (
+                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
+                    </span>
+                  ) : null}
+                </span>
               </span>
             </div>
           </div>
