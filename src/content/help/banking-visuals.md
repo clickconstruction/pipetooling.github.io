@@ -6,7 +6,7 @@ keywords: banking, mercury, visuals, sankey, money flow, transfers, accounts, ca
 ---
 Banking → Mercury → **Visuals** draws your money as rivers: the wider the band, the more dollars moved. Three views answer three different questions, and two rows of buttons at the top switch the view and the time window ({{button:outline|This month}} · {{button:outline|Quarter}} · {{button:blue|YTD}} · {{button:outline|All time}}).
 
-Hover any band or bar to see the exact dollar amount.
+Hover any band or bar to see the exact dollar amount — and **click a band** to open the transactions behind it: a list with date, counterparty, account, and amount, plus the count and total up top.
 
 ## Where the money goes
 

@@ -66,6 +66,9 @@ describe('buildMoneyFlowSankey', () => {
     const fam = r.input.nodes.find((n) => n.id === 'fam:People')!
     const label = r.input.nodes.find((n) => n.id === 'label:Contract Labor')!
     expect(label.tone).toBe(fam.tone)
+    // Click-through: fam→label and in→fam ribbons both carry the expense tx ids.
+    expect(r.input.links.find((l) => l.target === 'label:Contract Labor')?.txIds).toEqual(['e1'])
+    expect(r.input.links.find((l) => l.source === 'in:income' && l.target === 'fam:People')?.txIds).toEqual(['e1'])
   })
 
   it('grows a From reserves inflow when spend exceeds money in', () => {
@@ -150,6 +153,9 @@ describe('pairInternalTransfers / buildTransferSankey', () => {
     expect(r.pairedTotal).toBe(800)
     const edge = r.input.links.find((l) => l.source === 'from:A' && l.target === 'to:B')
     expect(edge?.value).toBe(800)
+    // Click-through: the edge carries only the OUT leg of each transfer, so the
+    // drill-down total matches the ribbon value instead of doubling it.
+    expect([...(edge?.txIds ?? [])].sort()).toEqual(['o1', 'o2'])
     // A appears only on the left here, B only on the right — but if both sides
     // existed the tone would match; assert tones are assigned alphabetically.
     const fromA = r.input.nodes.find((n) => n.id === 'from:A')!
@@ -181,6 +187,10 @@ describe('buildCardsJobsSankey', () => {
     expect(abraham.find((l) => l.target === 'job:j1')?.value).toBe(60)
     expect(abraham.find((l) => l.target === 'job:none')?.value).toBe(40)
     expect(r.input.links.find((l) => l.source === 'person:No person')?.target).toBe('job:none')
+    // Click-through: each ribbon knows its transactions, deduplicated.
+    expect(abraham.find((l) => l.target === 'job:j1')?.txIds).toEqual(['t1'])
+    expect(abraham.find((l) => l.target === 'job:none')?.txIds).toEqual(['t1'])
+    expect(r.input.links.find((l) => l.source === 'person:No person')?.txIds).toEqual(['t2'])
   })
 
   it('allocation amounts never exceed the transaction total', () => {

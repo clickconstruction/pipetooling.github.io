@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1713',
+    date: '2026-08-16',
+    title: 'Click a money river, see the receipts',
+    kind: 'feature',
+    highlights: [
+      'Every band on Banking → Mercury → Visuals is now clickable — click one to open the exact transactions behind it, with date, counterparty, account, and amount.',
+      'The list shows the count and total up top, so a click doubles as a quick audit of any flow.',
+    ],
+  },
+  {
     version: 'v2.1712',
     date: '2026-08-16',
     title: 'See where money flows',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1712)
+last_updated: 2026-08-16 (v2.1713)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1713)
+
+### Banking Visuals: click a ribbon → the transactions behind it (2026-08-16)
+Follow-up to v2.1712, second half of the proposal. Every Sankey ribbon on Banking → Mercury → Visuals is now click-through: kernels attach the underlying transaction ids to each link (`SankeyLinkInput.txIds`, carried through [`mercurySankeyLayout.ts`](../src/lib/banking/mercurySankeyLayout.ts); [`mercuryVisualsFlows.ts`](../src/lib/banking/mercuryVisualsFlows.ts) — A: label + family ribbons carry their expense txs; B: edges carry both legs of every paired transfer, unmatched-leg ribbons their single leg; C: person→job ribbons carry the contributing card txs, deduplicated when a split tx feeds the same ribbon twice), and [`BankingMercuryVisualsTab`](../src/components/banking/BankingMercuryVisualsTab.tsx) opens a drill-down modal (date · counterparty · account · signed amount; count + total in the header; 400 most-recent row cap; backdrop/Close dismissal; cleared on view/period switch). Transaction fetch adds `counterparty_name`. Clickable paths get `role="button"`, pointer cursor, and a "click for transactions" tooltip suffix. Help guide `banking-visuals` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1712)
 
