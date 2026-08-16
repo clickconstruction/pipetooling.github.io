@@ -123,7 +123,10 @@ export function JobFormFixturesSection({
           <div
             ref={fixturesSectionHighlightRef}
             style={{
-              marginBottom: '1rem',
+              // v2.1703: breathe above the title, hug the billing block below
+              // (the region's flex gap alone separates them).
+              marginTop: '0.35rem',
+              marginBottom: 0,
               borderRadius: 8,
               ...(fixturesSectionHighlight
                 ? {
