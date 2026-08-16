@@ -48,6 +48,13 @@ type RowKey =
   | 'bid'
   | 'development'
 
+/**
+ * Phone/Email hold the job's copy of the linked customer's contact info, so
+ * their labels indent by exactly the Customer row's icon width (12px) — the
+ * flex gap supplies the rest — reading as children of Customer (v2.1693).
+ */
+const CUSTOMER_SUBROW_INDENT = <span aria-hidden style={{ width: 12, flexShrink: 0 }} />
+
 const fieldInputStyle = {
   width: '100%',
   padding: '0.5rem',
@@ -401,6 +408,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Phone"
+        labelIcon={CUSTOMER_SUBROW_INDENT}
         value={customerPhone.trim() || null}
         expanded={openRows.has('phone')}
         onToggle={() => toggleRow('phone')}
@@ -412,6 +420,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Email"
+        labelIcon={CUSTOMER_SUBROW_INDENT}
         value={customerEmail.trim() || null}
         expanded={openRows.has('email')}
         onToggle={() => toggleRow('email')}

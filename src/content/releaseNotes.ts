@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1693',
+    date: '2026-08-15',
+    title: 'Phone and Email tuck under Customer',
+    kind: 'fix',
+    highlights: [
+      'On the Edit tab, the Phone and Email rows now indent to line up with the word "Customer" — a visual cue that they carry the customer\'s contact info for this job.',
+    ],
+  },
+  {
     version: 'v2.1692',
     date: '2026-08-15',
     title: 'Cost Timeline: tidier legend',
