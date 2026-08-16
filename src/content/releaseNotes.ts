@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1706',
+    date: '2026-08-16',
+    title: 'Job header icons realigned',
+    kind: 'fix',
+    highlights: [
+      'The header icons moved to the right edge of the Job window, with Share anchoring the far right and the calendar one slot left.',
+      'The paid-in-full email envelope now wears a small green $ so it reads as the money email at a glance.',
+    ],
+  },
+  {
     version: 'v2.1705',
     date: '2026-08-16',
     title: 'Tap to call or email from Edit',

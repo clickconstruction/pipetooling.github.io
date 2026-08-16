@@ -1323,7 +1323,9 @@ export default function DetailJobModal({
                 )}
               </span>
             ) : null}
-            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
+            {/* Pane mode (v2.1706): pill left, every icon pushed right — this
+                zero-width spacer's auto margin does the split. */}
+            {paneMode ? <span aria-hidden style={{ marginLeft: 'auto' }} /> : null}
             {canShareSupplyHouse && fullJob ? (
               <button
                 type="button"
@@ -1349,6 +1351,41 @@ export default function DetailJobModal({
                 {/* Storefront glyph */}
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden>
                   <path d="M96 96L544 96L592 224L592 256C592 291.3 563.3 320 528 320C505.1 320 485 307.9 473.6 289.7C462.3 307.9 442.2 320 419.2 320C396.2 320 376.1 307.9 364.8 289.7C353.4 307.9 333.3 320 310.4 320C287.4 320 267.3 307.9 256 289.7C244.7 307.9 224.6 320 201.6 320C178.6 320 158.5 307.9 147.2 289.7C135.8 307.9 115.7 320 92.8 320C69.9 320 48 291.3 48 256L48 224L96 96zM112 352L112 544L288 544L288 432L384 432L384 544L528 544L528 352C534 352 550 350 560 344L560 544C560 561.7 545.7 576 528 576L112 576C94.3 576 80 561.7 80 544L80 344C90 350 106 352 112 352z" />
+                </svg>
+              </button>
+            ) : null}
+            {/* Calendar sits left of send-task (owner call, v2.1706). */}
+            {showDetailHeaderRightCluster && showWeekDispatchButton ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setJobCalendarOpen(true)
+                }}
+                title="Open the job calendar — days scheduled, who, and every appointment"
+                aria-label="Open the job calendar"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.35rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-link)',
+                  borderRadius: 4,
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 640 640"
+                  width={20}
+                  height={20}
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
                 </svg>
               </button>
             ) : null}
@@ -1388,40 +1425,6 @@ export default function DetailJobModal({
             ) : null}
             {showDetailHeaderRightCluster ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
-              {showWeekDispatchButton ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setJobCalendarOpen(true)
-                  }}
-                  title="Open the job calendar — days scheduled, who, and every appointment"
-                  aria-label="Open the job calendar"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0.35rem',
-                    margin: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-link)',
-                    borderRadius: 4,
-                  }}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 640 640"
-                    width={20}
-                    height={20}
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
-                  </svg>
-                </button>
-              ) : null}
               {(authRole === 'dev' || authRole === 'master_technician') && jobId ? (
                 <button
                   type="button"
@@ -1444,17 +1447,38 @@ export default function DetailJobModal({
                     borderRadius: 4,
                   }}
                 >
-                  {/* 18px, not 20: the filled envelope is optically denser than the outline neighbors. */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"
-                    width={18}
-                    height={18}
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48L48 64zM0 176L0 384c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-208L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z" />
-                  </svg>
+                  {/* 18px, not 20: the filled envelope is optically denser than
+                      the outline neighbors. The green "$" badge says PAID
+                      email at a glance (owner call, v2.1706). */}
+                  <span style={{ position: 'relative', display: 'inline-flex' }}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 512 512"
+                      width={18}
+                      height={18}
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48L48 64zM0 176L0 384c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-208L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z" />
+                    </svg>
+                    <span
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        top: -5,
+                        right: -5,
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        color: '#16a34a',
+                        background: 'var(--surface)',
+                        borderRadius: '50%',
+                        padding: '1px 2px',
+                      }}
+                    >
+                      $
+                    </span>
+                  </span>
                 </button>
               ) : null}
               {showEditJobButton ? (
@@ -1493,6 +1517,8 @@ export default function DetailJobModal({
               ) : null}
             </div>
             ) : null}
+            {/* Share anchors the far right (owner call, v2.1706). */}
+            <ShareJobButton jobId={jobId} fields={shareFields} size={18} padding="0.35rem" color="var(--text-600)" />
             {!paneMode ? (
               <button
                 type="button"
