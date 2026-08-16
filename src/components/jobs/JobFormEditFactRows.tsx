@@ -322,6 +322,61 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       >
         <JobFormPeoplePicker bare users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
       </JobFormFactRow>
+      {/* Folders sit above the customer block (owner call, v2.1702) — the
+          Drive links are what crews reach for most. */}
+      <JobFormFactRow
+        label="Folders"
+        value={null}
+        valueTail={
+          folders.files || folders.pictures ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              {folders.files ? folderLink('Files', folders.files) : null}
+              {folders.files && folders.pictures ? <span style={{ color: 'var(--text-faint)' }}>·</span> : null}
+              {folders.pictures ? folderLink('Pictures', folders.pictures) : null}
+            </span>
+          ) : null
+        }
+        expanded={openRows.has('folders')}
+        onToggle={() => toggleRow('folders')}
+      >
+        <div style={{ marginBottom: '0.6rem' }}>
+          <label htmlFor="job-form-customer-job-files" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>
+            Customer Files
+          </label>
+          <input
+            id="job-form-customer-job-files"
+            ref={googleDriveInputRef}
+            type="url"
+            value={googleDriveLink}
+            onChange={(e) => setGoogleDriveLink(e.target.value)}
+            placeholder="https://drive.google.com/..."
+            style={fieldInputStyle}
+          />
+        </div>
+        <div
+          ref={jobPicturesLinkHighlightRef}
+          style={{
+            borderRadius: 8,
+            ...(jobPicturesLinkHighlight
+              ? { padding: '0.75rem', background: 'var(--bg-blue-tint)', border: '2px solid #93c5fd' }
+              : {}),
+          }}
+        >
+          <label htmlFor="job-form-customer-job-pictures" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>
+            Customer Pictures
+          </label>
+          <input
+            id="job-form-customer-job-pictures"
+            ref={jobPicturesLinkInputRef}
+            type="url"
+            value={jobPicturesLink}
+            onChange={(e) => setJobPicturesLink(e.target.value)}
+            placeholder="https://drive.google.com/..."
+            style={fieldInputStyle}
+          />
+        </div>
+        <CustomerAndJobFoldersLink />
+      </JobFormFactRow>
       <JobFormFactRow
         label="Customer"
         labelIcon={<CustomerContactCardIcon size={12} style={{ flexShrink: 0 }} />}
@@ -524,59 +579,6 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           />
         </>
       ) : null}
-      <JobFormFactRow
-        label="Folders"
-        value={null}
-        valueTail={
-          folders.files || folders.pictures ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-              {folders.files ? folderLink('Files', folders.files) : null}
-              {folders.files && folders.pictures ? <span style={{ color: 'var(--text-faint)' }}>·</span> : null}
-              {folders.pictures ? folderLink('Pictures', folders.pictures) : null}
-            </span>
-          ) : null
-        }
-        expanded={openRows.has('folders')}
-        onToggle={() => toggleRow('folders')}
-      >
-        <div style={{ marginBottom: '0.6rem' }}>
-          <label htmlFor="job-form-customer-job-files" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>
-            Customer Files
-          </label>
-          <input
-            id="job-form-customer-job-files"
-            ref={googleDriveInputRef}
-            type="url"
-            value={googleDriveLink}
-            onChange={(e) => setGoogleDriveLink(e.target.value)}
-            placeholder="https://drive.google.com/..."
-            style={fieldInputStyle}
-          />
-        </div>
-        <div
-          ref={jobPicturesLinkHighlightRef}
-          style={{
-            borderRadius: 8,
-            ...(jobPicturesLinkHighlight
-              ? { padding: '0.75rem', background: 'var(--bg-blue-tint)', border: '2px solid #93c5fd' }
-              : {}),
-          }}
-        >
-          <label htmlFor="job-form-customer-job-pictures" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>
-            Customer Pictures
-          </label>
-          <input
-            id="job-form-customer-job-pictures"
-            ref={jobPicturesLinkInputRef}
-            type="url"
-            value={jobPicturesLink}
-            onChange={(e) => setJobPicturesLink(e.target.value)}
-            placeholder="https://drive.google.com/..."
-            style={fieldInputStyle}
-          />
-        </div>
-        <CustomerAndJobFoldersLink />
-      </JobFormFactRow>
       <JobFormFactRow
         label="Project"
         value={projectId ? (projects.find((p) => p.id === projectId)?.name ?? '…') : null}

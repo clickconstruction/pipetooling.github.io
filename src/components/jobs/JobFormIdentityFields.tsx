@@ -2,9 +2,13 @@ import { useRef } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 
+/* height 36 = the SearchableSelect trigger's rendered height — Job Name and
+   Job Address sit flush with Service type and the number boxes (v2.1702). */
 const JOB_FIELD_CLIPBOARD_WRAPPER_STYLE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
+  height: 36,
+  boxSizing: 'border-box',
   border: '1px solid var(--border-strong)',
   borderRadius: 4,
   background: 'var(--surface)',
@@ -13,7 +17,7 @@ const JOB_FIELD_CLIPBOARD_WRAPPER_STYLE: CSSProperties = {
 const JOB_FIELD_TEXT_INPUT_IN_WRAPPER_STYLE: CSSProperties = {
   flex: 1,
   minWidth: 0,
-  padding: '0.5rem',
+  padding: '0 0.5rem',
   paddingRight: '2.5rem',
   border: 'none',
   outline: 'none',
@@ -109,7 +113,8 @@ export function JobFormIdentityFields({
           Service type column keeps its one-line label at 375px. */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         {hideHcpNumberField ? null : (
-          <div style={{ flex: '0 3 90px', minWidth: 52 }}>
+          /* ~3-digit box (owner call, v2.1702) — HCP numbers are short. */
+          <div style={{ flex: '0 0 3.5rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
             <input
               type="text"
