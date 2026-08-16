@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1702',
+    date: '2026-08-16',
+    title: 'Edit tab: flush fields, Folders up top',
+    kind: 'fix',
+    highlights: [
+      'The HCP box slimmed to its usual 3 digits, and Job Name and Job Address now sit at the same height as Service type — the whole identity row lines up.',
+      'Folders moved up under Team, above the customer info — the Drive links are the most-reached-for thing on the tab.',
+    ],
+  },
+  {
     version: 'v2.1701',
     date: '2026-08-16',
     title: 'GC/Builder shows its contact info',

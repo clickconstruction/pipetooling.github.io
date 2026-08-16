@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1701)
+last_updated: 2026-08-16 (v2.1702)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1702)
+
+### Edit tab: 3-digit HCP box, flush field heights, Folders above Customer (2026-08-16)
+Three owner calls. **(1)** The HCP box shrinks to a fixed ~3-digit width (56px) — HCP numbers are short ([`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx)). **(2)** Job Name and Job Address pin to the same 36px as Service type and the number boxes (the clipboard-wrapper style gains `height: 36`; inner inputs drop vertical padding) — measured 36/36/36 live. **(3)** The **Folders** row moves above the Customer block, right below Team ([`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx)) — the Drive links are what crews reach for most. Client-only — no migration.
 
 ## Latest Updates (v2.1701)
 
