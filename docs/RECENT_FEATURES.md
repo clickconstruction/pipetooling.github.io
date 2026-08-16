@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1710)
+last_updated: 2026-08-16 (v2.1711)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1711)
+
+### Edit tab: green "linked" chip retires from the Customer row (2026-08-16)
+Owner call: the Customer fact row on the Job window's Edit tab drops the green **linked** chip — a linked customer is the normal state and needs no badge. The amber **Not in Customers** warning (free-typed contact with no customer record) still shows; it's now the row's only chip, so a chip on that row always means something needs attention. [`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx): the two-variant `chipStyle` helper collapses to a warn-only style; render smoke asserts the chip's absence. Kernel [`jobFormFactRows.ts`](../src/lib/jobs/jobFormFactRows.ts) unchanged (`linked` still drives the address tail). Client-only — no migration.
 
 ## Latest Updates (v2.1710)
 

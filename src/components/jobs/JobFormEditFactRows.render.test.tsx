@@ -117,7 +117,8 @@ describe('JobFormEditFactRows', () => {
     }
     expect(screen.getByText('Abraham, Paige')).toBeTruthy()
     expect(screen.getByText('(210) 415-5375')).toBeTruthy()
-    expect(screen.getByText('linked')).toBeTruthy()
+    // v2.1711: the green "linked" chip is gone — only the amber "Not in Customers" warning ever shows.
+    expect(screen.queryByText('linked')).toBeNull()
     // Folders row: the set Files link is inline; Pictures (unset) is absent.
     expect(screen.getByRole('link', { name: 'Files' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Pictures' })).toBeNull()
