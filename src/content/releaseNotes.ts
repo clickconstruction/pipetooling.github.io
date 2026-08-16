@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1718',
+    date: '2026-08-16',
+    title: 'Follow-Up Mode: no job falls through the cracks',
+    kind: 'feature',
+    highlights: [
+      'A new Follow-ups button on the Jobs Pipeline deals you every job that\'s been quiet too long for its stage, stalest first — one card at a time, with the street view, the money picture, and the last few notes.',
+      'Type a note and press Enter to post it to the job\'s activity thread and move to the next card; "Looks fine" rests a job for a few days; Snooze parks it while you wait on a customer.',
+      'Review periods are yours to set (⚙ on the deck): how many quiet days each stage gets before it needs eyes. One setting for the whole office.',
+    ],
+  },
+  {
     version: 'v2.1717',
     date: '2026-08-16',
     title: 'Click a bar, meet the payees',

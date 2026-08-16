@@ -144,6 +144,7 @@ import {
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from '../../lib/jobsStagesScheduleSessionSearch'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
+import { JobsFollowupModal } from './JobsFollowupModal'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -674,6 +675,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   /** Focus ring for the unified command bar (v2.1187) — the input inside is borderless. */
   const [stagesSearchBarFocused, setStagesSearchBarFocused] = useState(false)
+  /** Job Follow-Up Mode deck (v2.1718). */
+  const [followupOpen, setFollowupOpen] = useState(false)
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -1327,6 +1330,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               {shortNewJobButtonLabel ? 'New' : 'New Job'}
             </button>
+            <button
+              type="button"
+              onClick={() => setFollowupOpen(true)}
+              aria-label="Open job follow-ups"
+              style={{
+                padding: '0.5rem 0.9rem',
+                background: 'var(--bg-amber-tint)',
+                color: 'var(--text-amber-800)',
+                border: '1px solid var(--border-amber-soft)',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Follow-ups
+            </button>
+            {followupOpen ? <JobsFollowupModal open onClose={() => setFollowupOpen(false)} /> : null}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{

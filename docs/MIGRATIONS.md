@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 16, 2026
 
+**`20260816193117_job_followups.sql`** _(apply via `supabase db push` with the v2.1718 merge — additive tables + SECURITY INVOKER read RPC, old clients unaffected; the new client degrades to an empty queue until applied)_
+- **Purpose**: Job Follow-Up Mode storage — `job_followup_reviews` ("Looks fine" stamps and snoozes; latest row per job governs re-entry), `job_followup_settings` (org-wide per-stage review periods, singleton row seeded with defaults; UPDATE restricted to dev/master), and `list_job_followup_activity(p_today)` (latest note/status-event/work/bill activity + next scheduled visit per open job; SECURITY INVOKER so the caller's RLS governs every subquery). Client: [`src/lib/jobs/jobFollowupQueue.ts`](../src/lib/jobs/jobFollowupQueue.ts) + [`jobFollowupStore.ts`](../src/lib/jobs/jobFollowupStore.ts).
+- **Category**: Jobs / new tables + RPC
+
 **`20260816064152_bid_board_self_highlight.sql`** _(apply via `supabase db push` with the v2.1710 merge — additive nullable column, old clients unaffected)_
 - **Purpose**: `users.bid_board_self_highlight` (jsonb, nullable) — each user's Bid Board "that's you" name-box colors, per theme: `{ light: { bg, text }, dark: { bg, text } }` with `text: 'auto'` meaning contrast-picked. Written only by the owner through the existing "Users can update own profile" policy; parsed defensively by `src/lib/bids/bidBoardSelfHighlight.ts` (malformed values degrade to theme-aware defaults).
 - **Category**: Bids / column change
