@@ -4,7 +4,6 @@ import { FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatTimeSince } from '../../lib/jobs/jobFormatting'
 import { jobBilledUnpaidDollars, stagesJobLevelStripeEmailedHintInvoice } from '../../lib/jobs/invoiceBilling'
-import { jobBillingUnallocatedDollars } from '../../lib/jobsStagesBoard'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
@@ -136,10 +135,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     pctCompleteSavingId,
     updateJobPctComplete,
     commitStagesPctWithNote,
-    setCreatePartialInvoiceAmount,
-    setCreatePartialInvoiceJob,
     openEdit,
-    openStagesDetailJobModal,
     setAiaG702StagesJob,
     canCreateHazmatFee,
     openHazmatFee,
@@ -405,49 +401,33 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                           </button>
                         )}
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                            {(() => {
-                              const rem = jobBillingUnallocatedDollars(j)
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => { setCreatePartialInvoiceAmount(''); setCreatePartialInvoiceJob(j) }}
-                                  disabled={rem <= 0}
-                                  title={rem <= 0 ? 'No remaining amount' : 'Create partial invoice'}
-                                  aria-label="Create partial invoice"
-                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? 'var(--text-faint)' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                    <path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
-                                  </svg>
-                                </button>
-                              )
-                            })()}
-                            <button
-                              type="button"
-                              onClick={() => openEdit(j)}
-                              title="Edit"
-                              aria-label="Edit"
-                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openStagesDetailJobModal(j)}
-                              title="Job detail"
-                              aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
-                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
-                              </svg>
-                            </button>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch' }}>
+                        {/* One big Edit Job target (owner call, v2.1686) — replaces the
+                            partial-invoice / Edit / Job detail icon trio. Job detail
+                            stays a click away via the job name; partial invoicing
+                            lives on the Bill tab (and the mobile card menu). */}
+                        <button
+                          type="button"
+                          onClick={() => openEdit(j)}
+                          title="Open the Edit tab for this job"
+                          style={{
+                            padding: '0.4rem 0.75rem',
+                            fontSize: '0.8125rem',
+                            lineHeight: 1.2,
+                            textAlign: 'center',
+                            background: 'none',
+                            color: 'var(--text-700)',
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: 4,
+                            width: '100%',
+                            minWidth: '7.5rem',
+                            boxSizing: 'border-box',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Edit Job
+                        </button>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                             <button
                               type="button"
                               onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}

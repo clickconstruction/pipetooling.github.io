@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1686',
+    date: '2026-08-15',
+    title: 'Pipeline rows get an Edit Job button',
+    kind: 'feature',
+    highlights: [
+      'The three small icons on each Pipeline row (partial invoice, edit, job detail) are now one full-size "Edit Job" button that opens the job\'s Edit tab — much easier to hit.',
+      'Partial invoices moved to the Bill tab\'s Break off slider (the mobile ⋯ menu keeps its Partial invoice shortcut); opening the job window is still one click on the job\'s name.',
+      'Share and the orange tool icons stay, in one tidy row under the button.',
+    ],
+  },
+  {
     version: 'v2.1685',
     date: '2026-08-15',
     title: 'Full-screen activity: reports open',

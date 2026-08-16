@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1685)
+last_updated: 2026-08-15 (v2.1686)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1686)
+
+### Pipeline: one "Edit Job" button replaces the three-icon cluster (2026-08-15)
+Owner call after a mockup round ("option C"): the Progress & payment cell's icon trio — green **Create partial invoice** doc, **Edit** pencil, **Job detail** briefcase — becomes a single full-width **Edit Job** button styled like the status buttons above it, opening the Job window's Edit tab (`openEdit`). Applied to both desktop job-row stacks ([`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) job rows + [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx)); the leftover Share / Click Tooling / Lien / AIA / Hazmat icons collapse into one quiet right-aligned row beneath. **Dropped**: the row-level partial-invoice icon (owner call) — partial billing lives on the Bill tab's Break off slider (and the mobile ⋯ menu keeps its Partial invoice item); and the Job detail briefcase (the job name opens the same window, one tab away). The unified table's *invoice-merged* rows keep their inline icon strip (different context, follow-up candidate). Help guide `ready-to-bill-pipeline` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1685)
 
