@@ -56,7 +56,8 @@ type JobFormFixturesSectionProps = {
  * The "① Line Items" grid in the Edit/New Job
  * modal: one row per fixture (autosizing name with an in-border scope pencil,
  * count and unit price as ×/$ input groups) with add/remove controls, a
- * title-row "Stripe preview" trigger (all-lines dialog, v2.1223), and a
+ * "Stripe preview" trigger under the Job Total (all-lines dialog, v2.1223;
+ * moved beside the number it previews in v2.1689), and a
  * near-limit Stripe line-length counter in the expanded scope block. Pure
  * render; all state, the highlight ref/effects, and the Stripe-preview dialog
  * itself stay in the shell and come in as props.
@@ -169,33 +170,6 @@ export function JobFormFixturesSection({
                 }}
               >
                 Multiple Segment Generator
-              </button>
-              <button
-                type="button"
-                aria-haspopup="dialog"
-                aria-controls="stripe-fixture-line-preview-dialog"
-                onClick={onOpenStripeFixturePreview}
-                title="Preview the Stripe invoice line for every line item"
-                style={{
-                  padding: 0,
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-link)',
-                  textDecoration: 'underline',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                Stripe preview
               </button>
             </div>
             {helperOpen && (
@@ -714,17 +688,48 @@ export function JobFormFixturesSection({
               >
                 + Add line item
               </button>
-              <span
-                aria-live="polite"
-                title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
-                style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
-              >
-                Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
-                {riderFeesDollars > 0 ? (
-                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                    {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
-                  </span>
-                ) : null}
+              {/* Stripe preview rides with the number it previews (owner call,
+                  v2.1689) — moved down from the title row. */}
+              <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                <span
+                  aria-live="polite"
+                  title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
+                  style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                >
+                  Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
+                  {riderFeesDollars > 0 ? (
+                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
+                    </span>
+                  ) : null}
+                </span>
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-controls="stripe-fixture-line-preview-dialog"
+                  onClick={onOpenStripeFixturePreview}
+                  title="Preview the Stripe invoice line for every line item"
+                  style={{
+                    padding: 0,
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-link)',
+                    textDecoration: 'underline',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  Stripe preview
+                </button>
               </span>
             </div>
           </div>

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1688)
+last_updated: 2026-08-15 (v2.1689)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1689)
+
+### Line Items: Stripe preview moves under the Job Total (2026-08-15)
+Owner call: the "Stripe preview" link leaves the ① Line Items title row and now sits directly under **Job Total** at the footer's right edge — beside the number it previews ([`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx); same dialog, same aria wiring). The title row keeps "What are line items?" and "Multiple Segment Generator". Verified live: right-aligned, 3px under the total. Client-only — no migration.
 
 ## Latest Updates (v2.1688)
 
