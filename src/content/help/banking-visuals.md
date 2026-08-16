@@ -16,6 +16,8 @@ Hover any band or bar to see the exact dollar amount — and **click a band** to
 
 The profit-and-loss as a picture: money in on the left, fanning out through expense families (People, Job costs, Vehicles, Overhead) to the same accounting labels you maintain in Drag Sort.
 
+**Go a layer deeper**: click any family or label **bar** (the cursor becomes a magnifier) and the chart zooms into just that slice — one band per payee, so Contract Labor becomes the actual people you paid, biggest first. Cash App payments show the person named in the bank record, not "Cash App". {{button:outline|‹ All flows}} (or Esc) zooms back out, and payee bands click through to their transactions like everywhere else.
+
 - **Income** is everything labeled Income; **Other money in** is deposits that carry any other label (or none yet).
 - A gray **From reserves** band appears automatically when the period's spending is bigger than the period's money in — the diagram never hides a gap.
 - When money in is bigger than spending, a **Kept → Still in the bank** band shows what stayed.

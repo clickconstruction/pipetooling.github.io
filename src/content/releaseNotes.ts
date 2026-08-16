@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1717',
+    date: '2026-08-16',
+    title: 'Click a bar, meet the payees',
+    kind: 'feature',
+    highlights: [
+      'On Where the money goes, click any family or label bar to zoom in: the chart re-roots on just that slice, fanned out to who the money actually went to.',
+      'Cash App payments now show the person named in the bank record instead of one giant "Cash App" band — Contract Labor went from one blob to 46 real payees.',
+      '‹ All flows (or Esc) zooms back out, payee bands still click through to their transactions, and a zoomed view is shareable from the page address.',
+    ],
+  },
+  {
     version: 'v2.1716',
     date: '2026-08-16',
     title: 'Zoom the money rivers to any quarter',

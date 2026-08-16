@@ -31,6 +31,8 @@ export type SankeyNodeInput = {
   sublabel?: string
   value: number
   tone: SankeyTone
+  /** Clicking this node's bar drills a layer deeper (v2.1717). */
+  focusable?: boolean
 }
 
 export type SankeyLinkInput = {
