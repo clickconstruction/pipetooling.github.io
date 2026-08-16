@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1709',
+    date: '2026-08-16',
+    title: 'Timeline up top, icons settled',
+    kind: 'fix',
+    highlights: [
+      'The Cost Timeline chart now leads the Labor and Parts Cost section instead of hiding at the bottom.',
+      'The paid-in-full $ envelope sits left of the calendar in the job header, and the Reports card shows just who and when.',
+      'The Bid Board search bar lines up with the Archived and Customer review buttons.',
+    ],
+  },
+  {
     version: 'v2.1708',
     date: '2026-08-16',
     title: 'Payments section breathes evenly',

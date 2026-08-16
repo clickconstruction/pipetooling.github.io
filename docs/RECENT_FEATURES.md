@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1708)
+last_updated: 2026-08-16 (v2.1709)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1709)
+
+### Cost Timeline leads its section, paid email left of the calendar, Reports card trims, Bids search aligns (2026-08-16)
+Four owner calls. **(1)** The **Cost Timeline** moves from the tail of the parts accordions to the top of **Labor and Parts Cost**, right under the header ([`JobFormLaborCostPanel`](../src/components/jobs/JobFormLaborCostPanel.tsx) now renders [`JobChargesTimelineStandalone`](../src/components/jobs/JobChargesTimelineStandalone.tsx); removed from [`JobFormPartsCostSection`](../src/components/jobs/JobFormPartsCostSection.tsx)). **(2)** The paid-in-full **$-envelope moves left of the calendar** in the Job window header — order now supply house · paid-mail($) · calendar · send-task · share ([`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)). **(3)** The Job tab's Reports card meta drops the template name — "Abraham · 4d ago", not "… · Status Report" (the link says what it is). **(4)** Bids → Bid Board: the search input pins to 36px, flush with the Archived and Customer review buttons ([`BidsBidBoardTab`](../src/components/bids/BidsBidBoardTab.tsx)); measured 36/36/36. Client-only — no migration.
 
 ## Latest Updates (v2.1708)
 

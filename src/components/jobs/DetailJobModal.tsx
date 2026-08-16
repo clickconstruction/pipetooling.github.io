@@ -62,7 +62,6 @@ import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSec
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import JobReportsModal from '../JobReportsModal'
-import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
@@ -1354,6 +1353,63 @@ export default function DetailJobModal({
                 </svg>
               </button>
             ) : null}
+            {/* Paid-in-full email sits left of the calendar (owner call,
+                v2.1709); the green "$" badge says PAID at a glance (v2.1706). */}
+            {showDetailHeaderRightCluster && (authRole === 'dev' || authRole === 'master_technician') && jobId ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPaidEmailModalOpen(true)
+                }}
+                title="Send paid-in-full email"
+                aria-label="Send paid-in-full email"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.35rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-600)',
+                  borderRadius: 4,
+                }}
+              >
+                {/* 18px, not 20: the filled envelope is optically denser than
+                    the outline neighbors. */}
+                <span style={{ position: 'relative', display: 'inline-flex' }}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"
+                    width={18}
+                    height={18}
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48L48 64zM0 176L0 384c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-208L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z" />
+                  </svg>
+                  <span
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      top: -5,
+                      right: -5,
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      color: '#16a34a',
+                      background: 'var(--surface)',
+                      borderRadius: '50%',
+                      padding: '1px 2px',
+                    }}
+                  >
+                    $
+                  </span>
+                </span>
+              </button>
+            ) : null}
             {/* Calendar sits left of send-task (owner call, v2.1706). */}
             {showDetailHeaderRightCluster && showWeekDispatchButton ? (
               <button
@@ -1425,62 +1481,6 @@ export default function DetailJobModal({
             ) : null}
             {showDetailHeaderRightCluster ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
-              {(authRole === 'dev' || authRole === 'master_technician') && jobId ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setPaidEmailModalOpen(true)
-                  }}
-                  title="Send paid-in-full email"
-                  aria-label="Send paid-in-full email"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0.35rem',
-                    margin: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-600)',
-                    borderRadius: 4,
-                  }}
-                >
-                  {/* 18px, not 20: the filled envelope is optically denser than
-                      the outline neighbors. The green "$" badge says PAID
-                      email at a glance (owner call, v2.1706). */}
-                  <span style={{ position: 'relative', display: 'inline-flex' }}>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 512 512"
-                      width={18}
-                      height={18}
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48L48 64zM0 176L0 384c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-208L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z" />
-                    </svg>
-                    <span
-                      aria-hidden
-                      style={{
-                        position: 'absolute',
-                        top: -5,
-                        right: -5,
-                        fontSize: '0.65rem',
-                        fontWeight: 800,
-                        lineHeight: 1,
-                        color: '#16a34a',
-                        background: 'var(--surface)',
-                        borderRadius: '50%',
-                        padding: '1px 2px',
-                      }}
-                    >
-                      $
-                    </span>
-                  </span>
-                </button>
-              ) : null}
               {showEditJobButton ? (
                 <button
                   type="button"
@@ -1884,13 +1884,12 @@ export default function DetailJobModal({
                   <span style={{ fontSize: '0.9375rem', color: 'var(--text-faint)' }}>No reports yet</span>
                 )}
                 {fullJob.latestReport?.created_at ? (
+                  /* Who + when only — the template name was noise here (owner
+                     call, v2.1709); the report link says what it is. */
                   <span style={{ fontSize: '0.71875rem', color: 'var(--text-muted)', marginTop: 2 }}>
                     {[
                       fullJob.latestReport.author_name?.trim(),
                       formatDispatchNoteDaysAgoShortPhrase(fullJob.latestReport.created_at),
-                      fullJob.latestReport.template_name
-                        ? displayReportTemplateName(fullJob.latestReport.template_name, authRole as UserRole | null)
-                        : null,
                     ]
                       .filter(Boolean)
                       .join(' · ')}

@@ -976,7 +976,9 @@ export function BidsBidBoardTab({
           placeholder={narrowViewport ? 'Search...' : 'Search (project name or GC/Builder)...'}
           value={bidBoardSearchQuery}
           onChange={(e) => setBidBoardSearchQuery(e.target.value)}
-          style={{ flex: '1 1 auto', minWidth: 0, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+          /* height matches the Archived / Customer review buttons beside it
+             (owner call, v2.1709) — the input's taller line box stuck out. */
+          style={{ flex: '1 1 auto', minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
           <button
