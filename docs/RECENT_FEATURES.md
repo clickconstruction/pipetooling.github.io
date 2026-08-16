@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1719)
+last_updated: 2026-08-16 (v2.1720)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1720)
+
+### Dashboard: "jobs waiting on a follow-up" attention card (2026-08-16)
+Second piece of the Follow-Up Mode mockup. [`DashboardJobFollowupsBanner`](../src/components/DashboardJobFollowupsBanner.tsx) joins the attention-card row (amber, count badge, "Start review →"): it runs the same queue kernel as the deck (`computeJobFollowupQueue` over the store fetches) and summarizes by stage, money first — "37 billed with no nudge · 11 working with no recent notes · 5 waiting with nothing scheduled". Self-gating (renders nothing while loading/empty/on error); mounted in [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) behind the office-role gate (dev, master tech, assistant-like). Clicking navigates to `/jobs?tab=stages&followups=1`; [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) consumes the param once — opens the deck, then strips it (`replace`) so refresh/back doesn't re-deal. Verified live: card showed 56 waiting, deep link opened the deck on the stalest card, URL left clean. Client-only — no migration.
 
 ## Latest Updates (v2.1719)
 

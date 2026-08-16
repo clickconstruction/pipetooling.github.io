@@ -6,6 +6,8 @@ keywords: follow up, follow-ups, quiet jobs, stale jobs, review, deck, snooze, l
 ---
 Jobs stop falling through the cracks when the app builds the list for you. The **Follow-ups** button on Jobs → Pipeline deals you every open job that's been **quiet too long for its stage** — no notes, no work, no billing movement — one card at a time, stalest first.
 
+The **Dashboard** keeps score too: when jobs are waiting, an amber card counts them ("37 billed with no nudge · 11 working with no recent notes") and {{button:blue|Start review →}} drops you straight into the deck. When the queue is empty, the card disappears.
+
 ## Working the deck
 
 Each card is one job: its number, stage, and an amber {{chip:yellow|quiet 9 days}} chip, the street view with the address (click it for the full Street View), a *Why it's here* line, the money picture, and the last few notes from its activity thread.
