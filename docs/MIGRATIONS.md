@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 16, 2026
 
+**`20260816232749_people_attribution_includes_archived.sql`** _(applied via `supabase db push` during the v2.1728 PR — DROP+CREATE of a read RPC in one transaction; old clients ignore the extra column)_
+- **Purpose**: `list_people_with_kind_for_banking_attribution` returns ALL people with an `archived` flag instead of hiding archived ones — departed subs stay taggable on historical transactions and the pickers' "Add …" action can't mint duplicates of archived people. Return type changed (added `archived boolean`), hence DROP+CREATE; grants and SECURITY DEFINER re-declared to match baseline. Clients list archived people last behind an "Archived" separator (`buildBankingAttributionOptions`).
+- **Category**: Banking / RPC replace
+
 **`20260816220436_accounting_rules_person_attribution.sql`** _(applied via `supabase db push` during the v2.1725 PR — additive nullable columns + `CREATE OR REPLACE` of an existing RPC, old clients unaffected)_
 - **Purpose**: People in Rules — `mercury_accounting_label_rules.attributed_person_id` / `attributed_user_id` (nullable FKs with `ON DELETE SET NULL`, XOR check mirroring `mercury_transaction_attributions`), and `bulk_approve_accounting_label_suggestions` extended to also INSERT the approving rule's attribution (`ON CONFLICT (mercury_transaction_id) DO NOTHING` — a hand-set attribution always wins). Single-card approve mirrors this client-side with an `ignoreDuplicates` upsert.
 - **Category**: Banking / columns + RPC replace

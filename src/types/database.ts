@@ -14075,6 +14075,7 @@ export type Database = {
       list_people_with_kind_for_banking_attribution: {
         Args: never
         Returns: {
+          archived: boolean
           id: string
           kind: string
           name: string

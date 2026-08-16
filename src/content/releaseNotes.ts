@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1728',
+    date: '2026-08-16',
+    title: 'Archived people, visible but out of the way',
+    kind: 'fix',
+    highlights: [
+      'Person pickers in Banking now show archived people too — listed last under an "Archived" divider and clearly tagged — so you can still tag a departed sub\'s old transactions.',
+      'This also stops the Add-person shortcut from creating a duplicate of someone who was just archived.',
+    ],
+  },
+  {
     version: 'v2.1727',
     date: '2026-08-16',
     title: 'Missing person? Add them right there',
