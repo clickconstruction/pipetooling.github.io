@@ -1827,6 +1827,7 @@ export default function Banking() {
         <div role="tabpanel" id="banking-panel-mercury-accounting" aria-labelledby="banking-tab-accounting">
           <BankingMercuryAccountingTab
             userId={user.id}
+            attributionOptions={attributionOptions}
             filteredTransactions={booksFilteredSorted}
             loading={loading}
             loadError={error}

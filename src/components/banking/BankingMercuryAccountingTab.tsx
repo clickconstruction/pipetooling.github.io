@@ -69,6 +69,7 @@ import { BankingMercuryAccountingOverlapsModal } from './BankingMercuryAccountin
 import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercuryAccountingApplyRulesConfirmModal'
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
 import { AccountingApprovalCard } from './AccountingApprovalCard'
+import type { SearchableSelectOption } from '../SearchableSelect'
 import { AccountingApprovalGroupHeader } from './AccountingApprovalGroupHeader'
 import { BankingMercuryDuplicatesPanel } from './BankingMercuryDuplicatesPanel'
 import {
@@ -186,6 +187,8 @@ export type BankingMercuryAccountingTabProps = {
   labeledHasMore?: boolean
   labeledLoadingMore?: boolean
   onLoadMoreLabeled?: () => void
+  /** People/users for the rule form's "Also attribute to person" field (v2.1725). */
+  attributionOptions?: SearchableSelectOption[]
 }
 
 type PendingApproval = {
@@ -311,6 +314,7 @@ export function BankingMercuryAccountingTab({
   labeledHasMore = false,
   labeledLoadingMore = false,
   onLoadMoreLabeled,
+  attributionOptions,
 }: BankingMercuryAccountingTabProps) {
   const { showToast } = useToastContext()
   const [accountingSearchText, setAccountingSearchText] = useState('')
@@ -655,6 +659,24 @@ export function BankingMercuryAccountingTab({
     return m
   }, [rules])
 
+  /** Rule id → display name of its attribution target (v2.1725); absent = rule tags nobody. */
+  const ruleAttributionNameById = useMemo(() => {
+    const nameByValue = new Map<string, string>()
+    for (const o of attributionOptions ?? []) {
+      if ('value' in o) nameByValue.set(o.value, o.label)
+    }
+    const m = new Map<string, string>()
+    for (const r of rules) {
+      const v = r.attributed_person_id
+        ? `p:${r.attributed_person_id}`
+        : r.attributed_user_id
+          ? `u:${r.attributed_user_id}`
+          : null
+      if (v) m.set(r.id, nameByValue.get(v) ?? 'a person')
+    }
+    return m
+  }, [attributionOptions, rules])
+
   const overlapReport = useMemo(() => {
     if (!overlapsModalOpen) return null
     const ruleInputs = rules.map((r) => ({
@@ -942,6 +964,22 @@ export function BankingMercuryAccountingTab({
             })
             .eq('id', p.suggestionId)
         }, 'accounting approve suggestion')
+        // People in Rules (v2.1725): the rule may also attribute a person.
+        // ignoreDuplicates = a hand-set attribution always wins (PK on tx id);
+        // mirrors the bulk-approve RPC's ON CONFLICT DO NOTHING.
+        const approvedRule = ruleById.get(p.ruleId)
+        if (approvedRule && (approvedRule.attributed_person_id != null || approvedRule.attributed_user_id != null)) {
+          await withSupabaseRetry(async () => {
+            return supabase.from('mercury_transaction_attributions').upsert(
+              {
+                mercury_transaction_id: p.txId,
+                person_id: approvedRule.attributed_person_id,
+                user_id: approvedRule.attributed_user_id,
+              },
+              { onConflict: 'mercury_transaction_id', ignoreDuplicates: true },
+            )
+          }, 'accounting approve attribution')
+        }
         const next = new Map(prevMap)
         next.set(p.txId, chosenLabelId)
         setAssignmentLabelByTxId(next)
@@ -961,6 +999,7 @@ export function BankingMercuryAccountingTab({
       labels,
       loadRulesAndUsage,
       onAfterAssignmentChange,
+      ruleById,
       showToast,
       upsertDragAssignment,
       userId,
@@ -1527,6 +1566,8 @@ export function BankingMercuryAccountingTab({
                 enabled: draft.enabled,
                 label_id: draft.labelId,
                 criteria: criteriaToJson(draft.criteria),
+                attributed_person_id: draft.attributedPersonId,
+                attributed_user_id: draft.attributedUserId,
               })
               .eq('id', editingRuleId)
           }, 'accounting update rule')
@@ -1540,6 +1581,8 @@ export function BankingMercuryAccountingTab({
               label_id: draft.labelId,
               sort_order: nextOrder,
               criteria: criteriaToJson(draft.criteria),
+              attributed_person_id: draft.attributedPersonId,
+              attributed_user_id: draft.attributedUserId,
               created_by: userId,
             })
           }, 'accounting insert rule')
@@ -1566,6 +1609,8 @@ export function BankingMercuryAccountingTab({
                 enabled: draft.enabled,
                 label_id: draft.labelId,
                 criteria: criteriaToJson(draft.criteria),
+                attributed_person_id: draft.attributedPersonId,
+                attributed_user_id: draft.attributedUserId,
               })
               .eq('id', editingRuleId)
           }, 'accounting update rule')
@@ -1579,6 +1624,8 @@ export function BankingMercuryAccountingTab({
               label_id: draft.labelId,
               sort_order: nextOrder,
               criteria: criteriaToJson(draft.criteria),
+              attributed_person_id: draft.attributedPersonId,
+              attributed_user_id: draft.attributedUserId,
               created_by: userId,
             })
           }, 'accounting insert rule')
@@ -1776,6 +1823,8 @@ export function BankingMercuryAccountingTab({
                           onReject={handleRejectCard}
                           onLabelChange={handleLabelChangeCard}
                           onOpenEditRule={openEditRuleById}
+                          attributedPersonName={ruleAttributionNameById.get(p.ruleId) ?? null}
+                          attributionAlreadySet={personIdByTxId.get(p.txId) != null || userIdByTxId.get(p.txId) != null}
                         />
                       ))}
                       {groupItems.length > visible ? (
@@ -1823,6 +1872,8 @@ export function BankingMercuryAccountingTab({
                   onReject={handleRejectCard}
                   onLabelChange={handleLabelChangeCard}
                   onOpenEditRule={openEditRuleById}
+                  attributedPersonName={ruleAttributionNameById.get(p.ruleId) ?? null}
+                  attributionAlreadySet={personIdByTxId.get(p.txId) != null || userIdByTxId.get(p.txId) != null}
                 />
               ))}
             </div>
@@ -2173,6 +2224,7 @@ export function BankingMercuryAccountingTab({
           onRunTest={runTestFromCriteria}
           onSave={saveRuleDraft}
           onSaveAndApply={saveRuleDraftAndApply}
+          attributionOptions={attributionOptions}
           applyRulesBusy={applyRulesBusy}
           onDelete={
             editingRuleId

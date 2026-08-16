@@ -33,6 +33,10 @@ export type AccountingApprovalCardProps = {
   onReject: (suggestionId: string) => void
   onLabelChange: (suggestionId: string, nextLabelId: string) => void
   onOpenEditRule: (ruleId: string) => void
+  /** Rule's attribution target display name (v2.1725); null hides the chip. */
+  attributedPersonName?: string | null
+  /** True when the tx already has a hand-set attribution the rule will keep. */
+  attributionAlreadySet?: boolean
 }
 
 export const AccountingApprovalCard = memo(function AccountingApprovalCard({
@@ -45,6 +49,8 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
   onReject,
   onLabelChange,
   onOpenEditRule,
+  attributedPersonName = null,
+  attributionAlreadySet = false,
 }: AccountingApprovalCardProps) {
   const debitCardId = p.tx ? mercuryDebitCardIdFromRaw(p.tx.raw) : null
   const debitCardLabel = debitCardId
@@ -109,6 +115,23 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
             </button>
             {' · Suggested: '}
             {p.suggestedLabelName}
+            {attributedPersonName ? (
+              attributionAlreadySet ? (
+                <span
+                  style={{ marginLeft: 6, fontSize: '0.7rem', fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--bg-slate-100)', color: 'var(--text-slate-500)', whiteSpace: 'nowrap' }}
+                  title="This transaction already has a person set by hand — the rule keeps it."
+                >
+                  already attributed · kept as-is
+                </span>
+              ) : (
+                <span
+                  style={{ marginLeft: 6, fontSize: '0.7rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999, background: 'var(--bg-green-100)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }}
+                  title="Approving also attributes the transaction to this person."
+                >
+                  {`👤 ${attributedPersonName}`}
+                </span>
+              )
+            ) : null}
           </div>
           {debitCardLabel ? (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 2 }}>

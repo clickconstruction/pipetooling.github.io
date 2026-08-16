@@ -6290,6 +6290,8 @@ export type Database = {
       }
       mercury_accounting_label_rules: {
         Row: {
+          attributed_person_id: string | null
+          attributed_user_id: string | null
           created_at: string
           created_by: string | null
           criteria: Json
@@ -6301,6 +6303,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attributed_person_id?: string | null
+          attributed_user_id?: string | null
           created_at?: string
           created_by?: string | null
           criteria?: Json
@@ -6312,6 +6316,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attributed_person_id?: string | null
+          attributed_user_id?: string | null
           created_at?: string
           created_by?: string | null
           criteria?: Json
@@ -6323,6 +6329,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mercury_accounting_label_rules_attributed_person_id_fkey"
+            columns: ["attributed_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_accounting_label_rules_attributed_user_id_fkey"
+            columns: ["attributed_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mercury_accounting_label_rules_created_by_fkey"
             columns: ["created_by"]
