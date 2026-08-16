@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1689)
+last_updated: 2026-08-15 (v2.1690)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1690)
+
+### Pipeline: Waiting/Working put "Open N" above Edit Job like every other stage (2026-08-15)
+Owner call: the job-only sections ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) — Waiting, Working, Paid in Full) rendered the "Open N months" age label at the TOP of the Progress & payment stack, while the billing stages (unified table) put it between the action buttons and Edit Job. The label moves to the end of the button flex — the stack now reads status buttons → **Open N** → **Edit Job** everywhere. Verified live on a Working row: Mark Waiting → Ready to Bill → Open label → Edit Job. Client-only — no migration.
 
 ## Latest Updates (v2.1689)
 

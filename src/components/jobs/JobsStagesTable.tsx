@@ -341,11 +341,6 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                      {showTimeOpen && (
-                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
-                            Open {formatTimeSince(j.created_at ?? null)}
-                          </span>
-                        )}
                         {onSendBack && (
                           <button
                             type="button"
@@ -399,6 +394,13 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                           >
                             {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
                           </button>
+                        )}
+                        {/* "Open N" sits right above Edit Job — same order the
+                            billing stages use (owner call, v2.1690). */}
+                        {showTimeOpen && (
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
+                            Open {formatTimeSince(j.created_at ?? null)}
+                          </span>
                         )}
                       </div>
                       {/* marginTop tops the outer stack's 0.25rem gap up to the status
