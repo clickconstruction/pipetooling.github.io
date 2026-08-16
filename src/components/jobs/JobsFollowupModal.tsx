@@ -146,12 +146,16 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
     let objectUrl: string | null = null
     void (async () => {
       try {
+        // Meta first (v2.1719): null means Google has no imagery for the
+        // address — fetching the image anyway returns a gray "location could
+        // not be found" tile, so skip the banner and keep the address line.
+        const meta = await fetchStreetViewMeta(current.job.address)
+        if (cancelled || !meta) return
+        setSvPano(googleStreetViewPanoUrl(meta.lat, meta.lng))
         const blob = await fetchStreetViewImageBlob(current.job.address)
         if (cancelled) return
         objectUrl = URL.createObjectURL(blob)
         setSvUrl(objectUrl)
-        const meta = await fetchStreetViewMeta(current.job.address)
-        if (!cancelled && meta) setSvPano(googleStreetViewPanoUrl(meta.lat, meta.lng))
       } catch {
         /* no imagery — the address line still shows */
       }

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1719',
+    date: '2026-08-16',
+    title: 'Cleaner follow-up cards',
+    kind: 'fix',
+    highlights: [
+      'Follow-up cards for addresses without Street View imagery now show a clean address line instead of a gray "location not found" tile.',
+    ],
+  },
+  {
     version: 'v2.1718',
     date: '2026-08-16',
     title: 'Follow-Up Mode: no job falls through the cracks',
