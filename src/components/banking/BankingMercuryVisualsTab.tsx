@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { buildBankingAttributionOptions } from '../../lib/bankingAttributionOptions'
 import { BankingMercuryTxDetailModal, type TxDetailChange } from './BankingMercuryTxDetailModal'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -98,11 +99,13 @@ type VisualsData = {
   accountNameById: Record<string, string>
   nicknameByDebitCard: Record<string, string>
   usersOptions: { value: string; label: string }[]
+  /** Combined people + users list for the Person picker (u:/p: prefixed values). */
+  attributionOptions: ReturnType<typeof buildBankingAttributionOptions>
   truncated: boolean
 }
 
 async function fetchVisualsData(): Promise<VisualsData> {
-  const [txRows, labelRows, assignmentRows, nicknameRows, debitNicknameRows, usersOptionRows, allocRows, attrRows] =
+  const [txRows, labelRows, assignmentRows, nicknameRows, debitNicknameRows, usersOptionRows, peopleOptionRows, allocRows, attrRows] =
     await Promise.all([
       withSupabaseRetry(
         async () =>
@@ -134,6 +137,10 @@ async function fetchVisualsData(): Promise<VisualsData> {
         'visuals debit card nicknames',
       ),
       withSupabaseRetry(async () => supabase.rpc('list_users_for_banking_attribution'), 'visuals users options'),
+      withSupabaseRetry(
+        async () => supabase.rpc('list_people_with_kind_for_banking_attribution'),
+        'visuals people options',
+      ),
       fetchAllJobAllocations('visuals'),
       fetchAllAttributions('visuals'),
     ])
@@ -185,6 +192,10 @@ async function fetchVisualsData(): Promise<VisualsData> {
     value: u.id,
     label: u.name,
   }))
+  const attributionOptions = buildBankingAttributionOptions(
+    usersOptions,
+    ((peopleOptionRows ?? []) as { id: string; name: string; kind: string | null }[]),
+  )
 
   const allocationsByTxId = new Map<string, { jobId: string; amount: number }[]>()
   for (const row of allocRows) {
@@ -253,6 +264,7 @@ async function fetchVisualsData(): Promise<VisualsData> {
     accountNameById,
     nicknameByDebitCard,
     usersOptions,
+    attributionOptions,
     truncated: txs.length >= VISUALS_TX_LIMIT,
   }
 }
@@ -811,6 +823,7 @@ export function BankingMercuryVisualsTab() {
               nicknameByAccount={data.accountNameById}
               nicknameByDebitCard={data.nicknameByDebitCard}
               usersOptions={data.usersOptions}
+              attributionOptions={data.attributionOptions}
               operatorUserId={user?.id ?? null}
               personLabel={data.personLabelByTxId.get(detailTxId) ?? null}
               onClose={() => setDetailTxId(null)}

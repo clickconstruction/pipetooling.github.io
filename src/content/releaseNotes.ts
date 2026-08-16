@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1725',
+    date: '2026-08-16',
+    title: 'Rules that know who got paid',
+    kind: 'feature',
+    highlights: [
+      'An accounting rule can now also name the person: pick "Also attribute to person" on the rule, and every approved match tags the transaction with them — feeding Cards → jobs, Card Review, and the payee views automatically.',
+      'Approval cards show a green chip with who they\'ll tag, and a rule never overwrites a person someone set by hand.',
+      'Opening a transaction from the Visuals charts now shows Person as its own field — see who\'s attributed (and whether a rule set it), change or clear it right there.',
+    ],
+  },
+  {
     version: 'v2.1724',
     date: '2026-08-16',
     title: 'Bank description, front and center',

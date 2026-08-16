@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 16, 2026
 
+**`20260816220436_accounting_rules_person_attribution.sql`** _(applied via `supabase db push` during the v2.1725 PR — additive nullable columns + `CREATE OR REPLACE` of an existing RPC, old clients unaffected)_
+- **Purpose**: People in Rules — `mercury_accounting_label_rules.attributed_person_id` / `attributed_user_id` (nullable FKs with `ON DELETE SET NULL`, XOR check mirroring `mercury_transaction_attributions`), and `bulk_approve_accounting_label_suggestions` extended to also INSERT the approving rule's attribution (`ON CONFLICT (mercury_transaction_id) DO NOTHING` — a hand-set attribution always wins). Single-card approve mirrors this client-side with an `ignoreDuplicates` upsert.
+- **Category**: Banking / columns + RPC replace
+
 **`20260816193117_job_followups.sql`** _(apply via `supabase db push` with the v2.1718 merge — additive tables + SECURITY INVOKER read RPC, old clients unaffected; the new client degrades to an empty queue until applied)_
 - **Purpose**: Job Follow-Up Mode storage — `job_followup_reviews` ("Looks fine" stamps and snoozes; latest row per job governs re-entry), `job_followup_settings` (org-wide per-stage review periods, singleton row seeded with defaults; UPDATE restricted to dev/master), and `list_job_followup_activity(p_today)` (latest note/status-event/work/bill activity + next scheduled visit per open job; SECURITY INVOKER so the caller's RLS governs every subquery). Client: [`src/lib/jobs/jobFollowupQueue.ts`](../src/lib/jobs/jobFollowupQueue.ts) + [`jobFollowupStore.ts`](../src/lib/jobs/jobFollowupStore.ts).
 - **Category**: Jobs / new tables + RPC

@@ -12,7 +12,8 @@ import {
   type MercuryJobSplit,
 } from '../MercuryTransactionAllocationsModal'
 import { formatSankeyUsd } from '../../lib/banking/mercurySankeyLayout'
-import type { Database } from '../../types/database'
+import { parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
+import type { Database, Json } from '../../types/database'
 import type { VisualsLabelRow } from './BankingMercuryVisualsTab'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
@@ -37,6 +38,37 @@ type TxRelations = {
   allocations: MercuryJobSplit[]
   personId: string | null
   userId: string | null
+}
+
+/** The rule (if any) behind this tx's latest approved suggestion, for the "set by rule" line. */
+type TxProvenance = { ruleName: string; personId: string | null; userId: string | null }
+
+async function fetchTxProvenance(txId: string): Promise<TxProvenance | null> {
+  const suggData = await withSupabaseRetry(
+    async () =>
+      supabase
+        .from('mercury_accounting_label_suggestions')
+        .select('rule_id')
+        .eq('mercury_transaction_id', txId)
+        .eq('status', 'approved')
+        .order('resolved_at', { ascending: false })
+        .limit(1),
+    'tx detail provenance suggestion',
+  )
+  const ruleId = ((suggData ?? []) as { rule_id: string }[])[0]?.rule_id
+  if (!ruleId) return null
+  const ruleData = await withSupabaseRetry(
+    async () =>
+      supabase
+        .from('mercury_accounting_label_rules')
+        .select('name, attributed_person_id, attributed_user_id')
+        .eq('id', ruleId)
+        .limit(1),
+    'tx detail provenance rule',
+  )
+  const rule = ((ruleData ?? []) as { name: string; attributed_person_id: string | null; attributed_user_id: string | null }[])[0]
+  if (!rule) return null
+  return { ruleName: rule.name, personId: rule.attributed_person_id, userId: rule.attributed_user_id }
 }
 
 async function fetchTxDetail(txId: string): Promise<{ row: MercuryTxRow; relations: TxRelations }> {
@@ -115,6 +147,7 @@ export function BankingMercuryTxDetailModal({
   nicknameByAccount,
   nicknameByDebitCard,
   usersOptions,
+  attributionOptions,
   operatorUserId,
   personLabel,
   onClose,
@@ -127,6 +160,8 @@ export function BankingMercuryTxDetailModal({
   nicknameByAccount: Record<string, string>
   nicknameByDebitCard: Record<string, string>
   usersOptions: { value: string; label: string }[]
+  /** Combined people + users (u:/p: values) for the inline Person picker (v2.1725). */
+  attributionOptions: SearchableSelectOption[]
   /** Logged-in operator's auth user id (enables recent-person chips in the splits modal). */
   operatorUserId: string | null
   /** Display name from the tab's attribution cache, for the splits summary. */
@@ -137,6 +172,9 @@ export function BankingMercuryTxDetailModal({
   const { showToast } = useToastContext()
   const [row, setRow] = useState<MercuryTxRow | null>(null)
   const [relations, setRelations] = useState<TxRelations | null>(null)
+  const [provenance, setProvenance] = useState<TxProvenance | null>(null)
+  const [personSaving, setPersonSaving] = useState(false)
+  const [personSavedTick, setPersonSavedTick] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [labelSaving, setLabelSaving] = useState(false)
   const [labelSavedTick, setLabelSavedTick] = useState(false)
@@ -151,6 +189,8 @@ export function BankingMercuryTxDetailModal({
       setRow(d.row)
       setRelations(d.relations)
       setNoteDraft(d.row.note ?? '')
+      // Provenance is decoration — never block the modal on it.
+      void fetchTxProvenance(txId).then(setProvenance).catch(() => setProvenance(null))
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Failed to load transaction')
     }
@@ -241,6 +281,58 @@ export function BankingMercuryTxDetailModal({
     },
     [labelId, labels, relations, txId, onChanged, showToast],
   )
+
+  const attributionValue =
+    relations == null ? '' : relations.personId ? `p:${relations.personId}` : relations.userId ? `u:${relations.userId}` : ''
+
+  /** Person-only change goes through the same RPC the splits window uses — current splits pass through untouched. */
+  const handlePersonChange = useCallback(
+    async (next: string) => {
+      if (!row || !relations || next === attributionValue) return
+      const { personId, userId } = parseBankingAttributionValue(next)
+      setPersonSaving(true)
+      try {
+        const p_rows = relations.allocations.map((a) => {
+          const r: { job_id: string; amount: number; note?: string } = { job_id: a.job_id, amount: a.amount }
+          if (a.note) r.note = a.note
+          return r
+        })
+        const payload = {
+          p_mercury_transaction_id: row.id,
+          p_rows: p_rows as unknown as Json,
+          p_person_id: personId,
+          p_user_id: userId,
+        }
+        await withSupabaseRetry(
+          async () =>
+            supabase.rpc(
+              'replace_mercury_transaction_splits',
+              payload as unknown as Database['public']['Functions']['replace_mercury_transaction_splits']['Args'],
+            ),
+          'tx detail set person',
+        )
+        setRelations({ ...relations, personId, userId })
+        setPersonSavedTick(true)
+        window.setTimeout(() => setPersonSavedTick(false), 2000)
+        onChanged({ kind: 'relations' })
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Failed to save person', 'error')
+      } finally {
+        setPersonSaving(false)
+      }
+    },
+    [row, relations, attributionValue, onChanged, showToast],
+  )
+
+  /** "set by rule" only when the current attribution is exactly what the rule writes. */
+  const provenanceRuleName =
+    provenance != null &&
+    attributionValue !== '' &&
+    provenance.personId === relations?.personId &&
+    provenance.userId === relations?.userId &&
+    (provenance.personId != null || provenance.userId != null)
+      ? provenance.ruleName
+      : null
 
   const noteDirty = row != null && noteDraft !== (row.note ?? '')
   const handleNoteSave = useCallback(async () => {
@@ -377,22 +469,45 @@ export function BankingMercuryTxDetailModal({
               </div>
 
               <div style={{ padding: '0.8rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
-                <div style={sectionTitleStyle}>Person & job splits</div>
+                <div style={sectionTitleStyle}>Person</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <SearchableSelect
+                      value={attributionValue}
+                      onChange={(v) => void handlePersonChange(v)}
+                      options={attributionOptions}
+                      placeholder={relations == null ? 'Loading…' : 'No person — pick one'}
+                      disabled={relations == null || personSaving}
+                      emptyOption={{ value: '', label: 'No person' }}
+                      listAriaLabel="People"
+                      portalZIndex={DETAIL_Z + 100}
+                      triggerMinHeightPx={38}
+                    />
+                  </div>
+                  {personSavedTick ? (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-green-800)', whiteSpace: 'nowrap' }}>saved ✓</span>
+                  ) : null}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)', marginTop: 4 }}>
+                  {provenanceRuleName
+                    ? `set by rule “${provenanceRuleName}” · feeds Cards → jobs, Card Review, and payee views`
+                    : 'Feeds Cards → jobs, Card Review, and payee views.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '0.8rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+                <div style={sectionTitleStyle}>Job splits</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <div style={{ flex: 1, minWidth: 0, fontSize: '0.84rem' }}>
-                    <div>
-                      {personLabel ?? <span style={{ color: 'var(--text-slate-500)' }}>No person</span>}
-                      {' · '}
-                      {splitsSummary === '…' ? (
-                        '…'
-                      ) : splitsSummary ? (
-                        <span style={{ color: 'var(--text-slate-600)' }}>{splitsSummary}</span>
-                      ) : (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }}>
-                          not split to a job
-                        </span>
-                      )}
-                    </div>
+                    {splitsSummary === '…' ? (
+                      '…'
+                    ) : splitsSummary ? (
+                      <span style={{ color: 'var(--text-slate-600)' }}>{splitsSummary}</span>
+                    ) : (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }}>
+                        not split to a job
+                      </span>
+                    )}
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)', marginTop: 2 }}>
                       Splits feed job costs and the Cards → jobs view.
                     </div>

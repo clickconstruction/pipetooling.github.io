@@ -9,6 +9,8 @@ import {
   defaultAccountingLabelRuleCriteriaV1,
   parseAccountingLabelRuleCriteria,
 } from '../../lib/accountingLabelRuleMatch'
+import { parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
+import type { SearchableSelectOption } from '../SearchableSelect'
 import type { Json } from '../../types/database'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 
@@ -18,6 +20,8 @@ export type AccountingRuleFormState = {
   name: string
   enabled: boolean
   labelId: string
+  /** Optional attribution target: '' none, 'p:<people.id>' or 'u:<users.id>' (v2.1725). */
+  attribution: string
   amountMin: string
   amountMax: string
   counterpartyOp: 'contains' | 'equals'
@@ -60,7 +64,14 @@ function ruleNameWithLabelSuffix(baseName: string, labelId: string, labels: Drag
 /** Convert a stored rule row into editable form state. Shared by the Accounting rules
  * manager and the Transaction Detail "edit applicable rule" flow. */
 export function ruleRowToForm(
-  rule: { name: string; enabled: boolean; label_id: string; criteria: Json },
+  rule: {
+    name: string
+    enabled: boolean
+    label_id: string
+    criteria: Json
+    attributed_person_id?: string | null
+    attributed_user_id?: string | null
+  },
   fallbackLabelId: string,
 ): AccountingRuleFormState {
   const parsed = parseAccountingLabelRuleCriteria(rule.criteria) ?? defaultAccountingLabelRuleCriteriaV1()
@@ -68,6 +79,11 @@ export function ruleRowToForm(
   base.name = rule.name
   base.enabled = rule.enabled
   base.labelId = rule.label_id || fallbackLabelId
+  base.attribution = rule.attributed_person_id
+    ? `p:${rule.attributed_person_id}`
+    : rule.attributed_user_id
+      ? `u:${rule.attributed_user_id}`
+      : ''
   if (parsed.amount?.min !== undefined) base.amountMin = String(parsed.amount.min)
   if (parsed.amount?.max !== undefined) base.amountMax = String(parsed.amount.max)
   if (parsed.counterparty) {
@@ -86,6 +102,7 @@ export function emptyRuleForm(): AccountingRuleFormState {
     name: '',
     enabled: true,
     labelId: '',
+    attribution: '',
     amountMin: '',
     amountMax: '',
     counterpartyOp: 'contains',
@@ -126,6 +143,9 @@ export type AccountingRuleSaveDraft = {
   enabled: boolean
   labelId: string
   criteria: AccountingLabelRuleCriteriaV1
+  /** Optional attribution the rule also writes on approve (XOR; both null = none). */
+  attributedPersonId: string | null
+  attributedUserId: string | null
 }
 
 export type AccountingRuleFormModalProps = {
@@ -141,6 +161,8 @@ export type AccountingRuleFormModalProps = {
   onSave: (draft: AccountingRuleSaveDraft) => Promise<void>
   /** When set, shows Save and apply (persist + run apply-rules scan). */
   onSaveAndApply?: (draft: AccountingRuleSaveDraft) => Promise<void>
+  /** People/users for the optional "Also attribute to person" field (v2.1725); omit to hide it. */
+  attributionOptions?: SearchableSelectOption[]
   /** Disables actions while parent apply-rules is running (toolbar). */
   applyRulesBusy?: boolean
   /** When set and `editingRuleId !== null`, renders a trash icon in the header that opens a nested confirm modal. */
@@ -159,6 +181,7 @@ export function AccountingRuleFormModal({
   onRunTest,
   onSave,
   onSaveAndApply,
+  attributionOptions,
   applyRulesBusy = false,
   onDelete,
   zIndex = 1200,
@@ -245,7 +268,15 @@ export function AccountingRuleFormModal({
       showToast('Add at least one criterion (amount, counterparty, or bank description).', 'error')
       return null
     }
-    return { name, enabled: form.enabled, labelId: form.labelId, criteria: c }
+    const { personId, userId } = parseBankingAttributionValue(form.attribution)
+    return {
+      name,
+      enabled: form.enabled,
+      labelId: form.labelId,
+      criteria: c,
+      attributedPersonId: personId,
+      attributedUserId: userId,
+    }
   }
 
   const handleSave = async () => {
@@ -414,6 +445,31 @@ export function AccountingRuleFormModal({
               portalZIndex={1250}
             />
           </label>
+          {attributionOptions ? (
+            <label style={{ display: 'grid', gap: '0.25rem', fontSize: '0.875rem' }}>
+              <span>
+                Also attribute to person <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span>
+              </span>
+              <SearchableSelect
+                value={form.attribution}
+                onChange={(v) => setForm((f) => ({ ...f, attribution: v }))}
+                options={attributionOptions}
+                emptyOption={{ value: '', label: ' - no person - ' }}
+                hideEmptyOptionInListWhenUnset={false}
+                searchReplacesTrigger
+                listMaxHeightPx={320}
+                listOptionPadding="0.35rem 0.5rem"
+                listOptionFontSize="0.8125rem"
+                disabled={controlsDisabled}
+                listAriaLabel="People to attribute"
+                portalZIndex={1250}
+              />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Approving a match also attributes the transaction to this person — never overwriting one set by hand.
+                Feeds Cards → jobs, Card Review, and payee views.
+              </span>
+            </label>
+          ) : null}
           <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Amount (USD)</legend>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

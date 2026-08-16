@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1724)
+last_updated: 2026-08-16 (v2.1725)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1725)
+
+### Banking: People in Rules — rules attribute a person; inline Person picker on tx detail (2026-08-16)
+Owner picked the proposal mockup. **Schema** (migration `20260816220436`, see `MIGRATIONS.md`): rules gain `attributed_person_id`/`attributed_user_id` (XOR, `ON DELETE SET NULL`); `bulk_approve_accounting_label_suggestions` replaced to also INSERT the rule's attribution with `ON CONFLICT DO NOTHING` — a hand-set attribution always wins. **Rule form** ([`AccountingRuleFormModal`](../src/components/banking/AccountingRuleFormModal.tsx)): optional "Also attribute to person" SearchableSelect (u:/p: values via `parseBankingAttributionValue`); `ruleRowToForm`/`AccountingRuleSaveDraft` carry it; both save paths in [`BankingMercuryAccountingTab`](../src/components/banking/BankingMercuryAccountingTab.tsx) write the columns; the tab gains an `attributionOptions` prop from the parent. **Approvals**: [`AccountingApprovalCard`](../src/components/banking/AccountingApprovalCard.tsx) wears a green 👤 chip (or "already attributed · kept as-is" when the tx has one); single-card approve writes the attribution client-side (`ignoreDuplicates` upsert), mirroring the RPC. **Tx detail modal** ([`BankingMercuryTxDetailModal`](../src/components/banking/BankingMercuryTxDetailModal.tsx)): Person becomes a first-class inline picker between Accounting label and Job splits — saves person-only changes through `replace_mercury_transaction_splits` (current splits pass through untouched), "set by rule …" provenance line from the latest approved suggestion, and the Sankey caches refresh silently on save. The Visuals tab now also fetches `list_people_with_kind_for_banking_attribution` — **which the gen-types run finally typed, retiring quirk #17's `as unknown as` cast** (Banking.tsx still carries the old cast until its own cleanup). Verified live: person set → saved ✓ → cleared (net zero); rule form field renders on a real rule. Help guide `banking-visuals` updated.
 
 ## Latest Updates (v2.1724)
 

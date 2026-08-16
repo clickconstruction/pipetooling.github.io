@@ -10,7 +10,9 @@ Want a specific stretch instead? The **Zoom** chips at the end of the period row
 
 Hover any band or bar to see the exact dollar amount — and **click a band** to open the transactions behind it: a list with date, counterparty, account, and amount, plus the count and total up top.
 
-**Click a transaction in that list to open it.** The left side is the bank's record — posted time, card, memo, the raw detail, and an *Open in Mercury* link — and it's read-only. The right side is your books, and it's editable: change the **accounting label**, edit the **person and job splits** (the same Link-to-person-and-jobs window used everywhere else), or add a **note**. The moment you save, the rivers behind the window redraw — label a stray purchase and you'll see the dollars slide from the gray Unlabeled band into the right category.
+**Click a transaction in that list to open it.** The left side is the bank's record — posted time, card, bank description, memo, the raw detail, and an *Open in Mercury* link — and it's read-only. The right side is your books, and it's editable: change the **accounting label**, pick the **person** (its own field — and if a rule tagged them, it says so), edit the **job splits** (the same Link-to-person-and-jobs window used everywhere else), or add a **note**. The moment you save, the rivers behind the window redraw — label a stray purchase and you'll see the dollars slide from the gray Unlabeled band into the right category.
+
+**Tip**: accounting rules can tag people for you. When you edit a rule on the Accounting tab, set **Also attribute to person** — every approved match then carries that person automatically, and it never overwrites one you set by hand.
 
 ## Where the money goes
 
