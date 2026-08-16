@@ -385,6 +385,8 @@ export function JobChargesTimelineChartView({
   // Opt-in second axis: the value-created line's scale (0 → revenue) usually
   // dwarfs cost/profit, so it stays hidden until asked for.
   const [showValueAxis, setShowValueAxis] = useState(false)
+  // Legend details (marker + cost-source key) fold behind an ⓘ (owner call, v2.1692).
+  const [legendHelpOpen, setLegendHelpOpen] = useState(false)
   const valueShown = data.valueSeriesAvailable && showValueAxis
 
   return (
@@ -485,30 +487,48 @@ export function JobChargesTimelineChartView({
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
         <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit · 💵 = payment received · 🚩 = field
-        report
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit
         {valueShown && (
           <>
             {' · '}
             <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
             (report % × job total, right axis)
           </>
-        )}
+        )}{' '}
+        <button
+          type="button"
+          onClick={() => setLegendHelpOpen((v) => !v)}
+          aria-expanded={legendHelpOpen}
+          title="What the markers and cost icons mean"
+          style={{
+            padding: 0,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-link)',
+            fontSize: '0.6875rem',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          ⓘ {legendHelpOpen ? 'hide key' : 'what do the markers mean?'}
+        </button>
       </p>
-      <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
-        Cost sources:{' '}
-        {Object.values(JOB_CHARGE_SOURCE_META)
-          .map((m) => `${m.icon} ${m.name}`)
-          .join(' · ')}
-        {data.hasUnknownDateBucket && ' · “No date” bucket holds items without a date'}
-        {!data.valueSeriesAvailable &&
-          (revenue == null || revenue === 0
-            ? ' · Value line hidden: job total not set'
-            : ' · Value line hidden: no report or % set on the job')}
-        {data.valueFromFallbackPercent &&
-          ' · Value point uses the job’s current % (no dated field report)'}
-        {cardChargesExcluded && ' · Card charges not included (no Banking access)'}
-      </p>
+      {legendHelpOpen && (
+        <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
+          💵 = payment received · 🚩 = field report · Cost sources:{' '}
+          {Object.values(JOB_CHARGE_SOURCE_META)
+            .map((m) => `${m.icon} ${m.name}`)
+            .join(' · ')}
+          {data.hasUnknownDateBucket && ' · “No date” bucket holds items without a date'}
+          {!data.valueSeriesAvailable &&
+            (revenue == null || revenue === 0
+              ? ' · Value line hidden: job total not set'
+              : ' · Value line hidden: no report or % set on the job')}
+          {data.valueFromFallbackPercent &&
+            ' · Value point uses the job’s current % (no dated field report)'}
+          {cardChargesExcluded && ' · Card charges not included (no Banking access)'}
+        </p>
+      )}
     </div>
   )
 }
