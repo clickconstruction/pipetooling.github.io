@@ -122,6 +122,7 @@ export function buildMoneyFlowSankey(args: {
   let income = 0
   let otherIn = 0
   const outByLabel = new Map<string, number>()
+  const outTxIdsByLabel = new Map<string, string[]>()
   for (const t of txs) {
     const label = labelNameByTxId.get(t.id)
     if (label === INTERNAL_TRANSFERS_LABEL_NAME) continue
@@ -131,6 +132,9 @@ export function buildMoneyFlowSankey(args: {
     } else if (t.amount < 0 && label !== INCOME_LABEL_NAME) {
       const key = label ?? 'Unlabeled'
       outByLabel.set(key, (outByLabel.get(key) ?? 0) + Math.abs(t.amount))
+      const ids = outTxIdsByLabel.get(key) ?? []
+      ids.push(t.id)
+      outTxIdsByLabel.set(key, ids)
     }
   }
 
@@ -166,12 +170,17 @@ export function buildMoneyFlowSankey(args: {
     const rest = ranked.slice(MONEY_FLOW_TOP_LABELS_PER_FAMILY)
     for (const [label, value] of top) {
       nodes.push({ id: `label:${label}`, col: 2, label, value, tone })
-      links.push({ source: `fam:${family}`, target: `label:${label}`, value })
+      links.push({ source: `fam:${family}`, target: `label:${label}`, value, txIds: outTxIdsByLabel.get(label) ?? [] })
     }
     const restTotal = rest.reduce((s, [, v]) => s + v, 0)
     if (restTotal > 0) {
       nodes.push({ id: `label:other-${family}`, col: 2, label: `Other ${family.toLowerCase()}`, value: restTotal, tone })
-      links.push({ source: `fam:${family}`, target: `label:other-${family}`, value: restTotal })
+      links.push({
+        source: `fam:${family}`,
+        target: `label:other-${family}`,
+        value: restTotal,
+        txIds: rest.flatMap(([label]) => outTxIdsByLabel.get(label) ?? []),
+      })
     }
   }
 
@@ -192,8 +201,9 @@ export function buildMoneyFlowSankey(args: {
     id: `fam:${f}`,
     tone: FAMILY_TONES[f] ?? ('neutral' as SankeyTone),
     left: [...outByFamily.get(f)!.values()].reduce((s, v) => s + v, 0),
+    txIds: [...outByFamily.get(f)!.keys()].flatMap((label) => outTxIdsByLabel.get(label) ?? []),
   }))
-  if (kept > 0) familySinks.push({ id: 'fam:kept', tone: 'ink', left: kept })
+  if (kept > 0) familySinks.push({ id: 'fam:kept', tone: 'ink', left: kept, txIds: [] })
   let si = 0
   for (const sink of familySinks) {
     while (sink.left > 0.005 && si < sources.length) {
@@ -203,7 +213,7 @@ export function buildMoneyFlowSankey(args: {
         continue
       }
       const v = Math.min(src.left, sink.left)
-      links.push({ source: src.id, target: sink.id, value: v, tone: sink.tone })
+      links.push({ source: src.id, target: sink.id, value: v, tone: sink.tone, txIds: sink.txIds })
       src.left -= v
       sink.left -= v
     }
@@ -225,12 +235,12 @@ export const INTERNAL_TRANSFER_KIND = 'internalTransfer'
 /** Max calendar-day gap between the two legs of one transfer. */
 export const TRANSFER_PAIR_MAX_DAY_GAP = 3
 
-export type TransferPair = { fromAccountId: string; toAccountId: string; amount: number }
+export type TransferPair = { fromAccountId: string; toAccountId: string; amount: number; txIds: [string, string] }
 export type TransferPairing = {
   pairs: TransferPair[]
   /** Outgoing legs with no matching incoming leg (and vice versa). */
-  unpairedOut: { accountId: string; amount: number }[]
-  unpairedIn: { accountId: string; amount: number }[]
+  unpairedOut: { accountId: string; amount: number; txId: string }[]
+  unpairedIn: { accountId: string; amount: number; txId: string }[]
 }
 
 function dayNumber(ymd: string): number {
@@ -258,8 +268,8 @@ export function pairInternalTransfers(txs: VisualsTxRow[]): TransferPairing {
   }
 
   const pairs: TransferPair[] = []
-  const unpairedOut: { accountId: string; amount: number }[] = []
-  const unpairedIn: { accountId: string; amount: number }[] = []
+  const unpairedOut: { accountId: string; amount: number; txId: string }[] = []
+  const unpairedIn: { accountId: string; amount: number; txId: string }[] = []
   for (const bucket of byCents.values()) {
     const ins = [...bucket.ins].sort((a, b) => a.postedYmd.localeCompare(b.postedYmd))
     const usedIn = new Set<number>()
@@ -280,13 +290,18 @@ export function pairInternalTransfers(txs: VisualsTxRow[]): TransferPairing {
       }
       if (best >= 0) {
         usedIn.add(best)
-        pairs.push({ fromAccountId: out.accountId, toAccountId: ins[best]!.accountId, amount: Math.abs(out.amount) })
+        pairs.push({
+          fromAccountId: out.accountId,
+          toAccountId: ins[best]!.accountId,
+          amount: Math.abs(out.amount),
+          txIds: [out.id, ins[best]!.id],
+        })
       } else {
-        unpairedOut.push({ accountId: out.accountId, amount: Math.abs(out.amount) })
+        unpairedOut.push({ accountId: out.accountId, amount: Math.abs(out.amount), txId: out.id })
       }
     }
     ins.forEach((inn, i) => {
-      if (!usedIn.has(i)) unpairedIn.push({ accountId: inn.accountId, amount: inn.amount })
+      if (!usedIn.has(i)) unpairedIn.push({ accountId: inn.accountId, amount: inn.amount, txId: inn.id })
     })
   }
   return { pairs, unpairedOut, unpairedIn }
@@ -304,11 +319,12 @@ export function buildTransferSankey(args: {
 }): TransferSankeyResult {
   const { pairing, accountLabelById } = args
 
-  const edgeTotals = new Map<string, { from: string; to: string; value: number }>()
+  const edgeTotals = new Map<string, { from: string; to: string; value: number; txIds: string[] }>()
   for (const p of pairing.pairs) {
     const key = `${p.fromAccountId}→${p.toAccountId}`
-    const edge = edgeTotals.get(key) ?? { from: p.fromAccountId, to: p.toAccountId, value: 0 }
+    const edge = edgeTotals.get(key) ?? { from: p.fromAccountId, to: p.toAccountId, value: 0, txIds: [] }
     edge.value += p.amount
+    edge.txIds.push(...p.txIds)
     edgeTotals.set(key, edge)
   }
 
@@ -349,10 +365,12 @@ export function buildTransferSankey(args: {
   if (unpairedOutTotal > 0) nodes.push({ id: 'to:unmatched', col: 1, label: 'Unmatched legs', value: unpairedOutTotal, tone: 'neutral' })
 
   for (const e of [...edgeTotals.values()].sort((a, b) => b.value - a.value)) {
-    links.push({ source: `from:${e.from}`, target: `to:${e.to}`, value: e.value })
+    links.push({ source: `from:${e.from}`, target: `to:${e.to}`, value: e.value, txIds: e.txIds })
   }
-  for (const u of pairing.unpairedOut) links.push({ source: `from:${u.accountId}`, target: 'to:unmatched', value: u.amount })
-  for (const u of pairing.unpairedIn) links.push({ source: 'from:unmatched', target: `to:${u.accountId}`, value: u.amount, tone: 'neutral' })
+  for (const u of pairing.unpairedOut)
+    links.push({ source: `from:${u.accountId}`, target: 'to:unmatched', value: u.amount, txIds: [u.txId] })
+  for (const u of pairing.unpairedIn)
+    links.push({ source: 'from:unmatched', target: `to:${u.accountId}`, value: u.amount, tone: 'neutral', txIds: [u.txId] })
 
   const pairedTotal = [...edgeTotals.values()].reduce((s, e) => s + e.value, 0)
   return { input: { nodes, links }, pairedTotal, unpairedTotal: unpairedOutTotal + unpairedInTotal }
@@ -380,7 +398,14 @@ export function buildCardsJobsSankey(args: {
 }): CardsJobsResult {
   const { txs, personLabelByTxId, allocationsByTxId, jobLabelById } = args
 
-  const spendByPersonJob = new Map<string, Map<string, number>>()
+  type Cell = { v: number; txIds: string[] }
+  const addCell = (m: Map<string, Cell>, key: string, v: number, txId: string): void => {
+    const cell = m.get(key) ?? { v: 0, txIds: [] }
+    cell.v += v
+    if (cell.txIds[cell.txIds.length - 1] !== txId) cell.txIds.push(txId)
+    m.set(key, cell)
+  }
+  const spendByPersonJob = new Map<string, Map<string, Cell>>()
   let spendTotal = 0
   let txCount = 0
   const NO_JOB = 'job:none'
@@ -390,21 +415,20 @@ export function buildCardsJobsSankey(args: {
     const person = personLabelByTxId.get(t.id)?.trim() || 'No person'
     let remaining = Math.abs(t.amount)
     spendTotal += remaining
-    const perJob = spendByPersonJob.get(person) ?? new Map<string, number>()
+    const perJob = spendByPersonJob.get(person) ?? new Map<string, Cell>()
     for (const alloc of allocationsByTxId.get(t.id) ?? []) {
       if (remaining <= 0) break
       const v = Math.min(Math.abs(alloc.amount), remaining)
       if (v <= 0) continue
-      const key = `job:${alloc.jobId}`
-      perJob.set(key, (perJob.get(key) ?? 0) + v)
+      addCell(perJob, `job:${alloc.jobId}`, v, t.id)
       remaining -= v
     }
-    if (remaining > 0.005) perJob.set(NO_JOB, (perJob.get(NO_JOB) ?? 0) + remaining)
+    if (remaining > 0.005) addCell(perJob, NO_JOB, remaining, t.id)
     spendByPersonJob.set(person, perJob)
   }
 
   const personTotals = [...spendByPersonJob.entries()]
-    .map(([person, perJob]) => ({ person, total: [...perJob.values()].reduce((s, v) => s + v, 0) }))
+    .map(([person, perJob]) => ({ person, total: [...perJob.values()].reduce((s, c) => s + c.v, 0) }))
     .sort((a, b) => b.total - a.total)
   const topPeople = personTotals.slice(0, CARDS_TOP_PEOPLE).map((p) => p.person)
   const personKey = (person: string): string => (topPeople.includes(person) ? person : 'Other people')
@@ -417,13 +441,16 @@ export function buildCardsJobsSankey(args: {
   toneByPerson.set('No person', 'neutral')
 
   const jobTotals = new Map<string, number>()
-  const folded = new Map<string, Map<string, number>>()
+  const folded = new Map<string, Map<string, Cell>>()
   for (const [person, perJob] of spendByPersonJob) {
     const pk = personKey(person)
-    const target = folded.get(pk) ?? new Map<string, number>()
-    for (const [jobKey, v] of perJob) {
-      target.set(jobKey, (target.get(jobKey) ?? 0) + v)
-      if (jobKey !== NO_JOB) jobTotals.set(jobKey, (jobTotals.get(jobKey) ?? 0) + v)
+    const target = folded.get(pk) ?? new Map<string, Cell>()
+    for (const [jobKey, cell] of perJob) {
+      const merged = target.get(jobKey) ?? { v: 0, txIds: [] }
+      merged.v += cell.v
+      merged.txIds.push(...cell.txIds)
+      target.set(jobKey, merged)
+      if (jobKey !== NO_JOB) jobTotals.set(jobKey, (jobTotals.get(jobKey) ?? 0) + cell.v)
     }
     folded.set(pk, target)
   }
@@ -436,13 +463,14 @@ export function buildCardsJobsSankey(args: {
   const links: SankeyInput['links'] = []
   const personOrder = [...new Set(personTotals.map((p) => personKey(p.person)))]
   for (const pk of personOrder) {
-    const total = [...(folded.get(pk)?.values() ?? [])].reduce((s, v) => s + v, 0)
+    const total = [...(folded.get(pk)?.values() ?? [])].reduce((s, c) => s + c.v, 0)
     nodes.push({ id: `person:${pk}`, col: 0, label: pk, value: total, tone: toneByPerson.get(pk) ?? 'neutral' })
   }
 
   const jobNodeTotals = new Map<string, number>()
   for (const perJob of folded.values()) {
-    for (const [jobKey, v] of perJob) jobNodeTotals.set(jobKeyOf(jobKey), (jobNodeTotals.get(jobKeyOf(jobKey)) ?? 0) + v)
+    for (const [jobKey, cell] of perJob)
+      jobNodeTotals.set(jobKeyOf(jobKey), (jobNodeTotals.get(jobKeyOf(jobKey)) ?? 0) + cell.v)
   }
   const jobNodeOrder = [...jobNodeTotals.entries()]
     .sort((a, b) => {
@@ -457,10 +485,21 @@ export function buildCardsJobsSankey(args: {
   }
 
   for (const pk of personOrder) {
-    const merged = new Map<string, number>()
-    for (const [jobKey, v] of folded.get(pk) ?? []) merged.set(jobKeyOf(jobKey), (merged.get(jobKeyOf(jobKey)) ?? 0) + v)
-    for (const [jobKey, v] of merged) {
-      links.push({ source: `person:${pk}`, target: jobKey, value: v, tone: toneByPerson.get(pk) ?? 'neutral' })
+    const merged = new Map<string, Cell>()
+    for (const [jobKey, cell] of folded.get(pk) ?? []) {
+      const m = merged.get(jobKeyOf(jobKey)) ?? { v: 0, txIds: [] }
+      m.v += cell.v
+      m.txIds.push(...cell.txIds)
+      merged.set(jobKeyOf(jobKey), m)
+    }
+    for (const [jobKey, cell] of merged) {
+      links.push({
+        source: `person:${pk}`,
+        target: jobKey,
+        value: cell.v,
+        tone: toneByPerson.get(pk) ?? 'neutral',
+        txIds: [...new Set(cell.txIds)],
+      })
     }
   }
 

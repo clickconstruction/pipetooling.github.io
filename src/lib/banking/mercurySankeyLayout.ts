@@ -39,6 +39,8 @@ export type SankeyLinkInput = {
   value: number
   /** Ribbon tone; defaults to the source node's tone. */
   tone?: SankeyTone
+  /** Transactions behind this ribbon — presence makes it click-through (v2.1713). */
+  txIds?: string[]
 }
 
 export type SankeyInput = { nodes: SankeyNodeInput[]; links: SankeyLinkInput[] }
@@ -73,6 +75,8 @@ export type PositionedSankeyLink = {
   tone: SankeyTone
   /** SVG path for the filled ribbon. */
   path: string
+  /** Transactions behind this ribbon (empty = not click-through). */
+  txIds: string[]
 }
 
 export type SankeyLayout = {
@@ -153,6 +157,7 @@ export function layoutSankey(input: SankeyInput, opts: SankeyLayoutOptions): San
       targetLabel: l.tn.label,
       value: l.value,
       tone: l.tone ?? l.sn.tone,
+      txIds: l.txIds ?? [],
       path:
         `M${r2(x0)},${r2(y0)} C${r2(m)},${r2(y0)} ${r2(m)},${r2(y1)} ${r2(x1)},${r2(y1)} ` +
         `L${r2(x1)},${r2(y1 + h)} C${r2(m)},${r2(y1 + h)} ${r2(m)},${r2(y0 + h)} ${r2(x0)},${r2(y0 + h)} Z`,

@@ -54,8 +54,12 @@ const TONE_FILLS: Record<SankeyTone, string> = {
   warn: '#f59e0b',
 }
 
+/** A tx row plus the display fields the drill-down list shows (v2.1713). */
+type VisualsTxDetail = VisualsTxRow & { counterpartyName: string | null }
+
 type VisualsData = {
-  txs: VisualsTxRow[]
+  txs: VisualsTxDetail[]
+  txById: Map<string, VisualsTxDetail>
   labelNameByTxId: Map<string, string>
   personLabelByTxId: Map<string, string | null>
   allocationsByTxId: Map<string, { jobId: string; amount: number }[]>
@@ -70,7 +74,7 @@ async function fetchVisualsData(): Promise<VisualsData> {
       async () =>
         supabase
           .from('mercury_transactions')
-          .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id')
+          .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name')
           .order('posted_at', { ascending: false })
           .limit(VISUALS_TX_LIMIT),
       'visuals mercury_transactions',
@@ -89,13 +93,14 @@ async function fetchVisualsData(): Promise<VisualsData> {
     fetchAllAttributions('visuals'),
   ])
 
-  const txs: VisualsTxRow[] = ((txRows ?? []) as {
+  const txs: VisualsTxDetail[] = ((txRows ?? []) as {
     id: string
     amount: number
     kind: string
     posted_at: string | null
     mercury_account_id: string
     duplicate_of_transaction_id: string | null
+    counterparty_name: string | null
   }[]).map((r) => ({
     id: r.id,
     amount: Number(r.amount),
@@ -103,6 +108,7 @@ async function fetchVisualsData(): Promise<VisualsData> {
     postedYmd: r.posted_at ? calendarYmdInAppTzFromIso(r.posted_at) : '',
     accountId: r.mercury_account_id,
     isDuplicate: r.duplicate_of_transaction_id != null,
+    counterpartyName: r.counterparty_name,
   }))
 
   const labelNameById = new Map<string, string>()
@@ -169,6 +175,7 @@ async function fetchVisualsData(): Promise<VisualsData> {
 
   return {
     txs,
+    txById: new Map(txs.map((t) => [t.id, t])),
     labelNameByTxId,
     personLabelByTxId,
     allocationsByTxId,
@@ -213,7 +220,19 @@ function SegRow<T extends string>(props: {
   )
 }
 
-function SankeySvg({ input, height, padRight }: { input: SankeyInput; height: number; padRight?: number }) {
+export type SankeyRibbonClick = { title: string; txIds: string[] }
+
+function SankeySvg({
+  input,
+  height,
+  padRight,
+  onRibbonClick,
+}: {
+  input: SankeyInput
+  height: number
+  padRight?: number
+  onRibbonClick?: (click: SankeyRibbonClick) => void
+}) {
   const layout = useMemo(
     () => layoutSankey(input, { width: 960, height, padLeft: 170, padRight: padRight ?? 230 }),
     [input, height, padRight],
@@ -228,11 +247,24 @@ function SankeySvg({ input, height, padRight }: { input: SankeyInput; height: nu
         style={{ display: 'block', width: '100%', minWidth: 860, height: 'auto' }}
         role="img"
       >
-        {layout.links.map((l, i) => (
-          <path key={i} d={l.path} fill={TONE_FILLS[l.tone]} opacity={0.32}>
-            <title>{`${l.sourceLabel} → ${l.targetLabel}: ${formatSankeyUsd(l.value)}`}</title>
-          </path>
-        ))}
+        {layout.links.map((l, i) => {
+          const clickable = onRibbonClick != null && l.txIds.length > 0
+          const title = `${l.sourceLabel} → ${l.targetLabel}`
+          return (
+            <path
+              key={i}
+              d={l.path}
+              fill={TONE_FILLS[l.tone]}
+              opacity={0.32}
+              role={clickable ? 'button' : undefined}
+              aria-label={clickable ? `${title}: see transactions` : undefined}
+              style={clickable ? { cursor: 'pointer' } : undefined}
+              onClick={clickable ? () => onRibbonClick({ title, txIds: l.txIds }) : undefined}
+            >
+              <title>{`${title}: ${formatSankeyUsd(l.value)}${clickable ? ' — click for transactions' : ''}`}</title>
+            </path>
+          )
+        })}
         {layout.nodes.map((n) => {
           const h = Math.max(n.h, 2)
           const tx = n.labelSide === 'left' ? n.x - 8 : n.x + 18
@@ -270,6 +302,69 @@ function SankeySvg({ input, height, padRight }: { input: SankeyInput; height: nu
   )
 }
 
+/** Rows shown at once in the drill-down list; the header always shows the full count/total. */
+const DRILLDOWN_ROW_CAP = 400
+
+function VisualsDrilldownModal({
+  title,
+  txs,
+  accountLabel,
+  onClose,
+}: {
+  title: string
+  txs: VisualsTxDetail[]
+  accountLabel: (id: string) => string
+  onClose: () => void
+}) {
+  const sorted = useMemo(() => [...txs].sort((a, b) => b.postedYmd.localeCompare(a.postedYmd)), [txs])
+  const total = useMemo(() => sorted.reduce((s, t) => s + Math.abs(t.amount), 0), [sorted])
+  const shown = sorted.slice(0, DRILLDOWN_ROW_CAP)
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Transactions: ${title}`}
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(720px, 100%)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{title}</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-slate-500)' }}>
+              {sorted.length.toLocaleString()} transaction{sorted.length === 1 ? '' : 's'} · {formatSankeyUsd(total)}
+              {sorted.length > shown.length ? ` · showing the ${DRILLDOWN_ROW_CAP} most recent` : ''}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close transactions"
+            style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer', fontSize: '0.82rem' }}
+          >
+            Close
+          </button>
+        </div>
+        <div style={{ overflowY: 'auto', padding: '0.4rem 1rem 0.8rem' }}>
+          {shown.map((t) => (
+            <div key={t.id} style={{ display: 'flex', gap: '0.7rem', alignItems: 'baseline', fontSize: '0.82rem', padding: '0.28rem 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ minWidth: '5.6rem', color: 'var(--text-slate-500)', fontVariantNumeric: 'tabular-nums' }}>{t.postedYmd || '—'}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.counterpartyName ?? '—'}</span>
+              <span style={{ color: 'var(--text-slate-500)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{accountLabel(t.accountId)}</span>
+              <span style={{ minWidth: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                {`${t.amount < 0 ? '−' : '+'}${formatSankeyUsd(t.amount)}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function BankingMercuryVisualsTab() {
   const { showToast } = useToastContext()
   const [view, setView] = useState<VisualsView>('flow')
@@ -277,6 +372,7 @@ export function BankingMercuryVisualsTab() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [data, setData] = useState<VisualsData | null>(null)
+  const [drilldown, setDrilldown] = useState<SankeyRibbonClick | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -295,6 +391,11 @@ export function BankingMercuryVisualsTab() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // A drill-down list belongs to the layout it was clicked in.
+  useEffect(() => {
+    setDrilldown(null)
+  }, [view, period])
 
   const todayYmd = useMemo(() => calendarYmdInAppTzFromIso(new Date().toISOString()), [])
   const periodTxs = useMemo(
@@ -344,7 +445,8 @@ export function BankingMercuryVisualsTab() {
           ? 'Every labeled dollar as a river: money in on the left, flowing out through expense families to your accounting labels. Duplicates and internal transfers are excluded, matching the books.'
           : view === 'accounts'
             ? 'Internal transfers between your Mercury accounts: which account feeds which. Ribbon width is dollars moved in the period.'
-            : 'Card spend by person, flowing to the jobs it was split to. The amber band is spend not yet on any job — the same purchases the Dashboard asks you to sort.'}
+            : 'Card spend by person, flowing to the jobs it was split to. The amber band is spend not yet on any job — the same purchases the Dashboard asks you to sort.'}{' '}
+        Click any ribbon to see the transactions behind it.
       </p>
 
       {loading ? <div style={{ color: 'var(--text-slate-500)' }}>Loading money flows…</div> : null}
@@ -361,7 +463,7 @@ export function BankingMercuryVisualsTab() {
         <>
           {view === 'flow' && flow ? (
             <>
-              <SankeySvg input={flow.input} height={560} />
+              <SankeySvg input={flow.input} height={560} onRibbonClick={setDrilldown} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
                 In {formatSankeyUsd(flow.totalIn)} · out {formatSankeyUsd(flow.totalOut)}
                 {flow.kept > 0 ? ` · kept ${formatSankeyUsd(flow.kept)}` : ''}
@@ -372,7 +474,7 @@ export function BankingMercuryVisualsTab() {
           ) : null}
           {view === 'accounts' && transfers ? (
             <>
-              <SankeySvg input={transfers.input} height={460} padRight={200} />
+              <SankeySvg input={transfers.input} height={460} padRight={200} onRibbonClick={setDrilldown} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
                 {formatSankeyUsd(transfers.pairedTotal)} moved between accounts
                 {transfers.unpairedTotal > 0
@@ -383,7 +485,7 @@ export function BankingMercuryVisualsTab() {
           ) : null}
           {view === 'cards' && cards ? (
             <>
-              <SankeySvg input={cards.input} height={460} padRight={260} />
+              <SankeySvg input={cards.input} height={460} padRight={260} onRibbonClick={setDrilldown} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
                 {formatSankeyUsd(cards.spendTotal)} of card spend across {cards.txCount.toLocaleString()} purchases
                 {cards.noJobTotal > 0 ? ` · ${formatSankeyUsd(cards.noJobTotal)} not on any job yet` : ' · everything is on a job'}
@@ -394,6 +496,14 @@ export function BankingMercuryVisualsTab() {
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
               Showing the most recent {VISUALS_TX_LIMIT.toLocaleString()} transactions — older history is not in these totals.
             </p>
+          ) : null}
+          {drilldown ? (
+            <VisualsDrilldownModal
+              title={drilldown.title}
+              txs={drilldown.txIds.map((id) => data.txById.get(id)).filter((t): t is VisualsTxDetail => t != null)}
+              accountLabel={accountLabel}
+              onClose={() => setDrilldown(null)}
+            />
           ) : null}
         </>
       ) : null}
