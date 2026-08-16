@@ -12,7 +12,7 @@ Hover any band or bar to see the exact dollar amount — and **click a band** to
 
 **Click a transaction in that list to open it.** The left side is the bank's record — posted time, card, bank description, memo, the raw detail, and an *Open in Mercury* link — and it's read-only. The right side is your books, and it's editable: change the **accounting label**, pick the **person** (its own field — and if a rule tagged them, it says so), edit the **job splits** (the same Link-to-person-and-jobs window used everywhere else), or add a **note**. The moment you save, the rivers behind the window redraw — label a stray purchase and you'll see the dollars slide from the gray Unlabeled band into the right category.
 
-**Tip**: accounting rules can tag people for you. When you edit a rule on the Accounting tab, set **Also attribute to person** — every approved match then carries that person automatically, and it never overwrites one you set by hand.
+**Tip**: accounting rules can tag people for you. When you edit a rule on the Accounting tab, set **Also attribute to person** — every approved match then carries that person automatically, and it never overwrites one you set by hand. Saving the rule also offers to **tag the transactions it already sorted**, so the history catches up in one click (skip it, and re-saving the rule offers again).
 
 ## Where the money goes
 
