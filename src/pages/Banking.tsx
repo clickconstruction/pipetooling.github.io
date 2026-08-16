@@ -950,8 +950,7 @@ export default function Banking() {
             'list users banking attribution',
           ),
           withSupabaseRetry(
-            // Cast: new RPC not yet in generated types (gen-types:linked will pick it up).
-            () => supabase.rpc('list_people_with_kind_for_banking_attribution' as unknown as 'list_users_for_banking_attribution'),
+            () => supabase.rpc('list_people_with_kind_for_banking_attribution'),
             'list people banking attribution',
           ),
         ])

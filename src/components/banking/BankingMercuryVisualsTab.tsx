@@ -194,7 +194,7 @@ async function fetchVisualsData(): Promise<VisualsData> {
   }))
   const attributionOptions = buildBankingAttributionOptions(
     usersOptions,
-    ((peopleOptionRows ?? []) as { id: string; name: string; kind: string | null }[]),
+    ((peopleOptionRows ?? []) as { id: string; name: string; kind: string | null; archived?: boolean }[]),
   )
 
   const allocationsByTxId = new Map<string, { jobId: string; amount: number }[]>()

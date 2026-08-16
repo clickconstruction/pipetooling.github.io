@@ -47,4 +47,27 @@ describe('buildBankingAttributionOptions', () => {
       { value: 'p:p2', label: 'Bob · Sub' },
     ])
   })
+
+  it('lists archived people last, behind a separator, tagged archived (v2.1728)', () => {
+    const opts = buildBankingAttributionOptions(
+      [{ value: 'u1', label: 'Alice' }],
+      [
+        { id: 'p1', name: 'Zed', kind: 'sub', archived: true },
+        { id: 'p2', name: 'Ada', kind: 'sub' },
+        { id: 'p3', name: 'Abe', kind: 'helper', archived: true },
+      ],
+    )
+    expect(opts).toEqual([
+      { value: 'u:u1', label: 'Alice' },
+      { value: 'p:p2', label: 'Ada · Sub' },
+      { kind: 'separator', id: 'archived-people', label: 'Archived' },
+      { value: 'p:p3', label: 'Abe · Helper · archived' },
+      { value: 'p:p1', label: 'Zed · Sub · archived' },
+    ])
+  })
+
+  it('omits the archived separator when nobody is archived', () => {
+    const opts = buildBankingAttributionOptions([], [{ id: 'p1', name: 'Ada', kind: 'sub', archived: false }])
+    expect(opts).toEqual([{ value: 'p:p1', label: 'Ada · Sub' }])
+  })
 })

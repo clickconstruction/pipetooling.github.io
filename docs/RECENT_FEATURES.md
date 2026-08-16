@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1727)
+last_updated: 2026-08-16 (v2.1728)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1728)
+
+### Banking: archived people stay taggable — listed last, tagged (2026-08-16)
+Owner design question, answered by fixing the gap it exposed: the attribution RPC previously HID archived people (`archived_at IS NULL`), which made departed subs untaggable and let the new Add-person action mint duplicates of archived people. Migration `20260816232749` (see `MIGRATIONS.md`) returns everyone with an `archived` flag; [`buildBankingAttributionOptions`](../src/lib/bankingAttributionOptions.ts) lists archived people after an **Archived** separator, tagged `· archived` (+2 tests). All attribution pickers inherit (Card Review, Category Review, rule form, tx detail modal). Bonus cleanup: gen-types now types the RPC, so `Banking.tsx` retires the last `as unknown as` cast (arch-map quirk #17 fully closed). Verified live: 8 archived people render behind the separator. Deploy: db push applied during this PR.
 
 ## Latest Updates (v2.1727)
 
