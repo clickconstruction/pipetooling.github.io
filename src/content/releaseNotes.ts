@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1685',
+    date: '2026-08-15',
+    title: 'Full-screen activity: reports open',
+    kind: 'feature',
+    highlights: [
+      'When you open a job\'s activity big — the floating window or full-screen mode — every report now shows its answers right away instead of folding to "▸ N answers".',
+      'Click a report line to tuck it away; the compact panel under a Pipeline row still keeps reports folded.',
+    ],
+  },
+  {
     version: 'v2.1684',
     date: '2026-08-15',
     title: 'One contact-card icon everywhere',

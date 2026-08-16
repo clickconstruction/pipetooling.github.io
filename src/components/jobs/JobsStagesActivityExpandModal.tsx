@@ -136,6 +136,7 @@ export function JobsStagesActivityExpandModal({
           upcoming={upcoming}
           viewerRole={viewerRole}
           narrow={narrow}
+          reportsOpenByDefault
           {...(submitNoteWithBody ? { submitNoteWithBody } : {})}
           pctComplete={pctComplete ?? null}
           canEditPct={canEditPct ?? false}

@@ -84,9 +84,15 @@ type Props = {
   filtered: boolean
   /** Narrow shells (≤700px) switch to the flowing-line layout. */
   narrow?: boolean
+  /**
+   * Full-screen shells (owner call, v2.1685): report answers show open by
+   * default — there's room, and the reports are why you went big. Clicking a
+   * line still folds it (openKeys stores toggles away from the default).
+   */
+  reportsOpenByDefault?: boolean
 }
 
-export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
+export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader is parked at the newest item. New arrivals re-pin only
@@ -103,6 +109,12 @@ export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
     const el = scrollRef.current
     if (el && atBottomRef.current) el.scrollTop = el.scrollHeight
   }, [loaded, count])
+
+  // Defaults flipped (inline ⇄ fullscreen): drop stored toggles, else a report
+  // opened inline would read as "toggled shut" against the new open default.
+  useEffect(() => {
+    setOpenKeys(new Set())
+  }, [reportsOpenByDefault])
 
   const toggle = (key: string) => {
     setOpenKeys((prev) => {
@@ -138,10 +150,11 @@ export function JobActivityFeed({ lines, filtered, narrow = false }: Props) {
             {g.lines.map((line) => {
               const hasDetail = line.detail.length > 0
               const msg = isConversationalLine(line)
-              // Report answers fold (they're long); schedule/clock notes are a
-              // sentence and show by default (owner call). openKeys therefore
-              // stores TOGGLES away from each line's default, not "open".
-              const defaultOpen = hasDetail && line.kind !== 'report'
+              // Report answers fold (they're long) except in full-screen
+              // shells; schedule/clock notes are a sentence and show by
+              // default (owner call). openKeys therefore stores TOGGLES away
+              // from each line's default, not "open".
+              const defaultOpen = hasDetail && (reportsOpenByDefault || line.kind !== 'report')
               const open = openKeys.has(line.key) ? !defaultOpen : defaultOpen
 
               const onRowClick = (e: MouseEvent<HTMLDivElement>) => {
