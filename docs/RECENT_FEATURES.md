@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1694)
+last_updated: 2026-08-15 (v2.1695)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1695)
+
+### Job window: the header's "Link to: Bid | Project" cluster retires (2026-08-15)
+Owner call: the portaled quick-link cluster (v2.1677) is redundant since the Edit tab's fact rows gave Bid and Project their own rows with the same link/unlink flows. [`JobFormHeaderRow`](../src/components/jobs/JobFormHeaderRow.tsx) renders nothing when embedded; the slot span and `jobWindowHeaderSlot.ts` (the import-cycle portal workaround) are deleted; the pane's icon row pins pill + icons left now that the cluster's `marginLeft:auto` no longer splits it. **Capability preserved**: the linked-project one-click open moved into the Project row's editor as an "Open project" link ([`JobFormProjectEditor`](../src/components/jobs/JobFormLinksSection.tsx)), twin to the Bid editor's "Open cover letter"; the standalone New Job form keeps its classic header row untouched. Client-only — no migration.
 
 ## Latest Updates (v2.1694)
 
