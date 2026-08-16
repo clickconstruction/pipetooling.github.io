@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1721',
+    date: '2026-08-16',
+    title: 'Follow-ups, the whole queue at a glance',
+    kind: 'feature',
+    highlights: [
+      'The follow-ups screen now has a List view next to the Deck: every quiet job in one table, quietest first, with a color-coded days badge and the reason it needs eyes.',
+      'Click Review on any row and the deck opens on exactly that job — triage the list, then work the cards.',
+    ],
+  },
+  {
     version: 'v2.1720',
     date: '2026-08-16',
     title: 'The Dashboard nudges you to follow up',

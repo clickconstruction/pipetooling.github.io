@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1720)
+last_updated: 2026-08-16 (v2.1721)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1721)
+
+### Follow-ups: queue list view — the triage table behind the deck (2026-08-16)
+Last piece of the Follow-Up Mode mockup. The follow-ups modal grows a **Deck | List** toggle: List shows the whole queue at once, quietest first — per row a severity badge (`jobFollowupQuietSeverity`: red ≥14d, amber ≥7d, else slate), job number + name, address · why-it's-here reason, stage chip, and **Review →**, which *pins* that job and flips to Deck so the cards deal from there (`pinnedJobId` in [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx); the pin clears when the job leaves the queue and the deck resumes stalest-first). Stage filter chips apply to both views; the all-caught-up state is shared. Verified live: 56 rows, Review → on a mid-list row dealt the deck on that job. Street-view thumbnails from the mockup were deliberately dropped — one imagery call per row is real money at 56 rows; the deck carries the big image. Kernel +1 test (10). Client-only — no migration.
 
 ## Latest Updates (v2.1720)
 
