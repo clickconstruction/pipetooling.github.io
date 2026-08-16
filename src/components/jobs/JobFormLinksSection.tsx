@@ -81,28 +81,47 @@ export function JobFormProjectEditor({
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                 Linked to: <strong>{linkedName}</strong>
               </p>
-              <button
-                ref={projectDisconnectRef}
-                type="button"
-                onClick={() => {
-                  setProjectId(null)
-                  showToast('Unlinked from project. Save the job to apply.', 'info')
-                }}
-                title={disconnectLabel}
-                aria-label={disconnectLabel}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.875rem',
-                  border: '1px solid var(--border-strong)',
-                  background: 'var(--bg-subtle)',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: 'var(--text-700)',
-                  fontWeight: 500,
-                }}
-              >
-                {disconnectLabel}
-              </button>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                {/* One-click open lived on the header's "Link to" cluster until
+                    v2.1695 retired it — the Bid editor's "Open cover letter" twin. */}
+                <Link
+                  to={`/workflows/${projectId}`}
+                  aria-label="Open linked project workflow"
+                  style={{
+                    fontSize: '0.875rem',
+                    padding: '0.35rem 0.65rem',
+                    background: 'var(--bg-blue-tint)',
+                    color: 'var(--text-blue-700)',
+                    borderRadius: 4,
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                  }}
+                >
+                  Open project
+                </Link>
+                <button
+                  ref={projectDisconnectRef}
+                  type="button"
+                  onClick={() => {
+                    setProjectId(null)
+                    showToast('Unlinked from project. Save the job to apply.', 'info')
+                  }}
+                  title={disconnectLabel}
+                  aria-label={disconnectLabel}
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    color: 'var(--text-700)',
+                    fontWeight: 500,
+                  }}
+                >
+                  {disconnectLabel}
+                </button>
+              </div>
             </>
           )
         })()

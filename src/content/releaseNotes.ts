@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1695',
+    date: '2026-08-15',
+    title: 'Header "Link to" retires',
+    kind: 'fix',
+    highlights: [
+      'The Job window\'s "Link to: Bid | Project" header links are gone — the Edit tab\'s Bid and Project rows do the same job.',
+      'A linked project now has an "Open project" button right in its row, next to Disconnect.',
+    ],
+  },
+  {
     version: 'v2.1694',
     date: '2026-08-15',
     title: 'Team row gets its crew icon',

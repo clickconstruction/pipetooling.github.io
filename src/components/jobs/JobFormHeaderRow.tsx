@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { JOB_WINDOW_HEADER_LINKS_SLOT_ID } from './jobWindowHeaderSlot'
 
 type JobFormHeaderRowProps = {
   mode: 'new' | 'edit'
@@ -19,9 +17,10 @@ type JobFormHeaderRowProps = {
   /** The shell's JOB_FORM_NESTED_OVERLAY_Z_INDEX — the help popover sits above the form. */
   nestedOverlayZIndex: number
   /**
-   * Job-window embedding (v2.1675): the tab bar already names the surface, so
-   * hide the title and the Job Detail bridge — the Job tab replaced it. The
-   * "Link to: Bid | Project" cluster stays.
+   * Job-window embedding (v2.1675): the whole row is the standalone form's —
+   * in the Job window the tab bar names the surface, the pill shows the
+   * number, and Bid/Project link from their Edit-tab fact rows, so embedded
+   * renders NOTHING (the header "Link to" cluster retired in v2.1695).
    */
   embedded?: boolean
 }
@@ -49,13 +48,6 @@ export function JobFormHeaderRow({
 }: JobFormHeaderRowProps) {
   const [hcpHelpOpen, setHcpHelpOpen] = useState(false)
   const hcpHelpRef = useRef<HTMLDivElement | null>(null)
-  // Job window: the "Link to" cluster portals into the shared header's slot
-  // (rendered by the Job pane), so it rides the icon row on every tab.
-  const [headerLinksSlot, setHeaderLinksSlot] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    if (!embedded) return
-    setHeaderLinksSlot(document.getElementById(JOB_WINDOW_HEADER_LINKS_SLOT_ID))
-  }, [embedded])
   useEffect(() => {
     if (!hcpHelpOpen) return
     function onDocMouseDown(e: globalThis.MouseEvent) {
@@ -330,11 +322,8 @@ export function JobFormHeaderRow({
     </div>
   )
 
-  // Job window: the whole (reduced) row portals into the shared header's slot,
-  // so "Link to: Bid | Project" rides the icon row on every tab while its
-  // handlers stay wired to this form.
-  if (embedded) {
-    return headerLinksSlot ? createPortal(row, headerLinksSlot) : null
-  }
+  // Job window: no header row at all — Bid/Project live on the Edit tab's
+  // fact rows (v2.1695 retired the portaled "Link to" cluster).
+  if (embedded) return null
   return row
 }
