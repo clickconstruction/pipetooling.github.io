@@ -183,7 +183,10 @@ export function JobFormPaymentsTable({
   }
 
   return (
-    <div style={{ marginBottom: '1rem' }}>
+    /* marginTop: the air above ③ matches the address → ① Line Items rhythm
+       (owner call, v2.1708). Must exceed the invoices block's 1rem bottom
+       margin — block-flow margin collapse eats anything smaller. */
+    <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.4rem' }}>
         <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 400, textDecoration: 'underline', color: 'var(--text-700)' }}>③ Payments received</h4>
         <button

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1708',
+    date: '2026-08-16',
+    title: 'Payments section breathes evenly',
+    kind: 'fix',
+    highlights: [
+      '③ Payments received now gets the same air above it as the other numbered sections on the Bill tab.',
+    ],
+  },
+  {
     version: 'v2.1707',
     date: '2026-08-16',
     title: 'Bill tab rhythm dialed in',
