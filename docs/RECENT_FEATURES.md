@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1715)
+last_updated: 2026-08-16 (v2.1716)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1716)
+
+### Banking Visuals: zoom to a year or quarter (2026-08-16)
+Owner picked mockup Option 1 (year chips → quarter chips). The Visuals period row grows a **Zoom** section: year chips (only years with activity, via `visualsYearsPresent`) and, once a year is picked, a second row — **Full year · Q1–Q4** — with future quarters disabled and a caption spelling the window ("Q2 2025 · Apr 1 – Jun 30, 2025"). Selecting a preset clears the zoom and vice versa; clicking the active year toggles back to YTD. Kernels ([`mercuryVisualsFlows.ts`](../src/lib/banking/mercuryVisualsFlows.ts), +4 tests → 22): `VisualsSelection` (preset | zoom), `visualsZoomWindow` (inclusive YMD bounds + labels), `visualsSelectionWindow`, `filterVisualsTxsByWindow` — absolute windows need an END bound; the old preset filter only had a start and now delegates. **Shareable**: the selection round-trips through `?period=2025q2` / `?period=2026` (`parseVisualsPeriodParam` / `serializeVisualsSelection`; the ytd default keeps the URL clean; junk params fall back to YTD). Verified live: Q2 2025 zoom redraws all three views, deep link restores, 2026 Q4 correctly disabled. All drill-downs and the tx detail modal operate inside the window unchanged. Client-only — no migration.
 
 ## Latest Updates (v2.1715)
 

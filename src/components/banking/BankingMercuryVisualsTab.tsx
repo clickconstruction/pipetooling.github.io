@@ -12,13 +12,20 @@ import {
   type SankeyInput,
   type SankeyTone,
 } from '../../lib/banking/mercurySankeyLayout'
+import { useSearchParams } from 'react-router-dom'
 import {
   buildCardsJobsSankey,
   buildMoneyFlowSankey,
   buildTransferSankey,
-  filterVisualsTxs,
+  filterVisualsTxsByWindow,
   pairInternalTransfers,
+  parseVisualsPeriodParam,
+  serializeVisualsSelection,
+  visualsSelectionWindow,
+  visualsYearsPresent,
+  visualsZoomWindow,
   type VisualsPeriod,
+  type VisualsSelection,
   type VisualsTxRow,
 } from '../../lib/banking/mercuryVisualsFlows'
 
@@ -245,10 +252,25 @@ function segButtonStyle(active: boolean): React.CSSProperties {
   }
 }
 
+/** Standalone rounded chip for the zoom rows (v2.1716). */
+function zoomChipStyle(active: boolean, disabled: boolean): React.CSSProperties {
+  return {
+    padding: '0.32rem 0.7rem',
+    fontSize: '0.8rem',
+    fontWeight: active ? 700 : 500,
+    background: active ? '#2563eb' : 'var(--surface)',
+    color: active ? '#fff' : disabled ? 'var(--text-faint)' : 'var(--text-slate-600)',
+    border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
+    borderRadius: 8,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+  }
+}
+
 function SegRow<T extends string>(props: {
   ariaLabel: string
   options: { key: T; label: string }[]
-  value: T
+  /** null = nothing in this row is selected (e.g. a zoom is active instead). */
+  value: T | null
   onChange: (v: T) => void
 }) {
   return (
@@ -425,8 +447,11 @@ function VisualsDrilldownModal({
 export function BankingMercuryVisualsTab() {
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<VisualsView>('flow')
-  const [period, setPeriod] = useState<VisualsPeriod>('ytd')
+  const [selection, setSelection] = useState<VisualsSelection>(
+    () => parseVisualsPeriodParam(searchParams.get('period')) ?? { kind: 'preset', preset: 'ytd' },
+  )
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [data, setData] = useState<VisualsData | null>(null)
@@ -460,7 +485,24 @@ export function BankingMercuryVisualsTab() {
   useEffect(() => {
     setDrilldown(null)
     setDetailTxId(null)
-  }, [view, period])
+  }, [view, selection])
+
+  // Shareable zoom: ?period=2025q2 (the ytd default keeps the URL clean).
+  useEffect(() => {
+    const serialized = serializeVisualsSelection(selection)
+    const current = searchParams.get('period')
+    const target = serialized === 'ytd' ? null : serialized
+    if (current === target) return
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        if (target === null) p.delete('period')
+        else p.set('period', target)
+        return p
+      },
+      { replace: true },
+    )
+  }, [selection, searchParams, setSearchParams])
 
   /** An edit in the detail modal updates the caches the Sankeys compute from. */
   const handleTxDetailChange = useCallback(
@@ -490,9 +532,12 @@ export function BankingMercuryVisualsTab() {
 
   const todayYmd = useMemo(() => calendarYmdInAppTzFromIso(new Date().toISOString()), [])
   const periodTxs = useMemo(
-    () => (data ? filterVisualsTxs(data.txs, period, todayYmd) : []),
-    [data, period, todayYmd],
+    () => (data ? filterVisualsTxsByWindow(data.txs, visualsSelectionWindow(selection, todayYmd)) : []),
+    [data, selection, todayYmd],
   )
+  const yearsPresent = useMemo(() => (data ? visualsYearsPresent(data.txs) : []), [data])
+  const activeZoom = selection.kind === 'zoom' ? selection.zoom : null
+  const zoomCaption = activeZoom ? visualsZoomWindow(activeZoom) : null
 
   const accountLabel = useCallback(
     (id: string): string => data?.accountNameById[id] ?? `Account ${id.slice(0, 8)}…`,
@@ -533,8 +578,70 @@ export function BankingMercuryVisualsTab() {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Visuals</h2>
         <SegRow ariaLabel="Visuals view" options={VIEW_OPTIONS} value={view} onChange={setView} />
-        <SegRow ariaLabel="Visuals period" options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+        <SegRow
+          ariaLabel="Visuals period"
+          options={PERIOD_OPTIONS}
+          value={selection.kind === 'preset' ? selection.preset : null}
+          onChange={(preset: VisualsPeriod) => setSelection({ kind: 'preset', preset })}
+        />
+        {yearsPresent.length > 0 ? (
+          <span role="group" aria-label="Zoom to year" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-slate-500)', fontWeight: 600 }}>
+              Zoom
+            </span>
+            {yearsPresent.map((year) => {
+              const active = activeZoom?.year === year
+              return (
+                <button
+                  key={year}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setSelection(active ? { kind: 'preset', preset: 'ytd' } : { kind: 'zoom', zoom: { year, quarter: null } })
+                  }
+                  style={zoomChipStyle(active, false)}
+                >
+                  {year}
+                </button>
+              )
+            })}
+          </span>
+        ) : null}
       </div>
+      {activeZoom ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }} role="group" aria-label="Zoom to quarter">
+          <button
+            type="button"
+            aria-pressed={activeZoom.quarter == null}
+            onClick={() => setSelection({ kind: 'zoom', zoom: { year: activeZoom.year, quarter: null } })}
+            style={zoomChipStyle(activeZoom.quarter == null, false)}
+          >
+            Full year
+          </button>
+          {([1, 2, 3, 4] as const).map((q) => {
+            const future = visualsZoomWindow({ year: activeZoom.year, quarter: q }).startYmd > todayYmd
+            const active = activeZoom.quarter === q
+            return (
+              <button
+                key={q}
+                type="button"
+                aria-pressed={active}
+                disabled={future}
+                onClick={() => setSelection({ kind: 'zoom', zoom: { year: activeZoom.year, quarter: q } })}
+                style={zoomChipStyle(active, future)}
+              >
+                {`Q${q}`}
+              </button>
+            )
+          })}
+          {zoomCaption ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-slate-500)', marginLeft: '0.4rem' }}>
+              <strong style={{ color: 'var(--text-strong)' }}>{zoomCaption.label}</strong>
+              {` · ${zoomCaption.rangeLabel}`}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-slate-500)' }}>
         {view === 'flow'

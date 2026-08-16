@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1716',
+    date: '2026-08-16',
+    title: 'Zoom the money rivers to any quarter',
+    kind: 'feature',
+    highlights: [
+      'The Visuals period row now has Zoom chips: pick a year, then Full year or Q1–Q4, and every view redraws to exactly that window — with the dates spelled out so there\'s no guessing.',
+      'Only years with activity appear, quarters that haven\'t started are grayed out, and the zoomed view lives in the page address, so you can bookmark or share "Q2 2025".',
+    ],
+  },
+  {
     version: 'v2.1715',
     date: '2026-08-16',
     title: 'Fix a transaction right from the picture',
