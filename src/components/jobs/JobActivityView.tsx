@@ -57,6 +57,8 @@ export type JobActivityViewProps = {
   teamMembers?: Array<{ user_id: string; name: string | null }>
   /** Opens the add/remove-people modal (editors only). */
   peopleAction?: { onClick: () => void; disabled?: boolean }
+  /** Full-screen shells: report answers show open by default (v2.1685). */
+  reportsOpenByDefault?: boolean
 }
 
 export function JobActivityView({
@@ -72,6 +74,7 @@ export function JobActivityView({
   onCommitPct,
   teamMembers,
   peopleAction,
+  reportsOpenByDefault = false,
 }: JobActivityViewProps) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -243,7 +246,7 @@ export function JobActivityView({
         </div>
       ) : null}
 
-      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} />
+      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} reportsOpenByDefault={reportsOpenByDefault} />
 
       {submitNoteWithBody ? (
         pctEditorOpen && canEditPct ? (

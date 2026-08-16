@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1684)
+last_updated: 2026-08-15 (v2.1685)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1685)
+
+### Job activity: full-screen shells open report answers by default (2026-08-15)
+Owner call: in the big activity surfaces — the floating expand modal ([`JobsStagesActivityExpandModal`](../src/components/jobs/JobsStagesActivityExpandModal.tsx)) and the row panel's full-screen mode ([`JobsStagesThreadPanel`](../src/components/jobs/JobsStagesThreadPanel.tsx)) — report lines now show all their answers expanded on open; there's room, and the reports are usually why you went big. The compact inline panel keeps folding reports to `Template · ▸ N answers`. Mechanism: [`JobActivityFeed`](../src/components/jobs/JobActivityFeed.tsx) gains `reportsOpenByDefault` (threaded through [`JobActivityView`](../src/components/jobs/JobActivityView.tsx)); `openKeys` still stores toggles away from the default, so clicking a line folds it, and stored toggles reset when the default flips (inline ⇄ fullscreen) so nothing reads inverted. Render smokes cover both shells; help guide `open-job-activity-full-screen` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1684)
 

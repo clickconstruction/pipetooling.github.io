@@ -63,6 +63,32 @@ describe('JobsStagesActivityExpandModal', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
+  it('shows report answers open by default — the modal has the room (v2.1685)', () => {
+    const reportItem = {
+      kind: 'report',
+      report: {
+        id: 'r1',
+        template_name: 'Status Report',
+        created_at: '2026-08-12T15:10:00Z',
+        created_by_name: 'Abraham',
+        field_values: { 'How complete is the job?': '1%' },
+      },
+    } as unknown as JobThreadActivityItem
+    renderWithProviders(
+      <JobsStagesActivityExpandModal
+        job={makeJob({ job_name: 'Shearer Pinpoint' })}
+        activity={[...mixedActivity, reportItem]}
+        upcoming={null}
+        onClose={vi.fn()}
+        submitNoteWithBody={vi.fn(async () => true)}
+      />,
+    )
+    // Visible without a click; clicking the line folds it back.
+    expect(screen.getByText(/1%/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Status Report'))
+    expect(screen.queryByText(/1%/)).toBeNull()
+  })
+
   it('filter pills narrow the feed; numbers stay stable', () => {
     renderWithProviders(
       <JobsStagesActivityExpandModal

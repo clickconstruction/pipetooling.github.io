@@ -108,6 +108,14 @@ describe('JobsStagesThreadPanel', () => {
     expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
   })
 
+  it('fullscreen opens report answers by default; a click folds them (v2.1685)', () => {
+    renderWithProviders(<JobsStagesThreadPanel {...baseProps} fullscreen onToggleFullscreen={vi.fn()} />)
+    // No click needed — fullscreen has the room, and reports are why you went big.
+    expect(screen.getByText(/Front cleanout is broken/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Status Report'))
+    expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
+  })
+
   it('shows the fullscreen toggle and swaps its label once active', () => {
     const onToggleFullscreen = vi.fn()
     const { rerender } = renderWithProviders(

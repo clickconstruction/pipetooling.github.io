@@ -161,6 +161,7 @@ export function JobsStagesThreadPanel({
         upcoming={upcoming}
         viewerRole={viewerRole}
         narrow={narrow}
+        reportsOpenByDefault={fullscreen}
         {...(submitNoteWithBody ? { submitNoteWithBody } : {})}
         pctComplete={pctComplete ?? null}
         canEditPct={canEditPct ?? false}
