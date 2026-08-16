@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1725)
+last_updated: 2026-08-16 (v2.1726)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1726)
+
+### Banking: saving a person-rule offers to tag its history (2026-08-16)
+Owner request, completing People in Rules (v2.1725). Saving an existing rule that names a person now checks the rule's **approved suggestions** (= the transactions it sorted) and, when any exist, opens a confirm: "…has sorted N transactions. Tag the ones without a person as X? A person set by hand is never changed." — [Tag transactions] runs the backfill, [Skip for now] declines (re-saving the rule re-offers). Mechanics in [`BankingMercuryAccountingTab`](../src/components/banking/BankingMercuryAccountingTab.tsx): candidates = distinct tx ids of `status='approved'` suggestions for the rule; existing attributions read in 200-id chunks; kernel [`ruleAttributionBackfill.ts`](../src/lib/banking/ruleAttributionBackfill.ts) (`planAttributionBackfill` dedup + skip-attributed, `chunkIds`; 5 tests) plans; writes are 500-row `ignoreDuplicates` upserts (hand-set wins, same semantics as the approve RPC); toast reports tagged/kept counts. Offer is best-effort (a failed count never blocks the rule save); fires on both Save and Save-and-apply, edit-mode only (new rules have no history). `attributionNameByValue` memo extracted from `ruleAttributionNameById` for the prompt's display name. Verified live on "Taunya Villarreal - Contract Labor": 54 approved uses → prompt offered 27 distinct transactions (skipped without tagging). Client-only — no migration.
 
 ## Latest Updates (v2.1725)
 

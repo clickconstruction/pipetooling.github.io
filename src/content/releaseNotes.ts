@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1726',
+    date: '2026-08-16',
+    title: 'Rules can tag their history too',
+    kind: 'feature',
+    highlights: [
+      'When you save a rule that names a person, the app now offers to tag every transaction that rule already sorted — one click and the history catches up.',
+      'Only transactions without a person get tagged; anyone set by hand is never changed. Skipped it? Just re-save the rule to get the offer again.',
+    ],
+  },
+  {
     version: 'v2.1725',
     date: '2026-08-16',
     title: 'Rules that know who got paid',

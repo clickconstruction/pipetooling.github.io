@@ -70,6 +70,12 @@ import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercury
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
 import { AccountingApprovalCard } from './AccountingApprovalCard'
 import type { SearchableSelectOption } from '../SearchableSelect'
+import {
+  BACKFILL_READ_CHUNK,
+  BACKFILL_WRITE_CHUNK,
+  chunkIds,
+  planAttributionBackfill,
+} from '../../lib/banking/ruleAttributionBackfill'
 import { AccountingApprovalGroupHeader } from './AccountingApprovalGroupHeader'
 import { BankingMercuryDuplicatesPanel } from './BankingMercuryDuplicatesPanel'
 import {
@@ -659,12 +665,17 @@ export function BankingMercuryAccountingTab({
     return m
   }, [rules])
 
+  /** 'p:<id>' / 'u:<id>' → display name, from the parent's attribution options (v2.1725). */
+  const attributionNameByValue = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const o of attributionOptions ?? []) {
+      if ('value' in o) m.set(o.value, o.label)
+    }
+    return m
+  }, [attributionOptions])
+
   /** Rule id → display name of its attribution target (v2.1725); absent = rule tags nobody. */
   const ruleAttributionNameById = useMemo(() => {
-    const nameByValue = new Map<string, string>()
-    for (const o of attributionOptions ?? []) {
-      if ('value' in o) nameByValue.set(o.value, o.label)
-    }
     const m = new Map<string, string>()
     for (const r of rules) {
       const v = r.attributed_person_id
@@ -672,10 +683,93 @@ export function BankingMercuryAccountingTab({
         : r.attributed_user_id
           ? `u:${r.attributed_user_id}`
           : null
-      if (v) m.set(r.id, nameByValue.get(v) ?? 'a person')
+      if (v) m.set(r.id, attributionNameByValue.get(v) ?? 'a person')
     }
     return m
-  }, [attributionOptions, rules])
+  }, [attributionNameByValue, rules])
+
+  // ——— Retroactive attribution backfill (v2.1726): after saving a rule that
+  // names a person, offer to tag the transactions it already sorted. ———
+  const [backfillPrompt, setBackfillPrompt] = useState<{
+    ruleName: string
+    personId: string | null
+    userId: string | null
+    personName: string
+    candidateTxIds: string[]
+  } | null>(null)
+  const [backfillBusy, setBackfillBusy] = useState(false)
+
+  const maybeOfferAttributionBackfill = useCallback(
+    async (ruleId: string, draft: AccountingRuleSaveDraft) => {
+      if (draft.attributedPersonId == null && draft.attributedUserId == null) return
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_accounting_label_suggestions')
+              .select('mercury_transaction_id')
+              .eq('rule_id', ruleId)
+              .eq('status', 'approved')
+              .limit(100000),
+          'accounting backfill candidates',
+        )
+        const ids = [...new Set(((rows ?? []) as { mercury_transaction_id: string }[]).map((r) => r.mercury_transaction_id))]
+        if (ids.length === 0) return
+        const value = draft.attributedPersonId ? `p:${draft.attributedPersonId}` : `u:${draft.attributedUserId}`
+        setBackfillPrompt({
+          ruleName: draft.name,
+          personId: draft.attributedPersonId,
+          userId: draft.attributedUserId,
+          personName: attributionNameByValue.get(value) ?? 'this person',
+          candidateTxIds: ids,
+        })
+      } catch {
+        // The offer is best-effort decoration — the rule save already succeeded.
+      }
+    },
+    [attributionNameByValue],
+  )
+
+  const runAttributionBackfill = useCallback(async () => {
+    const prompt = backfillPrompt
+    if (!prompt) return
+    setBackfillBusy(true)
+    try {
+      const attributed = new Set<string>()
+      for (const c of chunkIds(prompt.candidateTxIds, BACKFILL_READ_CHUNK)) {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase.from('mercury_transaction_attributions').select('mercury_transaction_id').in('mercury_transaction_id', c),
+          'accounting backfill existing attributions',
+        )
+        for (const r of (rows ?? []) as { mercury_transaction_id: string }[]) attributed.add(r.mercury_transaction_id)
+      }
+      const plan = planAttributionBackfill(prompt.candidateTxIds, attributed)
+      for (const c of chunkIds(plan.toTag, BACKFILL_WRITE_CHUNK)) {
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('mercury_transaction_attributions').upsert(
+              c.map((txId) => ({ mercury_transaction_id: txId, person_id: prompt.personId, user_id: prompt.userId })),
+              { onConflict: 'mercury_transaction_id', ignoreDuplicates: true },
+            ),
+          'accounting backfill attributions',
+        )
+      }
+      showToast(
+        plan.toTag.length === 0
+          ? `Nothing to tag — every transaction this rule sorted already has a person.`
+          : `Tagged ${plan.toTag.length.toLocaleString()} transaction${plan.toTag.length === 1 ? '' : 's'} as ${prompt.personName}${
+              plan.skipped > 0 ? ` · ${plan.skipped.toLocaleString()} kept their existing person` : ''
+            }.`,
+        'success',
+      )
+      setBackfillPrompt(null)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Backfill failed', 'error')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }, [backfillPrompt, showToast])
 
   const overlapReport = useMemo(() => {
     if (!overlapsModalOpen) return null
@@ -1590,11 +1684,12 @@ export function BankingMercuryAccountingTab({
         }
         setRuleModalOpen(false)
         void loadRulesAndUsage()
+        if (editingRuleId) void maybeOfferAttributionBackfill(editingRuleId, draft)
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Could not save rule', 'error')
       }
     },
-    [editingRuleId, loadRulesAndUsage, rules, showToast, userId],
+    [editingRuleId, loadRulesAndUsage, maybeOfferAttributionBackfill, rules, showToast, userId],
   )
 
   const saveRuleDraftAndApply = useCallback(
@@ -1636,11 +1731,12 @@ export function BankingMercuryAccountingTab({
           await applyRulesWithSnapshot(fresh)
         }
         setRuleModalOpen(false)
+        if (editingRuleId) void maybeOfferAttributionBackfill(editingRuleId, draft)
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Could not save rule', 'error')
       }
     },
-    [applyRulesWithSnapshot, editingRuleId, loadRulesAndUsage, rules, showToast, userId],
+    [applyRulesWithSnapshot, editingRuleId, loadRulesAndUsage, maybeOfferAttributionBackfill, rules, showToast, userId],
   )
 
   const closeRuleModal = useCallback(() => setRuleModalOpen(false), [])
@@ -2211,6 +2307,43 @@ export function BankingMercuryAccountingTab({
         onAssign={(labelId) => void handleQuickAssignLabel(labelId)}
         onClose={closeQuickAssign}
       />
+
+      {backfillPrompt ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tag prior transactions"
+          style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(460px, 100%)', padding: '1.1rem 1.3rem' }}>
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>Tag prior transactions?</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-slate-600)' }}>
+              “{backfillPrompt.ruleName}” has sorted{' '}
+              <strong>{backfillPrompt.candidateTxIds.length.toLocaleString()}</strong> transaction
+              {backfillPrompt.candidateTxIds.length === 1 ? '' : 's'}. Tag the ones without a person as{' '}
+              <strong>{backfillPrompt.personName}</strong>? A person set by hand is never changed.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setBackfillPrompt(null)}
+                disabled={backfillBusy}
+                style={{ padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Skip for now
+              </button>
+              <button
+                type="button"
+                onClick={() => void runAttributionBackfill()}
+                disabled={backfillBusy}
+                style={{ padding: '0.45rem 1rem', borderRadius: 6, border: 'none', background: backfillBusy ? '#94a3b8' : '#2563eb', color: '#fff', fontWeight: 600, cursor: backfillBusy ? 'not-allowed' : 'pointer' }}
+              >
+                {backfillBusy ? 'Tagging…' : 'Tag transactions'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {ruleModalOpen ? (
         <AccountingRuleFormModal
