@@ -4515,6 +4515,89 @@ export type Database = {
           },
         ]
       }
+      job_followup_reviews: {
+        Row: {
+          id: string
+          job_id: string
+          reviewed_at: string
+          reviewed_by: string | null
+          snoozed_until: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          reviewed_at?: string
+          reviewed_by?: string | null
+          snoozed_until?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          reviewed_at?: string
+          reviewed_by?: string | null
+          snoozed_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_followup_reviews_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_followup_reviews_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_followup_settings: {
+        Row: {
+          billed_days: number
+          collections_days: number
+          id: boolean
+          ready_to_bill_days: number
+          rest_days: number
+          updated_at: string
+          updated_by: string | null
+          waiting_days: number
+          working_days: number
+        }
+        Insert: {
+          billed_days?: number
+          collections_days?: number
+          id?: boolean
+          ready_to_bill_days?: number
+          rest_days?: number
+          updated_at?: string
+          updated_by?: string | null
+          waiting_days?: number
+          working_days?: number
+        }
+        Update: {
+          billed_days?: number
+          collections_days?: number
+          id?: boolean
+          ready_to_bill_days?: number
+          rest_days?: number
+          updated_at?: string
+          updated_by?: string | null
+          waiting_days?: number
+          working_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_followup_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_hazmat_incidents: {
         Row: {
           created_at: string
@@ -13738,6 +13821,14 @@ export type Database = {
         Returns: {
           job_count: number
           master_user_id: string
+        }[]
+      }
+      list_job_followup_activity: {
+        Args: { p_today: string }
+        Returns: {
+          job_id: string
+          latest_activity_at: string
+          next_scheduled_on: string
         }[]
       }
       list_job_schedule_blocks_for_schedule_email: {
