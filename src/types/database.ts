@@ -11857,6 +11857,7 @@ export type Database = {
       users: {
         Row: {
           archived_at: string | null
+          bid_board_self_highlight: Json | null
           created_at: string | null
           dispatch_mode_enabled: boolean | null
           email: string
@@ -11878,6 +11879,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          bid_board_self_highlight?: Json | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
           email: string
@@ -11899,6 +11901,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          bid_board_self_highlight?: Json | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string

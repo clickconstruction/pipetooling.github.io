@@ -5,11 +5,11 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-15
+last_updated: 2026-08-16
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "218 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "219 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 16, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 16, 2026
+
+**`20260816064152_bid_board_self_highlight.sql`** _(apply via `supabase db push` with the v2.1710 merge — additive nullable column, old clients unaffected)_
+- **Purpose**: `users.bid_board_self_highlight` (jsonb, nullable) — each user's Bid Board "that's you" name-box colors, per theme: `{ light: { bg, text }, dark: { bg, text } }` with `text: 'auto'` meaning contrast-picked. Written only by the owner through the existing "Users can update own profile" policy; parsed defensively by `src/lib/bids/bidBoardSelfHighlight.ts` (malformed values degrade to theme-aware defaults).
+- **Category**: Bids / column change
 
 **`20260816030716_customer_date_met_from_clock.sql`** _(apply via `supabase db push` with the v2.1696 merge — additive column + triggers + idempotent backfill, old clients unaffected)_
 - **Purpose**: `customers.date_met` defaults to the first clock-session date on the customer's jobs (v2.1696). Adds `customers.date_met_source` (`'manual'`/`'clock'`/NULL), a `customer_date_met_apply` SECURITY DEFINER fill rule (fills NULL, lowers clock-sourced values for backdated sessions, never touches manual), an AFTER INSERT trigger on `clock_sessions`, an AFTER UPDATE OF `customer_id` trigger on `jobs_ledger` (late-linked customers), and a NULL-only backfill.

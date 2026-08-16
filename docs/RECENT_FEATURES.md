@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1709)
+last_updated: 2026-08-16 (v2.1710)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1710)
+
+### Bid Board: pick your own "that's you" colors — per theme (2026-08-16)
+Owner request (mockup approved): a small **color wheel** at the far right of the jump strip (the Health line) opens a popover where each user picks how their OWN name is boxed when they're a bid's **Estimator or Account Man** — box color (8 swatches + custom) and text color (**Auto** contrast-picked by luminance, or White/Black/custom) — **separately for ☀ light mode and 🌙 dark mode**, with a preview chip rendered on the edited theme's surface and per-mode reset. Found while building: the old box was hardcoded `#111827`/white and **disappeared on the dark theme**; the new theme-aware defaults fix that for everyone (light keeps the historical pair, dark gets it inverted). Pieces: kernel [`bidBoardSelfHighlight.ts`](../src/lib/bids/bidBoardSelfHighlight.ts) (parse/validate/resolve/auto-contrast, 9 tests), [`BidBoardSelfHighlightWheel.tsx`](../src/components/bids/BidBoardSelfHighlightWheel.tsx) (wheel + popover + `useBidBoardSelfHighlight` load/save hook), [`BidsBidBoardTab`](../src/components/bids/BidsBidBoardTab.tsx) `selfLineStyle` now reads the resolved pref. Storage: migration [`20260816064152_bid_board_self_highlight.sql`](../supabase/migrations/20260816064152_bid_board_self_highlight.sql) — `users.bid_board_self_highlight` jsonb, written through the existing "update own profile" policy, so colors follow the user across devices; malformed values degrade to defaults. Saves on every click, error-toasted on failure. Help guide `bid-board-your-color` added. **Deploy**: `supabase db push` with this merge; `gen-types` committed.
 
 ## Latest Updates (v2.1709)
 
