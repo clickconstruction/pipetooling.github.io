@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1707)
+last_updated: 2026-08-16 (v2.1708)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1708)
+
+### Bill tab: ③ Payments received joins the section rhythm (2026-08-16)
+Owner call: the air above **③ Payments received** now matches the address → **① Line Items** distance ([`JobFormPaymentsTable`](../src/components/jobs/JobFormPaymentsTable.tsx) root gains `marginTop: 1.5rem` — it must exceed the invoices block's 1rem bottom margin, since block-flow margin collapse eats anything smaller; the first attempt at 0.4rem changed nothing for exactly that reason). Measured 35px, matching the perceived gap in the owner's screenshot. Client-only — no migration.
 
 ## Latest Updates (v2.1707)
 
