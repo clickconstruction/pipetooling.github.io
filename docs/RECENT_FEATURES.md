@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1713)
+last_updated: 2026-08-16 (v2.1714)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1714)
+
+### Banking Visuals: external money flanks the Between-accounts view (2026-08-16)
+Owner request, third piece of the Sankey arc. The **Between accounts** view grows from two columns to four: external sources (Check deposits, Wires in, Card refunds, External transfers in, Other money in) → account in-sides → account out-sides → external uses (Card spend, Payments out, External transfers out, Other out) — [`buildTransferSankey`](../src/lib/banking/mercuryVisualsFlows.ts) rewritten (+3 tests, 31 total). Mechanics: transfers still run between the two account columns; a same-account **passthrough** ribbon carries money that leaves the account it landed in; per-account balancing makes both sides conserve exactly, with gray **From balances** / **Kept in accounts** bands absorbing money that crosses the period boundary (or funds chained transfers) — explicit, never hidden. Unpaired transfer legs surface as their own source/use group, excluded from the external totals. Source→account and account→use ribbons are click-through (the deposit/spend txs); synthetic bands are not. Tone assignment gains `accountIsNamed`: nicknamed accounts claim the six series colors first (found live: alphabetical fallback ids like "Account 8f49…" were eating the palette and graying Savings 0382), still stable across period switches. Caption: "In X · between accounts Y · out Z". Client-only — no migration.
 
 ## Latest Updates (v2.1713)
 

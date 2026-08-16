@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1714',
+    date: '2026-08-16',
+    title: 'The whole route, drawn',
+    kind: 'feature',
+    highlights: [
+      'The Between accounts view now shows the full journey: deposits enter on the far left, move into and between your accounts, and leave on the far right as card spend, payments, and transfers out.',
+      'Gray bands show money crossing the period boundary — drawn from balances or kept in accounts — so the picture always adds up.',
+      'Deposit and spending bands click through to their transactions, and your named accounts now always get the colors.',
+    ],
+  },
+  {
     version: 'v2.1713',
     date: '2026-08-16',
     title: 'Click a money river, see the receipts',
