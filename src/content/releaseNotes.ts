@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1692',
+    date: '2026-08-15',
+    title: 'Cost Timeline: tidier legend',
+    kind: 'fix',
+    highlights: [
+      'The Cost Timeline\'s legend now shows just Red = cost and Green = profit — the marker and cost-source key tucks behind an ⓘ you can tap to expand.',
+    ],
+  },
+  {
     version: 'v2.1691',
     date: '2026-08-15',
     title: 'Payment button lines up left',

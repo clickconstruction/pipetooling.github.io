@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1691)
+last_updated: 2026-08-15 (v2.1692)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1692)
+
+### Cost Timeline: legend details fold behind an ⓘ (2026-08-15)
+Owner call: the chart's two-line legend crammed the marker key (💵 payment received, 🚩 field report), every cost-source icon, and the conditional hidden-line notes under the chart. The visible line now stops at **Red = cost to date · Green = profit** (+ Blue when the value line shows) followed by "ⓘ what do the markers mean?" — clicking reveals the full key and flips the link to "ⓘ hide key" ([`JobSummaryChargesTimelineChart`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx); same ⓘ helper pattern as "What are line items?"). Collapsed by default. Client-only — no migration.
 
 ## Latest Updates (v2.1691)
 
