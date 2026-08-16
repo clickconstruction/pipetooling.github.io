@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1718)
+last_updated: 2026-08-16 (v2.1719)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1719)
+
+### Follow-Up Mode: no gray tile when Street View has no imagery (2026-08-16)
+Found in the post-push live pass (job 102's address has no Google imagery): the deck card showed Google's gray "location could not be found" tile. [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) now checks `fetchStreetViewMeta` FIRST — null means no imagery, so the banner is skipped entirely and the plain address line shows instead; the image blob is only fetched after meta resolves (also saves the wasted image call). Client-only — no migration.
 
 ## Latest Updates (v2.1718)
 
