@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1689',
+    date: '2026-08-15',
+    title: 'Stripe preview sits with Job Total',
+    kind: 'fix',
+    highlights: [
+      'The Stripe preview link moved from the Line Items header down beside the Job Total — right next to the number it previews.',
+    ],
+  },
+  {
     version: 'v2.1688',
     date: '2026-08-15',
     title: 'Even spacing on Pipeline buttons',
