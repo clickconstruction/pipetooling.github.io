@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1696',
+    date: '2026-08-16',
+    title: 'Date met fills in by itself',
+    kind: 'feature',
+    highlights: [
+      'A customer\'s "Date met" now fills in automatically from the first day a crew clocked in on one of their jobs — including for existing customers.',
+      'A date someone types always wins; the automatic date never overwrites it.',
+    ],
+  },
+  {
     version: 'v2.1695',
     date: '2026-08-15',
     title: 'Header "Link to" retires',

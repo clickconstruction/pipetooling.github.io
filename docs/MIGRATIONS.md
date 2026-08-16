@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: "218 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 14, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+date_range: "Through August 16, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 16, 2026
+
+**`20260816030716_customer_date_met_from_clock.sql`** _(apply via `supabase db push` with the v2.1696 merge — additive column + triggers + idempotent backfill, old clients unaffected)_
+- **Purpose**: `customers.date_met` defaults to the first clock-session date on the customer's jobs (v2.1696). Adds `customers.date_met_source` (`'manual'`/`'clock'`/NULL), a `customer_date_met_apply` SECURITY DEFINER fill rule (fills NULL, lowers clock-sourced values for backdated sessions, never touches manual), an AFTER INSERT trigger on `clock_sessions`, an AFTER UPDATE OF `customer_id` trigger on `jobs_ledger` (late-linked customers), and a NULL-only backfill.
+- **Category**: Customers / column change + triggers
 
 #### August 15, 2026
 
