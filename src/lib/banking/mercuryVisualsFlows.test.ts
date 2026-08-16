@@ -143,25 +143,72 @@ describe('pairInternalTransfers / buildTransferSankey', () => {
   })
 
   it('nets edges per direction and keeps one stable tone per account', () => {
-    const pairing = pairInternalTransfers([
+    const rows = [
       tx({ id: 'o1', kind: 'internalTransfer', amount: -500, accountId: 'A', postedYmd: '2026-08-01' }),
       tx({ id: 'i1', kind: 'internalTransfer', amount: 500, accountId: 'B', postedYmd: '2026-08-01' }),
       tx({ id: 'o2', kind: 'internalTransfer', amount: -300, accountId: 'A', postedYmd: '2026-08-03' }),
       tx({ id: 'i2', kind: 'internalTransfer', amount: 300, accountId: 'B', postedYmd: '2026-08-03' }),
-    ])
-    const r = buildTransferSankey({ pairing, accountLabelById: (id) => `Acct ${id}` })
+    ]
+    const r = buildTransferSankey({ txs: rows, pairing: pairInternalTransfers(rows), accountLabelById: (id) => `Acct ${id}` })
     expect(r.pairedTotal).toBe(800)
-    const edge = r.input.links.find((l) => l.source === 'from:A' && l.target === 'to:B')
+    const edge = r.input.links.find((l) => l.source === 'acct-in:A' && l.target === 'acct-out:B')
     expect(edge?.value).toBe(800)
     // Click-through: the edge carries only the OUT leg of each transfer, so the
     // drill-down total matches the ribbon value instead of doubling it.
     expect([...(edge?.txIds ?? [])].sort()).toEqual(['o1', 'o2'])
-    // A appears only on the left here, B only on the right — but if both sides
-    // existed the tone would match; assert tones are assigned alphabetically.
-    const fromA = r.input.nodes.find((n) => n.id === 'from:A')!
-    const toB = r.input.nodes.find((n) => n.id === 'to:B')!
-    expect(fromA.tone).toBe('series1')
-    expect(toB.tone).toBe('series2')
+    // Tones are assigned alphabetically and follow the account on both sides.
+    const inA = r.input.nodes.find((n) => n.id === 'acct-in:A')!
+    const outB = r.input.nodes.find((n) => n.id === 'acct-out:B')!
+    expect(inA.tone).toBe('series1')
+    expect(outB.tone).toBe('series2')
+    // A funded its transfers from nowhere visible → an explicit From balances band.
+    expect(r.input.links.find((l) => l.source === 'in:balance' && l.target === 'acct-in:A')?.value).toBe(800)
+    // B received and spent nothing externally → the money shows as kept.
+    expect(r.input.links.find((l) => l.source === 'acct-out:B' && l.target === 'out:kept')?.value).toBe(800)
+  })
+
+  it('flanks the transfer core with external in/out and a same-account passthrough', () => {
+    const rows = [
+      // $1,000 check lands in A; $600 transfers A→B; A spends $150 on a card;
+      // B pays out $500. A's leftover $250 passes through A and is kept.
+      tx({ id: 'd1', kind: 'checkDeposit', amount: 1000, accountId: 'A', postedYmd: '2026-08-01' }),
+      tx({ id: 'o1', kind: 'internalTransfer', amount: -600, accountId: 'A', postedYmd: '2026-08-02' }),
+      tx({ id: 'i1', kind: 'internalTransfer', amount: 600, accountId: 'B', postedYmd: '2026-08-02' }),
+      tx({ id: 'c1', kind: 'debitCardTransaction', amount: -150, accountId: 'A', postedYmd: '2026-08-03' }),
+      tx({ id: 'p1', kind: 'outgoingPayment', amount: -500, accountId: 'B', postedYmd: '2026-08-04' }),
+    ]
+    const r = buildTransferSankey({ txs: rows, pairing: pairInternalTransfers(rows), accountLabelById: (id) => `Acct ${id}` })
+    expect(r.externalInTotal).toBe(1000)
+    expect(r.externalOutTotal).toBe(650)
+    // Source → account, clickable with the deposit tx.
+    const dep = r.input.links.find((l) => l.source === 'in:Check deposits' && l.target === 'acct-in:A')
+    expect(dep?.value).toBe(1000)
+    expect(dep?.txIds).toEqual(['d1'])
+    // Account → use, grouped by kind.
+    expect(r.input.links.find((l) => l.source === 'acct-out:A' && l.target === 'out:Card spend')?.txIds).toEqual(['c1'])
+    expect(r.input.links.find((l) => l.source === 'acct-out:B' && l.target === 'out:Payments out')?.value).toBe(500)
+    // A's passthrough carries what it kept + spent itself: 1000 − 600 = 400.
+    expect(r.input.links.find((l) => l.source === 'acct-in:A' && l.target === 'acct-out:A')?.value).toBe(400)
+    // Kept: A 400 − 150 = 250; B 600 − 500 = 100.
+    const keptLinks = r.input.links.filter((l) => l.target === 'out:kept')
+    expect(keptLinks.find((l) => l.source === 'acct-out:A')?.value).toBe(250)
+    expect(keptLinks.find((l) => l.source === 'acct-out:B')?.value).toBe(100)
+    // Both sides of every account balance — no From balances band needed here.
+    expect(r.input.nodes.find((n) => n.id === 'in:balance')).toBeUndefined()
+    // Synthetic bands are not clickable.
+    expect(r.input.links.find((l) => l.source === 'acct-in:A' && l.target === 'acct-out:A')?.txIds).toBeUndefined()
+  })
+
+  it('unpaired transfer legs surface as their own source/use group', () => {
+    const rows = [
+      tx({ id: 'o1', kind: 'internalTransfer', amount: -200, accountId: 'A', postedYmd: '2026-08-01' }),
+    ]
+    const r = buildTransferSankey({ txs: rows, pairing: pairInternalTransfers(rows), accountLabelById: (id) => `Acct ${id}` })
+    const un = r.input.links.find((l) => l.source === 'acct-out:A' && l.target === 'out:Unmatched transfer legs')
+    expect(un?.value).toBe(200)
+    expect(un?.txIds).toEqual(['o1'])
+    // Unmatched legs are not counted as external money out.
+    expect(r.externalOutTotal).toBe(0)
   })
 })
 

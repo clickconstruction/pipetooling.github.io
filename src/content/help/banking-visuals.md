@@ -23,7 +23,9 @@ If the Contract Labor band is twice as wide as Wages, you paid subs twice what y
 
 ## Between accounts
 
-Every internal transfer between your Mercury accounts, drawn account-to-account: which account feeds which, and by how much. Accounts keep the same color on both sides. A small **Unmatched legs** band appears when a transfer's other half posted outside the selected window.
+The whole route your money takes. Deposits enter on the far left (check deposits, wires, card refunds), land in an account, move between accounts in the middle, and leave on the far right as card spend, payments, and external transfers. Each account keeps one color everywhere, and a band that flows straight across an account is money that left the same account it landed in.
+
+Two gray bands keep the picture honest: **From balances** is spending or transfers funded by money already in an account before the period started, and **Kept in accounts** is money that arrived and stayed. A small **Unmatched transfer legs** band appears when a transfer's other half posted outside the selected window.
 
 ## Cards → jobs
 

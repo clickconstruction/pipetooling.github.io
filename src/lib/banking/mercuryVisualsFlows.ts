@@ -307,17 +307,47 @@ export function pairInternalTransfers(txs: VisualsTxRow[]): TransferPairing {
   return { pairs, unpairedOut, unpairedIn }
 }
 
+/** Friendly grouping of external (non-internal-transfer) kinds, per direction. */
+export function externalKindGroup(kind: string, direction: 'in' | 'out'): string {
+  if (direction === 'in') {
+    if (kind === 'checkDeposit') return 'Check deposits'
+    if (kind === 'incomingDomesticWire') return 'Wires in'
+    if (kind === DEBIT_CARD_KIND) return 'Card refunds'
+    if (kind === 'externalTransfer') return 'External transfers in'
+    return 'Other money in'
+  }
+  if (kind === DEBIT_CARD_KIND) return 'Card spend'
+  if (kind === 'outgoingPayment') return 'Payments out'
+  if (kind === 'externalTransfer') return 'External transfers out'
+  return 'Other out'
+}
+
 export type TransferSankeyResult = {
   input: SankeyInput
   pairedTotal: number
   unpairedTotal: number
+  externalInTotal: number
+  externalOutTotal: number
 }
 
+/**
+ * Between-accounts flow, flanked by external money (v2.1714): four columns —
+ * external sources → account in-sides → account out-sides → external uses.
+ * Transfers run between the two account columns; a same-account "passthrough"
+ * ribbon carries external money that leaves the same account it landed in.
+ *
+ * Money that crosses the period boundary (or funds chained transfers) shows
+ * up explicitly as gray "From balances" / "Kept in accounts" bands — each
+ * account's two sides always balance, nothing is hidden.
+ */
 export function buildTransferSankey(args: {
+  txs: VisualsTxRow[]
   pairing: TransferPairing
   accountLabelById: (id: string) => string
+  /** Nicknamed accounts claim series colors first; unnamed ids go neutral-last. */
+  accountIsNamed?: (id: string) => boolean
 }): TransferSankeyResult {
-  const { pairing, accountLabelById } = args
+  const { txs, pairing, accountLabelById, accountIsNamed = () => true } = args
 
   const edgeTotals = new Map<string, { from: string; to: string; value: number; txIds: string[] }>()
   for (const p of pairing.pairs) {
@@ -331,52 +361,144 @@ export function buildTransferSankey(args: {
     edgeTotals.set(key, edge)
   }
 
+  // External flows per account per kind group. Unpaired transfer legs act as
+  // external-ish flows on the side they touch (their other half is outside
+  // the period), kept in their own group so they stay visible.
+  type Flow = { value: number; txIds: string[] }
+  const addFlow = (m: Map<string, Map<string, Flow>>, accountId: string, group: string, value: number, txId: string): void => {
+    const inner = m.get(accountId) ?? new Map<string, Flow>()
+    const f = inner.get(group) ?? { value: 0, txIds: [] }
+    f.value += value
+    f.txIds.push(txId)
+    inner.set(group, f)
+    m.set(accountId, inner)
+  }
+  const extInByAccount = new Map<string, Map<string, Flow>>()
+  const extOutByAccount = new Map<string, Map<string, Flow>>()
+  for (const t of txs) {
+    if (t.kind === INTERNAL_TRANSFER_KIND || t.amount === 0) continue
+    if (t.amount > 0) addFlow(extInByAccount, t.accountId, externalKindGroup(t.kind, 'in'), t.amount, t.id)
+    else addFlow(extOutByAccount, t.accountId, externalKindGroup(t.kind, 'out'), Math.abs(t.amount), t.id)
+  }
+  const UNMATCHED_GROUP = 'Unmatched transfer legs'
+  for (const u of pairing.unpairedIn) addFlow(extInByAccount, u.accountId, UNMATCHED_GROUP, u.amount, u.txId)
+  for (const u of pairing.unpairedOut) addFlow(extOutByAccount, u.accountId, UNMATCHED_GROUP, u.amount, u.txId)
+
   // Stable tone per account: alphabetical by display label, so a period
   // change never repaints an account (color follows the entity).
-  const accountIds = new Set<string>()
+  const accountIds = new Set<string>([...extInByAccount.keys(), ...extOutByAccount.keys()])
   for (const e of edgeTotals.values()) {
     accountIds.add(e.from)
     accountIds.add(e.to)
   }
-  for (const u of [...pairing.unpairedOut, ...pairing.unpairedIn]) accountIds.add(u.accountId)
   const SERIES: SankeyTone[] = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6']
   const toneByAccount = new Map<string, SankeyTone>()
-  const sortedIds = [...accountIds].sort((a, b) => accountLabelById(a).localeCompare(accountLabelById(b)))
+  const sortedIds = [...accountIds].sort((a, b) => {
+    const namedDiff = Number(accountIsNamed(b)) - Number(accountIsNamed(a))
+    if (namedDiff !== 0) return namedDiff
+    return accountLabelById(a).localeCompare(accountLabelById(b))
+  })
   sortedIds.forEach((id, i) => toneByAccount.set(id, SERIES[i] ?? 'neutral'))
+  const tone = (id: string): SankeyTone => toneByAccount.get(id) ?? 'neutral'
 
-  const fromTotals = new Map<string, number>()
-  const toTotals = new Map<string, number>()
+  const sum = (m: Map<string, Flow> | undefined): number => [...(m?.values() ?? [])].reduce((s, f) => s + f.value, 0)
+  const tOut = new Map<string, number>()
+  const tIn = new Map<string, number>()
   for (const e of edgeTotals.values()) {
-    fromTotals.set(e.from, (fromTotals.get(e.from) ?? 0) + e.value)
-    toTotals.set(e.to, (toTotals.get(e.to) ?? 0) + e.value)
+    tOut.set(e.from, (tOut.get(e.from) ?? 0) + e.value)
+    tIn.set(e.to, (tIn.get(e.to) ?? 0) + e.value)
   }
-  const unpairedOutTotal = pairing.unpairedOut.reduce((s, u) => s + u.amount, 0)
-  const unpairedInTotal = pairing.unpairedIn.reduce((s, u) => s + u.amount, 0)
-  for (const u of pairing.unpairedOut) fromTotals.set(u.accountId, (fromTotals.get(u.accountId) ?? 0) + u.amount)
-  for (const u of pairing.unpairedIn) toTotals.set(u.accountId, (toTotals.get(u.accountId) ?? 0) + u.amount)
+
+  // Per-account balancing: passthrough feeds the out-side with whatever the
+  // in-side has beyond transfers out AND whatever external spend exceeds
+  // transfers in; "From balances" / "Kept in accounts" absorb the rest.
+  const perAccount = [...accountIds].map((id) => {
+    const inExt = sum(extInByAccount.get(id))
+    const outExt = sum(extOutByAccount.get(id))
+    const out = tOut.get(id) ?? 0
+    const inn = tIn.get(id) ?? 0
+    const pass = Math.max(0, Math.max(outExt - inn, inExt - out))
+    const fromBal = Math.max(0, out + pass - inExt)
+    const kept = inn + pass - outExt
+    return { id, inExt, outExt, pass, fromBal, kept, inSideValue: inExt + fromBal, outSideValue: inn + pass }
+  })
 
   const nodes: SankeyNodeInput[] = []
   const links: SankeyInput['links'] = []
-  const byValueDesc = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1])
-  for (const [id, value] of byValueDesc(fromTotals)) {
-    nodes.push({ id: `from:${id}`, col: 0, label: accountLabelById(id), value, tone: toneByAccount.get(id) ?? 'neutral' })
-  }
-  if (unpairedInTotal > 0) nodes.push({ id: 'from:unmatched', col: 0, label: 'Unmatched legs', value: unpairedInTotal, tone: 'neutral' })
-  for (const [id, value] of byValueDesc(toTotals)) {
-    nodes.push({ id: `to:${id}`, col: 1, label: accountLabelById(id), value, tone: toneByAccount.get(id) ?? 'neutral' })
-  }
-  if (unpairedOutTotal > 0) nodes.push({ id: 'to:unmatched', col: 1, label: 'Unmatched legs', value: unpairedOutTotal, tone: 'neutral' })
 
-  for (const e of [...edgeTotals.values()].sort((a, b) => b.value - a.value)) {
-    links.push({ source: `from:${e.from}`, target: `to:${e.to}`, value: e.value, txIds: e.txIds })
+  // Col 0 — external sources (by group, value desc; From balances last).
+  const sourceTotals = new Map<string, Flow>()
+  for (const inner of extInByAccount.values()) {
+    for (const [group, f] of inner) {
+      const agg = sourceTotals.get(group) ?? { value: 0, txIds: [] }
+      agg.value += f.value
+      agg.txIds.push(...f.txIds)
+      sourceTotals.set(group, agg)
+    }
   }
-  for (const u of pairing.unpairedOut)
-    links.push({ source: `from:${u.accountId}`, target: 'to:unmatched', value: u.amount, txIds: [u.txId] })
-  for (const u of pairing.unpairedIn)
-    links.push({ source: 'from:unmatched', target: `to:${u.accountId}`, value: u.amount, tone: 'neutral', txIds: [u.txId] })
+  for (const [group, f] of [...sourceTotals.entries()].sort((a, b) => b[1].value - a[1].value)) {
+    nodes.push({ id: `in:${group}`, col: 0, label: group, value: f.value, tone: group === UNMATCHED_GROUP ? 'neutral' : 'ink' })
+  }
+  const fromBalTotal = perAccount.reduce((s, a) => s + a.fromBal, 0)
+  if (fromBalTotal > 0) nodes.push({ id: 'in:balance', col: 0, label: 'From balances', value: fromBalTotal, tone: 'neutral' })
+
+  // Cols 1 & 2 — account instances (value desc per column).
+  for (const a of [...perAccount].sort((x, y) => y.inSideValue - x.inSideValue)) {
+    if (a.inSideValue > 0) nodes.push({ id: `acct-in:${a.id}`, col: 1, label: accountLabelById(a.id), value: a.inSideValue, tone: tone(a.id) })
+  }
+  for (const a of [...perAccount].sort((x, y) => y.outSideValue - x.outSideValue)) {
+    if (a.outSideValue > 0) nodes.push({ id: `acct-out:${a.id}`, col: 2, label: accountLabelById(a.id), value: a.outSideValue, tone: tone(a.id) })
+  }
+
+  // Col 3 — external uses (by group, value desc; Kept last).
+  const useTotals = new Map<string, Flow>()
+  for (const inner of extOutByAccount.values()) {
+    for (const [group, f] of inner) {
+      const agg = useTotals.get(group) ?? { value: 0, txIds: [] }
+      agg.value += f.value
+      agg.txIds.push(...f.txIds)
+      useTotals.set(group, agg)
+    }
+  }
+  for (const [group, f] of [...useTotals.entries()].sort((a, b) => b[1].value - a[1].value)) {
+    nodes.push({ id: `out:${group}`, col: 3, label: group, value: f.value, tone: group === UNMATCHED_GROUP ? 'neutral' : 'ink' })
+  }
+  const keptTotal = perAccount.reduce((s, a) => s + a.kept, 0)
+  if (keptTotal > 0) nodes.push({ id: 'out:kept', col: 3, label: 'Kept in accounts', value: keptTotal, tone: 'neutral' })
+
+  // Links: sources → in-sides, colored by the account (the entity).
+  for (const [accountId, inner] of extInByAccount) {
+    for (const [group, f] of inner) {
+      links.push({ source: `in:${group}`, target: `acct-in:${accountId}`, value: f.value, tone: tone(accountId), txIds: f.txIds })
+    }
+  }
+  for (const a of perAccount) {
+    if (a.fromBal > 0) links.push({ source: 'in:balance', target: `acct-in:${a.id}`, value: a.fromBal, tone: 'neutral' })
+  }
+  // Transfers between the account columns.
+  for (const e of [...edgeTotals.values()].sort((a, b) => b.value - a.value)) {
+    links.push({ source: `acct-in:${e.from}`, target: `acct-out:${e.to}`, value: e.value, tone: tone(e.from), txIds: e.txIds })
+  }
+  // Same-account passthrough: external money that leaves where it landed.
+  for (const a of perAccount) {
+    if (a.pass > 0) links.push({ source: `acct-in:${a.id}`, target: `acct-out:${a.id}`, value: a.pass, tone: tone(a.id) })
+  }
+  // Out-sides → uses, colored by the account.
+  for (const [accountId, inner] of extOutByAccount) {
+    for (const [group, f] of inner) {
+      links.push({ source: `acct-out:${accountId}`, target: `out:${group}`, value: f.value, tone: tone(accountId), txIds: f.txIds })
+    }
+  }
+  for (const a of perAccount) {
+    if (a.kept > 0) links.push({ source: `acct-out:${a.id}`, target: 'out:kept', value: a.kept, tone: 'neutral' })
+  }
 
   const pairedTotal = [...edgeTotals.values()].reduce((s, e) => s + e.value, 0)
-  return { input: { nodes, links }, pairedTotal, unpairedTotal: unpairedOutTotal + unpairedInTotal }
+  const unpairedTotal =
+    pairing.unpairedOut.reduce((s, u) => s + u.amount, 0) + pairing.unpairedIn.reduce((s, u) => s + u.amount, 0)
+  const externalInTotal = [...sourceTotals.entries()].reduce((s, [g, f]) => (g === UNMATCHED_GROUP ? s : s + f.value), 0)
+  const externalOutTotal = [...useTotals.entries()].reduce((s, [g, f]) => (g === UNMATCHED_GROUP ? s : s + f.value), 0)
+  return { input: { nodes, links }, pairedTotal, unpairedTotal, externalInTotal, externalOutTotal }
 }
 
 // ————————————————————————————————— C · Cards → people → jobs —————————————————————————————————

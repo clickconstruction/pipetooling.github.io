@@ -415,7 +415,12 @@ export function BankingMercuryVisualsTab() {
   const transfers = useMemo(
     () =>
       data && view === 'accounts'
-        ? buildTransferSankey({ pairing: pairInternalTransfers(periodTxs), accountLabelById: accountLabel })
+        ? buildTransferSankey({
+            txs: periodTxs,
+            pairing: pairInternalTransfers(periodTxs),
+            accountLabelById: accountLabel,
+            accountIsNamed: (id) => data.accountNameById[id] != null,
+          })
         : null,
     [data, view, periodTxs, accountLabel],
   )
@@ -444,7 +449,7 @@ export function BankingMercuryVisualsTab() {
         {view === 'flow'
           ? 'Every labeled dollar as a river: money in on the left, flowing out through expense families to your accounting labels. Duplicates and internal transfers are excluded, matching the books.'
           : view === 'accounts'
-            ? 'Internal transfers between your Mercury accounts: which account feeds which. Ribbon width is dollars moved in the period.'
+            ? 'The whole route: deposits on the far left, into accounts, between accounts, and out the far right as spending. Gray bands are money crossing the period boundary (from balances / kept).'
             : 'Card spend by person, flowing to the jobs it was split to. The amber band is spend not yet on any job — the same purchases the Dashboard asks you to sort.'}{' '}
         Click any ribbon to see the transactions behind it.
       </p>
@@ -474,9 +479,10 @@ export function BankingMercuryVisualsTab() {
           ) : null}
           {view === 'accounts' && transfers ? (
             <>
-              <SankeySvg input={transfers.input} height={460} padRight={200} onRibbonClick={setDrilldown} />
+              <SankeySvg input={transfers.input} height={560} padRight={210} onRibbonClick={setDrilldown} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
-                {formatSankeyUsd(transfers.pairedTotal)} moved between accounts
+                In {formatSankeyUsd(transfers.externalInTotal)} · between accounts {formatSankeyUsd(transfers.pairedTotal)} · out{' '}
+                {formatSankeyUsd(transfers.externalOutTotal)}
                 {transfers.unpairedTotal > 0
                   ? ` · ${formatSankeyUsd(transfers.unpairedTotal)} in transfer legs with no matching opposite leg in the period`
                   : ''}
