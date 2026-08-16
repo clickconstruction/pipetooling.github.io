@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1699',
+    date: '2026-08-16',
+    title: 'Line Items header tidied',
+    kind: 'fix',
+    highlights: [
+      'The "What are line items?" helper is gone, Multiple Segment Generator sits at the header\'s right edge, and Stripe preview now reads just above the Job Total.',
+    ],
+  },
+  {
     version: 'v2.1698',
     date: '2026-08-16',
     title: 'Date met shows where it came from',
