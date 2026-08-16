@@ -37,9 +37,11 @@ const USERS = [
 function Harness({
   billingCustomerHighlight = false,
   customerId = 'cust-1',
+  gc,
 }: {
   billingCustomerHighlight?: boolean
   customerId?: string | null
+  gc?: CustomerRow
 }) {
   const [phone, setPhone] = useState('(210) 415-5375')
   const divRef = useRef<HTMLDivElement | null>(null)
@@ -56,7 +58,7 @@ function Harness({
       setAccountManagerRelationship={() => {}}
       customerId={customerId}
       setCustomerId={() => {}}
-      gcCustomerId={null}
+      gcCustomerId={gc?.id ?? null}
       setGcCustomerId={() => {}}
       linkedBidGc={null}
       customerSearch=""
@@ -75,7 +77,7 @@ function Harness({
       setJobPicturesLink={() => {}}
       jobAddress="10 Cascade Gln"
       setJobAddress={() => {}}
-      customers={CUSTOMERS}
+      customers={gc ? [...CUSTOMERS, gc] : CUSTOMERS}
       customersLoading={false}
       masterForFormCustomer="master-1"
       customerExpandedGate={false}
@@ -135,6 +137,28 @@ describe('JobFormEditFactRows', () => {
     renderWithProviders(<Harness billingCustomerHighlight customerId={null} />)
     expect(screen.getByText(/Link a customer before sending this invoice/i)).toBeTruthy()
     expect(screen.getByLabelText(/Search customers to link/i)).toBeTruthy()
+  })
+
+  it('a linked GC grows read-only Phone/Email/Date met sub-rows — no pencils (v2.1701)', () => {
+    const gc = {
+      id: 'gc-1',
+      name: 'Done Right Foundation',
+      address: '99 Slab Way',
+      contact_info: { phone: '(210) 555-1111', email: 'ap@doneright.com' },
+      date_met: '2026-05-01',
+      master_user_id: 'master-1',
+      customer_type: 'commercial',
+      archived_at: null,
+    } as unknown as CustomerRow
+    renderWithProviders(<Harness gc={gc} />)
+    expect(screen.getByText(/99 Slab Way/)).toBeTruthy()
+    expect(screen.getByText('(210) 555-1111')).toBeTruthy()
+    expect(screen.getByText('ap@doneright.com')).toBeTruthy()
+    expect(screen.getByText('05/01/26')).toBeTruthy()
+    // Read-only: no Edit buttons exist for the GC's sub-rows (the customer's
+    // own Phone/Email rows still have theirs — exactly one each).
+    expect(screen.getAllByRole('button', { name: 'Edit Phone' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Edit Email' })).toHaveLength(1)
   })
 
   it('opening the Project row reveals the shared project picker', () => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { resolveCreateCustomerName } from '../../lib/jobs/jobFormCreateCustomerName'
 import { parseAccountManRelationship } from '../../lib/jobs/accountMan'
 import {
@@ -239,6 +240,10 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const folders = folderRowLinks(googleDriveLink, jobPicturesLink)
   const dateMetValue = dateMetRowValue(dateMet)
   const dateMetAgo = dateMetRowAgo(dateMet)
+  const gcCustomer = gcCustomerId ? customers.find((c) => c.id === gcCustomerId) : undefined
+  const gcContact = gcCustomer ? extractContactFromCustomer(gcCustomer) : null
+  const gcDateMetYmd = gcCustomer?.date_met ? (gcCustomer.date_met.split('T')[0] ?? '') : ''
+  const gcDateMetAgo = dateMetRowAgo(gcDateMetYmd)
   const dateMetCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
   const dateMetLocked = !!dateMetCustomer?.date_met
   /** v2.1698: the date came from the first clock session (v2.1696), not a person. */
@@ -477,7 +482,16 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       <JobFormFactRow
         label="GC/Builder"
         labelIcon={<GcHardHatIcon size={12} style={{ flexShrink: 0 }} />}
-        value={gcCustomerId ? (customers.find((c) => c.id === gcCustomerId)?.name ?? '…') : null}
+        value={
+          gcCustomer ? (
+            <>
+              {gcCustomer.name ?? '…'}
+              {gcCustomer.address?.trim() ? (
+                <span style={{ color: 'var(--text-muted)' }}>{` · ${gcCustomer.address.trim()}`}</span>
+              ) : null}
+            </>
+          ) : null
+        }
         expanded={openRows.has('gc')}
         onToggle={() => toggleRow('gc')}
       >
@@ -490,6 +504,26 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           showLabel={false}
         />
       </JobFormFactRow>
+      {/* The GC's contact facts mirror the Customer block (owner call,
+          v2.1701) — read-only rows straight off the GC's customers record
+          (no pencil; the job keeps no copy of GC contact info, so edits
+          happen in Customers). */}
+      {gcCustomer ? (
+        <>
+          <JobFormFactRow label="Phone" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.phone.trim() || null} />
+          <JobFormFactRow label="Email" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.email.trim() || null} />
+          <JobFormFactRow
+            label="Date met"
+            labelIcon={CUSTOMER_SUBROW_INDENT}
+            value={dateMetRowValue(gcDateMetYmd)}
+            valueTail={
+              gcDateMetAgo ? (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>({gcDateMetAgo})</span>
+              ) : null
+            }
+          />
+        </>
+      ) : null}
       <JobFormFactRow
         label="Folders"
         value={null}

@@ -14,7 +14,7 @@ export function JobFormFactRow({
   labelIcon,
   value,
   valueTail,
-  expanded,
+  expanded = false,
   onToggle,
   children,
   last = false,
@@ -25,9 +25,10 @@ export function JobFormFactRow({
   value: ReactNode | null
   /** Rendered after the value, outside the ellipsis clamp (chips, inline links). */
   valueTail?: ReactNode
-  expanded: boolean
-  onToggle: () => void
-  children: ReactNode
+  expanded?: boolean
+  /** Omit (with children) for a read-only display row — no pencil, no click. */
+  onToggle?: () => void
+  children?: ReactNode
   last?: boolean
 }) {
   return (
@@ -41,7 +42,7 @@ export function JobFormFactRow({
           width: '100%',
           padding: '0.5rem 0.15rem',
           borderBottom: !last || expanded ? '1px solid var(--border)' : 'none',
-          cursor: 'pointer',
+          cursor: onToggle ? 'pointer' : 'default',
         }}
       >
         <span
@@ -76,6 +77,7 @@ export function JobFormFactRow({
           {value == null && valueTail == null ? <span style={{ color: 'var(--text-faint)' }}>—</span> : null}
           {valueTail}
         </span>
+        {onToggle ? (
         <button
           type="button"
           aria-expanded={expanded}
@@ -98,6 +100,7 @@ export function JobFormFactRow({
         >
           {expanded ? <ChevronUp size={14} aria-hidden /> : <Pencil size={13} aria-hidden />}
         </button>
+        ) : null}
       </div>
       {expanded ? (
         <div

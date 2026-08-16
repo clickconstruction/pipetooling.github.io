@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1701',
+    date: '2026-08-16',
+    title: 'GC/Builder shows its contact info',
+    kind: 'feature',
+    highlights: [
+      'A linked GC on the Edit tab now shows its address beside the name, with Phone, Email, and Date met rows beneath — same shape as the Customer block.',
+      'The GC rows are read-only (that info lives on the GC\'s customer record) — edit them in Customers.',
+    ],
+  },
+  {
     version: 'v2.1700',
     date: '2026-08-16',
     title: 'Date met shows its age',
