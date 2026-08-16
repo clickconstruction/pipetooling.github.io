@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1682)
+last_updated: 2026-08-15 (v2.1684)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1684)
+
+### Contact-card icon: the four inline SVG copies adopt the shared component (2026-08-15)
+Follow-up to v2.1682, which extracted the customer address-card glyph as [`CustomerContactCardIcon`](../src/components/icons/CustomerContactCardIcon.tsx) but left the four pre-existing inline copies in place. All five inline sites now render the shared component instead of duplicated raw SVG: the top-bar Customers nav link ([`Layout`](../src/components/Layout.tsx), 20px), Builder Review's "Add contact person" button ([`BidsBuilderReviewTab`](../src/components/bids/BidsBuilderReviewTab.tsx), 16px), the Assigned Jobs customer line ([`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx), 13px), and both the desktop and mobile-card customer lines in [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx) (13px each). Each site keeps its exact size and `flexShrink` styling; no visual change. Pure refactor, client-only — no migration.
 
 ## Latest Updates (v2.1682)
 
