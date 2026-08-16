@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1692)
+last_updated: 2026-08-15 (v2.1693)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1693)
+
+### Edit tab: Phone and Email indent under Customer (2026-08-15)
+Owner call on the fact rows: Phone and Email hold the job's copy of the linked customer's contact info (jobs_ledger.customer_phone / customer_email, seeded by the link picker), so their labels now indent by exactly the Customer row's contact-card icon width — the label text starts where "Customer" starts, reading as children of that row ([`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx), a 12px spacer as `labelIcon`; measured pixel-equal live). Team and Date met stay flush. Client-only — no migration.
 
 ## Latest Updates (v2.1692)
 
