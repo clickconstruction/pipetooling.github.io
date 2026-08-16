@@ -93,7 +93,7 @@ The **Not Billed Out** card in Dashboard Financials shows the total revenue that
 
 ## Breaking off a partial invoice
 
-To bill part of a job now and the rest later, use the green partial-invoice icon on a Jobs → Pipeline row. It opens a small modal:
+To bill part of a job now and the rest later, open the job's **Bill** tab and use the **Break off invoice** slider (or select segments) — that's the main path on a computer. On the **mobile cards** view, the **⋯** menu's **Partial invoice** item opens a small modal instead:
 
 :::example Create partial invoice
 **J512** · Smith House Repipe
@@ -104,9 +104,7 @@ Amount ($) &nbsp; `500`
 {{button:outline|Cancel}} &nbsp; {{button:green|Create invoice}}
 :::
 
-**Remaining** is what's still unallocated — the job total minus payments already made *and* minus every invoice line that already exists on the job (drafts and billed alike). An amount above it is clamped down automatically, and the icon greys out when nothing is left to allocate. Entering the full remaining amount on a Ready to Bill job simply opens Bill Customer instead.
-
-The Edit Job modal's **Break off invoice** slider is the other way to do the same thing, with the same Remaining math.
+**Remaining** is what's still unallocated — the job total minus payments already made *and* minus every invoice line that already exists on the job (drafts and billed alike). An amount above it is clamped down automatically. Entering the full remaining amount on a Ready to Bill job simply opens Bill Customer instead. Both paths share the same Remaining math.
 
 ## Billing a customer
 
