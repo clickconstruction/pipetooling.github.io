@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { BankingMercuryTxDetailModal, type TxDetailChange } from './BankingMercuryTxDetailModal'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -57,41 +59,64 @@ const TONE_FILLS: Record<SankeyTone, string> = {
 /** A tx row plus the display fields the drill-down list shows (v2.1713). */
 type VisualsTxDetail = VisualsTxRow & { counterpartyName: string | null }
 
+export type VisualsLabelRow = {
+  id: string
+  name: string
+  schedule_c_line: string | null
+  default_key: string | null
+}
+
 type VisualsData = {
   txs: VisualsTxDetail[]
   txById: Map<string, VisualsTxDetail>
+  labels: VisualsLabelRow[]
+  labelIdByTxId: Map<string, string>
   labelNameByTxId: Map<string, string>
   personLabelByTxId: Map<string, string | null>
+  personIdByTxId: Map<string, string | null>
+  userIdByTxId: Map<string, string | null>
   allocationsByTxId: Map<string, { jobId: string; amount: number }[]>
   jobLabelById: Record<string, string>
   accountNameById: Record<string, string>
+  nicknameByDebitCard: Record<string, string>
+  usersOptions: { value: string; label: string }[]
   truncated: boolean
 }
 
 async function fetchVisualsData(): Promise<VisualsData> {
-  const [txRows, labelRows, assignmentRows, nicknameRows, allocRows, attrRows] = await Promise.all([
-    withSupabaseRetry(
-      async () =>
-        supabase
-          .from('mercury_transactions')
-          .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name')
-          .order('posted_at', { ascending: false })
-          .limit(VISUALS_TX_LIMIT),
-      'visuals mercury_transactions',
-    ),
-    withSupabaseRetry(async () => supabase.from('mercury_drag_sort_labels').select('id, name'), 'visuals labels'),
-    withSupabaseRetry(
-      async () =>
-        supabase.from('mercury_transaction_drag_sort_assignments').select('mercury_transaction_id, label_id').limit(100000),
-      'visuals label assignments',
-    ),
-    withSupabaseRetry(
-      async () => supabase.from('mercury_account_nicknames').select('mercury_account_id, nickname'),
-      'visuals account nicknames',
-    ),
-    fetchAllJobAllocations('visuals'),
-    fetchAllAttributions('visuals'),
-  ])
+  const [txRows, labelRows, assignmentRows, nicknameRows, debitNicknameRows, usersOptionRows, allocRows, attrRows] =
+    await Promise.all([
+      withSupabaseRetry(
+        async () =>
+          supabase
+            .from('mercury_transactions')
+            .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name')
+            .order('posted_at', { ascending: false })
+            .limit(VISUALS_TX_LIMIT),
+        'visuals mercury_transactions',
+      ),
+      withSupabaseRetry(
+        async () =>
+          supabase.from('mercury_drag_sort_labels').select('id, name, schedule_c_line, default_key').order('sort_order'),
+        'visuals labels',
+      ),
+      withSupabaseRetry(
+        async () =>
+          supabase.from('mercury_transaction_drag_sort_assignments').select('mercury_transaction_id, label_id').limit(100000),
+        'visuals label assignments',
+      ),
+      withSupabaseRetry(
+        async () => supabase.from('mercury_account_nicknames').select('mercury_account_id, nickname'),
+        'visuals account nicknames',
+      ),
+      withSupabaseRetry(
+        async () => supabase.from('mercury_debit_card_nicknames').select('mercury_debit_card_id, nickname'),
+        'visuals debit card nicknames',
+      ),
+      withSupabaseRetry(async () => supabase.rpc('list_users_for_banking_attribution'), 'visuals users options'),
+      fetchAllJobAllocations('visuals'),
+      fetchAllAttributions('visuals'),
+    ])
 
   const txs: VisualsTxDetail[] = ((txRows ?? []) as {
     id: string
@@ -111,18 +136,31 @@ async function fetchVisualsData(): Promise<VisualsData> {
     counterpartyName: r.counterparty_name,
   }))
 
+  const labels = (labelRows ?? []) as VisualsLabelRow[]
   const labelNameById = new Map<string, string>()
-  for (const l of (labelRows ?? []) as { id: string; name: string }[]) labelNameById.set(l.id, l.name)
+  for (const l of labels) labelNameById.set(l.id, l.name)
   const labelNameByTxId = new Map<string, string>()
+  const labelIdByTxId = new Map<string, string>()
   for (const a of (assignmentRows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
     const name = labelNameById.get(a.label_id)
-    if (name) labelNameByTxId.set(a.mercury_transaction_id, name)
+    if (name) {
+      labelNameByTxId.set(a.mercury_transaction_id, name)
+      labelIdByTxId.set(a.mercury_transaction_id, a.label_id)
+    }
   }
 
   const accountNameById: Record<string, string> = {}
   for (const n of (nicknameRows ?? []) as { mercury_account_id: string; nickname: string }[]) {
     accountNameById[n.mercury_account_id] = n.nickname
   }
+  const nicknameByDebitCard: Record<string, string> = {}
+  for (const n of (debitNicknameRows ?? []) as { mercury_debit_card_id: string; nickname: string }[]) {
+    nicknameByDebitCard[String(n.mercury_debit_card_id).toLowerCase()] = n.nickname
+  }
+  const usersOptions = ((usersOptionRows ?? []) as { id: string; name: string }[]).map((u) => ({
+    value: u.id,
+    label: u.name,
+  }))
 
   const allocationsByTxId = new Map<string, { jobId: string; amount: number }[]>()
   for (const row of allocRows) {
@@ -152,12 +190,16 @@ async function fetchVisualsData(): Promise<VisualsData> {
     if (u.name) userNameById.set(u.id, u.name)
   }
   const personLabelByTxId = new Map<string, string | null>()
+  const personIdByTxId = new Map<string, string | null>()
+  const userIdByTxId = new Map<string, string | null>()
   for (const row of attrRows) {
     const name =
       (row.person_id ? personNameById.get(row.person_id) : undefined) ??
       (row.user_id ? userNameById.get(row.user_id) : undefined) ??
       null
     personLabelByTxId.set(row.mercury_transaction_id, name)
+    personIdByTxId.set(row.mercury_transaction_id, row.person_id)
+    userIdByTxId.set(row.mercury_transaction_id, row.user_id)
   }
 
   const jobIds = [...new Set(allocRows.map((r) => r.job_id))]
@@ -176,11 +218,17 @@ async function fetchVisualsData(): Promise<VisualsData> {
   return {
     txs,
     txById: new Map(txs.map((t) => [t.id, t])),
+    labels,
+    labelIdByTxId,
     labelNameByTxId,
     personLabelByTxId,
+    personIdByTxId,
+    userIdByTxId,
     allocationsByTxId,
     jobLabelById,
     accountNameById,
+    nicknameByDebitCard,
+    usersOptions,
     truncated: txs.length >= VISUALS_TX_LIMIT,
   }
 }
@@ -310,11 +358,13 @@ function VisualsDrilldownModal({
   txs,
   accountLabel,
   onClose,
+  onRowClick,
 }: {
   title: string
   txs: VisualsTxDetail[]
   accountLabel: (id: string) => string
   onClose: () => void
+  onRowClick: (txId: string) => void
 }) {
   const sorted = useMemo(() => [...txs].sort((a, b) => b.postedYmd.localeCompare(a.postedYmd)), [txs])
   const total = useMemo(() => sorted.reduce((s, t) => s + Math.abs(t.amount), 0), [sorted])
@@ -325,7 +375,8 @@ function VisualsDrilldownModal({
       aria-modal="true"
       aria-label={`Transactions: ${title}`}
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      // z 1080: below the tx detail modal (1100) and the shared splits modal (1150).
+      style={{ position: 'fixed', inset: 0, zIndex: 1080, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -350,14 +401,20 @@ function VisualsDrilldownModal({
         </div>
         <div style={{ overflowY: 'auto', padding: '0.4rem 1rem 0.8rem' }}>
           {shown.map((t) => (
-            <div key={t.id} style={{ display: 'flex', gap: '0.7rem', alignItems: 'baseline', fontSize: '0.82rem', padding: '0.28rem 0', borderBottom: '1px solid var(--border)' }}>
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onRowClick(t.id)}
+              aria-label={`Open transaction: ${t.counterpartyName ?? t.id}`}
+              style={{ display: 'flex', width: '100%', boxSizing: 'border-box', gap: '0.7rem', alignItems: 'baseline', fontSize: '0.82rem', padding: '0.28rem 0.2rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', color: 'inherit', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
               <span style={{ minWidth: '5.6rem', color: 'var(--text-slate-500)', fontVariantNumeric: 'tabular-nums' }}>{t.postedYmd || '—'}</span>
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.counterpartyName ?? '—'}</span>
               <span style={{ color: 'var(--text-slate-500)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{accountLabel(t.accountId)}</span>
               <span style={{ minWidth: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                 {`${t.amount < 0 ? '−' : '+'}${formatSankeyUsd(t.amount)}`}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -366,6 +423,7 @@ function VisualsDrilldownModal({
 }
 
 export function BankingMercuryVisualsTab() {
+  const { user } = useAuth()
   const { showToast } = useToastContext()
   const [view, setView] = useState<VisualsView>('flow')
   const [period, setPeriod] = useState<VisualsPeriod>('ytd')
@@ -373,20 +431,26 @@ export function BankingMercuryVisualsTab() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [data, setData] = useState<VisualsData | null>(null)
   const [drilldown, setDrilldown] = useState<SankeyRibbonClick | null>(null)
+  const [detailTxId, setDetailTxId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setLoadError(null)
-    try {
-      setData(await fetchVisualsData())
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to load money flows'
-      setLoadError(msg)
-      showToast(msg, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }, [showToast])
+  // silent: swap data in place without the loading state, so open modals
+  // (drill-down list, tx detail) survive a background refresh after an edit.
+  const load = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (options?.silent !== true) setLoading(true)
+      setLoadError(null)
+      try {
+        setData(await fetchVisualsData())
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to load money flows'
+        if (options?.silent !== true) setLoadError(msg)
+        showToast(msg, 'error')
+      } finally {
+        if (options?.silent !== true) setLoading(false)
+      }
+    },
+    [showToast],
+  )
 
   useEffect(() => {
     void load()
@@ -395,7 +459,34 @@ export function BankingMercuryVisualsTab() {
   // A drill-down list belongs to the layout it was clicked in.
   useEffect(() => {
     setDrilldown(null)
+    setDetailTxId(null)
   }, [view, period])
+
+  /** An edit in the detail modal updates the caches the Sankeys compute from. */
+  const handleTxDetailChange = useCallback(
+    (txId: string, change: TxDetailChange) => {
+      if (change.kind === 'label') {
+        setData((prev) => {
+          if (!prev) return prev
+          const labelNameByTxId = new Map(prev.labelNameByTxId)
+          const labelIdByTxId = new Map(prev.labelIdByTxId)
+          if (change.labelId && change.labelName) {
+            labelNameByTxId.set(txId, change.labelName)
+            labelIdByTxId.set(txId, change.labelId)
+          } else {
+            labelNameByTxId.delete(txId)
+            labelIdByTxId.delete(txId)
+          }
+          return { ...prev, labelNameByTxId, labelIdByTxId }
+        })
+        return
+      }
+      // Splits/attribution changed: refresh everything quietly (job labels and
+      // person names may have new entries the local caches can't produce).
+      void load({ silent: true })
+    },
+    [load],
+  )
 
   const todayYmd = useMemo(() => calendarYmdInAppTzFromIso(new Date().toISOString()), [])
   const periodTxs = useMemo(
@@ -509,6 +600,22 @@ export function BankingMercuryVisualsTab() {
               txs={drilldown.txIds.map((id) => data.txById.get(id)).filter((t): t is VisualsTxDetail => t != null)}
               accountLabel={accountLabel}
               onClose={() => setDrilldown(null)}
+              onRowClick={setDetailTxId}
+            />
+          ) : null}
+          {detailTxId ? (
+            <BankingMercuryTxDetailModal
+              txId={detailTxId}
+              labels={data.labels}
+              jobLabelById={data.jobLabelById}
+              accountLabel={accountLabel}
+              nicknameByAccount={data.accountNameById}
+              nicknameByDebitCard={data.nicknameByDebitCard}
+              usersOptions={data.usersOptions}
+              operatorUserId={user?.id ?? null}
+              personLabel={data.personLabelByTxId.get(detailTxId) ?? null}
+              onClose={() => setDetailTxId(null)}
+              onChanged={(change) => handleTxDetailChange(detailTxId, change)}
             />
           ) : null}
         </>
