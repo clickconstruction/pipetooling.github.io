@@ -3,6 +3,7 @@ import {
   DEFAULT_JOB_FOLLOWUP_SETTINGS,
   computeJobFollowupQueue,
   jobFollowupQuietDays,
+  jobFollowupQuietSeverity,
   jobFollowupStageCounts,
   jobFollowupThresholdDays,
   type JobFollowupCandidate,
@@ -110,6 +111,13 @@ describe('computeJobFollowupQueue', () => {
     ]
     // Latest (plain review, 6d ago) wins over the older long snooze.
     expect(computeJobFollowupQueue([stale], reviews, s, TODAY)).toHaveLength(1)
+  })
+
+  it('quiet severity bands: soft under 7, amber 7–13, red 14+', () => {
+    expect(jobFollowupQuietSeverity(4)).toBe('soft')
+    expect(jobFollowupQuietSeverity(7)).toBe('amber')
+    expect(jobFollowupQuietSeverity(13)).toBe('amber')
+    expect(jobFollowupQuietSeverity(14)).toBe('red')
   })
 
   it('stage counts cover the queue', () => {

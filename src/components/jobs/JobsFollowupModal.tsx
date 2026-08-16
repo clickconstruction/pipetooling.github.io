@@ -11,6 +11,7 @@ import {
   JOB_FOLLOWUP_STAGES,
   JOB_FOLLOWUP_STAGE_LABELS,
   computeJobFollowupQueue,
+  jobFollowupQuietSeverity,
   jobFollowupStageCounts,
   type JobFollowupCandidate,
   type JobFollowupReview,
@@ -129,7 +130,16 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
     () => (stageFilter === 'all' ? fullQueue : fullQueue.filter((e) => e.job.stage === stageFilter)),
     [fullQueue, stageFilter],
   )
-  const current = queue[0] ?? null
+  // Queue list view (v2.1721): a row's "Review →" pins its job so the deck
+  // deals from there; once the job leaves the queue, the pin clears and the
+  // deck resumes stalest-first.
+  const [viewMode, setViewMode] = useState<'deck' | 'list'>('deck')
+  const [pinnedJobId, setPinnedJobId] = useState<string | null>(null)
+  const pinnedEntry = pinnedJobId ? queue.find((e) => e.job.id === pinnedJobId) ?? null : null
+  useEffect(() => {
+    if (pinnedJobId && !pinnedEntry) setPinnedJobId(null)
+  }, [pinnedJobId, pinnedEntry])
+  const current = pinnedEntry ?? queue[0] ?? null
 
   // Street view + activity tail for the top card.
   const [svUrl, setSvUrl] = useState<string | null>(null)
@@ -286,6 +296,27 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
           </span>
           {filterChip('all', `All (${fullQueue.length})`)}
           {JOB_FOLLOWUP_STAGES.filter((s) => counts[s] > 0).map((s) => filterChip(s, `${JOB_FOLLOWUP_STAGE_LABELS[s]} (${counts[s]})`))}
+          <span role="group" aria-label="Follow-ups view" style={{ display: 'inline-flex', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-strong)', marginLeft: '0.2rem' }}>
+            {(['deck', 'list'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={viewMode === m}
+                onClick={() => setViewMode(m)}
+                style={{
+                  fontSize: '0.74rem',
+                  fontWeight: viewMode === m ? 700 : 500,
+                  padding: '0.24rem 0.65rem',
+                  border: 'none',
+                  background: viewMode === m ? 'var(--text-slate-600)' : 'var(--surface)',
+                  color: viewMode === m ? 'var(--surface)' : 'var(--text-slate-600)',
+                  cursor: 'pointer',
+                }}
+              >
+                {m === 'deck' ? 'Deck' : 'List'}
+              </button>
+            ))}
+          </span>
           <button
             type="button"
             onClick={() => setSettingsOpen((v) => !v)}
@@ -318,7 +349,55 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
           </div>
         ) : null}
 
-        {!loading && current ? (
+        {!loading && viewMode === 'list' && queue.length > 0 ? (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem 1rem 0.8rem' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', padding: '0.3rem 0 0.4rem' }}>
+              {queue.length} job{queue.length === 1 ? '' : 's'} · quietest first
+            </div>
+            {queue.map((e) => {
+              const severity = jobFollowupQuietSeverity(e.quietDays)
+              const badge =
+                severity === 'red'
+                  ? { background: '#fee2e2', color: '#b91c1c' }
+                  : severity === 'amber'
+                    ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+                    : { background: 'var(--bg-slate-100)', color: 'var(--text-slate-600)' }
+              return (
+                <div
+                  key={e.job.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.45rem 0.1rem', borderTop: '1px solid var(--border)', fontSize: '0.84rem' }}
+                >
+                  <span style={{ ...badge, minWidth: '3rem', textAlign: 'center', fontWeight: 800, fontSize: '0.72rem', borderRadius: 999, padding: '0.16rem 0', flexShrink: 0 }}>
+                    {e.quietDays}d
+                  </span>
+                  <span style={{ minWidth: 0, flex: '1 1 240px' }}>
+                    <span style={{ fontWeight: 700 }}>
+                      {e.job.hcpNumber ? `${e.job.hcpNumber} · ` : ''}
+                      {e.job.jobName}
+                    </span>
+                    <span style={{ display: 'block', color: 'var(--text-slate-500)', fontSize: '0.76rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.job.address ? `${e.job.address} · ` : ''}
+                      {e.reason}
+                    </span>
+                  </span>
+                  <span style={{ ...STAGE_CHIP[e.job.stage], flexShrink: 0 }}>{JOB_FOLLOWUP_STAGE_LABELS[e.job.stage]}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinnedJobId(e.job.id)
+                      setViewMode('deck')
+                    }}
+                    style={{ flexShrink: 0, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', borderRadius: 7, fontSize: '0.74rem', fontWeight: 700, padding: '0.3rem 0.7rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Review →
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+
+        {!loading && viewMode === 'deck' && current ? (
           <div style={{ position: 'relative' }}>
             {queue.length > 2 ? (
               <div style={{ position: 'absolute', inset: '20px -14px auto -14px', height: '96%', background: 'var(--surface)', opacity: 0.35, borderRadius: 14, border: '1px solid var(--border)', transform: 'rotate(-0.8deg)' }} />
@@ -445,7 +524,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
           </div>
         ) : null}
 
-        {!loading && !current ? (
+        {!loading && queue.length === 0 ? (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '2rem 1.2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '1.4rem', marginBottom: '0.3rem' }}>🎉</div>
             <div style={{ fontWeight: 800 }}>All caught up</div>

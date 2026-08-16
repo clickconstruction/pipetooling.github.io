@@ -181,6 +181,15 @@ export function computeJobFollowupQueue(
   return entries
 }
 
+/** Quiet-days badge severity for the queue list view (v2.1721). */
+export type JobFollowupSeverity = 'soft' | 'amber' | 'red'
+
+export function jobFollowupQuietSeverity(quietDays: number): JobFollowupSeverity {
+  if (quietDays >= 14) return 'red'
+  if (quietDays >= 7) return 'amber'
+  return 'soft'
+}
+
 /** Stage counts for the deck's filter chips (over the computed queue). */
 export function jobFollowupStageCounts(entries: JobFollowupQueueEntry[]): Record<JobFollowupStage, number> {
   const counts: Record<JobFollowupStage, number> = {

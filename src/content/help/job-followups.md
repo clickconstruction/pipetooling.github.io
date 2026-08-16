@@ -8,6 +8,8 @@ Jobs stop falling through the cracks when the app builds the list for you. The *
 
 The **Dashboard** keeps score too: when jobs are waiting, an amber card counts them ("37 billed with no nudge · 11 working with no recent notes") and {{button:blue|Start review →}} drops you straight into the deck. When the queue is empty, the card disappears.
 
+Prefer to see everything at once? The **Deck | List** toggle at the top switches to the whole queue as a table — quietest first, each row with a color-coded days badge ({{chip:red|21d}} means two weeks or more), the reason it needs eyes, and its stage. Click {{button:outline|Review →}} on any row and the deck opens on exactly that job — triage the list, then work the cards.
+
 ## Working the deck
 
 Each card is one job: its number, stage, and an amber {{chip:yellow|quiet 9 days}} chip, the street view with the address (click it for the full Street View), a *Why it's here* line, the money picture, and the last few notes from its activity thread.
