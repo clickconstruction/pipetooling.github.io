@@ -85,11 +85,10 @@ export function MoneyLifecycleBar({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', textAlign: 'left' }}>
-      {/* Centered "% done" (owner call, v2.1703) — the "$X bid" readout
-          retired (the Job Total above already says it); the add-a-line-item
-          nudge keeps the right slot only while there's no bar. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'baseline', gap: '0.5rem' }}>
-        <span aria-hidden />
+      {/* Centered "% done" (owner call, v2.1703); the "$X bid" readout and the
+          add-a-line-item nudge both retired (v2.1703/v2.1707) — the Line
+          Items list right above says it all. */}
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline' }}>
         <span style={{ whiteSpace: 'nowrap' }}>
           {onPctCommit ? (
             <>
@@ -138,9 +137,6 @@ export function MoneyLifecycleBar({
           ) : (
             <span style={labelStyle}>&nbsp;</span>
           )}
-        </span>
-        <span style={{ ...labelStyle, whiteSpace: 'nowrap', justifySelf: 'end' }}>
-          {hasBar ? '' : 'Job total: add a line item to set it'}
         </span>
       </div>
 
