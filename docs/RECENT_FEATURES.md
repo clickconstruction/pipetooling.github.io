@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1696)
+last_updated: 2026-08-16 (v2.1697)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1697)
+
+### Edit tab: one identity row, Date met joins the customer sub-rows (2026-08-16)
+Two owner calls on the Job window's Edit tab. **(1) Identity row** ([`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx)): Job Name moves up beside Service type — C# · Service type · Job Name read as one desktop row (wrap keeps phones stacking); the C# box shrinks to a fixed ~5-digit width (99% of C#s are shorter), and the HCP/C# inputs pin to the SearchableSelect trigger's 36px so the boxes sit flush (measured equal live). **(2) Date met** moves up under Email with the same customer-sub-row indent as Phone/Email — it lives on the customers record like they do ([`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx)). Bonus proof from v2.1696's backfill: job 961's customer now shows Date met 6/9/2026 from his first clock session. Client-only — no migration.
 
 ## Latest Updates (v2.1696)
 

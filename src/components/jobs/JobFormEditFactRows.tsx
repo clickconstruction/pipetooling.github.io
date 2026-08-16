@@ -432,24 +432,11 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         </label>
         <input type="email" aria-label="Customer Email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={fieldInputStyle} />
       </JobFormFactRow>
-      <JobFormFactRow
-        label="GC/Builder"
-        labelIcon={<GcHardHatIcon size={12} style={{ flexShrink: 0 }} />}
-        value={gcCustomerId ? (customers.find((c) => c.id === gcCustomerId)?.name ?? '…') : null}
-        expanded={openRows.has('gc')}
-        onToggle={() => toggleRow('gc')}
-      >
-        <JobFormGcPicker
-          gcCustomerId={gcCustomerId}
-          setGcCustomerId={setGcCustomerId}
-          linkedBidGc={linkedBidGc}
-          customers={customers}
-          customersLoading={customersLoading}
-          showLabel={false}
-        />
-      </JobFormFactRow>
+      {/* Date met rides with the customer-contact sub-rows — it lives on the
+          customers record like phone/email (owner call, v2.1697). */}
       <JobFormFactRow
         label="Date met"
+        labelIcon={CUSTOMER_SUBROW_INDENT}
         value={dateMetValue}
         valueTail={
           dateMetLocked ? (
@@ -471,6 +458,22 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             color: dateMetLocked ? 'var(--text-muted)' : 'inherit',
             cursor: dateMetLocked ? 'not-allowed' : 'text',
           }}
+        />
+      </JobFormFactRow>
+      <JobFormFactRow
+        label="GC/Builder"
+        labelIcon={<GcHardHatIcon size={12} style={{ flexShrink: 0 }} />}
+        value={gcCustomerId ? (customers.find((c) => c.id === gcCustomerId)?.name ?? '…') : null}
+        expanded={openRows.has('gc')}
+        onToggle={() => toggleRow('gc')}
+      >
+        <JobFormGcPicker
+          gcCustomerId={gcCustomerId}
+          setGcCustomerId={setGcCustomerId}
+          linkedBidGc={linkedBidGc}
+          customers={customers}
+          customersLoading={customersLoading}
+          showLabel={false}
         />
       </JobFormFactRow>
       <JobFormFactRow

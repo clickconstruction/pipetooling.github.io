@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1697',
+    date: '2026-08-16',
+    title: 'Edit tab: tighter identity row',
+    kind: 'fix',
+    highlights: [
+      'C#, Service type, and Job Name now share one row on desktop — the C# box slimmed to fit its usual 4–5 digits and sits flush with the Service type picker.',
+      'Date met moved up beside Phone and Email under the Customer row, where its data actually lives.',
+    ],
+  },
+  {
     version: 'v2.1696',
     date: '2026-08-16',
     title: 'Date met fills in by itself',
