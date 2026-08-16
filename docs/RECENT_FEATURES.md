@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Contact-card icon: the four inline SVG copies adopt the shared component (2026-08-15)
 Follow-up to v2.1682, which extracted the customer address-card glyph as [`CustomerContactCardIcon`](../src/components/icons/CustomerContactCardIcon.tsx) but left the four pre-existing inline copies in place. All five inline sites now render the shared component instead of duplicated raw SVG: the top-bar Customers nav link ([`Layout`](../src/components/Layout.tsx), 20px), Builder Review's "Add contact person" button ([`BidsBuilderReviewTab`](../src/components/bids/BidsBuilderReviewTab.tsx), 16px), the Assigned Jobs customer line ([`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx), 13px), and both the desktop and mobile-card customer lines in [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx) (13px each). Each site keeps its exact size and `flexShrink` styling; no visual change. Pure refactor, client-only — no migration.
 
+## Latest Updates (v2.1683)
+
+### Job window: Line Items move to the top of the Bill tab (2026-08-15)
+Owner call, revisiting v2.1675's "decision 02" (line items with the job's scope on Edit): **Line Items now lead the Bill tab** — scope and Job Total sit right where invoices are cut. In [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) the `JobFormFixturesSection` block (with its hazmat rider rows and the half-width `<hr>`) moved from the tail of the EDIT region into the head of the BILL region — same single form instance, so autosave and state are untouched; the standalone/New Job form keeps the same overall order since both regions render inline there. Guided flows follow it: [`JobDetailModalContext`](../src/contexts/JobDetailModalContext.tsx)'s `openJobWindowEdit` now defaults to the **Bill** tab when `fixturesSectionHighlight` is set (the Pipeline's "no bid value" click and the field collect-payment queue), so the highlight lands on a visible section. Help guide `job-window-tabs` updated. Client-only — no migration.
+
 ## Latest Updates (v2.1682)
 
 ### Edit tab: the Customer row wears the contact-card icon (2026-08-15)

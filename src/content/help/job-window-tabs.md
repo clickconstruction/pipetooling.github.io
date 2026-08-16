@@ -12,8 +12,8 @@ Under the tab bar, **every tab** shows the same job header: the job name, the ac
 ## The three tabs
 
 - {{chip:blue|Job}} — the read view: photo and address, customer and contacts, the numbered activity feed, work/bill dates, and the profit summary. This is where "open job detail" lands.
-- {{chip:blue|Edit}} — the job itself: numbers, name, address, service type, the people-and-customer rows (below), and the **Line Items** (the job's scope and Job Total). The row's ✎ Edit button lands here, and so does the ⚙ on the Job tab.
-- {{chip:blue|Bill}} — all the money: the billing summary bar, the segment bar with the break-off slider, **New Invoice**, the Invoices and Payments received tables, and Labor & Parts Cost with the Cost Timeline.
+- {{chip:blue|Edit}} — the job itself: numbers, name, address, service type, and the people-and-customer rows (below). The row's ✎ Edit button lands here, and so does the ⚙ on the Job tab.
+- {{chip:blue|Bill}} — all the money, starting with the **Line Items** (the job's scope and Job Total) right at the top, then the billing summary bar, the segment bar with the break-off slider, **New Invoice**, the Invoices and Payments received tables, and Labor & Parts Cost with the Cost Timeline.
 
 ## The Edit tab reads as rows
 

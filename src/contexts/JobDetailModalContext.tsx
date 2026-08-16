@@ -116,7 +116,8 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       kind: 'open',
       instanceKey: jobDetailModalInstanceSeed,
       jobId,
-      initialTab: options.initialTab ?? 'edit',
+      // Line items live on Bill (v2.1683) — flows highlighting them land there.
+      initialTab: options.initialTab ?? (options.fixturesSectionHighlight ? 'bill' : 'edit'),
       scheduleContext: null,
       prefillRowLabel: undefined,
       prefillAddress: undefined,
