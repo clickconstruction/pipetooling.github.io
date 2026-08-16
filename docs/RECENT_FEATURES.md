@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1705)
+last_updated: 2026-08-16 (v2.1706)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1706)
+
+### Job window header: icons right-aligned, reordered, and the paid email wears a $ (2026-08-16)
+Four owner calls on the header's action row ([`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)): the icon cluster moves to the modal's right edge (pill stays left — a zero-width auto-margin spacer splits the row in pane mode), the **calendar** moves one slot left (now before send-task), **Share** anchors the far right, and the **paid-in-full email** envelope gains a small green **$** badge so it reads as the money email at a glance. New order: supply house · calendar · send-task · paid-mail($) · share. Verified live (order + badge measured in the DOM). Client-only — no migration.
 
 ## Latest Updates (v2.1705)
 
