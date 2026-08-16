@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1698',
+    date: '2026-08-16',
+    title: 'Date met shows where it came from',
+    kind: 'feature',
+    highlights: [
+      'A Date met filled from the first clock-in now says "(first clock-in)" on the job\'s Edit tab, so you can tell it apart from a date someone typed.',
+      'Typing a date anywhere marks it as yours — the automatic fill will never overwrite it. Clearing it lets the automatic date return.',
+    ],
+  },
+  {
     version: 'v2.1697',
     date: '2026-08-16',
     title: 'Edit tab: tighter identity row',

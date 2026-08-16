@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1697)
+last_updated: 2026-08-16 (v2.1698)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1698)
+
+### Date met: manual entries stamp themselves manual; clock-filled dates say so (2026-08-16)
+The client half of v2.1696. The three human write paths — [`EditCustomerForm`](../src/components/EditCustomerForm.tsx) save, [`CustomerForm`](../src/pages/CustomerForm.tsx) update, and [`JobFormModal`](../src/components/jobs/JobFormModal.tsx)'s create-customer insert + close-time backfill — now stamp `date_met_source: 'manual'` (clearing the date resets source to null, so the clock-session fill may repopulate). The Edit tab's Date met row reads provenance: a clock-filled date shows **"(first clock-in · edit in Customers)"** instead of the plain lock (customers selects gained `date_met_source`; `database.ts` regenerated post-`db push`). Verified live on job 961: the v2.1696 backfill's 6/9/2026 renders with the first-clock-in hint. Client-only — the paired migration shipped in v2.1696.
 
 ## Latest Updates (v2.1697)
 

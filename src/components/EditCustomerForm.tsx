@@ -440,6 +440,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       contact_info: contactInfoToJson(phone, email),
       customer_type: customerType,
       date_met: dateMet.trim() || null,
+      // Typed = manual (never auto-overwritten); cleared = null so the
+      // clock-session fill (v2.1696) may repopulate it.
+      date_met_source: dateMet.trim() ? 'manual' : null,
       google_drive_link: googleDriveLink.trim() || null,
       job_pictures_link: jobPicturesLink.trim() || null,
     }

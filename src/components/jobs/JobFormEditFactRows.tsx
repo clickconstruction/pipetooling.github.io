@@ -237,7 +237,10 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   })
   const folders = folderRowLinks(googleDriveLink, jobPicturesLink)
   const dateMetValue = dateMetRowValue(dateMet)
-  const dateMetLocked = !!(customerId && customers.find((c) => c.id === customerId)?.date_met)
+  const dateMetCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
+  const dateMetLocked = !!dateMetCustomer?.date_met
+  /** v2.1698: the date came from the first clock session (v2.1696), not a person. */
+  const dateMetFromClock = dateMetLocked && dateMetCustomer?.date_met_source === 'clock'
 
   const createCustomerName = resolveCreateCustomerName({ customerName, customerSearch, customerId })
 
@@ -440,7 +443,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         value={dateMetValue}
         valueTail={
           dateMetLocked ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>(edit in Customers)</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+              {dateMetFromClock ? '(first clock-in · edit in Customers)' : '(edit in Customers)'}
+            </span>
           ) : null
         }
         expanded={openRows.has('dateMet')}

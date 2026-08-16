@@ -2667,6 +2667,7 @@ export type Database = {
           created_at: string | null
           customer_type: string | null
           date_met: string | null
+          date_met_source: string | null
           google_drive_link: string | null
           id: string
           job_pictures_link: string | null
@@ -2684,6 +2685,7 @@ export type Database = {
           created_at?: string | null
           customer_type?: string | null
           date_met?: string | null
+          date_met_source?: string | null
           google_drive_link?: string | null
           id?: string
           job_pictures_link?: string | null
@@ -2701,6 +2703,7 @@ export type Database = {
           created_at?: string | null
           customer_type?: string | null
           date_met?: string | null
+          date_met_source?: string | null
           google_drive_link?: string | null
           id?: string
           job_pictures_link?: string | null
@@ -13125,6 +13128,10 @@ export type Database = {
       create_view_link: {
         Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
+      }
+      customer_date_met_apply: {
+        Args: { p_customer_id: string; p_work_date: string }
+        Returns: undefined
       }
       debug_cost_estimate_check: { Args: { p_bid_id: string }; Returns: Json }
       debug_cost_estimate_policies: {
