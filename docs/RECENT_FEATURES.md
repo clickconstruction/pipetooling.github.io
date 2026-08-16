@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1690)
+last_updated: 2026-08-15 (v2.1691)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1691)
+
+### Bill tab: "Record non-Stripe payment received" left-aligns (2026-08-15)
+Owner call: the ③ Payments received section's reveal button was centered; it now left-aligns with the section title and content ([`JobFormPaymentsTable`](../src/components/jobs/JobFormPaymentsTable.tsx), `justifyContent: flex-start`). Client-only — no migration.
 
 ## Latest Updates (v2.1690)
 
