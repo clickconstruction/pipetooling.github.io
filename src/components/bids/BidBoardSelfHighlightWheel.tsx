@@ -67,9 +67,7 @@ export function useBidBoardSelfHighlight(userId: string | null | undefined) {
             async () =>
               await supabase
                 .from('users')
-                // Cast: the column is newer than the generated types; the
-                // payload shape is validated by the kernel either way.
-                .update({ bid_board_self_highlight: next } as never)
+                .update({ bid_board_self_highlight: next })
                 .eq('id', userId),
             'save bid board self highlight',
           )
