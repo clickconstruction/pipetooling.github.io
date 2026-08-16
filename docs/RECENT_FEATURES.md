@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1686)
+last_updated: 2026-08-15 (v2.1687)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1687)
+
+### Bill tab: Line Items merge into the billing flow, "Billing" title retired (2026-08-15)
+Owner follow-up on v2.1683: in the Job window's Bill tab, the half-width `<hr>` and the orange-striped **Billing** section header are gone — the tab already says "Bill", so the content reads as ONE section from ① Line Items through the money bar, ② Invoices, and ③ Payments. The autosave indicator that lived in that header survives as a right-aligned status line that renders only while saving or failed (same aria-live semantics). The standalone/New Job form keeps the divider and the Billing header — it has no tab naming the section for it. Gated on `embedded` in [`JobFormModal`](../src/components/jobs/JobFormModal.tsx). Client-only — no migration.
 
 ## Latest Updates (v2.1686)
 
