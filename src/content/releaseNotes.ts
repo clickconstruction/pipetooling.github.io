@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1691',
+    date: '2026-08-15',
+    title: 'Payment button lines up left',
+    kind: 'fix',
+    highlights: [
+      'On the Bill tab, "+ Record non-Stripe payment received" now sits at the left edge of Payments received instead of floating centered.',
+    ],
+  },
+  {
     version: 'v2.1690',
     date: '2026-08-15',
     title: '"Open N" lines up across stages',

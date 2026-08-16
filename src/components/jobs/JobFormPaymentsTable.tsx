@@ -746,10 +746,11 @@ export function JobFormPaymentsTable({
         </div>
       )}
       {!manualEntryOpen && (
+        /* Left-aligned like the section's other controls (owner call, v2.1691). */
         <div
           style={{
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
             marginTop: visiblePayments.length > 0 ? '0.5rem' : 0,
           }}
         >
