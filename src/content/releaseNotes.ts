@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1690',
+    date: '2026-08-15',
+    title: '"Open N" lines up across stages',
+    kind: 'fix',
+    highlights: [
+      'On Waiting and Working rows, how long a job has been open now sits right above the Edit Job button — the same spot the billing stages already use.',
+    ],
+  },
+  {
     version: 'v2.1689',
     date: '2026-08-15',
     title: 'Stripe preview sits with Job Total',
