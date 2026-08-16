@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1684',
+    date: '2026-08-15',
+    title: 'One contact-card icon everywhere',
+    kind: 'fix',
+    highlights: [
+      'The customer contact-card icon in the top bar, Builder Review, Assigned Jobs, and the Pipeline job column now comes from one shared source — no visible change, just consistency insurance.',
+    ],
+  },
+  {
     version: 'v2.1682',
     date: '2026-08-15',
     title: 'Customer row gets its icon',
