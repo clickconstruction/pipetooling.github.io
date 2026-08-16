@@ -260,6 +260,15 @@ export function BankingMercuryTxDetailModal({
   }, [row, noteDraft, showToast])
 
   const debitCardId = row ? mercuryDebitCardIdFromRaw(row.raw) : null
+  /** v2.1718: the raw bank description often carries what the memo doesn't (e.g. "CASH APP*ABE WHITES"). */
+  const bankDescription = useMemo(() => {
+    const raw = row?.raw
+    if (raw != null && typeof raw === 'object' && !Array.isArray(raw) && 'bankDescription' in raw) {
+      const v = (raw as { bankDescription?: unknown }).bankDescription
+      return typeof v === 'string' && v.trim() !== '' ? v : null
+    }
+    return null
+  }, [row])
   const splitsSummary = useMemo(() => {
     if (!relations) return '…'
     if (relations.allocations.length === 0) return null
@@ -322,6 +331,7 @@ export function BankingMercuryTxDetailModal({
                   </Fact>
                 ) : null}
                 <Fact label="Counterparty">{row?.counterparty_name ?? '—'}</Fact>
+                <Fact label="Bank description">{bankDescription ?? '—'}</Fact>
                 <Fact label="Bank memo">{row?.external_memo ?? '—'}</Fact>
                 <Fact label="Source">{row?.source ?? '—'}</Fact>
               </dl>

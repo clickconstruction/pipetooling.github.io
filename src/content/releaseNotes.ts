@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1724',
+    date: '2026-08-16',
+    title: 'Bank description, front and center',
+    kind: 'fix',
+    highlights: [
+      'Opening a transaction from the Visuals charts now shows the bank description — the "CASH APP*..." line that usually names who a payment really went to — right above the bank memo, instead of hiding in the raw detail.',
+    ],
+  },
+  {
     version: 'v2.1722',
     date: '2026-08-16',
     title: 'Follow-up history: who reviewed what',
