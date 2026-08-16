@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1706)
+last_updated: 2026-08-16 (v2.1707)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1707)
+
+### Bill tab: "% done" flush under the Job Total; Line Items air matches the section rhythm (2026-08-16)
+Three owner calls. **(1)** The "Job total: add a line item to set it" nudge retires ([`MoneyLifecycleBar`](../src/components/jobs/MoneyLifecycleBar.tsx); the top row is now just the centered % done). **(2)** "% done" sits FLUSH under "Job Total: $X" — measured 0px — via an embedded-only negative margin canceling the region's flex gap ([`JobFormModal`](../src/components/jobs/JobFormModal.tsx)). **(3)** The air above "① Line Items" now matches the Remaining-to-bill → "② Invoices" rhythm — 27px vs 28px measured ([`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx) `marginTop` 1.65rem). Client-only — no migration.
 
 ## Latest Updates (v2.1706)
 

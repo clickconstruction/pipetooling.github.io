@@ -3343,7 +3343,10 @@ export default function JobFormModal({
           {!embedded && (
             <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
           )}
-          <div style={{ marginBottom: '1rem' }}>
+          {/* Embedded: the negative margin cancels the region's flex gap plus
+              the residual line-box air so "% done" sits flush under the Job
+              Total (owner call, v2.1707). */}
+          <div style={{ marginBottom: '1rem', ...(embedded ? { marginTop: '-1.15rem' } : {}) }}>
             {!embedded ? (
               <div
                 style={{

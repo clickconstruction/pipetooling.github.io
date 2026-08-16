@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1707',
+    date: '2026-08-16',
+    title: 'Bill tab rhythm dialed in',
+    kind: 'fix',
+    highlights: [
+      'The "% done" bar now sits flush under the Job Total, the "add a line item" hint is gone, and ① Line Items gets the same breathing room as the other numbered sections.',
+    ],
+  },
+  {
     version: 'v2.1706',
     date: '2026-08-16',
     title: 'Job header icons realigned',

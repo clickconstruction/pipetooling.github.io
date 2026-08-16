@@ -123,9 +123,10 @@ export function JobFormFixturesSection({
           <div
             ref={fixturesSectionHighlightRef}
             style={{
-              // v2.1703: breathe above the title, hug the billing block below
-              // (the region's flex gap alone separates them).
-              marginTop: '0.35rem',
+              // v2.1707: the air above "① Line Items" matches the Remaining-to-
+              // bill → "② Invoices" rhythm (28px, measured); below, the billing
+              // block hugs the Job Total.
+              marginTop: '1.65rem',
               marginBottom: 0,
               borderRadius: 8,
               ...(fixturesSectionHighlight
