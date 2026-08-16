@@ -13,6 +13,7 @@ import {
 import AccountManIcon from '../icons/AccountManIcon'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import TeamCrewIcon from '../icons/TeamCrewIcon'
 import { JobFormFactRow } from './JobFormFactRow'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
@@ -304,6 +305,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Team"
+        labelIcon={<TeamCrewIcon size={12} style={{ flexShrink: 0 }} />}
         value={teamValue}
         expanded={openRows.has('team')}
         onToggle={() => toggleRow('team')}

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1694',
+    date: '2026-08-15',
+    title: 'Team row gets its crew icon',
+    kind: 'fix',
+    highlights: [
+      'On the Edit tab, the Team row now carries a crew icon — every people row in the list has its own mark.',
+    ],
+  },
+  {
     version: 'v2.1693',
     date: '2026-08-15',
     title: 'Phone and Email tuck under Customer',

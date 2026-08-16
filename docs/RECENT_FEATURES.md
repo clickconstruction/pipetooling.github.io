@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1693)
+last_updated: 2026-08-15 (v2.1694)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1694)
+
+### Edit tab: the Team row wears the crew icon (2026-08-15)
+Owner call (icon supplied): the Team fact row gains the Font Awesome users glyph — new [`TeamCrewIcon`](../src/components/icons/TeamCrewIcon.tsx), 12px like its neighbors — so every people-ish row carries its mark: person = Account man, crew = Team, card = Customer, hard hat = GC/Builder, house = Development. Client-only — no migration.
 
 ## Latest Updates (v2.1693)
 
