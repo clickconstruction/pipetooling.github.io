@@ -11,6 +11,7 @@ import {
   teamRowValue,
 } from '../../lib/jobs/jobFormFactRows'
 import AccountManIcon from '../icons/AccountManIcon'
+import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { JobFormFactRow } from './JobFormFactRow'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
@@ -304,6 +305,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Customer"
+        labelIcon={<CustomerContactCardIcon size={12} style={{ flexShrink: 0 }} />}
         value={
           customerSummary != null ? (
             <>
