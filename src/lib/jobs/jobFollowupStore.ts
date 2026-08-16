@@ -74,16 +74,60 @@ export async function fetchJobFollowupReviews(): Promise<JobFollowupReview[]> {
     const data = await withSupabaseRetry(
       async () =>
         supabase.from('job_followup_reviews')
-          .select('job_id, reviewed_at, snoozed_until')
+          .select('job_id, reviewed_at, snoozed_until, reviewed_by')
           .order('reviewed_at', { ascending: false })
           .limit(5000),
       'followup reviews',
     )
-    return ((data ?? []) as unknown as { job_id: string; reviewed_at: string; snoozed_until: string | null }[]).map(
-      (r) => ({ jobId: r.job_id, reviewedAt: r.reviewed_at, snoozedUntil: r.snoozed_until }),
-    )
+    return ((data ?? []) as unknown as {
+      job_id: string
+      reviewed_at: string
+      snoozed_until: string | null
+      reviewed_by: string | null
+    }[]).map((r) => ({
+      jobId: r.job_id,
+      reviewedAt: r.reviewed_at,
+      snoozedUntil: r.snoozed_until,
+      reviewedBy: r.reviewed_by,
+    }))
   } catch {
     return []
+  }
+}
+
+/** Reviewer display names for the history view (v2.1722). */
+export async function fetchJobFollowupReviewerNames(userIds: string[]): Promise<Record<string, string>> {
+  if (userIds.length === 0) return {}
+  try {
+    const data = await withSupabaseRetry(
+      async () => supabase.from('users').select('id, name').in('id', userIds),
+      'followup reviewer names',
+    )
+    const out: Record<string, string> = {}
+    for (const u of (data ?? []) as { id: string; name: string | null }[]) {
+      if (u.name) out[u.id] = u.name
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+/** Labels for reviewed jobs that have since left the open stages (paid/closed). */
+export async function fetchJobFollowupJobLabels(jobIds: string[]): Promise<Record<string, string>> {
+  if (jobIds.length === 0) return {}
+  try {
+    const data = await withSupabaseRetry(
+      async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', jobIds),
+      'followup history job labels',
+    )
+    const out: Record<string, string> = {}
+    for (const j of (data ?? []) as { id: string; hcp_number: string; job_name: string }[]) {
+      out[j.id] = `${j.hcp_number} · ${j.job_name}`.trim()
+    }
+    return out
+  } catch {
+    return {}
   }
 }
 
