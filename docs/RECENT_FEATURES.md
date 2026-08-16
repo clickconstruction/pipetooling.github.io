@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1687)
+last_updated: 2026-08-15 (v2.1688)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1688)
+
+### Pipeline: equal spacing across the Mark Waiting / Ready to Bill / Edit Job stack (2026-08-15)
+Owner follow-up on v2.1686: the gap above the new Edit Job button measured 4px (the outer stack's `0.25rem` gap) while Mark Waiting ↔ Ready to Bill sat at 8px (the status buttons' own wrap-flex `0.5rem` row gap). The Edit Job column in [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) and [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) gains `marginTop: '0.25rem'`, topping the boundary up to the same 8px — measured equal live after the change. Client-only — no migration.
 
 ## Latest Updates (v2.1687)
 

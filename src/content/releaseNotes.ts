@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1688',
+    date: '2026-08-15',
+    title: 'Even spacing on Pipeline buttons',
+    kind: 'fix',
+    highlights: [
+      'Mark Waiting, Ready to Bill, and Edit Job now sit with the same breathing room between all three on every Pipeline row.',
+    ],
+  },
+  {
     version: 'v2.1687',
     date: '2026-08-15',
     title: 'Bill tab reads as one section',

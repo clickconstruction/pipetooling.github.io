@@ -709,7 +709,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             </button>
                           )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch' }}>
+                        {/* marginTop tops the outer stack's 0.25rem gap up to the status
+                            buttons' own 0.5rem rhythm — equal air above Edit Job (v2.1688). */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch', marginTop: '0.25rem' }}>
                           {/* One big Edit Job target (owner call, v2.1686) — replaces the
                               partial-invoice / Edit / Job detail icon trio. Job detail
                               stays a click away via the job name; partial invoicing
