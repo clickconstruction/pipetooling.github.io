@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1727',
+    date: '2026-08-16',
+    title: 'Missing person? Add them right there',
+    kind: 'feature',
+    highlights: [
+      'When a person search comes up empty in a rule or on a transaction, the picker now offers "Add — to People as a sub" — one click creates them, selects them, and they\'re ready everywhere people are used.',
+    ],
+  },
+  {
     version: 'v2.1726',
     date: '2026-08-16',
     title: 'Rules can tag their history too',

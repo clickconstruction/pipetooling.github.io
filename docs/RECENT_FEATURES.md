@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1726)
+last_updated: 2026-08-16 (v2.1727)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1727)
+
+### Banking: person pickers can mint a missing person (2026-08-16)
+Owner request (screenshot: "Je" → No matches with no way forward). Both People-in-Rules pickers — the rule form's "Also attribute to person" ([`AccountingRuleFormModal`](../src/components/banking/AccountingRuleFormModal.tsx)) and the tx detail modal's Person field ([`BankingMercuryTxDetailModal`](../src/components/banking/BankingMercuryTxDetailModal.tsx)) — now use `SearchableSelect`'s existing `noMatchesAction`: typing an unknown name shows **Add "NAME" to People as a sub**, which inserts the roster row (`people`: `master_user_id` = operator, `kind: 'sub'` — same insert shape as PeopleEmploymentTab), toasts, appends the option locally (session-scoped `createdPersonOptions`; the parent's options list refreshes on reload), and auto-selects it (rule form sets the draft; detail modal saves the attribution immediately). A `mintedPersonNameByValueRef` feeds the backfill prompt's display name so a just-created person isn't announced as "this person". Callbacks: `createPersonFromRuleForm` (Accounting tab) / `createPersonFromPicker` (Visuals tab). Verified live: created Jessica White (sub) from the JESSICA WHITE rule, auto-selected, saved, 63-tx backfill prompt offered (skipped). Client-only — no migration.
 
 ## Latest Updates (v2.1726)
 
