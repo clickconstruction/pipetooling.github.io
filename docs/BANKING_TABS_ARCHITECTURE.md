@@ -5,7 +5,7 @@ file: docs/BANKING_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Banking surface decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every tab/region of the 2,181-line src/pages/Banking.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling), plus sub-decomposition dossiers for its two biggest already-extracted tabs, BankingMercuryAccountingTab (2,304 lines) and BankingMercuryDragSortTab (1,392 lines). MercuryTransactionAllocationsModal (1,540 lines) is noted as external coupling only — it is not mapped here.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-16
 ---
 
 ## What this surface is
@@ -25,7 +25,7 @@ Other extracted siblings (not re-mapped; healthy sizes): `BankingMercuryUserRevi
 View routing (see `parseBankingView`): `?product=mercury|stripe` (dev only; non-devs are forced to Mercury), `?tab=`:
 
 ```
-mercury: 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review' | 'reconciliation'
+mercury: 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review' | 'reconciliation' | 'visuals'
 stripe:  'invoices' | 'data'
 ```
 
@@ -57,6 +57,7 @@ Each section lists: render location (symbol/JSX anchor — line numbers are "as 
 | `user_review` — Card Review tab | thin wrapper → `BankingMercuryUserReviewTab` | ~12 / 1,098 | **extracted** | low (self-sources via `user_review_rows` RPC) | — | Done |
 | `category_review` — Category Review tab | thin wrapper → `BankingMercuryCategoryReviewTab` | ~19 / 1,073 | **extracted** | med (reads shared engine) | — | Done |
 | `reconciliation` — Reconciliation tab | `<BankingMercuryReconciliationTab />` | ~5 / 233 | **extracted** | none (zero props) | — | Done — the target end-state |
+| `visuals` — Visuals tab (v2.1712) | `<BankingMercuryVisualsTab />` | ~5 / ~400 | **born extracted** (Reconciliation mold) | none (zero props; own fetches; dispatcher early-returns like Card Review) | — | Done — Sankey kernels in `src/lib/banking/` (`mercurySankeyLayout`, `mercuryVisualsFlows`), both unit-tested |
 | Stripe `invoices` / `data` | `BankingStripeInvoicesPanel` / `BankingStripeWebhookEventsPanel` | ~11 | **extracted** | none | — | Done |
 | Parent shell: role gate, URL router, data engine, prefs, modals | `export default function Banking()` | ~1,150 after extractions | permanent parent | — | — | Compress via seam hooks (`useBankingMercuryTransactions`, `useBankingMercuryRelations`, `useBankingNicknames`, `useBankingAccountingPrefs`) |
 
