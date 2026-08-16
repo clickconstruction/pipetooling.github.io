@@ -1,17 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCardsJobsSankey,
+  buildLabelFocusSankey,
   buildMoneyFlowSankey,
   buildTransferSankey,
   filterVisualsTxs,
   filterVisualsTxsByWindow,
   pairInternalTransfers,
+  parseVisualsFocusParam,
   parseVisualsPeriodParam,
+  resolveVisualsPayee,
+  serializeVisualsFocus,
   serializeVisualsSelection,
+  visualsFocusTxs,
   visualsPeriodStartYmd,
   visualsSelectionWindow,
   visualsYearsPresent,
   visualsZoomWindow,
+  type VisualsPayeeTxRow,
   type VisualsTxRow,
 } from './mercuryVisualsFlows'
 
@@ -189,6 +195,107 @@ describe('buildMoneyFlowSankey', () => {
     expect(overheadLabels).toHaveLength(5)
     const other = r.input.nodes.find((n) => n.id === 'label:other-Overhead')!
     expect(other.value).toBeCloseTo(96 + 95, 5)
+  })
+})
+
+describe('focus mode: payee resolution and the focus sankey', () => {
+  const ptx = (
+    partial: Partial<VisualsPayeeTxRow> & Pick<VisualsPayeeTxRow, 'id' | 'amount'>,
+  ): VisualsPayeeTxRow => ({
+    kind: 'debitCardTransaction',
+    postedYmd: '2026-08-10',
+    accountId: 'acct-1',
+    isDuplicate: false,
+    counterpartyName: null,
+    externalMemo: null,
+    bankDescription: null,
+    ...partial,
+  })
+
+  it('resolveVisualsPayee splits Cash App by the memo name, title-cased', () => {
+    expect(resolveVisualsPayee('Cash App', 'CASH APP *JOHNATHAN BARTLET')).toEqual({
+      name: 'Johnathan Bartlet',
+      viaMemo: true,
+    })
+    expect(resolveVisualsPayee('CASH APP', 'Cash App * TRACE WHITES')).toEqual({ name: 'Trace Whites', viaMemo: true })
+    // Most Cash App rows carry the name in the raw bank description, not the memo.
+    expect(resolveVisualsPayee('Cash App', null, 'CASH APP*JESSICA WHITE')).toEqual({
+      name: 'Jessica White',
+      viaMemo: true,
+    })
+    // Cash App with no usable memo/description stays Cash App; other counterparties never split.
+    expect(resolveVisualsPayee('Cash App', null)).toEqual({ name: 'Cash App', viaMemo: false })
+    expect(resolveVisualsPayee('Home Depot', 'CASH APP *NOT REALLY')).toEqual({ name: 'Home Depot', viaMemo: false })
+    expect(resolveVisualsPayee(null, null)).toEqual({ name: 'Unknown payee', viaMemo: false })
+  })
+
+  it('visualsFocusTxs selects a label, the Unlabeled pseudo-label, or a whole family', () => {
+    const labels = new Map([
+      ['a', 'Contract Labor'],
+      ['b', 'Wages'],
+      ['c', 'Income'],
+      ['d', 'Internal Transfers'],
+    ])
+    const rows = [
+      tx({ id: 'a', amount: -100 }),
+      tx({ id: 'b', amount: -50 }),
+      tx({ id: 'c', amount: 900 }),
+      tx({ id: 'd', amount: -30 }),
+      tx({ id: 'e', amount: -20 }),
+      tx({ id: 'pos', amount: 40 }),
+    ]
+    expect(visualsFocusTxs(rows, labels, { type: 'label', name: 'Contract Labor' }).map((t) => t.id)).toEqual(['a'])
+    expect(visualsFocusTxs(rows, labels, { type: 'label', name: 'Unlabeled' }).map((t) => t.id)).toEqual(['e'])
+    expect(visualsFocusTxs(rows, labels, { type: 'family', name: 'People' }).map((t) => t.id)).toEqual(['a', 'b'])
+  })
+
+  it('buildLabelFocusSankey ranks payees, folds the tail, and counts memo splits', () => {
+    const txs = [
+      ptx({ id: 'm1', amount: -500, counterpartyName: 'Cash App', externalMemo: 'CASH APP *TRACE WHITES' }),
+      ptx({ id: 'm2', amount: -300, counterpartyName: 'Cash App', externalMemo: 'CASH APP *TRACE WHITES' }),
+      ptx({ id: 'd1', amount: -400, counterpartyName: 'Johnathan Bartlett', externalMemo: null }),
+    ]
+    const r = buildLabelFocusSankey({ title: 'Contract Labor', tone: 'series1', txs })
+    expect(r.total).toBe(1200)
+    expect(r.txCount).toBe(3)
+    expect(r.memoSplitCount).toBe(2)
+    const traceLink = r.input.links.find((l) => l.target === 'payee:Trace Whites')
+    expect(traceLink?.value).toBe(800)
+    expect(traceLink?.txIds).toEqual(['m1', 'm2'])
+    expect(r.input.nodes.find((n) => n.id === 'focus:root')?.value).toBe(1200)
+  })
+
+  it('folds payees beyond the top 12 into Other with their tx ids', () => {
+    const txs = Array.from({ length: 15 }, (_, i) =>
+      ptx({ id: `t${i}`, amount: -(150 - i), counterpartyName: `Vendor ${i}`, externalMemo: null }),
+    )
+    const r = buildLabelFocusSankey({ title: 'Office Expense', tone: 'series4', txs })
+    expect(r.payeeCount).toBe(15)
+    const other = r.input.nodes.find((n) => n.id === 'payee:other')
+    expect(other?.label).toBe('Other payees (3)')
+    expect(r.input.links.find((l) => l.target === 'payee:other')?.txIds).toEqual(['t12', 't13', 't14'])
+  })
+
+  it('focus URL param round-trips and rejects junk', () => {
+    expect(serializeVisualsFocus({ type: 'label', name: 'Contract Labor' })).toBe('label:Contract Labor')
+    expect(parseVisualsFocusParam('label:Contract Labor')).toEqual({ type: 'label', name: 'Contract Labor' })
+    expect(parseVisualsFocusParam('family:People')).toEqual({ type: 'family', name: 'People' })
+    expect(parseVisualsFocusParam('payee:Nope')).toBeNull()
+    expect(parseVisualsFocusParam(null)).toBeNull()
+  })
+
+  it('view A marks family and label nodes focusable, but not inflows or kept', () => {
+    const r = buildMoneyFlowSankey({
+      txs: [tx({ id: 'i1', amount: 1000 }), tx({ id: 'e1', amount: -400 })],
+      labelNameByTxId: new Map([
+        ['i1', 'Income'],
+        ['e1', 'Contract Labor'],
+      ]),
+    })
+    expect(r.input.nodes.find((n) => n.id === 'fam:People')?.focusable).toBe(true)
+    expect(r.input.nodes.find((n) => n.id === 'label:Contract Labor')?.focusable).toBe(true)
+    expect(r.input.nodes.find((n) => n.id === 'in:income')?.focusable).toBeUndefined()
+    expect(r.input.nodes.find((n) => n.id === 'fam:kept')?.focusable).toBeUndefined()
   })
 })
 

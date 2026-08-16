@@ -92,7 +92,7 @@ export function visualsSelectionWindow(sel: VisualsSelection, todayYmd: string):
 }
 
 /** Drop duplicates always; bounded windows also drop rows with unknown dates. */
-export function filterVisualsTxsByWindow(txs: VisualsTxRow[], window: VisualsWindow): VisualsTxRow[] {
+export function filterVisualsTxsByWindow<T extends VisualsTxRow>(txs: T[], window: VisualsWindow): T[] {
   return txs.filter((t) => {
     if (t.isDuplicate) return false
     if (window.startYmd === null && window.endYmd === null) return true
@@ -173,7 +173,7 @@ export const FAMILY_BY_LABEL_NAME: Record<string, string> = {
 }
 
 const FAMILY_ORDER = ['People', 'Job costs', 'Vehicles', 'Overhead', 'Owner draws', 'Unlabeled', 'Other'] as const
-const FAMILY_TONES: Record<string, SankeyTone> = {
+export const FAMILY_TONES: Record<string, SankeyTone> = {
   People: 'series1',
   'Job costs': 'series2',
   Vehicles: 'series3',
@@ -246,13 +246,13 @@ export function buildMoneyFlowSankey(args: {
     const inner = outByFamily.get(family)!
     const familyTotal = [...inner.values()].reduce((s, v) => s + v, 0)
     const tone = FAMILY_TONES[family] ?? 'neutral'
-    nodes.push({ id: `fam:${family}`, col: 1, label: family, value: familyTotal, tone })
+    nodes.push({ id: `fam:${family}`, col: 1, label: family, value: familyTotal, tone, focusable: true })
 
     const ranked = [...inner.entries()].sort((a, b) => b[1] - a[1])
     const top = ranked.slice(0, MONEY_FLOW_TOP_LABELS_PER_FAMILY)
     const rest = ranked.slice(MONEY_FLOW_TOP_LABELS_PER_FAMILY)
     for (const [label, value] of top) {
-      nodes.push({ id: `label:${label}`, col: 2, label, value, tone })
+      nodes.push({ id: `label:${label}`, col: 2, label, value, tone, focusable: true })
       links.push({ source: `fam:${family}`, target: `label:${label}`, value, txIds: outTxIdsByLabel.get(label) ?? [] })
     }
     const restTotal = rest.reduce((s, [, v]) => s + v, 0)
@@ -310,6 +310,136 @@ export function buildMoneyFlowSankey(args: {
     kept,
     unlabeledOut: [...(outByFamily.get('Unlabeled')?.values() ?? [])].reduce((s, v) => s + v, 0),
   }
+}
+
+// ————————————————————————————— A½ · Focus mode: a label's payees (v2.1717) —————————————————————————————
+
+/** The family a label belongs to (null label = the Unlabeled pseudo-family). */
+export function visualsFamilyForLabel(labelName: string | null): string {
+  if (labelName == null || labelName === 'Unlabeled') return 'Unlabeled'
+  return FAMILY_BY_LABEL_NAME[labelName] ?? 'Other'
+}
+
+export type VisualsFocus = { type: 'label' | 'family'; name: string }
+
+/** `?focus=` URL forms: `label:Contract Labor`, `family:People`. */
+export function parseVisualsFocusParam(raw: string | null): VisualsFocus | null {
+  if (raw == null) return null
+  const m = /^(label|family):(.+)$/.exec(raw)
+  if (!m) return null
+  return { type: m[1] as 'label' | 'family', name: m[2]! }
+}
+
+export function serializeVisualsFocus(focus: VisualsFocus): string {
+  return `${focus.type}:${focus.name}`
+}
+
+/**
+ * The expense transactions a focus target covers, within the already-filtered
+ * window set. Income and Internal Transfers stay excluded, matching view A.
+ */
+export function visualsFocusTxs<T extends VisualsTxRow>(
+  txs: T[],
+  labelNameByTxId: Map<string, string>,
+  focus: VisualsFocus,
+): T[] {
+  return txs.filter((t) => {
+    if (t.amount >= 0) return false
+    const label = labelNameByTxId.get(t.id) ?? null
+    if (label === INCOME_LABEL_NAME || label === INTERNAL_TRANSFERS_LABEL_NAME) return false
+    if (focus.type === 'label') {
+      return focus.name === 'Unlabeled' ? label == null : label === focus.name
+    }
+    return visualsFamilyForLabel(label) === focus.name
+  })
+}
+
+const CASH_APP_MEMO_RE = /CASH APP\s*\*\s*(.+)/i
+
+function titleCaseWords(raw: string): string {
+  return raw
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w[0] ?? '').toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+/**
+ * Display payee for a transaction. Cash App is a platform, not a person — the
+ * real name rides in the bank memo or (more often) the raw bank description
+ * ("CASH APP*JESSICA WHITE"), so when the counterparty is Cash App we split by
+ * that name instead.
+ */
+export function resolveVisualsPayee(
+  counterpartyName: string | null,
+  externalMemo: string | null,
+  bankDescription?: string | null,
+): { name: string; viaMemo: boolean } {
+  const cp = counterpartyName?.trim() ?? ''
+  if (/^cash app$/i.test(cp)) {
+    for (const source of [externalMemo, bankDescription]) {
+      const m = CASH_APP_MEMO_RE.exec(source ?? '')
+      const memoName = m?.[1]?.trim()
+      if (memoName) return { name: titleCaseWords(memoName), viaMemo: true }
+    }
+  }
+  return { name: cp || 'Unknown payee', viaMemo: false }
+}
+
+export type VisualsPayeeTxRow = VisualsTxRow & {
+  counterpartyName: string | null
+  externalMemo: string | null
+  bankDescription: string | null
+}
+
+const FOCUS_TOP_PAYEES = 12
+
+export type LabelFocusResult = {
+  input: SankeyInput
+  total: number
+  txCount: number
+  payeeCount: number
+  /** Cash App payments shown under the person from the bank memo. */
+  memoSplitCount: number
+}
+
+/** Focus-mode Sankey: one root node fanning out to its top payees. */
+export function buildLabelFocusSankey(args: {
+  title: string
+  tone: SankeyTone
+  txs: VisualsPayeeTxRow[]
+}): LabelFocusResult {
+  const { title, tone, txs } = args
+  const byPayee = new Map<string, { value: number; txIds: string[] }>()
+  let memoSplitCount = 0
+  for (const t of txs) {
+    const payee = resolveVisualsPayee(t.counterpartyName, t.externalMemo, t.bankDescription)
+    if (payee.viaMemo) memoSplitCount += 1
+    const cell = byPayee.get(payee.name) ?? { value: 0, txIds: [] }
+    cell.value += Math.abs(t.amount)
+    cell.txIds.push(t.id)
+    byPayee.set(payee.name, cell)
+  }
+  const ranked = [...byPayee.entries()].sort((a, b) => b[1].value - a[1].value)
+  const top = ranked.slice(0, FOCUS_TOP_PAYEES)
+  const rest = ranked.slice(FOCUS_TOP_PAYEES)
+  const total = ranked.reduce((s, [, c]) => s + c.value, 0)
+
+  const nodes: SankeyInput['nodes'] = [{ id: 'focus:root', col: 0, label: title, value: total, tone }]
+  const links: SankeyInput['links'] = []
+  for (const [name, cell] of top) {
+    nodes.push({ id: `payee:${name}`, col: 1, label: name, value: cell.value, tone: 'ink' })
+    links.push({ source: 'focus:root', target: `payee:${name}`, value: cell.value, tone, txIds: cell.txIds })
+  }
+  if (rest.length > 0) {
+    const restValue = rest.reduce((s, [, c]) => s + c.value, 0)
+    const restTxIds = rest.flatMap(([, c]) => c.txIds)
+    nodes.push({ id: 'payee:other', col: 1, label: `Other payees (${rest.length})`, value: restValue, tone: 'neutral' })
+    links.push({ source: 'focus:root', target: 'payee:other', value: restValue, tone, txIds: restTxIds })
+  }
+
+  return { input: { nodes, links }, total, txCount: txs.length, payeeCount: ranked.length, memoSplitCount }
 }
 
 // ————————————————————————————————— B · Between the accounts —————————————————————————————————

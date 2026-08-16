@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1716)
+last_updated: 2026-08-16 (v2.1717)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1717)
+
+### Banking Visuals: focus mode — click a bar, see the payees (2026-08-16)
+Owner picked mockup Option 2 (focus mode) with Cash App memo-splitting. On **Where the money goes**, family and label bars are now clickable (`SankeyNodeInput.focusable`, `cursor: zoom-in`, widened hit target): clicking re-roots the chart on that target — one root node fanning into its top-12 payees + "Other payees (N)" — with a **‹ All flows** breadcrumb (Esc works too; never underneath an open modal) and a stats line (total · tx count · payee count). Payee ribbons carry txIds so the drill-down list and tx detail modal work unchanged; focus is shareable via `?focus=label:Contract Labor` / `family:People` and composes with the period zoom. **Payee resolution** ([`resolveVisualsPayee`](../src/lib/banking/mercuryVisualsFlows.ts)): Cash App is a platform, not a person — the real name rides in `external_memo` or (far more often, found live) `raw.bankDescription` ("CASH APP*JESSICA WHITE"); the fetch pulls just that string server-side via `raw->>bankDescription` (the raw column stays unfetched), and matches split + title-case. Live effect: Contract Labor 2026 went from "Cash App $296K" to 46 real payees (369 payments split; top now Trace Whites $64K). Kernels `visualsFocusTxs` (label / Unlabeled pseudo-label / family; generic over row type) + `buildLabelFocusSankey` + focus URL round-trip — 8 new tests (42 in the banking suite). Client-only — no migration.
 
 ## Latest Updates (v2.1716)
 

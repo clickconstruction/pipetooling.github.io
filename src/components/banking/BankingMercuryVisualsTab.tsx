@@ -14,16 +14,23 @@ import {
 } from '../../lib/banking/mercurySankeyLayout'
 import { useSearchParams } from 'react-router-dom'
 import {
+  FAMILY_TONES,
   buildCardsJobsSankey,
+  buildLabelFocusSankey,
   buildMoneyFlowSankey,
   buildTransferSankey,
   filterVisualsTxsByWindow,
   pairInternalTransfers,
+  parseVisualsFocusParam,
   parseVisualsPeriodParam,
+  serializeVisualsFocus,
   serializeVisualsSelection,
+  visualsFamilyForLabel,
+  visualsFocusTxs,
   visualsSelectionWindow,
   visualsYearsPresent,
   visualsZoomWindow,
+  type VisualsFocus,
   type VisualsPeriod,
   type VisualsSelection,
   type VisualsTxRow,
@@ -63,8 +70,12 @@ const TONE_FILLS: Record<SankeyTone, string> = {
   warn: '#f59e0b',
 }
 
-/** A tx row plus the display fields the drill-down list shows (v2.1713). */
-type VisualsTxDetail = VisualsTxRow & { counterpartyName: string | null }
+/** A tx row plus the display fields the drill-down list and focus mode use (v2.1713/v2.1717). */
+type VisualsTxDetail = VisualsTxRow & {
+  counterpartyName: string | null
+  externalMemo: string | null
+  bankDescription: string | null
+}
 
 export type VisualsLabelRow = {
   id: string
@@ -97,7 +108,9 @@ async function fetchVisualsData(): Promise<VisualsData> {
         async () =>
           supabase
             .from('mercury_transactions')
-            .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name')
+            // bank_description pulls ONE string out of the raw JSON server-side —
+            // the raw column itself stays unfetched (it's large).
+            .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name, external_memo, bank_description:raw->>bankDescription')
             .order('posted_at', { ascending: false })
             .limit(VISUALS_TX_LIMIT),
         'visuals mercury_transactions',
@@ -133,6 +146,8 @@ async function fetchVisualsData(): Promise<VisualsData> {
     mercury_account_id: string
     duplicate_of_transaction_id: string | null
     counterparty_name: string | null
+    external_memo: string | null
+    bank_description: string | null
   }[]).map((r) => ({
     id: r.id,
     amount: Number(r.amount),
@@ -141,6 +156,8 @@ async function fetchVisualsData(): Promise<VisualsData> {
     accountId: r.mercury_account_id,
     isDuplicate: r.duplicate_of_transaction_id != null,
     counterpartyName: r.counterparty_name,
+    externalMemo: r.external_memo,
+    bankDescription: r.bank_description,
   }))
 
   const labels = (labelRows ?? []) as VisualsLabelRow[]
@@ -297,11 +314,14 @@ function SankeySvg({
   height,
   padRight,
   onRibbonClick,
+  onNodeClick,
 }: {
   input: SankeyInput
   height: number
   padRight?: number
   onRibbonClick?: (click: SankeyRibbonClick) => void
+  /** Called for nodes the flow builder marked focusable (drill a layer deeper). */
+  onNodeClick?: (nodeId: string, label: string) => void
 }) {
   const layout = useMemo(
     () => layoutSankey(input, { width: 960, height, padLeft: 170, padRight: padRight ?? 230 }),
@@ -341,10 +361,22 @@ function SankeySvg({
           const anchor = n.labelSide === 'left' ? 'end' : 'start'
           const cy = n.y + h / 2
           const twoLine = h > 30
+          const nodeClickable = onNodeClick != null && n.focusable === true
           return (
             <g key={n.id}>
-              <rect x={n.x} y={n.y} width={10} height={h} rx={2} fill={TONE_FILLS[n.tone]}>
-                <title>{`${n.label}: ${formatSankeyUsd(n.value)}`}</title>
+              <rect
+                x={n.x - (nodeClickable ? 2 : 0)}
+                y={n.y}
+                width={nodeClickable ? 14 : 10}
+                height={h}
+                rx={2}
+                fill={TONE_FILLS[n.tone]}
+                role={nodeClickable ? 'button' : undefined}
+                aria-label={nodeClickable ? `Focus on ${n.label}` : undefined}
+                style={nodeClickable ? { cursor: 'zoom-in' } : undefined}
+                onClick={nodeClickable ? () => onNodeClick(n.id, n.label) : undefined}
+              >
+                <title>{`${n.label}: ${formatSankeyUsd(n.value)}${nodeClickable ? ' — click the bar to zoom into its payees' : ''}`}</title>
               </rect>
               {twoLine ? (
                 <>
@@ -452,6 +484,7 @@ export function BankingMercuryVisualsTab() {
   const [selection, setSelection] = useState<VisualsSelection>(
     () => parseVisualsPeriodParam(searchParams.get('period')) ?? { kind: 'preset', preset: 'ytd' },
   )
+  const [focus, setFocus] = useState<VisualsFocus | null>(() => parseVisualsFocusParam(searchParams.get('focus')))
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [data, setData] = useState<VisualsData | null>(null)
@@ -487,22 +520,39 @@ export function BankingMercuryVisualsTab() {
     setDetailTxId(null)
   }, [view, selection])
 
-  // Shareable zoom: ?period=2025q2 (the ytd default keeps the URL clean).
+  // Shareable zoom + focus: ?period=2025q2&focus=label:Contract Labor
+  // (defaults keep the URL clean).
   useEffect(() => {
-    const serialized = serializeVisualsSelection(selection)
-    const current = searchParams.get('period')
-    const target = serialized === 'ytd' ? null : serialized
-    if (current === target) return
+    const periodTarget = serializeVisualsSelection(selection) === 'ytd' ? null : serializeVisualsSelection(selection)
+    const focusTarget = focus ? serializeVisualsFocus(focus) : null
+    if (searchParams.get('period') === periodTarget && searchParams.get('focus') === focusTarget) return
     setSearchParams(
       (prev) => {
         const p = new URLSearchParams(prev)
-        if (target === null) p.delete('period')
-        else p.set('period', target)
+        if (periodTarget === null) p.delete('period')
+        else p.set('period', periodTarget)
+        if (focusTarget === null) p.delete('focus')
+        else p.set('focus', focusTarget)
         return p
       },
       { replace: true },
     )
-  }, [selection, searchParams, setSearchParams])
+  }, [selection, focus, searchParams, setSearchParams])
+
+  // Focus belongs to the money-flow view; leaving it zooms back out.
+  useEffect(() => {
+    if (view !== 'flow') setFocus(null)
+  }, [view])
+
+  // Esc zooms out of focus — but never underneath an open modal.
+  useEffect(() => {
+    if (!focus) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && drilldown == null && detailTxId == null) setFocus(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focus, drilldown, detailTxId])
 
   /** An edit in the detail modal updates the caches the Sankeys compute from. */
   const handleTxDetailChange = useCallback(
@@ -545,9 +595,24 @@ export function BankingMercuryVisualsTab() {
   )
 
   const flow = useMemo(
-    () => (data && view === 'flow' ? buildMoneyFlowSankey({ txs: periodTxs, labelNameByTxId: data.labelNameByTxId }) : null),
-    [data, view, periodTxs],
+    () =>
+      data && view === 'flow' && focus == null
+        ? buildMoneyFlowSankey({ txs: periodTxs, labelNameByTxId: data.labelNameByTxId })
+        : null,
+    [data, view, focus, periodTxs],
   )
+
+  const focusResult = useMemo(() => {
+    if (!data || view !== 'flow' || focus == null) return null
+    const txs = visualsFocusTxs(periodTxs, data.labelNameByTxId, focus)
+    const family = focus.type === 'family' ? focus.name : visualsFamilyForLabel(focus.name)
+    return buildLabelFocusSankey({ title: focus.name, tone: FAMILY_TONES[family] ?? 'neutral', txs })
+  }, [data, view, focus, periodTxs])
+
+  const handleNodeFocus = useCallback((nodeId: string) => {
+    if (nodeId.startsWith('fam:')) setFocus({ type: 'family', name: nodeId.slice(4) })
+    else if (nodeId.startsWith('label:')) setFocus({ type: 'label', name: nodeId.slice(6) })
+  }, [])
   const transfers = useMemo(
     () =>
       data && view === 'accounts'
@@ -664,14 +729,41 @@ export function BankingMercuryVisualsTab() {
 
       {!loading && !loadError && data ? (
         <>
-          {view === 'flow' && flow ? (
+          {view === 'flow' && focus && focusResult ? (
             <>
-              <SankeySvg input={flow.input} height={560} onRibbonClick={setDrilldown} />
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.7rem', flexWrap: 'wrap', margin: '0.2rem 0 0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setFocus(null)}
+                  style={{ padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
+                >
+                  ‹ All flows
+                </button>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{focus.name}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-slate-500)' }}>
+                  {formatSankeyUsd(focusResult.total)} · {focusResult.txCount.toLocaleString()} transaction
+                  {focusResult.txCount === 1 ? '' : 's'} · {focusResult.payeeCount.toLocaleString()} payee
+                  {focusResult.payeeCount === 1 ? '' : 's'}
+                </span>
+              </div>
+              <SankeySvg input={focusResult.input} height={460} padRight={260} onRibbonClick={setDrilldown} />
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
+                Payee ribbons click through to their transactions · Esc or ‹ All flows zooms back out
+                {focusResult.memoSplitCount > 0
+                  ? ` · ${focusResult.memoSplitCount.toLocaleString()} Cash App payment${focusResult.memoSplitCount === 1 ? '' : 's'} shown by the person named in the bank memo`
+                  : ''}
+              </p>
+            </>
+          ) : null}
+          {view === 'flow' && !focus && flow ? (
+            <>
+              <SankeySvg input={flow.input} height={560} onRibbonClick={setDrilldown} onNodeClick={handleNodeFocus} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
                 In {formatSankeyUsd(flow.totalIn)} · out {formatSankeyUsd(flow.totalOut)}
                 {flow.kept > 0 ? ` · kept ${formatSankeyUsd(flow.kept)}` : ''}
                 {flow.fromReserves > 0 ? ` · drawn from reserves ${formatSankeyUsd(flow.fromReserves)}` : ''}
                 {flow.unlabeledOut > 0 ? ` · unlabeled spend ${formatSankeyUsd(flow.unlabeledOut)} (label it in Drag Sort)` : ''}
+                {' · click a family or label bar to zoom into its payees'}
               </p>
             </>
           ) : null}
