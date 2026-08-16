@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-15 (v2.1695)
+last_updated: 2026-08-16 (v2.1696)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1696)
+
+### Customers: Date met fills itself from the first clock session (2026-08-16)
+Owner call: `customers.date_met` now defaults to the **date of the first clock session** on any of the customer's jobs — a typed date always wins. DB-side (migration `20260816030716_customer_date_met_from_clock.sql`, entry in `docs/MIGRATIONS.md`): new `customers.date_met_source` (`'manual'` | `'clock'` | NULL-legacy), a shared SECURITY DEFINER fill rule (fills NULL; lowers a clock-sourced date when a backdated session appears; never touches manual or legacy-set values), an AFTER INSERT trigger on `clock_sessions` (skips bid-only and rejected/revoked sessions), an AFTER UPDATE OF `customer_id` trigger on `jobs_ledger` so late-linked customers fill from existing sessions, and a NULL-only backfill for history. Zero read-path changes — every surface that shows `date_met` just starts seeing values. The client-side half (manual writes stamping `'manual'`, provenance hint) ships next as v2.1697. **Apply with `supabase db push` after this merges.**
 
 ## Latest Updates (v2.1695)
 
