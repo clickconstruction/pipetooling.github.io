@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1703',
+    date: '2026-08-16',
+    title: 'Bill tab: cleaner % done row',
+    kind: 'fix',
+    highlights: [
+      'The "$X bid" readout is gone (Job Total already says it), "% done" sits centered over the money bar, and the bar now hugs right up under the Job Total.',
+      'A touch more breathing room above ① Line Items, and Development now leads the links rows on the Edit tab.',
+    ],
+  },
+  {
     version: 'v2.1702',
     date: '2026-08-16',
     title: 'Edit tab: flush fields, Folders up top',

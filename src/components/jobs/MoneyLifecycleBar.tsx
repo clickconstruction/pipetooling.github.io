@@ -50,7 +50,6 @@ export function MoneyLifecycleBar({
   pctComplete,
   pctSaving,
   onPctCommit,
-  total,
   rows,
   bottomRow,
   height = 10,
@@ -73,8 +72,6 @@ export function MoneyLifecycleBar({
    * StagesProgressPaymentCell. Omit to render pct as read-only text.
    */
   onPctCommit?: (pct: number | null) => void
-  /** Job total — the "$X bid" top-right readout. */
-  total: number
   /** Stacked legend rows in order (Paid / Billed / Draft …). */
   rows: MoneyRow[]
   /** Bold bottom row under the divider (e.g. Remaining to bill). */
@@ -88,7 +85,11 @@ export function MoneyLifecycleBar({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', textAlign: 'left' }}>
-      <div style={rowStyle}>
+      {/* Centered "% done" (owner call, v2.1703) — the "$X bid" readout
+          retired (the Job Total above already says it); the add-a-line-item
+          nudge keeps the right slot only while there's no bar. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'baseline', gap: '0.5rem' }}>
+        <span aria-hidden />
         <span style={{ whiteSpace: 'nowrap' }}>
           {onPctCommit ? (
             <>
@@ -138,8 +139,8 @@ export function MoneyLifecycleBar({
             <span style={labelStyle}>&nbsp;</span>
           )}
         </span>
-        <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {hasBar ? `${formatUsdNoCents(total)} bid` : 'Job total: add a line item to set it'}
+        <span style={{ ...labelStyle, whiteSpace: 'nowrap', justifySelf: 'end' }}>
+          {hasBar ? '' : 'Job total: add a line item to set it'}
         </span>
       </div>
 

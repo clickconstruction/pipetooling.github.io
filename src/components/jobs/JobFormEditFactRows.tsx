@@ -579,6 +579,22 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           />
         </>
       ) : null}
+      {/* Development leads the links block (owner call, v2.1703). */}
+      <JobFormFactRow
+        label="Development"
+        labelIcon={<DevelopmentHouseIcon size={12} style={{ flexShrink: 0 }} />}
+        value={developmentId ? (developmentPickerOptions(developments, developmentId).find((d) => d.id === developmentId)?.name ?? '…') : null}
+        expanded={openRows.has('development')}
+        onToggle={() => toggleRow('development')}
+      >
+        <JobFormDevelopmentEditor
+          developmentId={developmentId}
+          setDevelopmentId={setDevelopmentId}
+          developments={developments}
+          onCreateDevelopment={onCreateDevelopment}
+          showLabel={false}
+        />
+      </JobFormFactRow>
       <JobFormFactRow
         label="Project"
         value={projectId ? (projects.find((p) => p.id === projectId)?.name ?? '…') : null}
@@ -614,6 +630,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Bid"
+        last
         value={bidId ? formatJobFormBidLinkTitle(prefixMap, linkedBidSummary) : null}
         expanded={openRows.has('bid')}
         onToggle={() => toggleRow('bid')}
@@ -624,22 +641,6 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           linkedBidSummary={linkedBidSummary}
           setLinkedBidSummary={setLinkedBidSummary}
           onOpenBidLinkChoice={onOpenBidLinkChoice}
-          showLabel={false}
-        />
-      </JobFormFactRow>
-      <JobFormFactRow
-        label="Development"
-        labelIcon={<DevelopmentHouseIcon size={12} style={{ flexShrink: 0 }} />}
-        last
-        value={developmentId ? (developmentPickerOptions(developments, developmentId).find((d) => d.id === developmentId)?.name ?? '…') : null}
-        expanded={openRows.has('development')}
-        onToggle={() => toggleRow('development')}
-      >
-        <JobFormDevelopmentEditor
-          developmentId={developmentId}
-          setDevelopmentId={setDevelopmentId}
-          developments={developments}
-          onCreateDevelopment={onCreateDevelopment}
           showLabel={false}
         />
       </JobFormFactRow>

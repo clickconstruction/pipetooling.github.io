@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1702)
+last_updated: 2026-08-16 (v2.1703)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1703)
+
+### Bill tab: centered % done, "bid" readout retired, tighter spacing; Development leads the links (2026-08-16)
+Four owner calls. **(1)** The money bar's "$X bid" top-right readout retires — the Job Total above already says it ([`MoneyLifecycleBar`](../src/components/jobs/MoneyLifecycleBar.tsx) drops its `total` prop; the "add a line item to set it" nudge stays for bar-less jobs). **(2)** The "% done" control centers over the bar (1fr·auto·1fr grid). **(3)** The gap between Job Total and the % row shrinks to the region's flex gap alone ([`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx) `marginBottom` 1rem → 0) and the section gains a little air above "① Line Items" (`marginTop` 0.35rem). **(4)** **Development** moves above Project in the Edit tab's links block ([`JobFormEditFactRows`](../src/components/jobs/JobFormEditFactRows.tsx)). Client-only — no migration.
 
 ## Latest Updates (v2.1702)
 

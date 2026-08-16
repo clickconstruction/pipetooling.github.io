@@ -3400,7 +3400,6 @@ export default function JobFormModal({
               pctSaving={pctSaving}
               onPctCommit={editing?.id ? commitPctComplete : undefined}
               marks={billingBarMarks}
-              total={billingBar.total}
               segments={[
                 { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
                 { key: 'billed', frac: billingBar.billedFrac, color: BILLED_COLOR },
