@@ -102,6 +102,10 @@ export function JobsStagesActivityExpandModal({
           flexDirection: 'column',
           boxShadow: narrow ? 'none' : '0 24px 70px rgba(0,0,0,0.45)',
           overflow: 'hidden',
+          // Edge-to-edge on phones (v2.1747): keep the header out from under the
+          // status bar and the composer above the home indicator (panel idiom).
+          paddingTop: narrow ? 'env(safe-area-inset-top, 0px)' : 0,
+          paddingBottom: narrow ? 'env(safe-area-inset-bottom, 0px)' : 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0.8rem 0.9rem', borderBottom: '1px solid var(--border)' }}>

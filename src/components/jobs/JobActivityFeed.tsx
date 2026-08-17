@@ -288,7 +288,9 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                                   overflow: 'hidden',
                                   display: '-webkit-box',
                                   WebkitBoxOrient: 'vertical' as const,
-                                  WebkitLineClamp: 1,
+                                  // Two lines on phones (v2.1747): the screen has the
+                                  // room, and one line ate most messages mid-word.
+                                  WebkitLineClamp: 2,
                                 }
                           }
                         >

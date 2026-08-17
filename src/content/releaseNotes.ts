@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1747',
+    date: '2026-08-16',
+    title: 'Job screens clear the status bar',
+    kind: 'fix',
+    highlights: [
+      'On phones, the job activity screen and the Job window no longer slide up under the clock — headers and tabs sit fully below the status bar.',
+      'Activity entries on phones now show two lines before trimming, so most notes read without a tap.',
+    ],
+  },
+  {
     version: 'v2.1746',
     date: '2026-08-16',
     title: 'Rules button finds its home',

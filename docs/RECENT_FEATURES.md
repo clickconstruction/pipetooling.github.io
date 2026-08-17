@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1746)
+last_updated: 2026-08-16 (v2.1747)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1747)
+
+### Job modals stop sliding under the phone's status bar (2026-08-16)
+Two owner screenshots: the Reports fullscreen (activity expand) and the Job window's Edit tab both rendered with the iOS clock stamped over their headers. Two distinct bugs. (1) [`JobsStagesActivityExpandModal`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) goes edge-to-edge below 700px with **no safe-area padding at all** — the card now pads `env(safe-area-inset-top/bottom)` on narrow (the thread panel's fullscreen already did this; the expand shell forgot). (2) The subtler one: [`JobWindowModal`](../src/components/jobs/JobWindowModal.tsx)'s overlay HAS safe-area padding, but the card's `maxHeight: '90vh'` exceeds the overlay's padded content box on phones, and a **centered flex child taller than its container overflows both ends equally** — the top slid under the status bar. Fix: `maxHeight: 'min(90vh, 100%)'` (100% resolves against the padded box). Same fix applied to [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) (read-only variant) and [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) (standalone form, which also gained the overlay safe-area padding). Bonus: [`JobActivityFeed`](../src/components/jobs/JobActivityFeed.tsx)'s narrow rows clamp to **2 lines** instead of 1 — one line ate most messages mid-word while the phone screen sat empty below. ~114 other `maxHeight: '90vh'` modals share the overflow pattern — flagged as a follow-up sweep task. Client-only — no migration.
 
 ## Latest Updates (v2.1746)
 
