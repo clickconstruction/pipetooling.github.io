@@ -626,7 +626,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow }: {
                 const row = renderStageRow(current.job.id)
                 return row ? (
                   <div style={{ marginTop: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}>
                       Pipeline row
                       {/* The board's truth, not the card chip's — a Collections job says 'Billed' up top but Collections here. */}
                       <span style={{ ...STAGE_CHIP[row.stage], textTransform: 'none', letterSpacing: 0 }}>{BOARD_STAGE_LABELS[row.stage]}</span>
