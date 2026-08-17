@@ -11,6 +11,27 @@ export type GcPacketCustomer = {
   address: string
 }
 
+/** A `bid_versions` row with its `customers` join, as fetched for GC-override resolution. */
+export type BidVersionGcRow = {
+  id: string
+  customer_id: string | null
+  customers: { id: string; name: string | null; address: string | null } | null
+}
+
+/**
+ * Build the per-version GC override map from fetched `bid_versions` rows: the
+ * joined customer when `customer_id` is set, else null (= bid-level GC applies).
+ */
+export function versionGcOverrideMap(rows: BidVersionGcRow[]): Record<string, GcPacketCustomer | null> {
+  const map: Record<string, GcPacketCustomer | null> = {}
+  for (const v of rows) {
+    map[v.id] = v.customer_id && v.customers
+      ? { id: v.customers.id, name: v.customers.name ?? '—', address: v.customers.address ?? '—' }
+      : null
+  }
+  return map
+}
+
 export type GcPacketSectionInput = {
   /** Pricing facet name — becomes the section label inside the packet. */
   name: string
