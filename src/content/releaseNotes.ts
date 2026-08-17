@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1765',
+    date: '2026-08-17',
+    title: 'Duplicate a bid in its own trade',
+    kind: 'feature',
+    highlights: [
+      'The Copy Bid window (Edit Bid → the trade chip) now offers "Duplicate this Plumbing bid" — a same-trade copy with counts and estimate data, named "(copy)" so the two are easy to tell apart.',
+    ],
+  },
+  {
     version: 'v2.1764',
     date: '2026-08-17',
     title: 'Approval PDF letter addresses the right GC',

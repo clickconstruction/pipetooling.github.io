@@ -103,6 +103,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### August 2026
 
+#### August 17, 2026
+
+**`20260817160624_duplicate_bid_same_service_type.sql`** _(applied via `supabase db push` with the v2.1765 merge — `CREATE OR REPLACE` of an existing function; old clients unaffected, they never pass a same-type target)_
+- **Purpose**: Same-trade bid duplication. `duplicate_bid_to_service_type` dropped its baseline guard (`Target service type must differ from source bid`); a same-type copy now proceeds and gets `" (copy)"` appended to `project_name` so the Bid Board can tell the pair apart. Body otherwise verbatim from the baseline definition. Enables the Copy Bid modal's new **Duplicate this ⟨trade⟩ bid** button.
+- **Category**: Bids / function replace
+
 #### August 17, 2026 (UTC filename; work dated 2026-08-16)
 
 **`20260817012837_self_salary_clock_state_rpc.sql`** _(applied via `supabase db push` with the v2.1734 merge — new RPC only, old clients unaffected; the new client falls back to the legacy queries if the RPC is missing)_
