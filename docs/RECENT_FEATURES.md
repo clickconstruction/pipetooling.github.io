@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1742)
+last_updated: 2026-08-16 (v2.1743)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1743)
+
+### Follow-ups: the Pipeline-row label jumps to the row on the board (2026-08-16)
+Owner request: clicking "Pipeline row · [stage]" on a follow-up card should land you on that job's row on the Pipeline board, highlighted. The centered label (+ chip) is now a button ("Show this row on the Pipeline board", with a ↗): [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) passes `onOpenBoardRow(jobId, stage)` alongside `renderStageRow`, and the handler closes the deck, opens the row's section (`setStagesSectionOpen` — Collections jobs open the Collections section, not Billed), then reuses the board's existing focus/flash machinery: `setPendingStagesJobFocusId` (scroll-to-row with the late-render retry) + `setStagesJobFlashId` (the 2.6s amber row flash, same as "Follow cards I move"). Verified live: click on the Billed card → deck closes, board scrolls to the 226 PLUM row mid-viewport, exactly one row carries the flash tint. Client-only — no migration. (v2.1743 was released back by this branch earlier today, then re-claimed by it — the ledger's release/re-claim flow working as designed.)
 
 ## Latest Updates (v2.1742)
 

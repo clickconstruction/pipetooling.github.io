@@ -98,11 +98,13 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
   )
 }
 
-export function JobsFollowupModal({ open, onClose, renderStageRow }: {
+export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow }: {
   open: boolean
   onClose: () => void
   /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
   renderStageRow?: (jobId: string) => JobsFollowupStageRowResult | null
+  /** Clicking the row's label closes the deck and scrolls to + flashes the row on the Pipeline board (v2.1742). */
+  onOpenBoardRow?: (jobId: string, stage: JobFollowupStage) => void
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -626,11 +628,18 @@ export function JobsFollowupModal({ open, onClose, renderStageRow }: {
                 const row = renderStageRow(current.job.id)
                 return row ? (
                   <div style={{ marginTop: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}>
+                    <button
+                      type="button"
+                      onClick={onOpenBoardRow ? () => onOpenBoardRow(current.job.id, row.stage) : undefined}
+                      disabled={!onOpenBoardRow}
+                      title="Show this row on the Pipeline board"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', border: 'none', background: 'none', cursor: onOpenBoardRow ? 'pointer' : 'default', padding: 0, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}
+                    >
                       Pipeline row
                       {/* The board's truth, not the card chip's — a Collections job says 'Billed' up top but Collections here. */}
                       <span style={{ ...STAGE_CHIP[row.stage], textTransform: 'none', letterSpacing: 0 }}>{BOARD_STAGE_LABELS[row.stage]}</span>
-                    </div>
+                      {onOpenBoardRow ? <span aria-hidden style={{ textTransform: 'none', letterSpacing: 0 }}>↗</span> : null}
+                    </button>
                     <div style={{ overflowX: 'auto' }}>{row.node}</div>
                   </div>
                 ) : null
