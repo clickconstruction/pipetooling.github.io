@@ -1,31 +1,103 @@
 /**
- * Customers list — lifetime value rollup (Customer Hub train, PR 6).
+ * Customers list — per-customer money + activity rollup (Customer Hub train
+ * PR 6, extended by the list-redesign train PR 1).
  *
- * Per-customer lifetime billed over org-wide lean rows, using the SAME
- * per-job rule as customerProfileStats.lifetimeBilled (keep in sync):
- * Σ billed/paid invoice amounts per job; jobs with no billed/paid invoice
- * rows fall back to the job shell (revenue) once the job itself is
- * billed/paid. Pure — two flat arrays in, a customer_id → dollars map out.
+ * Same per-job rules as customerProfileStats (keep the trio in sync):
+ * - lifetime billed: Σ billed/paid invoice amounts per job; jobs with no
+ *   billed/paid invoice rows fall back to the job shell (revenue) once the
+ *   job itself is billed/paid;
+ * - open balance: billed-invoice remainders (amount − invoice-linked
+ *   payments) + billed job-shells (revenue − payments_made) for jobs with no
+ *   billed invoice rows; paid jobs contribute nothing.
+ * Pure — flat arrays in, a customer_id → rollup map out.
  */
 
-export type LcvJobRow = { id: string; customer_id: string | null; status: string | null; revenue: number | null }
-export type LcvInvoiceRow = { job_id: string; status: string; amount: number | null }
+export type LcvJobRow = {
+  id: string
+  customer_id: string | null
+  status: string | null
+  revenue: number | null
+  payments_made?: number | null
+  created_at?: string | null
+}
+export type LcvInvoiceRow = { job_id: string; status: string; amount: number | null; id?: string }
+export type LcvPaymentRow = { job_id: string; invoice_id: string | null; amount: number | null; paid_on: string | null }
 
-export function lifetimeValueByCustomer(jobs: LcvJobRow[], invoices: LcvInvoiceRow[]): Record<string, number> {
-  const invoicedBilledByJob = new Map<string, number>()
+export type CustomerListRollup = {
+  lcv: number
+  openBalance: number
+  /** Jobs not yet paid (any pipeline status but 'paid'). */
+  openJobs: number
+  /** Latest of job created / payment received, with which it was. */
+  lastActivityIso: string | null
+  lastActivityKind: 'job' | 'payment' | null
+}
+
+export function customersListRollup(
+  jobs: LcvJobRow[],
+  invoices: LcvInvoiceRow[],
+  payments: LcvPaymentRow[],
+): Record<string, CustomerListRollup> {
+  const invoicesByJob = new Map<string, LcvInvoiceRow[]>()
   for (const inv of invoices) {
-    if (inv.status !== 'billed' && inv.status !== 'paid') continue
-    invoicedBilledByJob.set(inv.job_id, (invoicedBilledByJob.get(inv.job_id) ?? 0) + Number(inv.amount ?? 0))
+    const list = invoicesByJob.get(inv.job_id)
+    if (list) list.push(inv)
+    else invoicesByJob.set(inv.job_id, [inv])
   }
-  const byCustomer: Record<string, number> = {}
+  const appliedByInvoice = new Map<string, number>()
+  const paymentsByJob = new Map<string, LcvPaymentRow[]>()
+  for (const p of payments) {
+    if (p.invoice_id) appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+    const list = paymentsByJob.get(p.job_id)
+    if (list) list.push(p)
+    else paymentsByJob.set(p.job_id, [p])
+  }
+
+  const out: Record<string, CustomerListRollup> = {}
+  const get = (cid: string): CustomerListRollup =>
+    (out[cid] ??= { lcv: 0, openBalance: 0, openJobs: 0, lastActivityIso: null, lastActivityKind: null })
+
   for (const job of jobs) {
     if (!job.customer_id) continue
-    const invoiced = invoicedBilledByJob.get(job.id) ?? 0
-    let contribution = 0
-    if (invoiced > 0) contribution = invoiced
-    else if (job.status === 'billed' || job.status === 'paid') contribution = Number(job.revenue ?? 0)
-    if (contribution === 0) continue
-    byCustomer[job.customer_id] = (byCustomer[job.customer_id] ?? 0) + contribution
+    const r = get(job.customer_id)
+    const jobInvoices = invoicesByJob.get(job.id) ?? []
+    const status = job.status ?? 'working'
+
+    const invoicedBilled = jobInvoices
+      .filter((i) => i.status === 'billed' || i.status === 'paid')
+      .reduce((sum, i) => sum + Number(i.amount ?? 0), 0)
+    if (invoicedBilled > 0) r.lcv += invoicedBilled
+    else if (status === 'billed' || status === 'paid') r.lcv += Number(job.revenue ?? 0)
+
+    if (status !== 'paid') {
+      r.openJobs += 1
+      const billed = jobInvoices.filter((i) => i.status === 'billed')
+      if (billed.length === 0) {
+        if (status === 'billed') r.openBalance += Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)
+      } else {
+        for (const inv of billed) {
+          const applied = inv.id ? (appliedByInvoice.get(inv.id) ?? 0) : 0
+          r.openBalance += Math.max(0, Number(inv.amount ?? 0) - applied)
+        }
+      }
+    }
+
+    const stamp = (iso: string | null | undefined, kind: 'job' | 'payment') => {
+      if (!iso) return
+      if (!r.lastActivityIso || iso > r.lastActivityIso) {
+        r.lastActivityIso = iso
+        r.lastActivityKind = kind
+      }
+    }
+    stamp(job.created_at, 'job')
+    for (const p of paymentsByJob.get(job.id) ?? []) stamp(p.paid_on, 'payment')
   }
-  return byCustomer
+  for (const r of Object.values(out)) r.openBalance = Math.max(0, r.openBalance)
+  return out
+}
+
+/** Back-compat wrapper (v2.1780 shape): customer_id → lifetime billed. */
+export function lifetimeValueByCustomer(jobs: LcvJobRow[], invoices: LcvInvoiceRow[]): Record<string, number> {
+  const rollup = customersListRollup(jobs, invoices, [])
+  return Object.fromEntries(Object.entries(rollup).filter(([, r]) => r.lcv !== 0).map(([k, r]) => [k, r.lcv]))
 }

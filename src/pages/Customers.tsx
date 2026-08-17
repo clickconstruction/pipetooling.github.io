@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
@@ -9,7 +9,13 @@ import { isCustomerArchived, partitionCustomersByArchived } from '../lib/custome
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
-import { lifetimeValueByCustomer, type LcvInvoiceRow, type LcvJobRow } from '../lib/customers/customersListLcv'
+import {
+  customersListRollup,
+  type CustomerListRollup,
+  type LcvInvoiceRow,
+  type LcvJobRow,
+  type LcvPaymentRow,
+} from '../lib/customers/customersListLcv'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -27,6 +33,43 @@ function extractContactInfo(ci: Json | null): { phone: string; email: string } {
     }
   }
   return { phone: '', email: '' }
+}
+
+/** Signal-chip style for the row's right side (list redesign PR 1). */
+function signalChipStyle(variant: 'blue' | 'amber' | 'red' | 'gray'): CSSProperties {
+  const colors: Record<'blue' | 'amber' | 'red' | 'gray', { bg: string; fg: string }> = {
+    blue: { bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' },
+    amber: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' },
+    red: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' },
+    gray: { bg: 'var(--bg-muted)', fg: 'var(--text-muted)' },
+  }
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    height: 20,
+    padding: '0 8px',
+    borderRadius: 9999,
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    background: colors[variant].bg,
+    color: colors[variant].fg,
+    border: 'none',
+    cursor: 'pointer',
+  }
+}
+
+const QUIET_AFTER_DAYS = 90
+
+function lastActivityLabel(iso: string | null, kind: 'job' | 'payment' | null): { text: string; quiet: boolean } | null {
+  if (!iso) return null
+  const d = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso)
+  if (Number.isNaN(d.getTime())) return null
+  const ageDays = (Date.now() - d.getTime()) / 86_400_000
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  const when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+  const quiet = ageDays > QUIET_AFTER_DAYS
+  return { text: quiet ? `quiet since ${when}` : `${kind === 'payment' ? 'payment' : 'job'} · ${when}`, quiet }
 }
 
 type CustomerTypeFilter = 'all' | 'commercial' | 'residential' | 'commercial_default'
@@ -66,7 +109,7 @@ export default function Customers() {
   const [countsByCustomerId, setCountsByCustomerId] = useState<
     Record<string, { projects: number; jobs: number; bids: number; notes: number }>
   >({})
-  const [lcvByCustomerId, setLcvByCustomerId] = useState<Record<string, number>>({})
+  const [rollupByCustomerId, setRollupByCustomerId] = useState<Record<string, CustomerListRollup>>({})
   const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
@@ -116,12 +159,16 @@ export default function Customers() {
     setCustomers(customersWithMasters)
     const customerIds = customersWithMasters.map((c) => c.id)
     if (customerIds.length > 0) {
-      const [projectsRes, jobsRes, bidsRes, contactsRes, invoicesRes] = await Promise.all([
+      const [projectsRes, jobsRes, bidsRes, contactsRes, invoicesRes, paymentsRes] = await Promise.all([
         supabase.from('projects').select('customer_id').in('customer_id', customerIds),
-        supabase.from('jobs_ledger').select('id, customer_id, status, revenue').in('customer_id', customerIds),
+        supabase
+          .from('jobs_ledger')
+          .select('id, customer_id, status, revenue, payments_made, created_at')
+          .in('customer_id', customerIds),
         supabase.from('bids').select('customer_id').in('customer_id', customerIds),
         supabase.from('customer_contacts').select('customer_id').in('customer_id', customerIds),
-        supabase.from('jobs_ledger_invoices').select('job_id, status, amount'),
+        supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount'),
+        supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on'),
       ])
       const counts: Record<string, { projects: number; jobs: number; bids: number; notes: number }> = {}
       for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0, notes: 0 }
@@ -142,10 +189,11 @@ export default function Customers() {
         if (entry) entry.notes++
       }
       setCountsByCustomerId(counts)
-      setLcvByCustomerId(
-        lifetimeValueByCustomer(
+      setRollupByCustomerId(
+        customersListRollup(
           (jobsRes.data ?? []) as LcvJobRow[],
           (invoicesRes.data ?? []) as LcvInvoiceRow[],
+          (paymentsRes.data ?? []) as LcvPaymentRow[],
         ),
       )
     }
@@ -252,11 +300,13 @@ export default function Customers() {
       `Possible duplicates (${g.ids.length}) — matching ${g.matchedBy.join(' + ') || 'details'}`,
     )
   }
+  /** Ids in any similar-cluster — powers the inline "possible duplicate" badge. */
+  const duplicateIds = new Set(similarGroups.flatMap((g) => g.ids))
   const sortByValue = searchParams.get('sort') === 'value'
   const sortedCustomers = sortByValue
     ? [...filteredCustomers].sort(
         (a, b) =>
-          (lcvByCustomerId[b.id] ?? 0) - (lcvByCustomerId[a.id] ?? 0) ||
+          (rollupByCustomerId[b.id]?.lcv ?? 0) - (rollupByCustomerId[a.id]?.lcv ?? 0) ||
           (a.name ?? '').localeCompare(b.name ?? ''),
       )
     : filteredCustomers
@@ -527,6 +577,25 @@ export default function Customers() {
                       Archived
                     </span>
                   ) : null}
+                  {!showSimilar && duplicateIds.has(c.id) ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowSimilar(true)}
+                      title="This customer shares a name, address, phone, or email with another — click to review the cluster and merge"
+                      style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: 4,
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-700)',
+                        border: '1px solid var(--border-strong)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      possible duplicate
+                    </button>
+                  ) : null}
                 </div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {c.address && <span>{c.address}</span>}
@@ -609,63 +678,101 @@ export default function Customers() {
                   })()}
                 </div>
               </div>
-              <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.5rem' }}>
+              <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {(() => {
                   const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
-                  const lcv = lcvByCustomerId[c.id] ?? 0
+                  const rollup = rollupByCustomerId[c.id]
+                  const lcv = rollup?.lcv ?? 0
+                  const owes = rollup?.openBalance ?? 0
+                  const activity = rollup ? lastActivityLabel(rollup.lastActivityIso, rollup.lastActivityKind) : null
                   return (
                     <>
-                      {lcv > 0 ? (
-                        <Link
-                          to={`/customers/${c.id}`}
-                          title={`Lifetime value — everything ever billed to ${(c.name ?? 'this customer').trim() || 'this customer'}`}
-                          style={{
-                            fontWeight: 600,
-                            color: 'var(--text-green-600)',
-                            textDecoration: 'none',
-                            fontVariantNumeric: 'tabular-nums',
-                          }}
-                        >
-                          ${Math.round(lcv).toLocaleString('en-US')}
-                        </Link>
-                      ) : null}
                       <button
                         type="button"
                         aria-expanded={expandedNotesCustomerId === c.id}
                         aria-label="Customer notes"
+                        title="Customer notes"
                         onClick={(e) => {
                           e.stopPropagation()
                           setExpandedNotesCustomerId((prev) => (prev === c.id ? null : c.id))
                         }}
+                        style={signalChipStyle('gray')}
+                      >
+                        ✎{counts.notes > 0 ? ` ${counts.notes}` : ''}
+                      </button>
+                      {counts.projects > 0 ? (
+                        <Link
+                          to={`/projects?customer=${c.id}`}
+                          title="Their projects"
+                          style={{ ...signalChipStyle('gray'), textDecoration: 'none' }}
+                        >
+                          {counts.projects} project{counts.projects === 1 ? '' : 's'}
+                        </Link>
+                      ) : null}
+                      {counts.bids > 0 ? (
+                        <button
+                          type="button"
+                          title="Their bids"
+                          onClick={() => {
+                            setViewingBidsForCustomer(c.id)
+                            loadBidsForCustomer(c.id)
+                          }}
+                          style={signalChipStyle('gray')}
+                        >
+                          {counts.bids} bid{counts.bids === 1 ? '' : 's'}
+                        </button>
+                      ) : null}
+                      {rollup && rollup.openJobs > 0 ? (
+                        <Link
+                          to={`/customers/${c.id}?tab=jobs`}
+                          title="Open jobs — see them on the customer's page"
+                          style={{ ...signalChipStyle('blue'), textDecoration: 'none' }}
+                        >
+                          {rollup.openJobs} open job{rollup.openJobs === 1 ? '' : 's'}
+                        </Link>
+                      ) : counts.jobs > 0 ? (
+                        <Link
+                          to={`/customers/${c.id}?tab=jobs`}
+                          title="Job history on the customer's page"
+                          style={{ ...signalChipStyle('gray'), textDecoration: 'none' }}
+                        >
+                          {counts.jobs} job{counts.jobs === 1 ? '' : 's'}
+                        </Link>
+                      ) : null}
+                      {owes > 0.5 ? (
+                        <Link
+                          to={`/customers/${c.id}?tab=invoices`}
+                          title="Open balance — see their invoices"
+                          style={{ ...signalChipStyle(owes >= 5000 ? 'red' : 'amber'), textDecoration: 'none' }}
+                        >
+                          owes ${Math.round(owes).toLocaleString('en-US')}
+                        </Link>
+                      ) : null}
+                      {activity ? (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            color: activity.quiet ? 'var(--text-faint)' : 'var(--text-muted)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {activity.text}
+                        </span>
+                      ) : null}
+                      <Link
+                        to={`/customers/${c.id}`}
+                        title={`Lifetime value — everything ever billed to ${(c.name ?? 'this customer').trim() || 'this customer'}`}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-link)',
-                          cursor: 'pointer',
-                          padding: 0,
-                          font: 'inherit',
+                          fontWeight: lcv > 0 ? 600 : 500,
+                          color: lcv > 0 ? 'var(--text-green-600)' : 'var(--text-faint)',
+                          textDecoration: 'none',
+                          fontVariantNumeric: 'tabular-nums',
+                          minWidth: 64,
+                          textAlign: 'right',
                         }}
                       >
-                        Notes ({counts.notes})
-                      </button>
-                      <Link to={`/projects?customer=${c.id}`}>Projects ({counts.projects})</Link>
-                      <Link to={`/jobs?customer=${c.id}`}>Jobs ({counts.jobs})</Link>
-                      <button
-                        onClick={() => {
-                          setViewingBidsForCustomer(c.id)
-                          loadBidsForCustomer(c.id)
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-link)',
-                          cursor: 'pointer',
-                          padding: 0,
-                          font: 'inherit',
-                        }}
-                      >
-                        Bids ({counts.bids})
-                      </button>
+                        {lcv > 0 ? `$${Math.round(lcv).toLocaleString('en-US')}` : '—'}
+                      </Link>
                     </>
                   )
                 })()}
