@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1757',
+    date: '2026-08-17',
+    title: 'Steady Street View while you type',
+    kind: 'fix',
+    highlights: [
+      'Entering line items on the Job window\'s Bill tab no longer makes the street view picture reload on every autosave — the header stays put instead of jumping.',
+    ],
+  },
+  {
     version: 'v2.1756',
     date: '2026-08-17',
     title: 'Deleted jobs leave the follow-up deck',
