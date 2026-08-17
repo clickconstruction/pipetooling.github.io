@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1729)
+last_updated: 2026-08-16 (v2.1732)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1732)
+
+### People identity: sub-sheet writers id-link their assignees (Phase D) (2026-08-16)
+Second PR of the Phase D close-out. Both sub-sheet writers that only wrote the `' | '`-delimited `assigned_to_name` string now also id-link the junction: [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx) resolves picker names → `people.id` via the new kernel [`assigneePersonIds.ts`](../src/lib/people/assigneePersonIds.ts) (people by trimmed name, account users via their email-linked people row; 5 tests) and upserts `people_labor_job_assignees` after both save paths (best-effort, mirroring PeopleSubsTab's `assignGroup`); and `settle_step_commitment` (migration `20260817011025`, see `MIGRATIONS.md`) inserts the junction row directly from `step_commitments.person_id` instead of relying on the display name resolving. The name string stays the durable write (the sync trigger rebuilds the junction from it) — these writes only backstop names `resolve_pay_person_id` can't map. No visible behavior change.
 
 ## Latest Updates (v2.1729)
 

@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 17, 2026 (UTC filename; work dated 2026-08-16)
 
+**`20260817011025_settle_commitment_writes_assignee_junction.sql`** _(applied via `supabase db push` with the v2.1732 merge — `CREATE OR REPLACE` of an existing RPC, old clients unaffected)_
+- **Purpose**: Person-identity Phase D — `settle_step_commitment` re-created with one addition: after creating/reusing the sub sheet it INSERTs the `people_labor_job_assignees` junction row directly from `step_commitments.person_id` (`ON CONFLICT DO NOTHING`), so the sheet is id-linked even when `display_name` doesn't resolve through `resolve_pay_person_id` (renamed/archived person). Body otherwise identical to `20260801170000`.
+- **Category**: Workflow / RPC replace
+
 **`20260817010403_person_identity_d0_unique_indexes.sql`** _(applied via `supabase db push` with the v2.1729 merge — `CREATE UNIQUE INDEX IF NOT EXISTS` only, no client changes)_
 - **Purpose**: Phase D0 of `docs/PERSON_IDENTITY_PLAN.md` — block duplicate-identity creation at the DB. Adds `people_crew_jobs_person_id_work_date_uniq`, `people_crew_bids_person_id_work_date_uniq` (both partial `WHERE person_id IS NOT NULL`), and `people_active_name_uniq` on `people (lower(btrim(name))) WHERE archived_at IS NULL` — two active roster rows can no longer share a trimmed, case-insensitive name (the "Kyle ×2" ambiguity class); archived duplicates stay allowed since Combine people archives rather than deletes. Preflight ran clean against prod 2026-08-16 (zero duplicate keys, zero duplicate active names). The Phase-B era baseline already carried the equivalent unique indexes on `people_pay_config`, `people_hours`, `people_hours_display_order`, `people_team_members`, `hours_reviewed` and `people(id)` FKs on all ten pay tables.
 - **Category**: People / Database Improvements
