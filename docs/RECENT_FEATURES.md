@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1757)
+last_updated: 2026-08-17 (v2.1758)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1758)
+
+### Mark Paid: a fully-paid billed job gets "Move to Paid" instead of a dead end (2026-08-17)
+Owner screenshot (job 638): a billed job whose payment had landed via bank-deposit allocation showed **Remaining: $0.00** in the Record payment modal, but the modal's client-side amount>0 validation made Confirm impossible — no way to move the card to Paid. The `mark_job_paid` RPC has handled this since the baseline (its first branch: `remaining <= 0 → UPDATE status='paid', no payment row`), the UI just never let you reach it. [`BilledPaymentConfirmationModal`](../src/components/jobs/BilledPaymentConfirmationModal.tsx) (job mode) now detects `jobRemaining <= 0`: title becomes **Move job to Paid**, the payment form (amount/date/type/reference/notes) is replaced by "no balance remaining — confirming moves it to Paid" (the zero branch ignores those fields, so showing them would pretend they save), and the button reads **Move to Paid**, calling the same RPC with `p_amount: 0` (pins the 6-arg overload for PostgREST; never validated in the zero branch; a concurrently-reappeared balance fails safe with "Amount must be positive"). Jobs with a real balance see the modal unchanged; same RPC = same permissions and Paid-in-Full email behavior. Verified live end-to-end on job 638: modal showed the new form, Move to Paid flipped `jobs_ledger.status` to `paid` with `payments_made` unchanged at $1,445, and the row left the Billed board. Help guide `ready-to-bill-pipeline` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1757)
 

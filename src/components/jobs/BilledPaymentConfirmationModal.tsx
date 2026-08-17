@@ -101,6 +101,12 @@ export default function BilledPaymentConfirmationModal({
       : 0
   const defaultPayAmount = mode === 'invoice' ? invoiceRemaining : jobRemaining
 
+  // A billed job with nothing left to collect (fully paid — or a $0 bid):
+  // mark_job_paid's zero-remaining branch flips the status without recording a
+  // payment, so the payment form would be a dead end here — its amount>0
+  // validation made the stage move unreachable (v2.1758).
+  const jobFullyPaid = mode === 'job' && jb != null && jobRemaining <= 0
+
   const stripeInvoicePath =
     mode === 'invoice' && inv && (inv.stripe_invoice_id ?? '').trim().length > 0
 
@@ -117,6 +123,27 @@ export default function BilledPaymentConfirmationModal({
   async function submit() {
     setSubmitting(true)
     setError(null)
+    if (jobFullyPaid && jb) {
+      // No payment to record — just move the stage. p_amount: 0 pins the
+      // 6-arg overload for PostgREST; the RPC's zero-remaining branch returns
+      // before validating it, and if a balance reappeared concurrently the
+      // RPC fails safe with 'Amount must be positive'.
+      try {
+        const data = await withSupabaseRetry(
+          async () => supabase.rpc('mark_job_paid', { p_job_id: jb.id, p_amount: 0 }),
+          'mark_job_paid',
+        )
+        const result = data as { error?: string } | null
+        if (result && typeof result === 'object' && result.error) throw new Error(result.error)
+        await onSuccess()
+        onClose()
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Failed to move the job to Paid')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
     const amt = Number(amountStr)
     if (!Number.isFinite(amt) || amt <= 0) {
       setError('Enter a valid amount greater than 0')
@@ -225,7 +252,9 @@ export default function BilledPaymentConfirmationModal({
       ? 'Record off-Stripe payment'
       : mode === 'invoice'
         ? 'Outside Bill Paid Confirmation'
-        : 'Record payment'
+        : jobFullyPaid
+          ? 'Move job to Paid'
+          : 'Record payment'
 
   const subtitle =
     mode === 'invoice' && inv
@@ -345,6 +374,12 @@ export default function BilledPaymentConfirmationModal({
           </div>
         )}
 
+        {jobFullyPaid ? (
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+            This job has no balance remaining — there is no payment to record. Confirming moves it to <b>Paid</b>.
+          </p>
+        ) : (
+          <>
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
           Payment amount ($)
         </label>
@@ -421,6 +456,8 @@ export default function BilledPaymentConfirmationModal({
           rows={2}
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
         />
+          </>
+        )}
 
         {error && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</p>}
 
@@ -446,7 +483,7 @@ export default function BilledPaymentConfirmationModal({
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
-            {submitting ? '…' : 'Confirm'}
+            {submitting ? '…' : jobFullyPaid ? 'Move to Paid' : 'Confirm'}
           </button>
         </div>
       </div>
