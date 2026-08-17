@@ -7,10 +7,35 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1769)
+last_updated: 2026-08-17 (v2.1770)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1770)
+
+### Job shares unfurl as rich cards again — served from share.pipetooling.com (2026-08-17)
+Owner decision after v2.1767: bring the rich previews back. Supabase neutralizes HTML on its shared functions domain (that's what turned texted shares into "Text Document" blobs), and custom domains are exempt — so a **Cloudflare Worker** (`job-share-preview`, created via the owner's dashboard, account Robert@douglasmining.com, custom domain **share.pipetooling.com** on the pipetooling.com zone) now fronts the [`job-share`](../supabase/functions/job-share/index.ts) edge function: it proxies `?t=` / `?img=1` upstream, restores `text/html`, strips the injected sandbox CSP, and rewrites upstream origin references (og:url / og:image) to the share domain. Client (this PR): [`ShareJobButton`](../src/components/jobs/ShareJobButton.tsx) re-mints token links (the v2.1454 flow, deep-link fallback intact) via new `buildJobSharePreviewUrl` in [`jobShare.ts`](../src/lib/jobShare.ts) (+1 test) → `https://share.pipetooling.com/?t=<token>`. Verified end-to-end: the share button minted a fresh token whose URL serves `200 text/html` with the job's OG card and street-view image. Worker source (lives in the Cloudflare dashboard, not this repo):
+```js
+const UPSTREAM = "https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/job-share";
+export default {
+  async fetch(request) {
+    const u = new URL(request.url);
+    const res = await fetch(UPSTREAM + u.search, { headers: { accept: request.headers.get("accept") || "*/*" } });
+    const h = new Headers(res.headers);
+    h.delete("content-security-policy");
+    h.delete("x-content-type-options");
+    h.delete("content-length");
+    const ct = h.get("content-type") || "";
+    const htmlish = ct.indexOf("text/plain") === 0 || ct.indexOf("text/html") === 0;
+    if (!htmlish) return new Response(res.body, { status: res.status, headers: h });
+    h.set("content-type", "text/html; charset=utf-8");
+    const body = await res.text();
+    return new Response(body.split(UPSTREAM).join(u.origin + "/"), { status: res.status, headers: h });
+  }
+};
+```
+Help guide `share-a-job-with-a-teammate` and the `EDGE_FUNCTIONS.md` job-share section updated. Client-only in this repo — no migration.
 
 ## Latest Updates (v2.1769)
 

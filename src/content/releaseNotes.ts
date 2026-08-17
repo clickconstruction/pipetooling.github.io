@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1770',
+    date: '2026-08-17',
+    title: 'Shared jobs get their preview cards back',
+    kind: 'feature',
+    highlights: [
+      'Texting a job share now unfurls into a rich preview card again — job # and name, address, and a street photo — served from share.pipetooling.com.',
+      'Tapping the card opens the exact job in the app, behind the recipient\'s own login as always.',
+    ],
+  },
+  {
     version: 'v2.1769',
     date: '2026-08-17',
     title: 'Price a bid at your target margin',
