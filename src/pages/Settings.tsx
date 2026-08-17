@@ -35,6 +35,7 @@ import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import SettingsAccountSchedulingTab from '../components/settings/SettingsAccountSchedulingTab'
 import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEmailScheduleSection'
 import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
+import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
 import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
@@ -201,6 +202,9 @@ export default function Settings() {
   const allSalariedDevNarrowViewport = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeSettingsTab, setActiveSettingsTab] = useState<string>('')
+  // A clicked email-log row lands on its stream card in Email & notifications
+  // (v2.1754). The nonce re-fires the flash when the same row is clicked twice.
+  const [emailStreamFocus, setEmailStreamFocus] = useState<{ key: EmailStreamKey; nonce: number } | null>(null)
   const [myEstimatorProspectsAccess, setMyEstimatorProspectsAccess] = useState(false)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
@@ -1105,13 +1109,19 @@ export default function Settings() {
       <SettingsTabBar groups={settingsJumpGroups} activeId={activeSettingsTab} onSelect={setActiveSettingsTab} />
 
       <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
-        <SettingsRecentEmailsSent isDev={myRole === 'dev'} />
+        <SettingsRecentEmailsSent
+          isDev={myRole === 'dev'}
+          onOpenStream={(key) => {
+            setEmailStreamFocus({ key, nonce: Date.now() })
+            setActiveSettingsTab('settings-emails')
+          }}
+        />
         <SettingsRecentPushNotifications userId={authUser?.id} />
       </div>
 
       {myRole === 'dev' && (
         <SettingsGroup id="settings-emails" hidden={activeSettingsTab !== 'settings-emails'} title="Email & notifications">
-          {activeSettingsTab === 'settings-emails' && <SettingsEmailStreamsSection />}
+          {activeSettingsTab === 'settings-emails' && <SettingsEmailStreamsSection focus={emailStreamFocus} />}
         </SettingsGroup>
       )}
       <SettingsGroup

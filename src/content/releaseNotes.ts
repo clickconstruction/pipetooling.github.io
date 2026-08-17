@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1754',
+    date: '2026-08-17',
+    title: 'Sent emails link to their stream',
+    kind: 'feature',
+    highlights: [
+      'In Settings → Notifications, rows in "Most recent emails sent" that came from a recurring stream (digests, Paid in Full, Billed reports, weekly reports…) are now clickable.',
+      'Clicking one jumps to Email & notifications with that stream\'s card highlighted, so you can see its schedule and recipients right away.',
+    ],
+  },
+  {
     version: 'v2.1753',
     date: '2026-08-17',
     title: 'Follow-up cards: tap the activity box for the full story',

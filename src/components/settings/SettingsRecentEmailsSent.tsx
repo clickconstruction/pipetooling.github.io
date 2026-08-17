@@ -8,12 +8,19 @@ import {
   mapEmailSendLogRows,
   type EmailSendLogDisplayRow,
 } from '../../lib/emailSendLog'
+import { emailLogStreamForSubject, type EmailStreamKey } from '../../lib/emailLogStreamLink'
 
 const PAGE_SIZE = 25
 
 type Props = {
   /** Render nothing unless the viewer is a dev — the log is org-wide. */
   isDev: boolean
+  /**
+   * Opens the email's stream card on Email & notifications (v2.1754). Rows
+   * whose subject maps to a stream become clickable; one-off transactional
+   * sends (estimates, quotes, invoices) have no stream and stay plain.
+   */
+  onOpenStream?: (key: EmailStreamKey) => void
 }
 
 function chipStyle(tone: 'good' | 'bad' | 'neutral'): React.CSSProperties {
@@ -29,7 +36,7 @@ function chipStyle(tone: 'good' | 'bad' | 'neutral'): React.CSSProperties {
   }
 }
 
-export default function SettingsRecentEmailsSent({ isDev }: Props) {
+export default function SettingsRecentEmailsSent({ isDev, onOpenStream }: Props) {
   const [rows, setRows] = useState<EmailSendLogDisplayRow[]>([])
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -119,13 +126,21 @@ export default function SettingsRecentEmailsSent({ isDev }: Props) {
                   <th style={{ padding: '0.25rem 0.5rem', fontWeight: 600 }}>To</th>
                   <th style={{ padding: '0.25rem 0.5rem', fontWeight: 600 }}>Subject</th>
                   <th style={{ padding: '0.25rem 0.5rem', fontWeight: 600 }}>Status</th>
+                  <th aria-hidden="true" style={{ width: 28 }} />
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => {
                   const chip = emailLogStatusChip(row.lastEvent)
+                  const stream = onOpenStream ? emailLogStreamForSubject(row.subject) : null
+                  const open = stream && onOpenStream ? () => onOpenStream(stream) : null
                   return (
-                    <tr key={row.id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <tr
+                      key={row.id}
+                      onClick={open ?? undefined}
+                      style={{ borderTop: '1px solid var(--border)', cursor: open ? 'pointer' : undefined }}
+                      title={open ? 'Open this stream in Email & notifications' : undefined}
+                    >
                       <td style={{ padding: '0.375rem 0.5rem', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
                         {formatNotificationDatetime(row.sentAt)}
                       </td>
@@ -146,6 +161,21 @@ export default function SettingsRecentEmailsSent({ isDev }: Props) {
                       </td>
                       <td style={{ padding: '0.375rem 0.5rem' }}>
                         <span style={chipStyle(chip.tone)}>{chip.label}</span>
+                      </td>
+                      <td style={{ padding: '0.375rem 0.25rem', width: 28 }}>
+                        {open ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              open()
+                            }}
+                            aria-label={`Open the stream for "${row.subject ?? 'this email'}" in Email & notifications`}
+                            style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 0.25rem', fontSize: '0.9rem', lineHeight: 1 }}
+                          >
+                            ›
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   )
