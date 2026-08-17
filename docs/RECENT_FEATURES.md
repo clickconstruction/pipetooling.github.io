@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1738)
+last_updated: 2026-08-16 (v2.1739)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1739)
+
+### Follow-ups: every deck card carries the job's live Pipeline row (2026-08-16)
+Owner request: the Stages board's row — Crew & Dates / Job / Progress & payment — at the bottom of each follow-up card. Implemented as **full reuse, not a replica**: [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) passes the deck a `renderFollowupStageRow(jobId)` callback that renders the REAL section renderers (`JobsStagesTable` / `JobsStagesUnifiedTable`, or their card-list variants in mobile-cards mode) with the exact per-stage section props — jobList/rows narrowed to the one job — so every affordance works from the deck: editable % done, Ready to Bill / Mark Waiting / Mark Paid / Bill Customer / Send back / Collections, quick-action stack, thread toggle. Board lists are rebuilt without the page's search/exclusion filters (`buildJobsStagesBoardLists(jobs, '')`) so a filtered-out job still gets its row; a collections-flagged job gets the Collections row. Enabling all this: **`DECK_Z` drops 1040 → 58** — above the nav chrome (50), *below* the page's entire modal band (confirm modals 60, tools popover 120, Job window 1010) — so the modals row actions open float above the deck instead of opening invisibly underneath (the v2.1738 bug class, killed at the root); the overlay's bottom padding grows to clear the Dispatch tab bar (z 1000), which now stays visible. Deck cards widen to 920px on desktop for the row; on phones it scrolls sideways. Verified live: Billed card → Send back confirm on top → cancel; Working card row shows crew/dates/8h/100% bar; Open job → Esc → same card. Client-only — no migration.
 
 ## Latest Updates (v2.1738)
 

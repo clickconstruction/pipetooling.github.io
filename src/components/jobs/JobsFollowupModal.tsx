@@ -38,7 +38,13 @@ import {
  * edited from the ⚙ in the header (RLS lets Master/dev write them).
  */
 
-const DECK_Z = 1040
+/**
+ * Above the nav chrome (50), BELOW the page's modal band (confirm modals 60,
+ * popovers 120, Job window 1010, …) — the deck is a page-level takeover, and
+ * every modal an embedded Pipeline row action opens must float over it
+ * (v2.1739; at the old 1040 the Job window opened invisibly underneath).
+ */
+const DECK_Z = 58
 const DAY_MS = 86400000
 
 type ThreadNoteTail = { id: string; body: string; created_at: string; author: { name: string | null } | null }
@@ -80,7 +86,12 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
   )
 }
 
-export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function JobsFollowupModal({ open, onClose, renderStageRow }: {
+  open: boolean
+  onClose: () => void
+  /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
+  renderStageRow?: (jobId: string) => React.ReactNode
+}) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
   // The Job window renders at z 1010, below the deck (z 1040) — so while it's
@@ -333,11 +344,13 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
         display: jobWindowOpen ? 'none' : undefined,
         background: 'var(--bg-slate-tint)',
         overflowY: 'auto',
-        // Safe-area padding keeps the header out from under the phone's status bar.
-        padding: `calc(${isNarrow ? '0.5rem' : '1.2rem'} + env(safe-area-inset-top, 0px)) ${isNarrow ? '0.6rem' : '1rem'} calc(2rem + env(safe-area-inset-bottom, 0px))`,
+        // Safe-area padding keeps the header out from under the phone's status bar;
+        // the extra bottom clears the Dispatch Mode tab bar (z 1000, above the deck since v2.1739).
+        padding: `calc(${isNarrow ? '0.5rem' : '1.2rem'} + env(safe-area-inset-top, 0px)) ${isNarrow ? '0.6rem' : '1rem'} calc(6rem + env(safe-area-inset-bottom, 0px))`,
       }}
     >
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      {/* Deck cards widen when the Pipeline row rides along (its table wants ~760px). */}
+      <div style={{ maxWidth: renderStageRow && !isNarrow && viewMode === 'deck' ? 920 : 680, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.45rem' }}>
           <span style={{ fontWeight: 800, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
             {loading ? 'Loading follow-ups…' : queue.length > 0 ? `${queue.length} to review` : 'Follow-ups'}
@@ -597,6 +610,14 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                   Open job ↗
                 </button>
               </div>
+              {renderStageRow ? (
+                <div style={{ marginTop: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}>
+                    Pipeline row
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>{renderStageRow(current.job.id)}</div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}

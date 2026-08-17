@@ -22,6 +22,8 @@ The note box is already focused. You have three ways to move on:
 
 **Open job ↗** pops the full Job window if the card needs real work, and the stage chips at the top narrow the deck to just Billed, just Working, and so on.
 
+At the bottom of every card sits the job's **Pipeline row** — the same Crew & Dates / Job / Progress & payment row you'd see on the Pipeline board, with all of its buttons live. You can nudge the % done, {{button:blue|Ready to Bill}} a finished job, {{button:outline|Mark Paid}} a billed one, or open {{button:outline|Edit}} without ever leaving the deck; when you're done, the deck is right where you left it.
+
 :::example A two-minute morning
 34 cards → 12 got a quick note, 18 got ✓ Looks fine, 4 got snoozed. Every open job has now been seen by a human this week.
 :::
