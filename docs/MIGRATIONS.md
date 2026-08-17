@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 17, 2026
 
+**`20260817221950_merge_customers_accepted_estimates.sql`** _(applied via `supabase db push` with the v2.1785 merge — `CREATE OR REPLACE` of two existing functions; old clients unaffected, the RPC signature is unchanged)_
+- **Purpose**: Un-blocks merging duplicate customers who hold an accepted estimate. `merge_customers` sets a transaction-local flag (`set_config('app.merging_customers','1',true)`) before its re-link UPDATEs, and `estimates_protect_after_accept` now allows a `customer_id` change **only** while that flag is set — every other accepted-estimate mutation stays forbidden. Hit live: the Michael Palmer duplicate pair failed with "estimate is accepted; only job_ledger_id and internal_notes can change".
+- **Category**: Customers / function replace
+
 **`20260817160624_duplicate_bid_same_service_type.sql`** _(applied via `supabase db push` with the v2.1765 merge — `CREATE OR REPLACE` of an existing function; old clients unaffected, they never pass a same-type target)_
 - **Purpose**: Same-trade bid duplication. `duplicate_bid_to_service_type` dropped its baseline guard (`Target service type must differ from source bid`); a same-type copy now proceeds and gets `" (copy)"` appended to `project_name` so the Bid Board can tell the pair apart. Body otherwise verbatim from the baseline definition. Enables the Copy Bid modal's new **Duplicate this ⟨trade⟩ bid** button.
 - **Category**: Bids / function replace

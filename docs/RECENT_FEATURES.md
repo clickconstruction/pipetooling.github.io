@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1784)
+last_updated: 2026-08-17 (v2.1785)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1785)
+
+### Customer merge un-blocked for accepted estimates (2026-08-17)
+Live bug found working the duplicate-merge list: merging a duplicate whose row holds a **customer-accepted estimate** failed with "estimate is accepted; only job_ledger_id and internal_notes can change" — `merge_customers`' estimates re-link collides with the `estimates_protect_after_accept` immutability guard. Migration [`20260817221950_merge_customers_accepted_estimates.sql`](../supabase/migrations/20260817221950_merge_customers_accepted_estimates.sql): `merge_customers` sets a **transaction-local** `app.merging_customers` flag before its re-link UPDATEs, and the guard permits a `customer_id` change only under that flag — the signed document's content stays immutable in every other path (the merge only re-points provenance between two rows for the same real customer). Both functions `CREATE OR REPLACE`d verbatim otherwise; RPC signature unchanged so no client change ships with this. Note: v2.1784 (row polish) shipped in a parallel PR of this train.
 ## Latest Updates (v2.1784)
 
 ### Customers list: clickable rows, visible separators, "notes" spelled out (2026-08-17)
