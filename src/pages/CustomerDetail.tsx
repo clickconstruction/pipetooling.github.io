@@ -25,6 +25,8 @@ import {
   type ActivityFamily,
 } from '../lib/customers/customerActivityFeed'
 import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActivity'
+import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
+import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 
 /**
  * Customer Hub — the dedicated page per customer at /customers/:id.
@@ -40,10 +42,15 @@ import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActiv
 const money = (n: number) =>
   `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
 
-export type CustomerDetailTab = 'profile' | 'estimates' | 'jobs'
+export type CustomerDetailTab = 'profile' | 'estimates' | 'jobs' | 'invoices'
 
-const TAB_LABELS: Record<CustomerDetailTab, string> = { profile: 'Profile', estimates: 'Estimates', jobs: 'Jobs' }
-const TABS: CustomerDetailTab[] = ['profile', 'estimates', 'jobs']
+const TAB_LABELS: Record<CustomerDetailTab, string> = {
+  profile: 'Profile',
+  estimates: 'Estimates',
+  jobs: 'Jobs',
+  invoices: 'Invoices',
+}
+const TABS: CustomerDetailTab[] = ['profile', 'estimates', 'jobs', 'invoices']
 
 function parseTab(raw: string | null): CustomerDetailTab {
   return TABS.includes(raw as CustomerDetailTab) ? (raw as CustomerDetailTab) : 'profile'
@@ -97,6 +104,13 @@ function feedDateLabel(atIso: string): string {
   if (Number.isNaN(d.getTime())) return atIso
   const sameYear = d.getFullYear() === new Date().getFullYear()
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+}
+
+const INVOICE_STATUS_CHIP: Record<CustomerInvoiceRow['status'], { label: string; bg: string; fg: string }> = {
+  draft: { label: 'Draft', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' },
+  billed: { label: 'Billed', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' },
+  partial: { label: 'Partial', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' },
+  paid: { label: 'Paid', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' },
 }
 
 function estimateStatusLabel(s: string): string {
@@ -156,6 +170,8 @@ export default function CustomerDetail() {
   const [feedError, setFeedError] = useState<string | null>(null)
   const [feedFilter, setFeedFilter] = useState<ActivityFamily | 'all'>('all')
   const [feedLimit, setFeedLimit] = useState(FEED_PAGE)
+  const [invoicesData, setInvoicesData] = useState<CustomerInvoicesData | null>(null)
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
   const activeTab = parseTab(searchParams.get('tab'))
 
@@ -167,6 +183,9 @@ export default function CustomerDetail() {
     fetchCustomerActivityInputs(customerId)
       .then((inputs) => setFeed(buildCustomerActivityFeed(inputs)))
       .catch((e: unknown) => setFeedError(formatErrorMessage(e, 'Could not load activity')))
+    fetchCustomerInvoices(customerId)
+      .then(setInvoicesData)
+      .catch((e: unknown) => setInvoicesError(formatErrorMessage(e, 'Could not load invoices')))
   }, [customerId])
 
   useEffect(() => {
@@ -175,6 +194,8 @@ export default function CustomerDetail() {
     setFeed(null)
     setFeedError(null)
     setFeedLimit(FEED_PAGE)
+    setInvoicesData(null)
+    setInvoicesError(null)
     load()
   }, [load])
 
@@ -207,6 +228,14 @@ export default function CustomerDetail() {
   const openJobs = useMemo(
     () => (data ? data.jobs.filter((j) => normalizeJobsLedgerStatus(j.status) !== 'paid') : []),
     [data],
+  )
+
+  const invoiceView = useMemo(
+    () =>
+      invoicesData
+        ? buildCustomerInvoiceRows(invoicesData.invoices, invoicesData.payments, invoicesData.jobs, todayYmd)
+        : null,
+    [invoicesData, todayYmd],
   )
 
   if (!customerId) {
@@ -323,7 +352,14 @@ export default function CustomerDetail() {
       <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', margin: '10px 0 16px' }}>
         {TABS.map((tab) => {
           const on = tab === activeTab
-          const count = tab === 'estimates' ? data.estimates.length : tab === 'jobs' ? data.jobs.length : null
+          const count =
+            tab === 'estimates'
+              ? data.estimates.length
+              : tab === 'jobs'
+                ? data.jobs.length
+                : tab === 'invoices'
+                  ? (invoiceView?.totals.count ?? 0)
+                  : null
           return (
             <button
               key={tab}
@@ -895,6 +931,151 @@ export default function CustomerDetail() {
                   )
                 })}
               </tbody>
+            </table>
+          )}
+        </div>
+      ) : activeTab === 'invoices' ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', overflowX: 'auto' }}>
+          {invoicesError ? (
+            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-red-600)' }}>{invoicesError}</p>
+          ) : invoiceView == null ? (
+            <p role="status" style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Loading invoices…
+            </p>
+          ) : invoiceView.rows.length === 0 ? (
+            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-faint)' }}>
+              No invoices for this customer yet.
+            </p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr>
+                  {['Job', 'Channel', 'Status', 'Amount', 'Billed', 'Last paid'].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: h === 'Amount' ? 'right' : 'left',
+                        fontSize: '0.66rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-faint)',
+                        padding: '8px 12px',
+                        borderBottom: '2px solid var(--border)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {invoiceView.rows.map((row) => {
+                  const chip = INVOICE_STATUS_CHIP[row.status]
+                  return (
+                    <tr key={row.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => jobDetail?.openJobDetail({ jobId: row.jobId })}
+                          title="Open job detail"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            font: 'inherit',
+                            fontWeight: 700,
+                            color: 'var(--text-link)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {row.jobLabel}
+                          {row.partLabel ? (
+                            <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}> {row.partLabel}</span>
+                          ) : null}
+                        </button>
+                      </td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: 'var(--text-700)' }}>
+                        {row.hostedInvoiceUrl ? (
+                          <a
+                            href={row.hostedInvoiceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--text-link)' }}
+                            title="Open hosted Stripe invoice"
+                          >
+                            {row.channel} ↗
+                          </a>
+                        ) : (
+                          row.channel
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            height: 20,
+                            padding: '0 9px',
+                            borderRadius: 9999,
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            background: chip.bg,
+                            color: chip.fg,
+                          }}
+                        >
+                          {chip.label}
+                          {row.agingDays != null && row.agingDays >= 30 ? ` · ${row.agingDays}d` : ''}
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          padding: '8px 12px',
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontWeight: 600,
+                          color: 'var(--text-strong)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {money(row.amount)}
+                        {row.status === 'partial' ? (
+                          <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}> · {money(row.applied)} in</span>
+                        ) : null}
+                      </td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {row.billedAtIso ? feedDateLabel(row.billedAtIso) : '—'}
+                      </td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {row.lastPaidOnIso ? feedDateLabel(row.lastPaidOnIso) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: 'var(--bg-subtle)' }}>
+                  <td colSpan={3} style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--text-strong)' }}>
+                    Lifetime
+                  </td>
+                  <td
+                    style={{
+                      padding: '8px 12px',
+                      textAlign: 'right',
+                      fontVariantNumeric: 'tabular-nums',
+                      fontWeight: 700,
+                      color: 'var(--text-strong)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {money(invoiceView.totals.billedTotal)}
+                  </td>
+                  <td colSpan={2} style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-green-600)', whiteSpace: 'nowrap' }}>
+                    {money(invoiceView.totals.collectedTotal)} collected
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </div>
