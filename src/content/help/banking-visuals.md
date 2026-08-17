@@ -14,6 +14,8 @@ Hover any band or bar to see the exact dollar amount — and **click a band** to
 
 **Tip**: accounting rules can tag people for you. When you edit a rule on the Accounting tab, set **Also attribute to person** — every approved match then carries that person automatically, and it never overwrites one you set by hand. Saving the rule also offers to **tag the transactions it already sorted**, so the history catches up in one click (skip it, and re-saving the rule offers again). And if the person isn't on your roster yet, just type their name — the picker offers **Add … to People as a sub** and selects them for you.
 
+**Tag people while you sort**: the Accounting tab's Sorting Ledger shows **Accounting Label | Person** in one column, and the {{button:outline|+}} on an unlabeled row sets both at once. On a computer the popup shows the label list and a person picker side by side — pick both, then **Save**. On a phone the person picker sits above the list, and tapping a label saves both in one go (leave it on *no person* and it works exactly like before). A labeled row that's missing its person shows a quiet **| add person** link — tap it to tag the person without touching the label.
+
 ## Where the money goes
 
 The profit-and-loss as a picture: money in on the left, fanning out through expense families (People, Job costs, Vehicles, Overhead) to the same accounting labels you maintain in Drag Sort.

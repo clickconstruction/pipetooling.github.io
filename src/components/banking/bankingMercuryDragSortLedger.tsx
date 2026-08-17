@@ -181,6 +181,8 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   showQuickAssignLabel,
   quickAssignDisabled,
   onQuickAssignLabel,
+  labelPersonName,
+  onAddPersonToLabel,
   counterpartyOccurrenceCount,
 }: {
   row: MercuryTxRowBankingLedger
@@ -207,6 +209,10 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   showQuickAssignLabel?: boolean
   quickAssignDisabled?: boolean
   onQuickAssignLabel?: () => void
+  /** Accounting Sorting Ledger (v2.1742): attributed person shown after the label as " | Name". */
+  labelPersonName?: string | null
+  /** Renders a muted "| add person" after a labeled, person-less row. */
+  onAddPersonToLabel?: () => void
   /** When set (e.g. Accounting Sorting Ledger), append ` (n)` for occurrences in the visible list. */
   counterpartyOccurrenceCount?: number
 }) {
@@ -445,6 +451,34 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
             title={labelDetailTitle}
           >
             {assignName}
+            {assignId && labelPersonName ? (
+              <span style={{ color: 'var(--text-slate-500)' }}>{' | '}{labelPersonName}</span>
+            ) : null}
+            {assignId && !labelPersonName && onAddPersonToLabel ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAddPersonToLabel()
+                }}
+                aria-label="Tag a person on this transaction"
+                title="Tag a person on this transaction"
+                style={{
+                  marginLeft: 4,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-slate-400)',
+                  borderBottom: '1px dotted var(--border-strong)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                | add person
+              </button>
+            ) : null}
           </span>
         </div>
       </td>
@@ -546,6 +580,7 @@ export function BankingMercuryDragSortLedgerThead({
   onCounterpartyHeaderClick,
   sortState,
   onSortColumn,
+  labelColumnHeader = 'Accounting Label',
 }: {
   showDragHandle: boolean
   showRuleShortcutColumn?: boolean
@@ -554,6 +589,8 @@ export function BankingMercuryDragSortLedgerThead({
   /** When set with `onSortColumn`, Posted / Amount / Counterparty headers sort the ledger. */
   sortState?: { key: MercuryLedgerSortKey; dir: MercuryLedgerSortDir }
   onSortColumn?: (key: MercuryLedgerSortKey) => void
+  /** Accounting Sorting Ledger overrides to "Accounting Label | Person" (v2.1742). */
+  labelColumnHeader?: string
 }) {
   const sortable = sortState != null && onSortColumn != null
 
@@ -688,7 +725,7 @@ export function BankingMercuryDragSortLedgerThead({
         >
           Job
         </th>
-        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', ...ledgerThBaseStyle }}>Accounting Label</th>
+        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', ...ledgerThBaseStyle }}>{labelColumnHeader}</th>
         {showRuleShortcutColumn ? (
           <th
             style={{
