@@ -27,4 +27,12 @@ The customer's name and type at the top, their phone / email / address as tap-to
 
 The **Open jobs** panel lists every job that isn't paid yet — click a job number to open its detail card, or use {{button:outline-blue|View all in Pipeline →}} to see the customer's rows on the Jobs Pipeline.
 
+## Follow the Activity feed
+
+The **Activity** panel is one timeline of everything happening for this customer, across all their jobs — stage moves (with who moved them), invoices billed, payments received, job notes, estimates created and accepted, dispatch tasks, and customer notes.
+
+- Use the {{chip:blue|All}} {{chip:green|Money}} {{chip:blue|Jobs}} {{chip:gray|Notes}} chips to narrow the feed.
+- Click any job-linked entry to open that job's detail card.
+- {{button:outline|Show older}} pages further back in time.
+
 Use {{button:outline|✎ Edit customer}} in the header to change their info, archive them, or merge duplicates — same form as before, just moved onto the page.

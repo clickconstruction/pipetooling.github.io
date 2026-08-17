@@ -17,6 +17,13 @@ import {
   customerMoneyStats,
 } from '../lib/customers/customerProfileStats'
 import { fetchCustomerProfile, type CustomerProfileData } from '../lib/customers/fetchCustomerProfile'
+import {
+  buildCustomerActivityFeed,
+  filterActivityFeed,
+  type ActivityEvent,
+  type ActivityFamily,
+} from '../lib/customers/customerActivityFeed'
+import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActivity'
 
 /**
  * Customer Hub — the dedicated page per customer at /customers/:id.
@@ -61,6 +68,43 @@ function MoneyCell({ cap, children, sub, last }: { cap: string; children: ReactN
   )
 }
 
+const FEED_PAGE = 25
+
+/** Feed event icon + tint per kind: money green, jobs blue, notes gray, estimates amber. */
+function eventBadge(kind: ActivityEvent['kind']): { glyph: string; bg: string; fg: string } {
+  switch (kind) {
+    case 'payment':
+      return { glyph: '$', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
+    case 'invoice_billed':
+      return { glyph: '➤', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
+    case 'estimate':
+      return { glyph: '✓', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
+    case 'status':
+      return { glyph: '◆', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' }
+    case 'job_created':
+      return { glyph: '＋', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' }
+    case 'dispatch':
+      return { glyph: '📌', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' }
+    case 'note':
+    case 'contact':
+      return { glyph: '✎', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }
+  }
+}
+
+function feedDateLabel(atIso: string): string {
+  const d = new Date(atIso.length === 10 ? `${atIso}T12:00:00Z` : atIso)
+  if (Number.isNaN(d.getTime())) return atIso
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+}
+
+const FEED_FILTERS: Array<{ key: ActivityFamily | 'all'; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'money', label: 'Money' },
+  { key: 'jobs', label: 'Jobs' },
+  { key: 'notes', label: 'Notes' },
+]
+
 function TypeChip({ label, bg, fg }: { label: string; bg: string; fg: string }) {
   return (
     <span
@@ -90,6 +134,10 @@ export default function CustomerDetail() {
 
   const [data, setData] = useState<CustomerProfileData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [feed, setFeed] = useState<ActivityEvent[] | null>(null)
+  const [feedError, setFeedError] = useState<string | null>(null)
+  const [feedFilter, setFeedFilter] = useState<ActivityFamily | 'all'>('all')
+  const [feedLimit, setFeedLimit] = useState(FEED_PAGE)
 
   const activeTab = parseTab(searchParams.get('tab'))
 
@@ -98,11 +146,17 @@ export default function CustomerDetail() {
     fetchCustomerProfile(customerId)
       .then(setData)
       .catch((e: unknown) => setError(formatErrorMessage(e, 'Could not load customer')))
+    fetchCustomerActivityInputs(customerId)
+      .then((inputs) => setFeed(buildCustomerActivityFeed(inputs)))
+      .catch((e: unknown) => setFeedError(formatErrorMessage(e, 'Could not load activity')))
   }, [customerId])
 
   useEffect(() => {
     setData(null)
     setError(null)
+    setFeed(null)
+    setFeedError(null)
+    setFeedLimit(FEED_PAGE)
     load()
   }, [load])
 
@@ -343,8 +397,9 @@ export default function CustomerDetail() {
             </MoneyCell>
           </div>
 
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           {/* open jobs */}
-          <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', maxWidth: 720 }}>
+          <div style={{ flex: '1 1 400px', minWidth: 0, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
             <div
               style={{
                 display: 'flex',
@@ -443,6 +498,160 @@ export default function CustomerDetail() {
                 )
               })
             )}
+          </div>
+
+          {/* activity feed */}
+          <div
+            style={{
+              flex: '1 1 320px',
+              minWidth: 0,
+              maxWidth: 480,
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              background: 'var(--surface)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '9px 13px',
+                borderBottom: '1px solid var(--border)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--text-strong)',
+              }}
+            >
+              Activity
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                {FEED_FILTERS.map((f) => {
+                  const on = feedFilter === f.key
+                  return (
+                    <button
+                      key={f.key}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => {
+                        setFeedFilter(f.key)
+                        setFeedLimit(FEED_PAGE)
+                      }}
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 9999,
+                        border: on ? '1px solid var(--text-link)' : '1px solid var(--border-strong)',
+                        background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        color: on ? 'var(--text-link)' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  )
+                })}
+              </span>
+            </div>
+            {feedError ? (
+              <p style={{ margin: 0, padding: '10px 13px', fontSize: '0.8rem', color: 'var(--text-red-600)' }}>{feedError}</p>
+            ) : feed == null ? (
+              <p role="status" style={{ margin: 0, padding: '10px 13px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Loading activity…
+              </p>
+            ) : (
+              (() => {
+                const filtered = filterActivityFeed(feed, feedFilter)
+                const visible = filtered.slice(0, feedLimit)
+                if (filtered.length === 0) {
+                  return (
+                    <p style={{ margin: 0, padding: '10px 13px', fontSize: '0.8rem', color: 'var(--text-faint)' }}>
+                      Nothing here yet.
+                    </p>
+                  )
+                }
+                return (
+                  <div style={{ padding: '4px 0' }}>
+                    {visible.map((ev) => {
+                      const badge = eventBadge(ev.kind)
+                      return (
+                        <div key={ev.key} style={{ display: 'flex', gap: 10, padding: '6px 13px', fontSize: '0.78rem' }}>
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              flexShrink: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.7rem',
+                              background: badge.bg,
+                              color: badge.fg,
+                            }}
+                          >
+                            {badge.glyph}
+                          </span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>
+                              {ev.jobId ? (
+                                <button
+                                  type="button"
+                                  onClick={() => jobDetail?.openJobDetail({ jobId: ev.jobId! })}
+                                  title="Open job detail"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    font: 'inherit',
+                                    color: 'var(--text-link)',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  {ev.title}
+                                </button>
+                              ) : (
+                                ev.title
+                              )}
+                            </span>
+                            {ev.detail && ev.detail !== ev.title ? (
+                              <span style={{ color: 'var(--text-700)' }}> — {ev.detail}</span>
+                            ) : null}
+                            <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+                              {feedDateLabel(ev.atIso)}
+                              {ev.actorName ? ` · ${ev.actorName}` : ''}
+                            </span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                    {filtered.length > visible.length ? (
+                      <button
+                        type="button"
+                        onClick={() => setFeedLimit((n) => n + FEED_PAGE)}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '8px 13px',
+                          border: 'none',
+                          borderTop: '1px solid var(--border)',
+                          background: 'var(--bg-subtle)',
+                          color: 'var(--text-link)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                        }}
+                      >
+                        Show older ({filtered.length - visible.length} more)
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })()
+            )}
+          </div>
           </div>
         </>
       ) : null}
