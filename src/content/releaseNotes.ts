@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1759',
+    date: '2026-08-17',
+    title: 'No more duplicate job numbers from estimates',
+    kind: 'fix',
+    highlights: [
+      'Creating a job from an estimate now suggests the next company-wide-unique number — the same generator the New Job form uses — instead of one that could repeat a number already worn by another job.',
+      'The two active duplicate pairs were renumbered (927 → 967, 926 → 968 on the newer job of each pair).',
+    ],
+  },
+  {
     version: 'v2.1758',
     date: '2026-08-17',
     title: 'Fully-paid jobs can move to Paid',

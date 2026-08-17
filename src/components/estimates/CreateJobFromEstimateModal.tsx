@@ -15,7 +15,6 @@ import type { JobPayloadCustomerRow } from '../../lib/jobLedgerCustomer'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import type { JobSearchResult } from '../../utils/unifiedJobBidSearch'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { UnifiedSearchResultRow, UnifiedSearchSelectionLabel } from '../search/UnifiedSearchResultRow'
@@ -154,11 +153,13 @@ export default function CreateJobFromEstimateModal({
     if (user?.id) {
       void (async () => {
         try {
-          const master = await resolveEffectiveJobMasterUserId(supabase, user.id, estimate.project_id)
+          // Same global generator as the New Job form: highest numeric number
+          // across BOTH hcp_number and click_number, all jobs. The old
+          // per-master hcp-only RPC couldn't see click numbers and re-issued
+          // them — 925/926/927 were each minted twice (v2.1759).
           const suggestion = await withSupabaseRetry(
-            async () =>
-              await supabase.rpc('next_numeric_hcp_suggestion_for_master', { p_master_user_id: master }),
-            'next numeric hcp suggestion',
+            async () => await supabase.rpc('next_job_number_suggestion'),
+            'next job number suggestion',
           )
           if (cancelled) return
           setHcp(typeof suggestion === 'string' && suggestion.length > 0 ? suggestion : '1')
