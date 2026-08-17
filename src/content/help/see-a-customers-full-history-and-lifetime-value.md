@@ -10,7 +10,7 @@ Every customer now has their own page. Click a customer's name on the **Customer
 ## Open a customer's page
 
 1. Go to **Customers**.
-2. Click the customer's name. (The small ✎ pencil next to the name still opens the quick edit form without leaving the list.)
+2. Click anywhere on the customer's row. (The small ✎ pencil next to the name still opens the quick edit form without leaving the list.)
 
 ## Rank your top customers
 
@@ -34,7 +34,7 @@ Each row on the Customers list carries chips that only appear when there's somet
 - {{chip:yellow|owes $1,883}} — their open balance (turns red past $5,000); click for their invoices.
 - **job · Aug 8** or **payment · Aug 14** — the last thing that happened; a customer with nothing in 90+ days fades to *quiet since…*.
 - {{chip:blue|possible duplicate}} — this customer shares a name, address, phone, or email with another; click to review and merge.
-- The ✎ chip opens their notes right on the list, like before.
+- The **notes** chip opens their notes right on the list, like before.
 
 :::example What you'll see
 The customer's name and type at the top, their phone / email / address as tap-to-call and tap-to-email links, and the money strip right below.
