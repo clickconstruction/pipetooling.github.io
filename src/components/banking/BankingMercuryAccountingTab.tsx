@@ -70,7 +70,7 @@ import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercury
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
 import { AccountingApprovalCard } from './AccountingApprovalCard'
 import type { SearchableSelectOption, SearchableSelectSelectableOption } from '../SearchableSelect'
-import { bankingPersonKindTag } from '../../lib/bankingAttributionOptions'
+import { bankingPersonKindTag, parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
 import {
   BACKFILL_READ_CHUNK,
   BACKFILL_WRITE_CHUNK,
@@ -184,6 +184,11 @@ export type BankingMercuryAccountingTabProps = {
    * call this.
    */
   onAfterAssignmentChange?: () => void
+  /** Quick-assign person write (v2.1742): parent patches its attribution maps so the row updates live. */
+  onAttributionChange?: (
+    txId: string,
+    patch: { personId: string | null; userId: string | null; displayName: string | null },
+  ) => void
   /**
    * Keyset infinite-scroll for the "show labeled" (Hide labeled = off) view.
    * The parent paginates `list_mercury_transactions_keyset`; this child fires
@@ -318,6 +323,7 @@ export function BankingMercuryAccountingTab({
   approveByDefault,
   onApproveByDefaultChange,
   onAfterAssignmentChange,
+  onAttributionChange,
   labeledHasMore = false,
   labeledLoadingMore = false,
   onLoadMoreLabeled,
@@ -363,6 +369,7 @@ export function BankingMercuryAccountingTab({
   const pendingApprovalsRef = useRef<PendingApproval[]>([])
   const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
   const [quickAssignTxId, setQuickAssignTxId] = useState<string | null>(null)
+  const [quickAssignMode, setQuickAssignMode] = useState<'assign' | 'person-only'>('assign')
   const [quickAssignBusy, setQuickAssignBusy] = useState(false)
 
   const [ledgerFiltersApplied, setLedgerFiltersApplied] = useState<BankingAccountingLedgerFiltersV1>(() =>
@@ -938,8 +945,34 @@ export function BankingMercuryAccountingTab({
     setQuickAssignTxId(null)
   }, [quickAssignBusy])
 
+  /**
+   * Hand-set attribution from the quick-assign popup (v2.1742). Full upsert
+   * (not ignoreDuplicates) — an explicit pick here overwrites a rule-set
+   * person, same precedence as the tx detail modal. Parent maps are patched
+   * via onAttributionChange so the row's " | Person" updates live.
+   */
+  const writeQuickAttribution = useCallback(
+    async (txId: string, personValue: string) => {
+      const parsed = parseBankingAttributionValue(personValue)
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('mercury_transaction_attributions').upsert(
+            { mercury_transaction_id: txId, person_id: parsed.personId, user_id: parsed.userId },
+            { onConflict: 'mercury_transaction_id' },
+          ),
+        'accounting quick assign attribution',
+      )
+      const label =
+        attributionNameByValue.get(personValue) ?? mintedPersonNameByValueRef.current.get(personValue) ?? null
+      // Options labels carry a "· Kind" tag people-side; the maps want the plain name.
+      const displayName = label ? label.replace(/\s·\s[^·]+$/, '') : null
+      onAttributionChange?.(txId, { personId: parsed.personId, userId: parsed.userId, displayName })
+    },
+    [attributionNameByValue, onAttributionChange],
+  )
+
   const handleQuickAssignLabel = useCallback(
-    async (labelId: string) => {
+    async (labelId: string, personValue: string) => {
       const txId = quickAssignTxId
       if (!txId || quickAssignBusy) return
       // Internal Transfers and job splits are mutually exclusive.
@@ -960,7 +993,19 @@ export function BankingMercuryAccountingTab({
       setQuickAssignBusy(true)
       try {
         await upsertDragAssignment(txId, labelId)
-        showToast('Accounting label applied.', 'success')
+        if (personValue !== '') {
+          try {
+            await writeQuickAttribution(txId, personValue)
+            showToast('Label and person applied.', 'success')
+          } catch (e) {
+            showToast(
+              `Label applied, but tagging the person failed: ${e instanceof Error ? e.message : 'unknown error'}`,
+              'error',
+            )
+          }
+        } else {
+          showToast('Accounting label applied.', 'success')
+        }
         setQuickAssignTxId(null)
         onAfterAssignmentChange?.()
       } catch (e) {
@@ -979,7 +1024,27 @@ export function BankingMercuryAccountingTab({
       quickAssignTxId,
       showToast,
       upsertDragAssignment,
+      writeQuickAttribution,
     ],
+  )
+
+  /** "| add person" on a labeled row: person write only. */
+  const handleQuickAssignPerson = useCallback(
+    async (personValue: string) => {
+      const txId = quickAssignTxId
+      if (!txId || quickAssignBusy || personValue === '') return
+      setQuickAssignBusy(true)
+      try {
+        await writeQuickAttribution(txId, personValue)
+        showToast('Person tagged.', 'success')
+        setQuickAssignTxId(null)
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not tag person', 'error')
+      } finally {
+        setQuickAssignBusy(false)
+      }
+    },
+    [quickAssignBusy, quickAssignTxId, showToast, writeQuickAttribution],
   )
 
   const quickAssignTransactionSummary = useMemo(() => {
@@ -2171,6 +2236,7 @@ export function BankingMercuryAccountingTab({
                   })
                 }}
                 onCounterpartyHeaderClick={() => setCounterpartyFrequencyModalOpen(true)}
+                labelColumnHeader="Accounting Label | Person"
               />
               <tbody>
                 {sortedDisplayTransactions.map((r) => {
@@ -2231,7 +2297,15 @@ export function BankingMercuryAccountingTab({
                         onRuleShortcut={() => openNewRuleFromCounterparty(r.counterparty_name ?? '')}
                         showQuickAssignLabel
                         quickAssignDisabled={labelsLoading || labels.length === 0}
-                        onQuickAssignLabel={() => setQuickAssignTxId(r.id)}
+                        onQuickAssignLabel={() => {
+                          setQuickAssignMode('assign')
+                          setQuickAssignTxId(r.id)
+                        }}
+                        labelPersonName={personLine.unassigned ? null : personLine.text}
+                        onAddPersonToLabel={() => {
+                          setQuickAssignMode('person-only')
+                          setQuickAssignTxId(r.id)
+                        }}
                       />
                       {showDragSortBankNoteBand && !editorOpen ? (
                         <BankingMercuryDragSortLedgerNotesPreviewRow
@@ -2334,7 +2408,11 @@ export function BankingMercuryAccountingTab({
         labels={labels}
         labelAssignmentCountById={labelAssignmentCountById}
         busy={quickAssignBusy}
-        onAssign={(labelId) => void handleQuickAssignLabel(labelId)}
+        mode={quickAssignMode}
+        personOptions={attributionOptions}
+        onCreatePerson={createPersonFromRuleForm}
+        onAssign={(labelId, personValue) => void handleQuickAssignLabel(labelId, personValue)}
+        onAssignPerson={(personValue) => void handleQuickAssignPerson(personValue)}
         onClose={closeQuickAssign}
       />
 

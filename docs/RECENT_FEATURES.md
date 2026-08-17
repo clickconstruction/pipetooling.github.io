@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1744)
+last_updated: 2026-08-16 (v2.1745)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1745)
+
+### Banking: Sorting Ledger shows "Accounting Label | Person"; the + sets both (2026-08-16)
+Owner picked from the "Label + Person Quick Assign" mockups: **option C on desktop, option A on mobile**. **Column**: the ledger's label cell appends the attributed person in muted text (reusing the row's existing person-line data), the header reads **Accounting Label | Person**, and a labeled row with no person gets a dotted **| add person** link that opens a person-only picker. **Popup** ([`AccountingLabelQuickAssignModal`](../src/components/banking/AccountingLabelQuickAssignModal.tsx), responsive via `useIsNarrowScreen`): desktop = side-by-side label list + person `SearchableSelect` with explicit Save (click selects with a ✓; Enter twice on the same row also saves); mobile = person select above the list, tapping a label commits both in one tap (no person = identical to the old one-click); both reuse the standard person picker (archived last, **Add … as a sub** mint via `createPersonFromRuleForm`). **Writes**: label via the existing assignment upsert; person via a full `mercury_transaction_attributions` upsert (hand-set overwrites a rule-set person, same precedence as the tx detail modal); label-succeeds-person-fails degrades to a partial-error toast. New `onAttributionChange` callback lets `Banking.tsx` patch its `personIdByTxId`/`userIdByTxId`/name maps so the row (label suffix AND Job-column person line) updates live without a reload. Verified live on prod: desktop C assigned COGS + Abraham to a Southwest Wheel charge (row re-rendered "Cost of Goods Sold | Abraham"), person-only tagged Robert on his McCormick purchase, mobile A layout confirmed at 375px. Help guide `banking-visuals` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1744)
 

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1745',
+    date: '2026-08-16',
+    title: 'Sort and tag in one stop',
+    kind: 'feature',
+    highlights: [
+      'The Banking Sorting Ledger now shows "Accounting Label | Person" in one column, so you can see who each labeled transaction belongs to at a glance.',
+      'The + popup sets both at once: on a computer, pick the label and person side by side and hit Save; on a phone, the person picker sits on top and tapping a label saves both.',
+      'Labeled transactions missing a person get a quiet "| add person" link — tag them without re-labeling.',
+    ],
+  },
+  {
     version: 'v2.1744',
     date: '2026-08-16',
     title: 'Follow-up cards show the bill',

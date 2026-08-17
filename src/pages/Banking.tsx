@@ -1850,6 +1850,16 @@ export default function Banking() {
             approveByDefault={approveByDefault}
             onApproveByDefaultChange={onApproveByDefaultChange}
             onAfterAssignmentChange={() => void loadRowsForActiveView({ silent: true })}
+            onAttributionChange={(txId, patch) => {
+              setPersonIdByTxId((prev) => new Map(prev).set(txId, patch.personId))
+              setUserIdByTxId((prev) => new Map(prev).set(txId, patch.userId))
+              if (patch.personId && patch.displayName) {
+                setPersonNameById((prev) => ({ ...prev, [patch.personId as string]: patch.displayName as string }))
+              }
+              if (patch.userId && patch.displayName) {
+                setUserNameById((prev) => ({ ...prev, [patch.userId as string]: patch.displayName as string }))
+              }
+            }}
             labeledHasMore={isAccountingLabeledView && labeledHasMore}
             labeledLoadingMore={labeledLoadingMore}
             onLoadMoreLabeled={() => void loadLabeledNextPage()}
