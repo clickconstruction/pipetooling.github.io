@@ -1590,6 +1590,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (job) openJobActivityExpand(job)
   }
 
+  // Live jobs_ledger ids for the deck: a card whose job disappears (deleted
+  // from the Job window, migrated to a bid, …) drops immediately (v2.1756).
+  const followupLiveJobIds = useMemo(() => new Set(jobs.map((j) => j.id)), [jobs])
+
   return (
     <>
       {active && (
@@ -1658,6 +1662,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 onOpenBoardRow={openFollowupBoardRow}
                 onOpenActivity={openFollowupActivity}
                 activityExpandOpen={activityExpandJob != null}
+                liveJobIds={followupLiveJobIds}
               />
             ) : null}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}

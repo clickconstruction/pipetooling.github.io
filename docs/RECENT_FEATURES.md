@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1755)
+last_updated: 2026-08-17 (v2.1756)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1756)
+
+### Follow-up deck: a deleted job's card leaves the deck immediately (2026-08-17)
+Owner screenshot: delete a junk job from the deck's Job window and the deck kept dealing the dead card — every further action errored "Job not found or you do not have access." The deck fetches its candidates once at open, so it never heard about the deletion. Fix: [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) passes the deck a memoized `liveJobIds` set built from its jobs list (which `onSaved → loadJobs()` refreshes after any delete or migrate-to-bid, from any surface — even another user's delete via a later refresh), and [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) drops candidates that leave it via new kernel [`dropDeletedFollowupCandidates`](../src/lib/jobs/jobFollowupQueue.ts) (+3 tests): empty set = list still loading, never wipe the deck; same-array return when nothing is missing so memoized consumers skip re-renders. Queue, counts, and the pinned-card fallback all self-heal downstream (the pin already auto-clears, v2.1721). Candidates are a subset of the tab's jobs list by construction (same table, same RLS, the five board stages) — verified live that the real 62-card deck loses nothing with the filter active. Help guide `job-followups` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1755)
 

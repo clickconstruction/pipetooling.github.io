@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_JOB_FOLLOWUP_SETTINGS,
   computeJobFollowupQueue,
+  dropDeletedFollowupCandidates,
   jobFollowupQuietDays,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
@@ -139,5 +140,23 @@ describe('computeJobFollowupQueue', () => {
       TODAY,
     )
     expect(jobFollowupStageCounts(queue)).toMatchObject({ working: 1, billed: 2, waiting: 0 })
+  })
+})
+
+describe('dropDeletedFollowupCandidates', () => {
+  it('drops candidates whose job left the live list', () => {
+    const a = job({ id: 'a' })
+    const b = job({ id: 'b' })
+    expect(dropDeletedFollowupCandidates([a, b], new Set(['a']))).toEqual([a])
+  })
+
+  it('returns the same array when nothing is missing (memo-friendly)', () => {
+    const list = [job({ id: 'a' }), job({ id: 'b' })]
+    expect(dropDeletedFollowupCandidates(list, new Set(['a', 'b', 'c']))).toBe(list)
+  })
+
+  it('never wipes the deck while the jobs list is still loading (empty set)', () => {
+    const list = [job({ id: 'a' })]
+    expect(dropDeletedFollowupCandidates(list, new Set())).toBe(list)
   })
 })

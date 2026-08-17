@@ -20,7 +20,7 @@ The note box is already focused. You have three ways to move on:
 - {{button:outline|✓ Looks fine}} — nothing to say, but you looked. The job rests for a few days and leaves the queue without cluttering the thread.
 - {{button:outline|Snooze ▾}} — waiting on a customer? Park the job for 3 days, a week, or two weeks.
 
-**Open job ↗** pops the full Job window if the card needs real work, and the stage chips at the top narrow the deck to just Billed, just Working, and so on.
+**Open job ↗** pops the full Job window if the card needs real work, and the stage chips at the top narrow the deck to just Billed, just Working, and so on. Delete a job from that window (or migrate it to a bid) and its card leaves the deck immediately — the next card deals in.
 
 At the bottom of every card sits the job's **Pipeline row** — the same row you'd see on the Pipeline board, with all of its buttons live and a stage chip ({{chip:red|Billed Awaiting Payment}}, {{chip:blue|Working}}, …) naming exactly which section of the board it came from. Click that label and you jump to the row on the Pipeline board itself — section opened, row flashed so your eye lands on it. Under the row, a **Line items** footer lists the job's Bill-tab items with amounts and the Job total; if they don't add up to the bid, an amber note says how much isn't itemized yet, and an empty bill offers **Add line items ↗** straight into the Bill tab. You can nudge the % done, {{button:blue|Ready to Bill}} a finished job, {{button:outline|Mark Paid}} a billed one, or open {{button:outline|Edit}} without ever leaving the deck; when you're done, the deck is right where you left it.
 

@@ -213,3 +213,21 @@ export function jobFollowupStageCounts(entries: JobFollowupQueueEntry[]): Record
   for (const e of entries) counts[e.job.stage] += 1
   return counts
 }
+
+/**
+ * Drops candidates whose job no longer exists in the tab's live jobs list —
+ * a job deleted while the deck is open (Job window Edit tab, migrate-to-bid,
+ * another user) otherwise lingers as a stale card whose every action errors
+ * "Job not found" (v2.1756). An empty live set means the jobs list hasn't
+ * loaded yet — never wipe the deck on that flash. Returns the same array when
+ * nothing is missing so memoized consumers skip re-renders.
+ */
+export function dropDeletedFollowupCandidates(
+  candidates: JobFollowupCandidate[],
+  liveJobIds: ReadonlySet<string>,
+): JobFollowupCandidate[] {
+  if (liveJobIds.size === 0) return candidates
+  return candidates.every((c) => liveJobIds.has(c.id))
+    ? candidates
+    : candidates.filter((c) => liveJobIds.has(c.id))
+}
