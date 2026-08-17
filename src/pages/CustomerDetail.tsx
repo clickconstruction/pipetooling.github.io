@@ -11,6 +11,7 @@ import {
   normalizeJobsLedgerStatus,
 } from '../lib/jobsLedgerStatusPipeline'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
+import { estimateStatusDotColor } from '../lib/estimateStatusDotColor'
 import {
   customerDaysToPay,
   customerEstimateOutcomes,
@@ -39,10 +40,10 @@ import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActiv
 const money = (n: number) =>
   `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
 
-export type CustomerDetailTab = 'profile'
+export type CustomerDetailTab = 'profile' | 'estimates'
 
-const TAB_LABELS: Record<CustomerDetailTab, string> = { profile: 'Profile' }
-const TABS: CustomerDetailTab[] = ['profile']
+const TAB_LABELS: Record<CustomerDetailTab, string> = { profile: 'Profile', estimates: 'Estimates' }
+const TABS: CustomerDetailTab[] = ['profile', 'estimates']
 
 function parseTab(raw: string | null): CustomerDetailTab {
   return TABS.includes(raw as CustomerDetailTab) ? (raw as CustomerDetailTab) : 'profile'
@@ -96,6 +97,23 @@ function feedDateLabel(atIso: string): string {
   if (Number.isNaN(d.getTime())) return atIso
   const sameYear = d.getFullYear() === new Date().getFullYear()
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+}
+
+function estimateStatusLabel(s: string): string {
+  switch (s) {
+    case 'draft':
+      return 'Draft'
+    case 'sent':
+      return 'Sent'
+    case 'customer_accepted':
+      return 'Accepted'
+    case 'declined':
+      return 'Declined'
+    case 'superseded':
+      return 'Superseded'
+    default:
+      return s
+  }
 }
 
 const FEED_FILTERS: Array<{ key: ActivityFamily | 'all'; label: string }> = [
@@ -305,6 +323,7 @@ export default function CustomerDetail() {
       <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', margin: '10px 0 16px' }}>
         {TABS.map((tab) => {
           const on = tab === activeTab
+          const count = tab === 'estimates' ? data.estimates.length : null
           return (
             <button
               key={tab}
@@ -331,6 +350,9 @@ export default function CustomerDetail() {
               }}
             >
               {TAB_LABELS[tab]}
+              {count != null && count > 0 ? (
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)', fontWeight: 600, marginLeft: 4 }}>{count}</span>
+              ) : null}
             </button>
           )
         })}
@@ -654,6 +676,86 @@ export default function CustomerDetail() {
           </div>
           </div>
         </>
+      ) : activeTab === 'estimates' ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', overflowX: 'auto' }}>
+          {data.estimates.length === 0 ? (
+            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-faint)' }}>
+              No estimates for this customer yet.
+            </p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr>
+                  {['#', 'Title', 'Status', 'Total', 'Sent', 'Updated'].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: h === 'Total' ? 'right' : 'left',
+                        fontSize: '0.66rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-faint)',
+                        padding: '8px 12px',
+                        borderBottom: '2px solid var(--border)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.estimates.map((est) => (
+                  <tr key={est.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      <Link
+                        to={`/estimates/${est.estimate_number}`}
+                        style={{ fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}
+                      >
+                        #{est.estimate_number}
+                      </Link>
+                    </td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-700)' }}>{(est.title ?? '').trim() || '—'}</td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span
+                          aria-hidden
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 9999,
+                            background: estimateStatusDotColor(est.status),
+                          }}
+                        />
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{estimateStatusLabel(est.status)}</span>
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: '8px 12px',
+                        textAlign: 'right',
+                        fontVariantNumeric: 'tabular-nums',
+                        fontWeight: 600,
+                        color: 'var(--text-strong)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {money(est.total_cents / 100)}
+                    </td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {est.sent_at ? feedDateLabel(est.sent_at) : '—'}
+                    </td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {est.updated_at ? feedDateLabel(est.updated_at) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       ) : null}
     </div>
   )

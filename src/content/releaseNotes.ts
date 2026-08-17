@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1777',
+    date: '2026-08-17',
+    title: 'Customer pages: the Estimates tab',
+    kind: 'feature',
+    highlights: [
+      'A customer\'s page now has an Estimates tab — every estimate they\'ve ever gotten, with status, total, and sent/updated dates.',
+      'Click an estimate number to open it.',
+    ],
+  },
+  {
     version: 'v2.1776',
     date: '2026-08-17',
     title: 'Customer pages get an activity feed',
