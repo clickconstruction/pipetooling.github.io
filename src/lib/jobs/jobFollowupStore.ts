@@ -204,3 +204,32 @@ export async function fetchJobFollowupCandidates(todayYmd: string): Promise<JobF
     }
   })
 }
+
+/**
+ * Un-review (v2.1771): delete the job's NEWEST review row so the deck's
+ * "Put back in queue" undoes a hasty ✓/snooze. Only the latest row goes —
+ * older reviews stay in History. Returns false when there's nothing to delete.
+ */
+export async function deleteLatestJobFollowupReview(jobId: string): Promise<boolean> {
+  try {
+    const rows = await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('job_followup_reviews')
+          .select('id')
+          .eq('job_id', jobId)
+          .order('reviewed_at', { ascending: false })
+          .limit(1),
+      'find latest followup review',
+    )
+    const id = ((rows ?? []) as Array<{ id: string }>)[0]?.id
+    if (!id) return false
+    await withSupabaseRetry(
+      async () => supabase.from('job_followup_reviews').delete().eq('id', id),
+      'delete followup review',
+    )
+    return true
+  } catch {
+    return false
+  }
+}
