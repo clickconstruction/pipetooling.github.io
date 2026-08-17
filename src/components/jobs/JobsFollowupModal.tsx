@@ -577,14 +577,28 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
             ) : null}
 
             <div style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 12px 32px rgba(15,18,24,0.12)', padding: isNarrow ? '0.8rem 0.85rem 0.9rem' : '1rem 1.2rem 1.1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
-                <span style={{ background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
-                <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{current.job.jobName}</span>
-                <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
-                <span style={{ ...chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'), marginLeft: 'auto' }}>
-                  quiet {current.quietDays} day{current.quietDays === 1 ? '' : 's'}
-                </span>
-              </div>
+              {isNarrow ? (
+                <>
+                  {/* Phones: chips share the badge row so the wrapping title can't push them down. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                    <span style={{ background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
+                    <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
+                    <span style={{ ...chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'), marginLeft: 'auto' }}>
+                      quiet {current.quietDays} day{current.quietDays === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', marginTop: '0.4rem' }}>{current.job.jobName}</div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
+                  <span style={{ background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
+                  <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{current.job.jobName}</span>
+                  <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
+                  <span style={{ ...chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'), marginLeft: 'auto' }}>
+                    quiet {current.quietDays} day{current.quietDays === 1 ? '' : 's'}
+                  </span>
+                </div>
+              )}
 
               <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', margin: '0.6rem 0 0.65rem', border: '1px solid var(--border)', minHeight: svUrl ? undefined : 0 }}>
                 {svUrl ? (
