@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1754)
+last_updated: 2026-08-17 (v2.1755)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1755)
+
+### Email & notifications: subscriber dropdowns per card + the three missing streams (2026-08-17)
+Follow-up to v2.1754, second half of the owner's ask ("see who is subscribed in a dropdown per section"). (1) Every stream card in [`SettingsEmailStreamsSection`](../src/components/settings/SettingsEmailStreamsSection.tsx) collapses its chip pile into a **count pill** — "3 subscribers ▾" for standing recipient lists, "7 scheduled sends ▾" for one-off queues — that expands to the same chips (each × still runs the stream's own one-line write); empty cards keep their empty-state text with no pill. Landing from an email-log row (v2.1754) **auto-opens** the focused card's list — the whole point is seeing who got the email. (2) The panel gains the three streams `get_global_email_schedule()` has returned since v2.1428/38/49 but the client never rendered: **Weekly movement report**, **Weekly money movement report** (dev/controller stream), and **GC statements (open balances)** (can go to outside inboxes — chips read "Entity → address"). Each gets a cancel × via its existing helper (`cancelWeeklyMovementSend` / `cancelWeeklyMoneySend` / `cancelGcStatementSend`; every request table's DELETE policy carries `OR is_dev()`), routed through a shared `cancelRequest` flow. Verified live: clicking the real "Weekly money movement — Aug 10 – 16" log row lands on the new card, flashed, list open, showing "→ Robert · Mon, Aug 24, 7:00 AM · weekly". Dev-only surface. Client-only — no migration.
 
 ## Latest Updates (v2.1754)
 
