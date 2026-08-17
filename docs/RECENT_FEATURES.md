@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1743)
+last_updated: 2026-08-16 (v2.1744)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1744)
+
+### Follow-ups: line items + Job total inside the Pipeline row (2026-08-16)
+Owner picked mockup Option C. Each deck card's Pipeline row block gains a **Line items** footer: the job's named Bill-tab rows (`jobs_ledger_fixtures`, sequence order) as `name · qty × unit` with right-aligned extended amounts, capped at 6 with a "+N more…" expander (state keyed per job), then a bold **Job total** — computed by the same kernel the Bill tab uses ([`revenueDollarsFromFixtures`](../src/lib/revenueFromJobFixtures.ts), including its 0-count-bills-as-1 rule) so the two screens can never disagree. When the bid and the itemization differ by ≥$1, an amber delta reads "Bid is $17,800 — $17,150 not itemized" (or "Line items exceed the bid by …"); an empty Bill tab shows "None yet" with an **Add line items ↗** link that opens the Job window straight on its Bill tab (`requestOpenJobWindowEdit(initialTab: 'bill')`). Zero new queries: `JobsStagesTab` computes the items from the `JobWithDetails.fixtures` it already holds and passes them through `renderFollowupStageRow`'s result (`JobsFollowupLineItem[]` + totals). Verified live across three stage cards (billed/working/waiting) — items and totals match prod. Client-only — no migration.
 
 ## Latest Updates (v2.1743)
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1744',
+    date: '2026-08-16',
+    title: 'Follow-up cards show the bill',
+    kind: 'feature',
+    highlights: [
+      'The Pipeline row on each follow-up card now lists the job\'s line items with amounts and the Job total — the same numbers as the Bill tab.',
+      'If the line items don\'t add up to the bid, an amber note says how much isn\'t itemized; jobs with an empty Bill tab get a one-tap "Add line items" link.',
+    ],
+  },
+  {
     version: 'v2.1743',
     date: '2026-08-16',
     title: 'Jump from a follow-up card to the board',
