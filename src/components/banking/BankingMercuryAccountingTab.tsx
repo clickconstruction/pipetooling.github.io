@@ -1047,6 +1047,13 @@ export function BankingMercuryAccountingTab({
     [quickAssignBusy, quickAssignTxId, showToast, writeQuickAttribution],
   )
 
+  /**
+   * Owner sketch (v2.1747): with nothing pending and no active search, the
+   * Approvals section collapses to its header row (Rules stays reachable) —
+   * the search box, toggles, explainer, and "No pending suggestions." hide.
+   */
+  const approvalsIdle = !pendingLoading && pendingApprovals.length === 0 && pendingSearch.trim() === ''
+
   const quickAssignTransactionSummary = useMemo(() => {
     if (!quickAssignTxId) return undefined
     const tx =
@@ -1904,6 +1911,9 @@ export function BankingMercuryAccountingTab({
                 {conflictFilteredCount.toLocaleString()} need splits cleared
               </span>
             ) : null}
+            {approvalsIdle ? (
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-slate-500)' }}>None pending</span>
+            ) : null}
             <button
               type="button"
               onClick={() => setRulesModalOpen(true)}
@@ -1921,6 +1931,7 @@ export function BankingMercuryAccountingTab({
             >
               Rules ({rules.length})
             </button>
+            {approvalsIdle ? null : (
             <button
               type="button"
               title="Approve every pending suggestion shown, using each row’s Accounting Label"
@@ -1943,8 +1954,11 @@ export function BankingMercuryAccountingTab({
                   ? `Approve all (${approvableFilteredCount.toLocaleString()})`
                   : 'Approve all'}
             </button>
+            )}
           </div>
         </div>
+        {approvalsIdle ? null : (
+          <>
         <div
           style={{
             display: 'flex',
@@ -2141,6 +2155,8 @@ export function BankingMercuryAccountingTab({
                 </span>
               </div>
             ) : null}
+          </>
+        )}
           </>
         )}
       </section>
