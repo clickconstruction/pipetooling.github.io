@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1737)
+last_updated: 2026-08-16 (v2.1738)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1738)
+
+### Follow-ups: "Open job ↗" actually opens the Job window (2026-08-16)
+The deck's "Open job ↗" button looked dead: it went through `JobDetailOpenerBridgeContext`, which DID open the Job window — at `zIndex` 1010, underneath the deck's own overlay (`DECK_Z` 1040), so nothing visibly happened. [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) now calls [`useJobDetailModal()`](../src/contexts/JobDetailModalContext.tsx) directly (it renders below the provider — the bridge is for components above it) and, while the context reports the Job window open, hides its own overlay with `display: none` — deck state (current card, note draft, scroll) survives untouched and reappears when the window closes. The deck's window-level Escape handler also stands down while the Job window is on top, so Esc closes only the window, not both. Verified live: deck → Open job → Job window (Job/Edit/Bill tabs) → Esc → same card, same scroll. Client-only — no migration.
 
 ## Latest Updates (v2.1737)
 
 ### Sub Labor: "Outstanding by contractor" keys by person, not name text (2026-08-16)
 Closes the RUN_SUBS_PLAN PR 3.4 item that shipped unflipped: [`buildSubLaborOutstandingByPerson`](../src/lib/subLaborOutstanding.ts) grouped "who is owed what" by `normalizePersonNameKey(assigned_to_name)`, so a renamed sub split into two rows. Now: a sheet with exactly ONE junction assignee (`people_labor_job_assignees`) groups under `id:<people.id>` and displays the person's **current** roster name (junction fetched in [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) with a `people(name)` embed, fail-soft). Multi-assignee sheets deliberately keep the combined-name row — this is AP, you pay the sheet, not half of it — and junction-less sheets degrade to the legacy name key (+3 tests; pre-existing cases pass unchanged as the parity check). Verified live: panel renders, totals match the Sub Labor Due figure, zero failed requests across a full ledger reload. Client-only — no migration.
+
 
 ## Latest Updates (v2.1736)
 

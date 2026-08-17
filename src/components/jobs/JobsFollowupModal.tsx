@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -83,7 +83,10 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
 export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
-  const bridge = useJobDetailOpenerBridge()
+  // The Job window renders at z 1010, below the deck (z 1040) — so while it's
+  // open the deck hides itself (state intact) instead of burying the window.
+  const jobDetailModal = useJobDetailModal()
+  const jobWindowOpen = jobDetailModal?.isOpen ?? false
   /** Mobile polish (v2.1730): safe-area padding, one-row chip rail, stacked actions. */
   const isNarrow = useIsNarrowScreen()
 
@@ -227,11 +230,12 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !settingsOpen) onClose()
+      // While the Job window is on top, Esc belongs to it — not the deck.
+      if (e.key === 'Escape' && !settingsOpen && !jobWindowOpen) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose, settingsOpen])
+  }, [open, onClose, settingsOpen, jobWindowOpen])
 
   const advanceWithReview = useCallback(
     async (snoozedUntil: string | null) => {
@@ -326,6 +330,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
         position: 'fixed',
         inset: 0,
         zIndex: DECK_Z,
+        display: jobWindowOpen ? 'none' : undefined,
         background: 'var(--bg-slate-tint)',
         overflowY: 'auto',
         // Safe-area padding keeps the header out from under the phone's status bar.
@@ -583,9 +588,9 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                 <button
                   type="button"
                   onClick={() => {
-                    if (current && bridge && !bridge.requestOpenJobDetail(current.job.id)) {
-                      showToast('Open the Jobs page to view the full job window.', 'error')
-                    }
+                    if (!current) return
+                    if (jobDetailModal) jobDetailModal.openJobDetail({ jobId: current.job.id })
+                    else showToast('Open the Jobs page to view the full job window.', 'error')
                   }}
                   style={{ marginLeft: isNarrow ? 0 : 'auto', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.6rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', flex: isNarrow ? 1 : '0 0 auto', whiteSpace: 'nowrap' }}
                 >

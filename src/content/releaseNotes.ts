@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1738',
+    date: '2026-08-16',
+    title: 'Follow-ups: Open job works',
+    kind: 'fix',
+    highlights: [
+      'The "Open job" button on a follow-up card now brings up the full job window; closing it drops you right back on the same card with your note draft intact.',
+    ],
+  },
+  {
     version: 'v2.1737',
     date: '2026-08-16',
     title: 'One row per sub in Outstanding',
