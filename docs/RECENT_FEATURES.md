@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1779)
+last_updated: 2026-08-17 (v2.1780)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1780)
+
+### Customers list: lifetime value on every row + "$ Top customers" sort (2026-08-17)
+PR 6 (final) of the Customer Hub train — the HouseCall Pro parity ask that started it. Every row on [`Customers`](../src/pages/Customers.tsx) now shows the customer's **lifetime value** in green (rounded dollars, links to their hub page), and a **"$ Top customers"** toggle (`?sort=value`, linkable) re-sorts the list by value desc with name tiebreak — similar-mode and type/search filters compose. New pure kernel [`customersListLcv.ts`](../src/lib/customers/customersListLcv.ts) (+2 tests): org-wide per-customer rollup on the SAME per-job rule as `customerProfileStats.lifetimeBilled` (billed/paid invoice sums with job-shell fallback — keep-in-sync comment on both). Data: the page's existing counts batch extends its `jobs_ledger` select to `(id, customer_id, status, revenue)` and adds one org-wide `jobs_ledger_invoices (job_id, status, amount)` fetch. Verified live: sort surfaces DSI $2,006,144 → Knight $139,754 → … in order. Also adds the train's specialist-doc sweep: PROJECT_DOCUMENTATION §1a Customer Hub, GLOSSARY (Customer Hub, Lifetime value), ACCESS_CONTROL page-matrix row. Client-only — no migration.
 
 ## Latest Updates (v2.1779)
 

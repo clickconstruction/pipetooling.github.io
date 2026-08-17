@@ -12,6 +12,10 @@ Every customer now has their own page. Click a customer's name on the **Customer
 1. Go to **Customers**.
 2. Click the customer's name. (The small ✎ pencil next to the name still opens the quick edit form without leaving the list.)
 
+## Rank your top customers
+
+On the **Customers** list, every customer's lifetime value shows in green on their row. Click {{button:outline|$ Top customers}} in the filter row to sort the whole list by value, highest first — search and the Commercial/Residential filters still apply.
+
 :::example What you'll see
 The customer's name and type at the top, their phone / email / address as tap-to-call and tap-to-email links, and the money strip right below.
 :::
