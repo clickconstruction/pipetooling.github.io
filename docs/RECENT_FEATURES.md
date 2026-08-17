@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1778)
+last_updated: 2026-08-17 (v2.1779)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1779)
+
+### Customer Hub: the Invoices tab — every invoice across all their jobs (2026-08-17)
+PR 5 of the Customer Hub train. [`CustomerDetail`](../src/pages/CustomerDetail.tsx) gains the **Invoices** tab (`?tab=invoices`, count badge): one table of every `jobs_ledger_invoices` row across the customer's jobs. New pure kernel [`customerInvoiceRows.ts`](../src/lib/customers/customerInvoiceRows.ts) (+4 tests) + fetch helper [`fetchCustomerInvoices.ts`](../src/lib/customers/fetchCustomerInvoices.ts). Columns: **Job** (ledger number → Job Detail modal, `#n` part marker on multi-invoice jobs), **Channel** (Stripe/HCP/Physical from `external_send_channel` with `stripe_invoice_id` fallback; Stripe rows link `hosted_invoice_url` ↗), **Status** chip (Draft = `ready_to_bill` · Billed with `· Nd` aging at 30+ days on the strip's `estimated_bill_date` rule · Partial = billed with payments applied, showing "$X in" · Paid), right-aligned amount, billed date, last-paid date. **Lifetime footer** (Σ billed/paid amounts + Σ invoice-linked collected) uses the same basis as the money strip's `lifetimeBilled`, so the two surfaces reconcile — verified live to the penny on a 4-invoice customer ($3,325.53 / $1,442.50). Read surface: billing actions stay on Bill Customer / the board. Client-only — no migration.
 
 ## Latest Updates (v2.1778)
 

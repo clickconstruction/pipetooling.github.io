@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1779',
+    date: '2026-08-17',
+    title: 'Customer pages: the Invoices tab',
+    kind: 'feature',
+    highlights: [
+      'A customer\'s page now has an Invoices tab — every invoice across all their jobs, with channel (Stripe / HCP / Physical), status, aging on billed invoices, and billed / last-paid dates.',
+      'Stripe invoices link straight to the hosted invoice, and the Lifetime row at the bottom matches the money strip on their Profile.',
+    ],
+  },
+  {
     version: 'v2.1778',
     date: '2026-08-17',
     title: 'Customer pages: the Jobs tab',

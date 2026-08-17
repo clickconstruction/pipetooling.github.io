@@ -35,6 +35,10 @@ The **Estimates** tab lists every estimate for this customer — status ({{chip:
 
 The **Jobs** tab is the customer's complete job history — including paid jobs the Pipeline normally hides. Each row shows the job's status and a payment progress bar ({{chip:green|Paid}} jobs show what was collected). Click a job number for its detail card, or {{button:outline-blue|Open in Pipeline →}} to work their rows on the board.
 
+## Audit their invoices
+
+The **Invoices** tab lists every invoice across all the customer's jobs — channel (Stripe / HCP / Physical), status ({{chip:gray|Draft}} {{chip:yellow|Billed}} {{chip:blue|Partial}} {{chip:green|Paid}}), amount, and billed / last-paid dates. Billed invoices waiting 30+ days show their age on the chip; Stripe invoices link straight to the hosted invoice. The **Lifetime** row at the bottom is the same number as the money strip up top.
+
 ## Follow the Activity feed
 
 The **Activity** panel is one timeline of everything happening for this customer, across all their jobs — stage moves (with who moved them), invoices billed, payments received, job notes, estimates created and accepted, dispatch tasks, and customer notes.
