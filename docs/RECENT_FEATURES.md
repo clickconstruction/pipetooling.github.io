@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1753)
+last_updated: 2026-08-17 (v2.1754)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1754)
+
+### Settings: email-log rows jump to their stream card (2026-08-17)
+Owner request (two screenshots): clicking a row in Settings → Notifications' "Most recent emails sent" should land on the matching stream in Email & notifications. Every stream builds its subject from a stable template, so a new kernel ([`emailLogStreamLink.ts`](../src/lib/emailLogStreamLink.ts), +tests) prefix-matches the logged subject to a stream key — digest ("Job activity summary —"), billed ("Billed awaiting payment —"), paid ("Paid in full —"), payment ("Payment progress —"/"Not paid —"), schedule_day ("Dispatch schedule —"), weekly_money ("Weekly money movement —"), weekly_movement ("Weekly movement —"), gc_statement ("Open balances…"), with the "[TEST] " prefix stripped. Mapped rows in [`SettingsRecentEmailsSent`](../src/components/settings/SettingsRecentEmailsSent.tsx) become clickable (row cursor + a › button per row for keyboard access); one-off transactional sends (quotes, estimates, invoices) stay plain. Clicking switches [`Settings.tsx`](../src/pages/Settings.tsx) to the Email & notifications tab and hands [`SettingsEmailStreamsSection`](../src/components/settings/SettingsEmailStreamsSection.tsx) a `{key, nonce}` focus — once the RPC data renders, the card scrolls into view and flashes amber for ~2.6s (nonce re-fires on a repeat click). Cards for the three streams the panel doesn't render yet (weekly money/movement, GC statements) are the follow-up PR; their rows already map. Dev-only surface. Client-only — no migration.
 
 ## Latest Updates (v2.1753)
 

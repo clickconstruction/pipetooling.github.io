@@ -10,6 +10,7 @@ import {
 import { parsePaidJobEmailRecipients, serializePaidJobEmailRecipients } from '../../lib/paidJobEmail'
 import { cancelBilledReportSend } from '../../lib/billedReportEmailClient'
 import { formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
+import { emailStreamCardId, type EmailStreamKey } from '../../lib/emailLogStreamLink'
 
 /**
  * Settings → Email & notifications (v2.1321, dev-only): every recurring and
@@ -100,9 +101,19 @@ function RecipientChip({ label, extra, onRemove, removeLabel }: { label: string;
   )
 }
 
-function StreamCard({ title, cadence, right, children, manage }: { title: string; cadence: string; right?: ReactNode; children: ReactNode; manage: string }) {
+function StreamCard({ title, cadence, right, children, manage, id, flash }: { title: string; cadence: string; right?: ReactNode; children: ReactNode; manage: string; id?: string; flash?: boolean }) {
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12, overflow: 'hidden' }}>
+    <div
+      id={id}
+      style={{
+        border: `1px solid ${flash ? 'var(--border-amber-soft)' : 'var(--border)'}`,
+        borderRadius: 8,
+        marginBottom: 12,
+        overflow: 'hidden',
+        background: flash ? 'var(--bg-amber-tint)' : undefined,
+        transition: 'background 400ms, border-color 400ms',
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--bg-subtle)', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-strong)' }}>{title}</span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cadence}</span>
@@ -116,11 +127,25 @@ function StreamCard({ title, cadence, right, children, manage }: { title: string
   )
 }
 
-export default function SettingsEmailStreamsSection() {
+export default function SettingsEmailStreamsSection({ focus }: {
+  /** A clicked email-log row's stream — scroll its card into view and flash it (v2.1754). */
+  focus?: { key: EmailStreamKey; nonce: number } | null
+}) {
   const { showToast } = useToastContext()
   const [data, setData] = useState<GlobalEmailSchedule | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [flashKey, setFlashKey] = useState<EmailStreamKey | null>(null)
+
+  // Runs after the async RPC data renders the cards; re-fires per click (nonce).
+  useEffect(() => {
+    if (!focus || !data) return
+    const el = document.getElementById(emailStreamCardId(focus.key))
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setFlashKey(focus.key)
+    const t = window.setTimeout(() => setFlashKey(null), 2600)
+    return () => window.clearTimeout(t)
+  }, [focus, data])
 
   const load = useCallback(async () => {
     const { data: d, error: e } = await supabase.rpc('get_global_email_schedule')
@@ -221,9 +246,11 @@ export default function SettingsEmailStreamsSection() {
         does); pausing a digest keeps its setup. Creating and editing schedules stays on each stream's home surface.
       </p>
 
-      {data.report_schedules.map((s) => (
+      {data.report_schedules.map((s, i) => (
         <StreamCard
           key={s.id}
+          id={i === 0 ? emailStreamCardId('digest') : undefined}
+          flash={flashKey === 'digest' && i === 0}
           title={`Job report digest — "${s.name}"`}
           cadence={cadenceLabel(s.days_of_week, s.time_local)}
           right={toggle(s.enabled, () => void toggleSchedule(s.id, !s.enabled), `${s.enabled ? 'Pause' : 'Resume'} ${s.name}`)}
@@ -245,7 +272,7 @@ export default function SettingsEmailStreamsSection() {
         </StreamCard>
       ))}
 
-      <StreamCard title="Paid in Full notifications" cadence="event — job reaches Paid in Full" manage="full manager → Jobs → Pipeline ⚙ Paid In Full notifications">
+      <StreamCard id={emailStreamCardId('paid')} flash={flashKey === 'paid'} title="Paid in Full notifications" cadence="event — job reaches Paid in Full" manage="full manager → Jobs → Pipeline ⚙ Paid In Full notifications">
         {data.paid_recipients.length === 0
           ? none
           : data.paid_recipients.map((r) => (
@@ -253,7 +280,7 @@ export default function SettingsEmailStreamsSection() {
             ))}
       </StreamCard>
 
-      <StreamCard title="Payment received notifications" cadence="event — any payment on any job" manage="full manager → Jobs → Pipeline ⚙ Paid notifications">
+      <StreamCard id={emailStreamCardId('payment')} flash={flashKey === 'payment'} title="Payment received notifications" cadence="event — any payment on any job" manage="full manager → Jobs → Pipeline ⚙ Paid notifications">
         {data.payment_recipients.length === 0
           ? none
           : data.payment_recipients.map((r) => (
@@ -261,7 +288,7 @@ export default function SettingsEmailStreamsSection() {
             ))}
       </StreamCard>
 
-      <StreamCard title="Billed Awaiting Payment report" cadence="one-off scheduled sends" manage="schedule more → Jobs → Pipeline ⇪ Share / Print">
+      <StreamCard id={emailStreamCardId('billed')} flash={flashKey === 'billed'} title="Billed Awaiting Payment report" cadence="one-off scheduled sends" manage="schedule more → Jobs → Pipeline ⇪ Share / Print">
         {data.billed_requests.length === 0
           ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
           : data.billed_requests.map((r) => (
@@ -274,7 +301,7 @@ export default function SettingsEmailStreamsSection() {
             ))}
       </StreamCard>
 
-      <StreamCard title="Dispatch-day schedule emails" cadence="one-off queued per person" manage="queue more → Dashboard → Clock strip → Email schedule">
+      <StreamCard id={emailStreamCardId('schedule_day')} flash={flashKey === 'schedule_day'} title="Dispatch-day schedule emails" cadence="one-off queued per person" manage="queue more → Dashboard → Clock strip → Email schedule">
         {data.schedule_day_requests.length === 0
           ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing queued.</span>
           : data.schedule_day_requests.map((r) => (
