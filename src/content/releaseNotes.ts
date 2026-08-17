@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1739',
+    date: '2026-08-16',
+    title: 'Follow-up cards show the Pipeline row',
+    kind: 'feature',
+    highlights: [
+      'Each follow-up card now ends with the job\'s live Pipeline row — crew, dates, progress, and payment — with every button working: mark Ready to Bill, Mark Paid, send back, or edit without leaving the deck.',
+      'Anything you open from the row (confirmations, billing, the job window) now appears on top of the deck, and the deck is waiting where you left it after.',
+    ],
+  },
+  {
     version: 'v2.1738',
     date: '2026-08-16',
     title: 'Follow-ups: Open job works',

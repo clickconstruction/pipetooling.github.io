@@ -115,6 +115,7 @@ import {
   stagesInvoiceVisibleWithEmptySearch,
   stagesJobsWithoutCustomerFromFiltered,
   stagesSectionKeyForJobStatus,
+  jobInCollections,
   stagesReadyToBillJobsWithoutEmail,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
@@ -1300,6 +1301,258 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [followMovedJob, focusStagesSection, applyStagesInvoiceFocus, jobs, showToast],
   )
 
+  /**
+   * Follow-Up deck (v2.1739): each deck card's bottom shows the job's real
+   * Pipeline row — the same section renderers with the same section props,
+   * jobList/rows narrowed to the one job. Board lists are rebuilt without the
+   * page's search/exclusion filters so a filtered-out job still gets its row.
+   */
+  const followupBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+  const renderFollowupStageRow = (jobId: string): ReactNode => {
+    const job = jobs.find((x) => x.id === jobId)
+    if (!job) return null
+    const shared = {
+      stagesJobFlashId,
+      stagesEditMode: stagesEditModeActive,
+      renderStagesOpenDetailJobName,
+      stagesStatusUpdatingId,
+      pctCompleteSavingId,
+      updateJobPctComplete,
+      commitStagesPctWithNote,
+      setCreatePartialInvoiceAmount,
+      setCreatePartialInvoiceJob,
+      openEdit,
+      openStagesDetailJobModal,
+      setAiaG702StagesJob,
+      canCreateHazmatFee,
+      openHazmatFee,
+      hazmatFeeJobIds,
+      canEditJobPctComplete,
+      canManageJobPeople,
+      setManageJobPeople,
+      jobThreadNotesLoadingId,
+      jobThreadDraft,
+      jobThreadSubmittingId,
+      setJobThreadDraft,
+      submitJobThreadNote,
+      submitJobThreadNoteWithBody,
+      loadJobThreadNotesForJob,
+      authUser,
+      showToast,
+      customers,
+      openEditJobAndCreateCustomerFlow,
+      stagesManHoursByJobId,
+      stagesManHoursLoading,
+      stagesLaborBreakdownByJobId,
+      expandedJobThreadId,
+      toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),
+      jobThreadStatsByJobId,
+      jobThreadActivityByJobId,
+      openJobThreadFullscreen,
+      openJobActivityExpand,
+      jobThreadFullscreen,
+      setJobThreadFullscreen,
+      applyStagesInvoiceFocus,
+      canOpenJobScheduleModal,
+      openJobCalendar: setCalendarJob,
+      stagesUpcomingByJobId,
+      setScheduleModalJob,
+      openQuickAssignForJob,
+      authRole,
+      loadJobs,
+      onDevelopmentFilter: setStagesDevelopmentFilter,
+    }
+    const unifiedShared = {
+      ...shared,
+      stagesHamMode,
+      flashInvoiceId: stagesInvoiceFlashId,
+      stagesInvoiceUpdatingId,
+      invoiceEstimatedBillDateSavingId,
+      bumpInvoiceEstimatedBillDate,
+      setWhenInvoiceBillModal,
+      setWhenInvoiceBillModalDate,
+    }
+    const status = (job.status ?? 'working') as string
+    if (status === 'waiting') {
+      return (
+        <StagesSectionList
+          jobList={[job]}
+          actionLabel={'Move to Working'}
+          onAction={(j) => void updateJobStatus(j.id, 'working')}
+          showTimeOpen={true}
+          onSendBack={undefined}
+          onSendBackSimple={undefined}
+          showPctComplete={true}
+          {...shared}
+        />
+      )
+    }
+    if (status === 'working') {
+      return (
+        <StagesSectionList
+          jobList={[job]}
+          actionLabel={'Ready to Bill'}
+          onAction={(j) =>
+            stagesHamMode
+              ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
+              : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' }))}
+          showTimeOpen={true}
+          onSendBack={undefined}
+          onSendBackSimple={stagesHamMode
+            ? (j) => void updateJobStatus(j.id, 'waiting')
+            : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
+          sendBackLabel={'Mark Waiting'}
+          showPctComplete={true}
+          {...shared}
+        />
+      )
+    }
+    if (status === 'ready_to_bill') {
+      const rows = followupBoardLists.readyToBillRows.filter((r) => r.job.id === jobId)
+      if (rows.length === 0) return null
+      return (
+        <StagesUnifiedSectionList
+          rows={rows}
+          actionLabel={'Bill Customer'}
+          onJobAction={(j) => {
+            if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
+              showToast('Link this job to a customer before billing.', 'error')
+              openEdit(j, { billingCustomerHighlight: true })
+              return
+            }
+            billCustomer?.openBillCustomer({
+              payload: { kind: 'job', job: jobBillingContextFromJob(j) },
+              onSuccess: async () => {
+                await loadJobs()
+                followMovedJob(j.id, 'billed')
+              },
+              onAfterEnsureSuccess: async () => {
+                await loadJobs()
+              },
+            })
+          }}
+          onInvoiceAction={(inv) => {
+            if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
+              showToast('Link this job to a customer before billing.', 'error')
+              openEdit(inv.job, { billingCustomerHighlight: true })
+              return
+            }
+            billCustomer?.openBillCustomer({
+              payload: {
+                kind: 'invoice',
+                job: jobBillingContextFromJob(inv.job),
+                invoice: {
+                  id: inv.id,
+                  amount: inv.amount,
+                  status: inv.status,
+                  stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
+                  is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
+                },
+              },
+              onSuccess: async () => {
+                await loadJobs()
+                followMovedJob(inv.job.id, 'billed')
+              },
+              onAfterEnsureSuccess: async () => {
+                await loadJobs()
+              },
+            })
+          }}
+          onJobSendBack={(j) =>
+            stagesHamMode
+              ? void updateJobStatus(j.id, 'working')
+              : (setSendBackChecked(false),
+                setSendBackJob({
+                  id: j.id,
+                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                  jobName: j.job_name ?? '—',
+                  toStatus: 'working',
+                  rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                }))}
+          onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
+          showRemaining={true}
+          showTimeOpen={true}
+          showCreatePartialInvoice={true}
+          jobSendBackLabel={'Send Job Back'}
+          invoiceBundleActionLabel={DELETE_DRAFT_BILL_LABEL}
+          invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
+          {...unifiedShared}
+        />
+      )
+    }
+    if (status === 'billed' && jobInCollections(job)) {
+      const rows = followupBoardLists.collectionsRows.filter((r) => r.job.id === jobId)
+      if (rows.length === 0) return null
+      return (
+        <StagesUnifiedSectionList
+          rows={rows}
+          actionLabel={'Mark Paid'}
+          onJobAction={(j) => setMarkPaidJob(j)}
+          onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
+          onViewBill={(inv) => setViewBillInvoice(inv)}
+          showClickTooling={false}
+          onOpenLienTooling={(ctx) =>
+            setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+          onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
+          onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
+          showRemaining={true}
+          showTimeOpen={true}
+          sendBackBelowRemaining={true}
+          showCreatePartialInvoice={false}
+          jobSendBackLabel={'Send back to Billed'}
+          invoiceBundleActionLabel={'Send back to Billed'}
+          invoiceStandaloneActionLabel={'Send back to Billed'}
+          jobNoteLine={(j) => j.collections_note ?? null}
+          {...unifiedShared}
+        />
+      )
+    }
+    if (status === 'billed') {
+      const rows = followupBoardLists.billedActiveRows.filter((r) => r.job.id === jobId)
+      if (rows.length === 0) return null
+      return (
+        <StagesUnifiedSectionList
+          rows={rows}
+          actionLabel={'Mark Paid'}
+          onJobAction={(j) => setMarkPaidJob(j)}
+          onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
+          onViewBill={(inv) => setViewBillInvoice(inv)}
+          showClickTooling={false}
+          onOpenLienTooling={(ctx) =>
+            setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+          onJobSendBack={(j) =>
+            stagesHamMode
+              ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
+              : (setSendBackChecked(false),
+                setSendBackJob({
+                  id: j.id,
+                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                  jobName: j.job_name ?? '—',
+                  toStatus: 'ready_to_bill',
+                  rtbDraftCount: 0,
+                }))}
+          onInvoiceSendBack={(inv) =>
+            stagesHamMode
+              ? void revertBilledInvoiceToReadyToBill(inv)
+              : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' }))}
+          showRemaining={true}
+          showTimeOpen={true}
+          sendBackBelowRemaining={true}
+          showCreatePartialInvoice={false}
+          invoiceBundleActionLabel={'Send back'}
+          onJobMoveToCollections={(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))
+            ? (j) => {
+                setCollectionsNoteDraft('')
+                setCollectionsConfirm({ job: j, direction: 'to' })
+              }
+            : undefined}
+          {...unifiedShared}
+        />
+      )
+    }
+    return null
+  }
+
   return (
     <>
       {active && (
@@ -1360,7 +1613,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               Follow-ups
             </button>
-            {followupOpen ? <JobsFollowupModal open onClose={() => setFollowupOpen(false)} /> : null}
+            {followupOpen ? <JobsFollowupModal open onClose={() => setFollowupOpen(false)} renderStageRow={renderFollowupStageRow} /> : null}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{
