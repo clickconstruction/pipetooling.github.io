@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1782)
+last_updated: 2026-08-17 (v2.1783)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1783)
+
+### Customers list: the type classifier — sweep untyped customers in one sitting (2026-08-17)
+PR 3 (final) of the Customers-list redesign. The stat band's **No customer type** cell gains **Classify →**, opening [`ClassifyCustomersModal`](../src/components/customers/ClassifyCustomersModal.tsx): every untyped customer pre-selected from the new pure kernel [`suggestCustomerType`](../src/lib/customers/suggestCustomerType.ts) (+3 tests) — a whole-word business-vocabulary match (LLC / Contracting / City of / Management / Saloon / …) suggests Commercial with the matched word displayed beside the name; everything else suggests Residential. Flip any row, then **Apply** runs chunked batched UPDATEs on `customers.customer_type` (100 ids per call, one pass per type) — nothing writes before Apply, Cancel/Esc walks away clean, and `onApplied` refetches the list. Verified live: 165 untyped → 154 residential · 11 commercial pre-suggested ("Auto Group of New Braunfels" flagged via "Auto"); cancelled without applying — running the sweep is the owner's call. New help guide `classify-customers-by-type`. Client-only — no migration.
 
 ## Latest Updates (v2.1782)
 
