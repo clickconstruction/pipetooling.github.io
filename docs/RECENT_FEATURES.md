@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1780)
+last_updated: 2026-08-17 (v2.1781)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1781)
+
+### Customers list: signal-chip rows — open jobs, owed money, last activity (2026-08-17)
+PR 1 of the Customers-list redesign (Option A mockups approved 2026-08-17). The `Notes (0) Projects (0) Jobs (0) Bids (0)` link row on [`Customers`](../src/pages/Customers.tsx) is replaced by **signal chips that render only when there's something to say**: ✎ notes toggle (count when >0; the inline `CustomerNotesTable` expansion is unchanged), gray `n projects` / `n bids` chips (existing destinations), a blue **`n open jobs`** chip → the customer's hub Jobs tab (falls back to a gray total-jobs chip when everything's paid), an **`owes $X`** chip (amber, red at $5k+) → the hub Invoices tab, a **last-activity** stamp (`job · Aug 8` / `payment · Aug 14`, fading to `quiet since <date>` past 90 days), and the LCV figure (now also rendered as `—` for zero-value customers, keeping the column aligned). Kernel: `lifetimeValueByCustomer` grows into **`customersListRollup`** ([`customersListLcv.ts`](../src/lib/customers/customersListLcv.ts), +3 tests) — per-customer `{lcv, openBalance, openJobs, lastActivity}` on the SAME per-job rules as `customerProfileStats` (billed-invoice remainders + billed shells; keep-in-sync trio). Data adds one org-wide `jobs_ledger_payments` fetch and `payments_made, created_at` on the page's jobs select. Also: an inline **"possible duplicate"** badge (blue, clickable → similar mode) on rows the existing `findSimilarCustomerGroups` clustering flags. Verified live: DSI row reads dup-badge · ✎2 · 1 project · 11 bids · 7 open jobs · owes $19,480 (red) · job Aug 8 · $2,006,144. Client-only — no migration.
 
 ## Latest Updates (v2.1780)
 

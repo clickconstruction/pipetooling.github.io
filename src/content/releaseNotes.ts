@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1781',
+    date: '2026-08-17',
+    title: 'Customers list rows now carry the signal',
+    kind: 'feature',
+    highlights: [
+      'Each customer\'s row now shows what matters at a glance: open jobs, what they owe (amber, red past $5k), and when something last happened — customers quiet for 90+ days fade to "quiet since…".',
+      'The old row of zero-count links is gone; notes, projects, and bids appear as chips only when they exist.',
+      'Customers that look like duplicates get a "possible duplicate" badge — click it to jump into the merge view.',
+    ],
+  },
+  {
     version: 'v2.1780',
     date: '2026-08-17',
     title: 'See your top customers at a glance',
