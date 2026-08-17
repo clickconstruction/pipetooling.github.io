@@ -17,6 +17,8 @@ export type BankingMercuryAccountingRulesModalProps = {
   rulesTableSort: { column: 'none' | 'name' | 'label'; direction: 'asc' | 'desc' }
   onRulesSortHeaderClick: (col: 'name' | 'label') => void
   labelById: Map<string, DragLabelRow>
+  /** rule.id → attributed person's display name (People in Rules, v2.1725). */
+  ruleAttributionNameById: Map<string, string>
   ruleUsageApproved: Record<string, number>
   labelsLoading: boolean
   labelCount: number
@@ -44,6 +46,7 @@ export function BankingMercuryAccountingRulesModal({
   rulesTableSort,
   onRulesSortHeaderClick,
   labelById,
+  ruleAttributionNameById,
   ruleUsageApproved,
   labelsLoading,
   labelCount,
@@ -323,16 +326,13 @@ export function BankingMercuryAccountingRulesModal({
                               gap: 4,
                             }}
                           >
-                            Label
+                            Label | Person
                             {rulesTableSort.column === 'label'
                               ? rulesTableSort.direction === 'asc'
                                 ? '\u00a0▲'
                                 : '\u00a0▼'
                               : null}
                           </button>
-                        </th>
-                        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
-                          Enabled
                         </th>
                         <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
                           Approved uses
@@ -343,11 +343,14 @@ export function BankingMercuryAccountingRulesModal({
                     <tbody>
                       {rulesSortedForTable.map((r) => {
                         const lbl = labelById.get(r.label_id)
+                        const person = ruleAttributionNameById.get(r.id)
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{lbl?.name ?? r.label_id.slice(0, 8)}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{r.enabled ? 'Yes' : 'No'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {lbl?.name ?? r.label_id.slice(0, 8)}
+                              {person ? <span style={{ color: 'var(--text-muted)' }}>{' | '}{person}</span> : null}
+                            </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
                               {ruleUsageApproved[r.id] ?? 0}
                             </td>

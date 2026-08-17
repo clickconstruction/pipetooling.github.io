@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1740',
+    date: '2026-08-16',
+    title: 'Rules show their person',
+    kind: 'feature',
+    highlights: [
+      'The Banking rules list now shows "Label | Person" — rules that tag a person display who, right next to the label — and the always-Yes Enabled column is gone.',
+      'Searching rules now matches the person too, so typing "Mike Z" finds his contract-labor rule even though the rule is named something else.',
+    ],
+  },
+  {
     version: 'v2.1739',
     date: '2026-08-16',
     title: 'Follow-up cards show the Pipeline row',
