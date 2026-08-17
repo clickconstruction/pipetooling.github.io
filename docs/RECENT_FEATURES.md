@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Bill tab: Cost Timeline title stops colliding on phones; section banner trimmed (2026-08-16)
 Two owner screenshots on the Job window's Bill tab. (1) [`JobChargesTimelineStandalone`](../src/components/jobs/JobChargesTimelineStandalone.tsx) floats its "Cost Timeline" title centered over the chart's top row (absolute, so the chart keeps full height) — at phone width that's the same spot as the right-aligned "Value created (right axis)" toggle, and the two printed over each other. On narrow screens (`useIsNarrowScreen`) the title now drops into normal flow above the chart; desktop keeps the float. (2) The "Labor and Parts Cost" section banner + its `<hr>` divider are removed from [`JobFormLaborCostPanel`](../src/components/jobs/JobFormLaborCostPanel.tsx) (owner call) — the Cost Timeline title right below already announces the section. Verified live on job 961 at 375px (title static, banner gone) and 769px+ (title floats as before). Client-only — no migration.
 
+## Latest Updates (v2.1750)
+
+### Banking: Sorting Ledger goes full-bleed on phones (2026-08-16)
+Owner screenshot: on mobile the ledger table sat inside the page's side insets, wasting ~80px of a 375px screen. The table's scroll container now escapes ALL symmetric insets on narrow screens via `margin: calc(50% - 50vw)` per side (the page's `2rem` padding plus `main.appMain`'s mobile padding — measured 0→375 exact after the fix), dropping its side borders/radius at the edges ([`BankingMercuryAccountingTab`](../src/components/banking/BankingMercuryAccountingTab.tsx), `useIsNarrowScreen` gate). Columns still scroll horizontally inside the container; the page body never scrolls sideways (verified). Desktop unchanged. Client-only — no migration.
+
 ## Latest Updates (v2.1749)
 
 ### Every modal clears the phone's status bar — the 90vh sweep (2026-08-16)
