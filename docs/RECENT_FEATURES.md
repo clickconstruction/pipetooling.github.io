@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1758)
+last_updated: 2026-08-17 (v2.1759)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1759)
+
+### Estimate → job conversion stops re-issuing job numbers (2026-08-17)
+Assistant report via the owner: converting the Palmer estimate minted job number 927 — already worn by a 3-week-old billed job. Root cause: two "next job number" generators. The New Job form uses `next_job_number_suggestion()` (v2.~June: global, SECURITY DEFINER, scans **both** `hcp_number` and `click_number`), but [`CreateJobFromEstimateModal`](../src/components/estimates/CreateJobFromEstimateModal.tsx) still called the old `next_numeric_hcp_suggestion_for_master()` — per-master, **hcp_number only**, blind to click numbers. Once internal click numbers advanced past the master's HCP max, every conversion re-issued a taken number: a full-ledger scan found **8 duplicated numbers** among 783 jobs, with 925/926/927 all recent conversions. Fix: the conversion modal now calls the same global generator (one line; the old RPC has no remaining callers and can be dropped in a later cleanup migration). Data repair, applied through the app's own Edit form: Palmer 927 → **967**, and the younger half of the 926 pair (Dylan Beck PRV, billed) → **968**; the older paid/closed duplicate pairs (886/879/621/046/662, plus 925) were left alone — renumbering closed jobs rewrites history on past reports. Client-only — no migration.
 
 ## Latest Updates (v2.1758)
 
