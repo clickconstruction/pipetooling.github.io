@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
 import { supabase } from '../../lib/supabase'
@@ -64,11 +65,12 @@ const STAGE_CHIP: Record<JobFollowupStage, React.CSSProperties> = {
 }
 
 function SettingsStepper({ label, desc, value, onChange }: { label: string; desc: string; value: number; onChange: (v: number) => void }) {
-  const btn: React.CSSProperties = { border: 'none', background: 'var(--bg-slate-100)', color: 'var(--text-slate-600)', fontWeight: 800, width: 28, height: 28, cursor: 'pointer' }
+  const isNarrow = useIsNarrowScreen()
+  const btn: React.CSSProperties = { border: 'none', background: 'var(--bg-slate-100)', color: 'var(--text-slate-600)', fontWeight: 800, width: isNarrow ? 34 : 28, height: isNarrow ? 34 : 28, cursor: 'pointer' }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ minWidth: '11rem', fontWeight: 600, fontSize: '0.84rem' }}>{label}</span>
-      <span style={{ flex: 1, color: 'var(--text-slate-500)', fontSize: '0.74rem' }}>{desc}</span>
+      <span style={{ minWidth: isNarrow ? 0 : '11rem', flex: isNarrow ? 1 : '0 0 auto', fontWeight: 600, fontSize: '0.84rem' }}>{label}</span>
+      {isNarrow ? null : <span style={{ flex: 1, color: 'var(--text-slate-500)', fontSize: '0.74rem' }}>{desc}</span>}
       <span style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
         <button type="button" aria-label={`Decrease ${label}`} style={btn} onClick={() => onChange(Math.max(1, value - 1))}>−</button>
         <span style={{ minWidth: '4.2rem', textAlign: 'center', fontWeight: 700, fontSize: '0.8rem' }}>{value} day{value === 1 ? '' : 's'}</span>
@@ -82,6 +84,8 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const bridge = useJobDetailOpenerBridge()
+  /** Mobile polish (v2.1723): safe-area padding, one-row chip rail, stacked actions. */
+  const isNarrow = useIsNarrowScreen()
 
   const [loading, setLoading] = useState(true)
   const [candidates, setCandidates] = useState<JobFollowupCandidate[]>([])
@@ -305,6 +309,8 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
         background: stageFilter === key ? '#2563eb' : 'var(--surface)',
         color: stageFilter === key ? '#fff' : 'var(--text-slate-600)',
         cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
       }}
     >
       {label}
@@ -316,16 +322,55 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
       role="dialog"
       aria-modal="true"
       aria-label="Job follow-ups"
-      style={{ position: 'fixed', inset: 0, zIndex: DECK_Z, background: 'var(--bg-slate-tint)', overflowY: 'auto', padding: '1.2rem 1rem 2rem' }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: DECK_Z,
+        background: 'var(--bg-slate-tint)',
+        overflowY: 'auto',
+        // Safe-area padding keeps the header out from under the phone's status bar.
+        padding: `calc(${isNarrow ? '0.5rem' : '1.2rem'} + env(safe-area-inset-top, 0px)) ${isNarrow ? '0.6rem' : '1rem'} calc(2rem + env(safe-area-inset-bottom, 0px))`,
+      }}
     >
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.7rem' }}>
-          <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.45rem' }}>
+          <span style={{ fontWeight: 800, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
             {loading ? 'Loading follow-ups…' : queue.length > 0 ? `${queue.length} to review` : 'Follow-ups'}
           </span>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((v) => !v)}
+            aria-expanded={settingsOpen}
+            aria-label="Review periods"
+            style={{ marginLeft: 'auto', fontSize: '0.74rem', padding: '0.24rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {isNarrow ? '⚙' : '⚙ Review periods'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close follow-ups"
+            style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {isNarrow ? '✕' : 'Esc · Close'}
+          </button>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            marginBottom: '0.7rem',
+            // One scrollable rail on phones instead of a three-row chip pile.
+            flexWrap: isNarrow ? 'nowrap' : 'wrap',
+            overflowX: isNarrow ? 'auto' : 'visible',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: isNarrow ? '0.2rem' : 0,
+          }}
+        >
           {filterChip('all', `All (${fullQueue.length})`)}
           {JOB_FOLLOWUP_STAGES.filter((s) => counts[s] > 0).map((s) => filterChip(s, `${JOB_FOLLOWUP_STAGE_LABELS[s]} (${counts[s]})`))}
-          <span role="group" aria-label="Follow-ups view" style={{ display: 'inline-flex', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-strong)', marginLeft: '0.2rem' }}>
+          <span role="group" aria-label="Follow-ups view" style={{ display: 'inline-flex', flexShrink: 0, borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-strong)', marginLeft: '0.2rem' }}>
             {(['deck', 'list', 'history'] as const).map((m) => (
               <button
                 key={m}
@@ -340,27 +385,13 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                   background: viewMode === m ? 'var(--text-slate-600)' : 'var(--surface)',
                   color: viewMode === m ? 'var(--surface)' : 'var(--text-slate-600)',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {m === 'deck' ? 'Deck' : m === 'list' ? 'List' : 'History'}
               </button>
             ))}
           </span>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen((v) => !v)}
-            aria-expanded={settingsOpen}
-            style={{ marginLeft: 'auto', fontSize: '0.74rem', padding: '0.24rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer' }}
-          >
-            ⚙ Review periods
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer' }}
-          >
-            Esc · Close
-          </button>
         </div>
 
         {settingsOpen && settings ? (
@@ -435,7 +466,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
               <div style={{ position: 'absolute', inset: '10px -8px auto -8px', height: '96%', background: 'var(--surface)', opacity: 0.55, borderRadius: 14, border: '1px solid var(--border)', transform: 'rotate(0.6deg)' }} />
             ) : null}
 
-            <div style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 12px 32px rgba(15,18,24,0.12)', padding: '1rem 1.2rem 1.1rem' }}>
+            <div style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 12px 32px rgba(15,18,24,0.12)', padding: isNarrow ? '0.8rem 0.85rem 0.9rem' : '1rem 1.2rem 1.1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
                 <span style={{ background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
                 <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{current.job.jobName}</span>
@@ -448,7 +479,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
               <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', margin: '0.6rem 0 0.65rem', border: '1px solid var(--border)', minHeight: svUrl ? undefined : 0 }}>
                 {svUrl ? (
                   <a href={svPano ?? undefined} target="_blank" rel="noreferrer" style={{ display: 'block', cursor: svPano ? 'pointer' : 'default' }}>
-                    <img src={svUrl} alt={`Street View near ${current.job.address}`} style={{ width: '100%', maxHeight: 190, objectFit: 'cover', display: 'block' }} />
+                    <img src={svUrl} alt={`Street View near ${current.job.address}`} style={{ width: '100%', maxHeight: isNarrow ? 145 : 190, objectFit: 'cover', display: 'block' }} />
                     <span style={{ position: 'absolute', left: 10, bottom: 10, background: 'rgba(17,24,39,0.74)', color: '#fff', fontSize: '0.76rem', fontWeight: 600, padding: '0.28rem 0.65rem', borderRadius: 7 }}>
                       📍 {current.job.address}
                     </span>
@@ -507,7 +538,19 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                   type="button"
                   onClick={() => void postAndNext()}
                   disabled={busy || noteDraft.trim() === ''}
-                  style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.5rem 0.9rem', border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', opacity: busy || noteDraft.trim() === '' ? 0.6 : 1 }}
+                  style={{
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    padding: '0.6rem 0.9rem',
+                    border: 'none',
+                    background: '#2563eb',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    opacity: busy || noteDraft.trim() === '' ? 0.6 : 1,
+                    // Phones: the primary action gets the whole first row (thumb-sized).
+                    flex: isNarrow ? '1 1 100%' : '0 0 auto',
+                  }}
                 >
                   Post & next ⏎
                 </button>
@@ -515,25 +558,25 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                   type="button"
                   onClick={() => void advanceWithReview(null)}
                   disabled={busy}
-                  style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.5rem 0.9rem', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', cursor: 'pointer' }}
+                  style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.6rem 0.9rem', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', cursor: 'pointer', flex: isNarrow ? 1 : '0 0 auto', whiteSpace: 'nowrap' }}
                 >
                   ✓ Looks fine
                 </button>
-                <span style={{ position: 'relative' }}>
+                <span style={{ position: 'relative', flex: isNarrow ? 1 : '0 0 auto', display: 'flex' }}>
                   <button
                     type="button"
                     onClick={() => setSnoozeOpen((v) => !v)}
                     disabled={busy}
                     aria-expanded={snoozeOpen}
-                    style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.5rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer' }}
+                    style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.6rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer', flex: 1, whiteSpace: 'nowrap' }}
                   >
                     Snooze ▾
                   </button>
                   {snoozeOpen ? (
-                    <span style={{ position: 'absolute', top: '110%', left: 0, zIndex: 5, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 20px rgba(15,18,24,0.15)', display: 'flex', flexDirection: 'column', minWidth: '7rem' }}>
-                      <button type="button" onClick={() => snoozeTo(3)} style={{ border: 'none', background: 'none', color: 'inherit', padding: '0.45rem 0.8rem', textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer' }}>3 days</button>
-                      <button type="button" onClick={() => snoozeTo(7)} style={{ border: 'none', background: 'none', color: 'inherit', padding: '0.45rem 0.8rem', textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer' }}>1 week</button>
-                      <button type="button" onClick={() => snoozeTo(14)} style={{ border: 'none', background: 'none', color: 'inherit', padding: '0.45rem 0.8rem', textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer' }}>2 weeks</button>
+                    <span style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 5, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 20px rgba(15,18,24,0.15)', display: 'flex', flexDirection: 'column', minWidth: '7rem' }}>
+                      <button type="button" onClick={() => snoozeTo(3)} style={{ border: 'none', background: 'none', color: 'inherit', padding: '0.55rem 0.8rem', textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer' }}>3 days</button>
+                      <button type="button" onClick={() => snoozeTo(7)} style={{ border: 'none', background: 'none', color: 'inherit', padding: '0.55rem 0.8rem', textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer' }}>1 week</button>
+                      <button type="button" onClick={() => snoozeTo(14)} style={{ border: 'none', background: 'none', color: 'inherit', padding: '0.55rem 0.8rem', textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer' }}>2 weeks</button>
                     </span>
                   ) : null}
                 </span>
@@ -544,7 +587,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                       showToast('Open the Jobs page to view the full job window.', 'error')
                     }
                   }}
-                  style={{ marginLeft: 'auto', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.5rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
+                  style={{ marginLeft: isNarrow ? 0 : 'auto', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.6rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', flex: isNarrow ? 1 : '0 0 auto', whiteSpace: 'nowrap' }}
                 >
                   Open job ↗
                 </button>
@@ -554,7 +597,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
         ) : null}
 
         {!loading && viewMode === 'history' ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '0.9rem 1.2rem 1.1rem' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: isNarrow ? '0.8rem 0.85rem 0.9rem' : '0.9rem 1.2rem 1.1rem' }}>
             <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.4rem' }}>
               Review history · {reviews.length.toLocaleString()} review{reviews.length === 1 ? '' : 's'}
             </div>
@@ -579,10 +622,10 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                         key={`${r.jobId}-${r.reviewedAt}-${i}`}
                         style={{ display: 'flex', alignItems: 'baseline', gap: '0.7rem', fontSize: '0.82rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
                       >
-                        <span style={{ minWidth: '9.5rem', color: 'var(--text-slate-500)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        <span style={{ minWidth: isNarrow ? '5.8rem' : '9.5rem', color: 'var(--text-slate-500)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                           {new Date(r.reviewedAt).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                         </span>
-                        <span style={{ minWidth: '7rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
+                        <span style={{ minWidth: isNarrow ? '3.5rem' : '7rem', maxWidth: isNarrow ? '5.5rem' : undefined, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobLabel}</span>
                         <span style={isFine ? chipStyle('var(--bg-green-tint)', 'var(--text-green-800)') : chipStyle('var(--bg-slate-100)', 'var(--text-slate-600)')}>
                           {action}

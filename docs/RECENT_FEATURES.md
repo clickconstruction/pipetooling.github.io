@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1728)
+last_updated: 2026-08-16 (v2.1729)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1729)
+
+### People identity: duplicate people blocked at the database (Phase D0) (2026-08-16)
+First PR of the Phase D/E close-out in `docs/PERSON_IDENTITY_PLAN.md`. Migration `20260817010403` (see `MIGRATIONS.md`) adds the three unique indexes the baseline was missing: `people_crew_jobs(person_id, work_date)`, `people_crew_bids(person_id, work_date)`, and — the one that blocks the "two Kyles" class at the source — `people_active_name_uniq` on `lower(btrim(name))` where `archived_at IS NULL`, so two ACTIVE roster rows can no longer share a name the pay joins would conflate (same-named archived rows stay allowed; Combine people archives, never deletes). Preflight against prod ran clean on all three keys the same day. Plan-doc discovery recorded: the Phase-B baseline already carried unique `person_id` indexes on the five other pay tables AND `people(id)` FKs on all ten — Phase E is smaller than the doc implied. No client changes.
 
 ## Latest Updates (v2.1728)
 

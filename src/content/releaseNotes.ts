@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1729',
+    date: '2026-08-16',
+    title: 'No more accidental duplicate people',
+    kind: 'infra',
+    highlights: [
+      'The database now refuses two active people with the same name — the root cause of split pay reports and "two Kyles" mix-ups. Archived people with the same name are still fine.',
+      'If you really have two people who share a name, give one a distinguishing name (like "Zach W") and the app keeps them straight forever.',
+    ],
+  },
+  {
     version: 'v2.1728',
     date: '2026-08-16',
     title: 'Archived people, visible but out of the way',
