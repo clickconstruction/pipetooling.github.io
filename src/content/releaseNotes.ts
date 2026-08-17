@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1748',
+    date: '2026-08-16',
+    title: 'Quiet Approvals when nothing is pending',
+    kind: 'fix',
+    highlights: [
+      'On Banking → Accounting, the Approvals section now folds down to one line ("None pending" plus the Rules button) when there\'s nothing to approve — no more empty search box and dead buttons taking up the screen.',
+    ],
+  },
+  {
     version: 'v2.1747',
     date: '2026-08-16',
     title: 'Job screens clear the status bar',

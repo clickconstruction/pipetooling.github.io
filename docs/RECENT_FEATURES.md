@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1747)
+last_updated: 2026-08-16 (v2.1748)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1748)
+
+### Banking: Approvals section collapses when nothing is pending (2026-08-16)
+Owner sketch, following v2.1746's header cleanup. With zero pending suggestions and no active pending-search, the Approvals section now renders just its header row — **Approvals · None pending · [Rules]** — hiding the search box, the Group-by-label / Approve-by-default toggles, the explainer, the "No pending suggestions." line, and the (dead) Approve all button (`approvalsIdle` guard in [`BankingMercuryAccountingTab`](../src/components/banking/BankingMercuryAccountingTab.tsx)). The guard requires the UNfiltered pending list to be empty, so a search that merely matches nothing keeps the section expanded with "No suggestions match your search." Everything reappears the moment suggestions arrive. Client-only — no migration.
 
 ## Latest Updates (v2.1747)
 
