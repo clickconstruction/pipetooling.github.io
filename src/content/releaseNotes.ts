@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1768',
+    date: '2026-08-17',
+    title: 'Cleaner note box on the job view',
+    kind: 'fix',
+    highlights: [
+      'The note box under a job\'s activity now sits in its own card with a clear line above it — no more blurring into the last note — and the typing area no longer clips its text.',
+    ],
+  },
+  {
     version: 'v2.1767',
     date: '2026-08-17',
     title: 'Job shares text cleanly again',
