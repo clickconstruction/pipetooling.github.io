@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1767',
+    date: '2026-08-17',
+    title: 'Job shares text cleanly again',
+    kind: 'fix',
+    highlights: [
+      'Sharing a job no longer shows up in Messages as a weird "Text Document" file — the text now carries the job #, name, address, and a normal PipeTooling link that opens the job.',
+    ],
+  },
+  {
     version: 'v2.1766',
     date: '2026-08-17',
     title: 'The job\'s work story, one tap away',

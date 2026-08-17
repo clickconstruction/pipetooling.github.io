@@ -1081,6 +1081,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Purpose**: **Public** resolver for tokenized job share links (Share-a-job Phase 2, v2.1453) so a texted link unfurls as a **rich iMessage/OG card** — title = job # + name, description = address · status, image = Street View of the address — then **redirects** human taps into the app at `/jobs?jobDetail=<job id>` (behind the recipient's own login).
 
+> **DORMANT since v2.1767** — Supabase neutralizes HTML responses on the shared `functions.supabase.co` domain (forced `content-type: text/plain` + `Content-Security-Policy: sandbox`, an anti-phishing measure), so the link stopped unfurling and rendered as a "Text Document" file blob in Messages. The client (`ShareJobButton`) now shares the app deep link directly; this function, `job_share_links`, and the `jobShare` lib helpers stay deployed for a revival on a **custom functions domain** (which is exempt from the neutralization).
+
 **Endpoint**:
 
 - **HTML** (**200**): `GET /functions/v1/job-share?t=<raw token>` — OG meta tags + meta-refresh/JS redirect; **404** HTML ("no longer active") for missing/unknown/revoked tokens.
