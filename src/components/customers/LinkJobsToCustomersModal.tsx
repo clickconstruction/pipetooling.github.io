@@ -17,7 +17,7 @@ import {
  * a look. One Apply runs the batched UPDATEs — nothing writes before it.
  */
 
-type CustomerRowLite = { id: string; name: string | null; archived_at: string | null }
+type CustomerRowLite = { id: string; name: string | null; archived_at: string | null; master_user_id: string | null }
 
 const UPDATE_CHUNK = 100
 
@@ -52,35 +52,47 @@ export default function LinkJobsToCustomersModal({
   /** Group index whose picker is open, plus its filter text. */
   const [pickerFor, setPickerFor] = useState<number | null>(null)
   const [pickerText, setPickerText] = useState('')
+  const [userNames, setUserNames] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const [jobsRows, customerRows] = await Promise.all([
+        const [jobsRows, customerRows, userRows] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, customer_name, job_name, hcp_number, click_number')
+                .select('id, customer_name, job_name, hcp_number, click_number, master_user_id')
                 .is('customer_id', null),
             'link jobs: unlinked jobs',
           ),
           withSupabaseRetry(
-            async () => supabase.from('customers').select('id, name, archived_at').order('name'),
+            async () => supabase.from('customers').select('id, name, archived_at, master_user_id').order('name'),
             'link jobs: customers',
           ),
+          supabase.from('users').select('id, name'),
         ])
         if (cancelled) return
         const custs = (customerRows ?? []) as CustomerRowLite[]
         const proposed = proposeJobCustomerLinks((jobsRows ?? []) as UnlinkedJobInput[], custs as LinkCustomerInput[])
         setCustomers(custs)
+        setUserNames(
+          Object.fromEntries(
+            ((userRows.data ?? []) as Array<{ id: string; name: string | null }>).map((u) => [u.id, (u.name ?? '').trim()]),
+          ),
+        )
         setGroups(proposed)
+        const custMasterById = new Map(custs.map((c) => [c.id, c.master_user_id]))
         const initialChosen: Record<number, string | null> = {}
         const initialChecked: Record<number, boolean> = {}
         proposed.forEach((g, i) => {
           initialChosen[i] = g.proposedCustomerId
-          initialChecked[i] = g.confidence === 'customer_name' || g.confidence === 'job_name'
+          // Ownership mismatches are never pre-checked — linking them also
+          // moves the job to the customer's owner, so the user confirms.
+          const mismatch =
+            g.proposedCustomerId != null && custMasterById.get(g.proposedCustomerId) !== g.jobMasterUserId
+          initialChecked[i] = !mismatch && (g.confidence === 'customer_name' || g.confidence === 'job_name')
         })
         setChosen(initialChosen)
         setChecked(initialChecked)
@@ -101,8 +113,6 @@ export default function LinkJobsToCustomersModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, saving])
 
-  const customerNameById = useMemo(() => new Map(customers.map((c) => [c.id, (c.name ?? '').trim()])), [customers])
-
   const pickerMatches = useMemo(() => {
     if (pickerFor == null) return []
     const q = normalizeCustomerName(pickerText)
@@ -118,30 +128,45 @@ export default function LinkJobsToCustomersModal({
   async function apply() {
     if (!groups) return
     setSaving(true)
-    try {
-      let linked = 0
-      for (let i = 0; i < groups.length; i++) {
-        const customerId = checked[i] ? chosen[i] : null
-        if (!customerId) continue
-        const name = customerNameById.get(customerId) ?? null
-        const ids = groups[i]!.jobIds
-        for (let o = 0; o < ids.length; o += UPDATE_CHUNK) {
-          const chunk = ids.slice(o, o + UPDATE_CHUNK)
-          const { error: err } = await supabase
-            .from('jobs_ledger')
-            .update({ customer_id: customerId, customer_name: name })
-            .in('id', chunk)
-          if (err) throw new Error(err.message)
+    let linked = 0
+    const failures: string[] = []
+    const custById = new Map(customers.map((c) => [c.id, c]))
+    for (let i = 0; i < groups.length; i++) {
+      const customerId = checked[i] ? chosen[i] : null
+      if (!customerId) continue
+      const cust = custById.get(customerId)
+      const name = (cust?.name ?? '').trim() || null
+      // Jobs follow their customer's owner (the v2.1685 invariant): when the
+      // owners differ, the link also moves the job to the customer's master.
+      const alignMaster = cust?.master_user_id != null && cust.master_user_id !== groups[i]!.jobMasterUserId
+      const patch: { customer_id: string; customer_name: string | null; master_user_id?: string } = {
+        customer_id: customerId,
+        customer_name: name,
+      }
+      if (alignMaster && cust?.master_user_id) patch.master_user_id = cust.master_user_id
+      const ids = groups[i]!.jobIds
+      let groupFailed = false
+      for (let o = 0; o < ids.length && !groupFailed; o += UPDATE_CHUNK) {
+        const chunk = ids.slice(o, o + UPDATE_CHUNK)
+        const { error: err } = await supabase.from('jobs_ledger').update(patch).in('id', chunk)
+        if (err) {
+          groupFailed = true
+          failures.push(`${groups[i]!.displayName}: ${err.message}`)
+        } else {
           linked += chunk.length
         }
       }
-      showToast(`Linked ${linked} job${linked === 1 ? '' : 's'} to customers.`, 'success')
-      onApplied()
-      onClose()
-    } catch (e: unknown) {
-      showToast(formatErrorMessage(e, 'Could not link jobs'), 'error')
-      setSaving(false)
     }
+    if (failures.length === 0) {
+      showToast(`Linked ${linked} job${linked === 1 ? '' : 's'} to customers.`, 'success')
+    } else {
+      showToast(
+        `Linked ${linked} job${linked === 1 ? '' : 's'} · ${failures.length} group${failures.length === 1 ? '' : 's'} failed — ${failures[0]}${failures.length > 1 ? ` (+${failures.length - 1} more)` : ''}`,
+        'error',
+      )
+    }
+    onApplied()
+    onClose()
   }
 
   return (
@@ -183,7 +208,10 @@ export default function LinkJobsToCustomersModal({
             groups.map((g, i) => {
               const badge = confidenceBadge(g.confidence)
               const chosenId = chosen[i]
-              const chosenName = chosenId ? customerNameById.get(chosenId) : null
+              const chosenCust = chosenId ? customers.find((c) => c.id === chosenId) : null
+              const chosenName = chosenCust ? (chosenCust.name ?? '').trim() : null
+              const ownerMove =
+                chosenCust != null && chosenCust.master_user_id != null && chosenCust.master_user_id !== g.jobMasterUserId
               return (
                 <div key={`${g.displayName}:${i}`} style={{ borderBottom: '1px solid var(--border)', padding: '7px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem' }}>
@@ -216,6 +244,14 @@ export default function LinkJobsToCustomersModal({
                       {chosenName ? `→ ${chosenName}` : 'pick customer…'}
                     </button>
                   </div>
+                  {ownerMove ? (
+                    <p style={{ margin: '3px 0 0 26px', fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>
+                      Also moves {g.jobIds.length === 1 ? 'this job' : `these ${g.jobIds.length} jobs`} from{' '}
+                      {(g.jobMasterUserId && userNames[g.jobMasterUserId]) || 'their current owner'} to{' '}
+                      {(chosenCust?.master_user_id && userNames[chosenCust.master_user_id]) || "the customer's owner"} — jobs
+                      follow their customer's owner.
+                    </p>
+                  ) : null}
                   {pickerFor === i ? (
                     <div style={{ margin: '6px 0 3px 26px', maxWidth: 380 }}>
                       <input

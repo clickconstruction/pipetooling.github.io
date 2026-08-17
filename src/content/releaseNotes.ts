@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1789',
+    date: '2026-08-17',
+    title: 'Link-jobs sweep handles cross-owner matches',
+    kind: 'fix',
+    highlights: [
+      "When a job and its matched customer belong to different account owners, the sweep now says so plainly — linking also moves the job to the customer's owner, and those rows wait for your explicit check.",
+      "One failed group no longer stops the whole sweep; everything else links and the message tells you what didn't.",
+    ],
+  },
+  {
     version: 'v2.1788',
     date: '2026-08-17',
     title: 'Customers can have multiple addresses',

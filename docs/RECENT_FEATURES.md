@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1788)
+last_updated: 2026-08-17 (v2.1789)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1789)
+
+### Link-jobs sweep: ownership-aware + failure-resilient (2026-08-17)
+Live failure running the v2.1786 sweep: 17 Malachi-owned jobs matched Robert-owned customers, tripping the v2.1685 invariant ("Job linked customer must belong to the job master") — and the modal's apply loop aborted the whole batch at the first error (92 of the checked jobs had linked; the rest silently didn't). Two fixes in [`LinkJobsToCustomersModal`](../src/components/customers/LinkJobsToCustomersModal.tsx) + [`matchUnlinkedJobs`](../src/lib/customers/matchUnlinkedJobs.ts) (+1 test): **(1) ownership-aware** — groups now split by the jobs' `master_user_id`; when the chosen customer's owner differs, the row shows an amber note ("Also moves these N jobs from X to Y — jobs follow their customer's owner"), is never pre-checked, and Apply aligns `jobs_ledger.master_user_id` to the customer's master alongside the link (the invariant's cascade semantics, made explicit); **(2) per-group failure isolation** — each group applies independently, failures collect into the final toast ("Linked N · M groups failed — reason") instead of aborting the batch. Verified live: the Mike-Holub group renders unchecked with the Malachi-to-Robert note; 305 same-owner jobs stay pre-checked. Client-only — no migration.
 
 ## Latest Updates (v2.1788)
 
