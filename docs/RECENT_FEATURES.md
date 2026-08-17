@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1773)
+last_updated: 2026-08-17 (v2.1774)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1774)
+
+### Bids Pricing: the bulk margin toolbar and checkboxes are removed — Margin mode is the feature (2026-08-17)
+Owner decision on estimator feedback: v2.1769's batch flow ("Price by margin: [N]% · Apply to all rows" + the row checkboxes) "was not well received" once v2.1772's row-by-row Margin mode landed. Removed from [`BidsPricingTab`](../src/components/bids/BidsPricingTab.tsx): the toolbar input/button/recent-chips row, the checkbox column (header select-all, row tint, selection state), the Replace-all/Fill-only overwrite confirm modal, and the bulk handlers — the checkbox column's footer colSpan padding reverts with it. The **Margin mode toggle relocates** beside "Apply Matching Price Book Entries". Everything Margin mode runs on is untouched: the [`applyMarginPricing`](../src/lib/bids/applyMarginPricing.ts) kernel, the shared last-three-recents memory, the per-row chip + … picker, the single-row write path. **Deliberate capability loss, stated in the plan:** there is no one-click whole-bid apply anymore — the equivalent is tapping the chip down the rows; the kernel remains if bulk ever earns its way back. Verified live on BP376: toolbar and checkboxes gone, toggle relocated and functional, row chips/picker intact. Help guide `price-a-bid-by-margin` rewritten around Margin mode. Client-only — no migration.
 
 ## Latest Updates (v2.1773)
 

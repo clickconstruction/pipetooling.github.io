@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1774',
+    date: '2026-08-17',
+    title: 'Margin pricing slims down to Margin mode',
+    kind: 'fix',
+    highlights: [
+      'Based on estimator feedback, the "Price by margin … Apply to all rows" toolbar and the row checkboxes are gone from Bids → Pricing — Margin mode (the per-row chips and picker) is now the one way to price by margin.',
+      'The Margin mode toggle moved next to "Apply Matching Price Book Entries." Your recent margins are unchanged.',
+    ],
+  },
+  {
     version: 'v2.1773',
     date: '2026-08-17',
     title: 'Move a job\'s stage from the Edit tab',
