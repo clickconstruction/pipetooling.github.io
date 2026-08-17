@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1790',
+    date: '2026-08-17',
+    title: 'Customers list: notes lines up with the value',
+    kind: 'fix',
+    highlights: [
+      'The notes chip now always sits just left of the lifetime value, so every row lines up instead of chips drifting.',
+    ],
+  },
+  {
     version: 'v2.1789',
     date: '2026-08-17',
     title: 'Link-jobs sweep handles cross-owner matches',

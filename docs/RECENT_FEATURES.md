@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1789)
+last_updated: 2026-08-17 (v2.1790)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1790)
+
+### Customers list: notes chip anchored beside the value (2026-08-17)
+Owner feedback (screenshot): with conditional chips right-packed, the notes chip floated to a different spot on every row — rows with nothing but notes stacked it against the far edge. One-move fix in [`Customers`](../src/pages/Customers.tsx): the notes chip relocates from first chip to the fixed slot immediately LEFT of the lifetime value, so every row ends in a stable `notes · $value` rail regardless of which other chips render. Verified live: rows with full chip sets and notes-only rows all align. Note: v2.1789 (link-sweep ownership fix) shipped in a parallel PR of this train. Client-only — no migration.
 ## Latest Updates (v2.1789)
 
 ### Link-jobs sweep: ownership-aware + failure-resilient (2026-08-17)
