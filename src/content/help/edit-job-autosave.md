@@ -35,6 +35,10 @@ The {{button:gray|Undo changes}} button (bottom-left on the Edit tab) reverts **
 Undo goes back to when you opened Edit Job — or, if you've created or deleted an invoice since, to just after that. Invoice work is never unwound by Undo.
 :::
 
+## Move the job's stage from here
+
+At the bottom of the Edit tab sits a tappable **status strip** — Waiting → Working → Ready to bill → Billed → Paid, with the current stage highlighted. Tap the next (or previous) stage and the job moves, with the change posted to its activity thread exactly like the Pipeline board's buttons. Stages you can't jump to directly are grayed with a tooltip that names the path (Paid always goes through the Record payment window, and sending a Billed job back happens from the board, which first handles its invoices). A **Collections** toggle after the strip flags a Billed job as difficult to collect — with a note — and clears the same way.
+
 ## New jobs still use a button
 
 Creating a job is different: fill in the New Job form and click {{button:blue|Create Job}}. Auto-save starts once the job exists and you're editing it.

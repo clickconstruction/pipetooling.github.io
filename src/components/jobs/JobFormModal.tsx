@@ -79,6 +79,7 @@ import { JobFormFixturesSection } from './JobFormFixturesSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormDeleteMigrateModals } from './JobFormDeleteMigrateModals'
+import JobStatusStepper from './JobStatusStepper'
 import {
   formatCurrency,
   parseMoneyInputToNumber,
@@ -3622,6 +3623,25 @@ export default function JobFormModal({
             </span>
           </div>
         )}
+        {/* Tappable status strip (v2.1773): quick stage moves + the Collections
+            flag, right above the footer. Edit region only — the Bill tab has
+            its own billing actions. */}
+        {editing && embeddedRegion !== 'bill' ? (
+          <JobStatusStepper
+            job={{
+              id: editing.id,
+              status: editing.status,
+              collections_at: editing.collections_at ?? null,
+              hcp_number: editing.hcp_number,
+              click_number: editing.click_number,
+              job_name: editing.job_name,
+              revenue: editing.revenue,
+              payments_made: editing.payments_made,
+            }}
+            authRole={authRole}
+            onChanged={() => onSavedRef.current?.()}
+          />
+        ) : null}
         {(() => {
           // Footer pieces shared by both layouts (v2.1239): desktop keeps the
           // two-cluster space-between row; phone edit mode stacks a full-width

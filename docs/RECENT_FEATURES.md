@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1772)
+last_updated: 2026-08-17 (v2.1773)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1773)
+
+### Edit tab: tappable status strip with a Collections toggle (2026-08-17)
+Owner request (mockup-approved): quick stage moves from the Edit Job modal's bottom. New [`JobStatusStepper`](../src/components/jobs/JobStatusStepper.tsx) above the Edit footer (edit region only): the Job pane's read-only Waiting → Working → Ready to bill → Billed → Paid strip, but every pill moves the job through the SAME `update_job_status` RPC as the board's buttons (server rules + activity-thread status events, single-writer trigger). New kernel [`jobStatusStepper.ts`](../src/lib/jobs/jobStatusStepper.ts) (+3 tests) mirrors the RPC's adjacency exactly — illegal jumps are disabled up front with the reason as tooltip ("Bill the job first — Paid comes from Billed") instead of bouncing off server errors; **billed → ready_to_bill stays board-only** (the board's Send back first voids the billed Stripe invoices; a raw flip would strand them). **Paid never raw-flips** — it opens the v2.1758 Record payment window (one-click Move to Paid at $0 balance, payment entry otherwise). **Collections is rendered as what it is** — a flag on Billed jobs, not a sixth stage: a divider-separated toggle, armed only on Billed, red when active, with the board's note-on-flag confirm (same `set_job_collections_flag` RPC). Verified live on job 651: pills/tooltips matched the legality map for a ready_to_bill job, and a Working ⇄ Ready to bill round-trip moved the DB status both ways (net zero). Help guide `edit-job-autosave` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1772)
 
