@@ -120,7 +120,10 @@ export function JobWindowModal({
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
-          maxHeight: '90vh',
+          // min(…, 100%): 90vh can exceed the overlay's padded box on phones, and a
+          // centered flex child taller than its container overflows BOTH ends — the
+          // top slid under the status bar (v2.1747). 100% = the safe-area padded box.
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

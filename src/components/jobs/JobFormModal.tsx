@@ -3078,7 +3078,8 @@ export default function JobFormModal({
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: JOB_FORM_OVERLAY_Z_INDEX,
-              padding: '1rem',
+              // Safe-area padding keeps the card off the phone's status bar (v2.1747).
+              padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             }
       }
       onClick={(e) => {
@@ -3095,7 +3096,9 @@ export default function JobFormModal({
                 padding: '1.5rem',
                 maxWidth: 560,
                 width: '100%',
-                maxHeight: '90vh',
+                // min(…, 100%): see JobWindowModal v2.1747 — 90vh alone overflows the
+                // padded overlay on phones and the top slides under the status bar.
+                maxHeight: 'min(90vh, 100%)',
                 overflow: 'auto',
               }
         }

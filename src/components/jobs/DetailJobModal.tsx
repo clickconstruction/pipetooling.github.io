@@ -1228,7 +1228,9 @@ export default function DetailJobModal({
             ? null
             : {
                 maxWidth: 560,
-                maxHeight: '90vh',
+                // min(…, 100%): a centered flex child taller than the overlay's padded
+                // box overflows both ends and slides under the status bar (v2.1747).
+                maxHeight: 'min(90vh, 100%)',
                 overflow: 'auto',
                 boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
               }),
