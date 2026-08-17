@@ -58,6 +58,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1730',
+    date: '2026-08-16',
+    title: 'Follow-ups fit your phone',
+    kind: 'fix',
+    highlights: [
+      'The follow-up screen no longer hides under your phone\'s status bar, the stage filters sit in one swipeable row, and Post & next is a full-width thumb-sized button.',
+      'The Snooze menu opens upward so it never falls off the bottom of the screen.',
+    ],
+  },
+  {
     version: 'v2.1729',
     date: '2026-08-16',
     title: 'No more accidental duplicate people',

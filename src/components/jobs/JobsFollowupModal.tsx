@@ -84,7 +84,7 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const bridge = useJobDetailOpenerBridge()
-  /** Mobile polish (v2.1723): safe-area padding, one-row chip rail, stacked actions. */
+  /** Mobile polish (v2.1730): safe-area padding, one-row chip rail, stacked actions. */
   const isNarrow = useIsNarrowScreen()
 
   const [loading, setLoading] = useState(true)
@@ -620,14 +620,17 @@ export function JobsFollowupModal({ open, onClose }: { open: boolean; onClose: (
                     return (
                       <div
                         key={`${r.jobId}-${r.reviewedAt}-${i}`}
-                        style={{ display: 'flex', alignItems: 'baseline', gap: '0.7rem', fontSize: '0.82rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
+                        // Phones: time · name · chip on line one, the job on its own line.
+                        style={{ display: 'flex', flexWrap: isNarrow ? 'wrap' : 'nowrap', alignItems: 'baseline', gap: isNarrow ? '0.2rem 0.7rem' : '0.7rem', fontSize: '0.82rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}
                       >
                         <span style={{ minWidth: isNarrow ? '5.8rem' : '9.5rem', color: 'var(--text-slate-500)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                           {new Date(r.reviewedAt).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                         </span>
-                        <span style={{ minWidth: isNarrow ? '3.5rem' : '7rem', maxWidth: isNarrow ? '5.5rem' : undefined, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
-                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobLabel}</span>
-                        <span style={isFine ? chipStyle('var(--bg-green-tint)', 'var(--text-green-800)') : chipStyle('var(--bg-slate-100)', 'var(--text-slate-600)')}>
+                        <span style={{ minWidth: isNarrow ? '3.5rem' : '7rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
+                        <span style={{ flex: isNarrow ? '1 1 100%' : 1, order: isNarrow ? 5 : undefined, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isNarrow ? 'var(--text-slate-600)' : undefined }}>
+                          {jobLabel}
+                        </span>
+                        <span style={{ ...(isFine ? chipStyle('var(--bg-green-tint)', 'var(--text-green-800)') : chipStyle('var(--bg-slate-100)', 'var(--text-slate-600)')), marginLeft: isNarrow ? 'auto' : undefined }}>
                           {action}
                         </span>
                       </div>
