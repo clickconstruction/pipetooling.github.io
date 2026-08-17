@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1760',
+    date: '2026-08-17',
+    title: 'Freshest bids on top while you wait',
+    kind: 'feature',
+    highlights: [
+      'The Bid Board\'s "Not yet won or lost" section now lists the most recently sent bid first (using the bid date when a row has no sent date).',
+      'All other sections keep their due-date order.',
+    ],
+  },
+  {
     version: 'v2.1759',
     date: '2026-08-17',
     title: 'No more duplicate job numbers from estimates',

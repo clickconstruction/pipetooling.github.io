@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1759)
+last_updated: 2026-08-17 (v2.1760)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1760)
+
+### Bid Board: "Not yet won or lost" sorts most-recently-sent first (2026-08-17)
+Owner request. The board sorted every section with `compareBidsForBidBoardDueDate` (due date ascending, unmarked last) — sensible for worklists, but the pending section is an awaiting-an-answer list where the freshest submissions matter most. New kernel comparator `compareBidsForBidBoardPendingRecency` (same file, [`compareBidsForBidBoardDueDate.ts`](../src/lib/compareBidsForBidBoardDueDate.ts), +4 tests): descending by `bid_date_sent`, falling back to `bid_due_date` for rows without one (pending bids always have a sent date today — `getSubmissionSectionKey` requires it — the fallback guards if that ever loosens); neither-date rows last, stable id tiebreak. [`BidsBidBoardTab`](../src/components/bids/BidsBidBoardTab.tsx) re-sorts only `buckets.pending` after bucketing; Unsent/Won/Started/Lost keep due-date order. Verified live on the PLUM board: pending reads Aug 14 → Aug 12 → Aug 10×3 → Aug 6 → Aug 4 → Aug 3. Help guide `read-the-bid-board` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1759)
 
