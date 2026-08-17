@@ -593,6 +593,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 |------|-----|--------|-----------|-----|-----------|---------|-----------------|
 | **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ✅ limited | ❌ | ❌ |
+| **Customer Hub** (`/customers/:id`, v2.1775–v2.1780) | ✅ | ✅ | ✅ | ❌ | ✅ (route allowed as a `/customers` subpath; sees the same money strip/tabs — mirrors the CustomerProfileModal precedent) | ❌ | ❌ |
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
