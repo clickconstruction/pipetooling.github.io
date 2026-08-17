@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1784',
+    date: '2026-08-17',
+    title: 'Customers list: click anywhere on a row',
+    kind: 'fix',
+    highlights: [
+      'Click any part of a customer\'s row to open their page — no more aiming for the name.',
+      'Rows are separated by a clearer line, and the notes chip now says "notes" instead of showing a pencil.',
+    ],
+  },
+  {
     version: 'v2.1783',
     date: '2026-08-17',
     title: 'Classify untyped customers in one sitting',

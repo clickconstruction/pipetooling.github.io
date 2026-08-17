@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1783)
+last_updated: 2026-08-17 (v2.1784)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1784)
+
+### Customers list: clickable rows, visible separators, "notes" spelled out (2026-08-17)
+Owner feedback pass on the v2.1781 redesign. Three row polish items on [`Customers`](../src/pages/Customers.tsx): (1) the row separator upgrades `var(--border)` → `var(--border-strong)` so rows read as clearly separated; (2) **the whole row is clickable** — a `role="link"` wrapper (Enter-key accessible) navigates to `/customers/:id`, with `stopPropagation` on every inner control (✎ edit pencil, duplicate badge, notes/projects/bids chips, open-jobs/owes/LCV links, tel/mailto/maps) so they keep their own behaviors; (3) the notes chip drops the ✎ glyph for the word **"notes"** (+count when present). Verified live: empty-row click lands on the hub, the notes chip expands the inline notes table without navigating. Help guide row-reading section updated. Client-only — no migration.
 
 ## Latest Updates (v2.1783)
 

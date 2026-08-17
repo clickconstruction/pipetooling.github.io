@@ -653,7 +653,7 @@ export default function Customers() {
               key={c.id}
               style={{
                 padding: '0.75rem 0',
-                borderBottom: '1px solid var(--border)',
+                borderBottom: '1px solid var(--border-strong)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'stretch',
@@ -676,18 +676,28 @@ export default function Customers() {
                   {similarGroupHeaderById.get(c.id)}
                 </div>
               ) : null}
+              {/* Whole row navigates to the customer page; inner controls stopPropagation. */}
               <div
+                role="link"
+                tabIndex={0}
+                aria-label={`Open ${(c.name ?? 'customer').trim() || 'customer'}`}
+                onClick={() => navigate(`/customers/${c.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target === e.currentTarget) navigate(`/customers/${c.id}`)
+                }}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   width: '100%',
+                  cursor: 'pointer',
                 }}
               >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                   <Link
                     to={`/customers/${c.id}`}
+                    onClick={(e) => e.stopPropagation()}
                     aria-label={
                       typeFilter === 'all'
                         ? `${(c.name ?? 'Customer').trim() || 'Customer'}, ${customerTypeTagLabel(c)}`
@@ -707,14 +717,15 @@ export default function Customers() {
                     type="button"
                     aria-label={`Edit ${(c.name ?? 'customer').trim() || 'customer'}`}
                     title="Edit customer"
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.stopPropagation()
                       editCustomerModal?.openEditCustomerModal(c.id, {
                         onSaved: fetchCustomers,
                         onDeleted: (id) => setCustomers((prev) => prev.filter((x) => x.id !== id)),
                         onMerged: ({ removedId }) =>
                           queueMicrotask(() => setCustomers((prev) => prev.filter((x) => x.id !== removedId))),
                       })
-                    }
+                    }}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -761,7 +772,10 @@ export default function Customers() {
                   {!showSimilar && duplicateIds.has(c.id) ? (
                     <button
                       type="button"
-                      onClick={() => setShowSimilar(true)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowSimilar(true)
+                      }}
                       title="This customer shares a name, address, phone, or email with another — click to review the cluster and merge"
                       style={{
                         fontSize: '0.6875rem',
@@ -879,11 +893,12 @@ export default function Customers() {
                         }}
                         style={signalChipStyle('gray')}
                       >
-                        ✎{counts.notes > 0 ? ` ${counts.notes}` : ''}
+                        notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
                       </button>
                       {counts.projects > 0 ? (
                         <Link
                           to={`/projects?customer=${c.id}`}
+                          onClick={(e) => e.stopPropagation()}
                           title="Their projects"
                           style={{ ...signalChipStyle('gray'), textDecoration: 'none' }}
                         >
@@ -894,7 +909,8 @@ export default function Customers() {
                         <button
                           type="button"
                           title="Their bids"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setViewingBidsForCustomer(c.id)
                             loadBidsForCustomer(c.id)
                           }}
@@ -906,6 +922,7 @@ export default function Customers() {
                       {rollup && rollup.openJobs > 0 ? (
                         <Link
                           to={`/customers/${c.id}?tab=jobs`}
+                          onClick={(e) => e.stopPropagation()}
                           title="Open jobs — see them on the customer's page"
                           style={{ ...signalChipStyle('blue'), textDecoration: 'none' }}
                         >
@@ -914,6 +931,7 @@ export default function Customers() {
                       ) : counts.jobs > 0 ? (
                         <Link
                           to={`/customers/${c.id}?tab=jobs`}
+                          onClick={(e) => e.stopPropagation()}
                           title="Job history on the customer's page"
                           style={{ ...signalChipStyle('gray'), textDecoration: 'none' }}
                         >
@@ -923,6 +941,7 @@ export default function Customers() {
                       {owes > 0.5 ? (
                         <Link
                           to={`/customers/${c.id}?tab=invoices`}
+                          onClick={(e) => e.stopPropagation()}
                           title="Open balance — see their invoices"
                           style={{ ...signalChipStyle(owes >= 5000 ? 'red' : 'amber'), textDecoration: 'none' }}
                         >
@@ -942,6 +961,7 @@ export default function Customers() {
                       ) : null}
                       <Link
                         to={`/customers/${c.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         title={`Lifetime value — everything ever billed to ${(c.name ?? 'this customer').trim() || 'this customer'}`}
                         style={{
                           fontWeight: lcv > 0 ? 600 : 500,
