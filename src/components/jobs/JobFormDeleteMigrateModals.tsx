@@ -117,6 +117,7 @@ export function JobFormDeleteMigrateModals({
         <div
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.4)',
             display: 'flex',
@@ -139,7 +140,7 @@ export function JobFormDeleteMigrateModals({
               borderRadius: 8,
               minWidth: 360,
               maxWidth: 480,
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -304,7 +305,7 @@ export function JobFormDeleteMigrateModals({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: migrateOverlayZIndex,
-            padding: '1rem',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
           }}
           onClick={() => {
             if (migratingJob) return
@@ -321,7 +322,7 @@ export function JobFormDeleteMigrateModals({
               borderRadius: 8,
               minWidth: 360,
               maxWidth: 520,
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
               width: '100%',
             }}

@@ -556,7 +556,7 @@ export default function TeamFeedbackWizard({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1001,
-    padding: '1rem',
+    padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
   }
 
   const cardStyle: React.CSSProperties = {
@@ -565,7 +565,7 @@ export default function TeamFeedbackWizard({
     borderRadius: 12,
     maxWidth: 520,
     width: '100%',
-    maxHeight: '90vh',
+    maxHeight: 'min(90vh, 100%)',
     overflow: 'auto',
     boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
     borderTop: '4px solid #ea580c',

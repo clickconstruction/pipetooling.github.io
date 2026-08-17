@@ -355,7 +355,7 @@ export function ScheduleShareModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={sending ? undefined : onClose}
     >
@@ -368,7 +368,7 @@ export function ScheduleShareModal({
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflowY: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
           padding: '1rem 1.1rem',

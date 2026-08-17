@@ -163,7 +163,7 @@ export default function AiaG702G703Modal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
       onKeyDown={(e) => {
@@ -176,7 +176,7 @@ export default function AiaG702G703Modal({
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

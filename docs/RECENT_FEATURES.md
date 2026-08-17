@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1748)
+last_updated: 2026-08-16 (v2.1749)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1749)
+
+### Every modal clears the phone's status bar — the 90vh sweep (2026-08-16)
+The follow-up sweep v2.1747 flagged: all ~115 remaining `maxHeight: '90vh'` modal cards under `src/components/` get the same two-part fix. (1) Card `maxHeight` becomes `min(90vh, 100%)` so a centered flex card can never outgrow its overlay's padded content box (a taller-than-container centered flex child overflows BOTH ends — the top slides under the iOS status bar). (2) Every fixed flex-centered overlay gains safe-area-aware padding: plain paddings (`'1rem'`, `16`, `'0.75rem'`, …) become `calc(<pad> + env(safe-area-inset-top, 0px)) <pad> calc(<pad> + env(safe-area-inset-bottom, 0px))`, and the ~70 overlays with **no** padding at all gain the canonical `1rem`-based version (visually inert on desktop — insets are 0 and the cards were already narrower/shorter than the viewport minus 2rem). [`ModalShell`](../src/components/bids/ModalShell.tsx)'s shared `OVERLAY`/`DEFAULT_CARD` cover the Bids modals in one spot; its `cardStyle` callers were patched individually. 99 files, applied by a brace-matching codemod that validated each overlay's `position:'fixed'` + flex-center signature before touching it; the three v2.1747 originals were skipped (already fixed). Zero `maxHeight: '90vh'` remain under `src/components/`. Client-only — no migration.
 
 ## Latest Updates (v2.1748)
 

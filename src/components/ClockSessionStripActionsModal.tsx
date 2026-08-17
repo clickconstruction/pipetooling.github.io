@@ -190,6 +190,7 @@ export function ClockSessionStripActionsModal({
       role="presentation"
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -212,7 +213,7 @@ export function ClockSessionStripActionsModal({
           borderRadius: 8,
           minWidth: 320,
           maxWidth: 460,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           margin: '1rem',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

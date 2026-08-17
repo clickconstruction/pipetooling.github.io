@@ -121,7 +121,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div
@@ -133,7 +133,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
           borderRadius: 8,
           maxWidth: 720,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

@@ -310,14 +310,14 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
       onClick={(e) => {
         if (e.target === e.currentTarget && !sending) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1300 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', zIndex: 1300 }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Share ${jobLabel} with a supply house`}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 12, width: '96%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', padding: '1rem 1.15rem', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}
+        style={{ background: 'var(--surface)', borderRadius: 12, width: '96%', maxWidth: 500, maxHeight: 'min(90vh, 100%)', overflowY: 'auto', padding: '1rem 1.15rem', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ minWidth: 0 }}>

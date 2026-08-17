@@ -316,7 +316,7 @@ export function TallyClockWindowAllocateModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1160,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
     >
@@ -330,7 +330,7 @@ export function TallyClockWindowAllocateModal({
           borderRadius: 8,
           maxWidth: 520,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

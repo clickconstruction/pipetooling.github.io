@@ -177,6 +177,7 @@ export default function TurnawayModal({
     <div
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -185,7 +186,7 @@ export default function TurnawayModal({
         zIndex: 65,
       }}
     >
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Turnaway</h2>

@@ -77,6 +77,7 @@ export default function ReorderDayBlocksModal({
       aria-label={`Reorder ${personName}'s day`}
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -93,7 +94,7 @@ export default function ReorderDayBlocksModal({
           minWidth: 320,
           maxWidth: 480,
           width: 'calc(100vw - 2rem)',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
         }}
       >

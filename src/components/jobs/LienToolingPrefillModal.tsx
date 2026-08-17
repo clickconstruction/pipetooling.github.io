@@ -212,7 +212,7 @@ export default function LienToolingPrefillModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
     >
@@ -222,7 +222,7 @@ export default function LienToolingPrefillModal({
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',

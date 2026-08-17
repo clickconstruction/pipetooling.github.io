@@ -356,7 +356,7 @@ export function AccountingRuleFormModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       onMouseDown={(e) => {
@@ -376,7 +376,7 @@ export function AccountingRuleFormModal({
           boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
           border: '1px solid var(--border)',
           boxSizing: 'border-box',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflowY: 'auto',
         }}
       >

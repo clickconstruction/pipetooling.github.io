@@ -166,7 +166,7 @@ export function QuickfillSectionMarkHistoryModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -178,7 +178,7 @@ export function QuickfillSectionMarkHistoryModal({
           borderRadius: 10,
           maxWidth: 560,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',

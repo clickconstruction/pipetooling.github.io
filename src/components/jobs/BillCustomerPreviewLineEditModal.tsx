@@ -35,7 +35,7 @@ function overlayStyle(z: number): CSSProperties {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: z,
-    padding: '1rem',
+    padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
     boxSizing: 'border-box',
   }
 }
@@ -46,7 +46,7 @@ const panelStyle: CSSProperties = {
   minWidth: 320,
   maxWidth: 480,
   width: '100%',
-  maxHeight: '90vh',
+  maxHeight: 'min(90vh, 100%)',
   overflow: 'auto',
   padding: '1.25rem',
   boxSizing: 'border-box',

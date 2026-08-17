@@ -1157,8 +1157,8 @@ function JobsSubLaborFormModalInner(
   return (
     <>
       {(laborModalOpen || editingLaborJob) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(400px, calc(100vw - 2rem))', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(400px, calc(100vw - 2rem))', maxWidth: '90vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>{editingLaborJob ? 'Edit Sub Labor' : 'New Sub Labor'}</h2>
             <form
               onSubmit={(e) => {

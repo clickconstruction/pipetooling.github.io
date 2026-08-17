@@ -89,7 +89,7 @@ export default function JobProjectLinkChoiceModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
@@ -103,7 +103,7 @@ export default function JobProjectLinkChoiceModal({
           borderRadius: 8,
           width: '100%',
           maxWidth: 420,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxSizing: 'border-box',

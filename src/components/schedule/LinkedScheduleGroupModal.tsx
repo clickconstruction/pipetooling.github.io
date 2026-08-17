@@ -214,7 +214,7 @@ export function LinkedScheduleGroupModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
     >
@@ -228,7 +228,7 @@ export function LinkedScheduleGroupModal({
           padding: '1.25rem',
           maxWidth: 720,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
         }}

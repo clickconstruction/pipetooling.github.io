@@ -481,7 +481,7 @@ export function ProjectsJobHistoryDayModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: Z_INDEX,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div
@@ -494,7 +494,7 @@ export function ProjectsJobHistoryDayModal({
           borderRadius: 8,
           width: '100%',
           maxWidth: 720,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

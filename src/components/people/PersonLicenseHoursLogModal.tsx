@@ -138,7 +138,7 @@ export default function PersonLicenseHoursLogModal({ personName, userId, onClose
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
       onClick={onClose}
     >
@@ -147,7 +147,7 @@ export default function PersonLicenseHoursLogModal({ personName, userId, onClose
           background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(960px, 100%)',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
         }}

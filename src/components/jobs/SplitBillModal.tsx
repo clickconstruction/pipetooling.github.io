@@ -270,6 +270,7 @@ export function SplitBillModal({
     <div
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
@@ -289,7 +290,7 @@ export function SplitBillModal({
           padding: '1.25rem',
           borderRadius: 8,
           width: 'min(420px, calc(100vw - 1.5rem))',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflowY: 'auto',
           margin: '0.75rem',
           boxSizing: 'border-box',

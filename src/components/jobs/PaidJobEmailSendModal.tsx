@@ -182,7 +182,7 @@ export default function PaidJobEmailSendModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div
@@ -193,7 +193,7 @@ export default function PaidJobEmailSendModal({
           // Real height (not just a cap) so the flex-1 preview frame fills it —
           // the email is the point of this modal.
           height: '90vh',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--surface)',

@@ -767,6 +767,7 @@ export function JobsGcReviewModal({
           aria-label={`Email statement to ${emailDialogGroup.gcName}`}
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.4)',
             display: 'flex',
@@ -778,7 +779,7 @@ export function JobsGcReviewModal({
             if (e.target === e.currentTarget && !emailSending) setEmailDialogGroup(null)
           }}
         >
-          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>Email statement to {emailDialogGroup.gcName}</h3>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>To — the GC, a teammate, or any email</label>
             <TeammateEmailChips users={users} value={emailDialogTo} onPick={setEmailDialogTo} disabled={emailSending} />
@@ -908,6 +909,7 @@ export function JobsGcReviewModal({
           aria-label="Share the whole GC Review report"
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.4)',
             display: 'flex',
@@ -919,7 +921,7 @@ export function JobsGcReviewModal({
             if (e.target === e.currentTarget && !shareAllSending) setShareAllOpen(false)
           }}
         >
-          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>Share the whole report</h3>
             <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {rollup.groups.length} {byDevelopment ? 'development' : 'GC'} section{rollup.groups.length === 1 ? '' : 's'} ·{' '}

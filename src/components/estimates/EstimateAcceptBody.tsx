@@ -420,7 +420,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             boxSizing: 'border-box',
           }}
           onClick={() => tryCloseModal()}
@@ -437,7 +437,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
               borderRadius: 8,
               maxWidth: 520,
               width: '100%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
               padding: '1.25rem',
               boxSizing: 'border-box',

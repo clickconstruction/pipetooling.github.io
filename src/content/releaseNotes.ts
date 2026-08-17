@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1749',
+    date: '2026-08-16',
+    title: 'All pop-ups clear the status bar',
+    kind: 'fix',
+    highlights: [
+      'The status-bar fix from the last update now covers every pop-up window in the app — on phones, no dialog slides up under the clock anymore, across Jobs, Bids, Banking, Schedule, Settings, and everywhere else.',
+    ],
+  },
+  {
     version: 'v2.1748',
     date: '2026-08-16',
     title: 'Quiet Approvals when nothing is pending',

@@ -235,7 +235,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
   if (!open) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+    <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
       <div
         style={{
           background: 'var(--surface)',
@@ -243,7 +243,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
           borderRadius: 8,
           minWidth: 420,
           maxWidth: '94vw',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
         }}
       >

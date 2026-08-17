@@ -137,7 +137,7 @@ export function BidsEstimatorsExtraUsersModal({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 60,
-    padding: '1rem',
+    padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
   }
 
   const sheet: CSSProperties = {
@@ -145,7 +145,7 @@ export function BidsEstimatorsExtraUsersModal({
     borderRadius: 8,
     maxWidth: 520,
     width: '100%',
-    maxHeight: '90vh',
+    maxHeight: 'min(90vh, 100%)',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',

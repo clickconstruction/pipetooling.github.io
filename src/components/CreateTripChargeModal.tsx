@@ -137,6 +137,7 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
     <div
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -147,7 +148,7 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
     >
       {/* This panel is the scroller — the title bar sticks so the × stays reachable
           on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
-      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', ...stickyModalPanelStyle(480) }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(480) }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Create trip charge</h2>

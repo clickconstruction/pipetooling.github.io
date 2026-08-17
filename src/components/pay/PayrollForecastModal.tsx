@@ -179,6 +179,7 @@ export function PayrollForecastModal(props: {
     <div
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -197,7 +198,7 @@ export function PayrollForecastModal(props: {
           padding: '1.25rem 1.5rem',
           borderRadius: 8,
           width: 'min(960px, 95vw)',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           display: 'flex',
           flexDirection: 'column',

@@ -10,6 +10,7 @@ import type { CSSProperties, MouseEventHandler, ReactNode } from 'react'
 
 const OVERLAY: CSSProperties = {
   position: 'fixed',
+  padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
   inset: 0,
   background: 'rgba(0,0,0,0.5)',
   display: 'flex',
@@ -23,7 +24,7 @@ export const DEFAULT_CARD: CSSProperties = {
   borderRadius: 8,
   maxWidth: 500,
   width: '90%',
-  maxHeight: '90vh',
+  maxHeight: 'min(90vh, 100%)',
   overflow: 'auto',
 }
 
