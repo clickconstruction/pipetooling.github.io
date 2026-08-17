@@ -1,19 +1,47 @@
 import { useCallback } from 'react'
 import { Share } from 'lucide-react'
 
+import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { buildJobSharePayload, runJobShare, type JobShareFields } from '../../lib/jobShare'
+import {
+  buildJobSharePayload,
+  buildJobSharePreviewUrl,
+  generateJobShareToken,
+  runJobShare,
+  sha256Hex,
+  type JobShareFields,
+} from '../../lib/jobShare'
 
-/*
- * v2.1767: the tokenized job-share URL (v2.1453/54 OG resolver) is dormant.
- * Supabase now neutralizes HTML responses on the shared functions domain
- * (forced text/plain + sandbox CSP, an anti-phishing measure), so the token
- * link stopped unfurling and instead rendered as a "Text Document" file blob
- * in Messages. Until the project has a custom functions domain, the share
- * sends the app deep link directly (index.html carries OG tags for a clean
- * generic card). The edge function, job_share_links table, and jobShare lib
- * helpers stay in place for a custom-domain revival.
+/**
+ * Mint a tokenized share link (Phase 2, v2.1454; revived v2.1770 behind
+ * share.pipetooling.com — Supabase neutralizes HTML on its shared functions
+ * domain, so the raw function URL rendered as a "Text Document" blob in
+ * Messages; the Cloudflare Worker on our own domain restores the rich card).
+ * Random 128-bit token, sha256 hash stored in job_share_links (RLS gates the
+ * insert on the caller's own job visibility). Returns null when minting isn't
+ * possible (read-only training users, offline) so the caller falls back to
+ * the plain deep link — sharing always works.
  */
+async function mintJobShareUrl(jobId: string): Promise<string | null> {
+  try {
+    // Deliberately NOT withSupabaseRetry: navigator.share must fire while the
+    // tap's transient activation is alive (iOS), so this is one fast attempt —
+    // getSession() is local, the insert is a single round-trip, and any
+    // failure falls back to the deep link instead of retrying.
+    const { data: sessionData } = await supabase.auth.getSession()
+    const userId = sessionData.session?.user.id
+    if (!userId) return null
+    const rawToken = generateJobShareToken()
+    const tokenHash = await sha256Hex(rawToken)
+    const { error } = await supabase
+      .from('job_share_links')
+      .insert({ job_id: jobId, token_hash: tokenHash, created_by: userId })
+    if (error) return null
+    return buildJobSharePreviewUrl(rawToken)
+  } catch {
+    return null
+  }
+}
 
 /**
  * Share-a-job action: native share sheet (iOS share sheet on the crew's
@@ -26,7 +54,8 @@ export function useShareJob(): (jobId: string, fields: JobShareFields) => Promis
   return useCallback(
     async (jobId: string, fields: JobShareFields) => {
       const payload = buildJobSharePayload(jobId, fields, window.location.origin)
-      const outcome = await runJobShare(payload, navigator)
+      const tokenUrl = await mintJobShareUrl(jobId)
+      const outcome = await runJobShare(tokenUrl ? { ...payload, url: tokenUrl } : payload, navigator)
       if (outcome === 'copied') showToast('Job info + link copied — paste it in a text', 'success')
       else if (outcome === 'failed') showToast('Could not share this job', 'error')
     },

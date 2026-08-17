@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobShareDeepLink,
   buildJobShareFunctionUrl,
+  buildJobSharePreviewUrl,
   buildJobSharePayload,
   buildJobShareTitle,
   generateJobShareToken,
@@ -164,5 +165,11 @@ describe('runJobShare', () => {
       },
     })
     expect(outcome).toBe('failed')
+  })
+})
+
+describe('buildJobSharePreviewUrl', () => {
+  it('builds the branded share URL with an encoded token', () => {
+    expect(buildJobSharePreviewUrl('ab c')).toBe('https://share.pipetooling.com/?t=ab%20c')
   })
 })

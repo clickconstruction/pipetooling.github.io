@@ -62,6 +62,20 @@ export function buildJobShareFunctionUrl(supabaseUrl: string, rawToken: string):
   return `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/job-share?t=${encodeURIComponent(rawToken)}`
 }
 
+/**
+ * The branded share domain (v2.1770): a Cloudflare Worker (`job-share-preview`
+ * on the pipetooling.com zone) that fronts the job-share edge function and
+ * restores real text/html — Supabase neutralizes HTML on its shared functions
+ * domain (see EDGE_FUNCTIONS.md → job-share), which is why the raw function
+ * URL renders as a "Text Document" blob in Messages instead of a rich card.
+ */
+export const JOB_SHARE_PREVIEW_BASE_URL = 'https://share.pipetooling.com'
+
+/** The texted link: unfurls as a rich OG card, then redirects taps into the app. */
+export function buildJobSharePreviewUrl(rawToken: string): string {
+  return `${JOB_SHARE_PREVIEW_BASE_URL}/?t=${encodeURIComponent(rawToken)}`
+}
+
 export type JobShareOutcome = 'shared' | 'copied' | 'canceled' | 'failed'
 
 /** The slice of `navigator` the share runner touches (injectable for tests). */

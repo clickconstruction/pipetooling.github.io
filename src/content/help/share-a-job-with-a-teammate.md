@@ -23,7 +23,7 @@ Job #951 — Shearer Pinpoint
 …plus a link that opens this exact job.
 :::
 
-2. Pick Messages (or any app) and send it. The message body carries the job #, name, and address, plus a PipeTooling link that opens the exact job.
+2. Pick Messages (or any app) and send it. In Messages, the link unfurls into a **preview card** showing the job # and name, the address, and a street photo of the address when one exists — and tapping it opens the exact job in the app.
 3. On a desktop browser without a share sheet, the same text and link are **copied to your clipboard** instead — a {{chip:green|Job info + link copied}} toast confirms it. Paste it anywhere.
 
 ## What the link does
