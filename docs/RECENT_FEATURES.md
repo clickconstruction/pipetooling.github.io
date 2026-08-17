@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1734)
+last_updated: 2026-08-16 (v2.1735)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1735)
+
+### People identity: pay config resolves id-first on the Employment tab (Phase D) (2026-08-16)
+Fifth PR of the Phase D close-out. `usePayConfig`'s state map deliberately stays name-keyed (it's the roster join for dozens of People-page call sites and `people_pay_config`'s PRIMARY KEY is still `person_name`) — but the hook now derives [`payConfigById`](../src/lib/people/payConfigLookup.ts) (`buildPayConfigById` + `payConfigForPerson`, 4 tests; same pattern as `payFlagsIndex` v2.1122 and PeopleReviewTab v2.1266) and [`PeopleEmploymentTab`](../src/components/people/PeopleEmploymentTab.tsx) resolves every pay-config lookup through it (`EmploymentEntry.personId` first, name fallback): salaried/hourly grouping, selected person's config, wage header, and the salaried chips all survive name drift between users/people/pay rows. Answer-preserving today (id and name agree on every row); the win is future renames. Full suite green (4,566 tests). Client-only — no migration.
 
 ## Latest Updates (v2.1734)
 

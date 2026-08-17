@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
+import { payConfigForPerson } from '../../lib/people/payConfigLookup'
 import { KIND_LABELS } from './peopleUsersTabShared'
 import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
@@ -67,6 +68,8 @@ export type PeopleEmploymentTabProps = {
   users: EmploymentUserRow[]
   authUserId: string | null
   payConfig: Record<string, PayConfigRow>
+  /** person_id -> row over the same state; lookups go id-first (identity Phase D). */
+  payConfigById: Record<string, PayConfigRow>
   payConfigDraft: Record<string, string>
   payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
@@ -122,6 +125,7 @@ export default function PeopleEmploymentTab({
   users,
   authUserId,
   payConfig,
+  payConfigById,
   payConfigDraft,
   payConfigOfficeWageDraft,
   payConfigSaving,
@@ -247,15 +251,16 @@ export default function PeopleEmploymentTab({
   )
   const activeEntries = entries.filter((e) => !e.archived_at).filter(matches)
   const archivedEntries = entries.filter((e) => e.archived_at).filter(matches)
-  const salariedActive = activeEntries.filter((e) => !!payConfig[e.name]?.is_salary)
-  const hourlyActive = activeEntries.filter((e) => !payConfig[e.name]?.is_salary)
+  const cfgFor = (e: EmploymentEntry) => payConfigForPerson(payConfig, payConfigById, e.name, e.personId)
+  const salariedActive = activeEntries.filter((e) => !!cfgFor(e)?.is_salary)
+  const hourlyActive = activeEntries.filter((e) => !cfgFor(e)?.is_salary)
   // Group only when the roster actually has salaried people; keep grouping stable while searching.
-  const groupRoster = entries.some((e) => !e.archived_at && payConfig[e.name]?.is_salary)
+  const groupRoster = entries.some((e) => !e.archived_at && cfgFor(e)?.is_salary)
 
   const datesDirty = selected != null && ((selected.start_date ?? '') !== draftStart || (selected.end_date ?? '') !== draftEnd)
 
   const selectedCfg: PayConfigRow | null = selected
-    ? payConfig[selected.name] ?? { person_name: selected.name, ...DEFAULT_PAY_CONFIG }
+    ? cfgFor(selected) ?? { person_name: selected.name, ...DEFAULT_PAY_CONFIG }
     : null
   const timeOffUserId = selected?.userId ?? null
 
@@ -303,7 +308,7 @@ export default function PeopleEmploymentTab({
   // Paid / Due / Upcoming header totals — same math as useDashboardFinancials, scoped to one person.
   const selectedName = selected?.name.trim() ?? null
   const selectedUserId = selected?.userId ?? null
-  const selectedWage = Number(payConfig[selected?.name ?? '']?.hourly_wage ?? 0)
+  const selectedWage = Number((selected ? cfgFor(selected) : undefined)?.hourly_wage ?? 0)
   useEffect(() => {
     if (!selectedName) {
       setPayTotals(null)
@@ -491,7 +496,7 @@ export default function PeopleEmploymentTab({
   }
 
   function renderChips(e: EmploymentEntry, inSalariedGroup = false) {
-    const cfg = payConfig[e.name]
+    const cfg = cfgFor(e)
     const health = entryLinkHealth(e, users)
     return (
       <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
@@ -746,7 +751,7 @@ export default function PeopleEmploymentTab({
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {kindLabel(selected.kind)}
               {selected.archived_at ? ' · archived' : ''}
-              {payConfig[selected.name]?.is_salary ? ' · salaried' : ''}
+              {cfgFor(selected)?.is_salary ? ' · salaried' : ''}
             </p>
             </div>
             <div style={{ display: 'flex', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
