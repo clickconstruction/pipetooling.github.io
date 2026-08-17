@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1785)
+last_updated: 2026-08-17 (v2.1786)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1786)
+
+### Customers: the link-jobs sweep — attach 500+ orphaned jobs to their customers (2026-08-17)
+Owner request: ~528 `jobs_ledger` rows (mostly the HCP-import era) have a customer's name as text — in `customer_name` or as the job's own name — but `customer_id` NULL, so they're invisible to lifetime value, open balances, and the hub pages. New pure kernel [`matchUnlinkedJobs.ts`](../src/lib/customers/matchUnlinkedJobs.ts) (+4 tests): proposes a customer per job in tiers — `customer_name` exact (normalized via the shared `customerSimilarity` normalizer), `job_name` exact (the HCP pattern: job named after the customer), unique ≥6-char prefix ("Mary Evans (to be paid by DRF)"), else none — and **groups jobs by name string** so one decision covers all of a name's jobs. New [`LinkJobsToCustomersModal`](../src/components/customers/LinkJobsToCustomersModal.tsx) opens from a new stat-band cell (**Jobs missing a customer · Link →**, hidden at zero): exact tiers pre-checked (green badges), prefix proposals unchecked (amber "starts with"), no-matches get an inline customer picker (aliases like "Dudley Mason" → "RMC- Dudley Mason" resolve once per group). Apply = chunked `UPDATE jobs_ledger SET customer_id, customer_name` (canonical name stamped); nothing writes before Apply; unchecked rows stay for next time. Verified live: 528 unlinked → **414 pre-checked** ("Link 414 jobs"), left unapplied for the owner to run. Help guide `link-old-jobs-to-customers`. Client-only — no migration.
 
 ## Latest Updates (v2.1785)
 

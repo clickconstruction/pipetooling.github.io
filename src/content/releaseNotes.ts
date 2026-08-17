@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1786',
+    date: '2026-08-17',
+    title: 'Link old jobs to their customers in one sweep',
+    kind: 'feature',
+    highlights: [
+      'Jobs that carry a customer\'s name but aren\'t linked to a customer record (mostly old HouseCall Pro imports) can now be fixed in one sitting — the Customers stat band shows "Jobs missing a customer" with a Link → button.',
+      'Jobs are grouped by name with exact matches pre-checked; aliases and typos get a quick picker. One Apply links them all, and lifetime values update immediately.',
+    ],
+  },
+  {
     version: 'v2.1785',
     date: '2026-08-17',
     title: 'Merging customers works with accepted estimates',

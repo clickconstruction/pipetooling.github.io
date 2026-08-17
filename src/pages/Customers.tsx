@@ -10,6 +10,7 @@ import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
 import ClassifyCustomersModal from '../components/customers/ClassifyCustomersModal'
+import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomersModal'
 import {
   customersListRollup,
   type CustomerListRollup,
@@ -119,6 +120,8 @@ export default function Customers() {
   /** "Show similar" mode: cluster likely duplicates (shared name/address/phone/email) for quick merging. */
   const [showSimilar, setShowSimilar] = useState(false)
   const [classifyOpen, setClassifyOpen] = useState(false)
+  const [linkJobsOpen, setLinkJobsOpen] = useState(false)
+  const [unlinkedJobsCount, setUnlinkedJobsCount] = useState<number | null>(null)
 
   async function refreshNoteCountsForCustomers(ids: string[]) {
     if (ids.length === 0) return
@@ -215,6 +218,11 @@ export default function Customers() {
       }
       setRecentSignalByCustomerId(signal)
     }
+    const unlinkedRes = await supabase
+      .from('jobs_ledger')
+      .select('id', { count: 'exact', head: true })
+      .is('customer_id', null)
+    setUnlinkedJobsCount(unlinkedRes.count ?? null)
     setLoading(false)
   }
 
@@ -419,6 +427,19 @@ export default function Customers() {
               across {statTotals.owesCount} customer{statTotals.owesCount === 1 ? '' : 's'}
             </div>
           </div>
+          {unlinkedJobsCount != null && unlinkedJobsCount > 0 ? (
+            <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Jobs missing a customer</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{unlinkedJobsCount}</div>
+              <button
+                type="button"
+                onClick={() => setLinkJobsOpen(true)}
+                style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                Link →
+              </button>
+            </div>
+          ) : null}
           <div style={{ padding: '10px 14px' }}>
             <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>No customer type</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{defaultTypeCount}</div>
@@ -1008,6 +1029,9 @@ export default function Customers() {
           ))}
         </ul>
       )}
+      {linkJobsOpen ? (
+        <LinkJobsToCustomersModal onClose={() => setLinkJobsOpen(false)} onApplied={fetchCustomers} />
+      ) : null}
       {classifyOpen ? (
         <ClassifyCustomersModal
           customers={visibleCustomers.filter(isCustomerCommercialDefaultType).map((c) => ({ id: c.id, name: c.name }))}
