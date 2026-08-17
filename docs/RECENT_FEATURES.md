@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1766)
+last_updated: 2026-08-17 (v2.1767)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1767)
+
+### Share-a-job stops texting a "Text Document" blob (2026-08-17)
+Owner screenshot: texting a job share showed a raw-HTML file card ("job-share · Text Document · 1 KB · …supabase.co") instead of a link. Diagnosis: the tokenized share URL (v2.1453/54's OG resolver) points at the shared `functions.supabase.co` domain, and **Supabase now neutralizes HTML there** — the live probe showed the function's own `Cache-Control` intact but `content-type` rewritten to `text/plain` plus a `sandbox` CSP (anti-phishing measure; the local/deployed code correctly sets `text/html`). Messages therefore renders the page source as a text-file attachment — redeploying can't fix it. Fix (v2.1767): [`ShareJobButton`](../src/components/jobs/ShareJobButton.tsx) stops minting the token URL and shares the app deep link (`/jobs?jobDetail=…`) directly; [`index.html`](../index.html) gains OG tags so the link unfurls as a clean generic PipeTooling card. The edge function, `job_share_links`, and the `jobShare` lib survive **dormant** for a custom-functions-domain revival (custom domains are exempt from the neutralization) — noted in `EDGE_FUNCTIONS.md`; help guide `share-a-job-with-a-teammate` updated. Verified live: the share now copies "Job #… — name ⏎ address ⏎ deep link" and inserts zero token rows. Client-only — no migration.
 
 ## Latest Updates (v2.1766)
 
