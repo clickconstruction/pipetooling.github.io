@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { supabase } from '../../lib/supabase'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { assigneePersonIdsForNames } from '../../lib/people/assigneePersonIds'
 import { filterLaborCrewNames, formatCurrency } from '../../lib/jobs/jobFormatting'
 import { laborItemsSubtotal, lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -276,6 +277,24 @@ function JobsSubLaborFormModalInner(
     if (!email?.trim()) return false
     const e = email.trim().toLowerCase()
     return users.some((u) => u.email && u.email.toLowerCase() === e)
+  }
+
+  /**
+   * Belt-and-braces id link after an assigned_to_name write (identity Phase D,
+   * same pattern as PeopleSubsTab.assignGroup): the sync trigger rebuilds the
+   * junction from the name string, so this only adds rows for picked people
+   * whose names resolve_pay_person_id can't map server-side. Best-effort —
+   * a failure here never blocks the sheet save the user just made.
+   */
+  async function upsertAssigneeJunction(laborJobId: string, names: string[]) {
+    const rows = assigneePersonIdsForNames(names, people, users).map((person_id) => ({
+      labor_job_id: laborJobId,
+      person_id,
+    }))
+    if (rows.length === 0) return
+    await supabase
+      .from('people_labor_job_assignees')
+      .upsert(rows, { onConflict: 'labor_job_id,person_id', ignoreDuplicates: true })
   }
 
   function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null } | ({ source: 'people' } & Person))[] {
@@ -740,6 +759,7 @@ function JobsSubLaborFormModalInner(
       setLaborSaving(false)
       return
     }
+    await upsertAssigneeJunction(job.id, assignedNames)
     for (let i = 0; i < validRows.length; i++) {
       const r = validRows[i]!
       const { error: itemErr } = await supabase.from('people_labor_job_items').insert({
@@ -997,6 +1017,7 @@ function JobsSubLaborFormModalInner(
       setLaborSaving(false)
       return
     }
+    await upsertAssigneeJunction(editingLaborJob.id, assignedNames)
     const { error: delErr } = await supabase.from('people_labor_job_items').delete().eq('job_id', editingLaborJob.id)
     if (delErr) {
       setError(delErr.message)

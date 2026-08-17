@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1732',
+    date: '2026-08-16',
+    title: 'Sub sheets remember who, not just the name',
+    kind: 'infra',
+    highlights: [
+      'Saving a sub sheet — from the Jobs form or by settling a work order — now records the actual person behind each assignee name, so renames and lookalike names can\'t detach a sheet from its sub.',
+    ],
+  },
+  {
     version: 'v2.1729',
     date: '2026-08-16',
     title: 'No more accidental duplicate people',
