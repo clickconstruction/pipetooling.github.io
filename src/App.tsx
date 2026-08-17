@@ -69,6 +69,7 @@ import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
 import { CustomerProfileModalProvider } from './contexts/CustomerProfileModalContext'
+import { JobHoursStoryModalProvider } from './contexts/JobHoursStoryModalContext'
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
 import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalContext'
@@ -240,11 +241,13 @@ function AppContent() {
                                           <UpdateFocusOpenerBridgeProvider>
                                             <JobDetailModalProvider>
                                               <CustomerProfileModalProvider>
+                                              <JobHoursStoryModalProvider>
                                               <UserReviewModalProvider>
                                                 <ActiveAccountsModalProvider>
                                                   <Layout />
                                                 </ActiveAccountsModalProvider>
                                               </UserReviewModalProvider>
+                                              </JobHoursStoryModalProvider>
                                               </CustomerProfileModalProvider>
                                             </JobDetailModalProvider>
                                           </UpdateFocusOpenerBridgeProvider>

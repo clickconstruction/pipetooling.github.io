@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
+import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { formatEstimatedCompletionDisplay, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import {
   invoiceOpenRemainingOnJob,
@@ -238,10 +239,26 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
         </button>
       ) : null}
       {showHoursChip ? (
-        <span style={cardChipStyle} title={hoursTip} aria-label={`Man-hours applied: ${hours === '…' ? 'loading' : hours}`}>
-          {cardClockGlyph()}
-          {hours}
-        </span>
+        ctx.openJobHoursStory ? (
+          <button
+            type="button"
+            title={`${hoursTip} — tap for the job's work story`}
+            aria-label={`Man-hours applied: ${hours === '…' ? 'loading' : hours} — open the work story`}
+            onClick={(e) => {
+              e.stopPropagation()
+              ctx.openJobHoursStory?.({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name })
+            }}
+            style={{ ...cardChipStyle, cursor: 'pointer' }}
+          >
+            {cardClockGlyph()}
+            {hours}
+          </button>
+        ) : (
+          <span style={cardChipStyle} title={hoursTip} aria-label={`Man-hours applied: ${hours === '…' ? 'loading' : hours}`}>
+            {cardClockGlyph()}
+            {hours}
+          </span>
+        )
       ) : null}
       {openLabel ? (
         <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} title="Time since job created">
@@ -565,10 +582,12 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   } = props
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
+  const jobHoursStoryModal = useJobHoursStoryModal()
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
   const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
+    openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
     showToast: props.showToast,
     customers: props.customers,
     openEditJobAndCreateCustomerFlow: props.openEditJobAndCreateCustomerFlow,
@@ -805,10 +824,12 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   } = props
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
+  const jobHoursStoryModal = useJobHoursStoryModal()
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const ctx: StagesRowRenderContext = {
+    openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
     showToast: props.showToast,
     customers: props.customers,
     openEditJobAndCreateCustomerFlow: props.openEditJobAndCreateCustomerFlow,
