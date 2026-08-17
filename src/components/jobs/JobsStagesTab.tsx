@@ -1583,6 +1583,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setStagesJobFlashId(jobId)
   }
 
+  // Deck's Latest-activity box → the full-screen Job activity modal (z 1001,
+  // above the deck at z 58) — the deck stays open underneath.
+  const openFollowupActivity = (jobId: string) => {
+    const job = jobs.find((x) => x.id === jobId)
+    if (job) openJobActivityExpand(job)
+  }
+
   return (
     <>
       {active && (
@@ -1643,7 +1650,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               Follow-ups
             </button>
-            {followupOpen ? <JobsFollowupModal open onClose={() => setFollowupOpen(false)} renderStageRow={renderFollowupStageRow} onOpenBoardRow={openFollowupBoardRow} /> : null}
+            {followupOpen ? (
+              <JobsFollowupModal
+                open
+                onClose={() => setFollowupOpen(false)}
+                renderStageRow={renderFollowupStageRow}
+                onOpenBoardRow={openFollowupBoardRow}
+                onOpenActivity={openFollowupActivity}
+                activityExpandOpen={activityExpandJob != null}
+              />
+            ) : null}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{

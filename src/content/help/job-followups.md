@@ -12,7 +12,7 @@ Prefer to see everything at once? The **Deck | List** toggle at the top switches
 
 ## Working the deck
 
-Each card is one job: its number, stage, and an amber {{chip:yellow|quiet 9 days}} chip, the street view with the address (click it for the full Street View), a *Why it's here* line, the money picture, and the last few notes from its activity thread.
+Each card is one job: its number, stage, and an amber {{chip:yellow|quiet 9 days}} chip, the street view with the address (click it for the full Street View), a *Why it's here* line, the money picture, and the last few notes from its activity thread. Tap that **Latest activity** box (the ↗ in its corner) and the job's full activity view opens over the deck — the complete thread with notes, reports, status history, and crew, plus the note composer; close it and the deck is right where you left it.
 
 The note box is already focused. You have three ways to move on:
 
