@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1776',
+    date: '2026-08-17',
+    title: 'Customer pages get an activity feed',
+    kind: 'feature',
+    highlights: [
+      'A customer\'s page now shows everything happening across all their jobs in one feed — stage moves, invoices billed, payments received, notes, estimates, and dispatch tasks, newest first.',
+      'Filter it with the All / Money / Jobs / Notes chips, click any job-linked entry to open that job, and use Show older to page back through history.',
+    ],
+  },
+  {
     version: 'v2.1775',
     date: '2026-08-17',
     title: 'Every customer gets their own page',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1775)
+last_updated: 2026-08-17 (v2.1776)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1776)
+
+### Customer Hub: the activity feed — everything happening for one customer (2026-08-17)
+PR 2 of the Customer Hub train. The Profile tab of [`CustomerDetail`](../src/pages/CustomerDetail.tsx) gains the **Activity rail** (right of Open jobs, wraps below on narrow screens): one reverse-chronological feed of everything across all the customer's jobs. New pure merge kernel [`customerActivityFeed.ts`](../src/lib/customers/customerActivityFeed.ts) (+3 tests pinning the vocabulary) with fetch helper [`fetchCustomerActivity.ts`](../src/lib/customers/fetchCustomerActivity.ts). **Sources → events**: `job_status_events` ("Ready to Bill → Billed Awaiting Payment", actor-attributed via a users name lookup), `jobs_ledger_invoices.billed_at` ("Invoice billed — $X", green), `jobs_ledger_payments` ("Payment received — $X", green), `jobs_ledger_thread_notes` ("Note on 941 — body", author), estimate stamps from `estimates` (created via `created_at` + latest sent/accepted/declined state, amber), `dispatch_requests` per job, and `customer_contacts` customer notes. Each event carries a **family** (money/jobs/notes) driving the filter chips (All · Money · Jobs · Notes); job-linked events open the Job Detail modal; "Show older" pages 25 at a time. Color language holds: money events green, job events blue. Verified live on a real customer: status moves with actors, the Money filter's three payments summed exactly to the strip's collected figure. Help guide `see-a-customers-full-history-and-lifetime-value` gains the feed section. Client-only — no migration.
 
 ## Latest Updates (v2.1775)
 
