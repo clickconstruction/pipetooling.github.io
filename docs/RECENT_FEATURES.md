@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1749)
+last_updated: 2026-08-16 (v2.1751)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1751)
+
+### Bill tab: Cost Timeline title stops colliding on phones; section banner trimmed (2026-08-16)
+Two owner screenshots on the Job window's Bill tab. (1) [`JobChargesTimelineStandalone`](../src/components/jobs/JobChargesTimelineStandalone.tsx) floats its "Cost Timeline" title centered over the chart's top row (absolute, so the chart keeps full height) — at phone width that's the same spot as the right-aligned "Value created (right axis)" toggle, and the two printed over each other. On narrow screens (`useIsNarrowScreen`) the title now drops into normal flow above the chart; desktop keeps the float. (2) The "Labor and Parts Cost" section banner + its `<hr>` divider are removed from [`JobFormLaborCostPanel`](../src/components/jobs/JobFormLaborCostPanel.tsx) (owner call) — the Cost Timeline title right below already announces the section. Verified live on job 961 at 375px (title static, banner gone) and 769px+ (title floats as before). Client-only — no migration.
 
 ## Latest Updates (v2.1749)
 
