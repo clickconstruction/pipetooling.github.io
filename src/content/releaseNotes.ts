@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1775',
+    date: '2026-08-17',
+    title: 'Every customer gets their own page',
+    kind: 'feature',
+    highlights: [
+      'Click a customer\'s name on the Customers page to open their new hub: contact info, lifetime value (everything ever billed, with collected underneath), open balance with aging, how fast they pay, and their estimate win rate.',
+      'The Open jobs panel lists everything not yet paid — tap a job number for its detail card, or jump to their rows on the Jobs Pipeline.',
+      'Editing is still one click: use the ✎ pencil on the list, or Edit customer on the page.',
+    ],
+  },
+  {
     version: 'v2.1774',
     date: '2026-08-17',
     title: 'Margin pricing slims down to Margin mode',
