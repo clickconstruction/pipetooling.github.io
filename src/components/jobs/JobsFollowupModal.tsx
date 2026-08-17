@@ -13,6 +13,7 @@ import {
   JOB_FOLLOWUP_STAGES,
   JOB_FOLLOWUP_STAGE_LABELS,
   computeJobFollowupQueue,
+  dropDeletedFollowupCandidates,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
   jobFollowupStageCounts,
@@ -174,7 +175,7 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
   )
 }
 
-export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen }: {
+export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen, liveJobIds }: {
   open: boolean
   onClose: () => void
   /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
@@ -185,6 +186,8 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   onOpenActivity?: (jobId: string) => void
   /** True while that activity modal is on top — Esc belongs to it, not the deck. */
   activityExpandOpen?: boolean
+  /** The tab's live jobs_ledger ids — a card whose job vanishes (deleted) drops from the deck (v2.1756). */
+  liveJobIds?: ReadonlySet<string>
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -237,6 +240,14 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
       cancelled = true
     }
   }, [open, todayYmd, showToast])
+
+  // A job deleted while the deck is open (Job window Edit tab, migrate-to-bid,
+  // even another user) leaves the tab's jobs list — drop its card instead of
+  // stranding a stale card whose every action errors "Job not found" (v2.1756).
+  useEffect(() => {
+    if (!liveJobIds) return
+    setCandidates((prev) => dropDeletedFollowupCandidates(prev, liveJobIds))
+  }, [liveJobIds])
 
   const fullQueue = useMemo(
     () => (settings ? computeJobFollowupQueue(candidates, reviews, settings, todayYmd) : []),

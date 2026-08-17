@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1756',
+    date: '2026-08-17',
+    title: 'Deleted jobs leave the follow-up deck',
+    kind: 'fix',
+    highlights: [
+      'Deleting a job while reviewing it in the follow-up deck now removes its card right away and deals the next one — no more stale card erroring "Job not found."',
+    ],
+  },
+  {
     version: 'v2.1755',
     date: '2026-08-17',
     title: 'Email streams: subscriber dropdowns and full coverage',
