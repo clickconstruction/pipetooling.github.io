@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1777)
+last_updated: 2026-08-17 (v2.1778)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1778)
+
+### Customer Hub: the Jobs tab — full job history including paid (2026-08-17)
+PR 4 of the Customer Hub train. [`CustomerDetail`](../src/pages/CustomerDetail.tsx) gains the **Jobs** tab (`?tab=jobs`, count badge): the customer's complete job history — deliberately including **paid** jobs the Pipeline hides by default. Columns: **Job** (effective ledger number → Job Detail modal), name, **status** (shared dot + Dashboard label), **Progress & payment** (green fill bar of `payments_made / revenue`; paid jobs show the single collected figure; `revenue = 0` reads "not billed"), created date. Header carries **"Open in Pipeline →"** deep-linking `/jobs?customer=` for mutations — this tab is a read surface; all job actions live in the existing Job Detail modal / Pipeline. `fetchCustomerProfile` jobs select gains `created_at` (additive). Verified live: a 2-job customer renders Working $0/$700 (empty bar) and Paid $250 (full bar) with dates. Client-only — no migration.
 
 ## Latest Updates (v2.1777)
 

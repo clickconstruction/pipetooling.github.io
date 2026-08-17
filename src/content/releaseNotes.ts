@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1778',
+    date: '2026-08-17',
+    title: 'Customer pages: the Jobs tab',
+    kind: 'feature',
+    highlights: [
+      'A customer\'s page now has a Jobs tab with their complete job history — including paid jobs the Pipeline normally hides — each with a payment progress bar.',
+      'Click a job number for its detail card, or Open in Pipeline to work the rows on the board.',
+    ],
+  },
+  {
     version: 'v2.1777',
     date: '2026-08-17',
     title: 'Customer pages: the Estimates tab',

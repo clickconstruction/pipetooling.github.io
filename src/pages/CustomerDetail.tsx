@@ -40,10 +40,10 @@ import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActiv
 const money = (n: number) =>
   `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
 
-export type CustomerDetailTab = 'profile' | 'estimates'
+export type CustomerDetailTab = 'profile' | 'estimates' | 'jobs'
 
-const TAB_LABELS: Record<CustomerDetailTab, string> = { profile: 'Profile', estimates: 'Estimates' }
-const TABS: CustomerDetailTab[] = ['profile', 'estimates']
+const TAB_LABELS: Record<CustomerDetailTab, string> = { profile: 'Profile', estimates: 'Estimates', jobs: 'Jobs' }
+const TABS: CustomerDetailTab[] = ['profile', 'estimates', 'jobs']
 
 function parseTab(raw: string | null): CustomerDetailTab {
   return TABS.includes(raw as CustomerDetailTab) ? (raw as CustomerDetailTab) : 'profile'
@@ -323,7 +323,7 @@ export default function CustomerDetail() {
       <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', margin: '10px 0 16px' }}>
         {TABS.map((tab) => {
           const on = tab === activeTab
-          const count = tab === 'estimates' ? data.estimates.length : null
+          const count = tab === 'estimates' ? data.estimates.length : tab === 'jobs' ? data.jobs.length : null
           return (
             <button
               key={tab}
@@ -752,6 +752,148 @@ export default function CustomerDetail() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ) : activeTab === 'jobs' ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', overflowX: 'auto' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '9px 13px',
+              borderBottom: '1px solid var(--border)',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              color: 'var(--text-strong)',
+            }}
+          >
+            All jobs — full history including paid
+            <Link
+              to={`/jobs?customer=${customerId}`}
+              style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
+            >
+              Open in Pipeline →
+            </Link>
+          </div>
+          {data.jobs.length === 0 ? (
+            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-faint)' }}>
+              No jobs for this customer yet.
+            </p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr>
+                  {['Job', 'Name', 'Status', 'Progress & payment', 'Created'].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: 'left',
+                        fontSize: '0.66rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-faint)',
+                        padding: '8px 12px',
+                        borderBottom: '2px solid var(--border)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.jobs.map((j) => {
+                  const revenue = Number(j.revenue ?? 0)
+                  const paid = Number(j.payments_made ?? 0)
+                  const pct = revenue > 0 ? Math.min(100, Math.round((paid / revenue) * 100)) : 0
+                  const status = normalizeJobsLedgerStatus(j.status) ?? 'working'
+                  return (
+                    <tr key={j.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => jobDetail?.openJobDetail({ jobId: j.id })}
+                          title="Open job detail"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            font: 'inherit',
+                            fontWeight: 700,
+                            color: 'var(--text-link)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || 'Job'}
+                        </button>
+                      </td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-700)', maxWidth: 320 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(j.job_name ?? '').trim() || '—'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span
+                            aria-hidden
+                            style={{ width: 8, height: 8, borderRadius: 9999, background: jobsLedgerStatusDotColor(status) }}
+                          />
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>
+                            {labelJobsLedgerStatusForDashboard(status)}
+                          </span>
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', minWidth: 190 }}>
+                        {revenue > 0 ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span
+                              aria-hidden
+                              style={{
+                                flex: 1,
+                                height: 6,
+                                borderRadius: 3,
+                                background: 'var(--bg-muted)',
+                                position: 'relative',
+                                minWidth: 60,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  bottom: 0,
+                                  left: 0,
+                                  width: `${pct}%`,
+                                  borderRadius: 3,
+                                  background: 'var(--text-green-600)',
+                                }}
+                              />
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.74rem',
+                                color: 'var(--text-muted)',
+                                whiteSpace: 'nowrap',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {status === 'paid' ? money(revenue) : `${money(paid)} / ${money(revenue)}`}
+                            </span>
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.74rem', color: 'var(--text-faint)' }}>not billed</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {j.created_at ? feedDateLabel(j.created_at) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}

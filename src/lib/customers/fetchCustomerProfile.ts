@@ -18,7 +18,12 @@ export type CustomerProfileData = {
   customer: CustomerRow
   contactPersons: Array<{ id: string; name: string; phone: string | null; email: string | null }>
   jobs: Array<
-    ProfileJob & { hcp_number: string | null; click_number: string | null; job_name: string | null }
+    ProfileJob & {
+      hcp_number: string | null
+      click_number: string | null
+      job_name: string | null
+      created_at: string | null
+    }
   >
   projects: Array<{ id: string; name: string | null; status: string | null; attention: ProjectAttention | null }>
   bids: Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null }>
@@ -49,7 +54,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
         supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, click_number, job_name, status, revenue, payments_made, invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date), payments:jobs_ledger_payments(invoice_id, amount, paid_on)',
+            'id, hcp_number, click_number, job_name, status, revenue, payments_made, created_at, invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date), payments:jobs_ledger_payments(invoice_id, amount, paid_on)',
           )
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false }),
