@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1737',
+    date: '2026-08-16',
+    title: 'One row per sub in Outstanding',
+    kind: 'fix',
+    highlights: [
+      'The Sub Labor "Outstanding by contractor" panel now recognizes each sub by identity, so renaming a sub no longer splits what you owe them into two rows — and their row shows the current name.',
+    ],
+  },
+  {
     version: 'v2.1736',
     date: '2026-08-16',
     title: 'Shared sub sheets count in the Team Summary',

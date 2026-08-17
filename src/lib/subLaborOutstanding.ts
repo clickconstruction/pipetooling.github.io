@@ -61,8 +61,15 @@ export function subLaborJobMatchesSearch(
   return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
 }
 
+/** One junction row for a sheet: the roster person and their CURRENT name. */
+export type SubLaborSheetAssignee = { personId: string; personName: string | null }
+
 export type SubLaborOutstandingRow = {
-  /** normalizePersonNameKey(assigned_to_name); '' for blank names. */
+  /**
+   * `id:<people.id>` when the sheet has exactly one junction assignee
+   * (rename-proof, identity Phase D); otherwise
+   * normalizePersonNameKey(assigned_to_name); '' for blank names.
+   */
   key: string
   /** First-seen display name; '' is rendered as "(No name)" by the UI. */
   name: string
@@ -89,14 +96,25 @@ export type SubLaborOutstandingByPerson = {
  * positive-balance jobs are summed, each row satisfies
  * `outstanding === totalCost - paid`, and `totalOutstanding` equals the
  * floored-per-job grand total over the same job set.
+ *
+ * Keying (RUN_SUBS_PLAN PR 3.4, shipped v2.1737): a sheet with exactly ONE
+ * junction assignee groups by `people.id` under the person's CURRENT roster
+ * name — a renamed sub no longer splits into two rows. Multi-assignee sheets
+ * keep the combined-name row (this is AP — you pay the sheet, not half of
+ * it), and sheets the junction doesn't cover degrade to the name key.
  */
-export function buildSubLaborOutstandingByPerson(jobs: LaborJob[]): SubLaborOutstandingByPerson {
+export function buildSubLaborOutstandingByPerson(
+  jobs: LaborJob[],
+  assigneesByJobId?: ReadonlyMap<string, readonly SubLaborSheetAssignee[]>,
+): SubLaborOutstandingByPerson {
   const byKey = new Map<string, SubLaborOutstandingRow>()
   for (const job of jobs) {
     const { totalCost, paid, backcharges, balance } = subLaborJobBalance(job)
     if (balance <= 0) continue
-    const name = job.assigned_to_name ?? ''
-    const key = normalizePersonNameKey(name)
+    const assignees = assigneesByJobId?.get(job.id)
+    const soleAssignee = assignees && assignees.length === 1 ? assignees[0] : null
+    const name = (soleAssignee?.personName?.trim() || job.assigned_to_name) ?? ''
+    const key = soleAssignee ? `id:${soleAssignee.personId}` : normalizePersonNameKey(name)
     const existing = byKey.get(key)
     if (existing) {
       existing.outstanding += balance

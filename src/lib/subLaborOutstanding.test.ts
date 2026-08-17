@@ -88,6 +88,53 @@ describe('subLaborJobMatchesSearch', () => {
 })
 
 describe('buildSubLaborOutstandingByPerson', () => {
+  it('groups single-assignee sheets by person id under the CURRENT roster name (rename-proof)', () => {
+    // Two sheets written under different name spellings, same junction person:
+    // one row, keyed by id, displaying the roster's current name.
+    const assignees = new Map([
+      ['a', [{ personId: 'p-zach', personName: 'Zach W' }]],
+      ['b', [{ personId: 'p-zach', personName: 'Zach W' }]],
+    ])
+    const { rows, totalOutstanding } = buildSubLaborOutstandingByPerson(
+      [
+        job({ id: 'a', assigned_to_name: 'Zack', labor_rate: 50, items: [{ fixture: 'x', count: 1, hrs_per_unit: 2 }], payments: [] }), // bal 100
+        job({ id: 'b', assigned_to_name: 'Zach W', labor_rate: 50, items: [{ fixture: 'y', count: 1, hrs_per_unit: 1 }], payments: [] }), // bal 50
+      ],
+      assignees,
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.key).toBe('id:p-zach')
+    expect(rows[0]!.name).toBe('Zach W')
+    expect(rows[0]!.outstanding).toBe(150)
+    expect(totalOutstanding).toBe(150)
+  })
+
+  it('keeps multi-assignee and junction-less sheets on the legacy name key', () => {
+    const assignees = new Map([
+      ['multi', [{ personId: 'p-a', personName: 'Alice' }, { personId: 'p-b', personName: 'Bob' }]],
+      // 'solo' deliberately absent — junction never covered it.
+    ])
+    const { rows } = buildSubLaborOutstandingByPerson(
+      [
+        job({ id: 'multi', assigned_to_name: 'Alice | Bob', labor_rate: 50, items: [{ fixture: 'x', count: 1, hrs_per_unit: 2 }], payments: [] }),
+        job({ id: 'solo', assigned_to_name: 'Carol', labor_rate: 50, items: [{ fixture: 'y', count: 1, hrs_per_unit: 1 }], payments: [] }),
+      ],
+      assignees,
+    )
+    expect(rows.map((r) => r.name).sort()).toEqual(['Alice | Bob', 'Carol'])
+    expect(rows.every((r) => !r.key.startsWith('id:'))).toBe(true)
+  })
+
+  it('falls back to the sheet name when the junction person name is hidden (RLS)', () => {
+    const assignees = new Map([['a', [{ personId: 'p-x', personName: null }]]])
+    const { rows } = buildSubLaborOutstandingByPerson(
+      [job({ id: 'a', assigned_to_name: 'Mario Lozano', labor_rate: 50, items: [{ fixture: 'x', count: 1, hrs_per_unit: 1 }], payments: [] })],
+      assignees,
+    )
+    expect(rows[0]!.key).toBe('id:p-x')
+    expect(rows[0]!.name).toBe('Mario Lozano')
+  })
+
   it('collapses case-differing names to one row, sums outstanding, keeps first-seen name', () => {
     const { rows } = buildSubLaborOutstandingByPerson([
       job({ id: 'a', assigned_to_name: 'Mike', labor_rate: 50, items: [{ fixture: 'x', count: 1, hrs_per_unit: 2 }], payments: [] }), // bal 100
