@@ -32,7 +32,7 @@ export function StepFormModal({
   dependsOnStepId: string | null
   insertAfterStepId: string | null
   steps: Step[]
-  onSave: (p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) => void
+  onSave: (p: { name: string; assigned_to_name: string; assigned_person_id: string | null; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) => void
   onClose: () => void
   onCopy?: () => void
   toDatetimeLocal: (iso: string | null) => string
@@ -41,15 +41,18 @@ export function StepFormModal({
   const { user: authUser } = useAuth()
   const [name, setName] = useState(step?.name ?? '')
   const [assigned_to_name, setAssignedToName] = useState(step?.assigned_to_name ?? '')
+  // people.id of the picked assignee (identity Phase D). Null for free-typed
+  // names and users-sourced picks — the DB trigger resolves those from the name.
+  const [assignedPersonId, setAssignedPersonId] = useState<string | null>(step?.assigned_person_id ?? null)
   const [started_at, setStartedAt] = useState(toDatetimeLocal(step?.started_at ?? null))
   const [ended_at, setEndedAt] = useState(toDatetimeLocal(step?.ended_at ?? null))
   const [depends_on_step_id, setDependsOnStepId] = useState(dependsOnStepId ?? '')
   const [insert_after_step_id, setInsertAfterStepId] = useState(insertAfterStepId ?? '')
 
   // Autocomplete state
-  const [mastersAndSubs, setMastersAndSubs] = useState<Array<{name: string, source: 'user' | 'people'}>>([])
+  const [mastersAndSubs, setMastersAndSubs] = useState<Array<{name: string, source: 'user' | 'people', personId: string | null}>>([])
   const [assignedSearch, setAssignedSearch] = useState(step?.assigned_to_name ?? '')
-  const [filteredMastersSubs, setFilteredMastersSubs] = useState<Array<{name: string, source: 'user' | 'people'}>>([])
+  const [filteredMastersSubs, setFilteredMastersSubs] = useState<Array<{name: string, source: 'user' | 'people', personId: string | null}>>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [showAddPerson, setShowAddPerson] = useState(false)
   const [newPerson, setNewPerson] = useState({name: '', email: '', phone: '', notes: ''})
@@ -87,26 +90,26 @@ export function StepFormModal({
       ;[usersRes, peopleRes] = await Promise.all([
         supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'helpers', 'primary']),
         adoptedMasterIds.length > 0
-          ? supabase.from('people').select('name, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).in('kind', ['master_technician', 'sub', 'helper'])
-          : { data: [] as Array<{ name: string; kind: string }> },
+          ? supabase.from('people').select('id, name, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).in('kind', ['master_technician', 'sub', 'helper'])
+          : { data: [] as Array<{ id: string; name: string; kind: string }> },
       ])
     } else {
       ;[usersRes, peopleRes] = await Promise.all([
         supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'helpers', 'primary']),
-        supabase.from('people').select('name, kind').is('archived_at', null).eq('master_user_id', authUser.id).in('kind', ['master_technician', 'sub', 'helper']),
+        supabase.from('people').select('id, name, kind').is('archived_at', null).eq('master_user_id', authUser.id).in('kind', ['master_technician', 'sub', 'helper']),
       ])
     }
 
     const fromUsers = ((usersRes.data as Array<{name: string | null, role: string}> | null) ?? [])
       .filter((u): u is {name: string, role: string} => !!u.name)
-      .map(u => ({ name: u.name, source: 'user' as const }))
+      .map(u => ({ name: u.name, source: 'user' as const, personId: null as string | null }))
 
-    const fromPeople = ((peopleRes.data as Array<{name: string, kind: string}> | null) ?? [])
-      .map(p => ({ name: p.name, source: 'people' as const }))
+    const fromPeople = ((peopleRes.data as Array<{id: string, name: string, kind: string}> | null) ?? [])
+      .map(p => ({ name: p.name, source: 'people' as const, personId: p.id as string | null }))
 
     // Combine and deduplicate by name (case-insensitive)
-    const nameMap = new Map<string, {name: string, source: 'user' | 'people'}>()
-    const allPeople: Array<{name: string, source: 'user' | 'people'}> = [...fromUsers, ...fromPeople]
+    const nameMap = new Map<string, {name: string, source: 'user' | 'people', personId: string | null}>()
+    const allPeople: Array<{name: string, source: 'user' | 'people', personId: string | null}> = [...fromUsers, ...fromPeople]
     for (const item of allPeople) {
       const key = item.name.toLowerCase()
       if (!nameMap.has(key)) {
@@ -121,6 +124,8 @@ export function StepFormModal({
   function handleAssignedSearchChange(value: string) {
     setAssignedSearch(value)
     setAssignedToName(value)
+    // Free-typed text has no picked identity — the DB trigger resolves it.
+    setAssignedPersonId(null)
 
     if (!value.trim()) {
       setShowDropdown(false)
@@ -137,9 +142,10 @@ export function StepFormModal({
     setShowDropdown(true)
   }
 
-  function handleSelectPerson(personName: string) {
+  function handleSelectPerson(personName: string, personId: string | null = null) {
     setAssignedSearch(personName)
     setAssignedToName(personName)
+    setAssignedPersonId(personId)
     setShowDropdown(false)
   }
 
@@ -195,7 +201,7 @@ export function StepFormModal({
 
     const offRosterKind: 'sub' | 'helper' = viewerRole === 'helpers' ? 'helper' : 'sub'
     // Create new person (default to helper/sub for helpers/subcontractor field users)
-    const { error: err } = await supabase
+    const { data: created, error: err } = await supabase
       .from('people')
       .insert({
         master_user_id: authUser.id,
@@ -205,7 +211,7 @@ export function StepFormModal({
         phone: newPerson.phone.trim() || null,
         notes: newPerson.notes.trim() || null,
       })
-      .select('name')
+      .select('id, name')
       .single()
 
     if (err) {
@@ -220,6 +226,7 @@ export function StepFormModal({
     // Set the assigned name to the new person
     setAssignedToName(trimmedName)
     setAssignedSearch(trimmedName)
+    setAssignedPersonId((created as { id: string } | null)?.id ?? null)
 
     // Close modal and reset form
     setShowAddPerson(false)
@@ -232,6 +239,7 @@ export function StepFormModal({
     onSave({
       name,
       assigned_to_name,
+      assigned_person_id: assignedPersonId,
       started_at: fromDatetimeLocal(started_at),
       ended_at: fromDatetimeLocal(ended_at),
       ...(step ? { depends_on_step_id: depends_on_step_id || null } : {}),
@@ -340,7 +348,7 @@ export function StepFormModal({
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault()
-                      handleSelectPerson(item.name)
+                      handleSelectPerson(item.name, item.personId)
                     }}
                     style={{
                       width: '100%',

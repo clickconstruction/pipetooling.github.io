@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 17, 2026 (UTC filename; work dated 2026-08-16)
 
+**`20260817012110_workflow_step_readers_person_id_first.sql`** _(applied via `supabase db push` with the v2.1733 merge — `CREATE OR REPLACE` functions + DROP/CREATE of three policies in one transaction; every check is a strict superset of the old name match, so old clients and unfilled ids degrade to prior behavior)_
+- **Purpose**: Person-identity Phase D reader flip for workflow steps. New shared predicate `step_assignee_matches_user(assigned_person_id, assigned_to_name, user_id)` — id-first via `people.account_user_id`, legacy `lower(btrim(name))` fallback, SECURITY DEFINER so people/users RLS never recurses into step policies. Rewired: RLS `"Users can see steps for workflows they have access to"` (sub-like assignee branch), `"Subcontractors can update their assigned project_workflow_steps"` (USING + WITH CHECK), `"Users can see workflows they have access to"` (has-assigned-step branch); RPCs `get_assigned_steps_for_dashboard` / `get_assigned_steps_with_projects_for_dashboard` (id branch alongside the `p_user_name` match), `can_access_step_for_action` (assistant/sub assignee branch), `user_has_assigned_step_in_project`, `update_step_assignment` (assistant self-match). Fixes the rename bite: a renamed user kept `assigned_person_id` links but failed every name equality.
+- **Category**: Workflow / RLS + RPC replace
+
 **`20260817011025_settle_commitment_writes_assignee_junction.sql`** _(applied via `supabase db push` with the v2.1732 merge — `CREATE OR REPLACE` of an existing RPC, old clients unaffected)_
 - **Purpose**: Person-identity Phase D — `settle_step_commitment` re-created with one addition: after creating/reusing the sub sheet it INSERTs the `people_labor_job_assignees` junction row directly from `step_commitments.person_id` (`ON CONFLICT DO NOTHING`), so the sheet is id-linked even when `display_name` doesn't resolve through `resolve_pay_person_id` (renamed/archived person). Body otherwise identical to `20260801170000`.
 - **Category**: Workflow / RPC replace

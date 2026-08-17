@@ -1375,6 +1375,7 @@ export default function Workflow() {
         sequence_order: newOrder,
         name: step.name,
         assigned_to_name: step.assigned_to_name,
+        ...(step.assigned_person_id ? { assigned_person_id: step.assigned_person_id } : {}),
         step_type: step.step_type,
         assigned_skill: step.assigned_skill,
         status: 'pending', // Reset status for copy
@@ -1414,7 +1415,7 @@ export default function Workflow() {
     closeStepForm()
   }
 
-  async function saveStep(p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
+  async function saveStep(p: { name: string; assigned_to_name: string; assigned_person_id?: string | null; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
     let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
@@ -1441,6 +1442,10 @@ export default function Workflow() {
       const { error: upErr } = await supabase.from('project_workflow_steps').update({
         name: p.name.trim(),
         assigned_to_name: p.assigned_to_name.trim() || null,
+        // Only write an explicitly picked id — omitting the field lets the
+        // set_assigned_person_id_on_write trigger resolve from the name, and
+        // an explicit null would strip an id the trigger could re-derive.
+        ...(p.assigned_person_id ? { assigned_person_id: p.assigned_person_id } : {}),
         started_at: p.started_at,
         ended_at: p.ended_at,
       }).eq('id', stepForm.step.id)
@@ -1510,6 +1515,7 @@ export default function Workflow() {
         sequence_order: newOrder,
         name: p.name.trim(),
         assigned_to_name: p.assigned_to_name.trim() || null,
+        ...(p.assigned_person_id ? { assigned_person_id: p.assigned_person_id } : {}),
         started_at: p.started_at,
         ended_at: p.ended_at,
         status: 'pending',

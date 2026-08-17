@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1732)
+last_updated: 2026-08-16 (v2.1733)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1733)
+
+### People identity: workflow step assignment goes id-first end-to-end (Phase D) (2026-08-16)
+Third PR of the Phase D close-out — the reader flip deferred since v2.1201. **Server** (migration `20260817012110`, see `MIGRATIONS.md`): new shared predicate `step_assignee_matches_user` (assigned_person_id → `people.account_user_id` first, `lower(btrim(name))` fallback) now backs the three step/workflow RLS policies (sub SELECT/UPDATE, workflow SELECT), both dashboard RPCs (`get_assigned_steps_for_dashboard`, `get_assigned_steps_with_projects_for_dashboard`), `can_access_step_for_action`, `user_has_assigned_step_in_project`, and `update_step_assignment`'s assistant self-match — renaming a user no longer silently revokes their step visibility, dashboard lists, or update rights. **Writers**: [`StepFormModal`](../src/components/workflow/StepFormModal.tsx) dropdown picks and its Add-person flow now carry `people.id` into `assigned_person_id` on insert/edit (free-typed names still resolve via the trigger; explicit null is never written); Workflow's copy-step preserves the id. **Notifications**: [`stepLifecycleNotifications`](../src/lib/workflow/stepLifecycleNotifications.ts) resolves recipients id-first (person → account user → email) with the name path as fallback. Fail-soft everywhere: steps with an unfilled id behave exactly as before. Deploy: db push with this PR.
 
 ## Latest Updates (v2.1732)
 
