@@ -145,7 +145,7 @@ import {
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from '../../lib/jobsStagesScheduleSessionSearch'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
-import { JobsFollowupModal } from './JobsFollowupModal'
+import { JobsFollowupModal, type JobsFollowupStageRowResult } from './JobsFollowupModal'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -1308,7 +1308,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * page's search/exclusion filters so a filtered-out job still gets its row.
    */
   const followupBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
-  const renderFollowupStageRow = (jobId: string): ReactNode => {
+  const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
     const job = jobs.find((x) => x.id === jobId)
     if (!job) return null
     const shared = {
@@ -1374,8 +1374,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     const status = (job.status ?? 'working') as string
     if (status === 'waiting') {
-      return (
+      return { stage: 'waiting', node: (
         <StagesSectionList
+          hideHeader
           jobList={[job]}
           actionLabel={'Move to Working'}
           onAction={(j) => void updateJobStatus(j.id, 'working')}
@@ -1385,11 +1386,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           showPctComplete={true}
           {...shared}
         />
-      )
+      ) }
     }
     if (status === 'working') {
-      return (
+      return { stage: 'working', node: (
         <StagesSectionList
+          hideHeader
           jobList={[job]}
           actionLabel={'Ready to Bill'}
           onAction={(j) =>
@@ -1405,13 +1407,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           showPctComplete={true}
           {...shared}
         />
-      )
+      ) }
     }
     if (status === 'ready_to_bill') {
       const rows = followupBoardLists.readyToBillRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
-      return (
+      return { stage: 'ready_to_bill', node: (
         <StagesUnifiedSectionList
+          hideHeader
           rows={rows}
           actionLabel={'Bill Customer'}
           onJobAction={(j) => {
@@ -1478,13 +1481,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
           {...unifiedShared}
         />
-      )
+      ) }
     }
     if (status === 'billed' && jobInCollections(job)) {
       const rows = followupBoardLists.collectionsRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
-      return (
+      return { stage: 'collections', node: (
         <StagesUnifiedSectionList
+          hideHeader
           rows={rows}
           actionLabel={'Mark Paid'}
           onJobAction={(j) => setMarkPaidJob(j)}
@@ -1505,13 +1509,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           jobNoteLine={(j) => j.collections_note ?? null}
           {...unifiedShared}
         />
-      )
+      ) }
     }
     if (status === 'billed') {
       const rows = followupBoardLists.billedActiveRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
-      return (
+      return { stage: 'billed', node: (
         <StagesUnifiedSectionList
+          hideHeader
           rows={rows}
           actionLabel={'Mark Paid'}
           onJobAction={(j) => setMarkPaidJob(j)}
@@ -1548,7 +1553,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             : undefined}
           {...unifiedShared}
         />
-      )
+      ) }
     }
     return null
   }

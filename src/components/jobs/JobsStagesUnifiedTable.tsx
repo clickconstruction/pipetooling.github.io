@@ -71,6 +71,8 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  */
 export type JobsStagesUnifiedTableProps = {
   rows: StageRow[]
+  /** Follow-Up deck embed (v2.1740): the card names the columns' context itself, so skip the header row. */
+  hideHeader?: boolean
   actionLabel: React.ReactNode | null
   onJobAction: (j: JobWithDetails) => void
   onInvoiceAction: (inv: InvoiceWithJob) => void
@@ -160,6 +162,7 @@ export type JobsStagesUnifiedTableProps = {
 export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProps) {
   const {
     rows,
+    hideHeader,
     actionLabel,
     onJobAction,
     onInvoiceAction,
@@ -343,6 +346,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
           <col style={{ width: '12rem' }} />
           <col style={{ width: 140 }} />
         </colgroup>
+        {hideHeader ? null : (
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             <th
@@ -369,6 +373,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
             <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.length === 0 ? (
             <tr>

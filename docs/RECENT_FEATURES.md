@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1741)
+last_updated: 2026-08-16 (v2.1742)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1742)
+
+### Follow-ups: the Pipeline row names its stage, drops its header (2026-08-16)
+Owner picked mockup Option A (stage chip). The deck card's "Pipeline row" label line now carries a colored stage chip in the deck's own chip palette — **Waiting / Working / Ready to Bill / Billed Awaiting Payment / Collections** (board section names). The chip reports **which board section the row was actually drawn from**, not the card's header stage: `renderFollowupStageRow` now returns `{ node, stage }` (exported `JobsFollowupStageRowResult`), so a collections-flagged job whose header chip says "Billed" gets a **Collections** chip on its row. Second ask on the same screenshot: the embedded row's `Crew & Dates / Job / Progress & payment` header row is gone — new opt-in `hideHeader` prop on [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) + [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (skips the `<thead>`; the Pipeline board itself is untouched, and the mobile card lists ignore the flag). Verified live: Billed card shows the red "Billed Awaiting Payment" chip with no header row; Working card shows the blue "Working" chip; the board behind still has its headers. Client-only — no migration. (v2.1741 is a parallel session's claim; v2.1743 was double-minted for this branch and released.)
 
 ## Latest Updates (v2.1741)
 
