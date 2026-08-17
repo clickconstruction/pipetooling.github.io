@@ -308,7 +308,7 @@ export default function CustomerDetail() {
       </div>
 
       {/* contact band */}
-      {(contact.phone || contact.email || address || data.contactPersons.length > 0) && (
+      {(contact.phone || contact.email || address || data.extraAddresses.length > 0 || data.contactPersons.length > 0) && (
         <div
           style={{
             display: 'flex',
@@ -340,6 +340,20 @@ export default function CustomerDetail() {
               📍 {address}
             </a>
           )}
+          {data.extraAddresses.map((a) => (
+            <a
+              key={a.id}
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.address)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--text-link)', textDecoration: 'none' }}
+            >
+              📍 {a.address}
+              {(a.note ?? '').trim() ? (
+                <span style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}> ({a.note})</span>
+              ) : null}
+            </a>
+          ))}
           {data.contactPersons.length > 0 && (
             <span style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}>
               · contact{data.contactPersons.length > 1 ? 's' : ''}: {data.contactPersons.map((c) => c.name).join(', ')}

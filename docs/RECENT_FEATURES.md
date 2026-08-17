@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1787)
+last_updated: 2026-08-17 (v2.1788)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1788)
+
+### Customer addresses: the UI (addresses train PR 2) (2026-08-17)
+Completes the owner's multiple-addresses ask on the v2.1787 table. [`EditCustomerForm`](../src/components/EditCustomerForm.tsx) gains an **Additional addresses** expander mirroring the Contacts pattern exactly (per-row save independent of the form's Save; address + note fields; add/remove; drafts with a dirty-gated Save button). [`fetchCustomerProfile`](../src/lib/customers/fetchCustomerProfile.ts) adds an additive `customer_addresses` select (`sequence_order` ordered), and the hub's contact band renders every extra address as a maps link with its note in faint parens beside it — the primary `customers.address` unchanged and first. `database.ts` regenerated (+38 lines, `customer_addresses` types). Verified live end-to-end on the ZZ scratch customer: add -> "(1)" + hub shows the extra address with its note -> Remove -> "(0)" (test data cleaned). Help guide gains a "Track more than one property" section. Client + regenerated types — migration applied with v2.1787.
 
 ## Latest Updates (v2.1787)
 
