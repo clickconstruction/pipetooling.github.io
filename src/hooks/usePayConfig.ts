@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { resolvePersonIdFromRosterName } from '../lib/payPersonSubject'
+import { buildPayConfigById } from '../lib/people/payConfigLookup'
 import type { PayConfigRow } from '../types/peoplePayConfig'
 import type { Person, UserRow } from './usePeopleRoster'
 
@@ -21,6 +22,8 @@ export interface UsePayConfigDeps {
 
 export interface UsePayConfigResult {
   payConfig: Record<string, PayConfigRow>
+  /** person_id -> row over the same state (identity Phase D) — lookups go id-first via payConfigForPerson. */
+  payConfigById: Record<string, PayConfigRow>
   payConfigDraft: Record<string, string>
   payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
@@ -308,8 +311,11 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     }
   }, [])
 
+  const payConfigById = useMemo(() => buildPayConfigById(payConfig), [payConfig])
+
   return {
     payConfig,
+    payConfigById,
     payConfigDraft,
     payConfigOfficeWageDraft,
     payConfigSaving,

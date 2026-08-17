@@ -322,6 +322,7 @@ export default function People() {
   const payConfigRosterSectionsRef = useRef<Array<{ label: string; names: string[] }>>([])
   const {
     payConfig,
+    payConfigById,
     payConfigDraft,
     payConfigOfficeWageDraft,
     payConfigSaving,
@@ -3965,6 +3966,7 @@ export default function People() {
           users={users}
           authUserId={authUser?.id ?? null}
           payConfig={payConfig}
+          payConfigById={payConfigById}
           payConfigDraft={payConfigDraft}
           payConfigOfficeWageDraft={payConfigOfficeWageDraft}
           payConfigSaving={payConfigSaving}

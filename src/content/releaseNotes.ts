@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1735',
+    date: '2026-08-16',
+    title: 'Pay settings follow the person',
+    kind: 'infra',
+    highlights: [
+      'The Employment tab now matches each person\'s pay settings by identity instead of by name text, so wage, salary grouping, and pay chips stay correct through renames.',
+    ],
+  },
+  {
     version: 'v2.1734',
     date: '2026-08-16',
     title: 'Salary clock and team hours, rename-proof',
