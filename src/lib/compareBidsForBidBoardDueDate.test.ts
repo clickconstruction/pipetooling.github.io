@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareBidsForBidBoardDueDate } from './compareBidsForBidBoardDueDate'
+import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from './compareBidsForBidBoardDueDate'
 
 describe('compareBidsForBidBoardDueDate', () => {
   it('puts dated due dates before unmarked', () => {
@@ -75,5 +75,29 @@ describe('compareBidsForBidBoardDueDate', () => {
         { id: 'n', bid_due_date: '2026-01-01', bid_due_time: '10:00' },
       ),
     ).toBeLessThan(0)
+  })
+})
+
+describe('compareBidsForBidBoardPendingRecency', () => {
+  const bid = (id: string, sent: string | null, due: string | null) => ({ id, bid_date_sent: sent, bid_due_date: due })
+
+  it('most recently sent first', () => {
+    const rows = [bid('a', '2026-08-01', null), bid('b', '2026-08-15', null), bid('c', '2026-08-10', null)]
+    expect([...rows].sort(compareBidsForBidBoardPendingRecency).map((r) => r.id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('falls back to bid_due_date when sent is missing, interleaved with sent dates', () => {
+    const rows = [bid('sent-old', '2026-07-01', null), bid('due-new', null, '2026-08-12'), bid('sent-new', '2026-08-15', null)]
+    expect([...rows].sort(compareBidsForBidBoardPendingRecency).map((r) => r.id)).toEqual(['sent-new', 'due-new', 'sent-old'])
+  })
+
+  it('rows with neither date sort last, stable by id', () => {
+    const rows = [bid('z', null, null), bid('a', null, null), bid('m', '2026-08-01', null)]
+    expect([...rows].sort(compareBidsForBidBoardPendingRecency).map((r) => r.id)).toEqual(['m', 'a', 'z'])
+  })
+
+  it('sent date wins over a newer due date on the same row', () => {
+    const rows = [bid('x', '2026-08-01', '2026-08-20'), bid('y', '2026-08-05', null)]
+    expect([...rows].sort(compareBidsForBidBoardPendingRecency).map((r) => r.id)).toEqual(['y', 'x'])
   })
 })

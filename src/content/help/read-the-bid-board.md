@@ -19,6 +19,8 @@ Tap a pill to jump straight to that section — it opens automatically if it was
 
 The two biggest sections (**Not yet won or lost** and **Lost**) start with their first 25 bids showing. Use {{button:outline-blue|Show all N ▾}} at the bottom of the list to see the rest; search always looks through every bid either way.
 
+**Not yet won or lost** lists the most recently *sent* bid first (falling back to the bid date if a row has no sent date) — the freshest submissions are at the top while you wait for answers. The other sections keep their due-date order, soonest first.
+
 ## Read a row
 
 Each row leads with the bid number: the **Counts** button sits on its left, the **Edit** gear on its right, and a red badge next to the number means unread notes. Then:

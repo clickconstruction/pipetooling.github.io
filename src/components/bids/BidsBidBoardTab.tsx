@@ -4,7 +4,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { resolveBidLedgerPrefix, formatBidLedgerNumberLabel, bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
-import { compareBidsForBidBoardDueDate } from '../../lib/compareBidsForBidBoardDueDate'
+import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from '../../lib/compareBidsForBidBoardDueDate'
 import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAlert'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
@@ -180,6 +180,9 @@ export function BidsBidBoardTab({
       if (k === 'unsent' && bid.working_board_archived_at) continue
       buckets[k].push(bid)
     }
+    // Pending reads newest-first (most recently sent on top, bid_due_date
+    // fallback) — the awaiting-an-answer list, not a due-date worklist (v2.1760).
+    buckets.pending.sort(compareBidsForBidBoardPendingRecency)
     return buckets
   }, [filteredBidsForBidBoard])
 
