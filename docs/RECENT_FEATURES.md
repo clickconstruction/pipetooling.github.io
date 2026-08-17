@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1752)
+last_updated: 2026-08-17 (v2.1753)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1753)
+
+### Follow-up deck: Latest activity opens the full-screen Job activity view (2026-08-17)
+Owner circled the deck card's **Latest activity** box: tapping it should open the full activity view. The box is now a button (role/tabIndex/Enter+Space, ↗ affordance in its label row) — clicking it opens the same full-screen [`JobsStagesActivityExpandModal`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) the board's "N Reports" chip uses, with everything live: full thread (notes/reports/status/billing/crew tabs), composer, % complete editor. Full reuse — [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) gains `onOpenActivity(jobId)` + `activityExpandOpen`, and [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) resolves the `JobWithDetails` and calls its existing `openJobActivityExpand` (which lazy-loads the thread) — the single modal instance renders at z 1001, above the deck (z 58), so **the deck stays open underneath**. Esc follows the one-layer-at-a-time pattern: the new `activityExpandOpen` guard on the deck's Escape listener means the first Esc closes only the activity view (verified live: modal opens over the deck with the full Feb→Mar timeline for job 429, first Esc leaves the deck standing). Help guide `job-followups` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1752)
 

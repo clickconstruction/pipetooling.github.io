@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1753',
+    date: '2026-08-17',
+    title: 'Follow-up cards: tap the activity box for the full story',
+    kind: 'feature',
+    highlights: [
+      'On a follow-up review card, tapping the "Latest activity" box now opens the job\'s full-screen activity view — the complete thread with notes, reports, status history, and crew.',
+      'Close it and you\'re right back on the same card in the deck.',
+    ],
+  },
+  {
     version: 'v2.1752',
     date: '2026-08-17',
     title: 'Follow-up cards: stage chips move up on phones',

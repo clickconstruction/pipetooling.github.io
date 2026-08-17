@@ -174,13 +174,17 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
   )
 }
 
-export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow }: {
+export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen }: {
   open: boolean
   onClose: () => void
   /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
   renderStageRow?: (jobId: string) => JobsFollowupStageRowResult | null
   /** Clicking the row's label closes the deck and scrolls to + flashes the row on the Pipeline board (v2.1742). */
   onOpenBoardRow?: (jobId: string, stage: JobFollowupStage) => void
+  /** Clicking the Latest-activity box opens the full-screen Job activity modal above the deck (v2.1753). */
+  onOpenActivity?: (jobId: string) => void
+  /** True while that activity modal is on top — Esc belongs to it, not the deck. */
+  activityExpandOpen?: boolean
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -333,12 +337,12 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      // While the Job window is on top, Esc belongs to it — not the deck.
-      if (e.key === 'Escape' && !settingsOpen && !jobWindowOpen) onClose()
+      // While the Job window or the activity modal is on top, Esc belongs to it — not the deck.
+      if (e.key === 'Escape' && !settingsOpen && !jobWindowOpen && !activityExpandOpen) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose, settingsOpen, jobWindowOpen])
+  }, [open, onClose, settingsOpen, jobWindowOpen, activityExpandOpen])
 
   const advanceWithReview = useCallback(
     async (snoozedUntil: string | null) => {
@@ -629,8 +633,27 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
               </div>
 
               {tail.length > 0 ? (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.7rem', marginBottom: '0.7rem', background: 'var(--bg-slate-tint)' }}>
-                  <div style={{ fontSize: '0.64rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-slate-500)', marginBottom: '0.3rem' }}>Latest activity</div>
+                <div
+                  role={onOpenActivity ? 'button' : undefined}
+                  tabIndex={onOpenActivity ? 0 : undefined}
+                  aria-label={onOpenActivity ? 'Open full job activity' : undefined}
+                  onClick={onOpenActivity ? () => onOpenActivity(current.job.id) : undefined}
+                  onKeyDown={
+                    onOpenActivity
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            onOpenActivity(current.job.id)
+                          }
+                        }
+                      : undefined
+                  }
+                  style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.7rem', marginBottom: '0.7rem', background: 'var(--bg-slate-tint)', cursor: onOpenActivity ? 'pointer' : undefined }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                    <span style={{ fontSize: '0.64rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-slate-500)' }}>Latest activity</span>
+                    {onOpenActivity ? <span aria-hidden="true" style={{ color: 'var(--text-slate-500)', fontSize: '0.78rem', lineHeight: 1 }}>↗</span> : null}
+                  </div>
                   {tail.map((n) => (
                     <div key={n.id} style={{ display: 'flex', gap: '0.5rem', fontSize: '0.78rem', padding: '0.14rem 0' }}>
                       <span style={{ color: 'var(--text-slate-500)', whiteSpace: 'nowrap' }}>
