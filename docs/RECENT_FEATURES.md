@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1786)
+last_updated: 2026-08-17 (v2.1787)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1787)
+
+### Customer addresses: the table (addresses train PR 1) (2026-08-17)
+Owner request: customers need multiple addresses, each with a note. Migration [`20260817224600_customer_addresses.sql`](../supabase/migrations/20260817224600_customer_addresses.sql): new `customer_addresses` table (`customer_id` CASCADE, `address`, `note`, `sequence_order`), RLS mirroring `customer_contact_persons` (office + estimator via parent-customer access, four verbs), both read-only training-mode blocks. **`customers.address` stays the primary address** — map links, pickers, and supply-house prefill are untouched; rows here are additive. UI ships next in the train (Edit-form Addresses section + hub display). Note: v2.1786 (link-jobs sweep) shipped in a parallel PR. Backend-only — no client change.
 ## Latest Updates (v2.1786)
 
 ### Customers: the link-jobs sweep — attach 500+ orphaned jobs to their customers (2026-08-17)
