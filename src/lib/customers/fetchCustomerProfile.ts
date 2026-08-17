@@ -22,7 +22,15 @@ export type CustomerProfileData = {
   >
   projects: Array<{ id: string; name: string | null; status: string | null; attention: ProjectAttention | null }>
   bids: Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null }>
-  estimates: Array<{ id: string; estimate_number: number; title: string | null; status: string }>
+  estimates: Array<{
+    id: string
+    estimate_number: number
+    title: string | null
+    status: string
+    total_cents: number
+    sent_at: string | null
+    updated_at: string | null
+  }>
 }
 
 export async function fetchCustomerProfile(customerId: string): Promise<CustomerProfileData> {
@@ -59,7 +67,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
       .order('created_at', { ascending: false }),
     supabase
       .from('estimates')
-      .select('id, estimate_number, title, status')
+      .select('id, estimate_number, title, status, total_cents, sent_at, updated_at')
       .eq('customer_id', customerId)
       .order('created_at', { ascending: false }),
   ])

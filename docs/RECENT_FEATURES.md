@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1776)
+last_updated: 2026-08-17 (v2.1777)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1777)
+
+### Customer Hub: the Estimates tab (2026-08-17)
+PR 3 of the Customer Hub train. [`CustomerDetail`](../src/pages/CustomerDetail.tsx) gains its second tab — **Estimates** (`?tab=estimates`, count badge in the strip): a full-width table of the customer's estimates with **#** (deep-links `/estimates/:number`), title, **status** (dot via the shared `estimateStatusDotColor` + Draft/Sent/Accepted/Declined/Superseded label), right-aligned **total**, and sent/updated dates. Data rides the existing `fetchCustomerProfile` batch — its estimates select gains `total_cents, sent_at, updated_at` (additive; the profile modal shares the fetch unchanged). Empty state for customers with no estimates. Verified live: a 2-estimate customer renders Draft $0 and Accepted $2,500 with correct dots and dates; `?tab=estimates` deep-link lands on the tab. Client-only — no migration.
 
 ## Latest Updates (v2.1776)
 

@@ -27,6 +27,10 @@ The customer's name and type at the top, their phone / email / address as tap-to
 
 The **Open jobs** panel lists every job that isn't paid yet — click a job number to open its detail card, or use {{button:outline-blue|View all in Pipeline →}} to see the customer's rows on the Jobs Pipeline.
 
+## Check their estimates
+
+The **Estimates** tab lists every estimate for this customer — status ({{chip:gray|Draft}} {{chip:blue|Sent}} {{chip:green|Accepted}} {{chip:red|Declined}}), total, and when it was sent and last updated. Click the estimate number to open it.
+
 ## Follow the Activity feed
 
 The **Activity** panel is one timeline of everything happening for this customer, across all their jobs — stage moves (with who moved them), invoices billed, payments received, job notes, estimates created and accepted, dispatch tasks, and customer notes.
