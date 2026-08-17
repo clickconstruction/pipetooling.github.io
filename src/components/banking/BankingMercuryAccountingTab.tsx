@@ -829,9 +829,9 @@ export function BankingMercuryAccountingTab({
     if (rulesSearchNorm === '') return rules
     return rules.filter((r) => {
       const labelText = accountingRuleLabelDisplayText(r.label_id, labelById.get(r.label_id)?.name)
-      return accountingRuleRowMatchesSearch(r.name, labelText, rulesSearchNorm)
+      return accountingRuleRowMatchesSearch(r.name, labelText, rulesSearchNorm, ruleAttributionNameById.get(r.id))
     })
-  }, [rules, labelById, rulesSearchNorm])
+  }, [rules, labelById, rulesSearchNorm, ruleAttributionNameById])
 
   const rulesSortedForTable = useMemo(() => {
     if (rulesTableSort.column === 'none') return rulesFilteredForTable
@@ -2493,6 +2493,7 @@ export function BankingMercuryAccountingTab({
       />
 
       <BankingMercuryAccountingRulesModal
+        ruleAttributionNameById={ruleAttributionNameById}
         open={rulesModalOpen}
         onClose={() => setRulesModalOpen(false)}
         rulesLoading={rulesLoading}

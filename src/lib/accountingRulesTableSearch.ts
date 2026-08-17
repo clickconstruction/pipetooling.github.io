@@ -48,11 +48,20 @@ export function sortAccountingRulesForTable<T extends AccountingRuleSortFields>(
   return out
 }
 
-/** Case-insensitive substring match on rule name or label column text. `qNorm` must be non-empty lowercase trimmed query. */
+/**
+ * Case-insensitive substring match on rule name, label column text, or the
+ * attributed person's display name (the "Label | Person" column, v2.1738).
+ * `qNorm` must be non-empty lowercase trimmed query.
+ */
 export function accountingRuleRowMatchesSearch(
   ruleName: string,
   labelDisplayText: string,
   qNorm: string,
+  personDisplayText?: string | null,
 ): boolean {
-  return ruleName.toLowerCase().includes(qNorm) || labelDisplayText.toLowerCase().includes(qNorm)
+  return (
+    ruleName.toLowerCase().includes(qNorm) ||
+    labelDisplayText.toLowerCase().includes(qNorm) ||
+    (personDisplayText ?? '').toLowerCase().includes(qNorm)
+  )
 }

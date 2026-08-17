@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1739)
+last_updated: 2026-08-16 (v2.1740)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1740)
+
+### Banking: Rules table shows "Label | Person", drops Enabled (2026-08-16)
+Owner request (screenshot). The Rules modal's Label column becomes **Label | Person** — a rule with a People-in-Rules attribution (v2.1725) appends `| <person>` in muted text after the label ([`BankingMercuryAccountingRulesModal`](../src/components/banking/BankingMercuryAccountingRulesModal.tsx), fed by the tab's existing `ruleAttributionNameById` memo, same display names as the approval chips incl. `· Sub`-style kind tags). The **Enabled column is hidden** (all 522 rules read "Yes"; Edit still exposes the toggle). Bonus the change surfaced: the rules search now also matches the attributed person's name ([`accountingRuleRowMatchesSearch`](../src/lib/accountingRulesTableSearch.ts) gains an optional person arg, +1 test) — searching "Mike Z" previously found nothing because his rule is named "Michael Zinna - Contract Labor"; verified live that it now finds it. Client-only — no migration.
 
 ## Latest Updates (v2.1739)
 
@@ -21,7 +26,6 @@ Owner request: the Stages board's row — Crew & Dates / Job / Progress & paymen
 
 ### Follow-ups: "Open job ↗" actually opens the Job window (2026-08-16)
 The deck's "Open job ↗" button looked dead: it went through `JobDetailOpenerBridgeContext`, which DID open the Job window — at `zIndex` 1010, underneath the deck's own overlay (`DECK_Z` 1040), so nothing visibly happened. [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) now calls [`useJobDetailModal()`](../src/contexts/JobDetailModalContext.tsx) directly (it renders below the provider — the bridge is for components above it) and, while the context reports the Job window open, hides its own overlay with `display: none` — deck state (current card, note draft, scroll) survives untouched and reappears when the window closes. The deck's window-level Escape handler also stands down while the Job window is on top, so Esc closes only the window, not both. Verified live: deck → Open job → Job window (Job/Edit/Bill tabs) → Esc → same card, same scroll. Client-only — no migration.
-
 ## Latest Updates (v2.1737)
 
 ### Sub Labor: "Outstanding by contractor" keys by person, not name text (2026-08-16)

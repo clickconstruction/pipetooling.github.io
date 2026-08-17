@@ -32,6 +32,12 @@ describe('accountingRuleRowMatchesSearch', () => {
   it('returns false when neither matches', () => {
     expect(accountingRuleRowMatchesSearch('Alpha', 'Beta', 'gamma')).toBe(false)
   })
+
+  it('matches the attributed person display name when provided', () => {
+    expect(accountingRuleRowMatchesSearch('MZ LLC -', 'Contract Labor', 'mike z', 'Mike Z · Sub')).toBe(true)
+    expect(accountingRuleRowMatchesSearch('MZ LLC -', 'Contract Labor', 'mike z', null)).toBe(false)
+    expect(accountingRuleRowMatchesSearch('MZ LLC -', 'Contract Labor', 'mike z')).toBe(false)
+  })
 })
 
 const row = (
