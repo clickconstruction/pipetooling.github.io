@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1760)
+last_updated: 2026-08-17 (v2.1761)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1761)
+
+### Bid Board: the your-color picker stops getting clipped (2026-08-17)
+Owner screenshot: opening the board's personal-color wheel showed only a sliver of the panel. The popover was an in-place `position:absolute` div inside the board's sticky jump-strip `<nav>`, whose `overflow-x:auto` makes it a scroll container on BOTH axes per spec — the ~44px strip clipped the ~370px panel, and the strip's own stacking context (`sticky` + z 5) trapped the panel's z-index besides. Fix: [`BidBoardSelfHighlightWheel`](../src/components/bids/BidBoardSelfHighlightWheel.tsx) now portals the panel to `document.body` with fixed, viewport-clamped coordinates (flips above when the bottom is short; capture-phase scroll + resize repositioning; z 1100 per the `AssignSessionJobPopover` convention), following the house pattern (`ScheduleDispatchPlusCopyMenu`). The outside-click guard also checks the portaled panel ref — without that, every click inside the panel would close it. Verified live: panel fully visible in a 812px-tall viewport (auto-flipped), inside clicks keep it open, Esc closes. Client-only — no migration.
 
 ## Latest Updates (v2.1760)
 
