@@ -54,6 +54,8 @@ export type StagesRowRenderContext = {
   openEditJobAndCreateCustomerFlow: (job: JobWithDetails) => void
   /** Opens the customer profile modal (v2.1322); optional — surfaces without the provider omit it. */
   openCustomerProfile?: (customerId: string) => void
+  /** Opens the job work-story modal from the man-hours chip (v2.1766); optional like openCustomerProfile. */
+  openJobHoursStory?: (target: { jobId: string; hcpNumber: string | null; clickNumber?: string | null; jobName: string | null }) => void
   stagesManHoursByJobId: Map<string, number>
   stagesManHoursLoading: boolean
   stagesLaborBreakdownByJobId: Map<string, Array<{ personName: string; hours: number }>>
@@ -355,11 +357,33 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
               .map((p) => `${p.personName} ${formatDecimalWorkHoursToHhMm(p.hours)}`)
               .join(' · ')
           : 'Man-hours applied (crew assignments)'
+        const openStory = ctx.openJobHoursStory
         return (
           <div
-            style={{ ...lineStyle, display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-            title={tip}
-            aria-label={`Man-hours applied: ${display === '…' ? 'loading' : display}`}
+            role={openStory ? 'button' : undefined}
+            tabIndex={openStory ? 0 : undefined}
+            onClick={
+              openStory
+                ? (e) => {
+                    e.stopPropagation()
+                    openStory({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name })
+                  }
+                : undefined
+            }
+            onKeyDown={
+              openStory
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      openStory({ jobId: job.id, hcpNumber: job.hcp_number, clickNumber: job.click_number, jobName: job.job_name })
+                    }
+                  }
+                : undefined
+            }
+            style={{ ...lineStyle, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: openStory ? 'pointer' : undefined }}
+            title={openStory ? `${tip} — click for the job's work story` : tip}
+            aria-label={`Man-hours applied: ${display === '…' ? 'loading' : display}${openStory ? ' — open the work story' : ''}`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

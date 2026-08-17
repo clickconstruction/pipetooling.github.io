@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1765)
+last_updated: 2026-08-17 (v2.1766)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1766)
+
+### Pipeline: the man-hours chip opens the job's work story (2026-08-17)
+Owner request (mockup-approved, + a Print button): clicking a row's ⏱ hours chip opens a modal answering "what did you do on the job?". New [`JobHoursStoryModal`](../src/components/jobs/JobHoursStoryModal.tsx): every `clock_sessions` row for the job grouped by day (who / in–out / duration / **editable description** → `clock_sessions.notes`), an **Overlay schedule** toggle interleaving `job_schedule_blocks` (blue-tinted 📅, `note` editable too), header totals, **Copy work summary** (dated per-person lines of every described entry), and **Print** (light printable document via `printHtmlInNewWindow`). Pure kernel [`jobHoursStory.ts`](../src/lib/jobs/jobHoursStory.ts) (+8 tests): day grouping, totals (open sessions counted separately, "in progress"), summary text, print HTML (escaped). Opened through a new app-level [`JobHoursStoryModalContext`](../src/contexts/JobHoursStoryModalContext.tsx) (the CustomerProfileModal pattern), threaded to all four row renderers via `StagesRowRenderContext.openJobHoursStory` — table, unified table, both card lists, and therefore the follow-up deck's embedded rows too; names resolve via `fetchUserNamesForIds` (archived-safe RPC). Edits are RLS-gated (pay-approved office for sessions, dispatch editors for blocks) with toast on denial; the modal's Esc stops propagation so the deck underneath survives. Verified live on job 950: totals match (37m+35m=1h 12m), description edit round-tripped to the DB and back, overlay showed the scheduled blocks. New help guide `job-work-story`. Client-only — no migration.
 
 ## Latest Updates (v2.1765)
 

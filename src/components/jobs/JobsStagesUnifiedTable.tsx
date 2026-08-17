@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
+import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -236,8 +237,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
   const checklistAddModal = useChecklistAddModal()
 
   const customerProfileModal = useCustomerProfileModal()
+  const jobHoursStoryModal = useJobHoursStoryModal()
   const stagesRowSharedCtx: StagesRowRenderContext = {
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
+    openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
     showToast,
     customers,
     openEditJobAndCreateCustomerFlow,

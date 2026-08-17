@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1766',
+    date: '2026-08-17',
+    title: 'The job\'s work story, one tap away',
+    kind: 'feature',
+    highlights: [
+      'Tap the ⏱ hours chip on any Pipeline row to see every clock session on the job — who, when, how long, and what they did — with descriptions you can add or edit in place.',
+      'Flip on "Overlay schedule" to see the dispatch calendar\'s planned blocks next to the actual work.',
+      'Copy work summary or Print hands you a clean answer to "what did you do on the job?"',
+    ],
+  },
+  {
     version: 'v2.1765',
     date: '2026-08-17',
     title: 'Duplicate a bid in its own trade',
