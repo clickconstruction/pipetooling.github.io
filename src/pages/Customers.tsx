@@ -9,6 +9,7 @@ import { isCustomerArchived, partitionCustomersByArchived } from '../lib/custome
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
+import ClassifyCustomersModal from '../components/customers/ClassifyCustomersModal'
 import {
   customersListRollup,
   type CustomerListRollup,
@@ -117,6 +118,7 @@ export default function Customers() {
   const [showArchived, setShowArchived] = useState(false)
   /** "Show similar" mode: cluster likely duplicates (shared name/address/phone/email) for quick merging. */
   const [showSimilar, setShowSimilar] = useState(false)
+  const [classifyOpen, setClassifyOpen] = useState(false)
 
   async function refreshNoteCountsForCustomers(ids: string[]) {
     if (ids.length === 0) return
@@ -423,16 +425,10 @@ export default function Customers() {
             {defaultTypeCount > 0 ? (
               <button
                 type="button"
-                onClick={() =>
-                  setSearchParams((p) => {
-                    const n = new URLSearchParams(p)
-                    n.set('type', 'commercial_default')
-                    return n
-                  })
-                }
+                onClick={() => setClassifyOpen(true)}
                 style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
               >
-                Show them →
+                Classify →
               </button>
             ) : (
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>all classified 🎉</div>
@@ -992,6 +988,13 @@ export default function Customers() {
           ))}
         </ul>
       )}
+      {classifyOpen ? (
+        <ClassifyCustomersModal
+          customers={visibleCustomers.filter(isCustomerCommercialDefaultType).map((c) => ({ id: c.id, name: c.name }))}
+          onClose={() => setClassifyOpen(false)}
+          onApplied={fetchCustomers}
+        />
+      ) : null}
       {viewingBidsForCustomer && (
         <div
           style={{

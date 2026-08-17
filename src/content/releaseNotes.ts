@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1783',
+    date: '2026-08-17',
+    title: 'Classify untyped customers in one sitting',
+    kind: 'feature',
+    highlights: [
+      'Click "Classify →" in the Customers stat band and every untyped customer appears with a suggested type — business-sounding names pre-select Commercial (with the word that tipped it off shown), the rest Residential.',
+      'Flip any that look wrong and hit Apply once. Nothing is saved until you do.',
+    ],
+  },
+  {
     version: 'v2.1782',
     date: '2026-08-17',
     title: 'Customers list: totals up top, money and activity filters',
