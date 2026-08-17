@@ -4,6 +4,7 @@ import {
   hasMultipleEffectiveGcs,
   resolveSingleLetterGc,
   letterGcDiffersFromBid,
+  defaultGcPacketForActiveVersion,
   type GcPacketCustomer,
 } from './coverLetterGcPackets'
 
@@ -117,5 +118,27 @@ describe('letterGcDiffersFromBid', () => {
     const noIdBid: GcPacketCustomer = { id: null, name: 'Harper GC', address: '1 Main St' }
     expect(letterGcDiffersFromBid(turner, noIdBid)).toBe(true)
     expect(letterGcDiffersFromBid({ id: null, name: 'Harper GC', address: '1 Main St' }, noIdBid)).toBe(false)
+  })
+})
+
+describe('defaultGcPacketForActiveVersion', () => {
+  const sections = [
+    { name: 'To Plans', bidVersionId: 'v-base' },
+    { name: 'BURD', bidVersionId: 'v-burd' },
+  ]
+  const packets = groupSectionsByEffectiveGc(sections, { 'v-burd': turner }, bidGc)
+
+  it('picks the packet containing the active version', () => {
+    expect(defaultGcPacketForActiveVersion(packets, 'v-burd')?.customer).toEqual(turner)
+    expect(defaultGcPacketForActiveVersion(packets, 'v-base')?.customer).toEqual(bidGc)
+  })
+
+  it('falls back to the first packet when the active version is not bundled or null', () => {
+    expect(defaultGcPacketForActiveVersion(packets, 'v-unknown')?.customer).toEqual(bidGc)
+    expect(defaultGcPacketForActiveVersion(packets, null)?.customer).toEqual(bidGc)
+  })
+
+  it('returns null for no packets', () => {
+    expect(defaultGcPacketForActiveVersion([], 'v-burd')).toBeNull()
   })
 })
