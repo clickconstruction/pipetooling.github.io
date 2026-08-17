@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1780',
+    date: '2026-08-17',
+    title: 'See your top customers at a glance',
+    kind: 'feature',
+    highlights: [
+      'The Customers list now shows each customer\'s lifetime value — everything ever billed to them — in green on their row.',
+      'Tap "$ Top customers" to rank the whole list by value, highest first. Filters and search still apply.',
+    ],
+  },
+  {
     version: 'v2.1779',
     date: '2026-08-17',
     title: 'Customer pages: the Invoices tab',

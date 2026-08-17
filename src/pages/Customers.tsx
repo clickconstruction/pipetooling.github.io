@@ -9,6 +9,7 @@ import { isCustomerArchived, partitionCustomersByArchived } from '../lib/custome
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
+import { lifetimeValueByCustomer, type LcvInvoiceRow, type LcvJobRow } from '../lib/customers/customersListLcv'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -65,6 +66,7 @@ export default function Customers() {
   const [countsByCustomerId, setCountsByCustomerId] = useState<
     Record<string, { projects: number; jobs: number; bids: number; notes: number }>
   >({})
+  const [lcvByCustomerId, setLcvByCustomerId] = useState<Record<string, number>>({})
   const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
@@ -114,11 +116,12 @@ export default function Customers() {
     setCustomers(customersWithMasters)
     const customerIds = customersWithMasters.map((c) => c.id)
     if (customerIds.length > 0) {
-      const [projectsRes, jobsRes, bidsRes, contactsRes] = await Promise.all([
+      const [projectsRes, jobsRes, bidsRes, contactsRes, invoicesRes] = await Promise.all([
         supabase.from('projects').select('customer_id').in('customer_id', customerIds),
-        supabase.from('jobs_ledger').select('customer_id').in('customer_id', customerIds),
+        supabase.from('jobs_ledger').select('id, customer_id, status, revenue').in('customer_id', customerIds),
         supabase.from('bids').select('customer_id').in('customer_id', customerIds),
         supabase.from('customer_contacts').select('customer_id').in('customer_id', customerIds),
+        supabase.from('jobs_ledger_invoices').select('job_id, status, amount'),
       ])
       const counts: Record<string, { projects: number; jobs: number; bids: number; notes: number }> = {}
       for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0, notes: 0 }
@@ -139,6 +142,12 @@ export default function Customers() {
         if (entry) entry.notes++
       }
       setCountsByCustomerId(counts)
+      setLcvByCustomerId(
+        lifetimeValueByCustomer(
+          (jobsRes.data ?? []) as LcvJobRow[],
+          (invoicesRes.data ?? []) as LcvInvoiceRow[],
+        ),
+      )
     }
     setLoading(false)
   }
@@ -243,7 +252,15 @@ export default function Customers() {
       `Possible duplicates (${g.ids.length}) — matching ${g.matchedBy.join(' + ') || 'details'}`,
     )
   }
-  const displayCustomers = showSimilar ? similarDisplay : filteredCustomers
+  const sortByValue = searchParams.get('sort') === 'value'
+  const sortedCustomers = sortByValue
+    ? [...filteredCustomers].sort(
+        (a, b) =>
+          (lcvByCustomerId[b.id] ?? 0) - (lcvByCustomerId[a.id] ?? 0) ||
+          (a.name ?? '').localeCompare(b.name ?? ''),
+      )
+    : filteredCustomers
+  const displayCustomers = showSimilar ? similarDisplay : sortedCustomers
 
   return (
     <div>
@@ -310,6 +327,31 @@ export default function Customers() {
           ) : null}
           <button
             type="button"
+            onClick={() =>
+              setSearchParams((p) => {
+                const n = new URLSearchParams(p)
+                if (n.get('sort') === 'value') n.delete('sort')
+                else n.set('sort', 'value')
+                return n
+              })
+            }
+            aria-pressed={sortByValue}
+            title="Sort customers by lifetime value — everything ever billed to them — highest first"
+            style={{
+              padding: '0.35rem 0.75rem',
+              border: sortByValue ? '1px solid #059669' : '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: sortByValue ? 'var(--bg-green-tint)' : 'var(--surface)',
+              color: sortByValue ? 'var(--text-green-600)' : 'var(--text-700)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              marginLeft: 'auto',
+            }}
+          >
+            $ Top customers
+          </button>
+          <button
+            type="button"
             onClick={() => setShowSimilar((prev) => !prev)}
             aria-pressed={showSimilar}
             title="Cluster customers sharing a name, address, phone, or email so duplicates are easy to spot and merge"
@@ -321,7 +363,6 @@ export default function Customers() {
               color: showSimilar ? 'var(--text-blue-700)' : 'var(--text-700)',
               cursor: 'pointer',
               fontSize: '0.875rem',
-              marginLeft: 'auto',
             }}
           >
             {showSimilar ? 'Show all' : 'Show similar'} ({similarGroups.length})
@@ -571,8 +612,23 @@ export default function Customers() {
               <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.5rem' }}>
                 {(() => {
                   const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
+                  const lcv = lcvByCustomerId[c.id] ?? 0
                   return (
                     <>
+                      {lcv > 0 ? (
+                        <Link
+                          to={`/customers/${c.id}`}
+                          title={`Lifetime value — everything ever billed to ${(c.name ?? 'this customer').trim() || 'this customer'}`}
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--text-green-600)',
+                            textDecoration: 'none',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          ${Math.round(lcv).toLocaleString('en-US')}
+                        </Link>
+                      ) : null}
                       <button
                         type="button"
                         aria-expanded={expandedNotesCustomerId === c.id}
