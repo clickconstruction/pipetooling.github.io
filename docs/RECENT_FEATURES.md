@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1751)
+last_updated: 2026-08-17 (v2.1752)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1752)
+
+### Follow-up deck: stage + quiet chips join the badge row on phones (2026-08-17)
+Owner screenshot on the Jobs → Stages follow-up deck at phone width: the card header is one wrapping flex row — `[job # badge] [title] [stage chip] [quiet N days chip]` — so a long job title wrapped and pushed both chips onto their own row below it. On narrow screens (`isNarrow`, already in scope) the header now splits: the **stage chip and quiet chip share the top row with the job-number badge** (quiet chip keeps its `marginLeft: 'auto'` right alignment) and the title takes its own full-width line beneath ([`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) deck header). Desktop keeps the original single row. Verified live at 375px on the Commercial Solutions card: badge/Billed/quiet-139-days all at the same top offset, title below. Client-only — no migration.
 
 ## Latest Updates (v2.1751)
 

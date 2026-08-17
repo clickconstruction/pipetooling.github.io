@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1752',
+    date: '2026-08-17',
+    title: 'Follow-up cards: stage chips move up on phones',
+    kind: 'fix',
+    highlights: [
+      'On phones, the follow-up review card now shows the job number, stage chip, and "quiet N days" chip together on the top row, with the job name on its own line below — the chips no longer get pushed under a long title.',
+    ],
+  },
+  {
     version: 'v2.1751',
     date: '2026-08-16',
     title: 'Bill tab tidies up on phones',
