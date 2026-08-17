@@ -76,6 +76,7 @@ import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { useDashboardBoot } from '../hooks/useDashboardBoot'
 import { formatDatetime } from '../lib/dashboardProjectsCard'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
+import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import { resolveReadyToBillBillCustomerTarget } from '../lib/buildReadyToBillDashboardUnits'
 import { isDashboardTeamReadyToBillRole } from '../lib/dashboardTeamAssignedJobRow'
@@ -426,56 +427,28 @@ export default function Dashboard() {
   const [dashboardSelfIsSalary, setDashboardSelfIsSalary] = useState(false)
   /** Same rule as ClockInOutButton salaryUiActive: pay is_salary plus salary_work_schedule_templates row. */
   const [dashboardSalaryScheduleClockActive, setDashboardSalaryScheduleClockActive] = useState(false)
+  // One id-first probe (self_salary_clock_state RPC, name fallback inside the
+  // helper) feeds both salary states — previously 3 name-keyed queries across
+  // two effects (identity Phase D, v2.1734).
   useEffect(() => {
-    const name = clockDisplayName?.trim()
-    if (!name) {
-      setDashboardSelfIsSalary(false)
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const row = await withSupabaseRetry(
-          async () =>
-            supabase.from('people_pay_config').select('is_salary').eq('person_name', name).maybeSingle(),
-          'dashboard self people_pay_config is_salary',
-        )
-        if (!cancelled) setDashboardSelfIsSalary(!!(row as { is_salary?: boolean } | null)?.is_salary)
-      } catch {
-        if (!cancelled) setDashboardSelfIsSalary(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [clockDisplayName])
-  useEffect(() => {
-    const name = clockDisplayName?.trim()
     const uid = authUser?.id
-    if (!name || !uid) {
+    if (!uid) {
+      setDashboardSelfIsSalary(false)
       setDashboardSalaryScheduleClockActive(false)
       return
     }
     let cancelled = false
     void (async () => {
       try {
-        const [pay, tmpl] = await Promise.all([
-          withSupabaseRetry(
-            async () =>
-              supabase.from('people_pay_config').select('is_salary').eq('person_name', name).maybeSingle(),
-            'dashboard salary schedule people_pay_config is_salary',
-          ),
-          withSupabaseRetry(
-            async () =>
-              supabase.from('salary_work_schedule_templates').select('user_id').eq('user_id', uid).maybeSingle(),
-            'dashboard salary_work_schedule_templates for user',
-          ),
-        ])
+        const state = await fetchSelfSalaryClockState(uid, clockDisplayName ?? null)
         if (cancelled) return
-        const sal = !!(pay as { is_salary?: boolean } | null)?.is_salary
-        setDashboardSalaryScheduleClockActive(sal && !!tmpl)
+        setDashboardSelfIsSalary(state.isSalary)
+        setDashboardSalaryScheduleClockActive(state.isSalary && state.hasTemplate)
       } catch {
-        if (!cancelled) setDashboardSalaryScheduleClockActive(false)
+        if (!cancelled) {
+          setDashboardSelfIsSalary(false)
+          setDashboardSalaryScheduleClockActive(false)
+        }
       }
     })()
     return () => {

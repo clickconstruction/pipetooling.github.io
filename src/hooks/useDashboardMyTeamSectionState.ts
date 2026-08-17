@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIntervalNowMs } from './useIntervalNowMs'
 import { CLOCK_SESSION_LIST_SELECT, CLOCK_SESSION_TODAY_STRIP_SELECT } from '../lib/clockSessionSelect'
-import { getPersonNamesForUser } from '../lib/cascadePersonName'
+import { getPersonKeysForUser } from '../lib/cascadePersonName'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -651,34 +651,55 @@ export function useDashboardMyTeamSectionState(
       const emailByUserId = new Map<string, string | null>(
         ((memberEmails ?? []) as Array<{ id: string; email: string | null }>).map((r) => [r.id, r.email]),
       )
-      const nameLists = await Promise.all(
-        fullDetailIds.map((uid) => getPersonNamesForUser(uid, emailByUserId.get(uid) ?? null)),
+      const keyLists = await Promise.all(
+        fullDetailIds.map((uid) => getPersonKeysForUser(uid, emailByUserId.get(uid) ?? null)),
       )
       const namesByUserId = new Map<string, Set<string>>()
+      const userIdByPersonId = new Map<string, string>()
       const allNames: string[] = []
       fullDetailIds.forEach((uid, i) => {
-        const list = nameLists[i] ?? []
-        const set = new Set(list.map((n) => n.trim()).filter(Boolean))
+        const keys = keyLists[i] ?? { names: [], personIds: [] }
+        const set = new Set(keys.names.map((n) => n.trim()).filter(Boolean))
         namesByUserId.set(uid, set)
         for (const n of set) allNames.push(n)
+        for (const pid of keys.personIds) {
+          if (!userIdByPersonId.has(pid)) userIdByPersonId.set(pid, uid)
+        }
       })
       const uniqueNames = [...new Set(allNames)]
-      if (uniqueNames.length > 0) {
+      const uniquePersonIds = [...userIdByPersonId.keys()]
+      if (uniqueNames.length > 0 || uniquePersonIds.length > 0) {
+        // person_id-first with the name-IN as fallback in ONE query (identity
+        // Phase D, v2.1734): names go double-quoted inside or() so commas or
+        // parens in a name ("Tristen (Assistant)") can't break the filter.
+        const nameList = uniqueNames
+          .filter((n) => !n.includes('"'))
+          .map((n) => `"${n}"`)
+          .join(',')
+        const orParts: string[] = []
+        if (uniquePersonIds.length > 0) orParts.push(`person_id.in.(${uniquePersonIds.join(',')})`)
+        if (nameList) orParts.push(`person_name.in.(${nameList})`)
         const phRows = await withSupabaseRetry(
           async () =>
             supabase
               .from('people_hours')
-              .select('person_name, hours')
+              .select('person_name, person_id, hours')
               .gte('work_date', dateStart)
               .lte('work_date', dateEnd)
-              .in('person_name', uniqueNames),
+              .or(orParts.join(',')),
           'load team manual people_hours',
         )
-        for (const raw of (phRows ?? []) as Array<{ person_name: string; hours: number | string }>) {
-          const pn = raw.person_name?.trim()
-          if (!pn) continue
+        for (const raw of (phRows ?? []) as Array<{ person_name: string; person_id: string | null; hours: number | string }>) {
           const hrs = typeof raw.hours === 'number' ? raw.hours : Number(raw.hours)
           if (!Number.isFinite(hrs)) continue
+          const idOwner = raw.person_id ? userIdByPersonId.get(raw.person_id) : undefined
+          if (idOwner) {
+            const u = byUser[idOwner]
+            if (u) u.manual += hrs
+            continue
+          }
+          const pn = raw.person_name?.trim()
+          if (!pn) continue
           for (const uid of fullDetailIds) {
             const set = namesByUserId.get(uid)
             if (set?.has(pn)) {

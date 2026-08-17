@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1733)
+last_updated: 2026-08-16 (v2.1734)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1734)
+
+### People identity: the two "deliberately skipped" hot-path reads flip id-first (Phase D) (2026-08-16)
+Fourth PR of the Phase D close-out — C1-5 and the C1-6 remainder, skipped in July because flipping them looked like extra hot-path queries. Both now flip while getting CHEAPER. **Salary self-probes**: new one-round-trip RPC `self_salary_clock_state()` (migration `20260817012837`, see `MIGRATIONS.md`) resolves the caller `people.account_user_id` → `person_id` first, `btrim(users.name)` fallback, and returns is_salary + has_template together; [`ClockInOutButton`](../src/components/ClockInOutButton.tsx) (was 2 queries) and both Dashboard effects (were 3 queries across 2 effects, now one shared effect) consume it via [`fetchSelfSalaryClockState`](../src/lib/selfSalaryClockState.ts), which falls back to the legacy name queries if the RPC errors. **My Team manual hours**: [`useDashboardMyTeamSectionState`](../src/hooks/useDashboardMyTeamSectionState.ts) now queries `people_hours` by `person_id` AND name in one `or()` (names double-quoted so "Tristen (Assistant)"-style names can't break the filter — verified live against prod), matching rows id-first; new [`getPersonKeysForUser`](../src/lib/cascadePersonName.ts) returns `{names, personIds}` and also picks up account-linked people rows (`account_user_id`) the old email-only lookup missed. Parity verified live: RPC answer matches the legacy name query for the signed-in user. Deploy: db push applied during this PR (types regenerated).
 
 ## Latest Updates (v2.1733)
 

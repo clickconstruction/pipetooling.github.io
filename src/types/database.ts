@@ -14815,6 +14815,14 @@ export type Database = {
         Args: { p_block_id: string }
         Returns: undefined
       }
+      self_salary_clock_state: {
+        Args: never
+        Returns: {
+          has_template: boolean
+          is_salary: boolean
+          record_hours_but_salary: boolean
+        }[]
+      }
       self_schedule_add_block: {
         Args: {
           p_job_id: string
@@ -14892,6 +14900,14 @@ export type Database = {
       }
       staff_can_view_user_for_tally_followup: {
         Args: { p_target: string; p_viewer: string }
+        Returns: boolean
+      }
+      step_assignee_matches_user: {
+        Args: {
+          p_assigned_person_id: string
+          p_assigned_to_name: string
+          p_user_id: string
+        }
         Returns: boolean
       }
       subcontractor_can_read_jobs_ledger_row: {

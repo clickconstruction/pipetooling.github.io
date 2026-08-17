@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1734',
+    date: '2026-08-16',
+    title: 'Salary clock and team hours, rename-proof',
+    kind: 'infra',
+    highlights: [
+      'The salary clock button and the Dashboard\'s salary displays now identify you by account instead of matching your name — a rename can no longer flip a salaried person\'s clock to hourly. Fewer lookups on every Dashboard load, too.',
+      'The My Team hours summary matches people the same way, so renamed teammates keep their manual hours.',
+    ],
+  },
+  {
     version: 'v2.1733',
     date: '2026-08-16',
     title: 'Stage assignments survive renames',
