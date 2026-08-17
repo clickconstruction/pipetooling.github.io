@@ -1906,6 +1906,23 @@ export function BankingMercuryAccountingTab({
             ) : null}
             <button
               type="button"
+              onClick={() => setRulesModalOpen(true)}
+              disabled={rulesLoading}
+              aria-label={`Open rules manager (${rules.length} rules)`}
+              style={{
+                padding: '0.45rem 0.9rem',
+                fontWeight: 600,
+                background: rulesLoading ? 'var(--bg-200)' : '#2563eb',
+                color: rulesLoading ? 'var(--text-slate-500)' : '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: rulesLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Rules ({rules.length})
+            </button>
+            <button
+              type="button"
               title="Approve every pending suggestion shown, using each row’s Accounting Label"
               aria-label="Approve all pending suggestions"
               disabled={pendingLoading || approvableFilteredCount === 0 || approveAllBusy}
@@ -2127,26 +2144,6 @@ export function BankingMercuryAccountingTab({
           </>
         )}
       </section>
-
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'flex-start' }}>
-        <button
-          type="button"
-          onClick={() => setRulesModalOpen(true)}
-          disabled={rulesLoading}
-          aria-label={`Open rules manager (${rules.length} rules)`}
-          style={{
-            padding: '0.5rem 1rem',
-            fontWeight: 600,
-            background: rulesLoading ? 'var(--bg-200)' : '#2563eb',
-            color: rulesLoading ? 'var(--text-slate-500)' : '#fff',
-            border: 'none',
-            borderRadius: 6,
-            cursor: rulesLoading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          Rules ({rules.length})
-        </button>
-      </div>
 
       <section style={{ marginBottom: '1rem' }}>
         <h2

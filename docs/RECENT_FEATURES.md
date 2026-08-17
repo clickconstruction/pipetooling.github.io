@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1745)
+last_updated: 2026-08-16 (v2.1746)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1746)
+
+### Banking: Rules button moves into the Approvals header (2026-08-16)
+Owner sketch: the **Rules (N)** button floated alone between the Approvals section and the Sorting Ledger. It now sits in the Approvals header row beside **Approve all** (left of it, matching the header buttons' sizing) in [`BankingMercuryAccountingTab`](../src/components/banking/BankingMercuryAccountingTab.tsx); the standalone block between the sections is gone. The header row already wraps (`flexWrap`), so on phones the buttons tuck under the heading. Client-only — no migration.
 
 ## Latest Updates (v2.1745)
 
