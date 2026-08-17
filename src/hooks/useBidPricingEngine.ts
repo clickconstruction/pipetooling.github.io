@@ -927,6 +927,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       })(),
     ])
 
+    // PostgREST surfaces an abort as result.error (not a throw), so a doomed
+    // run would land here and wipe the state a fresh run just wrote (v2.1763).
+    if (signal?.aborted) return
+
     if (countRes.error) {
       clearPricingState()
       return
@@ -979,6 +983,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       if (signal && 'abortSignal' in qLabor)
         qLabor = (qLabor as { abortSignal: (s: AbortSignal) => typeof qLabor }).abortSignal(signal)
       const laborRes = await qLabor
+      if (signal?.aborted) return
       if (laborRes.error) {
         setPricingLaborRows([])
         setPricingFixtureMaterialsFromTakeoff({})
@@ -1027,6 +1032,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       loadPOItems(est.purchase_order_id_top_out),
       loadPOItems(est.purchase_order_id_trim_set),
     ])
+
+    if (signal?.aborted) return
 
     setPricingMaterialTotalRoughIn(est.purchase_order_id_rough_in ? roughTotal : null)
     setPricingMaterialTotalTopOut(est.purchase_order_id_top_out ? topTotal : null)
@@ -1340,7 +1347,6 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     const bidId = selectedBidForPricing.id
     const bidJustChanged = pricingBidIdRef.current !== bidId
     if (bidJustChanged) {
-      pricingBidIdRef.current = bidId
       const savedBidVersionId = selectedBidForPricing.selected_bid_version_id
       const legacyPricingFallback = selectedBidForPricing.selected_price_book_version_id
       // Resolve the active Version first (it drives both takeoff and pricing), set the
@@ -1349,6 +1355,13 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       void (async () => {
         const [versions, pricings] = await Promise.all([loadBidVersions(bidId), loadBidPricings(bidId)])
         if (signal.aborted) return
+        // Stamp the ref only now that this run will actually write the
+        // resolution. Stamping before the await (pre-v2.1763) meant an abort —
+        // e.g. the takeoff resolver's setSelectedBidVersionId re-firing this
+        // effect mid-flight — dropped setSelectedPricingVersionId forever: the
+        // re-run saw bidJustChanged=false and reloaded with a null pricing id,
+        // the split-bid empty state that only a reload or Version click fixed.
+        pricingBidIdRef.current = bidId
         const activeVersionId = pickActiveVersion({ savedVersionId: savedBidVersionId, bidVersions: versions })
         setSelectedBidVersionId(bidId, activeVersionId)
         const activePricingId = deriveActivePricingId({

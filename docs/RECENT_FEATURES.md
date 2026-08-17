@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1762)
+last_updated: 2026-08-17 (v2.1763)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1763)
+
+### Pricing tab: two-version bids stop opening empty (2026-08-17)
+Owner report: a split bid's Pricing tab often opened with no price book selected and an empty grid, "populating after 2-3 refreshes — a consistent problem." Root cause in [`useBidPricingEngine`](../src/hooks/useBidPricingEngine.ts): two effects both resolve the bid's active Version on selection. The pricing resolver stamped its "already handled this bid" ref **before** its awaited queries; when the takeoff resolver's one-query race won and wrote `selectedBidVersionId`, the pricing effect re-fired, its cleanup aborted the in-flight resolution **before `setSelectedPricingVersionId`**, and the re-run — seeing the pre-stamped ref — reloaded with a null pricing id forever. The v2.1169 fix guarded `switchActiveVersion` against exactly this; the first-mount resolver never got the guard, and the unsplit-bid safety net explicitly bails when `selectedBidVersionId` is set — so split bids stayed stuck until a reload or a Version-chip click. Fix: the ref is stamped only **after** the resolution survives its abort check, so an aborted first attempt retries on the re-run (also self-heals a transiently failed version/pricings fetch). Bonus hardening: `loadPricingDataForBid` re-checks `signal.aborted` after each await before its error paths — PostgREST surfaces an abort as `result.error`, not a throw, so a doomed run could reach `clearPricingState()` and wipe what the fresh run just wrote. Verified live on BP362 (two versions): four consecutive cold selections onto the Pricing tab all populated immediately (price book + full grid). Client-only — no migration.
 
 ## Latest Updates (v2.1762)
 

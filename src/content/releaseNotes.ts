@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1763',
+    date: '2026-08-17',
+    title: 'Pricing loads first time, every time',
+    kind: 'fix',
+    highlights: [
+      'Opening a bid with two price versions on the Pricing tab no longer lands on an empty "Select a price book…" screen that needed 2-3 refreshes — the price book and grid load reliably on the first try.',
+    ],
+  },
+  {
     version: 'v2.1762',
     date: '2026-08-17',
     title: 'Cover letters address the right GC',
