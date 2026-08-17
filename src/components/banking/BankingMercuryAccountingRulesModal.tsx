@@ -335,7 +335,7 @@ export function BankingMercuryAccountingRulesModal({
                           </button>
                         </th>
                         <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
-                          Approved uses
+                          Uses
                         </th>
                         <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }} />
                       </tr>

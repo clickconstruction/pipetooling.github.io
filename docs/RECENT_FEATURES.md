@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1740)
+last_updated: 2026-08-16 (v2.1741)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1741)
+
+### Banking: Rules table "Approved uses" column renamed "Uses" (2026-08-16)
+Owner request, following v2.1740's column trims in [`BankingMercuryAccountingRulesModal`](../src/components/banking/BankingMercuryAccountingRulesModal.tsx). The count is unchanged (approved suggestion uses per rule) — only the header shortens. Client-only — no migration.
 
 ## Latest Updates (v2.1740)
 

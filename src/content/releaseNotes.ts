@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1741',
+    date: '2026-08-16',
+    title: 'Rules table trims a header',
+    kind: 'fix',
+    highlights: [
+      'The Banking rules list\'s "Approved uses" column is now just "Uses" — same count, shorter header.',
+    ],
+  },
+  {
     version: 'v2.1740',
     date: '2026-08-16',
     title: 'Rules show their person',
