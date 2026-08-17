@@ -903,19 +903,6 @@ export default function Customers() {
                   const activity = rollup ? lastActivityLabel(rollup.lastActivityIso, rollup.lastActivityKind) : null
                   return (
                     <>
-                      <button
-                        type="button"
-                        aria-expanded={expandedNotesCustomerId === c.id}
-                        aria-label="Customer notes"
-                        title="Customer notes"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedNotesCustomerId((prev) => (prev === c.id ? null : c.id))
-                        }}
-                        style={signalChipStyle('gray')}
-                      >
-                        notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
-                      </button>
                       {counts.projects > 0 ? (
                         <Link
                           to={`/projects?customer=${c.id}`}
@@ -980,6 +967,20 @@ export default function Customers() {
                           {activity.text}
                         </span>
                       ) : null}
+                      {/* notes sits in a fixed slot just left of the value so rows align. */}
+                      <button
+                        type="button"
+                        aria-expanded={expandedNotesCustomerId === c.id}
+                        aria-label="Customer notes"
+                        title="Customer notes"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedNotesCustomerId((prev) => (prev === c.id ? null : c.id))
+                        }}
+                        style={signalChipStyle('gray')}
+                      >
+                        notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
+                      </button>
                       <Link
                         to={`/customers/${c.id}`}
                         onClick={(e) => e.stopPropagation()}
