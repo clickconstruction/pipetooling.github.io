@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1755',
+    date: '2026-08-17',
+    title: 'Email streams: subscriber dropdowns and full coverage',
+    kind: 'feature',
+    highlights: [
+      'Every card in Settings → Email & notifications now shows a compact count — "3 subscribers" or "7 scheduled sends" — that expands to the full list, where each × still removes that person.',
+      'Arriving from a clicked email-log row opens the landed card\'s list automatically.',
+      'Three streams that were missing from the panel now have cards: Weekly movement, Weekly money movement, and GC statements, each with cancellable scheduled sends.',
+    ],
+  },
+  {
     version: 'v2.1754',
     date: '2026-08-17',
     title: 'Sent emails link to their stream',

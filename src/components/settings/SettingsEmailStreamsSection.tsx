@@ -9,6 +9,9 @@ import {
 } from '../../lib/appSettingsKeys'
 import { parsePaidJobEmailRecipients, serializePaidJobEmailRecipients } from '../../lib/paidJobEmail'
 import { cancelBilledReportSend } from '../../lib/billedReportEmailClient'
+import { cancelGcStatementSend } from '../../lib/gcStatementEmailRequests'
+import { cancelWeeklyMovementSend } from '../../lib/weeklyMovementEmailRequests'
+import { cancelWeeklyMoneySend } from '../../lib/weeklyMoneyEmailRequests'
 import { formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import { emailStreamCardId, type EmailStreamKey } from '../../lib/emailLogStreamLink'
 
@@ -38,6 +41,11 @@ type GlobalEmailSchedule = {
   payment_recipients: Array<{ user_id: string; name: string }>
   billed_requests: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   schedule_day_requests: Array<{ id: string; recipient_name: string; send_at: string; work_date: string }>
+  // The RPC has returned these three since their streams shipped (v2.1428/38/49);
+  // the panel just never rendered them until v2.1755.
+  gc_statement_requests?: Array<{ id: string; entity_name: string | null; sent_to: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
+  weekly_movement_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
+  weekly_money_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
 }
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -101,7 +109,22 @@ function RecipientChip({ label, extra, onRemove, removeLabel }: { label: string;
   )
 }
 
-function StreamCard({ title, cadence, right, children, manage, id, flash }: { title: string; cadence: string; right?: ReactNode; children: ReactNode; manage: string; id?: string; flash?: boolean }) {
+function StreamCard({ title, cadence, right, children, manage, id, flash, count, noun, open, onToggle }: {
+  title: string
+  cadence: string
+  right?: ReactNode
+  children: ReactNode
+  manage: string
+  id?: string
+  flash?: boolean
+  /** Entries behind the disclosure; 0 renders `children` (the empty-state text) directly, no pill. */
+  count: number
+  /** Singular noun for the pill — "subscriber" for standing lists, "scheduled send" for one-off queues. */
+  noun: string
+  open: boolean
+  onToggle: () => void
+}) {
+  const empty = count === 0
   return (
     <div
       id={id}
@@ -119,9 +142,38 @@ function StreamCard({ title, cadence, right, children, manage, id, flash }: { ti
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cadence}</span>
         <span style={{ marginLeft: 'auto' }}>{right}</span>
       </div>
-      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {children}
-        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{manage}</span>
+      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {empty ? (
+            children
+          ) : (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-expanded={open}
+              aria-label={`${open ? 'Hide' : 'Show'} the ${count} ${noun}${count === 1 ? '' : 's'} for ${title}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 26,
+                padding: '0 10px',
+                borderRadius: 9999,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text-700)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {count} {noun}
+              {count === 1 ? '' : 's'} {open ? '▴' : '▾'}
+            </button>
+          )}
+          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{manage}</span>
+        </div>
+        {!empty && open ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{children}</div> : null}
       </div>
     </div>
   )
@@ -136,6 +188,9 @@ export default function SettingsEmailStreamsSection({ focus }: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [flashKey, setFlashKey] = useState<EmailStreamKey | null>(null)
+  // Which cards' subscriber lists are expanded (v2.1755) — keyed by card id.
+  const [openCards, setOpenCards] = useState<Record<string, boolean>>({})
+  const toggleCard = (key: string) => setOpenCards((prev) => ({ ...prev, [key]: !prev[key] }))
 
   // Runs after the async RPC data renders the cards; re-fires per click (nonce).
   useEffect(() => {
@@ -143,6 +198,9 @@ export default function SettingsEmailStreamsSection({ focus }: {
     const el = document.getElementById(emailStreamCardId(focus.key))
     if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
     setFlashKey(focus.key)
+    // Landing from a log row also opens the card's list — the whole point is
+    // seeing who got the email.
+    setOpenCards((prev) => ({ ...prev, [focus.key]: true }))
     const t = window.setTimeout(() => setFlashKey(null), 2600)
     return () => window.clearTimeout(t)
   }, [focus, data])
@@ -199,8 +257,13 @@ export default function SettingsEmailStreamsSection({ focus }: {
   }
 
   async function cancelBilled(id: string, name: string) {
+    await cancelRequest(() => cancelBilledReportSend(id), name)
+  }
+
+  /** Shared cancel flow for the one-off request streams (dev DELETE policy on each table). */
+  async function cancelRequest(run: () => Promise<void>, name: string) {
     try {
-      await cancelBilledReportSend(id)
+      await run()
       showToast(`Scheduled send to ${name} cancelled.`, 'success')
       await load()
     } catch (e) {
@@ -242,8 +305,9 @@ export default function SettingsEmailStreamsSection({ focus }: {
   return (
     <div>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '0 0 12px' }}>
-        Every recurring and scheduled email stream. Chips remove a recipient (the same write each stream's own manager
-        does); pausing a digest keeps its setup. Creating and editing schedules stays on each stream's home surface.
+        Every recurring and scheduled email stream. Tap a count to see who's subscribed; each name's × removes them
+        (the same write each stream's own manager does); pausing a digest keeps its setup. Creating and editing
+        schedules stays on each stream's home surface.
       </p>
 
       {data.report_schedules.map((s, i) => (
@@ -251,6 +315,10 @@ export default function SettingsEmailStreamsSection({ focus }: {
           key={s.id}
           id={i === 0 ? emailStreamCardId('digest') : undefined}
           flash={flashKey === 'digest' && i === 0}
+          count={s.recipients.length}
+          noun="subscriber"
+          open={!!openCards[i === 0 ? 'digest' : `digest:${s.id}`]}
+          onToggle={() => toggleCard(i === 0 ? 'digest' : `digest:${s.id}`)}
           title={`Job report digest — "${s.name}"`}
           cadence={cadenceLabel(s.days_of_week, s.time_local)}
           right={toggle(s.enabled, () => void toggleSchedule(s.id, !s.enabled), `${s.enabled ? 'Pause' : 'Resume'} ${s.name}`)}
@@ -272,7 +340,17 @@ export default function SettingsEmailStreamsSection({ focus }: {
         </StreamCard>
       ))}
 
-      <StreamCard id={emailStreamCardId('paid')} flash={flashKey === 'paid'} title="Paid in Full notifications" cadence="event — job reaches Paid in Full" manage="full manager → Jobs → Pipeline ⚙ Paid In Full notifications">
+      <StreamCard
+        id={emailStreamCardId('paid')}
+        flash={flashKey === 'paid'}
+        count={data.paid_recipients.length}
+        noun="subscriber"
+        open={!!openCards['paid']}
+        onToggle={() => toggleCard('paid')}
+        title="Paid in Full notifications"
+        cadence="event — job reaches Paid in Full"
+        manage="full manager → Jobs → Pipeline ⚙ Paid In Full notifications"
+      >
         {data.paid_recipients.length === 0
           ? none
           : data.paid_recipients.map((r) => (
@@ -280,7 +358,17 @@ export default function SettingsEmailStreamsSection({ focus }: {
             ))}
       </StreamCard>
 
-      <StreamCard id={emailStreamCardId('payment')} flash={flashKey === 'payment'} title="Payment received notifications" cadence="event — any payment on any job" manage="full manager → Jobs → Pipeline ⚙ Paid notifications">
+      <StreamCard
+        id={emailStreamCardId('payment')}
+        flash={flashKey === 'payment'}
+        count={data.payment_recipients.length}
+        noun="subscriber"
+        open={!!openCards['payment']}
+        onToggle={() => toggleCard('payment')}
+        title="Payment received notifications"
+        cadence="event — any payment on any job"
+        manage="full manager → Jobs → Pipeline ⚙ Paid notifications"
+      >
         {data.payment_recipients.length === 0
           ? none
           : data.payment_recipients.map((r) => (
@@ -288,7 +376,17 @@ export default function SettingsEmailStreamsSection({ focus }: {
             ))}
       </StreamCard>
 
-      <StreamCard id={emailStreamCardId('billed')} flash={flashKey === 'billed'} title="Billed Awaiting Payment report" cadence="one-off scheduled sends" manage="schedule more → Jobs → Pipeline ⇪ Share / Print">
+      <StreamCard
+        id={emailStreamCardId('billed')}
+        flash={flashKey === 'billed'}
+        count={data.billed_requests.length}
+        noun="scheduled send"
+        open={!!openCards['billed']}
+        onToggle={() => toggleCard('billed')}
+        title="Billed Awaiting Payment report"
+        cadence="one-off scheduled sends"
+        manage="schedule more → Jobs → Pipeline ⇪ Share / Print"
+      >
         {data.billed_requests.length === 0
           ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
           : data.billed_requests.map((r) => (
@@ -301,7 +399,86 @@ export default function SettingsEmailStreamsSection({ focus }: {
             ))}
       </StreamCard>
 
-      <StreamCard id={emailStreamCardId('schedule_day')} flash={flashKey === 'schedule_day'} title="Dispatch-day schedule emails" cadence="one-off queued per person" manage="queue more → Dashboard → Clock strip → Email schedule">
+      <StreamCard
+        id={emailStreamCardId('weekly_movement')}
+        flash={flashKey === 'weekly_movement'}
+        count={(data.weekly_movement_requests ?? []).length}
+        noun="scheduled send"
+        open={!!openCards['weekly_movement']}
+        onToggle={() => toggleCard('weekly_movement')}
+        title="Weekly movement report"
+        cadence="one-off scheduled sends"
+        manage="schedule more → Jobs → Reports → Weekly movement"
+      >
+        {(data.weekly_movement_requests ?? []).length === 0
+          ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
+          : (data.weekly_movement_requests ?? []).map((r) => (
+              <RecipientChip
+                key={r.id}
+                label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
+                onRemove={() => void cancelRequest(() => cancelWeeklyMovementSend(r.id), r.recipient_name)}
+                removeLabel={`Cancel the scheduled weekly movement send to ${r.recipient_name}`}
+              />
+            ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('weekly_money')}
+        flash={flashKey === 'weekly_money'}
+        count={(data.weekly_money_requests ?? []).length}
+        noun="scheduled send"
+        open={!!openCards['weekly_money']}
+        onToggle={() => toggleCard('weekly_money')}
+        title="Weekly money movement report"
+        cadence="one-off scheduled sends — dev/controller only"
+        manage="schedule more → Jobs → Reports → Weekly money"
+      >
+        {(data.weekly_money_requests ?? []).length === 0
+          ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
+          : (data.weekly_money_requests ?? []).map((r) => (
+              <RecipientChip
+                key={r.id}
+                label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
+                onRemove={() => void cancelRequest(() => cancelWeeklyMoneySend(r.id), r.recipient_name)}
+                removeLabel={`Cancel the scheduled weekly money send to ${r.recipient_name}`}
+              />
+            ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('gc_statement')}
+        flash={flashKey === 'gc_statement'}
+        count={(data.gc_statement_requests ?? []).length}
+        noun="scheduled send"
+        open={!!openCards['gc_statement']}
+        onToggle={() => toggleCard('gc_statement')}
+        title="GC statements (open balances)"
+        cadence="one-off scheduled sends — can go to outside inboxes"
+        manage="schedule more → Jobs → Reports → GC review"
+      >
+        {(data.gc_statement_requests ?? []).length === 0
+          ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
+          : (data.gc_statement_requests ?? []).map((r) => (
+              <RecipientChip
+                key={r.id}
+                label={`${(r.entity_name ?? '').trim() || 'Statement'} → ${r.sent_to} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
+                onRemove={() => void cancelRequest(() => cancelGcStatementSend(r.id), r.sent_to)}
+                removeLabel={`Cancel the scheduled statement to ${r.sent_to}`}
+              />
+            ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('schedule_day')}
+        flash={flashKey === 'schedule_day'}
+        count={data.schedule_day_requests.length}
+        noun="scheduled send"
+        open={!!openCards['schedule_day']}
+        onToggle={() => toggleCard('schedule_day')}
+        title="Dispatch-day schedule emails"
+        cadence="one-off queued per person"
+        manage="queue more → Dashboard → Clock strip → Email schedule"
+      >
         {data.schedule_day_requests.length === 0
           ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing queued.</span>
           : data.schedule_day_requests.map((r) => (
