@@ -21,6 +21,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1750',
+    date: '2026-08-16',
+    title: 'Full-width ledger on your phone',
+    kind: 'fix',
+    highlights: [
+      'The Banking Sorting Ledger now uses the entire phone screen edge to edge — no more margins squeezing the table — and swipes sideways for the rest of the columns.',
+    ],
+  },
+  {
     version: 'v2.1749',
     date: '2026-08-16',
     title: 'All pop-ups clear the status bar',

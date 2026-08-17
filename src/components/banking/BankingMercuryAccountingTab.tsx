@@ -71,6 +71,7 @@ import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRu
 import { AccountingApprovalCard } from './AccountingApprovalCard'
 import type { SearchableSelectOption, SearchableSelectSelectableOption } from '../SearchableSelect'
 import { bankingPersonKindTag, parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import {
   BACKFILL_READ_CHUNK,
   BACKFILL_WRITE_CHUNK,
@@ -368,6 +369,9 @@ export function BankingMercuryAccountingTab({
   // (which would break memo equality every state change).
   const pendingApprovalsRef = useRef<PendingApproval[]>([])
   const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
+  // Full-bleed ledger on phones (v2.1749): the table escapes the page's 2rem
+  // side padding so every column-width counts; scrolling stays inside it.
+  const isNarrowScreen = useIsNarrowScreen()
   const [quickAssignTxId, setQuickAssignTxId] = useState<string | null>(null)
   const [quickAssignMode, setQuickAssignMode] = useState<'assign' | 'person-only'>('assign')
   const [quickAssignBusy, setQuickAssignBusy] = useState(false)
@@ -2235,7 +2239,25 @@ export function BankingMercuryAccountingTab({
         {loading || assignmentsLoading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>
         ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <div
+            style={{
+              overflowX: 'auto',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              ...(isNarrowScreen
+                ? {
+                    // Exact full-bleed regardless of page/main insets (both are
+                    // symmetric): pull each edge from container-center to
+                    // viewport-center.
+                    marginLeft: 'calc(50% - 50vw)',
+                    marginRight: 'calc(50% - 50vw)',
+                    borderRadius: 0,
+                    borderLeft: 'none',
+                    borderRight: 'none',
+                  }
+                : {}),
+            }}
+          >
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <BankingMercuryDragSortLedgerThead
                 showDragHandle={ledgerShowDrag}
