@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { customerDaysToPay, customerMoneyStats, type ProfileJob } from './customerProfileStats'
+import { customerDaysToPay, customerEstimateOutcomes, customerMoneyStats, type ProfileJob } from './customerProfileStats'
 
 const TODAY = '2026-08-03'
 
@@ -106,5 +106,60 @@ describe('customerDaysToPay', () => {
       }),
     ]
     expect(customerDaysToPay(jobs, TODAY)).toBeNull()
+  })
+})
+
+describe('lifetimeBilled', () => {
+  it('sums billed and paid invoice amounts across jobs', () => {
+    const jobs = [
+      job({
+        invoices: [
+          { id: 'i1', status: 'billed', amount: 1000, billed_at: null, estimated_bill_date: null },
+          { id: 'i2', status: 'paid', amount: 500, billed_at: null, estimated_bill_date: null },
+          { id: 'i3', status: 'ready_to_bill', amount: 999, billed_at: null, estimated_bill_date: null }, // draft — not billed
+        ],
+      }),
+      job({ id: 'j2', status: 'billed', invoices: [{ id: 'i4', status: 'billed', amount: 250, billed_at: null, estimated_bill_date: null }] }),
+    ]
+    expect(customerMoneyStats(jobs, TODAY).lifetimeBilled).toBe(1000 + 500 + 250)
+  })
+
+  it('falls back to the job shell (revenue) for billed/paid jobs without billed invoice rows', () => {
+    const jobs = [
+      job({ status: 'paid', revenue: 4000 }),
+      job({ id: 'j2', status: 'billed', revenue: 900 }),
+      job({ id: 'j3', status: 'working', revenue: 700 }), // not billed yet — no LCV contribution
+    ]
+    expect(customerMoneyStats(jobs, TODAY).lifetimeBilled).toBe(4000 + 900)
+  })
+
+  it('prefers invoice rows over the shell when both exist (no double count)', () => {
+    const jobs = [
+      job({
+        status: 'paid',
+        revenue: 5000,
+        invoices: [{ id: 'i1', status: 'paid', amount: 5000, billed_at: null, estimated_bill_date: null }],
+      }),
+    ]
+    expect(customerMoneyStats(jobs, TODAY).lifetimeBilled).toBe(5000)
+  })
+})
+
+describe('customerEstimateOutcomes', () => {
+  it('counts accepted vs decided; drafts/sent/superseded are undecided', () => {
+    const outcomes = customerEstimateOutcomes([
+      { status: 'customer_accepted' },
+      { status: 'customer_accepted' },
+      { status: 'declined' },
+      { status: 'draft' },
+      { status: 'sent' },
+      { status: 'superseded' },
+    ])
+    expect(outcomes).toEqual({ accepted: 2, decided: 3 })
+  })
+
+  it('returns null when nothing is decided', () => {
+    expect(customerEstimateOutcomes([{ status: 'sent' }, { status: 'draft' }])).toBeNull()
+    expect(customerEstimateOutcomes([])).toBeNull()
   })
 })

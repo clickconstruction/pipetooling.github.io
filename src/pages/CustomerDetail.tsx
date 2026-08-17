@@ -1,0 +1,451 @@
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import { formatErrorMessage } from '../utils/errorHandling'
+import { denverWorkDateToday } from '../lib/salaryScheduleSync'
+import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
+import {
+  jobsLedgerStatusDotColor,
+  labelJobsLedgerStatusForDashboard,
+  normalizeJobsLedgerStatus,
+} from '../lib/jobsLedgerStatusPipeline'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
+import {
+  customerDaysToPay,
+  customerEstimateOutcomes,
+  customerMoneyStats,
+} from '../lib/customers/customerProfileStats'
+import { fetchCustomerProfile, type CustomerProfileData } from '../lib/customers/fetchCustomerProfile'
+
+/**
+ * Customer Hub — the dedicated page per customer at /customers/:id.
+ * Landing tab is Profile: identity header, contact band, the money strip
+ * (lifetime value, open balance + aging, pays-in, estimates won), and the
+ * open-jobs panel. Further tabs (Estimates / Jobs / Invoices) ship on this
+ * same shell; the tab lives in the URL (?tab=) so views are linkable.
+ *
+ * The quick-peek CustomerProfileModal stays for board surfaces — both share
+ * fetchCustomerProfile + customerProfileStats so the numbers can't diverge.
+ */
+
+const money = (n: number) =>
+  `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
+
+export type CustomerDetailTab = 'profile'
+
+const TAB_LABELS: Record<CustomerDetailTab, string> = { profile: 'Profile' }
+const TABS: CustomerDetailTab[] = ['profile']
+
+function parseTab(raw: string | null): CustomerDetailTab {
+  return TABS.includes(raw as CustomerDetailTab) ? (raw as CustomerDetailTab) : 'profile'
+}
+
+const capStyle: CSSProperties = {
+  fontSize: '0.66rem',
+  fontWeight: 700,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  color: 'var(--text-faint)',
+}
+
+function MoneyCell({ cap, children, sub, last }: { cap: string; children: ReactNode; sub?: ReactNode; last?: boolean }) {
+  return (
+    <div style={{ padding: '12px 16px', borderRight: last ? 'none' : '1px solid var(--border)' }}>
+      <div style={capStyle}>{cap}</div>
+      <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+        {children}
+      </div>
+      {sub ? <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div> : null}
+    </div>
+  )
+}
+
+function TypeChip({ label, bg, fg }: { label: string; bg: string; fg: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: 20,
+        padding: '0 9px',
+        borderRadius: 9999,
+        fontSize: '0.68rem',
+        fontWeight: 700,
+        background: bg,
+        color: fg,
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+export default function CustomerDetail() {
+  const { id: customerId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const editCustomer = useEditCustomerModal()
+  const jobDetail = useJobDetailModal()
+
+  const [data, setData] = useState<CustomerProfileData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const activeTab = parseTab(searchParams.get('tab'))
+
+  const load = useCallback(() => {
+    if (!customerId) return
+    fetchCustomerProfile(customerId)
+      .then(setData)
+      .catch((e: unknown) => setError(formatErrorMessage(e, 'Could not load customer')))
+  }, [customerId])
+
+  useEffect(() => {
+    setData(null)
+    setError(null)
+    load()
+  }, [load])
+
+  const todayYmd = denverWorkDateToday()
+  const stats = useMemo(() => (data ? customerMoneyStats(data.jobs, todayYmd) : null), [data, todayYmd])
+  const daysToPay = useMemo(() => (data ? customerDaysToPay(data.jobs, todayYmd) : null), [data, todayYmd])
+  const estimateOutcomes = useMemo(() => (data ? customerEstimateOutcomes(data.estimates) : null), [data])
+
+  const contact = data ? extractContactFromCustomer(data.customer) : { phone: '', email: '' }
+  const address = (data?.customer.address ?? '').trim()
+
+  const sinceLabel = useMemo(() => {
+    const dm = (data?.customer.date_met ?? data?.customer.created_at ?? '').slice(0, 10)
+    if (!dm) return null
+    const d = new Date(`${dm}T12:00:00Z`)
+    if (Number.isNaN(d.getTime())) return null
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+  }, [data])
+
+  const agingChip = useMemo(() => {
+    if (!stats) return null
+    if (stats.aging.count90 > 0)
+      return { label: `${stats.aging.count90} · ${money(stats.aging.sum90)} at 90+ days`, bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' }
+    if (stats.aging.count30_90 > 0)
+      return { label: `${stats.aging.count30_90} · ${money(stats.aging.sum30_90)} at 30–90 days`, bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
+    if (stats.openBalance > 0.005) return { label: 'none 30+ days', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
+    return null
+  }, [stats])
+
+  const openJobs = useMemo(
+    () => (data ? data.jobs.filter((j) => normalizeJobsLedgerStatus(j.status) !== 'paid') : []),
+    [data],
+  )
+
+  if (!customerId) {
+    return <p style={{ color: 'var(--text-red-700)' }}>No customer id in the URL.</p>
+  }
+  if (error) {
+    return (
+      <div>
+        <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+        <Link to="/customers">← Back to Customers</Link>
+      </div>
+    )
+  }
+  if (!data || !stats) {
+    return (
+      <p role="status" style={{ color: 'var(--text-muted)' }}>
+        Loading customer…
+      </p>
+    )
+  }
+
+  const customer = data.customer
+
+  return (
+    <div>
+      <div style={{ marginBottom: '0.4rem' }}>
+        <Link to="/customers" style={{ fontSize: '0.8rem', color: 'var(--text-link)', textDecoration: 'none' }}>
+          ← Customers
+        </Link>
+      </div>
+
+      {/* identity header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <h1 style={{ margin: 0, fontSize: '1.45rem', color: 'var(--text-strong)' }}>{(customer.name ?? '').trim() || '—'}</h1>
+        {customer.customer_type === 'commercial' ? (
+          <TypeChip label="Commercial" bg="var(--bg-blue-tint)" fg="var(--text-blue-800)" />
+        ) : customer.customer_type === 'residential' ? (
+          <TypeChip label="Residential" bg="var(--bg-blue-tint)" fg="var(--text-blue-800)" />
+        ) : null}
+        {customer.archived_at ? <TypeChip label="Archived" bg="var(--bg-muted)" fg="var(--text-muted)" /> : null}
+        {sinceLabel ? <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Customer since {sinceLabel}</span> : null}
+        <div style={{ marginLeft: 'auto' }}>
+          <button
+            type="button"
+            onClick={() =>
+              editCustomer?.openEditCustomerModal(customerId, {
+                onSaved: load,
+                onDeleted: () => navigate('/customers'),
+                onMerged: ({ survivorId, removedId }) => {
+                  if (removedId === customerId) navigate(`/customers/${survivorId}`, { replace: true })
+                  else load()
+                },
+              })
+            }
+            style={{
+              height: 30,
+              padding: '0 0.8rem',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 5,
+              background: 'var(--surface)',
+              color: 'var(--text-700)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ✎ Edit customer
+          </button>
+        </div>
+      </div>
+
+      {/* contact band */}
+      {(contact.phone || contact.email || address || data.contactPersons.length > 0) && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 14,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            padding: '8px 0 12px',
+            borderBottom: '1px solid var(--border)',
+            fontSize: '0.85rem',
+          }}
+        >
+          {contact.phone && (
+            <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
+              📞 {contact.phone}
+            </a>
+          )}
+          {contact.email && (
+            <a href={`mailto:${contact.email}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
+              ✉ {contact.email}
+            </a>
+          )}
+          {address && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--text-link)', textDecoration: 'none' }}
+            >
+              📍 {address}
+            </a>
+          )}
+          {data.contactPersons.length > 0 && (
+            <span style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}>
+              · contact{data.contactPersons.length > 1 ? 's' : ''}: {data.contactPersons.map((c) => c.name).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* tab strip */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', margin: '10px 0 16px' }}>
+        {TABS.map((tab) => {
+          const on = tab === activeTab
+          return (
+            <button
+              key={tab}
+              type="button"
+              aria-pressed={on}
+              onClick={() =>
+                setSearchParams((p) => {
+                  const n = new URLSearchParams(p)
+                  if (tab === 'profile') n.delete('tab')
+                  else n.set('tab', tab)
+                  return n
+                })
+              }
+              style={{
+                fontSize: '0.87rem',
+                fontWeight: 600,
+                padding: '6px 14px 8px',
+                color: on ? 'var(--text-link)' : 'var(--text-muted)',
+                border: 'none',
+                borderBottom: on ? '2px solid var(--text-link)' : '2px solid transparent',
+                marginBottom: -2,
+                background: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {TAB_LABELS[tab]}
+            </button>
+          )
+        })}
+      </div>
+
+      {activeTab === 'profile' ? (
+        <>
+          {/* money strip */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              marginBottom: 16,
+              background: 'var(--surface)',
+            }}
+          >
+            <MoneyCell
+              cap="Lifetime value"
+              sub={`billed across ${stats.jobCount} job${stats.jobCount === 1 ? '' : 's'} · ${money(stats.lifetimeCollected)} collected`}
+            >
+              <span style={{ color: 'var(--text-green-600)' }}>{money(stats.lifetimeBilled)}</span>
+            </MoneyCell>
+            <MoneyCell
+              cap="Open balance"
+              sub={
+                agingChip ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      height: 17,
+                      padding: '0 8px',
+                      borderRadius: 9999,
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      background: agingChip.bg,
+                      color: agingChip.fg,
+                    }}
+                  >
+                    {agingChip.label}
+                  </span>
+                ) : undefined
+              }
+            >
+              <span style={{ color: stats.openBalance > 0.005 ? 'var(--text-amber-800)' : 'var(--text-strong)' }}>
+                {money(stats.openBalance)}
+              </span>
+            </MoneyCell>
+            <MoneyCell
+              cap="Pays in"
+              sub={daysToPay ? `median, last ${daysToPay.samples} payment${daysToPay.samples === 1 ? '' : 's'}` : 'no billed→paid history yet'}
+            >
+              {daysToPay ? `~${daysToPay.medianDays} day${daysToPay.medianDays === 1 ? '' : 's'}` : '—'}
+            </MoneyCell>
+            <MoneyCell
+              cap="Estimates won"
+              sub={estimateOutcomes ? 'accepted of decided estimates' : 'no decided estimates yet'}
+              last
+            >
+              {estimateOutcomes ? `${estimateOutcomes.accepted} / ${estimateOutcomes.decided}` : '—'}
+            </MoneyCell>
+          </div>
+
+          {/* open jobs */}
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', maxWidth: 720 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '9px 13px',
+                borderBottom: '1px solid var(--border)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--text-strong)',
+              }}
+            >
+              Open jobs
+              <Link
+                to={`/jobs?customer=${customerId}`}
+                style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
+              >
+                View all {data.jobs.length} in Pipeline →
+              </Link>
+            </div>
+            {openJobs.length === 0 ? (
+              <p style={{ margin: 0, padding: '10px 13px', fontSize: '0.82rem', color: 'var(--text-faint)' }}>
+                No open jobs — {data.jobs.length === 0 ? 'no jobs yet.' : 'everything is paid.'}
+              </p>
+            ) : (
+              openJobs.map((j, idx) => {
+                const paid = Number(j.payments_made ?? 0)
+                const revenue = Number(j.revenue ?? 0)
+                return (
+                  <div
+                    key={j.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 13px',
+                      borderBottom: idx === openJobs.length - 1 ? 'none' : '1px solid var(--border)',
+                      fontSize: '0.84rem',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 9999,
+                        flexShrink: 0,
+                        background: jobsLedgerStatusDotColor(j.status ?? 'working'),
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => jobDetail?.openJobDetail({ jobId: j.id })}
+                      title="Open job detail"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        font: 'inherit',
+                        fontWeight: 700,
+                        color: 'var(--text-link)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || 'Job'}
+                    </button>
+                    <span
+                      style={{
+                        color: 'var(--text-700)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
+                        flex: 1,
+                      }}
+                    >
+                      {(j.job_name ?? '').trim()}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {labelJobsLedgerStatusForDashboard(j.status ?? 'working')}
+                    </span>
+                    <span
+                      style={{
+                        fontVariantNumeric: 'tabular-nums',
+                        fontWeight: 600,
+                        color: 'var(--text-strong)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {revenue > 0 ? money(revenue) : '—'}
+                      {paid > 0 && revenue > 0 ? (
+                        <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}> · {money(paid)} paid</span>
+                      ) : null}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}

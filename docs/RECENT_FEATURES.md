@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1774)
+last_updated: 2026-08-17 (v2.1775)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1775)
+
+### Customer Hub: every customer gets a dedicated page with lifetime value (2026-08-17)
+Owner request (HouseCall Pro parity — "how much revenue has this customer generated"): PR 1 of the 6-PR Customer Hub train (mockups approved 2026-08-17). New page [`CustomerDetail`](../src/pages/CustomerDetail.tsx) at **`/customers/:id`** (lazy route in `App.tsx`; tab lives in `?tab=` so views are linkable — Profile is the only tab this PR, Estimates/Jobs/Invoices follow). Clicking a customer's **name** on the Customers list now navigates here; a new ✎ pencil beside the name keeps the one-click edit-modal path. The page reuses the profile modal's data + math wholesale: `fetchCustomerProfile` + [`customerProfileStats`](../src/lib/customers/customerProfileStats.ts), which gains **`lifetimeBilled`** — the LCV headline: Σ billed/paid invoice amounts per job, falling back to the job shell (`revenue`) for billed/paid jobs with no invoice rows, mirroring openBalance's shell rule — and **`customerEstimateOutcomes`** (accepted vs decided, drafts/sent/superseded undecided) (+5 kernel tests). Profile tab renders: identity header (type/archived chips, "Customer since", ✎ Edit customer with delete→list / merge→survivor navigation), tel:/mailto:/maps contact band, the **money strip** (Lifetime value in green with collected sub-line · Open balance with the modal's 30/90 aging chip · Pays in ~N days · Estimates won), and the **Open jobs** panel (non-paid jobs, status dot + number → Job Detail modal, revenue · paid; "View all N in Pipeline →" deep-links `/jobs?customer=`). The quick-peek `CustomerProfileModal` stays untouched for board surfaces — same kernels, numbers can't diverge. Help guides: new `see-a-customers-full-history-and-lifetime-value`, `archive-customers` updated for the name-click change. Client-only — no migration.
 
 ## Latest Updates (v2.1774)
 

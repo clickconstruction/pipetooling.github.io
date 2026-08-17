@@ -9,7 +9,7 @@ Archiving tidies up a customer you no longer work with. Nothing is deleted — e
 
 ## Archive a customer
 
-1. Open the customer from the **Customers** page (click their name).
+1. Open the customer's page from the **Customers** list (click their name), then click {{button:outline|✎ Edit customer}} — or click the small ✎ pencil right on the list.
 2. In the edit form, click {{button:outline|Archive customer}} (next to Save/Cancel).
 3. A confirmation lists exactly what will happen. Click {{button:amber|Archive}} to commit.
 
@@ -19,7 +19,7 @@ Hidden from the Customers list by default · removed from new-job, estimate, bid
 
 ## Find and unarchive
 
-On the **Customers** page, click **Show archived (n)** at the right end of the filter row — archived customers appear with an {{chip:yellow|Archived}} badge. Open one and click {{button:outline|Unarchive}}; it immediately returns to the list and all pickers.
+On the **Customers** page, click **Show archived (n)** at the right end of the filter row — archived customers appear with an {{chip:yellow|Archived}} badge. Open one for editing (the ✎ pencil) and click {{button:outline|Unarchive}}; it immediately returns to the list and all pickers.
 
 ## What archiving does NOT do
 

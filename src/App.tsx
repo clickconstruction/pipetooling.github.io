@@ -10,6 +10,7 @@ import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import AcceptInvite from './pages/AcceptInvite'
 const Customers = lazy(() => import('./pages/Customers'))
+const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
 const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
@@ -282,6 +283,7 @@ function AppContent() {
           <Route path="job-mode/customers" element={<JobModeTabs />} />
           <Route path="customers" element={<Customers />} />
           <Route path="customers/new" element={<Navigate to="/customers" state={{ openNewCustomer: true }} replace />} />
+          <Route path="customers/:id" element={<CustomerDetail />} />
           <Route path="customers/:id/edit" element={<NavigateToEditCustomer />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/new" element={<ProjectNewGate />} />

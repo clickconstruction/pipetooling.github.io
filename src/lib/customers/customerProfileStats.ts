@@ -44,6 +44,14 @@ export type CustomerMoneyStats = {
   openBalance: number
   aging: CustomerAging
   lifetimeCollected: number
+  /**
+   * Lifetime value (the HouseCall Pro headline): everything ever billed to
+   * this customer. Per job: Σ invoice amounts in status billed/paid; jobs
+   * with no billed/paid invoice rows fall back to the job shell (revenue)
+   * once the job itself has reached billed/paid — mirroring the shell rule
+   * openBalance uses.
+   */
+  lifetimeBilled: number
   jobCount: number
 }
 
@@ -61,6 +69,7 @@ function ymdOf(iso: string): string {
 export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): CustomerMoneyStats {
   let open = 0
   let lifetime = 0
+  let billedTotal = 0
   const aging: CustomerAging = { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 }
   for (const job of jobs) {
     const appliedByInvoice = new Map<string, number>()
@@ -70,6 +79,11 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
       if (p.invoice_id) appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + amt)
     }
     const status = (job.status ?? 'working') as string
+    const invoicedBilled = job.invoices
+      .filter((i) => i.status === 'billed' || i.status === 'paid')
+      .reduce((sum, i) => sum + Number(i.amount ?? 0), 0)
+    if (invoicedBilled > 0) billedTotal += invoicedBilled
+    else if (status === 'billed' || status === 'paid') billedTotal += Number(job.revenue ?? 0)
     if (status === 'paid') continue
     const billed = job.invoices.filter((i) => i.status === 'billed')
     if (billed.length === 0) {
@@ -90,7 +104,25 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
       }
     }
   }
-  return { openBalance: open, aging, lifetimeCollected: lifetime, jobCount: jobs.length }
+  return { openBalance: open, aging, lifetimeCollected: lifetime, lifetimeBilled: billedTotal, jobCount: jobs.length }
+}
+
+export type EstimateOutcomes = { accepted: number; decided: number } | null
+
+/**
+ * Estimate win rate inputs: accepted vs decided (accepted + declined).
+ * Drafts, sent-and-waiting, and superseded estimates don't count as decided.
+ * Null when nothing has been decided yet.
+ */
+export function customerEstimateOutcomes(estimates: Array<{ status: string }>): EstimateOutcomes {
+  let accepted = 0
+  let declined = 0
+  for (const e of estimates) {
+    if (e.status === 'customer_accepted') accepted += 1
+    else if (e.status === 'declined') declined += 1
+  }
+  const decided = accepted + declined
+  return decided === 0 ? null : { accepted, decided }
 }
 
 export type DaysToPay = { medianDays: number; samples: number } | null

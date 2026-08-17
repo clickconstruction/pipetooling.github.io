@@ -414,13 +414,27 @@ export default function Customers() {
               >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
+                  <Link
+                    to={`/customers/${c.id}`}
                     aria-label={
                       typeFilter === 'all'
                         ? `${(c.name ?? 'Customer').trim() || 'Customer'}, ${customerTypeTagLabel(c)}`
                         : undefined
                     }
+                    style={{
+                      font: 'inherit',
+                      fontWeight: 500,
+                      color: 'inherit',
+                      textAlign: 'left',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {c.name}
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label={`Edit ${(c.name ?? 'customer').trim() || 'customer'}`}
+                    title="Edit customer"
                     onClick={() =>
                       editCustomerModal?.openEditCustomerModal(c.id, {
                         onSaved: fetchCustomers,
@@ -434,13 +448,12 @@ export default function Customers() {
                       border: 'none',
                       padding: 0,
                       font: 'inherit',
-                      fontWeight: 500,
+                      fontSize: '0.8rem',
                       cursor: 'pointer',
-                      color: 'inherit',
-                      textAlign: 'left',
+                      color: 'var(--text-faint)',
                     }}
                   >
-                    {c.name}
+                    ✎
                   </button>
                   {typeFilter === 'all' ? (
                     <span
