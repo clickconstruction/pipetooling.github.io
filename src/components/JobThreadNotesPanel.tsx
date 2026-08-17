@@ -353,7 +353,11 @@ export function JobThreadNotesPanel({
           style={{
             maxHeight: ACTIVITY_LIST_MAX_HEIGHT,
             overflowY: 'auto',
-            marginBottom: '0.75rem',
+            // A crisp edge under the list (v2.1768): without it a half-scrolled
+            // entry visually merged into the composer right below.
+            borderBottom: '1px solid var(--border)',
+            paddingBottom: '0.35rem',
+            marginBottom: '0.25rem',
             minHeight: 0,
           }}
         >
@@ -593,7 +597,20 @@ export function JobThreadNotesPanel({
         </div>
       )}
       {canPost && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            marginTop: '0.5rem',
+            // The composer is its own quiet card (v2.1768) so it never reads
+            // as part of the feed's last entry.
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            padding: '0.6rem',
+          }}
+        >
           {pctEditorOpen && canEditPct ? (
             /* % complete editor takes over the composer area: slider on top, then
                [note field | Cancel | Set to N%]. A note is required below 100%. */
@@ -602,10 +619,8 @@ export function JobThreadNotesPanel({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.5rem',
-                padding: '0.6rem',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                background: 'var(--surface)',
+                // The wrapper card (v2.1768) already borders and pads the area.
+                padding: 0,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
@@ -709,15 +724,20 @@ export function JobThreadNotesPanel({
                 placeholder="Type a note… (Enter to post, Shift+Enter for new line)"
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
+                  padding: '0.5rem 0.6rem',
+                  // Room for descenders (v2.1768) — at rows=1 the placeholder's
+                  // g/p glyphs clipped against the border.
+                  minHeight: '2.4rem',
                   fontSize: '0.875rem',
+                  lineHeight: 1.4,
                   border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
+                  borderRadius: 8,
+                  background: 'var(--surface)',
+                  color: 'var(--text-strong)',
                   boxSizing: 'border-box',
                   resize: 'none',
                   maxHeight: '10rem',
                   overflowY: 'auto',
-                  lineHeight: 1.35,
                 }}
               />
               {/* Flat, wrapping action row: stamps / % complete on the left,

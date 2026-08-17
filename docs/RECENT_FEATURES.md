@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1767)
+last_updated: 2026-08-17 (v2.1768)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1768)
+
+### Job pane: the note composer becomes its own card (2026-08-17)
+Owner screenshot on the Job window's Job tab: the activity feed's scroll edge sliced through the last entry's author line with nothing separating it from the note input right below — feed and composer read as one mushy block, and the one-row textarea clipped its placeholder's descenders. Three touches in [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) (shared by the Job pane and the Pipeline row's thread box): (1) the feed's scroll container gains a bottom hairline + breathing room, so a half-scrolled entry reads as a scrollable list edge; (2) the composer (textarea + Arrived/Leaving/Set % complete/Post note row, and the % editor when open) wraps in a quiet card — `--bg-subtle`, hairline border, radius 10 — with the % editor's now-redundant inner border removed; (3) the textarea gets `minHeight` + looser line-height so placeholder glyphs stop clipping. Verified live on job 186 (the screenshot's job): divider present, card styles applied, placeholder fully visible. Client-only — no migration.
 
 ## Latest Updates (v2.1767)
 
