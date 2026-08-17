@@ -2,32 +2,24 @@
 title: price a bid at a target margin
 category: Bids & Estimating
 roles: dev, estimator, master_technician
-keywords: margin, markup, pricing, sale price, apply margin, 50%, price by margin, bulk price, recent margins
+keywords: margin, markup, pricing, sale price, apply margin, 50%, price by margin, margin mode, recent margins
 ---
 
-On Bids → Pricing (Price Model view), the **Price by margin** toolbar sets Sale Prices from your target margin in one click — no calculator, no row-by-row typing.
+On Bids → Pricing (Price Model view), **Margin mode** prices each line at your target margin right where you're reading it — no calculator, no scrolling.
 
-## Apply a margin
+## Turn it on
 
-1. Type a margin (1–95) in the box — or tap one of your **recent** chips (your last three margins, most recent first; they follow you from bid to bid on this device).
-2. {{button:blue|Apply to all rows}} prices every row that has a Takeoffs cost: each Sale Price becomes cost ÷ (1 − margin), rounded to whole dollars — so the Margin column lands right on your number.
+Flip the **Margin mode** toggle next to {{button:blue|Apply Matching Price Book Entries}}. It stays on for you (per device), and an **Apply margin** column appears between Revenue and Margin/Total.
 
-Rows with no Takeoffs cost are skipped (there's nothing to price *from*) — the toast tells you how many.
+## Price a row
 
-## Target specific rows
+- Every row with a Takeoffs cost shows your **last-used margin as a chip** — tap {{chip:gray|50%}} and that row's Sale Price becomes cost ÷ (1 − margin), rounded to whole dollars, so the Margin column lands right on your number.
+- The **…** opens a small picker: your three recent margins, each previewing the resulting price ("45% → $6,472"), plus a custom box — type a percent, watch the live preview, press Enter or **→**.
 
-Check the boxes on the rows you want and the button becomes **Apply to N selected rows** — price the big fixtures at 50%, then select just the fittings and hit 40%. Checked rows tint blue; rows without a cost have their checkbox disabled. Clearing every box puts the button back to all-rows mode.
+Your three recents follow you from bid to bid on that device, most recent first. Rows without a Takeoffs cost read "no cost" — there's nothing to price *from*; set those by hand.
 
-## Margin mode — price row by row without scrolling
-
-Turn on **Margin mode** (the toggle at the right end of the toolbar — it stays on per device) and an **Apply margin** column appears between Revenue and Margin/Total. Each costed row gets your last-used margin as a one-tap chip — tap {{chip:gray|50%}} and that row is priced, right where you're reading it. The **…** opens a small picker with your three recent margins (each previewing the resulting Sale Price, like "45% → $6,472"), plus a custom box — type a percent, see the preview, press Enter or **→**. Row-by-row applies skip the replace-confirm: you're aiming at one row deliberately, and it's one tap to redo.
-
-## Already-priced rows
-
-If any target row already has a Sale Price, a confirmation asks whether to **replace all** of them or **fill only the unpriced rows** — so a stray click can never silently blow away pricing you set by hand.
-
-:::example Two-speed pricing
-34 rows, all costed. Type 50, Apply to all rows — done. Then check the four water-heater rows, tap the 45% chip, Replace all 4 — those now carry the tighter margin.
+:::example Walking a bid
+34 costed rows. Tap 50% down the big fixtures, then … → 40% on the fittings — every application happens in the row, and the Margin column confirms each one instantly.
 :::
 
-Every price the toolbar writes is a normal custom price: edit any of them by hand afterward, or use the row's **Reset** to fall back to the price book. Margin here means profit ÷ revenue — the same definition as the Margin column and the line breakdown popup.
+Every price Margin mode writes is a normal custom price: edit any of them by hand afterward, or use the row's **Reset** to fall back to the price book. Margin here means profit ÷ revenue — the same definition as the Margin column and the line breakdown popup.
