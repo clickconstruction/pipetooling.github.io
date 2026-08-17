@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1751',
+    date: '2026-08-16',
+    title: 'Bill tab tidies up on phones',
+    kind: 'fix',
+    highlights: [
+      'The Cost Timeline title no longer prints over the "Value created" toggle on phones — it sits on its own line above the chart.',
+      'The redundant "Labor and Parts Cost" banner and divider are gone; the section starts straight at the timeline.',
+    ],
+  },
+  {
     version: 'v2.1749',
     date: '2026-08-16',
     title: 'All pop-ups clear the status bar',

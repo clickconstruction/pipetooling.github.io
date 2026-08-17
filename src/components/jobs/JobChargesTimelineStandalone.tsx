@@ -5,6 +5,7 @@
  * revenue/materials come from the passed job row. Streams a role can't read simply don't
  * chart (RLS returns nothing). Renders the shared `JobChargesTimelineChartView`. */
 import { useEffect, useState } from 'react'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { supabase } from '../../lib/supabase'
 import {
   buildJobChargeEvents,
@@ -37,6 +38,7 @@ export default function JobChargesTimelineStandalone({
   includeTeamLabor: boolean
 }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
+  const isNarrow = useIsNarrowScreen()
 
   useEffect(() => {
     let cancelled = false
@@ -203,19 +205,25 @@ export default function JobChargesTimelineStandalone({
         </p>
       ) : (
         <div style={{ position: 'relative' }}>
-          {/* Title floats centered over the chart's top so the chart keeps the full block height. */}
+          {/* Title floats centered over the chart's top so the chart keeps the full
+              block height — desktop only: on phones it collided with the right-aligned
+              "Value created (right axis)" toggle, so it drops into normal flow (v2.1751). */}
           <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              zIndex: 1,
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-            }}
+            style={
+              isNarrow
+                ? { fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.2rem' }
+                : {
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontWeight: 600,
+                    fontSize: '0.9375rem',
+                    zIndex: 1,
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap',
+                  }
+            }
           >
             Cost Timeline
           </div>

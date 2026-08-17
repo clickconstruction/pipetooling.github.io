@@ -3,7 +3,6 @@ import { useAuth } from '../../hooks/useAuth'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
-import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 
@@ -48,12 +47,8 @@ export function JobFormLaborCostPanel({
 
   return (
     <>
-              <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
-              <div style={{ ...JOB_FORM_SECTION_HEADER_STYLE, marginBottom: '0.75rem' }}>
-                Labor and Parts Cost
-              </div>
-              {/* Cost Timeline leads the section (owner call, v2.1709) — moved
-                  up from the tail of the parts accordions. */}
+              {/* Section banner + divider removed (owner call, v2.1751) — the Cost
+                  Timeline title right below already announces the section. */}
               <JobChargesTimelineStandalone job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} />
               <div
                 style={{
