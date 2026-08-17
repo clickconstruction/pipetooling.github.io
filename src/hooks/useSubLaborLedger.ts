@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { LaborJob, LaborJobPayment } from '../types/laborJob'
+import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 
 /**
  * Sub Labor ledger + payments engine (Jobs.tsx decomposition seam — see
@@ -26,6 +27,7 @@ export function useSubLaborLedger({
 }) {
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
   const [laborJobNamesByHcp, setLaborJobNamesByHcp] = useState<Record<string, string>>({})
+  const [laborJobAssigneesByJobId, setLaborJobAssigneesByJobId] = useState<Map<string, SubLaborSheetAssignee[]>>(new Map())
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
   /**
    * True after the first loadLaborJobs completes (success or error).
@@ -68,7 +70,7 @@ export function useSubLaborLedger({
     } else if (jobs?.length) {
       const jobIds = jobs.map((j) => j.id)
       const hcpNumbers = [...new Set((jobs as LaborJob[]).map((j) => (j.job_number ?? '').trim()).filter(Boolean))]
-      const [itemsRes, paymentsRes, ledgerRes] = await Promise.all([
+      const [itemsRes, paymentsRes, ledgerRes, assigneesRes] = await Promise.all([
         supabase
           .from('people_labor_job_items')
           .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
@@ -80,10 +82,23 @@ export function useSubLaborLedger({
           .in('job_id', jobIds)
           .order('sequence_order', { ascending: true }),
         hcpNumbers.length > 0 ? supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: hcpNumbers }) : { data: [] },
+        // Junction rows + each assignee's CURRENT roster name — keys the
+        // Outstanding roll-up by person id (v2.1737). Fail-soft: an error or
+        // an RLS-hidden people row degrades to the legacy name grouping.
+        supabase
+          .from('people_labor_job_assignees')
+          .select('labor_job_id, person_id, people(name)')
+          .in('labor_job_id', jobIds),
       ])
       const { data: items } = itemsRes
       const { data: paymentsData } = paymentsRes
       const { data: ledgerJobs } = ledgerRes
+      const assigneesMap = new Map<string, SubLaborSheetAssignee[]>()
+      for (const a of (assigneesRes.data ?? []) as unknown as Array<{ labor_job_id: string; person_id: string; people: { name: string | null } | null }>) {
+        if (!assigneesMap.has(a.labor_job_id)) assigneesMap.set(a.labor_job_id, [])
+        assigneesMap.get(a.labor_job_id)!.push({ personId: a.person_id, personName: a.people?.name ?? null })
+      }
+      setLaborJobAssigneesByJobId(assigneesMap)
       const itemsByJob = new Map<
         string,
         Array<{
@@ -145,6 +160,7 @@ export function useSubLaborLedger({
     } else {
       setLaborJobs([])
       setLaborJobNamesByHcp({})
+      setLaborJobAssigneesByJobId(new Map())
     }
     setLaborJobsLoading(false)
     setLaborJobsLoadedOnce(true)
@@ -220,6 +236,7 @@ export function useSubLaborLedger({
     laborJobs,
     setLaborJobs,
     laborJobNamesByHcp,
+    laborJobAssigneesByJobId,
     laborJobsLoading,
     laborJobsLoadedOnce,
     laborJobDeletingId,

@@ -200,6 +200,7 @@ export default function Jobs() {
     laborJobs,
     setLaborJobs,
     laborJobNamesByHcp,
+    laborJobAssigneesByJobId,
     laborJobsLoading,
     laborJobsLoadedOnce,
     laborJobDeletingId,
@@ -1323,8 +1324,9 @@ export default function Jobs() {
     () =>
       buildSubLaborOutstandingByPerson(
         laborJobs.filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp)),
+        laborJobAssigneesByJobId,
       ),
-    [laborJobs, subLaborSearch, laborJobNamesByHcp],
+    [laborJobs, subLaborSearch, laborJobNamesByHcp, laborJobAssigneesByJobId],
   )
   const subLaborDueTotal = subLaborOutstandingByPerson.totalOutstanding
 
