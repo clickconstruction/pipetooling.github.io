@@ -112,7 +112,7 @@ export default function DocumentsJobBilledInvoiceModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: overlayZIndex,
-        padding: '0.75rem',
+        padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="presentation"
@@ -126,7 +126,7 @@ export default function DocumentsJobBilledInvoiceModal({
           padding: '1.5rem',
           borderRadius: 8,
           width: 'min(920px, 96vw)',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxSizing: 'border-box',
         }}

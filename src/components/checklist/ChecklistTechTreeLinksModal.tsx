@@ -50,7 +50,7 @@ export function ChecklistTechTreeLinksModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
+        padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))',
       }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -66,7 +66,7 @@ export function ChecklistTechTreeLinksModal({
           padding: 20,
           maxWidth: 480,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

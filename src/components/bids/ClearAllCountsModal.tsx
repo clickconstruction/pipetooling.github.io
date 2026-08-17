@@ -35,7 +35,7 @@ export function ClearAllCountsModal({
   const confirmDisabled = busy || value.trim() !== confirmLabel || rowCount === 0
 
   return (
-    <ModalShell cardStyle={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 520, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+    <ModalShell cardStyle={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 520, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
       <h2 style={{ margin: '0 0 1rem 0', color: 'var(--text-red-700)' }}>Clear all counts</h2>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.5rem' }}>
         This will delete <strong>{rowCount}</strong> count row{rowCount === 1 ? '' : 's'} for this bid.

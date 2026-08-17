@@ -1191,7 +1191,7 @@ export function ContractBookModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 12,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div
@@ -1204,7 +1204,7 @@ export function ContractBookModal({
           borderRadius: 8,
           minWidth: 320,
           maxWidth: 'min(96vw, 720px)',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           width: '100%',
         }}

@@ -97,7 +97,7 @@ export function BillingPipelineInfoModal({ open, onClose }: { open: boolean; onC
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       onMouseDown={(e) => {
@@ -111,7 +111,7 @@ export function BillingPipelineInfoModal({ open, onClose }: { open: boolean; onC
         style={{
           width: '100%',
           maxWidth: 460,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflowY: 'auto',
           background: 'var(--surface)',
           borderRadius: 8,

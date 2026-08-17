@@ -1709,11 +1709,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       </div>
 
       {vehicleFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
           {/* Compact layout (v2.1671): short fields share rows and the dialog
               caps at 90vh with its own scroll, so small viewports can always
               reach Save/Cancel (the old stacked form clipped both). */}
-          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, 94vw)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, 94vw)', maxHeight: 'min(90vh, 100%)', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h3 style={{ margin: 0 }}>{editingVehicle ? 'Edit vehicle' : 'Add vehicle'}</h3>
               <button

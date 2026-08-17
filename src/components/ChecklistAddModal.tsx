@@ -345,11 +345,11 @@ export default function ChecklistAddModal({
       aria-labelledby="checklist-add-modal-title"
       // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
       // send-as-task buttons can stack this modal over either dialog (v2.1529).
-      style={{ position: 'fixed', inset: 0, background: overlayBackground, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1012 }}
+      style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: overlayBackground, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1012 }}
       onClick={() => modalContext.closeModal()}
     >
       <div
-        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>

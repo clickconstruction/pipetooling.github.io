@@ -665,7 +665,7 @@ export function PeopleHoursDayAuditModal({
   }, [workDate])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1002 }}>
+    <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1002 }}>
       {clockEditSession && (
         <ClockSessionEditSplitModal
           session={{
@@ -701,7 +701,7 @@ export function PeopleHoursDayAuditModal({
         />
       )}
       <div
-        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}
         role="dialog"
         aria-labelledby="hours-day-audit-title"
       >

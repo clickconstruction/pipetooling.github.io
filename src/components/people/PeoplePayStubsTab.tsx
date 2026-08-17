@@ -955,7 +955,7 @@ export default function PeoplePayStubsTab({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: Z_PEOPLE_PAY_MODAL,
-            padding: '1rem',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             boxSizing: 'border-box',
           }}
         >
@@ -972,7 +972,7 @@ export default function PeoplePayStubsTab({
               borderRadius: 8,
               maxWidth: 640,
               width: '100%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
               boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
             }}
@@ -1218,11 +1218,11 @@ export default function PeoplePayStubsTab({
 
       {payStubCalendarPerson && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
+          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
           onClick={() => setPayStubCalendarPerson(null)}
         >
           <div
-            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
+            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '95vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>

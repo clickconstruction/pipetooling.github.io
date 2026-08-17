@@ -209,7 +209,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1100,
-    padding: '1rem',
+    padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
     boxSizing: 'border-box',
   }
 
@@ -219,7 +219,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
     padding: '1.25rem 1.5rem',
     maxWidth: 720,
     width: '100%',
-    maxHeight: '90vh',
+    maxHeight: 'min(90vh, 100%)',
     overflow: 'auto',
     boxSizing: 'border-box',
     boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

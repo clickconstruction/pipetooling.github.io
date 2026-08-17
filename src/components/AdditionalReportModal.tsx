@@ -323,6 +323,7 @@ export default function AdditionalReportModal({
     <div
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -335,7 +336,7 @@ export default function AdditionalReportModal({
           scrolling modals): the panel is the scroller and the × used to scroll
           away with it. See stickyModalHeaderStyle.ts for why the panel carries
           no top padding. */}
-      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',

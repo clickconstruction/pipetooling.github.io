@@ -568,14 +568,14 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
   return (
     <div
       role="presentation"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal
         aria-label="Match sessions to jobs"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(640px, 100%)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ padding: '0.85rem 1.1rem 0.7rem', borderBottom: '1px solid var(--border)' }}>

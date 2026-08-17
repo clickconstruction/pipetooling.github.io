@@ -643,7 +643,7 @@ export function TakeoffAssemblyAuthoringModals({
     <>
       {/* Add Template modal (from Takeoffs when no templates match) */}
       {takeoffAddTemplateModalOpen && (
-        <ModalShell zIndex={1100} cardStyle={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: 560, width: '90%', maxHeight: '90vh', overflowY: 'auto' }} onCardClick={(e) => e.stopPropagation()}>
+        <ModalShell zIndex={1100} cardStyle={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: 560, width: '90%', maxHeight: 'min(90vh, 100%)', overflowY: 'auto' }} onCardClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0 }}>Add Assembly</h2>
               <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
@@ -835,6 +835,7 @@ export function TakeoffAssemblyAuthoringModals({
         <div
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.5)',
             display: 'flex',
@@ -851,7 +852,7 @@ export function TakeoffAssemblyAuthoringModals({
               borderRadius: 8,
               maxWidth: 500,
               width: '90%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}
@@ -955,6 +956,7 @@ export function TakeoffAssemblyAuthoringModals({
         <div
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.5)',
             display: 'flex',
@@ -971,7 +973,7 @@ export function TakeoffAssemblyAuthoringModals({
               borderRadius: 8,
               maxWidth: 560,
               width: '90%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflowY: 'auto',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}

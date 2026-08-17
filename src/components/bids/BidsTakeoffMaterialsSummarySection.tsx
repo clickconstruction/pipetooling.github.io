@@ -233,6 +233,7 @@ export function BidsTakeoffMaterialsSummarySection({
         <div
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.4)',
             display: 'flex',
@@ -248,7 +249,7 @@ export function BidsTakeoffMaterialsSummarySection({
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 560,
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflow: 'auto',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}

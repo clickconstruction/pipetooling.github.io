@@ -107,7 +107,7 @@ export function UserReviewSwitchUserModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1310,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="presentation"
@@ -124,7 +124,7 @@ export function UserReviewSwitchUserModal({
           padding: '1.25rem',
           maxWidth: 420,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem',

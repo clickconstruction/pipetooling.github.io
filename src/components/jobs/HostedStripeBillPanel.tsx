@@ -672,6 +672,7 @@ export function HostedStripeBillPanel({
             <div
               style={{
                 position: 'fixed',
+                padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
                 inset: 0,
                 background: 'rgba(0,0,0,0.45)',
                 display: 'flex',
@@ -687,7 +688,7 @@ export function HostedStripeBillPanel({
                   borderRadius: 8,
                   minWidth: 360,
                   maxWidth: 440,
-                  maxHeight: '90vh',
+                  maxHeight: 'min(90vh, 100%)',
                   overflow: 'auto',
                   margin: '0.75rem',
                 }}

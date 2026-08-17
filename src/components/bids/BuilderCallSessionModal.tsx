@@ -150,7 +150,7 @@ export function BuilderCallSessionModal({
         borderRadius: 10,
         maxWidth: 860,
         width: '95%',
-        maxHeight: '90vh',
+        maxHeight: 'min(90vh, 100%)',
         overflow: 'auto',
       }}
     >

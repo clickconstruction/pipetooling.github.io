@@ -1692,7 +1692,7 @@ export default function ClockInOutButton({
           role="dialog"
           aria-modal="true"
           aria-labelledby="clock-in-modal-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={() => !actionLoading && setClockInModalOpen(false)}
         >
           <div
@@ -1706,7 +1706,7 @@ export default function ClockInOutButton({
               borderRadius: 12,
               maxWidth: 480,
               width: '90%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflowY: 'auto',
               boxSizing: 'border-box',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
@@ -1859,6 +1859,7 @@ export default function ClockInOutButton({
           aria-labelledby="update-focus-modal-title"
           style={{
             position: 'fixed',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
             inset: 0,
             background: 'rgba(0,0,0,0.7)',
             display: 'flex',
@@ -1876,7 +1877,7 @@ export default function ClockInOutButton({
               borderRadius: 8,
               maxWidth: 480,
               width: '90%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflowY: 'auto',
               boxSizing: 'border-box',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
@@ -2019,7 +2020,7 @@ export default function ClockInOutButton({
           role="dialog"
           aria-modal="true"
           aria-labelledby="clock-out-review-modal-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={() => !clockOutSaving && setClockOutReviewOpen(false)}
         >
           <div
@@ -2030,7 +2031,7 @@ export default function ClockInOutButton({
               borderRadius: 8,
               maxWidth: 480,
               width: '90%',
-              maxHeight: '90vh',
+              maxHeight: 'min(90vh, 100%)',
               overflowY: 'auto',
               boxSizing: 'border-box',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',

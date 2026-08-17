@@ -170,7 +170,7 @@ export function UserDaySummaryModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1300,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="presentation"
@@ -187,7 +187,7 @@ export function UserDaySummaryModal({
           padding: '1.25rem',
           maxWidth: 520,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem',

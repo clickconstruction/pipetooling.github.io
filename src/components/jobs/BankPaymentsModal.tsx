@@ -845,7 +845,7 @@ export default function BankPaymentsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 70,
-        padding: '1rem',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="dialog"
@@ -859,7 +859,7 @@ export default function BankPaymentsModal({
           borderRadius: 8,
           maxWidth: 980,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

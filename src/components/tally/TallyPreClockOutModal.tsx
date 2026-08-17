@@ -142,7 +142,7 @@ export function TallyPreClockOutModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: shellZ,
-          padding: '1rem',
+          padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         }}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) onContinueToClockOut()
@@ -154,7 +154,7 @@ export function TallyPreClockOutModal({
             borderRadius: 8,
             maxWidth: 520,
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: 'min(90vh, 100%)',
             overflow: 'auto',
             boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
             boxSizing: 'border-box',

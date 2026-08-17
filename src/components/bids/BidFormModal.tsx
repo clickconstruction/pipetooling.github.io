@@ -222,7 +222,7 @@ export function BidFormModal(props: BidFormModalProps) {
   }
 
   return (
-        <div className="bid-form-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div className="bid-form-overlay" style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <style>{`
             @media (max-width: 640px) {
               .bid-form-overlay {
@@ -255,7 +255,7 @@ export function BidFormModal(props: BidFormModalProps) {
               }
             }
           `}</style>
-          <div className="bid-form-modal" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div className="bid-form-modal" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <div
               className="bid-form-modal-header"
               style={{

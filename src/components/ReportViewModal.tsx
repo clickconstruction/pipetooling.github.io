@@ -175,6 +175,7 @@ export default function ReportViewModal({ open, report, onClose, viewerRole, zIn
     <div
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -190,7 +191,7 @@ export default function ReportViewModal({ open, report, onClose, viewerRole, zIn
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
           ...stickyModalPanelStyle(560),

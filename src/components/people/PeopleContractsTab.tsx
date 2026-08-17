@@ -2524,8 +2524,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       )}
 
       {contractDocumentModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
               {editingContractDocument
                 ? 'Edit document'

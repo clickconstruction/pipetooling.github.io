@@ -79,6 +79,7 @@ export function BankingDebitCardNicknamesModal({
       }}
       style={{
         position: 'fixed',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         inset: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
@@ -97,7 +98,7 @@ export function BankingDebitCardNicknamesModal({
           background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(640px, calc(100vw - 2rem))',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           padding: '1rem 1.25rem',
