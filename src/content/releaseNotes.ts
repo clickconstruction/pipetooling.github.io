@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1785',
+    date: '2026-08-17',
+    title: 'Merging customers works with accepted estimates',
+    kind: 'fix',
+    highlights: [
+      'Merging duplicate customers no longer fails when one of them has an accepted estimate — the estimate moves to the surviving customer with its signed content untouched.',
+    ],
+  },
+  {
     version: 'v2.1784',
     date: '2026-08-17',
     title: 'Customers list: click anywhere on a row',
