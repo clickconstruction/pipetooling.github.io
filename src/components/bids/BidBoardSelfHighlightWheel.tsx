@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -117,11 +118,53 @@ export function BidBoardSelfHighlightWheel({ pref, onSave, previewName }: Props)
   // Which theme the popover is editing; starts on the one the user is looking at.
   const [mode, setMode] = useState<ThemeName>(theme)
   const rootRef = useRef<HTMLSpanElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  // Body-portal positioning (v2.1761): the wheel lives inside the board's
+  // sticky jump-strip nav, whose overflow-x:auto makes it a two-axis scroll
+  // container — an in-place absolute panel gets clipped to the ~44px strip.
+  // Fixed coords, viewport-clamped, flipped above when the bottom is short.
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  const reposition = useCallback(() => {
+    const anchor = rootRef.current
+    if (!anchor) return
+    const PANEL_W = 250
+    const PAD = 8
+    const rect = anchor.getBoundingClientRect()
+    const left = Math.min(Math.max(PAD, rect.right - PANEL_W), window.innerWidth - PANEL_W - PAD)
+    const panelH = panelRef.current?.getBoundingClientRect().height ?? 0
+    const below = rect.bottom + 6
+    const top =
+      panelH > 0 && below + panelH > window.innerHeight - PAD && rect.top - 6 - panelH >= PAD
+        ? rect.top - 6 - panelH
+        : below
+    setPos({ top, left })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null)
+      return
+    }
+    reposition()
+    // Second pass once the panel has a height, so the flip-above check can run.
+    const raf = requestAnimationFrame(reposition)
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [open, reposition])
 
   useEffect(() => {
     if (!open) return
     const onDocMouseDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      // The panel is portaled to document.body — clicks inside it are outside rootRef.
+      if (rootRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -189,15 +232,19 @@ export function BidBoardSelfHighlightWheel({ pref, onSave, previewName }: Props)
         />
       </button>
       {open ? (
+        createPortal(
         <div
+          ref={panelRef}
           role="dialog"
           aria-label="Your name on the board"
           style={{
-            position: 'absolute',
-            right: 0,
-            top: 'calc(100% + 6px)',
-            zIndex: 60,
+            position: 'fixed',
+            top: pos?.top ?? -9999,
+            left: pos?.left ?? -9999,
+            zIndex: 1100,
             width: 250,
+            maxHeight: 'calc(100vh - 16px)',
+            overflowY: 'auto',
             background: 'var(--surface)',
             border: '1px solid var(--border-strong)',
             borderRadius: 10,
@@ -333,7 +380,9 @@ export function BidBoardSelfHighlightWheel({ pref, onSave, previewName }: Props)
           >
             Reset this mode to default
           </button>
-        </div>
+        </div>,
+        document.body,
+        )
       ) : null}
     </span>
   )

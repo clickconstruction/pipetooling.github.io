@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1761',
+    date: '2026-08-17',
+    title: 'Color picker pops out properly',
+    kind: 'fix',
+    highlights: [
+      'The Bid Board\'s "your name color" panel now floats on top of the page instead of being cut off inside the section header — the whole panel is visible and usable everywhere.',
+    ],
+  },
+  {
     version: 'v2.1760',
     date: '2026-08-17',
     title: 'Freshest bids on top while you wait',
