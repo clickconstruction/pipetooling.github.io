@@ -14,6 +14,7 @@ import {
   JOB_FOLLOWUP_STAGE_LABELS,
   computeJobFollowupQueue,
   dropDeletedFollowupCandidates,
+  jobFollowupQuietDays,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
   jobFollowupStageCounts,
@@ -23,6 +24,7 @@ import {
   type JobFollowupStage,
 } from '../../lib/jobs/jobFollowupQueue'
 import {
+  deleteLatestJobFollowupReview,
   fetchJobFollowupCandidates,
   fetchJobFollowupJobLabels,
   fetchJobFollowupReviewerNames,
@@ -219,6 +221,8 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     let cancelled = false
     setLoading(true)
     setReviewedCount(0)
+    setSessionTrail([])
+    setRevisitJobId(null)
     void (async () => {
       try {
         const [cands, revs, sets] = await Promise.all([
@@ -290,7 +294,28 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   useEffect(() => {
     if (pinnedJobId && !pinnedEntry) setPinnedJobId(null)
   }, [pinnedJobId, pinnedEntry])
-  const current = pinnedEntry ?? queue[0] ?? null
+
+  // "Just reviewed" trail (v2.1771): this session's handled cards, newest
+  // first, one chip per job, capped at five. Tapping a chip revisits the card
+  // (it's out of the queue, but the candidate data is still loaded).
+  type FollowupTrailEntry = { jobId: string; kind: 'note' | 'fine' | 'snooze'; note?: string; snoozedUntil?: string | null; at: string }
+  const [sessionTrail, setSessionTrail] = useState<FollowupTrailEntry[]>([])
+  const [revisitJobId, setRevisitJobId] = useState<string | null>(null)
+  const pushTrail = useCallback((entry: FollowupTrailEntry) => {
+    setSessionTrail((prev) => [entry, ...prev.filter((t) => t.jobId !== entry.jobId)].slice(0, 5))
+  }, [])
+  const revisitEntry = revisitJobId ? sessionTrail.find((t) => t.jobId === revisitJobId) ?? null : null
+  const revisitCandidate = revisitEntry ? candidates.find((c) => c.id === revisitEntry.jobId) ?? null : null
+  const revisitCard =
+    revisitEntry && revisitCandidate
+      ? { job: revisitCandidate, quietDays: jobFollowupQuietDays(revisitCandidate.latestActivityAt, todayYmd), reason: '' }
+      : null
+  const revisitCardMissing = revisitCard == null
+  useEffect(() => {
+    if (revisitJobId && revisitCardMissing) setRevisitJobId(null)
+  }, [revisitJobId, revisitCardMissing])
+
+  const current = revisitCard ?? pinnedEntry ?? queue[0] ?? null
 
   // Street view + activity tail for the top card.
   const [svUrl, setSvUrl] = useState<string | null>(null)
@@ -366,6 +391,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
           { jobId: current.job.id, reviewedAt: new Date().toISOString(), snoozedUntil, reviewedBy: user?.id ?? null },
         ])
         setReviewedCount((n) => n + 1)
+        pushTrail({ jobId: current.job.id, kind: snoozedUntil ? 'snooze' : 'fine', snoozedUntil, at: new Date().toISOString() })
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Failed to save review', 'error')
       } finally {
@@ -390,7 +416,11 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     const nowIso = new Date().toISOString()
     setCandidates((prev) => prev.map((c) => (c.id === current.job.id ? { ...c, latestActivityAt: nowIso } : c)))
     setReviewedCount((n) => n + 1)
-  }, [current, busy, noteDraft, user, showToast])
+    pushTrail({ jobId: current.job.id, kind: 'note', note: body, at: nowIso })
+    setNoteDraft('')
+    // Posting from a revisit stays put; posting from the deck deals the next card.
+    if (revisitJobId === current.job.id) showToast('Note posted.', 'success')
+  }, [current, busy, noteDraft, user, showToast, pushTrail, revisitJobId])
 
   const snoozeTo = useCallback(
     (days: number) => {
@@ -399,6 +429,34 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     },
     [advanceWithReview, todayYmd],
   )
+
+  // Undo a hasty ✓/snooze from a revisited card (v2.1771): delete the newest
+  // review row and drop it locally — the queue recomputes and the card deals
+  // back in. Note-advanced cards can't be put back (the note is real activity).
+  const putBackInQueue = useCallback(async () => {
+    if (!revisitEntry || busy) return
+    setBusy(true)
+    const ok = await deleteLatestJobFollowupReview(revisitEntry.jobId)
+    setBusy(false)
+    if (!ok) {
+      showToast('Could not put the job back — its review row was not found.', 'error')
+      return
+    }
+    setReviews((prev) => {
+      const next = [...prev]
+      for (let i = next.length - 1; i >= 0; i--) {
+        if (next[i]?.jobId === revisitEntry.jobId) {
+          next.splice(i, 1)
+          break
+        }
+      }
+      return next
+    })
+    setSessionTrail((prev) => prev.filter((t) => t.jobId !== revisitEntry.jobId))
+    setReviewedCount((n) => Math.max(0, n - 1))
+    setRevisitJobId(null)
+    showToast('Back in the queue.', 'success')
+  }, [revisitEntry, busy, showToast])
 
   const updateSetting = useCallback(
     (patch: Partial<JobFollowupSettings>) => {
@@ -519,6 +577,58 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
           </span>
         </div>
 
+        {/* "Just reviewed" trail (v2.1771): this session's handled cards, one chip
+            per job, tap to revisit. Session-scoped — History remains the all-time record. */}
+        {viewMode === 'deck' && sessionTrail.length > 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              marginBottom: '0.7rem',
+              flexWrap: isNarrow ? 'nowrap' : 'wrap',
+              overflowX: isNarrow ? 'auto' : 'visible',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: isNarrow ? '0.2rem' : 0,
+            }}
+          >
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)', flexShrink: 0 }}>Just reviewed:</span>
+            {sessionTrail.map((t) => {
+              const cand = candidates.find((c) => c.id === t.jobId)
+              const label = (cand?.hcpNumber ?? '').trim() || (cand?.jobName ?? '').slice(0, 12) || '—'
+              const glyph = t.kind === 'note' ? '✎' : t.kind === 'fine' ? '✓' : '💤'
+              const active = revisitJobId === t.jobId
+              return (
+                <button
+                  key={t.jobId}
+                  type="button"
+                  onClick={() => setRevisitJobId(active ? null : t.jobId)}
+                  title={`Revisit ${label} — ${t.kind === 'note' ? 'you posted a note' : t.kind === 'fine' ? 'marked Looks fine' : 'snoozed'}`}
+                  aria-pressed={active}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    padding: '0.22rem 0.6rem',
+                    borderRadius: 999,
+                    border: active ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-slate-600)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span aria-hidden>{glyph}</span>
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+
         {settingsOpen && settings ? (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.8rem 1rem', marginBottom: '0.8rem' }}>
             <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.3rem' }}>Review periods</div>
@@ -628,9 +738,20 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                 )}
               </div>
 
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 8, padding: '0.35rem 0.6rem', marginBottom: '0.6rem' }}>
-                Why it's here: {current.reason}
-              </div>
+              {revisitEntry && revisitJobId === current.job.id ? (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-green-800)', background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.35rem 0.6rem', marginBottom: '0.6rem' }}>
+                  {revisitEntry.kind === 'note'
+                    ? `You posted: “${revisitEntry.note ?? ''}”`
+                    : revisitEntry.kind === 'fine'
+                      ? 'You marked it ✓ Looks fine'
+                      : `You snoozed it until ${revisitEntry.snoozedUntil ?? '—'}`}{' '}
+                  · {fmtAgo(revisitEntry.at, todayYmd) || 'moments ago'}
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 8, padding: '0.35rem 0.6rem', marginBottom: '0.6rem' }}>
+                  Why it's here: {current.reason}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.7rem', alignItems: 'center' }}>
                 {current.job.customerName ? <span style={{ fontSize: '0.8rem', color: 'var(--text-slate-600)' }}>Customer <b>{current.job.customerName}</b></span> : null}
@@ -710,8 +831,29 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                     flex: isNarrow ? '1 1 100%' : '0 0 auto',
                   }}
                 >
-                  Post & next ⏎
+                  {revisitEntry && revisitJobId === current.job.id ? 'Post note ⏎' : 'Post & next ⏎'}
                 </button>
+                {revisitEntry && revisitJobId === current.job.id ? (
+                  <>
+                    {revisitEntry.kind !== 'note' ? (
+                      <button
+                        type="button"
+                        onClick={() => void putBackInQueue()}
+                        disabled={busy}
+                        style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.6rem 0.9rem', border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', cursor: 'pointer', flex: isNarrow ? 1 : '0 0 auto', whiteSpace: 'nowrap' }}
+                      >
+                        Put back in queue
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setRevisitJobId(null)}
+                      style={{ borderRadius: 8, fontWeight: 700, fontSize: '0.8rem', padding: '0.6rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-slate-600)', cursor: 'pointer', flex: isNarrow ? 1 : '0 0 auto', whiteSpace: 'nowrap' }}
+                    >
+                      Resume deck →
+                    </button>
+                  </>
+                ) : (
                 <button
                   type="button"
                   onClick={() => void advanceWithReview(null)}
@@ -720,6 +862,8 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                 >
                   ✓ Looks fine
                 </button>
+                )}
+                {revisitEntry && revisitJobId === current.job.id ? null : (
                 <span style={{ position: 'relative', flex: isNarrow ? 1 : '0 0 auto', display: 'flex' }}>
                   <button
                     type="button"
@@ -738,6 +882,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                     </span>
                   ) : null}
                 </span>
+                )}
                 <button
                   type="button"
                   onClick={() => {

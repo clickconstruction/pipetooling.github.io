@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1771',
+    date: '2026-08-17',
+    title: 'Go back to the card you just reviewed',
+    kind: 'feature',
+    highlights: [
+      'The follow-up deck now keeps a "Just reviewed" trail — a chip for each card you\'ve handled this session, showing whether you noted, ✓\'d, or snoozed it.',
+      'Tap a chip to revisit the card, add another note, or hit "Put back in queue" to undo a hasty ✓ or snooze — then Resume deck to pick up where you were.',
+    ],
+  },
+  {
     version: 'v2.1770',
     date: '2026-08-17',
     title: 'Shared jobs get their preview cards back',

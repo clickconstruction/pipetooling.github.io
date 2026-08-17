@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1770)
+last_updated: 2026-08-17 (v2.1771)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1771)
+
+### Follow-up deck: the "Just reviewed" trail — go back to the card you just handled (2026-08-17)
+Owner request (mockup-approved): the deck only dealt forward — no way back to the last job, no view of this session's actions. [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) now keeps a session trail: every advance (Post & next / ✓ Looks fine / Snooze) adds a chip under the stage filters — job number + action glyph (✎/✓/💤), newest first, one per job, capped at five, cleared when the deck reopens. **Tapping a chip revisits the card** (candidates stay loaded, so the full card renders even though it left the queue — `current` resolves revisit → pin → queue head): the "Why it's here" band gives way to a green "You marked it ✓ Looks fine · 0d ago" banner, the composer posts additional notes in place ("Post note", stays put), and ✓/Snooze are replaced by **Resume deck →** plus — for fine/snooze entries only — **Put back in queue**, which deletes the job's newest `job_followup_reviews` row (new store fn [`deleteLatestJobFollowupReview`](../src/lib/jobs/jobFollowupStore.ts); the office RLS policy is FOR ALL so DELETE is already granted; older reviews stay in History) and the queue recomputes the card back in. Note-advanced cards get no put-back — the note is real activity and would keep them out anyway. Verified live: ✓ on job 651 → 54→53 + ✓651 chip; chip → revisit banner + actions; Put back in queue → 54 again, review row gone from the DB. Session-scoped by design — the History view remains the all-time record. Help guide `job-followups` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1770)
 

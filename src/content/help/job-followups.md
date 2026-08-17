@@ -14,6 +14,8 @@ Prefer to see everything at once? The **Deck | List** toggle at the top switches
 
 Each card is one job: its number, stage, and an amber {{chip:yellow|quiet 9 days}} chip, the street view with the address (click it for the full Street View), a *Why it's here* line, the money picture, and the last few notes from its activity thread. Tap that **Latest activity** box (the ↗ in its corner) and the job's full activity view opens over the deck — the complete thread with notes, reports, status history, and crew, plus the note composer; close it and the deck is right where you left it.
 
+As you work, a **Just reviewed** trail builds under the stage chips — one chip per card you've handled this session (✎ note, ✓ looks fine, 💤 snooze), newest first, last five kept. Tap a chip to revisit that card: a green banner says what you did and when, you can post another note, and — for a ✓ or snooze — **Put back in queue** undoes it if you acted too fast. **Resume deck →** returns you to where you were. The trail is just your session; the **History** view stays the all-time record.
+
 The note box is already focused. You have three ways to move on:
 
 - **Type a note and press Enter** — it posts to the job's real activity thread with your name (the same thread the field sees) and the next card appears.
