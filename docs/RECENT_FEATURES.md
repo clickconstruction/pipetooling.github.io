@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1768)
+last_updated: 2026-08-17 (v2.1769)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1769)
+
+### Bids Pricing: Price-by-margin toolbar with row selection and recent chips (2026-08-17)
+Owner request (mockup-approved, incl. the row-selection follow-up): a one-click way to price rows at a target margin, with the last numbers remembered. New toolbar on [`BidsPricingTab`](../src/components/bids/BidsPricingTab.tsx) (Price Model view): margin input (1–95) + **Apply to all rows** / **Apply to N selected rows** + the last three margins as chips (most recent first, `localStorage` — device-local by design, cross-device would need a prefs migration). New kernel [`applyMarginPricing.ts`](../src/lib/bids/applyMarginPricing.ts) (+5 tests): `unitPriceForTargetMargin` = row cost ÷ (1 − m) ÷ count rounded to whole dollars (same margin definition as the grid), recents update/normalize/storage round-trip. A checkbox column (Price view only; disabled on uncosted rows; select-all header; blue row tint; footer colSpans padded) targets specific rows; no selection = all rows. Uncosted rows are skipped with a toast count. **Overwrite confirm**: when any target already has a price, a modal offers Replace all / Fill only unpriced / Cancel. Writes go through the same per-row path as the manual Sale Price editor (`writeUnitPriceOverrideRow`, factored out of `updateUnitPriceOverride`) with ONE reload at the end — so prices stay hand-editable and per-row Reset still works. Verified live on BP376: selected EWC-1 (already hand-priced at 33.3%), confirm modal appeared, Replace → $7,119 at exactly 50.0%, toast + 50% chip; then reverted to the hand price through the row editor. Help guide `price-a-bid-by-margin` added. Client-only — no migration.
 
 ## Latest Updates (v2.1768)
 
