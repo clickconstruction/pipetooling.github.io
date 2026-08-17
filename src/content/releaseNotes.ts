@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1736',
+    date: '2026-08-16',
+    title: 'Shared sub sheets count in the Team Summary',
+    kind: 'fix',
+    highlights: [
+      'Sub sheets assigned to more than one person were missing from everyone\'s Team Summary row. Each assignee now gets an even share of the sheet\'s hours and cost, so the totals include the sheet exactly once.',
+    ],
+  },
+  {
     version: 'v2.1735',
     date: '2026-08-16',
     title: 'Pay settings follow the person',

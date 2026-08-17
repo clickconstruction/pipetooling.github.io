@@ -6,6 +6,7 @@
 // `TeamReviewUnion` into one person's `TeamSummaryRow`.
 
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { laborJobShareForPerson } from './laborJobPersonMatch'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type {
   GrossRevenueBreakdown,
@@ -45,8 +46,18 @@ export function derivePersonTeamSummary(
   const cfg = payConfigSnapshot[personName]
   const officeJobIdForFilter = union.officeJobLedgerId
 
+  // Segment-match the ' | '-delimited assignees column (bare equality made
+  // multi-assignee sheets vanish from EVERY person's row — C1-7 bug class).
+  // A multi-assignee sheet contributes an even 1/N share of its hours and
+  // cost to each assignee so the team roll-up still counts the sheet once.
+  const laborShareByRowId = new Map<string, number>()
   const personPeriodLaborRows = union.periodLaborRows
-    .filter((r) => r.assigned_to_name === personName)
+    .filter((r) => {
+      const share = laborJobShareForPerson(r.assigned_to_name, personName)
+      if (share <= 0) return false
+      laborShareByRowId.set(r.id, share)
+      return true
+    })
     .filter((r) => {
       // Exclude sub-labor rows pointing at the configured office job — it's
       // overhead, not a field-revenue job. Without this filter the office
@@ -73,7 +84,8 @@ export function derivePersonTeamSummary(
     const laborCost = totalHrs * rate + driveCost
     const hcp = (r.job_number ?? '').trim().toLowerCase()
     const jobId = hcp ? union.jobIdByHcp.get(hcp) ?? null : null
-    return { jobId, hours: totalHrs, laborCost }
+    const share = laborShareByRowId.get(r.id) ?? 1
+    return { jobId, hours: totalHrs * share, laborCost: laborCost * share }
   })
 
   const crewJobIds = new Set<string>()
@@ -313,8 +325,9 @@ export function derivePersonTeamSummary(
     const items = union.laborItemsByJobId.get(r.id) ?? []
     const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
     const hcp = (r.job_number ?? '').trim().toUpperCase() || 'Unknown'
-    if (totalHrs > 0) {
-      subLaborRowsBreakdown.push({ hcp, date: r.job_date ?? '', hours: totalHrs })
+    const share = laborShareByRowId.get(r.id) ?? 1
+    if (totalHrs * share > 0) {
+      subLaborRowsBreakdown.push({ hcp, date: r.job_date ?? '', hours: totalHrs * share })
     }
   }
   const dailyTotal = dailyRowsBreakdown.reduce((s, r) => s + r.hours, 0)

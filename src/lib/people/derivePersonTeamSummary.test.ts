@@ -55,6 +55,54 @@ function hourlyPayConfig(name: string, wage: number): Record<string, PayConfigRo
 }
 
 describe('derivePersonTeamSummary', () => {
+  it("splits a multi-assignee sheet's hours and cost evenly across its assignees", () => {
+    // Before v2.1736 the bare equality on the delimited column matched NO
+    // person, so this sheet vanished from every row of the Team Summary.
+    const union = makeUnion({
+      periodLaborRows: [
+        { id: 'lr-multi', job_date: '2026-04-01', address: 'm', job_number: 'JM', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice | Bob' },
+      ],
+      laborItemsByJobId: new Map([
+        ['lr-multi', [{ count: 1, hrs_per_unit: 6, is_fixed: true }]],
+      ]),
+      jobIdByHcp: new Map([['jm', 'job-M']]),
+      jobsById: new Map([
+        ['job-M', makeLedgerRow({ id: 'job-M', hcp_number: 'JM', revenue: 1000, pct_complete: 100 })],
+      ]),
+      laborCostByHcp: new Map([['jm', 60]]),
+    })
+
+    const alice = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-01'])
+    const bob = derivePersonTeamSummary(union, 'Bob', hourlyPayConfig('Bob', 50), false, ['2026-04-01'])
+    const carol = derivePersonTeamSummary(union, 'Carol', hourlyPayConfig('Carol', 50), false, ['2026-04-01'])
+
+    // 6 hrs * $10 = $60 sheet cost, split 50/50 — each half appears once.
+    expect(alice.hoursBreakdown.subLaborRows).toEqual([{ hcp: 'JM', date: '2026-04-01', hours: 3 }])
+    expect(bob.hoursBreakdown.subLaborRows).toEqual([{ hcp: 'JM', date: '2026-04-01', hours: 3 }])
+    expect(carol.hoursBreakdown.subLaborRows).toEqual([])
+    const aliceJob = alice.grossBreakdown.jobs[0]
+    const bobJob = bob.grossBreakdown.jobs[0]
+    expect(aliceJob?.costInPeriod).toBeCloseTo(30, 10)
+    expect(bobJob?.costInPeriod).toBeCloseTo(30, 10)
+    // The two halves reassemble the whole sheet: allocated revenue sums to
+    // the full-cost allocation (ratio 60/60 = 1 -> valueCreated 1000).
+    expect(alice.gross + bob.gross).toBeCloseTo(1000, 10)
+  })
+
+  it('keeps single-assignee sheets at full weight (share 1 — answer-preserving)', () => {
+    const union = makeUnion({
+      periodLaborRows: [
+        { id: 'lr-one', job_date: '2026-04-02', address: 's', job_number: 'JS', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
+      ],
+      laborItemsByJobId: new Map([['lr-one', [{ count: 1, hrs_per_unit: 4, is_fixed: true }]]]),
+      jobIdByHcp: new Map([['js', 'job-S']]),
+      jobsById: new Map([['job-S', makeLedgerRow({ id: 'job-S', hcp_number: 'JS', revenue: 500, pct_complete: 100 })]]),
+    })
+    const row = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-02'])
+    expect(row.hoursBreakdown.subLaborRows).toEqual([{ hcp: 'JS', date: '2026-04-02', hours: 4 }])
+    expect(row.grossBreakdown.jobs[0]?.costInPeriod).toBe(40)
+  })
+
   it('excludes sub-labor rows that map (via jobIdByHcp) to the configured office job', () => {
     const union = makeUnion({
       officeJobLedgerId: 'office-job-id',

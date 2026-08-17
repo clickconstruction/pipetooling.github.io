@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-16 (v2.1735)
+last_updated: 2026-08-16 (v2.1736)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1736)
+
+### Team Summary: multi-assignee sub sheets stop vanishing (2026-08-16)
+Bug found while mapping the identity Phase-D writers (v2.1732 entry flagged it): [`derivePersonTeamSummary`](../src/lib/people/derivePersonTeamSummary.ts) matched the `' | '`-delimited `assigned_to_name` by bare equality, so a sheet assigned to "Alice | Bob" matched NO person — its hours and cost silently vanished from every row of the Team Summary (same C1-7 bug class PeopleReviewTab fixed in v2.1266). Now segment-matched via new kernel helper [`laborJobShareForPerson`](../src/lib/people/laborJobPersonMatch.ts): each of a sheet's N distinct assignees gets an even **1/N share** of its hours and cost, so the sheet is counted exactly once across the team (full-to-each would double-count). Single-assignee sheets get share 1 — answer-preserving, proven by the pre-existing tests passing unchanged plus an explicit parity case (+2 tests; invariant 3 of `PERSON_IDENTITY_PLAN.md`). Client-only — no migration.
 
 ## Latest Updates (v2.1735)
 

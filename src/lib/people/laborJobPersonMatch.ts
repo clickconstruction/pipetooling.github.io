@@ -19,6 +19,24 @@ export function splitAssignedToNames(assignedToName: string | null | undefined):
 }
 
 /**
+ * Person's even share of a sub sheet: 1/N of the sheet for N distinct
+ * assignees when the person is one of them, else 0. Splitting — rather than
+ * attributing the full sheet to every assignee — keeps a multi-assignee
+ * sheet's hours/cost counted exactly once across a team roll-up.
+ * Single-assignee sheets get share 1 (identical to an exact-name match).
+ */
+export function laborJobShareForPerson(
+  assignedToName: string | null | undefined,
+  personName: string,
+): number {
+  const target = personName.trim()
+  if (!target) return 0
+  const segments = [...new Set(splitAssignedToNames(assignedToName))]
+  if (!segments.includes(target)) return 0
+  return 1 / segments.length
+}
+
+/**
  * True when a sub sheet belongs to the person: the person_id-keyed junction
  * row wins first; otherwise fall back to trimmed-name membership in the
  * delimited `assigned_to_name` list (covers rows the junction backfill
