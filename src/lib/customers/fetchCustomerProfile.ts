@@ -17,6 +17,8 @@ export type CustomerRow = Database['public']['Tables']['customers']['Row']
 export type CustomerProfileData = {
   customer: CustomerRow
   contactPersons: Array<{ id: string; name: string; phone: string | null; email: string | null }>
+  /** Additional addresses beyond customers.address (addresses train PR 2). */
+  extraAddresses: Array<{ id: string; address: string; note: string | null }>
   jobs: Array<
     ProfileJob & {
       hcp_number: string | null
@@ -39,7 +41,7 @@ export type CustomerProfileData = {
 }
 
 export async function fetchCustomerProfile(customerId: string): Promise<CustomerProfileData> {
-  const [customerRes, contactsRes, jobsRes, projectsRes, bidsRes, estimatesRes] = await Promise.all([
+  const [customerRes, contactsRes, jobsRes, projectsRes, bidsRes, estimatesRes, addressesRes] = await Promise.all([
     withSupabaseRetry(
       () => supabase.from('customers').select('*').eq('id', customerId).single(),
       'customer profile: customer',
@@ -75,6 +77,11 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
       .select('id, estimate_number, title, status, total_cents, sent_at, updated_at')
       .eq('customer_id', customerId)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('customer_addresses')
+      .select('id, address, note')
+      .eq('customer_id', customerId)
+      .order('sequence_order', { ascending: true }),
   ])
 
   const customer = customerRes as unknown as CustomerRow | null
@@ -101,6 +108,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
   return {
     customer,
     contactPersons: ((contactsRes.data ?? []) as CustomerProfileData['contactPersons']).filter((c) => (c.name ?? '').trim()),
+    extraAddresses: ((addressesRes.data ?? []) as CustomerProfileData['extraAddresses']).filter((a) => (a.address ?? '').trim()),
     jobs: (jobsRes ?? []) as unknown as CustomerProfileData['jobs'],
     projects,
     bids: ((bidsRes.data ?? []) as CustomerProfileData['bids']),

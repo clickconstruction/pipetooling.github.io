@@ -72,3 +72,7 @@ The **Activity** panel is one timeline of everything happening for this customer
 - {{button:outline|Show older}} pages further back in time.
 
 Use {{button:outline|✎ Edit customer}} in the header to change their info, archive them, or merge duplicates — same form as before, just moved onto the page.
+
+## Track more than one property
+
+A customer with several properties can have **additional addresses**, each with its own note. In {{button:outline|✎ Edit customer}}, open **Additional addresses**, add each address with a note ("rental on Oak St", "shop — deliveries in back"), and they appear on the customer's page next to the primary address as tap-to-map links with the note beside them. The main Address field stays the primary — jobs and estimates keep using it as before.

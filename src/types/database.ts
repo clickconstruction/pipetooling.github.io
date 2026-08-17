@@ -2527,6 +2527,44 @@ export type Database = {
           },
         ]
       }
+      customer_addresses: {
+        Row: {
+          address: string
+          created_at: string | null
+          customer_id: string
+          id: string
+          note: string | null
+          sequence_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          note?: string | null
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          note?: string | null
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_contact_persons: {
         Row: {
           created_at: string | null

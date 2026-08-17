@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1788',
+    date: '2026-08-17',
+    title: 'Customers can have multiple addresses',
+    kind: 'feature',
+    highlights: [
+      'Edit a customer and open "Additional addresses" to add extra properties, each with its own note ("rental on Oak St", "shop \u2014 deliveries in back").',
+      "They show on the customer's page beside the primary address as tap-to-map links, with the note right there.",
+    ],
+  },
+  {
     version: 'v2.1787',
     date: '2026-08-17',
     title: 'Groundwork for multiple customer addresses',

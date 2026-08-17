@@ -229,6 +229,79 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
     await loadContacts()
   }
 
+  /** Additional addresses (customer_addresses, addresses train PR 2): extras
+      beyond the primary Address field above, each with a note ("rental on
+      Oak St"). Saved per row, independent of the form's Save. */
+  const [extraAddresses, setExtraAddresses] = useState<Array<{ id: string; address: string; note: string | null }>>([])
+  const [addressesExpanded, setAddressesExpanded] = useState(false)
+  const [addressDrafts, setAddressDrafts] = useState<Record<string, { address: string; note: string }>>({})
+  const [newAddress, setNewAddress] = useState({ address: '', note: '' })
+  const [addressesBusy, setAddressesBusy] = useState(false)
+
+  const loadExtraAddresses = useCallback(async () => {
+    const { data } = await supabase
+      .from('customer_addresses')
+      .select('id, address, note')
+      .eq('customer_id', customerId)
+      .order('sequence_order', { ascending: true })
+      .order('created_at', { ascending: true })
+    setExtraAddresses((data ?? []) as typeof extraAddresses)
+  }, [customerId])
+  useEffect(() => {
+    void loadExtraAddresses()
+  }, [loadExtraAddresses])
+
+  async function addExtraAddress() {
+    if (addressesBusy || !newAddress.address.trim()) return
+    setAddressesBusy(true)
+    const { error: err } = await supabase.from('customer_addresses').insert({
+      customer_id: customerId,
+      address: newAddress.address.trim(),
+      note: newAddress.note.trim() || null,
+      sequence_order: extraAddresses.length,
+    })
+    setAddressesBusy(false)
+    if (err) {
+      showToast(`Failed to add address: ${err.message}`, 'error')
+      return
+    }
+    setNewAddress({ address: '', note: '' })
+    await loadExtraAddresses()
+  }
+
+  async function saveExtraAddress(id: string) {
+    const d = addressDrafts[id]
+    if (addressesBusy || !d || !d.address.trim()) return
+    setAddressesBusy(true)
+    const { error: err } = await supabase
+      .from('customer_addresses')
+      .update({ address: d.address.trim(), note: d.note.trim() || null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    setAddressesBusy(false)
+    if (err) {
+      showToast(`Failed to save address: ${err.message}`, 'error')
+      return
+    }
+    setAddressDrafts((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    await loadExtraAddresses()
+  }
+
+  async function deleteExtraAddress(id: string) {
+    if (addressesBusy) return
+    setAddressesBusy(true)
+    const { error: err } = await supabase.from('customer_addresses').delete().eq('id', id)
+    setAddressesBusy(false)
+    if (err) {
+      showToast(`Failed to delete address: ${err.message}`, 'error')
+      return
+    }
+    await loadExtraAddresses()
+  }
+
   const [mergeExpanded, setMergeExpanded] = useState(false)
   const [mergeCustomers, setMergeCustomers] = useState<CustomerPickRow[]>([])
   const [mergeCustomersLoading, setMergeCustomersLoading] = useState(false)
@@ -733,6 +806,54 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 </div>
                 <button type="button" disabled={contactsBusy || !newContact.name.trim()} onClick={() => void addContact()} style={{ alignSelf: 'flex-start', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   + Add contact
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setAddressesExpanded((v) => !v)}
+            aria-expanded={addressesExpanded}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <span aria-hidden style={{ fontSize: '0.75rem' }}>{addressesExpanded ? '▼' : '▶'}</span>
+            Additional addresses ({extraAddresses.length})
+          </button>
+          {!addressesExpanded && extraAddresses.length === 0 ? (
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              More than one property? Add each extra address with a note ("rental on Oak St", "shop — deliveries in back"). The Address field above stays the primary.
+            </p>
+          ) : null}
+          {addressesExpanded ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
+              {extraAddresses.map((a) => {
+                const d = addressDrafts[a.id] ?? { address: a.address, note: a.note ?? '' }
+                const dirty = d.address !== a.address || d.note !== (a.note ?? '')
+                const setD = (patch: Partial<typeof d>) => setAddressDrafts((prev) => ({ ...prev, [a.id]: { ...d, ...patch } }))
+                return (
+                  <div key={a.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <input type="text" value={d.address} onChange={(e) => setD({ address: e.target.value })} placeholder="Address" aria-label="Additional address" style={{ padding: '0.4rem 0.5rem' }} />
+                    <input type="text" value={d.note} onChange={(e) => setD({ note: e.target.value })} placeholder="Note (e.g. rental on Oak St)" aria-label="Address note" style={{ padding: '0.4rem 0.5rem' }} />
+                    <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                      {dirty ? (
+                        <button type="button" disabled={addressesBusy || !d.address.trim()} onClick={() => void saveExtraAddress(a.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                          Save address
+                        </button>
+                      ) : null}
+                      <button type="button" disabled={addressesBusy} onClick={() => void deleteExtraAddress(a.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-red-600)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <input type="text" value={newAddress.address} onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })} placeholder="Address" aria-label="New additional address" style={{ padding: '0.4rem 0.5rem' }} />
+                <input type="text" value={newAddress.note} onChange={(e) => setNewAddress({ ...newAddress, note: e.target.value })} placeholder="Note (e.g. rental on Oak St)" aria-label="New address note" style={{ padding: '0.4rem 0.5rem' }} />
+                <button type="button" disabled={addressesBusy || !newAddress.address.trim()} onClick={() => void addExtraAddress()} style={{ alignSelf: 'flex-start', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  + Add address
                 </button>
               </div>
             </div>
