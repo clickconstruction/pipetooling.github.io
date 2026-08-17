@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1763)
+last_updated: 2026-08-17 (v2.1764)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1764)
+
+### Approval PDF cover letter follows the active Version's GC (2026-08-17)
+The approval PDF's cover-letter page ([`approvalPdf.ts`](../src/lib/bidDocuments/approvalPdf.ts)) always addressed the bid-level default GC (`b.customers ?? b.bids_gc_builders`), ignoring the active Version's `bid_versions.customer_id` override — so a multi-GC bid's downloaded approval packet could head its letter with the wrong builder while the Cover Letter tab (v2.1172, v2.1762) showed the right one (this closes the "sibling gap" flagged in the v2.1762 entry). Fix: the PDF now fetches the bid's `bid_versions` (+ `customers` join) fresh — same pattern as its Schedule of Values fetch, deliberately not threading tab state through the Submission tab — resolves the active Version with the existing `pickActiveVersion` kernel (`bids.selected_bid_version_id`, first-by-sort-order fallback), and heads the letter with `resolveSingleLetterGc`'s result. The row→override-map conversion is extracted into a new pure kernel `versionGcOverrideMap` in [`coverLetterGcPackets.ts`](../src/lib/bids/coverLetterGcPackets.ts) (+3 tests), and [`BidsCoverLetterTab`](../src/components/bids/BidsCoverLetterTab.tsx) now uses it too instead of its inline copy. Page 1's "Builder Name" block intentionally keeps the bid-level GC (it describes the bid, not the letter). Client-only — no migration.
 
 ## Latest Updates (v2.1763)
 

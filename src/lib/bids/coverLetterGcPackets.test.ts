@@ -5,6 +5,7 @@ import {
   resolveSingleLetterGc,
   letterGcDiffersFromBid,
   defaultGcPacketForActiveVersion,
+  versionGcOverrideMap,
   type GcPacketCustomer,
 } from './coverLetterGcPackets'
 
@@ -101,6 +102,29 @@ describe('resolveSingleLetterGc', () => {
     // Regression for the include_in_submission bug: the BURD-linked Pricing being
     // flagged for submission must NOT head the letter while SPC is active.
     expect(resolveSingleLetterGc('v-spc', { 'v-spc': null, 'v-burd': dpr }, bidGc)).toBe(bidGc)
+  })
+})
+
+describe('versionGcOverrideMap', () => {
+  it('maps overridden versions to their joined customer and the rest to null', () => {
+    const map = versionGcOverrideMap([
+      { id: 'v1', customer_id: 'turner', customers: { id: 'turner', name: 'Turner Construction', address: '2 Oak Ave' } },
+      { id: 'v2', customer_id: null, customers: null },
+    ])
+    expect(map['v1']).toEqual(turner)
+    expect(map['v2']).toBeNull()
+  })
+
+  it('a dangling customer_id with no joined customer row is no override', () => {
+    const map = versionGcOverrideMap([{ id: 'v1', customer_id: 'ghost', customers: null }])
+    expect(map['v1']).toBeNull()
+  })
+
+  it('null name/address on the joined customer render as em dashes', () => {
+    const map = versionGcOverrideMap([
+      { id: 'v1', customer_id: 'c1', customers: { id: 'c1', name: null, address: null } },
+    ])
+    expect(map['v1']).toEqual({ id: 'c1', name: '—', address: '—' })
   })
 })
 

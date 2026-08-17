@@ -23,7 +23,7 @@ import {
 } from '../../lib/bidDocuments/coverLetter'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
-import { defaultGcPacketForActiveVersion, groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
+import { defaultGcPacketForActiveVersion, groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, versionGcOverrideMap, type BidVersionGcRow, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
   PAYMENT_SCHEDULE_TIMINGS,
@@ -317,12 +317,7 @@ export function BidsCoverLetterTab({
         .select('id, customer_id, customers(id, name, address)')
         .eq('bid_id', bid.id)
       if (cancelled) return
-      const map: Record<string, GcPacketCustomer | null> = {}
-      for (const v of data ?? []) {
-        const c = v.customers as { id: string; name: string | null; address: string | null } | null
-        map[v.id] = v.customer_id && c ? { id: c.id, name: c.name ?? '—', address: c.address ?? '—' } : null
-      }
-      setVersionGcById(map)
+      setVersionGcById(versionGcOverrideMap((data ?? []) as unknown as BidVersionGcRow[]))
     })()
     return () => { cancelled = true }
     // versionGcFingerprint: refetch when a Version's GC assignment changes (v2.1762).

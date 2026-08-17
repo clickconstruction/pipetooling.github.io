@@ -26,6 +26,13 @@ import {
 import { bidDisplayName, formatCompactCurrency, formatDesignDrawingPlanDate } from '../bids/bidFormatting'
 import { formatCurrency } from '../format'
 import { extractContactInfo } from '../bids/bidContactInfo'
+import { pickActiveVersion } from '../bids/pickActiveVersion'
+import {
+  resolveSingleLetterGc,
+  versionGcOverrideMap,
+  type BidVersionGcRow,
+  type GcPacketCustomer,
+} from '../bids/coverLetterGcPackets'
 import { buildCoverLetterText, numberToWords } from './coverLetter'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -488,8 +495,27 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   y += lineHeight * 2
   doc.setFontSize(11)
 
-  const customerName = b.customers?.name ?? b.bids_gc_builders?.name ?? '—'
-  const customerAddress = b.customers?.address ?? b.bids_gc_builders?.address ?? '—'
+  // The letter follows the ACTIVE Version's GC override (bid_versions.customer_id)
+  // when set, else the bid-level GC — same resolution as the Cover Letter tab
+  // (v2.1172). Fetched fresh here, like the Schedule of Values below, so an
+  // override saved moments ago is reflected without threading tab state through.
+  const { data: versionRowsData } = await supabase
+    .from('bid_versions')
+    .select('id, sort_order, customer_id, customers(id, name, address)')
+    .eq('bid_id', bidId)
+  const versionRows = (versionRowsData ?? []) as unknown as Array<BidVersionGcRow & { sort_order: number }>
+  const activeBidVersionId = pickActiveVersion({
+    savedVersionId: b.selected_bid_version_id ?? null,
+    bidVersions: versionRows,
+  })
+  const bidGc: GcPacketCustomer = {
+    id: b.customer_id ?? null,
+    name: b.customers?.name ?? b.bids_gc_builders?.name ?? '—',
+    address: b.customers?.address ?? b.bids_gc_builders?.address ?? '—',
+  }
+  const letterGc = resolveSingleLetterGc(activeBidVersionId, versionGcOverrideMap(versionRows), bidGc)
+  const customerName = letterGc.name
+  const customerAddress = letterGc.address
   const projectNameVal = b.project_name ?? '—'
   const projectAddressVal = b.address ?? '—'
   let coverLetterRevenue = 0

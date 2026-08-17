@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1764',
+    date: '2026-08-17',
+    title: 'Approval PDF letter addresses the right GC',
+    kind: 'fix',
+    highlights: [
+      'On bids where a Version is assigned to a different GC, the downloaded approval PDF\'s cover-letter page now addresses that Version\'s GC — matching what the Cover Letter tab shows — instead of always using the bid\'s default builder.',
+    ],
+  },
+  {
     version: 'v2.1763',
     date: '2026-08-17',
     title: 'Pricing loads first time, every time',
