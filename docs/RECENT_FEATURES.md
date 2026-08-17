@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1761)
+last_updated: 2026-08-17 (v2.1762)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1762)
+
+### Cover Letter follows the selected Version's GC (2026-08-17)
+Owner screenshots (BP362 TAKE 5 - KERRVILLE): with the "BURD" Version selected (GC: Burd & Assoc.), the cover letter still addressed the bid default (Southern Post Construction) — while the amount correctly tracked the Version. Three fixes in [`BidsCoverLetterTab`](../src/components/bids/BidsCoverLetterTab.tsx): (1) **the real bug** — with 2+ Pricings in the submission the multi-GC packet path is active, and its default packet was `gcPackets[0]` (first section by sort order = bid default) regardless of the Version picker; new kernel [`defaultGcPacketForActiveVersion`](../src/lib/bids/coverLetterGcPackets.ts) (+3 tests) defaults to the packet containing the ACTIVE Version, so letterhead and amount travel together (an explicit packet pick still wins). (2) The on-screen **Customer block** was hardcoded to the bid default even when the letter itself was right — it now shows the letter's actual recipient, with a muted "This version's GC — the bid default is …" note when they differ. (3) The tab's `versionGcById` map only refetched on bid change, so a GC (re)assignment in the Version picker went stale until reload — a `versionGcFingerprint` prop (id:customer_id pairs from the engine's `bidVersions`) now re-fires the fetch. Verified live on BP362: BURD chip → letter + Customer block read Burd & Assoc. with the BURD amount ($47,633.93); To Plans → Southern Post ($42,633.93). Known sibling gap (flagged as its own task): the Approval PDF still uses the bid default. Client-only — no migration.
 
 ## Latest Updates (v2.1761)
 

@@ -23,7 +23,7 @@ import {
 } from '../../lib/bidDocuments/coverLetter'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
-import { groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
+import { defaultGcPacketForActiveVersion, groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
   PAYMENT_SCHEDULE_TIMINGS,
@@ -61,6 +61,12 @@ type BidsCoverLetterTabProps = {
   activePricingName: string | null
   /** The engine's active bid Version (null = unsplit bid) — the single letter's GC follows this Version's override. */
   activeBidVersionId: string | null
+  /**
+   * Fingerprint of the engine's bid_versions (id:customer_id pairs) — refetches
+   * versionGcById when a GC is (re)assigned in the Version picker, which
+   * reloads the engine's versions but not this tab's local map (v2.1762).
+   */
+  versionGcFingerprint: string
   /** The selected bid's Pricings — used to build the bundled (one-letter-per-Pricing) submission document. */
   bidPricings: PriceBookVersion[]
   /** Reload the bid's Pricings after an include/reorder change so the bundle recomputes. */
@@ -104,6 +110,7 @@ export function BidsCoverLetterTab({
   coverLetterPricingRows,
   activePricingName,
   activeBidVersionId,
+  versionGcFingerprint,
   bidPricings,
   reloadBidPricings,
   loadBids,
@@ -318,7 +325,8 @@ export function BidsCoverLetterTab({
       setVersionGcById(map)
     })()
     return () => { cancelled = true }
-  }, [selectedBidForPricing?.id])
+    // versionGcFingerprint: refetch when a Version's GC assignment changes (v2.1762).
+  }, [selectedBidForPricing?.id, versionGcFingerprint])
   useEffect(() => {
     const bid = selectedBidForPricing
     const included = bidPricings
@@ -505,8 +513,12 @@ export function BidsCoverLetterTab({
         const gcPackets = bundlePricings.length > 1
           ? groupSectionsByEffectiveGc(bundlePricings, versionGcById, bidGcPacketCustomer)
           : []
+        // Default packet follows the ACTIVE Version (v2.1762) — falling back to
+        // gcPackets[0] addressed every letter to the first section's GC (the bid
+        // default) no matter which Version chip was selected.
         const selectedGcPacket = gcPackets.length > 0
-          ? gcPackets.find((pk) => pk.key === selectedGcPacketKey) ?? gcPackets[0]!
+          ? gcPackets.find((pk) => pk.key === selectedGcPacketKey) ??
+            defaultGcPacketForActiveVersion(gcPackets, activeBidVersionId)
           : null
         const multiGc = gcPackets.length > 1
         // Single-letter path: the letter follows the ACTIVE Version — its GC
@@ -633,10 +645,16 @@ export function BidsCoverLetterTab({
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Customer</div>
-              <div>{customerName}</div>
-              {addressLines(customerAddress).map((line, i) => (
+              {/* The letter's actual recipient (version GC when overridden), not the bid default (v2.1762). */}
+              <div>{letterCustomerName}</div>
+              {addressLines(letterCustomerAddress).map((line, i) => (
                 <div key={i} style={{ color: 'var(--text-muted)' }}>{line}</div>
               ))}
+              {letterGcIsNotBidGc ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.15rem' }}>
+                  This version's GC — the bid default is {customerName}.
+                </div>
+              ) : null}
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Project</div>

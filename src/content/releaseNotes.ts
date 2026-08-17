@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1762',
+    date: '2026-08-17',
+    title: 'Cover letters address the right GC',
+    kind: 'fix',
+    highlights: [
+      'When a bid version has its own GC assigned, the cover letter now addresses that GC — the letterhead follows the version picker the same way the dollar amount always has.',
+      'The Customer block on the Cover Letter tab shows the letter\'s actual recipient, with a note when it differs from the bid default.',
+      'Assigning a GC to a version updates the letter immediately — no more reload needed.',
+    ],
+  },
+  {
     version: 'v2.1761',
     date: '2026-08-17',
     title: 'Color picker pops out properly',

@@ -3190,6 +3190,7 @@ export default function Bids() {
           coverLetterPricingRows={coverLetterPricingRows}
           activePricingName={priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? null}
           activeBidVersionId={selectedBidVersionId}
+          versionGcFingerprint={bidVersions.map((v) => `${v.id}:${v.customer_id ?? ''}`).join('|')}
           bidPricings={priceBookVersions}
           reloadBidPricings={() => (selectedBidForPricing ? loadBidPricings(selectedBidForPricing.id).then(() => {}) : Promise.resolve())}
           loadBids={loadBids}

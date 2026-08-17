@@ -81,3 +81,22 @@ export function letterGcDiffersFromBid(letterGc: GcPacketCustomer, bidCustomer: 
   if (letterGc.id != null && bidCustomer.id != null) return letterGc.id !== bidCustomer.id
   return letterGc.name !== bidCustomer.name || letterGc.address !== bidCustomer.address
 }
+
+/**
+ * The packet the preview / Print / Copy default to when the user hasn't
+ * explicitly picked one: the packet containing the ACTIVE Version's section,
+ * so the letterhead follows the Version picker exactly like the single-letter
+ * path does (v2.1762). Falls back to the first packet when the active version
+ * isn't in the bundle (or there is no active version).
+ */
+export function defaultGcPacketForActiveVersion<S extends GcPacketSectionInput>(
+  packets: Array<GcPacket<S>>,
+  activeBidVersionId: string | null,
+): GcPacket<S> | null {
+  if (packets.length === 0) return null
+  if (activeBidVersionId != null) {
+    const match = packets.find((pk) => pk.sections.some((s) => s.bidVersionId === activeBidVersionId))
+    if (match) return match
+  }
+  return packets[0] ?? null
+}
