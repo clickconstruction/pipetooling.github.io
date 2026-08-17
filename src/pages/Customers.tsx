@@ -110,6 +110,8 @@ export default function Customers() {
     Record<string, { projects: number; jobs: number; bids: number; notes: number }>
   >({})
   const [rollupByCustomerId, setRollupByCustomerId] = useState<Record<string, CustomerListRollup>>({})
+  /** Latest bid/estimate created_at per customer — the non-job half of the "active" signal. */
+  const [recentSignalByCustomerId, setRecentSignalByCustomerId] = useState<Record<string, string>>({})
   const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
@@ -159,16 +161,17 @@ export default function Customers() {
     setCustomers(customersWithMasters)
     const customerIds = customersWithMasters.map((c) => c.id)
     if (customerIds.length > 0) {
-      const [projectsRes, jobsRes, bidsRes, contactsRes, invoicesRes, paymentsRes] = await Promise.all([
+      const [projectsRes, jobsRes, bidsRes, contactsRes, invoicesRes, paymentsRes, estimatesRes] = await Promise.all([
         supabase.from('projects').select('customer_id').in('customer_id', customerIds),
         supabase
           .from('jobs_ledger')
           .select('id, customer_id, status, revenue, payments_made, created_at')
           .in('customer_id', customerIds),
-        supabase.from('bids').select('customer_id').in('customer_id', customerIds),
+        supabase.from('bids').select('customer_id, created_at').in('customer_id', customerIds),
         supabase.from('customer_contacts').select('customer_id').in('customer_id', customerIds),
         supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount'),
         supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on'),
+        supabase.from('estimates').select('customer_id, created_at').in('customer_id', customerIds),
       ])
       const counts: Record<string, { projects: number; jobs: number; bids: number; notes: number }> = {}
       for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0, notes: 0 }
@@ -196,6 +199,19 @@ export default function Customers() {
           (paymentsRes.data ?? []) as LcvPaymentRow[],
         ),
       )
+      const signal: Record<string, string> = {}
+      const stampSignal = (cid: string | null, iso: string | null) => {
+        if (!cid || !iso) return
+        const prev = signal[cid]
+        if (!prev || iso > prev) signal[cid] = iso
+      }
+      for (const r of (bidsRes.data ?? []) as Array<{ customer_id: string | null; created_at: string | null }>) {
+        stampSignal(r.customer_id, r.created_at)
+      }
+      for (const r of (estimatesRes.data ?? []) as Array<{ customer_id: string | null; created_at: string | null }>) {
+        stampSignal(r.customer_id, r.created_at)
+      }
+      setRecentSignalByCustomerId(signal)
     }
     setLoading(false)
   }
@@ -257,6 +273,17 @@ export default function Customers() {
   const typeFilter: CustomerTypeFilter =
     typeFromUrl === 'commercial_default' && defaultTypeCount === 0 ? 'all' : typeFromUrl
 
+  /** "Active in the last 90 days": a job created, payment received, bid, or estimate. */
+  const activeCutoffIso = new Date(Date.now() - QUIET_AFTER_DAYS * 86_400_000).toISOString()
+  const isActive90 = (id: string): boolean => {
+    const roll = rollupByCustomerId[id]
+    if (roll?.lastActivityIso && roll.lastActivityIso >= activeCutoffIso.slice(0, roll.lastActivityIso.length)) return true
+    const sig = recentSignalByCustomerId[id]
+    return sig != null && sig >= activeCutoffIso.slice(0, sig.length)
+  }
+  const owesFilterOn = searchParams.get('owes') === '1'
+  const active90FilterOn = searchParams.get('active90') === '1'
+
   const q = searchQuery.trim().toLowerCase()
   const byType = visibleCustomers.filter((c) => {
     if (typeFilter === 'all') return true
@@ -264,8 +291,13 @@ export default function Customers() {
     if (typeFilter === 'commercial_default') return isCustomerCommercialDefaultType(c)
     return c.customer_type === 'residential'
   })
+  const byLens = byType.filter((c) => {
+    if (owesFilterOn && (rollupByCustomerId[c.id]?.openBalance ?? 0) <= 0.5) return false
+    if (active90FilterOn && !isActive90(c.id)) return false
+    return true
+  })
   const filteredCustomers = q
-    ? byType.filter((c) => {
+    ? byLens.filter((c) => {
         const name = (c.name ?? '').toLowerCase()
         const address = (c.address ?? '').toLowerCase()
         const masterName = (c.master_user?.name ?? '').toLowerCase()
@@ -282,7 +314,7 @@ export default function Customers() {
           emailLower.includes(q)
         )
       })
-    : byType
+    : byLens
 
   const similarGroups = findSimilarCustomerGroups(
     visibleCustomers.map((c) => {
@@ -302,15 +334,42 @@ export default function Customers() {
   }
   /** Ids in any similar-cluster — powers the inline "possible duplicate" badge. */
   const duplicateIds = new Set(similarGroups.flatMap((g) => g.ids))
-  const sortByValue = searchParams.get('sort') === 'value'
-  const sortedCustomers = sortByValue
-    ? [...filteredCustomers].sort(
-        (a, b) =>
-          (rollupByCustomerId[b.id]?.lcv ?? 0) - (rollupByCustomerId[a.id]?.lcv ?? 0) ||
-          (a.name ?? '').localeCompare(b.name ?? ''),
-      )
-    : filteredCustomers
+  const sortMode = searchParams.get('sort') === 'value' ? 'value' : searchParams.get('sort') === 'recent' ? 'recent' : 'name'
+  const sortByValue = sortMode === 'value'
+  const sortedCustomers =
+    sortMode === 'value'
+      ? [...filteredCustomers].sort(
+          (a, b) =>
+            (rollupByCustomerId[b.id]?.lcv ?? 0) - (rollupByCustomerId[a.id]?.lcv ?? 0) ||
+            (a.name ?? '').localeCompare(b.name ?? ''),
+        )
+      : sortMode === 'recent'
+        ? [...filteredCustomers].sort((a, b) => {
+            const ra = rollupByCustomerId[a.id]?.lastActivityIso ?? ''
+            const rb = rollupByCustomerId[b.id]?.lastActivityIso ?? ''
+            return rb.localeCompare(ra) || (a.name ?? '').localeCompare(b.name ?? '')
+          })
+        : filteredCustomers
   const displayCustomers = showSimilar ? similarDisplay : sortedCustomers
+
+  const statTotals = (() => {
+    let residential = 0
+    let commercial = 0
+    let owesCount = 0
+    let owesSum = 0
+    let active = 0
+    for (const c of visibleCustomers) {
+      if (c.customer_type === 'residential') residential += 1
+      else if (c.customer_type === 'commercial') commercial += 1
+      const open = rollupByCustomerId[c.id]?.openBalance ?? 0
+      if (open > 0.5) {
+        owesCount += 1
+        owesSum += open
+      }
+      if (isActive90(c.id)) active += 1
+    }
+    return { total: visibleCustomers.length, residential, commercial, owesCount, owesSum, active }
+  })()
 
   return (
     <div>
@@ -326,6 +385,60 @@ export default function Customers() {
       </div>
       {customers.length > 0 && (
         <>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            overflow: 'hidden',
+            background: 'var(--surface)',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Customers</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{statTotals.total}</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              {statTotals.residential} residential · {statTotals.commercial} commercial
+            </div>
+          </div>
+          <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Active last 90 days</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{statTotals.active}</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>had a job, payment, bid, or estimate</div>
+          </div>
+          <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Total open balance</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: statTotals.owesSum > 0.5 ? 'var(--text-amber-800)' : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+              ${Math.round(statTotals.owesSum).toLocaleString('en-US')}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              across {statTotals.owesCount} customer{statTotals.owesCount === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div style={{ padding: '10px 14px' }}>
+            <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>No customer type</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{defaultTypeCount}</div>
+            {defaultTypeCount > 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setSearchParams((p) => {
+                    const n = new URLSearchParams(p)
+                    n.set('type', 'commercial_default')
+                    return n
+                  })
+                }
+                style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                Show them →
+              </button>
+            ) : (
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>all classified 🎉</div>
+            )}
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
           {(['all', 'commercial', 'residential'] as const).map((t) => (
             <button
@@ -380,6 +493,54 @@ export default function Customers() {
             onClick={() =>
               setSearchParams((p) => {
                 const n = new URLSearchParams(p)
+                if (n.get('owes') === '1') n.delete('owes')
+                else n.set('owes', '1')
+                return n
+              })
+            }
+            aria-pressed={owesFilterOn}
+            title="Only customers with an open balance"
+            style={{
+              padding: '0.35rem 0.75rem',
+              border: owesFilterOn ? '1px solid #d97706' : '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: owesFilterOn ? 'var(--bg-amber-tint)' : 'var(--surface)',
+              color: owesFilterOn ? 'var(--text-amber-800)' : 'var(--text-700)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            Owes money ({statTotals.owesCount})
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setSearchParams((p) => {
+                const n = new URLSearchParams(p)
+                if (n.get('active90') === '1') n.delete('active90')
+                else n.set('active90', '1')
+                return n
+              })
+            }
+            aria-pressed={active90FilterOn}
+            title="Only customers with a job, payment, bid, or estimate in the last 90 days"
+            style={{
+              padding: '0.35rem 0.75rem',
+              border: active90FilterOn ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: active90FilterOn ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: active90FilterOn ? 'var(--text-blue-700)' : 'var(--text-700)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            Active 90d ({statTotals.active})
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setSearchParams((p) => {
+                const n = new URLSearchParams(p)
                 if (n.get('sort') === 'value') n.delete('sort')
                 else n.set('sort', 'value')
                 return n
@@ -399,6 +560,30 @@ export default function Customers() {
             }}
           >
             $ Top customers
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setSearchParams((p) => {
+                const n = new URLSearchParams(p)
+                if (n.get('sort') === 'recent') n.delete('sort')
+                else n.set('sort', 'recent')
+                return n
+              })
+            }
+            aria-pressed={sortMode === 'recent'}
+            title="Sort by most recent job or payment activity"
+            style={{
+              padding: '0.35rem 0.75rem',
+              border: sortMode === 'recent' ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: sortMode === 'recent' ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: sortMode === 'recent' ? 'var(--text-blue-700)' : 'var(--text-700)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            Recent first
           </button>
           <button
             type="button"

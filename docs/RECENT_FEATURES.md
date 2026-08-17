@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1781)
+last_updated: 2026-08-17 (v2.1782)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1782)
+
+### Customers list: the stat band, Owes-money / Active-90d filters, Recent-first sort (2026-08-17)
+PR 2 of the Customers-list redesign. A **stat band** tops [`Customers`](../src/pages/Customers.tsx): total customers (residential · commercial split), **Active last 90 days** (job created, payment received, bid, or estimate — bids/estimates via a new lean `created_at` signal fetch), **Total open balance** (Σ of PR 1's per-customer `openBalance`, with debtor count — the org-wide AR headline this page never had), and **No customer type** with a "Show them →" jump to the existing untyped filter. Two new filter pills — **Owes money (n)** (`?owes=1`, amber) and **Active 90d (n)** (`?active90=1`, blue) — compose with the type filters and search; a **Recent first** sort (`?sort=recent`) orders by latest job/payment activity (mutually exclusive with `$ Top customers`; all URL params linkable). Verified live: band reads 425 customers · 108 active · **$217,270 across 34 customers** · 165 untyped; `?owes=1&sort=recent` shows exactly the 34 debtors, most recently active first. Client-only — no migration.
 
 ## Latest Updates (v2.1781)
 

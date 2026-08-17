@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1782',
+    date: '2026-08-17',
+    title: 'Customers list: totals up top, money and activity filters',
+    kind: 'feature',
+    highlights: [
+      'A stat band now tops the Customers page: how many customers you have, how many were active in the last 90 days, the total open balance across everyone, and how many still need a type.',
+      'New filters: "Owes money" shows just the customers with a balance, "Active 90d" hides the quiet ones, and "Recent first" sorts by who had something happen most recently.',
+    ],
+  },
+  {
     version: 'v2.1781',
     date: '2026-08-17',
     title: 'Customers list rows now carry the signal',
