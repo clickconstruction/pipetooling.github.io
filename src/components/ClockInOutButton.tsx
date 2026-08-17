@@ -17,6 +17,7 @@ import {
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX, effectiveJobLedgerNumber, formatBidLedgerNumberLabel } from '../lib/ledgerDisplayPrefixes'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
+import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import {
   OperationTimeoutError,
   formatErrorMessage,
@@ -374,19 +375,15 @@ export default function ClockInOutButton({
   }, [userId])
 
   useEffect(() => {
-    if (!userId || !userName?.trim()) {
+    if (!userId) {
       setSalaryUiActive(false)
       return
     }
     let cancelled = false
     void (async () => {
-      const [pay, tmpl] = await Promise.all([
-        supabase.from('people_pay_config').select('is_salary').eq('person_name', userName.trim()).maybeSingle(),
-        supabase.from('salary_work_schedule_templates').select('user_id').eq('user_id', userId).maybeSingle(),
-      ])
+      const state = await fetchSelfSalaryClockState(userId, userName ?? null)
       if (cancelled) return
-      const sal = !!pay.data?.is_salary
-      setSalaryUiActive(sal && !!tmpl.data)
+      setSalaryUiActive(state.isSalary && state.hasTemplate)
     })()
     return () => {
       cancelled = true
