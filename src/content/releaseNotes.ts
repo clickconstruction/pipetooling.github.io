@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1746',
+    date: '2026-08-16',
+    title: 'Rules button finds its home',
+    kind: 'fix',
+    highlights: [
+      'On Banking → Accounting, the Rules button now lives in the Approvals header next to Approve all instead of floating between sections.',
+    ],
+  },
+  {
     version: 'v2.1745',
     date: '2026-08-16',
     title: 'Sort and tag in one stop',
