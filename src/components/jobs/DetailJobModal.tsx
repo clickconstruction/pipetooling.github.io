@@ -623,6 +623,8 @@ export default function DetailJobModal({
   const [paidEmailModalOpen, setPaidEmailModalOpen] = useState(false)
   const streetViewBlobUrlRef = useRef<string | null>(null)
   const detailFetchIdRef = useRef(0)
+  /** Job id the current fullJob/limitedJob belong to — same-id refreshes keep data on screen (v2.1757). */
+  const lastLoadedJobIdRef = useRef<string | null>(null)
   const [materialsCostRefreshKey, setMaterialsCostRefreshKey] = useState(0)
   const [scheduleTimeSectionOpen, setScheduleTimeSectionOpen] = useState(false)
   const [jobDetailScheduleSessionsFilter, setJobDetailScheduleSessionsFilter] = useState('')
@@ -653,17 +655,29 @@ export default function DetailJobModal({
     const fetchId = ++detailFetchIdRef.current
     setLoading(true)
     setError(null)
-    setFullJob(null)
-    setLimitedJob(null)
+    // Same-job refresh (every Edit/Bill autosave bumps externalRefreshKey):
+    // keep the current data on screen while refetching. Clearing it here made
+    // mapsAddressLine blip to '' and back, which revoked + refetched the
+    // Street View image — the shared header band flashed on every autosave
+    // (v2.1757). Only a job SWITCH clears, so a new id never shows the old
+    // job's data.
+    if (lastLoadedJobIdRef.current !== jobId) {
+      setFullJob(null)
+      setLimitedJob(null)
+    }
     try {
       if (isStaffFullJobLedgerDetailRole(authRole)) {
         const data = await fetchJobWithDetailsById(jobId)
         if (fetchId !== detailFetchIdRef.current) return
         if (!data) {
           setError('Job not found or you do not have access.')
+          setFullJob(null)
+          setLimitedJob(null)
+          lastLoadedJobIdRef.current = null
           return
         }
         setFullJob(data)
+        lastLoadedJobIdRef.current = jobId
         return
       }
       const assigned = assignedJobsRows.find((j) => j.id === jobId)
@@ -672,9 +686,13 @@ export default function DetailJobModal({
       const merged = mergeLimitedFromAssignedAndLedger(assigned, ledger)
       if (!merged) {
         setError('Job not found or you do not have access.')
+        setFullJob(null)
+        setLimitedJob(null)
+        lastLoadedJobIdRef.current = null
         return
       }
       setLimitedJob(merged)
+      lastLoadedJobIdRef.current = jobId
     } catch (e) {
       if (fetchId === detailFetchIdRef.current) {
         setError(formatErrorMessage(e))
@@ -689,6 +707,7 @@ export default function DetailJobModal({
   useEffect(() => {
     if (!open || !jobId) {
       detailFetchIdRef.current += 1
+      lastLoadedJobIdRef.current = null
       setFullJob(null)
       setLimitedJob(null)
       setError(null)

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1756)
+last_updated: 2026-08-17 (v2.1757)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1757)
+
+### Job window: the Street View band stops flashing on every Bill-tab autosave (2026-08-17)
+Owner report: typing line items on the Bill tab made the street view "reload as it auto saves — the page feels like it's jumping around." Diagnosis: every autosave slice fires `onSaved` → [`JobWindowModal`](../src/components/jobs/JobWindowModal.tsx) bumps `externalRefreshKey` → [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) (always mounted as the window's shared header, v2.1676) re-ran `loadDetail()`, which **cleared `fullJob` before refetching** — `mapsAddressLine` blipped `address → '' → address`, and the Street View effect (keyed on that string) revoked the blob URL, blanked the `<img>`, and refetched meta + image from Google. Fix: a same-job refresh now keeps the current data on screen while refetching (`lastLoadedJobIdRef`) — only a job **switch** clears, so a new id never flashes the old job's data; the not-found paths clear explicitly. This stabilizes the whole header (title, badges, icons), not just the image. Verified live on job 961 with a net-zero edit (space appended to a line item, autosave, restored): fetch log shows the `PATCH jobs_ledger` + fixture writes and two full header-reload cycles, while a MutationObserver on the Street View img recorded **0 src changes, 0 removals, same element**. Client-only — no migration.
 
 ## Latest Updates (v2.1756)
 
