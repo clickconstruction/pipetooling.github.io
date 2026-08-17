@@ -28,9 +28,11 @@ export type UnlinkedJobInput = {
   job_name: string | null
   hcp_number: string | null
   click_number: string | null
+  /** Job owner — groups split by it so an ownership move is one clear decision. */
+  master_user_id?: string | null
 }
 
-export type LinkCustomerInput = { id: string; name: string | null }
+export type LinkCustomerInput = { id: string; name: string | null; master_user_id?: string | null }
 
 export type LinkConfidence = 'customer_name' | 'job_name' | 'prefix' | 'none'
 
@@ -42,6 +44,8 @@ export type ProposedLinkGroup = {
   sampleLabels: string[]
   proposedCustomerId: string | null
   confidence: LinkConfidence
+  /** The jobs' owner (groups never mix owners). */
+  jobMasterUserId: string | null
 }
 
 const MIN_PREFIX_NORM_LEN = 6
@@ -60,7 +64,14 @@ export function proposeJobCustomerLinks(
   }
   const normKeys = Array.from(byNorm.keys())
 
-  type Bucket = { displayName: string; jobIds: string[]; sampleLabels: string[]; proposedCustomerId: string | null; confidence: LinkConfidence }
+  type Bucket = {
+    displayName: string
+    jobIds: string[]
+    sampleLabels: string[]
+    proposedCustomerId: string | null
+    confidence: LinkConfidence
+    jobMasterUserId: string | null
+  }
   const buckets = new Map<string, Bucket>()
 
   for (const job of jobs) {
@@ -93,7 +104,8 @@ export function proposeJobCustomerLinks(
       }
     }
 
-    const bucketKey = `${normKey}|${proposed ?? ''}|${confidence}`
+    const jobMaster = job.master_user_id ?? null
+    const bucketKey = `${normKey}|${proposed ?? ''}|${confidence}|${jobMaster ?? ''}`
     const label = (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || ''
     const existing = buckets.get(bucketKey)
     if (existing) {
@@ -106,6 +118,7 @@ export function proposeJobCustomerLinks(
         sampleLabels: label ? [label] : [],
         proposedCustomerId: proposed,
         confidence,
+        jobMasterUserId: jobMaster,
       })
     }
   }

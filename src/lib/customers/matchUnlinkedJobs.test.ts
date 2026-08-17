@@ -74,3 +74,18 @@ describe('proposeJobCustomerLinks', () => {
     expect(groups[1]!.jobIds).toHaveLength(2)
   })
 })
+
+describe('ownership-aware grouping', () => {
+  it('splits a name into separate groups per job owner and carries jobMasterUserId', () => {
+    const groups = proposeJobCustomerLinks(
+      [
+        job({ id: 'j1', customer_name: 'Mary Evans', master_user_id: 'm-robert' }),
+        job({ id: 'j2', customer_name: 'Mary Evans', master_user_id: 'm-malachi' }),
+      ],
+      CUSTOMERS,
+    )
+    expect(groups).toHaveLength(2)
+    expect(new Set(groups.map((g) => g.jobMasterUserId))).toEqual(new Set(['m-robert', 'm-malachi']))
+    expect(groups.every((g) => g.proposedCustomerId === 'c-mary')).toBe(true)
+  })
+})
