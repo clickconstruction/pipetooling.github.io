@@ -16,6 +16,16 @@ Every customer now has their own page. Click a customer's name on the **Customer
 
 On the **Customers** list, every customer's lifetime value shows in green on their row. Click {{button:outline|$ Top customers}} in the filter row to sort the whole list by value, highest first — search and the Commercial/Residential filters still apply.
 
+## Work the list with the stat band and filters
+
+The band at the top of the **Customers** page shows your totals: customer count, how many were active in the last 90 days, the **total open balance** across everyone, and how many customers still need a type. Below it:
+
+- {{button:amber|Owes money (34)}} filters to customers with an open balance — the list becomes your receivables view.
+- {{button:outline-blue|Active 90d}} hides customers with nothing happening.
+- {{button:outline-blue|Recent first}} sorts by the latest job or payment, newest activity on top.
+
+Filters, sorts, and search all combine, and they live in the page address — bookmark or share any view.
+
 ## Read a customer's row at a glance
 
 Each row on the Customers list carries chips that only appear when there's something to say:
