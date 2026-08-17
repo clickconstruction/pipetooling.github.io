@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1773',
+    date: '2026-08-17',
+    title: 'Move a job\'s stage from the Edit tab',
+    kind: 'feature',
+    highlights: [
+      'The Edit Job window now ends with a tappable status strip — Waiting → Working → Ready to bill → Billed → Paid — tap a stage to move the job, with the change posted to its activity thread like the board buttons.',
+      'A Collections toggle sits beside it for billed jobs (with a note), and moving to Paid opens the same Record payment window as Mark Paid.',
+    ],
+  },
+  {
     version: 'v2.1772',
     date: '2026-08-17',
     title: 'Margin mode: price rows where you read them',
