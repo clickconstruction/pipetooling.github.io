@@ -1728,10 +1728,11 @@ export default function Bids() {
       const rows = await loadBids()
       setSelectedServiceTypeId(targetServiceTypeId)
       const fresh = rows.find((b) => b.id === newId)
+      const sameTrade = targetServiceTypeId === editingBid.service_type_id
       if (fresh) {
         closeBidForm()
         openEditBid(fresh)
-        showToast('Bid copied to the new trade.', 'success')
+        showToast(sameTrade ? 'Bid duplicated.' : 'Bid copied to the new trade.', 'success')
       } else {
         closeBidForm()
         showToast('Bid copied. Refresh the page if it does not appear.', 'success')

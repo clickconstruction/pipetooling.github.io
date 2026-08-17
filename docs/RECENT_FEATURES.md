@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1764)
+last_updated: 2026-08-17 (v2.1765)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1765)
+
+### Copy Bid modal: duplicate within the same trade (2026-08-17)
+Owner request from the Copy Bid modal (Edit Bid → the [plum] chip): alongside "Copy to new Electrical/HVAC bid", a **Duplicate this Plumbing bid** button for a same-trade copy. The [`duplicate_bid_to_service_type`](../supabase/migrations/20260817160624_duplicate_bid_same_service_type.sql) function refused same-type targets since the baseline — migration `20260817160624` removes that guard (body otherwise verbatim) and appends `" (copy)"` to the project name for same-type copies so the pair stay distinguishable. [`BidFormModal`](../src/components/bids/BidFormModal.tsx)'s Copy Bid modal gains a top section for the bid's own trade wired to the same `onDuplicateBidToServiceType` handler; [`Bids.tsx`](../src/pages/Bids.tsx) toasts "Bid duplicated." for same-trade (vs "copied to the new trade"), keeps the trade selected, and opens the fresh copy. (v2.1764 is the parallel session's Approval-PDF fix.) Verified in the modal UI; the RPC path goes live with the migration push.
 
 ## Latest Updates (v2.1764)
 

@@ -1082,12 +1082,72 @@ export function BidFormModal(props: BidFormModalProps) {
                   </button>
                 </div>
                 <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                  Open an existing bid for the same customer and project name, or copy this bid’s counts and estimate data into a new bid for another service type.
+                  Open an existing bid for the same customer and project name, copy this bid’s counts and estimate data into a new bid for another service type, or duplicate it within the same trade.
                 </p>
                 {!editingBid ? (
                   <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
                     Save the bid first to enable <strong>Copy to new … bid</strong>.
                   </p>
+                ) : null}
+                {selectedServiceType ? (
+                  <div
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: '0.65rem 0.75rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          padding: '0.1rem 0.35rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: 500,
+                          borderRadius: 4,
+                          ...serviceTypePillStyle(selectedServiceType),
+                        }}
+                      >
+                        {serviceTypePillTag ? `[${serviceTypePillTag.tag}]` : selectedServiceType.name}
+                      </span>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{selectedServiceType.name} (this bid’s trade)</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!editingBid || !onDuplicateBidToServiceType || duplicatingToServiceTypeId === selectedServiceType.id || savingBid}
+                      title={!editingBid ? 'Save this bid first' : undefined}
+                      onClick={async () => {
+                        if (!onDuplicateBidToServiceType || !editingBid) return
+                        setDuplicatingToServiceTypeId(selectedServiceType.id)
+                        try {
+                          await onDuplicateBidToServiceType(selectedServiceType.id)
+                          setServiceTypeSwitchOpen(false)
+                        } finally {
+                          setDuplicatingToServiceTypeId(null)
+                        }
+                      }}
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        alignSelf: 'flex-start',
+                        background: !editingBid || !onDuplicateBidToServiceType ? 'var(--bg-200)' : '#3b82f6',
+                        color: !editingBid || !onDuplicateBidToServiceType ? 'var(--text-muted)' : 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: !editingBid || !onDuplicateBidToServiceType ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {duplicatingToServiceTypeId === selectedServiceType.id
+                        ? 'Duplicating…'
+                        : `Duplicate this ${selectedServiceType.name} bid`}
+                    </button>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                      Makes a same-trade copy named “{'{project}'} (copy)” with counts and estimate data.
+                    </span>
+                  </div>
                 ) : null}
                 {otherServiceTypes.length === 0 ? (
                   <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No other service types are available for your account.</p>
