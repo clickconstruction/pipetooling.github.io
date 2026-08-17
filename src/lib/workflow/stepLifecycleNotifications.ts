@@ -8,8 +8,9 @@ import type { StepNotifyActionType } from './stepLifecycle'
  * emails/pushes — before this, only the Workflow page notified.
  *
  * Everything is best-effort: failures log to console and never surface to the
- * user. Recipient resolution is name-keyed (users by exact trimmed name, then
- * active people) — the person-id flip is a later RUN_SUBS_PLAN phase.
+ * user. Recipient resolution goes assigned_person_id-first (v2.1733, identity
+ * Phase D) with the legacy name path (users by exact trimmed name, then
+ * active people) as fallback.
  */
 
 export type NotifiableStep = {
@@ -17,6 +18,7 @@ export type NotifiableStep = {
   workflow_id: string
   name: string
   assigned_to_name: string | null
+  assigned_person_id?: string | null
   rejection_reason?: string | null
   notify_assigned_when_started?: boolean | null
   notify_assigned_when_complete?: boolean | null
@@ -25,7 +27,27 @@ export type NotifiableStep = {
   notify_prior_assignee_when_rejected?: boolean | null
 }
 
-async function getContactForName(name: string | null): Promise<{ email: string | null; userId: string | null }> {
+async function getContactForName(name: string | null, personId?: string | null): Promise<{ email: string | null; userId: string | null }> {
+  // Id-first (identity Phase D): assigned_person_id names the contact even
+  // when the display name is stale; an account-linked person notifies their
+  // user. RLS may hide people from field roles — then the name path runs.
+  if (personId) {
+    const { data: person } = await supabase
+      .from('people')
+      .select('email, account_user_id')
+      .eq('id', personId)
+      .maybeSingle()
+    if (person?.account_user_id) {
+      const { data: acctUser } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('id', person.account_user_id)
+        .maybeSingle()
+      if (acctUser?.email) return { email: acctUser.email, userId: acctUser.id }
+    }
+    if (person?.email) return { email: person.email, userId: null }
+  }
+
   if (!name) return { email: null, userId: null }
   const trimmedName = name.trim()
 
@@ -168,18 +190,18 @@ export async function sendStepLifecycleNotifications(args: {
   // Get all steps in workflow to find next/previous
   const { data: allSteps } = await supabase
     .from('project_workflow_steps')
-    .select('id, sequence_order, name, assigned_to_name')
+    .select('id, sequence_order, name, assigned_to_name, assigned_person_id')
     .eq('workflow_id', step.workflow_id)
     .order('sequence_order', { ascending: true })
 
-  const sortedSteps = (allSteps as Array<{ id: string; sequence_order: number; name: string; assigned_to_name: string | null }>) || []
+  const sortedSteps = (allSteps as Array<{ id: string; sequence_order: number; name: string; assigned_to_name: string | null; assigned_person_id: string | null }>) || []
   const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
   const nextStep = currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? sortedSteps[currentIndex + 1] : null
   const previousStep = currentIndex > 0 ? sortedSteps[currentIndex - 1] : null
 
   if (actionType === 'started') {
     if (step.notify_assigned_when_started && step.assigned_to_name) {
-      const { email, userId } = await getContactForName(step.assigned_to_name)
+      const { email, userId } = await getContactForName(step.assigned_to_name, step.assigned_person_id)
       if (email) {
         await sendOne({
           templateType: 'stage_assigned_started',
@@ -197,7 +219,7 @@ export async function sendStepLifecycleNotifications(args: {
     }
   } else if (actionType === 'completed' || actionType === 'approved') {
     if (step.notify_assigned_when_complete && step.assigned_to_name) {
-      const { email, userId } = await getContactForName(step.assigned_to_name)
+      const { email, userId } = await getContactForName(step.assigned_to_name, step.assigned_person_id)
       if (email) {
         await sendOne({
           templateType: 'stage_assigned_complete',
@@ -215,7 +237,7 @@ export async function sendStepLifecycleNotifications(args: {
     }
     // Cross-step: Notify next assignee (primary handoff - include push title/body)
     if (step.notify_next_assignee_when_complete_or_approved && nextStep?.assigned_to_name) {
-      const { email, userId } = await getContactForName(nextStep.assigned_to_name)
+      const { email, userId } = await getContactForName(nextStep.assigned_to_name, nextStep.assigned_person_id)
       if (email) {
         const nextStepForNotification: NotifiableStep = {
           ...step,
@@ -240,7 +262,7 @@ export async function sendStepLifecycleNotifications(args: {
   } else if (actionType === 'rejected') {
     // Cross-step: Notify prior assignee
     if (step.notify_prior_assignee_when_rejected && previousStep?.assigned_to_name) {
-      const { email, userId } = await getContactForName(previousStep.assigned_to_name)
+      const { email, userId } = await getContactForName(previousStep.assigned_to_name, previousStep.assigned_person_id)
       if (email) {
         const previousStepForNotification: NotifiableStep = {
           ...step,
@@ -265,7 +287,7 @@ export async function sendStepLifecycleNotifications(args: {
     }
   } else if (actionType === 'reopened') {
     if (step.notify_assigned_when_reopened && step.assigned_to_name) {
-      const { email, userId } = await getContactForName(step.assigned_to_name)
+      const { email, userId } = await getContactForName(step.assigned_to_name, step.assigned_person_id)
       if (email) {
         await sendOne({
           templateType: 'stage_assigned_reopened',

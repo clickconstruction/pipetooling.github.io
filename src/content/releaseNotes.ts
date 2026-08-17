@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1733',
+    date: '2026-08-16',
+    title: 'Stage assignments survive renames',
+    kind: 'infra',
+    highlights: [
+      'Workflow stages now track who they\'re assigned to by identity, not just by matching names — renaming someone no longer hides their assigned stages, dashboard list, or notifications.',
+      'Picking an assignee from the stage form records the actual person; typed names still work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1732',
     date: '2026-08-16',
     title: 'Sub sheets remember who, not just the name',
