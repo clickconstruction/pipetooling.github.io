@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1787',
+    date: '2026-08-17',
+    title: 'Groundwork for multiple customer addresses',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes: customers can now store extra addresses with notes. The editing screens for them arrive in the next update.',
+    ],
+  },
+  {
     version: 'v2.1786',
     date: '2026-08-17',
     title: 'Link old jobs to their customers in one sweep',

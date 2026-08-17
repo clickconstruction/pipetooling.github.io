@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 17, 2026
 
+**`20260817224600_customer_addresses.sql`** _(applied via `supabase db push` with the v2.1787 merge — new table only; old clients unaffected, nothing reads it until the addresses UI ships)_
+- **Purpose**: Multiple addresses per customer, each with a free-text note. New `customer_addresses` (`customer_id` FK CASCADE, `address`, `note`, `sequence_order`). `customers.address` stays the primary — rows here are additive extras. RLS mirrors `customer_contact_persons` (office roles + estimator, gated through parent-customer access; all four verbs), and the table ends with BOTH read-only training-mode blocks per convention.
+- **Category**: Customers / new table
+
 **`20260817221950_merge_customers_accepted_estimates.sql`** _(applied via `supabase db push` with the v2.1785 merge — `CREATE OR REPLACE` of two existing functions; old clients unaffected, the RPC signature is unchanged)_
 - **Purpose**: Un-blocks merging duplicate customers who hold an accepted estimate. `merge_customers` sets a transaction-local flag (`set_config('app.merging_customers','1',true)`) before its re-link UPDATEs, and `estimates_protect_after_accept` now allows a `customer_id` change **only** while that flag is set — every other accepted-estimate mutation stays forbidden. Hit live: the Michael Palmer duplicate pair failed with "estimate is accepted; only job_ledger_id and internal_notes can change".
 - **Category**: Customers / function replace
