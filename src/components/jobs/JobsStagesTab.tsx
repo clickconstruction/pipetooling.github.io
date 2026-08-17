@@ -146,6 +146,7 @@ import {
 } from '../../lib/jobsStagesScheduleSessionSearch'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { JobsFollowupModal, type JobsFollowupStageRowResult } from './JobsFollowupModal'
+import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -1311,6 +1312,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
     const job = jobs.find((x) => x.id === jobId)
     if (!job) return null
+    // Bill detail for the card's line-items footer (v2.1744) — same math as the Bill tab's Job Total.
+    const namedFixtures = [...(job.fixtures ?? [])]
+      .filter((f) => (f.name ?? '').trim())
+      .sort((a, b) => a.sequence_order - b.sequence_order)
+    const rowExtras = {
+      lineItems: namedFixtures.map((f) => ({
+        name: f.name,
+        count: Number(f.count ?? 1),
+        unitPrice: f.line_unit_price != null ? Number(f.line_unit_price) : null,
+      })),
+      jobTotalDollars: revenueDollarsFromFixtures(
+        namedFixtures.map((f) => ({ name: f.name, count: Number(f.count ?? 1), line_unit_price: f.line_unit_price != null ? Number(f.line_unit_price) : null })),
+      ),
+      bidDollars: Number(job.revenue ?? 0),
+    }
     const shared = {
       stagesJobFlashId,
       stagesEditMode: stagesEditModeActive,
@@ -1374,7 +1390,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     const status = (job.status ?? 'working') as string
     if (status === 'waiting') {
-      return { stage: 'waiting', node: (
+      return { stage: 'waiting', ...rowExtras, node: (
         <StagesSectionList
           hideHeader
           jobList={[job]}
@@ -1389,7 +1405,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ) }
     }
     if (status === 'working') {
-      return { stage: 'working', node: (
+      return { stage: 'working', ...rowExtras, node: (
         <StagesSectionList
           hideHeader
           jobList={[job]}
@@ -1412,7 +1428,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (status === 'ready_to_bill') {
       const rows = followupBoardLists.readyToBillRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
-      return { stage: 'ready_to_bill', node: (
+      return { stage: 'ready_to_bill', ...rowExtras, node: (
         <StagesUnifiedSectionList
           hideHeader
           rows={rows}
@@ -1486,7 +1502,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (status === 'billed' && jobInCollections(job)) {
       const rows = followupBoardLists.collectionsRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
-      return { stage: 'collections', node: (
+      return { stage: 'collections', ...rowExtras, node: (
         <StagesUnifiedSectionList
           hideHeader
           rows={rows}
@@ -1514,7 +1530,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (status === 'billed') {
       const rows = followupBoardLists.billedActiveRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
-      return { stage: 'billed', node: (
+      return { stage: 'billed', ...rowExtras, node: (
         <StagesUnifiedSectionList
           hideHeader
           rows={rows}

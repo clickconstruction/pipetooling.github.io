@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
+import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -71,8 +72,18 @@ const BOARD_STAGE_LABELS: Record<JobFollowupStage, string> = {
   collections: 'Collections',
 }
 
-/** What JobsStagesTab's renderStageRow hands back: the row plus which board section it drew. */
-export type JobsFollowupStageRowResult = { node: React.ReactNode; stage: JobFollowupStage }
+/** One Bill-tab line item, precomputed by JobsStagesTab from the job's fixtures (v2.1744). */
+export type JobsFollowupLineItem = { name: string; count: number; unitPrice: number | null }
+
+/** What JobsStagesTab's renderStageRow hands back: the row, which board section it drew, and the bill detail. */
+export type JobsFollowupStageRowResult = {
+  node: React.ReactNode
+  stage: JobFollowupStage
+  /** Named Bill-tab rows in sequence order; totals follow revenueDollarsFromFixtures. */
+  lineItems: JobsFollowupLineItem[]
+  jobTotalDollars: number
+  bidDollars: number
+}
 
 const STAGE_CHIP: Record<JobFollowupStage, React.CSSProperties> = {
   waiting: chipStyle('var(--bg-slate-100)', 'var(--text-slate-500)'),
@@ -80,6 +91,71 @@ const STAGE_CHIP: Record<JobFollowupStage, React.CSSProperties> = {
   ready_to_bill: chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'),
   billed: chipStyle('#fee2e2', '#b91c1c'),
   collections: chipStyle('#fee2e2', '#b91c1c'),
+}
+
+/** Whole dollars like the rest of the card, cents only when the value has them. */
+function lineMoney(v: number): string {
+  return v % 1 !== 0
+    ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : usd(v)
+}
+
+/** Option C (v2.1744): the Bill tab's line items + Job total as a footer inside the Pipeline row block. */
+function DeckLineItemsPanel({ lineItems, jobTotalDollars, bidDollars, onOpenBill }: {
+  lineItems: JobsFollowupLineItem[]
+  jobTotalDollars: number
+  bidDollars: number
+  onOpenBill: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const CAP = 6
+  const shown = expanded ? lineItems : lineItems.slice(0, CAP)
+  const hidden = lineItems.length - shown.length
+  const delta = Math.round((bidDollars - jobTotalDollars) * 100) / 100
+  const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.16rem 0', fontSize: '0.84rem' }
+  return (
+    <div style={{ marginTop: '0.55rem', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.85rem 0.7rem', background: 'var(--bg-subtle)' }}>
+      <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.3rem' }}>Line items</div>
+      {lineItems.length === 0 ? (
+        <div style={{ fontSize: '0.84rem', color: 'var(--text-slate-500)' }}>
+          None yet — the Bill tab is empty.{' '}
+          <button type="button" onClick={onOpenBill} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}>
+            Add line items ↗
+          </button>
+        </div>
+      ) : (
+        <>
+          {shown.map((li, i) => {
+            // Same qty rule as revenueDollarsFromFixtures: a 0/blank count bills as 1.
+            const qty = Number.isFinite(li.count) && li.count > 0 ? li.count : 1
+            return (
+              <div key={i} style={rowStyle}>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {li.name}{' '}
+                  <span style={{ color: 'var(--text-slate-500)' }}>· {qty} × {li.unitPrice != null ? lineMoney(li.unitPrice) : '—'}</span>
+                </span>
+                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{li.unitPrice != null ? lineMoney(qty * li.unitPrice) : '—'}</span>
+              </div>
+            )
+          })}
+          {hidden > 0 ? (
+            <button type="button" onClick={() => setExpanded(true)} style={{ border: 'none', background: 'none', padding: '0.16rem 0', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.8rem' }}>
+              +{hidden} more…
+            </button>
+          ) : null}
+          <div style={{ ...rowStyle, borderTop: '1px solid var(--border)', marginTop: '0.28rem', paddingTop: '0.4rem', fontWeight: 800 }}>
+            <span>Job total</span>
+            <span>{lineMoney(jobTotalDollars)}</span>
+          </div>
+          {bidDollars > 0 && Math.abs(delta) >= 1 ? (
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', textAlign: 'right', marginTop: '0.12rem' }}>
+              {delta > 0 ? `Bid is ${usd(bidDollars)} — ${usd(delta)} not itemized` : `Line items exceed the bid by ${usd(-delta)}`}
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  )
 }
 
 function SettingsStepper({ label, desc, value, onChange }: { label: string; desc: string; value: number; onChange: (v: number) => void }) {
@@ -112,6 +188,8 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   // open the deck hides itself (state intact) instead of burying the window.
   const jobDetailModal = useJobDetailModal()
   const jobWindowOpen = jobDetailModal?.isOpen ?? false
+  /** For "Add line items ↗" — opens the Job window straight on its Bill tab (v2.1744). */
+  const jobWindowBridge = useJobDetailOpenerBridge()
   /** Mobile polish (v2.1730): safe-area padding, one-row chip rail, stacked actions. */
   const isNarrow = useIsNarrowScreen()
 
@@ -641,6 +719,17 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                       {onOpenBoardRow ? <span aria-hidden style={{ textTransform: 'none', letterSpacing: 0 }}>↗</span> : null}
                     </button>
                     <div style={{ overflowX: 'auto' }}>{row.node}</div>
+                    <DeckLineItemsPanel
+                      key={current.job.id}
+                      lineItems={row.lineItems}
+                      jobTotalDollars={row.jobTotalDollars}
+                      bidDollars={row.bidDollars}
+                      onOpenBill={() => {
+                        if (!jobWindowBridge?.requestOpenJobWindowEdit(current.job.id, { initialTab: 'bill' })) {
+                          jobDetailModal?.openJobDetail({ jobId: current.job.id })
+                        }
+                      }}
+                    />
                   </div>
                 ) : null
               })() : null}
