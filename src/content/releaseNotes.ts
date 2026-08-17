@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1742',
+    date: '2026-08-16',
+    title: 'Follow-up rows say their stage',
+    kind: 'feature',
+    highlights: [
+      'The Pipeline row on each follow-up card now wears a colored stage chip — Waiting, Working, Ready to Bill, Billed Awaiting Payment, or Collections — so you always know which section of the board you\'re acting on.',
+      'The row\'s column headers are gone; the card gets straight to the crew, the job, and the money.',
+    ],
+  },
+  {
     version: 'v2.1741',
     date: '2026-08-16',
     title: 'Rules table trims a header',

@@ -62,6 +62,18 @@ function chipStyle(bg: string, fg: string): React.CSSProperties {
   return { fontSize: '0.72rem', fontWeight: 700, borderRadius: 999, padding: '0.16rem 0.6rem', background: bg, color: fg, whiteSpace: 'nowrap' }
 }
 
+/** Board section names for the Pipeline-row chip (v2.1740) — 'Billed Awaiting Payment' is the canonical section title. */
+const BOARD_STAGE_LABELS: Record<JobFollowupStage, string> = {
+  waiting: 'Waiting',
+  working: 'Working',
+  ready_to_bill: 'Ready to Bill',
+  billed: 'Billed Awaiting Payment',
+  collections: 'Collections',
+}
+
+/** What JobsStagesTab's renderStageRow hands back: the row plus which board section it drew. */
+export type JobsFollowupStageRowResult = { node: React.ReactNode; stage: JobFollowupStage }
+
 const STAGE_CHIP: Record<JobFollowupStage, React.CSSProperties> = {
   waiting: chipStyle('var(--bg-slate-100)', 'var(--text-slate-500)'),
   working: chipStyle('#dbeafe', '#1d4ed8'),
@@ -90,7 +102,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow }: {
   open: boolean
   onClose: () => void
   /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
-  renderStageRow?: (jobId: string) => React.ReactNode
+  renderStageRow?: (jobId: string) => JobsFollowupStageRowResult | null
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -610,14 +622,19 @@ export function JobsFollowupModal({ open, onClose, renderStageRow }: {
                   Open job ↗
                 </button>
               </div>
-              {renderStageRow ? (
-                <div style={{ marginTop: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}>
-                    Pipeline row
+              {renderStageRow ? (() => {
+                const row = renderStageRow(current.job.id)
+                return row ? (
+                  <div style={{ marginTop: '0.85rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.35rem' }}>
+                      Pipeline row
+                      {/* The board's truth, not the card chip's — a Collections job says 'Billed' up top but Collections here. */}
+                      <span style={{ ...STAGE_CHIP[row.stage], textTransform: 'none', letterSpacing: 0 }}>{BOARD_STAGE_LABELS[row.stage]}</span>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>{row.node}</div>
                   </div>
-                  <div style={{ overflowX: 'auto' }}>{renderStageRow(current.job.id)}</div>
-                </div>
-              ) : null}
+                ) : null
+              })() : null}
             </div>
           </div>
         ) : null}

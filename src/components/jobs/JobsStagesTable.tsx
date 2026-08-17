@@ -55,6 +55,8 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  */
 export type JobsStagesTableProps = {
   jobList: JobWithDetails[]
+  /** Follow-Up deck embed (v2.1740): the card names the columns' context itself, so skip the header row. */
+  hideHeader?: boolean
   actionLabel: React.ReactNode | null
   onAction: (j: JobWithDetails) => void
   showTimeOpen?: boolean
@@ -122,6 +124,7 @@ export type JobsStagesTableProps = {
 export default function JobsStagesTable(props: JobsStagesTableProps) {
   const {
     jobList,
+    hideHeader,
     actionLabel,
     onAction,
     showTimeOpen,
@@ -229,6 +232,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
           <col style={{ width: '12rem' }} />
           <col style={{ width: 140 }} />
         </colgroup>
+        {hideHeader ? null : (
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             <th
@@ -255,6 +259,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
             <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
           </tr>
         </thead>
+        )}
         <tbody>
           {jobList.length === 0 ? (
             <tr>
