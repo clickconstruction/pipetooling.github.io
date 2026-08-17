@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1769',
+    date: '2026-08-17',
+    title: 'Price a bid at your target margin',
+    kind: 'feature',
+    highlights: [
+      'Bids → Pricing gets a "Price by margin" toolbar: type a margin (or tap one of your last three, remembered across bids) and apply it to every costed row — or check specific rows and apply just to those.',
+      'If rows are already priced, it asks whether to replace them or fill only the blanks — and every price stays editable by hand afterward.',
+    ],
+  },
+  {
     version: 'v2.1768',
     date: '2026-08-17',
     title: 'Cleaner note box on the job view',
