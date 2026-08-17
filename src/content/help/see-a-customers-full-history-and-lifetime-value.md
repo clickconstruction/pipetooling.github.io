@@ -31,6 +31,10 @@ The **Open jobs** panel lists every job that isn't paid yet — click a job numb
 
 The **Estimates** tab lists every estimate for this customer — status ({{chip:gray|Draft}} {{chip:blue|Sent}} {{chip:green|Accepted}} {{chip:red|Declined}}), total, and when it was sent and last updated. Click the estimate number to open it.
 
+## See every job they've ever had
+
+The **Jobs** tab is the customer's complete job history — including paid jobs the Pipeline normally hides. Each row shows the job's status and a payment progress bar ({{chip:green|Paid}} jobs show what was collected). Click a job number for its detail card, or {{button:outline-blue|Open in Pipeline →}} to work their rows on the board.
+
 ## Follow the Activity feed
 
 The **Activity** panel is one timeline of everything happening for this customer, across all their jobs — stage moves (with who moved them), invoices billed, payments received, job notes, estimates created and accepted, dispatch tasks, and customer notes.
