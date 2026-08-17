@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1758',
+    date: '2026-08-17',
+    title: 'Fully-paid jobs can move to Paid',
+    kind: 'fix',
+    highlights: [
+      'Mark Paid on a billed job that already has no balance remaining now offers a one-click "Move to Paid" instead of demanding a payment amount that can\'t exist.',
+      'No phantom payment is recorded — the job just moves to the Paid stage.',
+    ],
+  },
+  {
     version: 'v2.1757',
     date: '2026-08-17',
     title: 'Steady Street View while you type',

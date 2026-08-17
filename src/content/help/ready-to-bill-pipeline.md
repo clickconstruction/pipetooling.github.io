@@ -136,6 +136,8 @@ Sometimes you email a Stripe invoice and the customer mails a check anyway. Thos
 
 **When the allocation matches the bill's full balance, the app finishes the Stripe side for you**: applying also marks the Stripe invoice paid (out-of-band), so the emailed payment link can't be paid a second time — the confirmation text tells you this is about to happen. If Stripe can't be reached, the allocation still applies and the modal stays open with a **Retry Stripe close** button (plus instructions for doing it by hand in Stripe). Only a **partial** allocation leaves the Stripe side to you: the confirmation reverts to the reminder to void or mark the invoice paid out-of-band in Stripe yourself.
 
+**Mark Paid** on a billed row opens the Record payment window with the job's balance. If the job still has a balance you record the payment there; if it's already fully paid (say the payment landed through a bank-deposit allocation but the stage never moved), the window says so and offers a one-click {{button:blue|Move to Paid}} — no payment gets invented.
+
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest. The flag takes care of itself on the way out: the moment the job is paid in full — by Stripe, a bank-deposit allocation, or Mark Paid — it leaves Collections and lands in {{chip:green|Paid}} with the flag cleared, and the job's activity thread notes it was removed from Collections. Use **Send back to Billed** on a Collections row only when the job should return to plain Billed Awaiting Payment *before* it's paid.
 
 ## The "paid in full" email
