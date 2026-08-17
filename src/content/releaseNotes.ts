@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1772',
+    date: '2026-08-17',
+    title: 'Margin mode: price rows where you read them',
+    kind: 'feature',
+    highlights: [
+      'Flip on Margin mode (Bids → Pricing) and every row gets a one-tap chip with your last margin, right between Revenue and Margin/Total — no more scrolling back to the toolbar for each row.',
+      'The … opens a small picker: your three recent margins with the resulting price previewed, or a custom percent with Enter to apply.',
+    ],
+  },
+  {
     version: 'v2.1771',
     date: '2026-08-17',
     title: 'Go back to the card you just reviewed',

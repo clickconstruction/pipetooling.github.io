@@ -591,9 +591,60 @@ export function BidsPricingTab({
     })
   }
 
-  /* ---- Price by margin (v2.1769) ---- */
+  /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
   type MarginApplyTarget = { countRowId: string; cost: number; count: number; unitPrice: number }
   const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
+  // Margin mode (v2.1772, Wendi's row-by-row flow): a per-row apply column so
+  // pricing one line at a time never scrolls back to the toolbar. Remembered
+  // per device.
+  const [marginRowMode, setMarginRowMode] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('bidPricingMarginMode_v1') === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggleMarginRowMode = () =>
+    setMarginRowMode((v) => {
+      const next = !v
+      try {
+        window.localStorage.setItem('bidPricingMarginMode_v1', next ? '1' : '0')
+      } catch {
+        /* device just won't remember the toggle */
+      }
+      return next
+    })
+  /** The row whose "…" picker is open. */
+  const [marginPickerRow, setMarginPickerRow] = useState<{ countRowId: string; fixture: string; cost: number; count: number } | null>(null)
+  const [marginPickerCustom, setMarginPickerCustom] = useState('')
+
+  /** One-row apply (chip tap or picker choice) — no overwrite confirm; a single deliberate row is trivially re-done. */
+  async function applyMarginToSingleRow(target: { countRowId: string; cost: number; count: number }, marginRaw: string | number) {
+    const m = normalizeMarginTarget(marginRaw)
+    if (m == null) {
+      showToast('Enter a margin between 1 and 95.', 'error')
+      return
+    }
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const price = unitPriceForTargetMargin(target.cost, target.count, m)
+    if (price == null) return
+    setApplyingMargin(true)
+    try {
+      const err = await writeUnitPriceOverrideRow(target.countRowId, price)
+      if (err) setError(err.message)
+      else await loadBidPricingAssignments(bidId, versionId)
+      const next = updateRecentMargins(recentMargins, m)
+      setRecentMargins(next)
+      saveRecentMargins(window.localStorage, next)
+      setMarginPctInput(String(m))
+    } finally {
+      setApplyingMargin(false)
+      setMarginPickerRow(null)
+      setMarginPickerCustom('')
+    }
+  }
   const [marginPctInput, setMarginPctInput] = useState<string>(() => String(loadRecentMargins(window.localStorage)[0] ?? 50))
   const [marginSelectedIds, setMarginSelectedIds] = useState<ReadonlySet<string>>(new Set())
   const [applyingMargin, setApplyingMargin] = useState(false)
@@ -1375,6 +1426,8 @@ export function BidsPricingTab({
               const allCostedSelected = costedRowIds.length > 0 && costedRowIds.every((id) => marginSelectedIds.has(id))
               // The margin-select checkbox column (price view) widens the grid by one — footer colSpans pad to match.
               const marginColPad = pricingViewModel === 'price' ? 1 : 0
+              // Margin mode's per-row apply column (between Revenue and Margin/Total) widens the trailing groups.
+              const marginModeColPad = pricingViewModel === 'price' && marginRowMode ? 1 : 0
               return (
                 <>
                 {pricingViewModel === 'price' ? (
@@ -1427,6 +1480,10 @@ export function BidsPricingTab({
                         ))}
                       </>
                     ) : null}
+                    <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <input type="checkbox" checked={marginRowMode} onChange={toggleMarginRowMode} style={{ margin: 0, cursor: 'pointer' }} />
+                      Margin mode
+                    </label>
                   </div>
                 ) : null}
                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'visible' }}>
@@ -1452,6 +1509,9 @@ export function BidsPricingTab({
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price book entry</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Sale Price'}</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Revenue</th>
+                        {marginModeColPad ? (
+                          <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>Apply margin</th>
+                        ) : null}
                         <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Margin/Total</th>
                         <th style={{ width: 0, padding: 0, borderBottom: '1px solid var(--border)' }} />
                       </tr>
@@ -1800,6 +1860,40 @@ export function BidsPricingTab({
                           >
                             ${formatCurrency(row.revenue)}
                           </td>
+                          {marginModeColPad ? (
+                            <td
+                              style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {row.cost > 0 ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  {recentMargins.length > 0 ? (
+                                    <button
+                                      type="button"
+                                      disabled={applyingMargin}
+                                      onClick={() => void applyMarginToSingleRow({ countRowId: row.countRow.id, cost: row.cost, count: row.count }, recentMargins[0]!)}
+                                      title={`Price this row at ${recentMargins[0]}% margin`}
+                                      style={{ padding: '0.1rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                                    >
+                                      {recentMargins[0]}%
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    disabled={applyingMargin}
+                                    onClick={() => setMarginPickerRow({ countRowId: row.countRow.id, fixture: row.countRow.fixture ?? '', cost: row.cost, count: row.count })}
+                                    aria-label={`More margin options for ${row.countRow.fixture ?? 'this row'}`}
+                                    title="More margin options"
+                                    style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
+                                  >
+                                    …
+                                  </button>
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>no cost</span>
+                              )}
+                            </td>
+                          ) : null}
                           <td
                             style={{ padding: '0.75rem', textAlign: 'center' }}
                             onClick={(e) => e.stopPropagation()}
@@ -1964,10 +2058,10 @@ export function BidsPricingTab({
                       <tr style={{ background: 'var(--bg-amber-tint)' }}>
                         <td colSpan={3 + marginColPad} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>Our cost breakdown</td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>${formatCurrency(totalCost)}</td>
-                        <td colSpan={3 + marginColPad} />
+                        <td colSpan={3 + marginModeColPad} />
                       </tr>
                       <tr style={{ fontSize: '0.8125rem' }}>
-                        <td colSpan={7 + marginColPad} style={{ padding: '0.35rem 0.75rem' }}>
+                        <td colSpan={7 + marginColPad + marginModeColPad} style={{ padding: '0.35rem 0.75rem' }}>
                           <button
                             type="button"
                             onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs') }}
@@ -1980,10 +2074,10 @@ export function BidsPricingTab({
                       <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                         <td colSpan={3 + marginColPad} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Materials</td>
                         <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(totalMaterials)} {totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((totalMaterials / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                        <td colSpan={3 + marginColPad} />
+                        <td colSpan={3 + marginModeColPad} />
                       </tr>
                       <tr style={{ fontSize: '0.8125rem' }}>
-                        <td colSpan={7 + marginColPad} style={{ padding: '0.35rem 0.75rem' }}>
+                        <td colSpan={7 + marginColPad + marginModeColPad} style={{ padding: '0.35rem 0.75rem' }}>
                           <button
                             type="button"
                             onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
@@ -2000,14 +2094,14 @@ export function BidsPricingTab({
                           <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                             <td colSpan={3 + marginColPad} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
-                            <td colSpan={3 + marginColPad} />
+                            <td colSpan={3 + marginModeColPad} />
                           </tr>
                         )
                         const subtotalRow = (label: string, value: number) => (
                           <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', background: 'var(--bg-subtle)' }}>
                             <td colSpan={3 + marginColPad} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>{label}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
-                            <td colSpan={3 + marginColPad} />
+                            <td colSpan={3 + marginModeColPad} />
                           </tr>
                         )
                         return (
@@ -2025,7 +2119,7 @@ export function BidsPricingTab({
                         )
                       })()}
                       <tr style={{ fontSize: '0.8125rem' }}>
-                        <td colSpan={7 + marginColPad} style={{ padding: '0.35rem 0.75rem' }}>
+                        <td colSpan={7 + marginColPad + marginModeColPad} style={{ padding: '0.35rem 0.75rem' }}>
                           <button
                             type="button"
                             onClick={() => { if (selectedBidForPricing) onNavigateToLaborDirectCosts(selectedBidForPricing) }}
@@ -2042,7 +2136,7 @@ export function BidsPricingTab({
                           <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                             <td colSpan={3 + marginColPad} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
-                            <td colSpan={3 + marginColPad} />
+                            <td colSpan={3 + marginModeColPad} />
                           </tr>
                         )
                         return (
@@ -2055,7 +2149,7 @@ export function BidsPricingTab({
                             <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', background: 'var(--bg-subtle)' }}>
                               <td colSpan={3 + marginColPad} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>Direct Costs subtotal</td>
                               <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(directCostsSubtotal)} {pct(directCostsSubtotal)}</td>
-                              <td colSpan={3 + marginColPad} />
+                              <td colSpan={3 + marginModeColPad} />
                             </tr>
                           </>
                         )
@@ -2085,7 +2179,7 @@ export function BidsPricingTab({
                       {uncostedRevenueRows.length > 0 && (
                         <tr style={{ background: 'var(--bg-amber-tint)' }}>
                           <td
-                            colSpan={7 + marginColPad}
+                            colSpan={7 + marginColPad + marginModeColPad}
                             style={{
                               padding: '0.6rem 0.75rem',
                               fontSize: '0.8125rem',
@@ -2109,6 +2203,86 @@ export function BidsPricingTab({
             })()}
           </div>
         )}
+        {marginPickerRow ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Margin for ${marginPickerRow.fixture || 'row'}`}
+            style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+            onClick={() => setMarginPickerRow(null)}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1rem 1.25rem', width: 'min(320px, calc(100vw - 2rem))', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1rem' }}>Margin for {marginPickerRow.fixture || 'row'}</h2>
+                <button
+                  type="button"
+                  onClick={() => setMarginPickerRow(null)}
+                  aria-label="Close margin picker"
+                  style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 0.25rem' }}
+                >
+                  ✕
+                </button>
+              </div>
+              <p style={{ margin: '0.1rem 0 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {marginPickerRow.count > 1 ? `Row cost $${formatCurrency(marginPickerRow.cost)} across ${marginPickerRow.count} units` : `Unit cost $${formatCurrency(marginPickerRow.cost)}`}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {recentMargins.map((v) => {
+                  const preview = unitPriceForTargetMargin(marginPickerRow.cost, marginPickerRow.count, v)
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      disabled={applyingMargin}
+                      onClick={() => void applyMarginToSingleRow(marginPickerRow, v)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                    >
+                      <b>{v}%</b>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{preview != null ? `→ $${formatCurrency(preview)}${marginPickerRow.count > 1 ? ' /unit' : ''}` : '—'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.7rem', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={95}
+                  step={1}
+                  value={marginPickerCustom}
+                  autoFocus={recentMargins.length === 0}
+                  onChange={(e) => setMarginPickerCustom(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void applyMarginToSingleRow(marginPickerRow, marginPickerCustom)
+                    if (e.key === 'Escape') {
+                      e.stopPropagation()
+                      setMarginPickerRow(null)
+                    }
+                  }}
+                  placeholder="Custom %"
+                  aria-label="Custom margin percent"
+                  style={{ flex: 1, padding: '0.35rem 0.45rem', fontSize: '0.85rem', textAlign: 'right', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: '4.5rem', textAlign: 'right' }}>
+                  {(() => {
+                    const m = normalizeMarginTarget(marginPickerCustom)
+                    const preview = m != null ? unitPriceForTargetMargin(marginPickerRow.cost, marginPickerRow.count, m) : null
+                    return preview != null ? `→ $${formatCurrency(preview)}` : '—'
+                  })()}
+                </span>
+                <button
+                  type="button"
+                  disabled={applyingMargin}
+                  onClick={() => void applyMarginToSingleRow(marginPickerRow, marginPickerCustom)}
+                  aria-label="Apply the custom margin"
+                  style={{ padding: '0.35rem 0.7rem', fontSize: '0.85rem', fontWeight: 700, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  →
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {marginConfirm ? (
           <div
             role="dialog"

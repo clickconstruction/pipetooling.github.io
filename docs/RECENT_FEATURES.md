@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1771)
+last_updated: 2026-08-17 (v2.1772)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1772)
+
+### Bids Pricing: Margin mode — a per-row apply column (2026-08-17)
+Estimator feedback on v2.1769 (Wendi, via the owner): "I hate scrolling back up as I apply margin one at a time" — the toolbar is a batch tool; row-by-row pricing paid a scroll-to-top per row. Mockup-approved design (owner-tightened to ONE chip per cell): a **Margin mode** toggle in the toolbar (persisted per device, `bidPricingMarginMode_v1`) adds an **Apply margin** column between Revenue and Margin/Total in [`BidsPricingTab`](../src/components/bids/BidsPricingTab.tsx). Each costed row shows the **last-used margin as a one-tap chip** (applies instantly — no confirm; a deliberate single row is trivially re-done) plus **…**, which opens a compact per-row picker: the three recents as full-width options each **previewing the resulting unit Sale Price** (via `unitPriceForTargetMargin`), and a custom input with live preview, Enter/→ apply, Esc/backdrop close. Uncosted rows read "no cost". All applies share the v2.1769 machinery — same write path (`writeUnitPriceOverrideRow` + one reload), same shared recents (a row-applied margin re-leads the toolbar chips and every row cell). Footer colSpans: the trailing groups pad for the new column (`marginModeColPad`), full-width rows pad for both optional columns. Verified live on BP376: toggle persists, EWC-1 cell reads `[50%][…]`, the picker shows "Margin for EWC-1 · Unit cost $3,559.68" with "50% → $7,119.00" and a live custom preview, Enter on custom 42 → $6,137 at exactly 42.0% with the cell chip re-badging to 42% (then restored net-zero). Help guide `price-a-bid-by-margin` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1771)
 
