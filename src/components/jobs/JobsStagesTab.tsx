@@ -1558,6 +1558,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     return null
   }
 
+  /** Deck label click-through (v2.1742): close the deck, open the row's section, scroll to + flash the row. */
+  const openFollowupBoardRow = (jobId: string, stage: JobsFollowupStageRowResult['stage']) => {
+    const section = stage === 'ready_to_bill' ? 'readyToBill' : stage
+    setFollowupOpen(false)
+    setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+    setPendingStagesJobFocusId(jobId)
+    setStagesJobFlashId(jobId)
+  }
+
   return (
     <>
       {active && (
@@ -1618,7 +1627,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               Follow-ups
             </button>
-            {followupOpen ? <JobsFollowupModal open onClose={() => setFollowupOpen(false)} renderStageRow={renderFollowupStageRow} /> : null}
+            {followupOpen ? <JobsFollowupModal open onClose={() => setFollowupOpen(false)} renderStageRow={renderFollowupStageRow} onOpenBoardRow={openFollowupBoardRow} /> : null}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{

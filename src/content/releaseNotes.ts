@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1743',
+    date: '2026-08-16',
+    title: 'Jump from a follow-up card to the board',
+    kind: 'feature',
+    highlights: [
+      'Click the "Pipeline row" label on a follow-up card and you land on that job\'s row on the Pipeline board — section opened, row scrolled into view and flashed so you can\'t lose it.',
+    ],
+  },
+  {
     version: 'v2.1742',
     date: '2026-08-16',
     title: 'Follow-up rows say their stage',
