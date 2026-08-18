@@ -13,6 +13,7 @@ import {
   sumPayStubAdditionalAmounts,
   sumPayStubDeductionAmounts,
 } from '../../lib/payStubDeductions'
+import { draftPayrollRowCashDue } from '../../lib/draftPayrollPreviewCost'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
 import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 
@@ -61,13 +62,13 @@ function buildDraftPayrollPrintHtml(opts: {
   totalAmount: number
   leftUnpaid: number
   getEffectiveHours: (person: string, date: string) => number
-  getCostForPersonDate: (person: string, date: string) => number
+  getCashDueForPerson: (person: string) => number
 }): string {
   const rowsHtml = opts.people
     .map((person) => {
       const hours = opts.days.reduce((s, d) => s + opts.getEffectiveHours(person, d), 0)
-      const estGross = opts.days.reduce((s, d) => s + opts.getCostForPersonDate(person, d), 0)
-      return `<tr><td>${escapeHtml(person)}</td><td class="num">${hours.toFixed(2)}</td><td class="num">$${formatCurrency(estGross)}</td></tr>`
+      const cashDue = opts.getCashDueForPerson(person)
+      return `<tr><td>${escapeHtml(person)}</td><td class="num">${hours.toFixed(2)}</td><td class="num">$${formatCurrency(cashDue)}</td></tr>`
     })
     .join('')
   const weekNum = isoWeekNumberFromGregorianYmd(ymdAddDays(opts.periodStart, 4))
@@ -281,7 +282,11 @@ export function DraftPayrollModal({
         totalAmount,
         leftUnpaid,
         getEffectiveHours,
-        getCostForPersonDate,
+        getCashDueForPerson: (person) => {
+          const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+          const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+          return draftPayrollRowCashDue(stub?.gross_pay, estGross)
+        },
       }),
     )
     win.document.close()
@@ -657,7 +662,9 @@ export function DraftPayrollModal({
                               <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{hours.toFixed(2)}</span>
                             )}
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estGross)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                            ${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}
+                          </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub ? (
                               <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1794',
+    date: '2026-08-18',
+    title: 'Draft Payroll: Cash Due matches the pay report',
+    kind: 'fix',
+    highlights: [
+      'For people with separate office and field hourly rates, the Cash Due column priced everything at the field rate — it now uses the same office/field split as the pay report.',
+      "Once a report is generated, the row shows the report's actual amount, so the modal, the Print summary, and the PDF always agree.",
+    ],
+  },
+  {
     version: 'v2.1793',
     date: '2026-08-18',
     title: 'Customers list: paid, billed, and unbilled on every row',
