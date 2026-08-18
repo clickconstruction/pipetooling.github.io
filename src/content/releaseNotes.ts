@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1797',
+    date: '2026-08-18',
+    title: 'Backfill payment history from HouseCall Pro',
+    kind: 'feature',
+    highlights: [
+      'Jobs imported from HCP as Paid had no payment records, so "collected" totals read low for the whole HCP era. A new "Paid, no payment record" cell in the Customers stat band fixes that in one sitting.',
+      'Pick the HCP jobs export and every such job gets one payment for its billed amount, dated the day HCP says it was collected (with clearly-badged fallbacks when HCP has no paid date). The file is read on your device only.',
+      'Review the whole list first — nothing is written until you press Record, and jobs that already have payments are never touched.',
+    ],
+  },
+  {
     version: 'v2.1796',
     date: '2026-08-18',
     title: 'Groundwork for "Why we lost" on bids',
