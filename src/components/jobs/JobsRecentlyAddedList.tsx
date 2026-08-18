@@ -82,6 +82,10 @@ export default function JobsRecentlyAddedList({ onOpenJob }: { onOpenJob: (jobId
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  // Wrap on phones: the name keeps real width and the status
+                  // chip + added stamp drop to a second line instead of
+                  // crushing the name to two letters.
+                  flexWrap: 'wrap',
                   gap: 10,
                   width: '100%',
                   padding: '7px 14px',
@@ -94,7 +98,7 @@ export default function JobsRecentlyAddedList({ onOpenJob }: { onOpenJob: (jobId
                 }}
               >
                 <span style={{ fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', minWidth: 44 }}>{r.label}</span>
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
+                <span style={{ flex: '1 1 180px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
                   {r.jobName || r.customerName || '(unnamed)'}
                   {r.customerName && r.jobName && r.customerName !== r.jobName ? (
                     <span style={{ color: 'var(--text-faint)' }}> · {r.customerName}</span>
