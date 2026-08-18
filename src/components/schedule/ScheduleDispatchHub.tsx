@@ -2854,6 +2854,8 @@ type Props = {
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
   onSwimLanesChanged?: () => void
+  /** Standing office roster changed (v2.1812) — the page re-runs the ensure pass. */
+  onOfficeRosterChanged?: () => void
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
   onDeleteBlock: (id: string) => void
   onHubEmptyCellClick?: (personUserId: string, workDate: string) => void
@@ -2966,6 +2968,7 @@ export function ScheduleDispatchHub({
   linkedCopyApplyBusy = false,
   swimLanes = null,
   onSwimLanesChanged,
+  onOfficeRosterChanged,
   onHubAssignJobCellPick,
   onDeleteBlock,
   onHubEmptyCellClick,
@@ -3514,6 +3517,7 @@ export function ScheduleDispatchHub({
         onClose={() => setDispatchSettingsOpen(false)}
         roster={dispatchSettingsRoster}
         onSwimLanesChanged={onSwimLanesChanged}
+        onOfficeRosterChanged={onOfficeRosterChanged}
       />
       {/* New-mode Quick Assign lives at the shell so the + Schedule sheet can open
           it from any tab; the People panel's own instance stays for its toolbar. */}

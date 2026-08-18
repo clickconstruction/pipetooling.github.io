@@ -20,6 +20,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1812',
+    date: '2026-08-18',
+    title: 'Office schedule blocks now fill themselves in',
+    kind: 'feature',
+    highlights: [
+      'Dispatch Settings has a new "Standing office schedule" section: add the office crew once, and their weekday Office blocks appear automatically — no more typing them in every morning.',
+      'Each person gets their own daily window (8:00–4:00 by default), days off and field dispatches always win, and any block you delete stays deleted.',
+      'Auto-added blocks are ordinary blocks — drag, retime, or remove them like always.',
+    ],
+  },
+  {
     version: 'v2.1810',
     date: '2026-08-18',
     title: 'Groundwork: office schedule blocks will fill themselves in',

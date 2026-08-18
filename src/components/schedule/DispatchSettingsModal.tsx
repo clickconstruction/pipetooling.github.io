@@ -15,6 +15,7 @@ import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 import { DispatchSwimLanesSettingsSection } from './DispatchSwimLanesSettingsSection'
+import { DispatchOfficeRosterSettingsSection } from './DispatchOfficeRosterSettingsSection'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -38,12 +39,15 @@ export function DispatchSettingsModal({
   onClose,
   roster,
   onSwimLanesChanged,
+  onOfficeRosterChanged,
 }: {
   open: boolean
   onClose: () => void
   roster: DispatchSettingsModalRosterRow[]
   /** Fired after any swim-lane mutation so the grid refreshes its lane grouping. */
   onSwimLanesChanged?: () => void
+  /** Fired after any standing-office-roster mutation so the page re-runs the ensure pass (v2.1812). */
+  onOfficeRosterChanged?: () => void
 }) {
   const { showToast } = useToastContext()
   const { config, reload } = useDispatchNoteRequirements()
@@ -372,6 +376,8 @@ export function DispatchSettingsModal({
         ) : null}
 
         <DispatchSwimLanesSettingsSection roster={roster} onChanged={onSwimLanesChanged} />
+
+        <DispatchOfficeRosterSettingsSection onChanged={onOfficeRosterChanged} />
 
         {isDev ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>

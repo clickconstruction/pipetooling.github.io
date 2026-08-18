@@ -140,6 +140,24 @@ Press {{button:blue|Share}} to open the **Schedule share** modal:
 - **Send now** — pick recipients, choose what to include (☑ **Current day** · ☐ **Next day** · ☐ **Rest of week**), and press {{button:blue|Send now}}.
 - **Recurring** — set up automatic shares: recipients, days of the week, and a Central-time send time, then {{button:blue|Create recurring share}}. Existing shares can be paused with {{button:outline|Pause}} and resumed under "Active & paused shares".
 
+## The standing office schedule
+
+Office people used to get their "Office" block typed in by hand every morning. Now the schedule fills those in itself:
+
+1. Open **Dispatch** (the gear on the schedule) → **Standing office schedule**.
+2. Add each person who works office days — assistants, controllers, and estimators are offered — and adjust their daily window if it isn't 8:00–4:00.
+3. That's it. Weekdays on the visible week get their Office block automatically, ahead of time.
+
+The automation stays polite:
+
+- **Days off win** — someone marked "not coming in" is never refilled.
+- **Field dispatch wins** — if a person already has an overlapping job or bid block that day, no Office block is added.
+- **Your deletions stick** — remove an auto-added block and it stays gone for that day.
+
+:::example It's a normal block
+Auto-added blocks are ordinary Office-job blocks — drag them, retime them, or delete them exactly like one you made yourself. Hours clocked against them land in overhead, same as always.
+:::
+
 ## Daily rhythm
 
 The Quickfill page embeds this schedule twice — **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?") — so reviewing dispatch is part of the office's daily loop.
