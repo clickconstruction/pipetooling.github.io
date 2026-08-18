@@ -10,7 +10,7 @@ Just entered a job and can't spot it on the board? The Pipeline's sections order
 ## Open the view
 
 1. On **Jobs → Pipeline**, tap the {{chip:blue|🕒 Recently added}} button at the right end of the section strip (the Waiting → Working → … row).
-2. The sections are replaced by one flat list: job number, name, a status chip showing where the job currently sits, and when it was added — {{chip:gray|today 12:08 PM}} for today, the date for older jobs.
+2. The sections are replaced by one flat list: job number, name, the job's address and GC/Builder (when it has one), a status chip showing where the job currently sits, and when it was added — {{chip:gray|today 12:08 PM}} for today, the date for older jobs.
 3. Click any row to open the job's detail window. Everything about the job — status moves, billing, notes — works from there as usual.
 
 ## Go back

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1814',
+    date: '2026-08-18',
+    title: 'Recently added rows show the address and GC',
+    kind: 'feature',
+    highlights: [
+      'Each row in the Pipeline\'s Recently added view now shows the job address, and the GC/Builder when the job has one — so you can tell similar jobs apart at a glance.',
+    ],
+  },
+  {
     version: 'v2.1813',
     date: '2026-08-18',
     title: 'Fix: # search finds paid jobs right after the page loads',

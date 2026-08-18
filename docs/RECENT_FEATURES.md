@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1813)
+last_updated: 2026-08-18 (v2.1814)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1814)
+
+### Recently added view: address + GC on every row (2026-08-18)
+Owner request on the just-shipped view: rows need the job address and the GC when there is one. The lean select gains `job_address` + the `gc_customer:gc_customer_id(id, name)` embed; [`recentlyAddedJobs.ts`](../src/lib/jobs/recentlyAddedJobs.ts) rows gain `address` (trailing ZIP stripped via `stripTrailingZip`, the picker-subline convention) and `gcName` (one-or-array embed handled; +1 test). [`JobsRecentlyAddedList`](../src/components/jobs/JobsRecentlyAddedList.tsx) renders a second muted line under the name — `110 Lenz Dr Seguin, TX · GC: RMC- Dudley Mason` — with the GC in amber for scanning; line omitted when the job has neither. Phone wrap layout unchanged. Verified live: chase-list rows show addresses, 866 shows its GC. Client-only — no migration.
 
 ## Latest Updates (v2.1813)
 

@@ -37,12 +37,12 @@ export default function JobsRecentlyAddedList({ onOpenJob }: { onOpenJob: (jobId
           async () =>
             supabase
               .from('jobs_ledger')
-              .select('id, hcp_number, click_number, job_name, customer_name, status, created_at')
+              .select('id, hcp_number, click_number, job_name, customer_name, status, created_at, job_address, gc_customer:gc_customer_id(id, name)')
               .order('created_at', { ascending: false })
               .limit(RECENTLY_ADDED_LIMIT),
           'recently added jobs',
         )
-        if (!cancelled) setRows(buildRecentlyAddedRows((data ?? []) as RecentlyAddedLeanJob[]))
+        if (!cancelled) setRows(buildRecentlyAddedRows((data ?? []) as unknown as RecentlyAddedLeanJob[]))
       } catch (e: unknown) {
         if (!cancelled) setError(formatErrorMessage(e, 'Could not load recently added jobs'))
       }
@@ -98,10 +98,19 @@ export default function JobsRecentlyAddedList({ onOpenJob }: { onOpenJob: (jobId
                 }}
               >
                 <span style={{ fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', minWidth: 44 }}>{r.label}</span>
-                <span style={{ flex: '1 1 180px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
-                  {r.jobName || r.customerName || '(unnamed)'}
-                  {r.customerName && r.jobName && r.customerName !== r.jobName ? (
-                    <span style={{ color: 'var(--text-faint)' }}> · {r.customerName}</span>
+                <span style={{ flex: '1 1 180px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
+                    {r.jobName || r.customerName || '(unnamed)'}
+                    {r.customerName && r.jobName && r.customerName !== r.jobName ? (
+                      <span style={{ color: 'var(--text-faint)' }}> · {r.customerName}</span>
+                    ) : null}
+                  </span>
+                  {r.address || r.gcName ? (
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {r.address}
+                      {r.address && r.gcName ? ' · ' : ''}
+                      {r.gcName ? <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>GC: {r.gcName}</span> : null}
+                    </span>
                   ) : null}
                 </span>
                 <span
