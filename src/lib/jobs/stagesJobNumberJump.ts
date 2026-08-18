@@ -45,9 +45,14 @@ export function findJobsByNumber<T extends Pick<JobNumberJumpCandidate, 'hcp_num
  *
  *   - paid rows already merged for the current cache key → the miss is final
  *     (done, hit = whatever the fresh match finds — normally null).
- *   - paid fetch still loading → keep waiting (not done).
- *   - not merged and not loading (fetch failed or never started) → give up
- *     with the current match rather than spin forever.
+ *   - paid fetch still loading, OR the main board list is still
+ *     loading/refreshing → keep waiting (not done). The main-list case is the
+ *     v2.1813 prod race: fetchPaidJobsIfNeeded refuses to start while the main
+ *     load is in flight, so "not loading and not merged" during that window
+ *     means "couldn't start yet", not "failed" — the shell re-kicks the fetch
+ *     when the main load settles.
+ *   - otherwise (fetch failed or never started, nothing busy) → give up with
+ *     the current match rather than spin forever.
  */
 export function resolvePendingNumberJump<T extends Pick<JobNumberJumpCandidate, 'hcp_number' | 'click_number'>>(args: {
   jobs: T[]
@@ -55,13 +60,15 @@ export function resolvePendingNumberJump<T extends Pick<JobNumberJumpCandidate, 
   paidJobsLoading: boolean
   /** `paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null` — paid rows are in `jobs`. */
   paidMergedForCurrentKey: boolean
+  /** Main board list loading or refreshing — the paid fetch can't start while it runs. */
+  mainListBusy: boolean
 }): { done: false } | { done: true; matches: T[] } {
   const matches = findJobsByNumber(args.jobs, args.digits)
   // A hit is always final — no reason to keep the user waiting on the rest of
   // the paid fetch when the number already resolves.
   if (matches.length > 0) return { done: true, matches }
   if (args.paidMergedForCurrentKey) return { done: true, matches }
-  if (args.paidJobsLoading) return { done: false }
+  if (args.paidJobsLoading || args.mainListBusy) return { done: false }
   return { done: true, matches }
 }
 

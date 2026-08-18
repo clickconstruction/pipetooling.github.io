@@ -968,16 +968,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   } | null>(null)
   useEffect(() => {
     if (!pendingNumberJump) return
+    const paidMerged = paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
     const res = resolvePendingNumberJump({
       jobs,
       digits: pendingNumberJump.digits,
       paidJobsLoading,
-      paidMergedForCurrentKey: paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null,
+      paidMergedForCurrentKey: paidMerged,
+      mainListBusy: jobsListLoading || jobsListRefreshing,
     })
-    if (!res.done) return
+    if (!res.done) {
+      // Re-kick while waiting: fetchPaidJobsIfNeeded no-ops when it can't or
+      // needn't run (main load in flight, already fetching, already merged),
+      // so this is how the fetch actually starts once the main load settles
+      // (v2.1813 — on prod the mount-time refresh swallowed the first kick).
+      if (!paidJobsLoading && !paidMerged) void fetchPaidJobsIfNeeded(customerFilterForFetch)
+      return
+    }
     pendingNumberJump.resolve(jumpToNumberMatches(res.matches, pendingNumberJump.digits))
     setPendingNumberJump(null)
-  }, [pendingNumberJump, jobs, paidJobsLoading, paidJobsMergedForKey, jobsListDataKey, jumpToNumberMatches])
+  }, [pendingNumberJump, jobs, paidJobsLoading, paidJobsMergedForKey, jobsListDataKey, jobsListLoading, jobsListRefreshing, fetchPaidJobsIfNeeded, customerFilterForFetch, jumpToNumberMatches])
 
   const bankPaymentsModalBilledRows = useMemo(
     () => buildJobsStagesBoardLists(jobs, '').billedRows,

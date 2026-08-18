@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1813',
+    date: '2026-08-18',
+    title: 'Fix: # search finds paid jobs right after the page loads',
+    kind: 'fix',
+    highlights: [
+      'The new Paid in Full fallback in the # job search could flash "no match" if you searched within the first moments after opening the Pipeline, while the board was still loading. It now waits for the load to finish and then finds the job.',
+    ],
+  },
+  {
     version: 'v2.1809',
     date: '2026-08-18',
     title: 'Find a job you just added — the Recently added view',

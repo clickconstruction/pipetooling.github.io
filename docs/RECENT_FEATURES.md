@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1809)
+last_updated: 2026-08-18 (v2.1813)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1813)
+
+### Pipeline "#" jump: wait out the main-list load before declaring a paid miss (2026-08-18)
+Prod-testing the just-shipped v2.1808 caught a race the local run never hit: on a fresh page load, `fetchPaidJobsIfNeeded`'s in-flight guard refuses to start while the main board list is still loading/refreshing — so a # jump for a paid number during that window saw "not loading, not merged", read it as a final miss, and flashed red without ever fetching (prod's mount-time refresh is slow enough to lose this race reliably; dev settles too fast to see it). Two-part fix: [`resolvePendingNumberJump`](../src/lib/jobs/stagesJobNumberJump.ts) gains `mainListBusy` — while the main list loads, "no paid fetch" means *couldn't start yet*, not *failed*, so the pending jump keeps waiting (+2 tests incl. merged-stays-final-while-refreshing); and the pending-jump effect re-kicks `fetchPaidJobsIfNeeded` on each settle-ward state change, so the fetch actually starts the moment the main load finishes. Give-up path unchanged: fetch genuinely failed with nothing busy → red flash, no spin. Verified live on pipetooling.com. Client-only — no migration.
 
 ## Latest Updates (v2.1809)
 
