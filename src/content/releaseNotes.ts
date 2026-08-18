@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1805',
+    date: '2026-08-18',
+    title: 'Groundwork: field crews will update % done from their dashboards',
+    kind: 'feature',
+    highlights: [
+      'Backend groundwork so subs and helpers can move a job’s % done right from their dashboard — every change will record who moved it, from what, and any note.',
+      'The update button and stepper (+1/−1, +5/−5, +20/−20) ship in the next update.',
+    ],
+  },
+  {
     version: 'v2.1804',
     date: '2026-08-18',
     title: 'HCP backfill now records tips too',

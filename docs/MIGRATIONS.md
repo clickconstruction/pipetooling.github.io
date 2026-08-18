@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-16
+last_updated: 2026-08-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 18, 2026
+
+**`20260818175530_set_job_pct_from_field.sql`** _(applied via `supabase db push` with the v2.1805 merge — new function only; old clients unaffected, nothing calls it until the field % modal ships)_
+- **Purpose**: Field-side write path for `jobs_ledger.pct_complete`. New SECURITY DEFINER RPC `set_job_pct_from_field(p_job_id, p_pct, p_note)`: validates 0–100, gates on office relations / job team membership / `job_schedule_blocks` assignment (the `update_job_status` precedent — subs and helpers can't UPDATE `jobs_ledger` directly), then atomically posts the `"N% complete — <note>"` thread note (author = caller, the exact `stagesPctNote.ts` body format the My Schedule day-delta layer parses) and writes `pct_complete`. Returns `{ok, previous, pct}` or `{error}`. Read-only training mode still blocked by the statement triggers.
+- **Category**: Jobs / function
 
 **`20260818160000_bid_loss_category.sql`** _(applied via `supabase db push` with the v2.1796 merge — additive column + data backfill; old clients unaffected, nothing reads it until the Why we lost lens ships)_
 - **Purpose**: Structured why-we-lost bucket for bids. `bids.loss_category text` (app-validated: `gc_lost | price | other_sub | project_died | no_bid | no_answer`; single source `src/lib/bidLossCategories.ts`); `loss_reason` stays the free-text detail. Backfills only the unambiguous existing free-text reasons via conservative ILIKE patterns — fuzzy ones stay NULL and feed the Friday triage queue.
