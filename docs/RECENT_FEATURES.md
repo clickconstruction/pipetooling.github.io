@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1790)
+last_updated: 2026-08-17 (v2.1791)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1791)
+
+### Bids Pricing: job address in Package and send, tap-to-open in Google Maps (2026-08-17)
+Estimator request (Wendi): the Pricing → Share → **Package and send** package had no job address, so the recipient had to hunt for where the job is. New **Job address** section at the top of [`PackageAndSendBidPricingModal`](../src/components/bids/PackageAndSendBidPricingModal.tsx) (Open in Maps button + the address; muted "No address on this bid" + Edit bid when blank — never blocks sending), and the address rides along in every outgoing format via new `bidAddressMapsUrl` in the mirrored kernels ([`buildBidPricingPackageHtml.ts`](../src/lib/buildBidPricingPackageHtml.ts) ↔ [`_shared/bidPricingPackage.ts`](../supabase/functions/_shared/bidPricingPackage.ts), +11 tests): the email renders the address itself as a Google Maps link ("Tap the address to open it in Google Maps"), and the mailto plain text + Copy-for-text SMS carry `Address:` + a `Map:` URL that's tappable in text apps. `send-bid-pricing-package` now selects `bids.address` and passes it through (redeployed). Verified live on BP376 MPH CASA LINDA. No migration.
 ## Latest Updates (v2.1790)
 
 ### Customers list: notes chip anchored beside the value (2026-08-17)

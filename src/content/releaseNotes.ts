@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1791',
+    date: '2026-08-17',
+    title: 'Bid pricing package includes the job address',
+    kind: 'feature',
+    highlights: [
+      'Package and send (Bids → Pricing → Share) now shows the job address up top with an Open in Maps button.',
+      'The emailed package and the Copy-for-text message include the address too — the recipient taps it to open Google Maps.',
+      'No address on the bid? The package still sends; the modal offers Edit bid to add one.',
+    ],
+  },
+  {
     version: 'v2.1790',
     date: '2026-08-17',
     title: 'Customers list: notes lines up with the value',

@@ -1183,7 +1183,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-bid-pricing-package
 
-**Purpose**: Resend-backed delivery of a bid's **external Pricing package** — Job Plans link (+ optional CountTooling plans link) and the 4-column external pricing table (Fixture/Tie-in, Count, Unit price, Revenue). The server **re-computes pricing rows from the database** (count rows + `bid_pricing_assignments` + `bid_count_row_custom_prices` + `bid_count_row_submission_hides` + `price_book_entries`) instead of trusting client-built HTML, so the email always matches the live Pricing tab. Subject/heading use the Bids-tab label shape `{prefix}{n} project name`.
+**Purpose**: Resend-backed delivery of a bid's **external Pricing package** — job address as a tap-to-open Google Maps link (v2.1791, omitted when the bid has none), Job Plans link (+ optional CountTooling plans link), and the 4-column external pricing table (Fixture/Tie-in, Count, Unit price, Revenue). The server **re-computes pricing rows from the database** (count rows + `bid_pricing_assignments` + `bid_count_row_custom_prices` + `bid_count_row_submission_hides` + `price_book_entries`) instead of trusting client-built HTML, so the email always matches the live Pricing tab. Subject/heading use the Bids-tab label shape `{prefix}{n} project name`.
 
 **Endpoint**: `POST /functions/v1/send-bid-pricing-package`
 

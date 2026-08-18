@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import {
+  bidAddressMapsUrl,
   buildBidPricingPackageEmailHtml,
   buildBidPricingPackageExternalRows,
   buildBidPricingPackagePlainText,
@@ -206,6 +207,11 @@ export function PackageAndSendBidPricingModal({
     const v = (bid.count_tooling_plans_link ?? '').trim()
     return v.length > 0 ? v : null
   }, [bid.count_tooling_plans_link])
+  const address = useMemo(() => {
+    const v = (bid.address ?? '').trim()
+    return v.length > 0 ? v : null
+  }, [bid.address])
+  const addressMapsUrl = useMemo(() => bidAddressMapsUrl(address), [address])
 
   const externalRows = useMemo(
     () => buildBidPricingPackageExternalRows(pricingRows),
@@ -223,8 +229,9 @@ export function PackageAndSendBidPricingModal({
         bidLabel,
         plansLink,
         countToolingPlansLink,
+        address,
       }),
-    [externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink],
+    [externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink, address],
   )
   const smsText = useMemo(
     () =>
@@ -232,10 +239,11 @@ export function PackageAndSendBidPricingModal({
         bidLabel,
         plansLink,
         countToolingPlansLink,
+        address,
         externalRows,
         totalRevenue,
       }),
-    [bidLabel, plansLink, countToolingPlansLink, externalRows, totalRevenue],
+    [bidLabel, plansLink, countToolingPlansLink, address, externalRows, totalRevenue],
   )
   const emailHtml = useMemo(
     () =>
@@ -243,10 +251,11 @@ export function PackageAndSendBidPricingModal({
         bidLabel,
         plansLink,
         countToolingPlansLink,
+        address,
         tableHtml,
         senderName: currentUserName,
       }),
-    [bidLabel, plansLink, countToolingPlansLink, tableHtml, currentUserName],
+    [bidLabel, plansLink, countToolingPlansLink, address, tableHtml, currentUserName],
   )
 
   const recipientOptions: SearchableSelectOption[] = useMemo(() => {
@@ -425,6 +434,61 @@ export function PackageAndSendBidPricingModal({
           >
             ×
           </button>
+        </div>
+
+        <div style={sectionStyle}>
+          <p style={sectionLabelStyle}>Job address</p>
+          {address && addressMapsUrl ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => openInExternalBrowser(addressMapsUrl)}
+                title="Open this address in Google Maps"
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  color: 'var(--text-link)',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                Open in Maps
+              </button>
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-strong)',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {address}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                No address on this bid — the package goes out without one.
+              </span>
+              <button
+                type="button"
+                onClick={onRequestEditBid}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  color: 'var(--text-strong)',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                }}
+              >
+                Edit bid
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={sectionStyle}>
