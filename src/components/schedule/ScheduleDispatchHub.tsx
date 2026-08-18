@@ -1639,15 +1639,15 @@ function HubPeoplePanel({
     })
   }, [afterBlockFilter, search, visibleDayKeys, personDayBlocks, getJobDisplayTitle, swimLanes])
 
-  /** Person-header sort cycle: alphabetical (default) ↔ grouped by role like the Day view. Per-device. */
+  /** Person-header sort cycle: swim lanes (default) ↔ alphabetical ↔ grouped by role like the Day view. Per-device; an explicit pick sticks. */
   const PEOPLE_SORT_STORAGE_KEY = 'pipetooling_dispatch_people_sort_v1'
   const [quickAssignOpen, setQuickAssignOpen] = useState(false)
   const [personSort, setPersonSort] = useState<'alpha' | 'role' | 'lanes'>(() => {
     try {
       const stored = localStorage.getItem(PEOPLE_SORT_STORAGE_KEY)
-      return stored === 'role' || stored === 'lanes' ? stored : 'alpha'
+      return stored === 'role' || stored === 'alpha' ? stored : 'lanes'
     } catch {
-      return 'alpha'
+      return 'lanes'
     }
   })
   const cyclePersonSort = () => {

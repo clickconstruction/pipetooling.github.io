@@ -60,7 +60,7 @@ Each block can carry **job instructions**: click the pencil ("Edit job instructi
 
 ## Grouping people into swim lanes
 
-Swim lanes are named crews everyone in the office shares — useful when the same people tend to ride together. Click the **Person** header cell to cycle how the left column is grouped: alphabetical → by role → **by swim lanes**. In lanes mode each lane appears as its own section (in your office's lane order), with anyone unassigned collected under **Everyone else**.
+Swim lanes are named crews everyone in the office shares — useful when the same people tend to ride together. The People grid starts out grouped **by swim lanes**: each lane appears as its own section (in your office's lane order), with anyone unassigned collected under **Everyone else**. Click the **Person** header cell to cycle to the other groupings — alphabetical → by role → back to lanes; your pick is remembered on that device.
 
 To manage the lanes, open {{button:outline|Dispatch Settings}} and find **Swim lanes (People grid crews)**:
 

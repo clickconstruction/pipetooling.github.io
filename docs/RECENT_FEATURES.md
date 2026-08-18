@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1802)
+last_updated: 2026-08-18 (v2.1803)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1803)
+
+### Schedule Dispatch: People grid defaults to swim lanes (2026-08-18)
+Owner request: dispatch viewers should land on the **by lanes** grouping, not A–Z — crews ride together, so the lane sections are the natural reading order. One-line default flip in [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx): the `pipetooling_dispatch_people_sort_v1` initializer now falls back to `'lanes'` instead of `'alpha'` when nothing is stored. An explicit pick still sticks — cycling the Person header always writes the choice, so anyone who ever chose A–Z or by-role keeps it; only fresh devices (and users who never touched the toggle) see the new default. Offices with no swim lanes configured are unaffected in practice: lanes mode already falls back to the flat alphabetical list when `swimLanes` is empty. Cycle order unchanged (lanes → A–Z → by role). Help guide's swim-lanes section updated. Client-only — no migration.
 
 ## Latest Updates (v2.1802)
 
