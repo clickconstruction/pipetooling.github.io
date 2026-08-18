@@ -84,14 +84,17 @@ import {
 } from '../lib/payStubDeductions'
 import { computePayReportAssignmentsBreakdown } from '../lib/payReportAssignmentsBreakdown'
 import {
+  bucketSessionHoursByDay,
   buildDayRateSplitsForPeriod,
   shouldUseDualRate,
   summarizeRateSplits,
   summarizeStubDayBreakdown,
+  type DayBucketHours,
   type DayRateSplit,
   type RateSplitSessionRow,
   type RateSplitSummary,
 } from '../lib/officeJobRateSplit'
+import { draftPayrollPreviewDayCost } from '../lib/draftPayrollPreviewCost'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
@@ -2652,9 +2655,68 @@ export default function People() {
     return getHoursForPersonDate(personName, workDate)
   }
 
+  // Dual-rate preview parity (v2.1794): the Cash Due estimate must price office vs. field
+  // hours like generatePayStub does. Session-derived office/job buckets load per period for
+  // dual-rate people with a unique login user; everyone else keeps flat wage × hours (the
+  // same fallback the generator applies when no unique user matches).
+  const [draftPayrollRateBuckets, setDraftPayrollRateBuckets] = useState<
+    Record<string, Map<string, DayBucketHours>>
+  >({})
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) return
+    const dualNames = Object.keys(payConfig).filter((n) => shouldUseDualRate(payConfig[n]))
+    if (dualNames.length === 0) {
+      setDraftPayrollRateBuckets({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const uidByName = new Map<string, string>()
+        for (const name of dualNames) {
+          const matches = users.filter((u) => (u.name ?? '').trim() === name.trim())
+          if (matches.length === 1) uidByName.set(name, matches[0]!.id)
+        }
+        if (uidByName.size === 0) {
+          if (!cancelled) setDraftPayrollRateBuckets({})
+          return
+        }
+        const officeJobId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+        const { data } = await supabase
+          .from('clock_sessions')
+          .select('user_id, work_date, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
+          .in('user_id', Array.from(uidByName.values()))
+          .gte('work_date', payStubPeriodStart)
+          .lte('work_date', payStubPeriodEnd)
+          .is('rejected_at', null)
+          .is('revoked_at', null)
+          .not('approved_at', 'is', null)
+        const rows = ((data ?? []) as Array<RateSplitSessionRow & { user_id: string }>)
+        const next: Record<string, Map<string, DayBucketHours>> = {}
+        for (const [name, uid] of uidByName) {
+          next[name] = bucketSessionHoursByDay(
+            rows.filter((r) => r.user_id === uid),
+            officeJobId,
+          )
+        }
+        if (!cancelled) setDraftPayrollRateBuckets(next)
+      } catch {
+        if (!cancelled) setDraftPayrollRateBuckets({})
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, payConfig, users])
+
   function getPayrollCostForPersonDate(personName: string, workDate: string): number {
-    const wage = payConfig[personName]?.hourly_wage ?? 0
-    return wage * getPayrollEffectiveHours(personName, workDate)
+    return draftPayrollPreviewDayCost({
+      cfg: payConfig[personName],
+      hours: getPayrollEffectiveHours(personName, workDate),
+      workDate,
+      bucketsByDate: draftPayrollRateBuckets[personName],
+    })
   }
 
   function getCostForPersonDateTeams(personName: string, workDate: string): number {

@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1793)
+last_updated: 2026-08-18 (v2.1794)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1794)
+
+### Draft Payroll: Cash Due matches the pay report (office vs. field rates) (2026-08-18)
+Owner-reported bug with a live repro: Bryan's Draft Payroll row showed **$642.70** (12.85h × flat $50 field wage) while his generated report PDF said **$450.10** — his hours were all office time at the $35 office rate. Two-layer fix via new kernel [`draftPayrollPreviewCost.ts`](../src/lib/draftPayrollPreviewCost.ts) (+10 tests): **(1) report is authoritative** — `draftPayrollRowCashDue` makes the row (and the Print summary) show the generated stub's stored gross when one exists, matching the PDF by construction (the modal's Total line already did this; now the rows agree with it); **(2) honest estimate** — `draftPayrollPreviewDayCost` prices pre-report rows for dual-rate people with the same `splitDayHoursByRate` math `generatePayStub` uses ([`People`](../src/pages/People.tsx) loads session-derived office/job buckets per period for dual-rate people with a unique login user; ambiguous-user fallback stays flat wage, mirroring the generator). Single-rate people are numerically unchanged. Verified live: Bryan's row now reads $450.10. Client-only — no migration.
 ## Latest Updates (v2.1793)
 
 ### Customers list: the money rail — paid · billed · unbilled on every row (2026-08-18)
