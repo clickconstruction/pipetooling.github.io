@@ -89,6 +89,7 @@ import {
   ymdAddDays,
 } from '../../utils/dateUtils'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
+import { ensureOfficeScheduleBlocks } from '../../lib/dispatchOfficeRoster'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
 import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
@@ -756,6 +757,26 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     }
     void loadHub()
   }, [jobId, loadHub])
+
+  // Standing office schedule (v2.1812): idempotently fill the roster's weekday
+  // Office blocks for the visible week whenever an editor views it, then
+  // refresh so the new blocks render. Once per range per mount; the RPC's
+  // tombstones make repeat calls cheap no-ops. Roster edits force a re-run.
+  const officeEnsureRanForRangeRef = useRef<string | null>(null)
+  const runOfficeEnsure = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (!canEdit || jobId) return
+      const rangeKey = `${weekStart}:${weekEnd}`
+      if (!opts?.force && officeEnsureRanForRangeRef.current === rangeKey) return
+      officeEnsureRanForRangeRef.current = rangeKey
+      const { created, error } = await ensureOfficeScheduleBlocks(weekStart, weekEnd)
+      if (!error && created > 0) await loadHub({ quiet: true })
+    },
+    [canEdit, jobId, weekStart, weekEnd, loadHub],
+  )
+  useEffect(() => {
+    void runOfficeEnsure()
+  }, [runOfficeEnsure])
 
   useEffect(() => {
     setHubMultiCellAddActive(false)
@@ -2284,6 +2305,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             linkedCopyApplyBusy={linkedCopyApplyBusy}
             swimLanes={swimLanes}
             onSwimLanesChanged={() => void refetchSwimLanes()}
+            onOfficeRosterChanged={() => void runOfficeEnsure({ force: true })}
             onQuickAssignScheduled={() => void loadHub({ quiet: true })}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
             onDeleteBlock={(id) => void requestDeleteBlock(id)}
