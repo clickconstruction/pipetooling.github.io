@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1803',
+    date: '2026-08-18',
+    title: 'Dispatch People grid opens grouped by swim lanes',
+    kind: 'feature',
+    highlights: [
+      'Schedule → Dispatch now starts with people grouped by swim lanes instead of A–Z, so crews read together the way they ride together.',
+      'Clicking the Person header still cycles the grouping (lanes → A–Z → by role), and your pick is remembered on that device.',
+    ],
+  },
+  {
     version: 'v2.1802',
     date: '2026-08-18',
     title: 'Press n to jump to a job number on the Pipeline',
