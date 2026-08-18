@@ -54,7 +54,7 @@ Merging to `main` triggers the GitHub Pages deploy ([`.github/workflows/deploy.y
 
 **RLS Everywhere**:
 - Every table has Row Level Security; policies check ownership, role, adoption, sharing
-- Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`
+- Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`, `can_edit_schedule_dispatch()` (mirror of the client's `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`)
 - **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies; every CREATE TABLE migration must end with `SELECT public.apply_read_only_write_blocks();`
 
 ### Data Flow

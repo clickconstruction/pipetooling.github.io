@@ -31,6 +31,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1811',
+    date: '2026-08-18',
+    title: 'Controllers can now edit the Dispatch schedule',
+    kind: 'fix',
+    highlights: [
+      'Controllers were always meant to manage schedule blocks on Dispatch like assistants do, but a database permission gap made their adds, moves, and deletes silently fail.',
+      'That gap is closed: controllers can now create, move, and remove schedule blocks — on jobs and on bids — exactly as the screen already offered.',
+    ],
+  },
+  {
     version: 'v2.1810',
     date: '2026-08-18',
     title: 'Groundwork: office schedule blocks will fill themselves in',
