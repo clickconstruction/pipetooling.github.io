@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1793',
+    date: '2026-08-18',
+    title: 'Customers list: paid, billed, and unbilled on every row',
+    kind: 'feature',
+    highlights: [
+      'Each customer row now shows three lifetime figures — paid (green), billed, and unbilled work on the books — with a small color bar underneath showing the mix at a glance.',
+      'Rows with no money history stay quiet: three dashes, no bar.',
+    ],
+  },
+  {
     version: 'v2.1792',
     date: '2026-08-17',
     title: 'Add Part: price date fills in for you',

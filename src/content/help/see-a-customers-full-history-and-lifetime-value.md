@@ -28,7 +28,9 @@ Filters, sorts, and search all combine, and they live in the page address — bo
 
 ## Read a customer's row at a glance
 
-Each row on the Customers list carries chips that only appear when there's something to say:
+Every row ends in the **money rail**: three lifetime figures — {{chip:green|paid}} (collected), {{chip:yellow|billed}} (everything ever invoiced), {{chip:blue|unbilled}} (work on the books not yet invoiced) — with a small color bar underneath showing the mix. Customers with no money history show dashes and no bar.
+
+Before the rail, chips only appear when there's something to say:
 
 - {{chip:blue|3 open jobs}} — jobs not yet paid; click to open their Jobs tab.
 - {{chip:yellow|owes $1,883}} — their open balance (turns red past $5,000); click for their invoices.

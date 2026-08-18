@@ -26,6 +26,10 @@ export type LcvPaymentRow = { job_id: string; invoice_id: string | null; amount:
 export type CustomerListRollup = {
   lcv: number
   openBalance: number
+  /** Lifetime collected: every payment row on the customer's jobs (money rail, v2.1791). */
+  lifetimePaid: number
+  /** Revenue on the books not yet billed: Σ max(0, revenue − billed contribution) per job. */
+  unbilled: number
   /** Jobs not yet paid (any pipeline status but 'paid'). */
   openJobs: number
   /** Latest of job created / payment received, with which it was. */
@@ -55,7 +59,15 @@ export function customersListRollup(
 
   const out: Record<string, CustomerListRollup> = {}
   const get = (cid: string): CustomerListRollup =>
-    (out[cid] ??= { lcv: 0, openBalance: 0, openJobs: 0, lastActivityIso: null, lastActivityKind: null })
+    (out[cid] ??= {
+      lcv: 0,
+      openBalance: 0,
+      lifetimePaid: 0,
+      unbilled: 0,
+      openJobs: 0,
+      lastActivityIso: null,
+      lastActivityKind: null,
+    })
 
   for (const job of jobs) {
     if (!job.customer_id) continue
@@ -66,8 +78,14 @@ export function customersListRollup(
     const invoicedBilled = jobInvoices
       .filter((i) => i.status === 'billed' || i.status === 'paid')
       .reduce((sum, i) => sum + Number(i.amount ?? 0), 0)
-    if (invoicedBilled > 0) r.lcv += invoicedBilled
-    else if (status === 'billed' || status === 'paid') r.lcv += Number(job.revenue ?? 0)
+    // The job's billed contribution (same shell rule as lifetimeBilled); what
+    // revenue exceeds it is work on the books not yet invoiced.
+    let billedContribution = 0
+    if (invoicedBilled > 0) billedContribution = invoicedBilled
+    else if (status === 'billed' || status === 'paid') billedContribution = Number(job.revenue ?? 0)
+    r.lcv += billedContribution
+    r.unbilled += Math.max(0, Number(job.revenue ?? 0) - billedContribution)
+    for (const p of paymentsByJob.get(job.id) ?? []) r.lifetimePaid += Number(p.amount ?? 0)
 
     if (status !== 'paid') {
       r.openJobs += 1
