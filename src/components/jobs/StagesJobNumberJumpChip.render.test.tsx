@@ -5,7 +5,7 @@
  * success, stay open on no-match — and Esc collapses.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 
 function open() {
@@ -79,5 +79,49 @@ describe('StagesJobNumberJumpChip', () => {
     fireEvent.change(input, { target: { value: '' } })
     fireEvent.blur(input)
     expect(screen.queryByLabelText('Job number (C# or HCP) — Enter jumps to the job')).toBeNull()
+  })
+})
+
+describe('StagesJobNumberJumpChip paid fallback (v2.1808)', () => {
+  it('fires onOpen when the field opens (click and \'n\')', () => {
+    const onOpen = vi.fn()
+    const { unmount } = render(<StagesJobNumberJumpChip onJump={() => true} onOpen={onOpen} />)
+    open()
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(screen.getByLabelText('Job number (C# or HCP) — Enter jumps to the job'), { key: 'Escape' })
+    fireEvent.keyDown(window, { key: 'n' })
+    expect(onOpen).toHaveBeenCalledTimes(2)
+    unmount()
+  })
+
+  it('a promise-returning onJump shows the checking state, then collapses on resolve(true)', async () => {
+    let resolveJump: (v: boolean) => void = () => {}
+    const onJump = vi.fn(() => new Promise<boolean>((r) => { resolveJump = r }))
+    render(<StagesJobNumberJumpChip onJump={onJump} />)
+    const input = open()
+    fireEvent.change(input, { target: { value: '959' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(input.disabled).toBe(true)
+    expect(input.title).toBe('Checking Paid in Full…')
+    // Esc and blur are inert while checking — the pending jump must settle first.
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.getByLabelText('Job number (C# or HCP) — Enter jumps to the job')).toBeTruthy()
+    resolveJump(true)
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Job number (C# or HCP) — Enter jumps to the job')).toBeNull(),
+    )
+  })
+
+  it('resolve(false) re-enables the field in the no-match state, digits kept', async () => {
+    let resolveJump: (v: boolean) => void = () => {}
+    const onJump = vi.fn(() => new Promise<boolean>((r) => { resolveJump = r }))
+    render(<StagesJobNumberJumpChip onJump={onJump} />)
+    const input = open()
+    fireEvent.change(input, { target: { value: '555' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    resolveJump(false)
+    await waitFor(() => expect(input.disabled).toBe(false))
+    expect(input.value).toBe('555')
+    expect(input.title).toBe('No job matches that number')
   })
 })

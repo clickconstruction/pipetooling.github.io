@@ -141,7 +141,7 @@ import JobsRecentlyAddedList from './JobsRecentlyAddedList'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
-import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
+import { findJobsByNumber, resolvePendingNumberJump, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -927,6 +927,57 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!stagesSearchQuery.trim()) return
     void fetchPaidJobsIfNeeded(customerFilterForFetch)
   }, [active, stagesSearchQuery, customerFilterForFetch, fetchPaidJobsIfNeeded])
+
+  /** Land the "#" jump on the first match: open its section, focus + flash the row. False = nothing to land on. */
+  const jumpToNumberMatches = useCallback(
+    (matches: JobWithDetails[], digits: string): boolean => {
+      const hit = matches[0]
+      if (!hit) return false
+      const section = stagesSectionKeyForJobRow(hit)
+      if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+      if (section === 'paid') {
+        // Paid hits land in FILTER mode instead of scroll-hunting: the full
+        // Paid in Full section is 600+ rows whose layout keeps inflating for
+        // a long time as per-row data streams in, so no scroll position holds
+        // (v2.1808). Filtering the board to the number shows the row
+        // instantly; clearing the search restores the full board.
+        setStagesSearchQuery(digits)
+        showToast(`#${digits} is Paid in Full — board filtered to it; clear the search to go back`, 'info', 5000)
+      }
+      setPendingStagesJobFocusId(hit.id)
+      setStagesJobFlashId(hit.id)
+      if (matches.length > 1) {
+        showToast(`${matches.length} jobs start with #${digits} — showing the first`, 'info', 4000)
+      }
+      return true
+    },
+    [showToast],
+  )
+
+  /**
+   * "#" jump paid fallback (v2.1808): the Paid in Full list is lazy, so an
+   * Enter that misses the loaded board parks its digits here while
+   * fetchPaidJobsIfNeeded merges paid rows; this effect re-matches as the
+   * cache updates and settles the chip's promise (jump, or the final red
+   * flash). The chip disables its input while one is outstanding, so at most
+   * one pending jump exists at a time.
+   */
+  const [pendingNumberJump, setPendingNumberJump] = useState<{
+    digits: string
+    resolve: (jumped: boolean) => void
+  } | null>(null)
+  useEffect(() => {
+    if (!pendingNumberJump) return
+    const res = resolvePendingNumberJump({
+      jobs,
+      digits: pendingNumberJump.digits,
+      paidJobsLoading,
+      paidMergedForCurrentKey: paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null,
+    })
+    if (!res.done) return
+    pendingNumberJump.resolve(jumpToNumberMatches(res.matches, pendingNumberJump.digits))
+    setPendingNumberJump(null)
+  }, [pendingNumberJump, jobs, paidJobsLoading, paidJobsMergedForKey, jobsListDataKey, jumpToNumberMatches])
 
   const bankPaymentsModalBilledRows = useMemo(
     () => buildJobsStagesBoardLists(jobs, '').billedRows,
@@ -1766,18 +1817,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </span>
               ) : null}
               <StagesJobNumberJumpChip
+                onOpen={() => void fetchPaidJobsIfNeeded(customerFilterForFetch)}
                 onJump={(digits) => {
                   const matches = findJobsByNumber(jobs, digits)
-                  const hit = matches[0]
-                  if (!hit) return false
-                  const section = stagesSectionKeyForJobRow(hit)
-                  if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
-                  setPendingStagesJobFocusId(hit.id)
-                  setStagesJobFlashId(hit.id)
-                  if (matches.length > 1) {
-                    showToast(`${matches.length} jobs start with #${digits} — showing the first`, 'info', 4000)
-                  }
-                  return true
+                  if (matches.length > 0) return jumpToNumberMatches(matches, digits)
+                  // Miss on the loaded board: when the lazy Paid in Full rows
+                  // aren't merged yet, fetch them and settle asynchronously
+                  // (the pending-jump effect) instead of false-missing a paid
+                  // number. Already merged → the miss is real.
+                  if (paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null) return false
+                  void fetchPaidJobsIfNeeded(customerFilterForFetch)
+                  return new Promise<boolean>((resolve) => {
+                    setPendingNumberJump({ digits, resolve })
+                  })
                 }}
               />
               {/* v2.1232: the GC/development selects moved into the ⋯ tools menu.
