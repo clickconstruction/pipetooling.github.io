@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1807',
+    date: '2026-08-18',
+    title: 'Sort the Pipeline by when jobs were added',
+    kind: 'feature',
+    highlights: [
+      'The ⋯ menu on Jobs → Pipeline has a new Sort section: keep the classic newest-job-number order, or switch to "Most recently added" to see the newest jobs first inside every section.',
+      'While the new sort is on, each row shows a small green "added" date, and a "Sorted: time added" chip next to the ⋯ button takes you back to the classic order in one tap.',
+      'Your pick is remembered on that device.',
+    ],
+  },
+  {
     version: 'v2.1806',
     date: '2026-08-18',
     title: 'Update % done right from your dashboard',

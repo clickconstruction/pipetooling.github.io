@@ -130,6 +130,13 @@ import {
   saveStagesExcludeFilters,
   type StagesExcludeFilters,
 } from '../../lib/jobsStagesExcludeFilters'
+import {
+  STAGES_SORT_MODE_LABELS,
+  STAGES_SORT_MODES,
+  loadStagesSortMode,
+  saveStagesSortMode,
+  type StagesBoardSortMode,
+} from '../../lib/jobsStagesSortMode'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
@@ -743,6 +750,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setStagesExcludeFiltersState(next)
     saveStagesExcludeFilters(next)
   }, [])
+  // Row sort mode (v2.1807): classic newest-number-first, or by time added.
+  // Lives in the ⋯ Pipeline tools menu; per-device persistence.
+  const [stagesSortMode, setStagesSortModeState] = useState<StagesBoardSortMode>(() => loadStagesSortMode())
+  const setStagesSortMode = useCallback((mode: StagesBoardSortMode) => {
+    setStagesSortModeState(mode)
+    saveStagesSortMode(mode)
+  }, [])
   const stagesExclusionCount = countStagesExclusions(stagesExcludeFilters)
   const stagesBoardLists = useMemo(
     () =>
@@ -756,8 +770,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         ),
         stagesSearchQuery,
         stagesSearchExtraJobIds,
+        stagesSortMode,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesSearchExtraJobIds],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesSearchExtraJobIds, stagesSortMode],
   )
 
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
@@ -1328,6 +1343,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       bidDollars: Number(job.revenue ?? 0),
     }
     const shared = {
+      stagesSortMode,
       stagesJobFlashId,
       stagesEditMode: stagesEditModeActive,
       renderStagesOpenDetailJobName,
@@ -1754,6 +1770,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               {/* v2.1232: the GC/development selects moved into the ⋯ tools menu.
                   The bar only shows an APPLIED filter, as a tap-to-clear chip —
                   hidden active filters would make the board look short. */}
+              {stagesSortMode !== 'number' ? (
+                <button
+                  type="button"
+                  onClick={() => setStagesSortMode('number')}
+                  title="Rows are sorted by time added (newest first) — tap to go back to job-number order"
+                  aria-label="Sorted by time added — tap to restore job-number order"
+                  style={stagesActiveFilterChipStyle}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Sorted: time added</span>
+                  <span aria-hidden style={{ flexShrink: 0 }}>×</span>
+                </button>
+              ) : null}
               {stagesGcFilter ? (
                 <button
                   type="button"
@@ -1865,12 +1893,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   border: 'none',
                   borderRadius: 8,
                   background:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0 || stagesSortMode !== 'number'
                       ? 'var(--bg-blue-tint)'
                       : 'transparent',
                   cursor: 'pointer',
                   color:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0 || stagesSortMode !== 'number'
                       ? 'var(--text-link)'
                       : 'var(--text-muted)',
                   fontSize: '1.2rem',
@@ -1904,10 +1932,41 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       gap: 2,
                     }}
                   >
+                    {/* Sort group (v2.1807) — row order inside every section.
+                        Picking keeps the menu open, matching the filters below. */}
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
+                      Sort
+                    </div>
+                    {STAGES_SORT_MODES.map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={stagesSortMode === mode}
+                        onClick={() => setStagesSortMode(mode)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.3rem 0.75rem',
+                          border: 'none',
+                          borderRadius: 4,
+                          background: stagesSortMode === mode ? 'var(--bg-blue-tint)' : 'transparent',
+                          color: stagesSortMode === mode ? 'var(--text-link)' : 'var(--text-700)',
+                          fontSize: '0.8125rem',
+                          fontWeight: stagesSortMode === mode ? 600 : 400,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span aria-hidden style={{ width: 14, flexShrink: 0 }}>{stagesSortMode === mode ? '✓' : ''}</span>
+                        {STAGES_SORT_MODE_LABELS[mode]}
+                      </button>
+                    ))}
                     {/* Filters group (v2.1232) — moved out of the search bar.
                         Selecting keeps the menu open so several can be set at once.
                         Always rendered since v2.1477 so "Hide groups…" has a stable home. */}
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.35rem 0.75rem 0.1rem', borderTop: '1px solid var(--border)', marginTop: 2 }}>
                       Filters
                     </div>
                         {stagesGcFilterOptions.length > 0 ? (
@@ -2565,6 +2624,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {stagesSectionOpen.waiting && (
                   <StagesSectionList
                     jobList={waiting}
+                    stagesSortMode={stagesSortMode}
                     actionLabel={'Move to Working'}
                     onAction={(j) => void updateJobStatus(j.id, 'working')}
                     showTimeOpen={true}
@@ -2644,6 +2704,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {stagesSectionOpen.working && (
                   <StagesSectionList
                     jobList={working}
+                    stagesSortMode={stagesSortMode}
                     actionLabel={'Ready to Bill'}
                     onAction={(j) =>
                       stagesHamMode
@@ -2722,6 +2783,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {stagesSectionOpen.readyToBill && (
                   <StagesUnifiedSectionList
                     rows={readyToBillRows}
+                    stagesSortMode={stagesSortMode}
                     actionLabel={'Bill Customer'}
                     onJobAction={(j) => {
                       if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
@@ -3011,6 +3073,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                 {stagesSectionOpen.billed && (
                   <StagesUnifiedSectionList
                     rows={billedListRows}
+                    stagesSortMode={stagesSortMode}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
                     onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
@@ -3124,6 +3187,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ) : (
                   <StagesUnifiedSectionList
                     rows={collectionsRows}
+                    stagesSortMode={stagesSortMode}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
                     onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
@@ -3272,6 +3336,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     ) : null}
                     <StagesSectionList
                       jobList={paid}
+                      stagesSortMode={stagesSortMode}
                       actionLabel={null}
                       onAction={() => {}}
                       showTimeOpen={true}

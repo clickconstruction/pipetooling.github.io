@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1806)
+last_updated: 2026-08-18 (v2.1807)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1807)
+
+### Pipeline: sort rows by time added (2026-08-18)
+Owner request (design agreed via interactive mockups, ⋯-menu placement chosen over a toolbar pill): the board's only order was newest-job-number-first, with no way to see what was added recently. The ⋯ Pipeline tools menu gains a **Sort** group (above Filters, menuitemradio pair): **Newest job number** (default, unchanged) and **Most recently added** — `jobs_ledger.created_at` desc inside every section; sections never reorder. New kernel [`jobsStagesSortMode.ts`](../src/lib/jobsStagesSortMode.ts) (+4 tests): mode vocabulary, per-device persistence (`pipetooling_pipeline_sort_v1`, malformed → default), and the `added Aug 18` stamp label (company calendar TZ). [`buildJobsStagesBoardLists`](../src/lib/jobsStagesBoard.ts) gains a `sortMode` param + `sortStagesJobsByAddedDesc` comparator (created_at desc, effective-number tiebreak, dateless sink; +3 tests). While active: a **"Sorted: time added ×"** chip sits beside the ⋯ button (tap to restore, chip row pattern), the ⋯ button keeps its blue active tint, and both desktop tables render a green **added <date>** stamp beside each job-number chip (`renderStagesJobHcpSubline` third arg; phone card list unchanged). Verified live: menu pick → chip + stamps + reorder; chip × → classic order, key cleared. Help guide `sort-the-pipeline-by-time-added`. Client-only — no migration.
 
 ## Latest Updates (v2.1806)
 

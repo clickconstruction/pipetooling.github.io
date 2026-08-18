@@ -1,5 +1,6 @@
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
+import type { StagesBoardSortMode } from './jobsStagesSortMode'
 import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 
@@ -420,11 +421,13 @@ export function buildJobsStagesBoardLists(
   jobs: JobWithDetails[],
   stagesSearchQuery: string,
   extraJobIds?: ReadonlySet<string> | null,
+  sortMode: StagesBoardSortMode = 'number',
 ): JobsStagesBoardLists {
   // Sort once here so every section below (and the row builders, which preserve
-  // input order) shows C# jobs interleaved with HCP jobs by displayed number.
+  // input order) shows the same order: by displayed number (C# interleaved with
+  // HCP), or by time added when the ⋯ menu's sort says so (v2.1807).
   const filtered = [...filterJobsByStagesSearch(jobs, stagesSearchQuery, extraJobIds)].sort(
-    sortStagesJobsByEffectiveNumberDesc,
+    sortMode === 'added' ? sortStagesJobsByAddedDesc : sortStagesJobsByEffectiveNumberDesc,
   )
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const waiting = filtered.filter((j) => status(j) === 'waiting')
@@ -480,6 +483,13 @@ export function buildJobsStagesBoardLists(
  * board actually displays (204, C#203, 200, 100). Jobs with neither number sort
  * last.
  */
+/** Most recently added first (jobs_ledger.created_at desc); effective number breaks ties. */
+export function sortStagesJobsByAddedDesc(a: JobWithDetails, b: JobWithDetails): number {
+  const cmp = (b.created_at ?? '').localeCompare(a.created_at ?? '')
+  if (cmp !== 0) return cmp
+  return sortStagesJobsByEffectiveNumberDesc(a, b)
+}
+
 export function sortStagesJobsByEffectiveNumberDesc(a: JobWithDetails, b: JobWithDetails): number {
   const na = effectiveJobLedgerNumber(a.hcp_number, a.click_number)
   const nb = effectiveJobLedgerNumber(b.hcp_number, b.click_number)

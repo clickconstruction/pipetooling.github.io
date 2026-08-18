@@ -4,6 +4,7 @@ import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatTimeSince } from '../../lib/jobs/jobFormatting'
+import { stagesAddedStampLabel, type StagesBoardSortMode } from '../../lib/jobsStagesSortMode'
 import { jobBilledUnpaidDollars, stagesJobLevelStripeEmailedHintInvoice } from '../../lib/jobs/invoiceBilling'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
@@ -56,6 +57,8 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  */
 export type JobsStagesTableProps = {
   jobList: JobWithDetails[]
+  /** Board sort mode (v2.1807): 'added' shows an "added <date>" stamp beside each job number. */
+  stagesSortMode?: StagesBoardSortMode
   /** Follow-Up deck embed (v2.1740): the card names the columns' context itself, so skip the header row. */
   hideHeader?: boolean
   actionLabel: React.ReactNode | null
@@ -300,7 +303,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   {renderStagesQuickActionsStack(j)}
                   <div style={{ flex: 1, minWidth: 0 }}>
                   <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                  {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
+                  {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' }, props.stagesSortMode === 'added' ? stagesAddedStampLabel(j.created_at) : null)}
                   {renderStagesFieldAndBillingLines(j)}
                   </div>
                   </div>
