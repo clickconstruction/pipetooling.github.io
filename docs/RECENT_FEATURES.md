@@ -7,10 +7,16 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1796)
+last_updated: 2026-08-18 (v2.1797)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1797)
+
+### Customers: backfill payment history from HCP (2026-08-18)
+Owner request (money-rail follow-up): jobs imported from HouseCall Pro were stamped `paid` with **zero `jobs_ledger_payments` rows**, so the new money rail and Customer Hub "collected" figures read $0 for the whole HCP era (e.g. Aaron Berg: billed $40k, collected $1.4k). New review-then-Apply sweep — the fourth of its kind after the classifier, link sweep, and merge tool: a **"Paid, no payment record"** stat-band cell on Customers (visible only while candidates exist) opens [`BackfillHcpPaymentsModal`](../src/components/customers/BackfillHcpPaymentsModal.tsx). The user picks the HCP jobs export CSV (parsed in-browser via `parseCsv` — the file never uploads); the [`backfillHcpPayments`](../src/lib/customers/backfillHcpPayments.ts) kernel (10 unit tests) plans one synthetic payment per paid job with no payment rows — **amount = the job's own billed figure** (revenue), **paid_on from HCP** with a fallback chain (paid-in-full date → HCP completed → HCP created → ledger created date, each badged in the preview), Excel `="010"` quoting and leading zeros normalized, HCP-vs-app amount mismatches flagged inline and preserved in the payment note (`payment_type: 'HCP import'`). Apply inserts in chunks of 100; the B3 trigger (20260730174929) recomputes `payments_made`, and re-running skips already-filled jobs, so a mid-sweep failure is resumable. Client-only — no migration.
+
 
 ## Latest Updates (v2.1796)
 

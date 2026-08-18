@@ -9,6 +9,7 @@ import { isCustomerArchived, partitionCustomersByArchived } from '../lib/custome
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
+import BackfillHcpPaymentsModal from '../components/customers/BackfillHcpPaymentsModal'
 import ClassifyCustomersModal from '../components/customers/ClassifyCustomersModal'
 import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomersModal'
 import {
@@ -195,6 +196,8 @@ export default function Customers() {
   const [classifyOpen, setClassifyOpen] = useState(false)
   const [linkJobsOpen, setLinkJobsOpen] = useState(false)
   const [unlinkedJobsCount, setUnlinkedJobsCount] = useState<number | null>(null)
+  const [unrecordedPaidCount, setUnrecordedPaidCount] = useState<number | null>(null)
+  const [backfillOpen, setBackfillOpen] = useState(false)
 
   async function refreshNoteCountsForCustomers(ids: string[]) {
     if (ids.length === 0) return
@@ -276,6 +279,16 @@ export default function Customers() {
           (invoicesRes.data ?? []) as LcvInvoiceRow[],
           (paymentsRes.data ?? []) as LcvPaymentRow[],
         ),
+      )
+      // Paid jobs with zero payment rows (HCP imports): the money rail reads
+      // rows, so these show $0 collected until backfilled.
+      const jobIdsWithPaymentRows = new Set(
+        ((paymentsRes.data ?? []) as LcvPaymentRow[]).map((p) => p.job_id),
+      )
+      setUnrecordedPaidCount(
+        ((jobsRes.data ?? []) as LcvJobRow[]).filter(
+          (j) => j.status === 'paid' && Number(j.revenue ?? 0) > 0 && !jobIdsWithPaymentRows.has(j.id),
+        ).length,
       )
       const signal: Record<string, string> = {}
       const stampSignal = (cid: string | null, iso: string | null) => {
@@ -510,6 +523,19 @@ export default function Customers() {
                 style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
               >
                 Link →
+              </button>
+            </div>
+          ) : null}
+          {unrecordedPaidCount != null && unrecordedPaidCount > 0 ? (
+            <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Paid, no payment record</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{unrecordedPaidCount}</div>
+              <button
+                type="button"
+                onClick={() => setBackfillOpen(true)}
+                style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                Backfill from HCP →
               </button>
             </div>
           ) : null}
@@ -1090,6 +1116,9 @@ export default function Customers() {
       )}
       {linkJobsOpen ? (
         <LinkJobsToCustomersModal onClose={() => setLinkJobsOpen(false)} onApplied={fetchCustomers} />
+      ) : null}
+      {backfillOpen ? (
+        <BackfillHcpPaymentsModal onClose={() => setBackfillOpen(false)} onApplied={fetchCustomers} />
       ) : null}
       {classifyOpen ? (
         <ClassifyCustomersModal
