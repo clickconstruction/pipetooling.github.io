@@ -47,7 +47,7 @@ Once you promise dates, **Oldest first** stops being just "who waited longest": 
 
 ## Record why you lost — the Friday ritual
 
-The **Why we lost** lens turns loss reasons into a one-tap habit instead of a blank text box. A red {{chip:red|N need a reason}} chip on the other lenses shows how many lost bids have no reason recorded — click it to jump in.
+The **Why we lost** lens turns loss reasons into a one-tap habit instead of a blank text box. A red {{chip:red|N need a reason}} chip on the other lenses shows how many lost bids have no reason recorded — click it to jump in. And once **5 or more** lost bids are waiting, the **dashboard** shows a banner with the count and the dollars unexplained — {{button:blue|Start call mode →}} drops you straight into the lens.
 
 The left rail is a call queue: builders with unexplained lost bids first, biggest dollars on top. Pick whoever you have on the phone and their lost bids become a row of **street-name pills** — when the GC says "the one on Culebra," tap that pill. Each bid shows its **address as a button that opens Google Maps**, and six reason chips:
 
