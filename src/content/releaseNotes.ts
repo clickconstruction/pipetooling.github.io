@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1795',
+    date: '2026-08-18',
+    title: 'Payroll ledger: hide paid reports',
+    kind: 'feature',
+    highlights: [
+      'A new Hide paid button at the top of the Payroll ledger tucks away fully paid reports, leaving just the unpaid and partial ones — the button shows how many it hides.',
+      'Works together with the name search, and comes back on automatically next visit set to showing everything.',
+    ],
+  },
+  {
     version: 'v2.1794',
     date: '2026-08-18',
     title: 'Draft Payroll: Cash Due matches the pay report',

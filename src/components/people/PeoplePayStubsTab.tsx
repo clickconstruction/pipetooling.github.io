@@ -199,6 +199,33 @@ export default function PeoplePayStubsTab({
     return payStubs.filter((s) => s.person_name.toLowerCase().includes(q))
   }, [payStubs, ledgerPersonSearch])
 
+  // "Hide paid" (v2.1795): drop fully paid reports from the ledger table. Session-only —
+  // the toggle resets on reload so paid history is never silently missing next visit.
+  // Same net/paid math as the rows and the open-balance summary.
+  const [hidePaidStubs, setHidePaidStubs] = useState(false)
+  const ledgerPaidStubIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const stub of ledgerFilteredPayStubs) {
+      const paidSum = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id] ?? [])
+      const net = stubNetPay(
+        stub.gross_pay,
+        sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+        sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+      )
+      if (isPayStubFullyPaid(net, paidSum)) ids.add(stub.id)
+    }
+    return ids
+  }, [
+    ledgerFilteredPayStubs,
+    payStubPaymentsByStubId,
+    payStubDeductionsByStubId,
+    payStubAdditionalByStubId,
+  ])
+  const ledgerVisiblePayStubs = useMemo(
+    () => (hidePaidStubs ? ledgerFilteredPayStubs.filter((s) => !ledgerPaidStubIds.has(s.id)) : ledgerFilteredPayStubs),
+    [hidePaidStubs, ledgerFilteredPayStubs, ledgerPaidStubIds],
+  )
+
   // Local calendar day for the Payment Delay column's days-outstanding math.
   const todayYmd = localYmdFromDate(new Date())
 
@@ -510,6 +537,30 @@ export default function PeoplePayStubsTab({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                     <button
                       type="button"
+                      onClick={() => setHidePaidStubs((v) => !v)}
+                      aria-pressed={hidePaidStubs}
+                      title={
+                        hidePaidStubs
+                          ? 'Showing unpaid and partial only — click to show paid reports again'
+                          : 'Hide fully paid reports from the ledger'
+                      }
+                      style={{
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.9375rem',
+                        background: hidePaidStubs ? '#059669' : 'var(--surface)',
+                        color: hidePaidStubs ? 'white' : 'var(--text-700)',
+                        border: hidePaidStubs ? '1px solid #059669' : '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {hidePaidStubs
+                        ? `Hiding ${ledgerPaidStubIds.size} paid`
+                        : `Hide paid${ledgerPaidStubIds.size > 0 ? ` (${ledgerPaidStubIds.size})` : ''}`}
+                    </button>
+                    <button
+                      type="button"
                       onClick={onOpenPayConfig}
                       title="Set wages, office rates, and salary flags per person"
                       style={{
@@ -600,6 +651,26 @@ export default function PeoplePayStubsTab({
                 </p>
               ) : ledgerFilteredPayStubs.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
+              ) : ledgerVisiblePayStubs.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+                  All {ledgerFilteredPayStubs.length} pay report{ledgerFilteredPayStubs.length === 1 ? ' is' : 's are'} paid —{' '}
+                  <button
+                    type="button"
+                    onClick={() => setHidePaidStubs(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      font: 'inherit',
+                      color: 'var(--text-link)',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    show paid
+                  </button>{' '}
+                  to see them.
+                </p>
               ) : (
                 <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -656,7 +727,7 @@ export default function PeoplePayStubsTab({
                       </tr>
                     </thead>
                     <tbody>
-                      {ledgerFilteredPayStubs.map((stub) => {
+                      {ledgerVisiblePayStubs.map((stub) => {
                         const payRows = payStubPaymentsByStubId[stub.id] ?? []
                         const paidSum = sumPayStubPaymentAmounts(payRows)
                         const lessSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? [])
