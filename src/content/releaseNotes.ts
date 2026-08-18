@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1798',
+    date: '2026-08-18',
+    title: 'Why we lost — a third lens on Bids Followup',
+    kind: 'feature',
+    highlights: [
+      'Built for the Friday GC calls: pick a builder, flip through their lost bids by street name, and tap one of six reasons per bid — keyboard keys 1–6 work too.',
+      "Every bid's address is one tap from Google Maps, and a note box captures what the GC actually said.",
+      'A rollup below shows why you lose by count and dollars — including your real loss rate once "GC lost the project" bids are set aside.',
+      'A red "need a reason" chip on the other lenses shows the queue size and jumps straight in.',
+    ],
+  },
+  {
     version: 'v2.1797',
     date: '2026-08-18',
     title: 'Backfill payment history from HouseCall Pro',

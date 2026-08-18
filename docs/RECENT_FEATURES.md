@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1797)
+last_updated: 2026-08-18 (v2.1798)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1798)
+
+### Bids Followup: the Why we lost lens — why-we-lost train PR 2 (2026-08-18)
+The Friday call-mode workspace on the v2.1796 column (design agreed via interactive mockups). **Why we lost** joins By builder / By status as the Followup tab's third lens ([`BidsWhyWeLostLens`](../src/components/bids/BidsWhyWeLostLens.tsx)): left rail is the **builder call queue** (builders with unexplained lost bids first, most unexplained $ on top — CIVE's $1.36M leads today); the work area is one builder's call — tappable phone, **street-name jump pills** for every lost bid (GCs talk in addresses, not bid numbers; done pills go green), a bid card with the **tap-to-Google-Maps address pill** (reuses `bidAddressMapsUrl`), six one-tap **reason chips** (keyboard 1–6; arrows move between bids), an optional "what they said" note (saved into `loss_reason` with the next chip tap), skip, and auto-advance to the next unexplained bid then the next builder. Below: the **rollup** — counts + $ per category and the headline stat: loss rate **with and without GC-lost** (73% vs 69% live — GC-lost isn't a competitive loss). New kernel [`bidLossCategories.ts`](../src/lib/bidLossCategories.ts) (+14 tests): category vocabulary (single source for the migration comment), call-queue grouping, rollup math, next-bid stepper. A red "N need a reason" chip on the other two lenses jumps in; superintendents don't see the lens (same gate as By status). Deep link `?tab=why-we-lost`. `database.ts` +3 lines (`loss_category`). Client + regenerated types — migration applied with v2.1796.
 ## Latest Updates (v2.1797)
 
 ### Customers: backfill payment history from HCP (2026-08-18)
 Owner request (money-rail follow-up): jobs imported from HouseCall Pro were stamped `paid` with **zero `jobs_ledger_payments` rows**, so the new money rail and Customer Hub "collected" figures read $0 for the whole HCP era (e.g. Aaron Berg: billed $40k, collected $1.4k). New review-then-Apply sweep — the fourth of its kind after the classifier, link sweep, and merge tool: a **"Paid, no payment record"** stat-band cell on Customers (visible only while candidates exist) opens [`BackfillHcpPaymentsModal`](../src/components/customers/BackfillHcpPaymentsModal.tsx). The user picks the HCP jobs export CSV (parsed in-browser via `parseCsv` — the file never uploads); the [`backfillHcpPayments`](../src/lib/customers/backfillHcpPayments.ts) kernel (10 unit tests) plans one synthetic payment per paid job with no payment rows — **amount = the job's own billed figure** (revenue), **paid_on from HCP** with a fallback chain (paid-in-full date → HCP completed → HCP created → ledger created date, each badged in the preview), Excel `="010"` quoting and leading zeros normalized, HCP-vs-app amount mismatches flagged inline and preserved in the payment note (`payment_type: 'HCP import'`). Apply inserts in chunks of 100; the B3 trigger (20260730174929) recomputes `payments_made`, and re-running skips already-filled jobs, so a mid-sweep failure is resumable. Client-only — no migration.
-
 
 ## Latest Updates (v2.1796)
 

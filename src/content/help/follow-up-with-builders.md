@@ -2,15 +2,16 @@
 title: follow up with builders on their bids
 category: Office
 roles: dev, master_technician, assistant, estimator, primary, superintendent
-keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline
+keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost
 order: 69
 ---
-The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has two lenses — one job, two angles:
+The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has three lenses — one job, three angles:
 
 - **By builder** — the call queue. One card per builder, sorted so the builder you've ignored longest is on top. This is the lens for phone mornings: call one GC, walk through all their bids at once.
 - **By status** — the outcome tables (Unsent, Not yet won or lost, Won, Started or Complete, Lost) with the per-person followup sheets, {{button:outline|Print}}/{{button:outline|PDF}}, and call scripts.
+- **Why we lost** — record and review loss reasons, one GC call at a time (below).
 
-Flip between them with the {{button:blue|By builder}} / {{button:outline|By status}} toggle at the top. The **Stale after N days** box is shared — set it once and both lenses highlight the same bids in red.
+Flip between them with the {{button:blue|By builder}} / {{button:outline|By status}} / {{button:outline|Why we lost}} toggle at the top. The **Stale after N days** box is shared between the first two — set it once and both lenses highlight the same bids in red.
 
 ## Work the queue
 
@@ -43,6 +44,24 @@ One save does it all: the builder's contact log gets the summary, every bid you 
 :::example the queue follows your promises
 Once you promise dates, **Oldest first** stops being just "who waited longest": builders whose promised date has arrived float to the very top with a red {{chip:red|⚠ follow-up due 8/3}} badge, the no-promise builders follow in staleness order, and builders promised a future date wait at the bottom with a blue badge until their day comes — calling earlier than you said annoys people.
 :::
+
+## Record why you lost — the Friday ritual
+
+The **Why we lost** lens turns loss reasons into a one-tap habit instead of a blank text box. A red {{chip:red|N need a reason}} chip on the other lenses shows how many lost bids have no reason recorded — click it to jump in.
+
+The left rail is a call queue: builders with unexplained lost bids first, biggest dollars on top. Pick whoever you have on the phone and their lost bids become a row of **street-name pills** — when the GC says "the one on Culebra," tap that pill. Each bid shows its **address as a button that opens Google Maps**, and six reason chips:
+
+**GC lost the project** · **Price too high** · **Went with another sub** · **Project died / on hold** · **Never finished bid** · **No answer**
+
+Tap one (or press keys **1–6**) and the bid is recorded and the next unexplained one opens — a builder's whole list clears in the length of the call. Type what they said in the note box first and it saves with the tap ("about 6 grand over the winner"). {{button:outline|Skip →}} moves on without recording; arrow keys move between bids; explained pills turn green.
+
+:::example a Friday morning
+Dale from Knight picks up. Six pills. "1, 1, 2" — with "6k over" typed before the 2 — "1, skip, 1". Knight's row goes green and the next builder is already open.
+:::
+
+## Review why you lose
+
+Below the queue, the **Why we lost** rollup counts every categorized loss by reason — count and dollars — and shows two loss rates: the raw one, and the one **excluding "GC lost the project"** (when your GC doesn't win, you never had a shot — that's not a competitive loss). The gap between those two numbers is how much of your loss rate isn't really yours.
 
 ## Print a call sheet
 
