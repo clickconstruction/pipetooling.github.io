@@ -5,7 +5,7 @@ import { compareCustomersForCallQueue, nextFollowupBadge } from './callQueueOrde
 const NOW = '2026-08-04T17:00:00Z'
 
 function decision(partial: Partial<CallSessionBidDecision> & { bidId: string }): CallSessionBidDecision {
-  return { outcome: null, note: '', lossReason: '', ...partial }
+  return { outcome: null, note: '', lossReason: '', lossCategory: null, ...partial }
 }
 
 describe('buildCallSessionWrites', () => {
@@ -27,7 +27,19 @@ describe('buildCallSessionWrites', () => {
     expect(w.bidEntries[0]?.notes).toBe('Still pending. decision next week')
     expect(w.bidEntries[1]?.notes).toBe('Marked lost on call — price')
     expect(w.bidLastContactUpdates.map((u) => u.bidId)).toEqual(['b1', 'b3'])
-    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b3', outcome: 'lost', loss_reason: 'price' }])
+    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b3', outcome: 'lost', loss_reason: 'price', loss_category: null }])
+  })
+
+  it('lost taps carry the structured category; the entry note folds category and detail together', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: '',
+      decisions: [decision({ bidId: 'b1', outcome: 'lost', lossCategory: 'price', lossReason: '6 grand over' })],
+    })
+    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b1', outcome: 'lost', loss_reason: '6 grand over', loss_category: 'price' }])
+    expect(w.bidEntries[0]?.notes).toBe('Marked lost on call — Price too high: 6 grand over')
   })
 
   it('a note alone counts as touched; won taps update outcome with no loss reason', () => {
@@ -40,7 +52,18 @@ describe('buildCallSessionWrites', () => {
     })
     expect(w.customerContact.details).toBe('Call session — 2 bids reviewed')
     expect(w.bidEntries[0]?.notes).toBe('sent revised scope')
-    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b2', outcome: 'won', loss_reason: null }])
+    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b2', outcome: 'won', loss_reason: null, loss_category: null }])
+  })
+
+  it('won taps clear any category picked before the caller flipped to won', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: '',
+      decisions: [decision({ bidId: 'b1', outcome: 'won', lossCategory: 'price' })],
+    })
+    expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b1', outcome: 'won', loss_reason: null, loss_category: null }])
   })
 
   it('rebid taps log an entry but never change outcome', () => {
@@ -52,8 +75,17 @@ describe('buildCallSessionWrites', () => {
 
 describe('callSessionOutcomeLabel', () => {
   it('labels each outcome, with loss reason folded in', () => {
-    expect(callSessionOutcomeLabel({ outcome: 'lost', lossReason: '  ' })).toBe('Marked lost on call')
-    expect(callSessionOutcomeLabel({ outcome: null, lossReason: '' })).toBe('')
+    expect(callSessionOutcomeLabel({ outcome: 'lost', lossReason: '  ', lossCategory: null })).toBe('Marked lost on call')
+    expect(callSessionOutcomeLabel({ outcome: null, lossReason: '', lossCategory: null })).toBe('')
+  })
+
+  it('folds category alone, and category + detail, into the label', () => {
+    expect(callSessionOutcomeLabel({ outcome: 'lost', lossReason: '', lossCategory: 'gc_lost' })).toBe(
+      'Marked lost on call — GC lost the project',
+    )
+    expect(callSessionOutcomeLabel({ outcome: 'lost', lossReason: 'went cheap', lossCategory: 'price' })).toBe(
+      'Marked lost on call — Price too high: went cheap',
+    )
   })
 })
 

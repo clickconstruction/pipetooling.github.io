@@ -19,6 +19,7 @@ import { computeBidBoardStaffOutcomeStatsByRole } from '../../lib/bids/bidBoardS
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
+import { isBidLossCategoryKey, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
@@ -54,7 +55,7 @@ type BidsBidBoardTabProps = {
   onOpenLostSummary: () => void
   onCloseLostSummary: () => void
   showLostModalLabor: boolean
-  onSaveLossReason: (bidId: string, lossReason: string) => Promise<void>
+  onSaveLossReason: (bidId: string, lossReason: string, lossCategory: BidLossCategoryKey | null) => Promise<void>
   workingBoardArchivedBids: BidWithBuilder[]
 }
 
@@ -186,9 +187,13 @@ export function BidsBidBoardTab({
     return buckets
   }, [filteredBidsForBidBoard])
 
+  // "Missing" clears when either a structured category or free text exists (v2.1799),
+  // matching the Lost summary's red-row rule and the Why we lost lens queue.
   const lostBidsMissingLossReasonCount = useMemo(() => {
     return bidBoardBuckets.lost.filter(
-      (b) => !((b as { loss_reason?: string | null }).loss_reason ?? '').trim(),
+      (b) =>
+        !((b as { loss_reason?: string | null }).loss_reason ?? '').trim() &&
+        !isBidLossCategoryKey((b as { loss_category?: string | null }).loss_category ?? null),
     ).length
   }, [bidBoardBuckets.lost])
 

@@ -5,6 +5,8 @@
  * Pure row-building; the modal performs the writes.
  */
 
+import { bidLossCategoryLabel, type BidLossCategoryKey } from '../bidLossCategories'
+
 export type CallSessionOutcome = 'still_pending' | 'won' | 'lost' | 'rebid'
 
 export type CallSessionBidDecision = {
@@ -13,6 +15,8 @@ export type CallSessionBidDecision = {
   outcome: CallSessionOutcome | null
   note: string
   lossReason: string
+  /** Structured why-we-lost bucket (v2.1799); only written for 'lost' taps. */
+  lossCategory: BidLossCategoryKey | null
 }
 
 export type CallSessionWrites = {
@@ -31,15 +35,17 @@ export type CallSessionWrites = {
     created_by: string
   }>
   bidLastContactUpdates: Array<{ bidId: string; last_contact: string }>
-  bidOutcomeUpdates: Array<{ bidId: string; outcome: 'won' | 'lost'; loss_reason: string | null }>
+  bidOutcomeUpdates: Array<{ bidId: string; outcome: 'won' | 'lost'; loss_reason: string | null; loss_category: string | null }>
 }
 
-export function callSessionOutcomeLabel(d: Pick<CallSessionBidDecision, 'outcome' | 'lossReason'>): string {
+export function callSessionOutcomeLabel(d: Pick<CallSessionBidDecision, 'outcome' | 'lossReason' | 'lossCategory'>): string {
   switch (d.outcome) {
     case 'won':
       return 'Marked won on call'
-    case 'lost':
-      return d.lossReason.trim() ? `Marked lost on call — ${d.lossReason.trim()}` : 'Marked lost on call'
+    case 'lost': {
+      const parts = [bidLossCategoryLabel(d.lossCategory), d.lossReason.trim() || null].filter(Boolean)
+      return parts.length > 0 ? `Marked lost on call — ${parts.join(': ')}` : 'Marked lost on call'
+    }
     case 'rebid':
       return 'Rebid / RFQ requested'
     case 'still_pending':
@@ -81,7 +87,13 @@ export function buildCallSessionWrites(args: {
     bidLastContactUpdates: touched.map((d) => ({ bidId: d.bidId, last_contact: nowIso })),
     bidOutcomeUpdates: touched
       .filter((d): d is CallSessionBidDecision & { outcome: 'won' | 'lost' } => d.outcome === 'won' || d.outcome === 'lost')
-      .map((d) => ({ bidId: d.bidId, outcome: d.outcome, loss_reason: d.outcome === 'lost' ? d.lossReason.trim() || null : null })),
+      .map((d) => ({
+        bidId: d.bidId,
+        outcome: d.outcome,
+        loss_reason: d.outcome === 'lost' ? d.lossReason.trim() || null : null,
+        // Won on call clears any stale category from an earlier "lost" call.
+        loss_category: d.outcome === 'lost' ? d.lossCategory : null,
+      })),
   }
 }
 

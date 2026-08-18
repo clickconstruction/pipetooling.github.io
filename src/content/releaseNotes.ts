@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1799',
+    date: '2026-08-18',
+    title: 'Loss reasons everywhere bids get marked lost',
+    kind: 'feature',
+    highlights: [
+      'The six why-we-lost reason chips now appear when you mark a bid Lost during a call session, and when editing the Lost summary on the Bid Board.',
+      'Reasons recorded anywhere feed the same Why we lost rollup — no more retyping into two places.',
+    ],
+  },
+  {
     version: 'v2.1798',
     date: '2026-08-18',
     title: 'Why we lost — a third lens on Bids Followup',

@@ -37,7 +37,7 @@ At the bottom of each card's bid list is a one-line composer: pick **Phone / Tex
 
 {{button:blue|📞 Start call session}} on a builder card opens the "GC on the phone" screen: the top shows who to dial (first contact person, tappable number) and your win rate with them, then every open bid, top to bottom.
 
-While they talk, tap what you hear on each bid — **Still pending**, **Won**, **Lost…** (a loss-reason box appears), or **Rebid / RFQ** — and add a note if there's more to say. Type one **call summary** for the whole conversation, promise the **next follow-up** (Tomorrow / Next week / In 2 weeks / a custom date), and hit {{button:blue|End call & save}}.
+While they talk, tap what you hear on each bid — **Still pending**, **Won**, **Lost…**, or **Rebid / RFQ** — and add a note if there's more to say. Tapping **Lost…** reveals the same six why-we-lost reason chips as the Why we lost lens plus a detail box, so the loss gets categorized right there on the call. Type one **call summary** for the whole conversation, promise the **next follow-up** (Tomorrow / Next week / In 2 weeks / a custom date), and hit {{button:blue|End call & save}}.
 
 One save does it all: the builder's contact log gets the summary, every bid you touched gets its own dated note (and Won/Lost bids get their outcome set for real), and the builder is re-queued by the promised date.
 
