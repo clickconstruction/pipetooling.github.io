@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1800)
+last_updated: 2026-08-18 (v2.1801)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1801)
+
+### Job Detail: Profit band counts every parts bucket (2026-08-18)
+Owner-reported bug: the Job Detail Profit band computed profit as revenue − sub labor − **tally parts only**, ignoring supply house invoices, card charges, and other job charges — so a job with $677.55 of supply invoices and no tally read profit $1,638 while the Cost Timeline an inch above showed the real cost (the tally-only basis dated to v2.657, which reused the already-loaded tally lines "no extra fetch"). [`buildJobProfitSummary`](../src/lib/jobs/jobProfitSummary.ts) now takes all four buckets (supply + card + tally + other, the same set as [`weeklyMoneyMovement`](../src/lib/jobs/weeklyMoneyMovement.ts) and the combine/separate math; 8 tests incl. the reported case), the cell is relabeled **Parts Cost**, and the band shows "—" when the supply or Mercury fetch fails instead of silently understating cost. All figures were already loaded in the modal — no new queries. Client-only — no migration.
 
 ## Latest Updates (v2.1800)
 

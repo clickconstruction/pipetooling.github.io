@@ -27,7 +27,10 @@ describe('buildJobProfitSummary', () => {
   it('computes profit as revenue minus parts minus labor', () => {
     const s = buildJobProfitSummary({
       revenue: 1000,
+      supplyInvoiceTotal: 0,
+      cardChargesTotal: 0,
       tallyPartsTotal: 250,
+      otherChargesTotal: 0,
       laborJobs: [{ labor_rate: 50, items: [{ count: 2, hrs_per_unit: 1 }] }],
       mileageCost: 0.7,
       timePerMile: 0.02,
@@ -38,10 +41,43 @@ describe('buildJobProfitSummary', () => {
     expect(s.profit).toBe(650)
   })
 
+  it('parts cost sums all four buckets, not just the tally (v2.1801)', () => {
+    // The screenshot bug: $677.55 of supply house invoices, $0 tally — the
+    // old tally-only math reported profit $1,638 while the Cost Timeline an
+    // inch above showed the real cost.
+    const s = buildJobProfitSummary({
+      revenue: 1638,
+      supplyInvoiceTotal: 677.55,
+      cardChargesTotal: 0,
+      tallyPartsTotal: 0,
+      otherChargesTotal: 0,
+      laborJobs: [],
+      mileageCost: 0.7,
+      timePerMile: 0.02,
+    })
+    expect(s.partsCost).toBe(677.55)
+    expect(s.profit).toBeCloseTo(960.45, 2)
+    const all = buildJobProfitSummary({
+      revenue: 1000,
+      supplyInvoiceTotal: 100,
+      cardChargesTotal: 50,
+      tallyPartsTotal: 25,
+      otherChargesTotal: 10,
+      laborJobs: [],
+      mileageCost: 0.7,
+      timePerMile: 0.02,
+    })
+    expect(all.partsCost).toBe(185)
+    expect(all.profit).toBe(815)
+  })
+
   it('sums labor across multiple books including drive cost', () => {
     const s = buildJobProfitSummary({
       revenue: 0,
+      supplyInvoiceTotal: 0,
+      cardChargesTotal: 0,
       tallyPartsTotal: 0,
+      otherChargesTotal: 0,
       laborJobs: [
         { labor_rate: 50, items: [{ is_fixed: true, hrs_per_unit: 2 }] },
         // 10 mi drive: 10 × 0.7 + 10 × 0.02 × 100 = 27
@@ -57,7 +93,10 @@ describe('buildJobProfitSummary', () => {
   it('treats null revenue as $0 and can go negative', () => {
     const s = buildJobProfitSummary({
       revenue: null,
+      supplyInvoiceTotal: 0,
+      cardChargesTotal: 0,
       tallyPartsTotal: 40,
+      otherChargesTotal: 0,
       laborJobs: [],
       mileageCost: 0.7,
       timePerMile: 0.02,

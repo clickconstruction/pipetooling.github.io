@@ -6,7 +6,8 @@ function formatCurrency(n: number): string {
 
 /**
  * Job Detail profit band (masters/devs only — gate with showJobDetailProfitSection):
- * sub-labor cost, tally parts cost, total bill, profit. Replaces the removed
+ * sub-labor cost, parts cost (all four buckets: supply house + card + tally
+ * + other charges, v2.1801), total bill, profit. Replaces the removed
  * dashboard "View Details" (JobBillDetailsModal) numbers.
  */
 export function JobDetailProfitSection({
@@ -55,7 +56,7 @@ export function JobDetailProfitSection({
         ) : (
           <>
             {cell('Sub Labor Cost', show ? formatCurrency(summary.laborCost) : '—')}
-            {cell('Parts Cost (tally)', show ? formatCurrency(summary.partsCost) : '—')}
+            {cell('Parts Cost', show ? formatCurrency(summary.partsCost) : '—')}
             {cell('Total Bill', show ? formatCurrency(summary.totalBill) : '—')}
             {cell(
               'Profit',
