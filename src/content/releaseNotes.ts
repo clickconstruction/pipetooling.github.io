@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1804',
+    date: '2026-08-18',
+    title: 'HCP backfill now records tips too',
+    kind: 'feature',
+    highlights: [
+      'HouseCall Pro job totals included tips, but imported jobs didn’t — so a job HCP showed as $370 collected read $360 here. The Backfill from HCP tool now finds every tipped job in the export.',
+      'One click adds a "Tip (HCP)" line item and a matching tip payment dated when HCP collected it, so billed and collected land on the real HCP total.',
+      'Jobs whose totals already include the tip are skipped, re-runs never double-add, and anything that doesn’t reconcile is held for a human look.',
+    ],
+  },
+  {
     version: 'v2.1803',
     date: '2026-08-18',
     title: 'Dispatch People grid opens grouped by swim lanes',
