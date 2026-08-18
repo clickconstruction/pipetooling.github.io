@@ -6,6 +6,7 @@ import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { buildHourlyWageLookupByNormalizedName } from '../../lib/bidBoardWeeklyEstimatorLaborCost'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { BID_LOSS_CATEGORIES, bidLossCategoryLabel, isBidLossCategoryKey, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import {
   aggregateLostBidLaborUsd,
   getLaborUsdForBid,
@@ -56,7 +57,7 @@ export type BidBoardLostSummaryModalProps = {
   showLaborColumn: boolean
   onOpenBid: (bid: BidWithBuilder) => void
   onPreviewBid: (bid: BidWithBuilder) => void
-  onSaveLossReason: (bidId: string, lossReason: string) => Promise<void>
+  onSaveLossReason: (bidId: string, lossReason: string, lossCategory: BidLossCategoryKey | null) => Promise<void>
   /** When opening from a deep link, pre-select this staff tab (estimator / account manager user id). */
   initialStaffTabUserId?: string | null
 }
@@ -134,6 +135,7 @@ export function BidBoardLostSummaryModal({
   const [openBidRowHover, setOpenBidRowHover] = useState<OpenBidRowHover>(null)
   const [editingLossBidId, setEditingLossBidId] = useState<string | null>(null)
   const [lossDraft, setLossDraft] = useState('')
+  const [lossCategoryDraft, setLossCategoryDraft] = useState<BidLossCategoryKey | null>(null)
   const [savingLossBidId, setSavingLossBidId] = useState<string | null>(null)
   const [lossSaveErrorBidId, setLossSaveErrorBidId] = useState<string | null>(null)
   const [lossSaveErrorMessage, setLossSaveErrorMessage] = useState<string | null>(null)
@@ -468,7 +470,8 @@ export function BidBoardLostSummaryModal({
               ) : (
                 displayBids.map((bid) => {
                   const loss = ((bid as { loss_reason?: string | null }).loss_reason ?? '').trim()
-                  const missingLossReason = loss === ''
+                  const lossCategory = (bid as { loss_category?: string | null }).loss_category ?? null
+                  const missingLossReason = loss === '' && !isBidLossCategoryKey(lossCategory)
                   const tdRow: CSSProperties = {
                     ...td,
                     ...(missingLossReason ? { background: 'var(--bg-red-tint)' } : {}),
@@ -553,6 +556,32 @@ export function BidBoardLostSummaryModal({
                       <td style={tdRow}>
                         {isEditingLoss ? (
                           <div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.35rem' }} aria-label="Loss category">
+                              {BID_LOSS_CATEGORIES.map((c) => {
+                                const selected = lossCategoryDraft === c.key
+                                return (
+                                  <button
+                                    key={c.key}
+                                    type="button"
+                                    disabled={isSavingLoss}
+                                    onClick={() => setLossCategoryDraft(selected ? null : c.key)}
+                                    aria-pressed={selected}
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      padding: '0.18rem 0.5rem',
+                                      borderRadius: 999,
+                                      cursor: 'pointer',
+                                      background: c.chipBg,
+                                      color: c.chipFg,
+                                      border: `1.5px solid ${selected ? c.chipFg : 'transparent'}`,
+                                      fontWeight: selected ? 700 : 400,
+                                    }}
+                                  >
+                                    {c.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
                             <textarea
                               aria-label={lossReasonAriaLabel}
                               value={lossDraft}
@@ -579,9 +608,10 @@ export function BidBoardLostSummaryModal({
                                   setLossSaveErrorMessage(null)
                                   setSavingLossBidId(bid.id)
                                   try {
-                                    await onSaveLossReason(bid.id, lossDraft)
+                                    await onSaveLossReason(bid.id, lossDraft, lossCategoryDraft)
                                     setEditingLossBidId(null)
                                     setLossDraft('')
+                                    setLossCategoryDraft(null)
                                   } catch (err) {
                                     setLossSaveErrorBidId(bid.id)
                                     setLossSaveErrorMessage(
@@ -609,6 +639,7 @@ export function BidBoardLostSummaryModal({
                                 onClick={() => {
                                   setEditingLossBidId(null)
                                   setLossDraft('')
+                                  setLossCategoryDraft(null)
                                   setLossSaveErrorBidId(null)
                                   setLossSaveErrorMessage(null)
                                 }}
@@ -639,8 +670,23 @@ export function BidBoardLostSummaryModal({
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span style={{ flex: '1 1 8rem', color: loss ? 'var(--text-700)' : 'var(--text-faint)' }}>
-                              {loss || '—'}
+                            <span style={{ flex: '1 1 8rem', color: loss || lossCategory ? 'var(--text-700)' : 'var(--text-faint)' }}>
+                              {isBidLossCategoryKey(lossCategory) ? (
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    marginRight: loss ? '0.35rem' : 0,
+                                    padding: '0.1rem 0.45rem',
+                                    borderRadius: 999,
+                                    fontSize: '0.72rem',
+                                    background: BID_LOSS_CATEGORIES.find((c) => c.key === lossCategory)?.chipBg,
+                                    color: BID_LOSS_CATEGORIES.find((c) => c.key === lossCategory)?.chipFg,
+                                  }}
+                                >
+                                  {bidLossCategoryLabel(lossCategory)}
+                                </span>
+                              ) : null}
+                              {loss || (lossCategory ? '' : '—')}
                             </span>
                             <button
                               type="button"
@@ -649,6 +695,7 @@ export function BidBoardLostSummaryModal({
                                 setLossSaveErrorMessage(null)
                                 setEditingLossBidId(bid.id)
                                 setLossDraft(((bid as { loss_reason?: string | null }).loss_reason ?? '') as string)
+                                setLossCategoryDraft(isBidLossCategoryKey(lossCategory) ? lossCategory : null)
                               }}
                               style={{
                                 flexShrink: 0,

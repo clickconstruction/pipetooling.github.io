@@ -49,7 +49,7 @@ import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocumen
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
-import { isBidLossCategoryKey } from '../lib/bidLossCategories'
+import { isBidLossCategoryKey, type BidLossCategoryKey } from '../lib/bidLossCategories'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
 import {
@@ -1669,10 +1669,14 @@ export default function Bids() {
     clearBidDateSentAttestationFlow()
   }
 
-  async function saveLossReasonFromLostSummaryModal(bidId: string, lossReason: string) {
+  async function saveLossReasonFromLostSummaryModal(
+    bidId: string,
+    lossReason: string,
+    lossCategory: BidLossCategoryKey | null,
+  ) {
     const loss_reason = lossReason.trim() || null
     await withSupabaseRetry(
-      async () => supabase.from('bids').update({ loss_reason }).eq('id', bidId),
+      async () => supabase.from('bids').update({ loss_reason, loss_category: lossCategory }).eq('id', bidId),
       'bid board lost summary loss_reason',
     )
     await loadBids()

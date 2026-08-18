@@ -13,6 +13,7 @@ import {
   type CallSessionOutcome,
 } from '../../lib/bids/builderCallSession'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_LOSS_CATEGORIES } from '../../lib/bidLossCategories'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
@@ -54,7 +55,7 @@ export function BuilderCallSessionModal({
   onError: (msg: string | null) => void
 }) {
   const [decisions, setDecisions] = useState<Record<string, CallSessionBidDecision>>(() =>
-    Object.fromEntries(openBids.map((b) => [b.id, { bidId: b.id, outcome: null, note: '', lossReason: '' }])),
+    Object.fromEntries(openBids.map((b) => [b.id, { bidId: b.id, outcome: null, note: '', lossReason: '', lossCategory: null }])),
   )
   const [summary, setSummary] = useState('')
   const [followupPick, setFollowupPick] = useState<'tomorrow' | 'next-week' | 'two-weeks' | 'none' | 'custom'>('next-week')
@@ -78,7 +79,7 @@ export function BuilderCallSessionModal({
   }, [dirty, onClose])
 
   const setDecision = (bidId: string, patch: Partial<CallSessionBidDecision>) => {
-    setDecisions((prev) => ({ ...prev, [bidId]: { ...(prev[bidId] ?? { bidId, outcome: null, note: '', lossReason: '' }), ...patch } }))
+    setDecisions((prev) => ({ ...prev, [bidId]: { ...(prev[bidId] ?? { bidId, outcome: null, note: '', lossReason: '', lossCategory: null }), ...patch } }))
   }
 
   const resolveNextFollowupIso = (): string | null | 'invalid' => {
@@ -116,7 +117,7 @@ export function BuilderCallSessionModal({
       }
       for (const u of writes.bidOutcomeUpdates) {
         await withSupabaseRetry(
-          async () => supabase.from('bids').update({ outcome: u.outcome, loss_reason: u.loss_reason }).eq('id', u.bidId),
+          async () => supabase.from('bids').update({ outcome: u.outcome, loss_reason: u.loss_reason, loss_category: u.loss_category }).eq('id', u.bidId),
           'call session: outcome',
         )
       }
@@ -185,7 +186,7 @@ export function BuilderCallSessionModal({
         </div>
       )}
       {openBids.map((bid) => {
-        const d = decisions[bid.id] ?? { bidId: bid.id, outcome: null, note: '', lossReason: '' }
+        const d = decisions[bid.id] ?? { bidId: bid.id, outcome: null, note: '', lossReason: '', lossCategory: null }
         const sectionKey = getSubmissionSectionKey(bid)
         return (
           <div key={bid.id} style={{ border: '1px solid var(--border)', borderRadius: 9, marginBottom: '0.55rem', overflow: 'hidden' }}>
@@ -224,13 +225,39 @@ export function BuilderCallSessionModal({
                 )
               })}
               {d.outcome === 'lost' && (
-                <input
-                  type="text"
-                  value={d.lossReason}
-                  onChange={(e) => setDecision(bid.id, { lossReason: e.target.value })}
-                  placeholder="loss reason (price, timing…)"
-                  style={{ minWidth: 140, padding: '0.32rem 0.5rem', border: '1px solid var(--text-red-600)', borderRadius: 6, fontSize: '0.8rem' }}
-                />
+                <>
+                  <span style={{ flexBasis: '100%', height: 0 }} aria-hidden />
+                  {BID_LOSS_CATEGORIES.map((c) => {
+                    const selected = d.lossCategory === c.key
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => setDecision(bid.id, { lossCategory: selected ? null : c.key })}
+                        aria-pressed={selected}
+                        style={{
+                          fontSize: '0.74rem',
+                          padding: '0.22rem 0.6rem',
+                          borderRadius: 999,
+                          cursor: 'pointer',
+                          background: c.chipBg,
+                          color: c.chipFg,
+                          border: `1.5px solid ${selected ? c.chipFg : 'transparent'}`,
+                          fontWeight: selected ? 700 : 400,
+                        }}
+                      >
+                        {c.label}
+                      </button>
+                    )
+                  })}
+                  <input
+                    type="text"
+                    value={d.lossReason}
+                    onChange={(e) => setDecision(bid.id, { lossReason: e.target.value })}
+                    placeholder="loss detail (what they said…)"
+                    style={{ minWidth: 140, padding: '0.32rem 0.5rem', border: '1px solid var(--text-red-600)', borderRadius: 6, fontSize: '0.8rem' }}
+                  />
+                </>
               )}
               <input
                 type="text"

@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1798)
+last_updated: 2026-08-18 (v2.1799)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1799)
+
+### Loss-reason chips everywhere bids get marked lost — why-we-lost train PR 3 (2026-08-18)
+Closes the capture loop: the same six category chips from the Why we lost lens now appear in **both places bids already get marked lost**, so a reason recorded live lands in `loss_category` no matter where it's typed. **(1) Call session** ([`BuilderCallSessionModal`](../src/components/bids/BuilderCallSessionModal.tsx)): tapping **Lost…** now reveals the chip row + a "loss detail" input; the [`builderCallSession`](../src/lib/bids/builderCallSession.ts) kernel's outcome updates carry `loss_category` (+3 tests: category+detail folding into the entry note "Marked lost on call — Price too high: 6 grand over", won-taps clearing a stale category). **(2) Bid Board Lost summary** ([`BidBoardLostSummaryModal`](../src/components/bids/BidBoardLostSummaryModal.tsx)): the per-bid edit gains the chip row above the free-text box, display rows show the category as a colored chip before the text, and the red "missing reason" row highlight now clears when **either** a category or text exists. Client-only — no migration.
 ## Latest Updates (v2.1798)
 
 ### Bids Followup: the Why we lost lens — why-we-lost train PR 2 (2026-08-18)
