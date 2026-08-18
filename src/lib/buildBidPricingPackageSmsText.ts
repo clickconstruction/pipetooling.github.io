@@ -8,6 +8,8 @@
  * Shape (blank line separators preserved):
  *
  *   Bid: {bidLabel}
+ *   Address: {address}                ← omitted when null/blank
+ *   Map: {googleMapsUrl}              ← omitted when address is null/blank
  *   Job plans: {plansLink}            ← omitted when null/blank
  *   CountTooling Plans: {ctpLink}     ← omitted when null/blank
  *
@@ -21,6 +23,7 @@
  */
 
 import {
+  bidAddressMapsUrl,
   formatPackageCurrency,
   type PackageExternalRow,
 } from './buildBidPricingPackageHtml'
@@ -29,13 +32,20 @@ export function buildBidPricingPackageSmsText(args: {
   bidLabel: string
   plansLink: string | null
   countToolingPlansLink?: string | null
+  address?: string | null
   externalRows: ReadonlyArray<PackageExternalRow>
   totalRevenue: number
 }): string {
-  const { bidLabel, plansLink, countToolingPlansLink, externalRows, totalRevenue } = args
+  const { bidLabel, plansLink, countToolingPlansLink, address, externalRows, totalRevenue } = args
 
   const lines: string[] = []
   lines.push(`Bid: ${bidLabel}`)
+
+  const addressMapsUrl = bidAddressMapsUrl(address)
+  if (addressMapsUrl) {
+    lines.push(`Address: ${(address ?? '').trim()}`)
+    lines.push(`Map: ${addressMapsUrl}`)
+  }
 
   const link = (plansLink ?? '').trim()
   if (link) {

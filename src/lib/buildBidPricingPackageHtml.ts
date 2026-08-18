@@ -62,6 +62,13 @@ export function formatPackageCurrency(n: number): string {
   })
 }
 
+/** Google Maps search URL for a job address; null when the address is blank. */
+export function bidAddressMapsUrl(address: string | null | undefined): string | null {
+  const trimmed = (address ?? '').trim()
+  if (!trimmed) return null
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`
+}
+
 /**
  * Returns just the `<table>...</table>` with inline styles (Resend strips <style> blocks
  * in several clients, so every cell carries its own style attribute).
@@ -129,13 +136,19 @@ export function buildBidPricingPackageEmailHtml(args: {
   bidLabel: string
   plansLink: string | null
   countToolingPlansLink?: string | null
+  address?: string | null
   tableHtml: string
   senderName: string | null
 }): string {
-  const { bidLabel, plansLink, countToolingPlansLink, tableHtml, senderName } = args
+  const { bidLabel, plansLink, countToolingPlansLink, address, tableHtml, senderName } = args
 
   const senderLine = senderName
     ? `<p style="margin:0 0 12px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111827">Sent by ${escapeHtml(senderName)}.</p>`
+    : ''
+
+  const mapsUrl = bidAddressMapsUrl(address)
+  const addressBlock = mapsUrl
+    ? `<p style="margin:0 0 16px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111827"><strong>Address:</strong> <a href="${escapeHtml(mapsUrl)}" style="color:#2563eb;text-decoration:underline">${escapeHtml((address ?? '').trim())}</a><br><span style="font-size:12px;color:#6b7280">Tap the address to open it in Google Maps.</span></p>`
     : ''
 
   const plansBlock = plansLink
@@ -151,6 +164,7 @@ export function buildBidPricingPackageEmailHtml(args: {
     '<body style="margin:0;padding:24px;background:#ffffff;font-family:Helvetica,Arial,sans-serif;color:#111827">' +
     `<h1 style="margin:0 0 16px 0;font-size:18px;color:#111827">Bid: ${escapeHtml(bidLabel)}</h1>` +
     senderLine +
+    addressBlock +
     plansBlock +
     countToolingPlansBlock +
     tableHtml +
@@ -169,12 +183,19 @@ export function buildBidPricingPackagePlainText(args: {
   bidLabel: string
   plansLink: string | null
   countToolingPlansLink?: string | null
+  address?: string | null
 }): string {
-  const { externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink } = args
+  const { externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink, address } = args
 
   const lines: string[] = []
   lines.push(`Bid: ${bidLabel}`)
   lines.push('')
+  const addressMapsUrl = bidAddressMapsUrl(address)
+  if (addressMapsUrl) {
+    lines.push(`Address: ${(address ?? '').trim()}`)
+    lines.push(`Map: ${addressMapsUrl}`)
+    lines.push('')
+  }
   if (plansLink) {
     lines.push(`Job plans: ${plansLink}`)
     lines.push('')

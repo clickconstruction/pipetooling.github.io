@@ -128,6 +128,37 @@ describe('buildBidPricingPackageSmsText', () => {
     expect(text).toContain('\u2014 \u2014 1 \u00d7 $10.00 = $10.00')
   })
 
+  it('includes Address + Map lines right after the Bid heading when address is set', () => {
+    const text = buildBidPricingPackageSmsText({
+      bidLabel: 'BE1',
+      plansLink: 'https://example.com/plans',
+      address: '1234 Casa Linda Dr, Dallas, TX',
+      externalRows: [row()],
+      totalRevenue: 100,
+    })
+    const lines = text.split('\n')
+    expect(lines[0]).toBe('Bid: BE1')
+    expect(lines[1]).toBe('Address: 1234 Casa Linda Dr, Dallas, TX')
+    expect(lines[2]).toBe(
+      'Map: https://www.google.com/maps/search/?api=1&query=1234%20Casa%20Linda%20Dr%2C%20Dallas%2C%20TX',
+    )
+    expect(lines[3]).toBe('Job plans: https://example.com/plans')
+  })
+
+  it('omits the Address + Map lines when address is null / blank', () => {
+    for (const address of [null, undefined, '', '   ']) {
+      const text = buildBidPricingPackageSmsText({
+        bidLabel: 'BE1',
+        plansLink: null,
+        address,
+        externalRows: [row()],
+        totalRevenue: 100,
+      })
+      expect(text).not.toContain('Address:')
+      expect(text).not.toContain('Map:')
+    }
+  })
+
   it('includes the CountTooling Plans line after Job plans when set', () => {
     const text = buildBidPricingPackageSmsText({
       bidLabel: 'BE1',

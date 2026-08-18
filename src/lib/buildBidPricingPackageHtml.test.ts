@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bidAddressMapsUrl,
   buildBidPricingPackageEmailHtml,
   buildBidPricingPackageExternalRows,
   buildBidPricingPackagePlainText,
@@ -82,6 +83,21 @@ describe('formatPackageCurrency', () => {
   it('handles non-finite numbers', () => {
     expect(formatPackageCurrency(Number.NaN)).toBe('0.00')
     expect(formatPackageCurrency(Number.POSITIVE_INFINITY)).toBe('0.00')
+  })
+})
+
+describe('bidAddressMapsUrl', () => {
+  it('builds a Google Maps search URL with the trimmed address encoded', () => {
+    expect(bidAddressMapsUrl(' 1234 Casa Linda Dr, Dallas, TX ')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=1234%20Casa%20Linda%20Dr%2C%20Dallas%2C%20TX',
+    )
+  })
+
+  it('returns null for null / undefined / blank addresses', () => {
+    expect(bidAddressMapsUrl(null)).toBeNull()
+    expect(bidAddressMapsUrl(undefined)).toBeNull()
+    expect(bidAddressMapsUrl('')).toBeNull()
+    expect(bidAddressMapsUrl('   ')).toBeNull()
   })
 })
 
@@ -179,6 +195,48 @@ describe('buildBidPricingPackageEmailHtml', () => {
     expect(html).toContain('href="https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21"')
   })
 
+  it('renders the address as a Google Maps anchor with the address as link text', () => {
+    const html = buildBidPricingPackageEmailHtml({
+      bidLabel: 'BE1',
+      plansLink: null,
+      address: '1234 Casa Linda Dr, Dallas, TX',
+      tableHtml: '<table></table>',
+      senderName: null,
+    })
+    expect(html).toContain('Address:')
+    expect(html).toContain(
+      'href="https://www.google.com/maps/search/?api=1&amp;query=1234%20Casa%20Linda%20Dr%2C%20Dallas%2C%20TX"',
+    )
+    expect(html).toContain('>1234 Casa Linda Dr, Dallas, TX</a>')
+    expect(html).toContain('Tap the address to open it in Google Maps.')
+  })
+
+  it('escapes HTML-sensitive characters in the address link text', () => {
+    const html = buildBidPricingPackageEmailHtml({
+      bidLabel: 'BE1',
+      plansLink: null,
+      address: '1 Main & <Elm>',
+      tableHtml: '',
+      senderName: null,
+    })
+    expect(html).toContain('1 Main &amp; &lt;Elm&gt;')
+    expect(html).not.toContain('1 Main & <Elm></a>')
+  })
+
+  it('omits the address block when address is null or blank', () => {
+    for (const address of [null, undefined, '', '  ']) {
+      const html = buildBidPricingPackageEmailHtml({
+        bidLabel: 'BE1',
+        plansLink: null,
+        address,
+        tableHtml: '',
+        senderName: null,
+      })
+      expect(html).not.toContain('Address:')
+      expect(html).not.toContain('google.com/maps')
+    }
+  })
+
   it('omits the CountTooling Plans block when the link is null', () => {
     const html = buildBidPricingPackageEmailHtml({
       bidLabel: 'BE1',
@@ -257,6 +315,37 @@ describe('buildBidPricingPackagePlainText', () => {
     const dataLines = lines.filter((l) => l.includes('$'))
     expect(dataLines.length).toBeGreaterThanOrEqual(2)
     expect(dataLines[0]!.length).toBe(dataLines[1]!.length)
+  })
+
+  it('includes Address + Map lines when address is set, before Job plans', () => {
+    const text = buildBidPricingPackagePlainText({
+      externalRows: [ext()],
+      totalRevenue: 200,
+      bidLabel: 'BE1',
+      plansLink: 'https://example.com/plans',
+      address: '1234 Casa Linda Dr, Dallas, TX',
+    })
+    const lines = text.split('\n')
+    const addressIdx = lines.indexOf('Address: 1234 Casa Linda Dr, Dallas, TX')
+    const mapIdx = lines.findIndex((l) => l.startsWith('Map: https://www.google.com/maps/search/'))
+    const plansIdx = lines.findIndex((l) => l.startsWith('Job plans:'))
+    expect(addressIdx).toBeGreaterThan(0)
+    expect(mapIdx).toBe(addressIdx + 1)
+    expect(plansIdx).toBeGreaterThan(mapIdx)
+  })
+
+  it('omits Address + Map lines when address is null or blank', () => {
+    for (const address of [null, undefined, '', '  ']) {
+      const text = buildBidPricingPackagePlainText({
+        externalRows: [ext()],
+        totalRevenue: 200,
+        bidLabel: 'BE1',
+        plansLink: null,
+        address,
+      })
+      expect(text).not.toContain('Address:')
+      expect(text).not.toContain('Map:')
+    }
   })
 
   it('includes the CountTooling Plans line when set', () => {

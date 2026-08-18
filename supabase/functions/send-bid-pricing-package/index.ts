@@ -157,13 +157,14 @@ serve(async (req) => {
     // Bid (user-scoped read — relies on bids RLS to confirm sender can see this bid).
     const { data: bidRow, error: bidErr } = await userClient
       .from('bids')
-      .select('id, project_name, plans_link, count_tooling_plans_link, bid_number, service_type_id, service_types(ledger_bid_prefix)')
+      .select('id, project_name, plans_link, count_tooling_plans_link, address, bid_number, service_type_id, service_types(ledger_bid_prefix)')
       .eq('id', bidId)
       .maybeSingle<{
         id: string
         project_name: string | null
         plans_link: string | null
         count_tooling_plans_link: string | null
+        address: string | null
         bid_number: string | null
         service_type_id: string | null
         service_types: ServiceTypeRow
@@ -282,6 +283,8 @@ serve(async (req) => {
     const plansLinkOrNull = plansLink.length > 0 ? plansLink : null
     const countToolingPlansLink = (bidRow.count_tooling_plans_link ?? '').trim()
     const countToolingPlansLinkOrNull = countToolingPlansLink.length > 0 ? countToolingPlansLink : null
+    const address = (bidRow.address ?? '').trim()
+    const addressOrNull = address.length > 0 ? address : null
     const senderName = (senderRow.name ?? '').trim() || null
 
     const tableHtml = buildBidPricingPackageTableHtml({ externalRows, totalRevenue })
@@ -289,6 +292,7 @@ serve(async (req) => {
       bidLabel,
       plansLink: plansLinkOrNull,
       countToolingPlansLink: countToolingPlansLinkOrNull,
+      address: addressOrNull,
       tableHtml,
       senderName,
     })
@@ -298,6 +302,7 @@ serve(async (req) => {
       bidLabel,
       plansLink: plansLinkOrNull,
       countToolingPlansLink: countToolingPlansLinkOrNull,
+      address: addressOrNull,
     })
 
     const subject = `Pricing — ${bidLabel}`
