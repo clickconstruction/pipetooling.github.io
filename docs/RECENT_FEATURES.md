@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1794)
+last_updated: 2026-08-18 (v2.1795)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1795)
+
+### Payroll ledger: Hide paid toggle (2026-08-18)
+Owner request: the People → Payroll ledger lists every pay report ever generated, so the open items drown in paid history. New **Hide paid** button in the ledger's top action cluster ([`PeoplePayStubsTab`](../src/components/people/PeoplePayStubsTab.tsx)): shows the paid count up front ("Hide paid (262)"), flips to a pressed green "Hiding 262 paid" while active, and filters the table to unpaid + partial rows only — the same `stubNetPay` / `isPayStubFullyPaid` math the rows and the open-balance summary already use, so "paid" means fully paid net of deductions/additionals, and the "N open · $X remaining" line is unchanged (hidden rows were never open). Composes with the name search; an all-paid result gets an inline "show paid" link instead of an empty table. Session-only (resets on reload) so paid history is never silently missing next visit. Verified live: 262 paid hidden → 29 open rows remain, toggles cleanly. Client-only — no migration.
 ## Latest Updates (v2.1794)
 
 ### Draft Payroll: Cash Due matches the pay report (office vs. field rates) (2026-08-18)
