@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1801)
+last_updated: 2026-08-18 (v2.1802)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1802)
+
+### Jobs Pipeline: "n" opens the # job-number jump (2026-08-18)
+Owner request: on Jobs → Pipeline, pressing **n** with nothing focused should pop the **#** micro-search (v2.1135) open ready to type. The listener lives inside [`StagesJobNumberJumpChip`](../src/components/jobs/StagesJobNumberJumpChip.tsx) itself — the chip only mounts on the Pipeline header, so its lifecycle scopes the shortcut to the tab with no shell wiring. Guards mirror the dashboard "s" shortcut (v2.784): ignored while typing in any input/textarea/select/contenteditable (`isTypingTarget`, the `HeaderGlobalSearch` typing-surface check), with any modifier held, or while any `[role="dialog"]` is open on top (the repo-wide modal convention), so a Job window never loses "n" to the board behind it. Existing flow unchanged: field auto-focuses on open, Enter jumps, Esc/blank-blur collapses; the collapsed chip's tooltip now advertises "(press n)". +1 render test (opens focused on n; inert while typing / with ctrl / under a dialog). Client-only — no migration.
 
 ## Latest Updates (v2.1801)
 

@@ -17,7 +17,7 @@ Out of the box, typing matches the job's own fields:
 - **GC/Builder name** (see the GC guide)
 
 :::example Jump straight to a job number
-The **#** chip inside the search bar is a faster path when you already know the number — type the digits and press Enter to jump straight to that job's row.
+The **#** chip inside the search bar is a faster path when you already know the number — type the digits and press Enter to jump straight to that job's row. On a keyboard, just press **n** anywhere on the board (while nothing else is focused) and the field opens ready to type.
 :::
 
 ## Optional: also search schedule and clock notes
