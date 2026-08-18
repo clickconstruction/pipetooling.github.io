@@ -9,7 +9,7 @@ last_updated: 2026-08-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "236 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "239 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 18, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 18, 2026
+
+**`20260818210000_controller_schedule_blocks_rls.sql`** _(applied via `supabase db push` with the v2.1811 merge — policy swap only, no schema change; old clients unaffected)_
+- **Purpose**: Let **controller** edit dispatch schedule blocks — the client (`CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`) and `ACCESS_CONTROL.md` promised it, but every `job_schedule_blocks` write policy (4 job-anchored baseline + 4 bid-anchored from `20260813224521`) used the literal `['dev','master_technician','assistant','superintendent']` gate. New capability function `can_edit_schedule_dispatch()` (those four roles + `controller`; mirror of the client set — keep in sync) replaces the literal array in all eight write policies, recreated idempotently (`DROP POLICY IF EXISTS` + `CREATE`, single transaction). Job-visibility arms and SELECT policies unchanged.
+- **Category**: RLS / policy fix
 
 **`20260818200500_dispatch_office_roster.sql`** _(applied via `supabase db push` with the v2.1810 merge — additive tables + new function; old clients unaffected, nothing calls it until the Dispatch Settings roster UI ships)_
 - **Purpose**: Standing office schedule. Two tables — `dispatch_office_roster` (user + daily window, default 08:00–16:00; write cohort = schedule-dispatch roles **including controller**, mirroring `dispatch_swim_lanes`) and `dispatch_office_schedule_fills` (tombstone ledger: each (person, day) is auto-filled at most once so hand-deleted blocks stay deleted; client read-only). New SECURITY DEFINER RPC `ensure_office_schedule_blocks(p_from, p_to)` (≤31-day range): for every roster member × weekday, inserts an ordinary `job_schedule_blocks` row anchored to the canonical Office job (`app_settings.overhead_office_job_ledger_id_v1`, falling back to `get_jobs_ledger_office()`), skipping time-off days and any overlapping existing block. Replaces the hand-made morning ritual (146 manual Office blocks in the prior two months).
