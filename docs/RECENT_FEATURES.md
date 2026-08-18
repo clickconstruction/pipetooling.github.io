@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1799)
+last_updated: 2026-08-18 (v2.1800)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1800)
+
+### Dashboard nudge into Why we lost — why-we-lost train PR 4 (2026-08-18)
+The closer: the dashboard's lost-bids banner is upgraded from the old text-only, Lost-summary-routing version into the lens's front door. [`DashboardLostBidsMissingReasonBanner`](../src/components/DashboardLostBidsMissingReasonBanner.tsx) now reads "N lost bids have no reason recorded · $X.XM unexplained · **Start call mode →**" and deep-links to `?tab=why-we-lost`. Three behavior changes via new kernel [`dashboardLostBidNudge.ts`](../src/lib/dashboardLostBidNudge.ts) (+9 tests): **(1) threshold-gated** — hidden below 5 uncategorized bids, so a stray loss never summons a banner (owner-picked flavor); **(2) counts by `loss_category`** like the lens queue (legacy free text alone doesn't clear a bid); **(3) whole-team scope** — the old personal estimator/account-man filter would have hidden the 61-bid backlog from everyone (Wendi's personal count is 1; most lost bids have someone else or nobody as estimator). Audience = the lens's: superintendents no longer see it. Compact $ formatting ($5.9M / $714k). Verified live: 61 · $5.9M renders and the click lands on the lens. Client-only — no migration.
 ## Latest Updates (v2.1799)
 
 ### Loss-reason chips everywhere bids get marked lost — why-we-lost train PR 3 (2026-08-18)

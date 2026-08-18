@@ -14,6 +14,7 @@ import DashboardArBankUnallocatedBanner from '../DashboardArBankUnallocatedBanne
 import DashboardTallyStaleBanner from '../DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../DashboardTallyStaleStaffBanner'
 import DashboardLostBidsMissingReasonBanner from '../DashboardLostBidsMissingReasonBanner'
+import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import DashboardTeamReviewsDueBanner from '../DashboardTeamReviewsDueBanner'
 import DashboardJobFollowupsBanner from '../DashboardJobFollowupsBanner'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
@@ -281,8 +282,8 @@ export function DashboardPinnedQuickRow({
   const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
   const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
-  const [lostMissingLossReasonCount, setLostMissingLossReasonCount] = useState(0)
-  const [lostMissingLossReasonLoading, setLostMissingLossReasonLoading] = useState(true)
+  const [lostBidNudge, setLostBidNudge] = useState<LostBidNudge | null>(null)
+  const [lostBidNudgeLoading, setLostBidNudgeLoading] = useState(true)
   const {
     peopleCount: tallyStaffStalePeopleCount,
     transactionCount: tallyStaffStaleTxCount,
@@ -346,41 +347,42 @@ export function DashboardPinnedQuickRow({
   }, [authUserId, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
 
   useEffect(() => {
-    const hasBidsAccess =
+    // Why-we-lost nudge (v2.1800): same audience as the lens — the superintendent
+    // gate on ?tab=why-we-lost redirects them, so they never see this banner.
+    const hasLensAccess =
       role === 'dev' ||
       role === 'master_technician' ||
       isAssistantLike(role) ||
       role === 'estimator' ||
-      role === 'primary' ||
-      role === 'superintendent'
-    if (!authUserId || !hasBidsAccess) {
-      setLostMissingLossReasonCount(0)
-      setLostMissingLossReasonLoading(false)
+      role === 'primary'
+    if (!authUserId || !hasLensAccess) {
+      setLostBidNudge(null)
+      setLostBidNudgeLoading(false)
       return
     }
     let cancelled = false
-    setLostMissingLossReasonLoading(true)
-    const uidForFilter = authUserId
+    setLostBidNudgeLoading(true)
     void (async () => {
       try {
+        // Whole-team queue, matching the Why we lost lens (which is not personal):
+        // most lost bids have someone else — or nobody — as estimator/account man,
+        // so a personal filter would hide the backlog from the person clearing it.
         const rawRows = await withSupabaseRetry(
           async () =>
             supabase
               .from('bids')
-              .select('loss_reason')
+              .select('loss_category, bid_value')
               .eq('outcome', 'lost')
-              .or(`estimator_id.eq.${uidForFilter},account_manager_id.eq.${uidForFilter}`)
-              .limit(500),
+              .limit(1000),
           'dashboard lost bids missing loss reason',
         )
         if (cancelled) return
-        const rows = (rawRows ?? []) as Array<{ loss_reason: string | null }>
-        const n = rows.filter((r) => !String(r.loss_reason ?? '').trim()).length
-        if (!cancelled) setLostMissingLossReasonCount(n)
+        const rows = (rawRows ?? []) as Array<{ loss_category: string | null; bid_value: number | null }>
+        if (!cancelled) setLostBidNudge(buildLostBidNudge(rows))
       } catch {
-        if (!cancelled) setLostMissingLossReasonCount(0)
+        if (!cancelled) setLostBidNudge(null)
       } finally {
-        if (!cancelled) setLostMissingLossReasonLoading(false)
+        if (!cancelled) setLostBidNudgeLoading(false)
       }
     })()
     return () => {
@@ -471,14 +473,9 @@ export function DashboardPinnedQuickRow({
       )}
       {!hideBanners && (
         <DashboardLostBidsMissingReasonBanner
-          count={lostMissingLossReasonCount}
-          loading={lostMissingLossReasonLoading}
-          onGoToLostSummary={() => {
-            if (!authUserId) return
-            navigate(
-              `/bids?tab=bid-board&lostSummary=1&lostSummaryTab=${encodeURIComponent(authUserId)}`,
-            )
-          }}
+          nudge={lostBidNudge}
+          loading={lostBidNudgeLoading}
+          onStartCallMode={() => navigate('/bids?tab=why-we-lost')}
         />
       )}
       {!hideBanners && <DashboardTeamReviewsDueBanner authUserId={authUserId} />}

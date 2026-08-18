@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1800',
+    date: '2026-08-18',
+    title: 'Dashboard nudge for unexplained lost bids',
+    kind: 'feature',
+    highlights: [
+      'When 5 or more lost bids have no reason recorded, the dashboard shows the count and the dollars unexplained — one tap opens Why we lost in call mode.',
+      'Below 5 the banner stays out of your way, and it counts the whole team’s queue, not just bids with your name on them.',
+    ],
+  },
+  {
     version: 'v2.1799',
     date: '2026-08-18',
     title: 'Loss reasons everywhere bids get marked lost',

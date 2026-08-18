@@ -1,18 +1,30 @@
+import { formatLostBidNudgeValue, type LostBidNudge } from '../lib/dashboardLostBidNudge'
+
+/**
+ * Dashboard nudge into the Why we lost lens — why-we-lost train PR 4 (v2.1800).
+ *
+ * Threshold-gated upstream (buildLostBidNudge returns null below
+ * LOST_BID_NUDGE_MIN_COUNT), personal (bids where the viewer is estimator or
+ * account man), and it counts by `loss_category` like the lens queue does.
+ * Renders nothing while loading or when the nudge is null.
+ */
+
 type Props = {
-  count: number
+  nudge: LostBidNudge | null
   loading: boolean
-  onGoToLostSummary?: () => void
+  onStartCallMode?: () => void
 }
 
-export default function DashboardLostBidsMissingReasonBanner({ count, loading, onGoToLostSummary }: Props) {
-  if (loading || count === 0) {
+export default function DashboardLostBidsMissingReasonBanner({ nudge, loading, onStartCallMode }: Props) {
+  if (loading || nudge == null) {
     return null
   }
-  const ariaLabel = `Open Bid Tabs on Lost for ${count} lost bid${count === 1 ? '' : 's'} missing a reason for loss`
+  const { count, value } = nudge
+  const ariaLabel = `Start call mode for ${count} lost bid${count === 1 ? '' : 's'} with no reason recorded`
   return (
     <button
       type="button"
-      onClick={() => onGoToLostSummary?.()}
+      onClick={() => onStartCallMode?.()}
       aria-label={ariaLabel}
       style={{
         display: 'flex',
@@ -50,14 +62,27 @@ export default function DashboardLostBidsMissingReasonBanner({ count, loading, o
         {count > 99 ? '99+' : count}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>Lost bids need a reason</div>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>
+          {count === 1 ? 'One lost bid has no reason recorded' : `${count} lost bids have no reason recorded`}
+        </div>
         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-          {count === 1
-            ? 'One lost bid you work on has no “Reason for loss” — '
-            : `${count} lost bids you work on have no “Reason for loss” — `}
-          open Bid Tabs on Lost to record it.
+          {value > 0 ? `${formatLostBidNudgeValue(value)} unexplained — ` : ''}work them one GC call at a time on the Why we lost lens.
         </div>
       </div>
+      <span
+        style={{
+          background: '#2563eb',
+          color: '#fff',
+          borderRadius: 8,
+          fontWeight: 700,
+          fontSize: '0.8rem',
+          padding: '0.45rem 0.9rem',
+          whiteSpace: 'nowrap',
+        }}
+        aria-hidden
+      >
+        Start call mode →
+      </span>
     </button>
   )
 }
