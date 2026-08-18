@@ -746,6 +746,7 @@ export type Database = {
           id: string
           include_payment_schedule: boolean
           last_contact: string | null
+          loss_category: string | null
           loss_reason: string | null
           materials_model: string
           notes: string | null
@@ -800,6 +801,7 @@ export type Database = {
           id?: string
           include_payment_schedule?: boolean
           last_contact?: string | null
+          loss_category?: string | null
           loss_reason?: string | null
           materials_model?: string
           notes?: string | null
@@ -854,6 +856,7 @@ export type Database = {
           id?: string
           include_payment_schedule?: boolean
           last_contact?: string | null
+          loss_category?: string | null
           loss_reason?: string | null
           materials_model?: string
           notes?: string | null

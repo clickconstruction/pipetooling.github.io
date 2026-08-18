@@ -48,6 +48,8 @@ import { BidVersionPicker } from '../components/bids/BidVersionPicker'
 import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocuments/approvalPdf'
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
+import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
+import { isBidLossCategoryKey } from '../lib/bidLossCategories'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
 import {
@@ -181,7 +183,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -243,6 +245,11 @@ export default function Bids() {
   }
 
   const [bids, setBids] = useState<BidWithBuilder[]>([])
+  /** Lost bids in this trade with no structured loss reason yet — the Why we lost queue size. */
+  const lostBidsNeedingReasonCount = useMemo(
+    () => bids.filter((b) => b.outcome === 'lost' && !isBidLossCategoryKey(b.loss_category)).length,
+    [bids],
+  )
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
   const [customerContacts, setCustomerContacts] = useState<CustomerContact[]>([])
@@ -1098,7 +1105,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1182,7 +1189,7 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
-    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup'].includes(tab)) {
+    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup', 'why-we-lost'].includes(tab)) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -2796,7 +2803,7 @@ export default function Bids() {
       )}
 
       {/* Builder Review Tab */}
-      {(activeTab === 'builder-review' || activeTab === 'submission-followup') && (
+      {(activeTab === 'builder-review' || activeTab === 'submission-followup' || activeTab === 'why-we-lost') && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)' }}>
             <button
@@ -2829,13 +2836,60 @@ export default function Bids() {
                 By status
               </button>
             )}
+            {myRole !== 'superintendent' && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('why-we-lost')}
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'why-we-lost' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'why-we-lost' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'why-we-lost' ? 700 : 400,
+                }}
+              >
+                Why we lost
+              </button>
+            )}
           </div>
+          {myRole !== 'superintendent' && activeTab !== 'why-we-lost' && lostBidsNeedingReasonCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => selectBidsTab('why-we-lost')}
+              title="Lost bids with no reason recorded — open the Why we lost queue"
+              style={{
+                padding: '0.2rem 0.65rem',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                borderRadius: 999,
+                border: 'none',
+                background: 'var(--bg-red-tint)',
+                color: 'var(--text-red-800)',
+                cursor: 'pointer',
+              }}
+            >
+              {lostBidsNeedingReasonCount} need a reason
+            </button>
+          ) : null}
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             {activeTab === 'builder-review'
               ? 'The call queue — every builder, oldest contact first, all trades.'
-              : 'The status tables — outcome sections, followup sheets, scripts.'}
+              : activeTab === 'submission-followup'
+                ? 'The status tables — outcome sections, followup sheets, scripts.'
+                : 'Record and review why bids were lost — built for the Friday GC calls.'}
           </span>
         </div>
+      )}
+      {activeTab === 'why-we-lost' && (
+        <BidsWhyWeLostLens
+          bids={bids}
+          ledgerPrefixMap={ledgerPrefixMap}
+          narrowViewport640={narrowViewport640}
+          onError={setError}
+          onReloadBids={() => { void loadBids() }}
+          onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
+        />
       )}
       {activeTab === 'builder-review' && (
         <BidsBuilderReviewTab
