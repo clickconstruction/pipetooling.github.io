@@ -22,6 +22,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1808',
+    date: '2026-08-18',
+    title: 'The # job search now finds Paid in Full jobs',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Pipeline, the # number search used to come up empty for jobs already paid in full. Now it finds them: the board filters to that job so it’s right in front of you (clear the search to get the full board back).',
+      'If the paid list is still loading when you hit Enter, the field shows "Checking Paid in Full…" for a moment instead of flashing red too soon.',
+    ],
+  },
+  {
     version: 'v2.1807',
     date: '2026-08-18',
     title: 'Sort the Pipeline by when jobs were added',

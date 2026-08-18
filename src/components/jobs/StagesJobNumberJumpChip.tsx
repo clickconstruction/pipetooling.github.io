@@ -24,17 +24,30 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export function StagesJobNumberJumpChip({
   onJump,
+  onOpen,
 }: {
-  /** Attempt the jump; false = no match (the field shakes red and stays open). */
-  onJump: (digits: string) => boolean
+  /**
+   * Attempt the jump; false = no match (the field flashes red and stays open).
+   * May return a promise (v2.1808): the shell resolves it after the lazy Paid
+   * in Full list merges, so a paid number lands instead of false-missing. The
+   * chip shows "checking Paid in Full…" while pending.
+   */
+  onJump: (digits: string) => boolean | Promise<boolean>
+  /** Fires when the field opens — the shell prefetches the paid list here. */
+  onOpen?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [digits, setDigits] = useState('')
   const [noMatch, setNoMatch] = useState(false)
+  const [checking, setChecking] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const onOpenRef = useRef(onOpen)
+  onOpenRef.current = onOpen
 
   useEffect(() => {
-    if (open) inputRef.current?.focus()
+    if (!open) return
+    inputRef.current?.focus()
+    onOpenRef.current?.()
   }, [open])
 
   // "n" opens the chip from anywhere on the board — but never while typing in
@@ -60,8 +73,27 @@ export function StagesJobNumberJumpChip({
 
   function attemptJump() {
     const trimmed = digits.trim()
-    if (trimmed === '') return
-    if (onJump(trimmed)) {
+    if (trimmed === '' || checking) return
+    const result = onJump(trimmed)
+    if (typeof result === 'boolean') {
+      finishJump(result)
+      return
+    }
+    setChecking(true)
+    void result.then(
+      (jumped) => {
+        setChecking(false)
+        finishJump(jumped)
+      },
+      () => {
+        setChecking(false)
+        setNoMatch(true)
+      },
+    )
+  }
+
+  function finishJump(jumped: boolean) {
+    if (jumped) {
       setDigits('')
       setOpen(false)
     } else {
@@ -124,17 +156,25 @@ export function StagesJobNumberJumpChip({
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') attemptJump()
-          if (e.key === 'Escape') {
+          if (e.key === 'Escape' && !checking) {
             setDigits('')
             setOpen(false)
           }
         }}
         onBlur={() => {
-          if (digits.trim() === '') setOpen(false)
+          if (digits.trim() === '' && !checking) setOpen(false)
         }}
+        disabled={checking}
         placeholder="C# / HCP"
         aria-label="Job number (C# or HCP) — Enter jumps to the job"
-        title={noMatch ? 'No job matches that number' : 'Enter jumps to the first matching job; Esc closes'}
+        aria-busy={checking}
+        title={
+          checking
+            ? 'Checking Paid in Full…'
+            : noMatch
+              ? 'No job matches that number'
+              : 'Enter jumps to the first matching job; Esc closes'
+        }
         style={{
           width: '4.6rem',
           border: 'none',
@@ -144,13 +184,15 @@ export function StagesJobNumberJumpChip({
           fontSize: '0.875rem',
           fontVariantNumeric: 'tabular-nums',
           padding: '0.15rem 0',
+          opacity: checking ? 0.55 : 1,
         }}
       />
       {digits.trim() !== '' ? (
         <button
           type="button"
           onClick={attemptJump}
-          title="Jump to this job (or press Enter)"
+          disabled={checking}
+          title={checking ? 'Checking Paid in Full…' : 'Jump to this job (or press Enter)'}
           aria-label="Jump to this job number"
           style={{
             width: 24,
@@ -164,11 +206,12 @@ export function StagesJobNumberJumpChip({
             background: '#2563eb',
             color: '#ffffff',
             fontSize: '0.8125rem',
-            cursor: 'pointer',
+            cursor: checking ? 'default' : 'pointer',
             padding: 0,
+            opacity: checking ? 0.55 : 1,
           }}
         >
-          ⏎
+          {checking ? '…' : '⏎'}
         </button>
       ) : null}
     </span>
