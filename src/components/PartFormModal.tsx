@@ -4,7 +4,8 @@ import { Database } from '../types/database'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import { SearchableSelect } from './SearchableSelect'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
-import { withTrailingBlankPartPriceRow, type PartPriceRowDraft } from '../lib/partPriceRows'
+import { applyPartPriceRowPatch, withTrailingBlankPartPriceRow, type PartPriceRowDraft } from '../lib/partPriceRows'
+import { todayYmdChicago } from '../lib/formatJobDetailModalDateYmd'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -117,7 +118,7 @@ export function PartFormModal({
       const updated = [...prev]
       const row = updated[idx]
       if (!row) return prev
-      updated[idx] = { ...row, ...patch }
+      updated[idx] = applyPartPriceRowPatch(row, patch, todayYmdChicago())
       return withTrailingBlankPartPriceRow(updated)
     })
   }

@@ -22,6 +22,28 @@ export function isBlankPartPriceRow(row: PartPriceRowDraft): boolean {
 }
 
 /**
+ * Apply an edit to a draft row, defaulting the effective date to today the
+ * moment the row first becomes active (v2.1792): when a row with no supply
+ * house and no price gains either, an empty effective date fills with
+ * `todayYmd` — visible immediately and still editable/clearable. Rows the user
+ * already touched never get re-defaulted (clearing the date sticks), and
+ * untouched trailing blank rows stay fully blank so they still drop on save.
+ */
+export function applyPartPriceRowPatch(
+  row: PartPriceRowDraft,
+  patch: Partial<PartPriceRowDraft>,
+  todayYmd: string,
+): PartPriceRowDraft {
+  const next = { ...row, ...patch }
+  const wasInactive = row.supply_house_id === '' && row.price.trim() === ''
+  const isActive = next.supply_house_id !== '' || next.price.trim() !== ''
+  if (wasInactive && isActive && patch.effective_date === undefined && next.effective_date === '') {
+    next.effective_date = todayYmd
+  }
+  return next
+}
+
+/**
  * Ensure the list ends with exactly one trailing blank row. Returns the input
  * array unchanged (same reference) when it already does — safe to call from
  * every setState without churning renders.

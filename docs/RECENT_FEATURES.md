@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1791)
+last_updated: 2026-08-17 (v2.1792)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1792)
+
+### Add Part: price effective date defaults to today (2026-08-17)
+Estimator request (Wendi): in the Add Part modal (Bids → Takeoffs → Add part line, also Materials → Parts Book and Settings → Catalogs), the price row's Effective date field started blank, so every fast entry meant typing today's date by hand. New `applyPartPriceRowPatch` in the [`partPriceRows`](../src/lib/partPriceRows.ts) kernel (+7 tests): the moment a blank row becomes active (gains a supply house or a price), an empty Effective date fills with today (`todayYmdChicago` — app calendar TZ) while staying fully editable; explicitly set or cleared dates are never overwritten (clearing sticks — no re-default on later edits), and untouched trailing blank rows stay blank so the v2.1325 fast-entry contract (blank rows drop on save) is unchanged. Verified live in Materials → Add Part: typing a price fills the date instantly. Client-only — no migration.
 ## Latest Updates (v2.1791)
 
 ### Bids Pricing: job address in Package and send, tap-to-open in Google Maps (2026-08-17)
