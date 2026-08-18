@@ -14,8 +14,12 @@ import {
 } from '../../lib/dashboardSubSchedule'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { isScheduleBlockEnded } from '../../lib/jobs/fieldPctUpdate'
+import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
+import FieldPctUpdateModal from './FieldPctUpdateModal'
 import { DashboardAddJobToMyScheduleModal } from './DashboardAddJobToMyScheduleModal'
 import { DashboardMyDayEditorModal } from './DashboardMyDayEditorModal'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
@@ -85,7 +89,7 @@ export type DashboardMyScheduleSectionProps = {
  * those notes just get the % with no delta line. Failures render nothing —
  * this layer is additive.
  */
-function useMyScheduleJobPct(jobIds: string[], todayYmd: string): ReadonlyMap<string, JobPctToday> {
+function useMyScheduleJobPct(jobIds: string[], todayYmd: string, refreshKey = 0): ReadonlyMap<string, JobPctToday> {
   const [pctToday, setPctToday] = useState<ReadonlyMap<string, JobPctToday>>(() => new Map())
   const idsKey = useMemo(() => [...new Set(jobIds)].sort().join(','), [jobIds])
   useEffect(() => {
@@ -117,7 +121,7 @@ function useMyScheduleJobPct(jobIds: string[], todayYmd: string): ReadonlyMap<st
     return () => {
       cancelled = true
     }
-  }, [idsKey, todayYmd])
+  }, [idsKey, todayYmd, refreshKey])
   return pctToday
 }
 
@@ -149,6 +153,16 @@ export function DashboardMyScheduleSection({
   )
   /** Call-customer modal (mis-click guard + call notes) — see CallCustomerModal. */
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
+  /** Field % done stepper (v2.1806) — subs/helpers move pct_complete from today's cards. */
+  const [fieldPctJob, setFieldPctJob] = useState<{ id: string; hcpNumber: string; jobName: string; label: string } | null>(null)
+  const [pctRefreshKey, setPctRefreshKey] = useState(0)
+  /** "HH:MM" right now in the company calendar TZ — drives quiet vs solid button styling only. */
+  const nowHm = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    hourCycle: 'h23',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date())
   const scheduleJobIds = useMemo(
     () =>
       [...subScheduleDayPartition.todayBlocks, ...subScheduleDayPartition.tomorrowBlocks]
@@ -156,7 +170,7 @@ export function DashboardMyScheduleSection({
         .filter((id): id is string => id != null),
     [subScheduleDayPartition],
   )
-  const pctTodayByJobId = useMyScheduleJobPct(scheduleJobIds, subScheduleDayPartition.todayYmd)
+  const pctTodayByJobId = useMyScheduleJobPct(scheduleJobIds, subScheduleDayPartition.todayYmd, pctRefreshKey)
 
   return (
     <div
@@ -591,6 +605,50 @@ export function DashboardMyScheduleSection({
                               </div>
                             )
                           })()}
+                          {/* Field % done stepper opener (v2.1806) — subs/helpers,
+                              today's job cards only. Quiet outline all day, solid
+                              blue once the block's end time passes (crews finishing
+                              early can still report early). */}
+                          {which === 'today' && blockJobId != null && isSubcontractorLikeRole(role) ? (() => {
+                            const ended = isScheduleBlockEnded(
+                              b.work_date,
+                              b.time_end,
+                              subScheduleDayPartition.todayYmd,
+                              nowHm,
+                            )
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setFieldPctJob({
+                                    id: blockJobId,
+                                    hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                    jobName: splitScheduleRowLabel(rowLabel).jobName,
+                                    label: rowLabel,
+                                  })
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                }}
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  marginTop: '0.6rem',
+                                  padding: '0.5rem 0',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
+                                  border: ended ? 'none' : '1px solid #2563eb',
+                                  borderRadius: 8,
+                                  background: ended ? '#2563eb' : 'transparent',
+                                  color: ended ? '#fff' : 'var(--text-link)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Update % done
+                              </button>
+                            )
+                          })() : null}
                         </li>
                       )
                     })}
@@ -607,6 +665,13 @@ export function DashboardMyScheduleSection({
           jobId={callModal.jobId}
           jobLabel={callModal.jobLabel}
           onClose={() => setCallModal(null)}
+        />
+      ) : null}
+      {fieldPctJob ? (
+        <FieldPctUpdateModal
+          job={fieldPctJob}
+          onClose={() => setFieldPctJob(null)}
+          onSaved={() => setPctRefreshKey((k) => k + 1)}
         />
       ) : null}
       {addJobOpen ? (

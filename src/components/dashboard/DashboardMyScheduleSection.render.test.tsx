@@ -182,3 +182,50 @@ describe('DashboardMyScheduleSection pictures link', () => {
     expect(btn.textContent).toMatch(/Report\s*due/)
   })
 })
+
+describe('DashboardMyScheduleSection field % done button (v2.1806)', () => {
+  it('renders Update % done on today cards for subcontractor-like roles', () => {
+    renderSection({ role: 'helpers' })
+    expect(screen.getByText('Update % done')).toBeTruthy()
+  })
+
+  it('hides the button for office roles (they have the Stages editor)', () => {
+    renderSection({ role: 'assistant' })
+    expect(screen.queryByText('Update % done')).toBeNull()
+  })
+
+  it('hides the button on tomorrow cards', () => {
+    renderSection({
+      role: 'subcontractor',
+      subScheduleDayPartition: {
+        todayYmd: TODAY,
+        tomorrowYmd: '2026-08-07',
+        todayBlocks: [],
+        tomorrowBlocks: [block({ work_date: '2026-08-07' })],
+      },
+    })
+    expect(screen.queryByText('Update % done')).toBeNull()
+  })
+
+  it('hides the button on bid-anchored blocks (no job to update)', () => {
+    renderSection({
+      role: 'subcontractor',
+      subScheduleDayPartition: {
+        todayYmd: TODAY,
+        tomorrowYmd: '2026-08-07',
+        todayBlocks: [block({ job_id: null, bid_id: 'bid-1' })],
+        tomorrowBlocks: [],
+      },
+      subScheduleLabels: new Map([['bid:bid-1', 'B412 · Oakmont Clubhouse']]),
+    })
+    expect(screen.queryByText('Update % done')).toBeNull()
+  })
+
+  it('opens the stepper modal on click', async () => {
+    renderSection({ role: 'subcontractor' })
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.click(screen.getByText('Update % done'))
+    expect(screen.getByRole('dialog', { name: /Update % done for/ })).toBeTruthy()
+    expect(screen.getByText('How done is this job?')).toBeTruthy()
+  })
+})

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1805)
+last_updated: 2026-08-18 (v2.1806)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1806)
+
+### Dashboard: field % done stepper — field % done train PR 2 (2026-08-18)
+The UI on the v2.1805 RPC: subs and helpers move a job's **% done** from their My Schedule cards. Today's job cards grow an **Update % done** button ([`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)) — quiet outline all day, solid blue once the block's end time passes (kernel `isScheduleBlockEnded`, company-calendar TZ; crews finishing early can still report early). It opens [`FieldPctUpdateModal`](../src/components/dashboard/FieldPctUpdateModal.tsx): fresh-fetched base (another crew's update never gets stomped), ±1/±5/±20 chips, a live "45% → 65% ▲ 20" preview over the card's blue/green bar idiom, an optional "what got done" note, and Esc-close (one-layer guard). Save calls `set_job_pct_from_field` — the RPC posts the `"N% complete — <note>"` thread note as the tech, so the card's ▲ today delta, Stages activity, and Job Detail light up on their own (the card's % layer re-queries on save). **Saving 100% on a Working job** chains into the existing [`MarkJobReadyToBillPrompt`](../src/components/jobs/MarkJobReadyToBillPrompt.tsx) (helpers already authorized via `update_job_status`). A null-% job starts the stepper at 0 — seeding the first field number on exactly the jobs the owner noticed sitting empty. New kernel [`fieldPctUpdate.ts`](../src/lib/jobs/fieldPctUpdate.ts) (+14 tests) + 10 render smokes (button role/day/bid gating, stepper clamp, Esc). Office roles keep the Stages editor — no button for them. Help guide `update-percent-done-from-my-dashboard`. `database.ts` regenerated (`set_job_pct_from_field`). Client + regenerated types — migration applied with v2.1805.
 
 ## Latest Updates (v2.1805)
 

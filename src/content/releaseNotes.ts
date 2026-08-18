@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1806',
+    date: '2026-08-18',
+    title: 'Update % done right from your dashboard',
+    kind: 'feature',
+    highlights: [
+      'Subs and helpers: today’s My Schedule cards now have an Update % done button — it lights up solid when your scheduled time ends.',
+      'Step the number with +1/−1, +5/−5, +20/−20, see exactly how far you’re moving it, and add a quick note about what got done.',
+      'Your update shows everywhere instantly — the office Pipeline, the job’s activity thread (with your name), and your card’s ▲ today movement.',
+      'Saving 100% on a Working job offers to move it to Ready to bill, same as the report flow.',
+    ],
+  },
+  {
     version: 'v2.1805',
     date: '2026-08-18',
     title: 'Groundwork: field crews will update % done from their dashboards',

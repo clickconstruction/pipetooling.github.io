@@ -14888,6 +14888,10 @@ export type Database = {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
       }
+      set_job_pct_from_field: {
+        Args: { p_job_id: string; p_note?: string; p_pct: number }
+        Returns: Json
+      }
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
