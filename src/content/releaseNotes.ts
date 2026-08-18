@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1792',
+    date: '2026-08-17',
+    title: 'Add Part: price date fills in for you',
+    kind: 'feature',
+    highlights: [
+      "Adding a price in the Add Part window now sets the effective date to today the moment you pick a supply house or type a price — no more typing today's date by hand.",
+      'The date stays editable: pick a different one or clear it, and the app leaves your choice alone.',
+    ],
+  },
+  {
     version: 'v2.1791',
     date: '2026-08-17',
     title: 'Bid pricing package includes the job address',

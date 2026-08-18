@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyPartPriceRowPatch,
   isBlankPartPriceRow,
   makeBlankPartPriceRow,
   withTrailingBlankPartPriceRow,
@@ -19,6 +20,50 @@ describe('isBlankPartPriceRow', () => {
 
   it('treats whitespace-only price as blank', () => {
     expect(isBlankPartPriceRow({ ...blank, price: '  ' })).toBe(true)
+  })
+})
+
+describe('applyPartPriceRowPatch', () => {
+  const TODAY = '2026-08-17'
+
+  it('defaults the effective date to today when a blank row gains a supply house', () => {
+    const out = applyPartPriceRowPatch(blank, { supply_house_id: 'sh1' }, TODAY)
+    expect(out.supply_house_id).toBe('sh1')
+    expect(out.effective_date).toBe(TODAY)
+  })
+
+  it('defaults the effective date to today when a blank row gains a price', () => {
+    const out = applyPartPriceRowPatch(blank, { price: '8.42' }, TODAY)
+    expect(out.effective_date).toBe(TODAY)
+  })
+
+  it('leaves the date alone when the patch sets it explicitly', () => {
+    const out = applyPartPriceRowPatch(blank, { supply_house_id: 'sh1', effective_date: '2026-01-01' }, TODAY)
+    expect(out.effective_date).toBe('2026-01-01')
+  })
+
+  it('does not re-default after the user clears the date on an active row', () => {
+    const active = applyPartPriceRowPatch(blank, { supply_house_id: 'sh1' }, TODAY)
+    const cleared = applyPartPriceRowPatch(active, { effective_date: '' }, TODAY)
+    expect(cleared.effective_date).toBe('')
+    const priceEdit = applyPartPriceRowPatch(cleared, { price: '9.99' }, TODAY)
+    expect(priceEdit.effective_date).toBe('')
+  })
+
+  it('keeps a user-picked date when other fields change', () => {
+    const dated = applyPartPriceRowPatch(blank, { effective_date: '2026-01-01' }, TODAY)
+    const out = applyPartPriceRowPatch(dated, { supply_house_id: 'sh1' }, TODAY)
+    expect(out.effective_date).toBe('2026-01-01')
+  })
+
+  it('leaves a still-blank row blank (no date on date-only clears or empty patches)', () => {
+    const out = applyPartPriceRowPatch(blank, {}, TODAY)
+    expect(isBlankPartPriceRow(out)).toBe(true)
+  })
+
+  it('treats a whitespace-only price as not activating the row', () => {
+    const out = applyPartPriceRowPatch(blank, { price: '  ' }, TODAY)
+    expect(out.effective_date).toBe('')
   })
 })
 

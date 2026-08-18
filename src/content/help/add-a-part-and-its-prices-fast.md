@@ -11,7 +11,7 @@ The **Add Part** form is the same everywhere it appears — Bids → Takeoffs (f
 
 1. The **Name** field is focused as soon as the form opens — just start typing.
 2. **Tab** to Manufacturer, then **Part Type** — click it (or press {{chip:gray|Enter}} / {{chip:gray|↓}}) and the box itself becomes a search field: type a few letters to filter, then Enter to pick.
-3. Keep tabbing into **Prices**. Each price is one line: supply house, price, effective date. The supply house picker searches the same way as Part Type.
+3. Keep tabbing into **Prices**. Each price is one line: supply house, price, effective date. The supply house picker searches the same way as Part Type. The **effective date fills itself with today** the moment you pick a supply house or type a price — change it or clear it if the price is from an older quote.
 4. **A blank price row is always waiting at the bottom.** The moment you fill anything in the last row, a fresh one appears below it — just keep tabbing and typing. Empty rows are ignored on save.
 5. Press **Enter** anywhere (or click {{button:blue|Save}}) to save.
 
@@ -28,5 +28,5 @@ You're building a takeoff and hit five parts that aren't in the catalog yet. Ope
 ## Notes
 
 - **Part Type** is optional; leave it as "No part type" if none fits.
-- **Effective date** on a price is optional — leave it blank for "current price".
+- **Effective date** defaults to today once a row has a supply house or price, but it's yours: pick another date, or clear it for "current price" — the app won't refill a date you cleared.
 - When a supply house has a website on file, an **Open website** link appears under its price row for quick price checks.
