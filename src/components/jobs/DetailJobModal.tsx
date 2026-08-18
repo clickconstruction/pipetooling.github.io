@@ -25,7 +25,7 @@ import {
   showJobDetailProfitSection,
 } from '../../lib/jobDetailModalRole'
 import { buildJobProfitSummary } from '../../lib/jobs/jobProfitSummary'
-import { tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWeekdayOnly,
@@ -830,10 +830,17 @@ export default function DetailJobModal({
   } = useJobDetailSubLaborCost(showProfitSection, fullJob?.hcp_number ?? null)
   const profitSummary = useMemo(() => {
     if (!showProfitSection || fullJob == null || profitLaborData == null || materialsSnapshot == null) return null
-    if (materialsSnapshot.tallyFetchFailed) return null
+    if (materialsSnapshot.tallyFetchFailed || materialsSnapshot.supplyInvoiceRpcFailed || materialsSnapshot.mercuryFetchFailed)
+      return null
     return buildJobProfitSummary({
       revenue: fullJob.revenue != null ? Number(fullJob.revenue) : null,
+      supplyInvoiceTotal: materialsSnapshot.supplyInvoiceTotal,
+      cardChargesTotal: mercuryCardTotalFromLines(materialsSnapshot.mercuryAllocLines),
       tallyPartsTotal: tallyPartsTotalFromLines(materialsSnapshot.tallyPartLines),
+      otherChargesTotal: (fullJob.materials ?? []).reduce(
+        (s: number, m: { amount: number | string | null }) => s + (Number(m.amount) || 0),
+        0,
+      ),
       laborJobs: profitLaborData.laborJobs,
       mileageCost: profitLaborData.mileageCost,
       timePerMile: profitLaborData.timePerMile,
@@ -1999,7 +2006,12 @@ export default function DetailJobModal({
             {showProfitSection ? (
               <JobDetailProfitSection
                 loading={profitLaborLoading || materialsSnapshotLoading}
-                failed={profitLaborFailed || materialsSnapshot?.tallyFetchFailed === true}
+                failed={
+                  profitLaborFailed ||
+                  materialsSnapshot?.tallyFetchFailed === true ||
+                  materialsSnapshot?.supplyInvoiceRpcFailed === true ||
+                  materialsSnapshot?.mercuryFetchFailed === true
+                }
                 summary={profitSummary}
               />
             ) : null}

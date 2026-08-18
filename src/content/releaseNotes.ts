@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1801',
+    date: '2026-08-18',
+    title: 'Job Detail profit now counts all parts costs',
+    kind: 'fix',
+    highlights: [
+      'The Profit band on a job used to subtract only tally parts, so jobs with supply house invoices or card charges showed more profit than they really made.',
+      'It now counts every parts bucket — supply house invoices, card charges, tally, and other job charges — matching the Cost Timeline above it, and the cell is simply labeled "Parts Cost".',
+    ],
+  },
+  {
     version: 'v2.1800',
     date: '2026-08-18',
     title: 'Dashboard nudge for unexplained lost bids',

@@ -25,7 +25,7 @@ export function showJobDetailJobTotal(role: string | null): boolean {
   return !isSubcontractorLikeRole(role as UserRole)
 }
 
-/** Job Detail profit band (sub labor cost, tally parts cost, profit) — masters, devs, controllers. */
+/** Job Detail profit band (sub labor cost, parts cost, profit) — masters, devs, controllers. */
 export function showJobDetailProfitSection(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || role === 'controller'
 }
