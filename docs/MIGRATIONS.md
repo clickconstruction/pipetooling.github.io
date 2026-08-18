@@ -9,8 +9,8 @@ last_updated: 2026-08-16
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "219 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 16, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "236 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 18, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 18, 2026
+
+**`20260818160000_bid_loss_category.sql`** _(applied via `supabase db push` with the v2.1796 merge — additive column + data backfill; old clients unaffected, nothing reads it until the Why we lost lens ships)_
+- **Purpose**: Structured why-we-lost bucket for bids. `bids.loss_category text` (app-validated: `gc_lost | price | other_sub | project_died | no_bid | no_answer`; single source `src/lib/bidLossCategories.ts`); `loss_reason` stays the free-text detail. Backfills only the unambiguous existing free-text reasons via conservative ILIKE patterns — fuzzy ones stay NULL and feed the Friday triage queue.
+- **Category**: Bids / column + backfill
 
 #### August 17, 2026
 

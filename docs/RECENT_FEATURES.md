@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1795)
+last_updated: 2026-08-18 (v2.1796)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1796)
+
+### Bids: loss_category column — why-we-lost train PR 1 (2026-08-18)
+Owner request (design iterated through interactive mockups): Wendi's Friday GC calls need structured "why we lost" recording and review — today 56 of 100 lost bids ($10.4M) have no reason at all, and the 44 free-text reasons cluster into six buckets. Migration [`20260818160000_bid_loss_category.sql`](../supabase/migrations/20260818160000_bid_loss_category.sql): additive `bids.loss_category text` (`gc_lost | price | other_sub | project_died | no_bid | no_answer` — app-validated, single source coming in `bidLossCategories.ts`); `loss_reason` stays the free-text detail. Conservative ILIKE backfill maps only the unambiguous existing texts ("gc lost", "pricing was too high", "on hold indefinitely"…); fuzzy ones stay NULL for the Friday triage queue. The "Why we lost" lens ships next in the train. Backend-only — no client change.
 ## Latest Updates (v2.1795)
 
 ### Payroll ledger: Hide paid toggle (2026-08-18)

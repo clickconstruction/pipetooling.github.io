@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1796',
+    date: '2026-08-18',
+    title: 'Groundwork for "Why we lost" on bids',
+    kind: 'feature',
+    highlights: [
+      'Lost bids can now carry a structured reason (GC lost the project, price too high, another sub, project died, never finished the bid, or no answer) behind the scenes.',
+      'Existing clear-cut loss notes were sorted into those buckets automatically; the review screen ships next.',
+    ],
+  },
+  {
     version: 'v2.1795',
     date: '2026-08-18',
     title: 'Payroll ledger: hide paid reports',
