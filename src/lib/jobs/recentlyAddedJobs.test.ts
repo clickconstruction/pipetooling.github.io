@@ -38,6 +38,20 @@ describe('buildRecentlyAddedRows', () => {
     expect(rows[1]?.addedLabel).toBe('Aug 17')
   })
 
+  it('carries a compact address (zip stripped) and the GC name, object or array embed', () => {
+    const rows = buildRecentlyAddedRows(
+      [
+        lean({ id: 'obj', job_address: '110 Lenz Dr, Seguin, TX 78155', gc_customer: { name: 'RMC- Dudley Mason' } }),
+        lean({ id: 'arr', gc_customer: [{ name: 'DSI (Diamondback)' }] }),
+        lean({ id: 'bare', job_address: null, gc_customer: null }),
+      ],
+      NOW,
+    )
+    expect(rows.find((r) => r.id === 'obj')).toMatchObject({ address: '110 Lenz Dr, Seguin, TX', gcName: 'RMC- Dudley Mason' })
+    expect(rows.find((r) => r.id === 'arr')?.gcName).toBe('DSI (Diamondback)')
+    expect(rows.find((r) => r.id === 'bare')).toMatchObject({ address: '', gcName: '' })
+  })
+
   it('uses the effective number and treats null status as working (board parity)', () => {
     const rows = buildRecentlyAddedRows(
       [

@@ -8,6 +8,7 @@
  */
 
 import { calendarYmdInAppTzFromIso, formatDenverCalendarDayShort, formatDenverTimeOnly } from '../../utils/dateUtils'
+import { stripTrailingZip } from '../displayAddress'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { normalizeJobsLedgerStatus, type JobsLedgerPipelineStatus } from '../jobsLedgerStatusPipeline'
 
@@ -21,6 +22,9 @@ export type RecentlyAddedLeanJob = {
   customer_name: string | null
   status: string | null
   created_at: string | null
+  job_address?: string | null
+  /** PostgREST to-one embed — object normally, array defensively (v2.1814). */
+  gc_customer?: { name: string | null } | Array<{ name: string | null }> | null
 }
 
 export type RecentlyAddedJobRow = {
@@ -32,6 +36,10 @@ export type RecentlyAddedJobRow = {
   status: JobsLedgerPipelineStatus | null
   /** "today 12:04 PM" for jobs added today (company TZ), else "Aug 17". */
   addedLabel: string
+  /** Compact display address (trailing ZIP stripped); '' when the job has none. */
+  address: string
+  /** GC/Builder name; '' when the job has no GC (v2.1814). */
+  gcName: string
 }
 
 function addedLabel(createdAt: string | null, now: Date): string {
@@ -48,13 +56,18 @@ function addedLabel(createdAt: string | null, now: Date): string {
 export function buildRecentlyAddedRows(jobs: RecentlyAddedLeanJob[], now: Date = new Date()): RecentlyAddedJobRow[] {
   return [...jobs]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-    .map((j) => ({
-      id: j.id,
-      label: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-      jobName: (j.job_name ?? '').trim(),
-      customerName: (j.customer_name ?? '').trim(),
-      // Null status renders as Working on the board; mirror that here.
-      status: normalizeJobsLedgerStatus(j.status) ?? (j.status == null ? 'working' : null),
-      addedLabel: addedLabel(j.created_at, now),
-    }))
+    .map((j) => {
+      const gc = Array.isArray(j.gc_customer) ? j.gc_customer[0] : j.gc_customer
+      return {
+        id: j.id,
+        label: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+        jobName: (j.job_name ?? '').trim(),
+        customerName: (j.customer_name ?? '').trim(),
+        // Null status renders as Working on the board; mirror that here.
+        status: normalizeJobsLedgerStatus(j.status) ?? (j.status == null ? 'working' : null),
+        addedLabel: addedLabel(j.created_at, now),
+        address: stripTrailingZip(j.job_address),
+        gcName: (gc?.name ?? '').trim(),
+      }
+    })
 }
