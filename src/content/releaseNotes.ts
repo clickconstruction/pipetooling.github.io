@@ -20,6 +20,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1810',
+    date: '2026-08-18',
+    title: 'Groundwork: office schedule blocks will fill themselves in',
+    kind: 'feature',
+    highlights: [
+      'Backend groundwork for a standing office schedule: a roster of who gets an automatic weekday Office block (8–4 by default), so nobody types them in every morning.',
+      'Days off and field dispatches always win, and a block you delete stays deleted.',
+      'The roster editor in Dispatch Settings ships in the next update.',
+    ],
+  },
+  {
     version: 'v2.1809',
     date: '2026-08-18',
     title: 'Find a job you just added — the Recently added view',

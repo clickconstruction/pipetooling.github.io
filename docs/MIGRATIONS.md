@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 18, 2026
 
+**`20260818200500_dispatch_office_roster.sql`** _(applied via `supabase db push` with the v2.1810 merge — additive tables + new function; old clients unaffected, nothing calls it until the Dispatch Settings roster UI ships)_
+- **Purpose**: Standing office schedule. Two tables — `dispatch_office_roster` (user + daily window, default 08:00–16:00; write cohort = schedule-dispatch roles **including controller**, mirroring `dispatch_swim_lanes`) and `dispatch_office_schedule_fills` (tombstone ledger: each (person, day) is auto-filled at most once so hand-deleted blocks stay deleted; client read-only). New SECURITY DEFINER RPC `ensure_office_schedule_blocks(p_from, p_to)` (≤31-day range): for every roster member × weekday, inserts an ordinary `job_schedule_blocks` row anchored to the canonical Office job (`app_settings.overhead_office_job_ledger_id_v1`, falling back to `get_jobs_ledger_office()`), skipping time-off days and any overlapping existing block. Replaces the hand-made morning ritual (146 manual Office blocks in the prior two months).
+- **Category**: Schedule Dispatch / tables + function
+
 **`20260818175530_set_job_pct_from_field.sql`** _(applied via `supabase db push` with the v2.1805 merge — new function only; old clients unaffected, nothing calls it until the field % modal ships)_
 - **Purpose**: Field-side write path for `jobs_ledger.pct_complete`. New SECURITY DEFINER RPC `set_job_pct_from_field(p_job_id, p_pct, p_note)`: validates 0–100, gates on office relations / job team membership / `job_schedule_blocks` assignment (the `update_job_status` precedent — subs and helpers can't UPDATE `jobs_ledger` directly), then atomically posts the `"N% complete — <note>"` thread note (author = caller, the exact `stagesPctNote.ts` body format the My Schedule day-delta layer parses) and writes `pct_complete`. Returns `{ok, previous, pct}` or `{error}`. Read-only training mode still blocked by the statement triggers.
 - **Category**: Jobs / function
