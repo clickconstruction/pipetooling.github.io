@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1802',
+    date: '2026-08-18',
+    title: 'Press n to jump to a job number on the Pipeline',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Pipeline, pressing n on your keyboard (while nothing else is focused) opens the # job-number search ready to type — digits, Enter, and you’re on the job’s row.',
+      'The shortcut stays quiet while you’re typing in another field or have a window open on top.',
+    ],
+  },
+  {
     version: 'v2.1801',
     date: '2026-08-18',
     title: 'Job Detail profit now counts all parts costs',

@@ -6,8 +6,22 @@ import { useEffect, useRef, useState } from 'react'
  * first matching job row (the shell owns matching + scroll/flash); Esc — or
  * blurring while empty — collapses back to the chip. Sits left of the main
  * search, which keeps its broad filter role: left = "go to a job I know",
- * right = "find jobs I half-remember".
+ * right = "find jobs I half-remember". Pressing "n" anywhere on the board
+ * opens it ready to type — the chip only mounts on the Pipeline header, so
+ * the listener's lifecycle scopes the shortcut to the tab.
  */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const el = target.closest('input, textarea, select, [contenteditable="true"]')
+  if (!el) return false
+  if (el instanceof HTMLInputElement) {
+    const t = el.type
+    if (t === 'button' || t === 'submit' || t === 'checkbox' || t === 'radio' || t === 'file' || t === 'reset')
+      return false
+  }
+  return true
+}
+
 export function StagesJobNumberJumpChip({
   onJump,
 }: {
@@ -21,6 +35,21 @@ export function StagesJobNumberJumpChip({
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
+  }, [open])
+
+  // "n" opens the chip from anywhere on the board — but never while typing in
+  // another field, with a modifier held, or underneath an open dialog.
+  useEffect(() => {
+    if (open) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey) return
+      if (isTypingTarget(e.target)) return
+      if (document.querySelector('[role="dialog"]')) return
+      e.preventDefault()
+      setOpen(true)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [open])
 
   useEffect(() => {
@@ -45,7 +74,7 @@ export function StagesJobNumberJumpChip({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="Jump to a job by its C# or HCP number"
+        title="Jump to a job by its C# or HCP number (press n)"
         aria-label="Jump to a job by number"
         style={{
           width: '2.1rem',

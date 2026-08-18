@@ -38,6 +38,35 @@ describe('StagesJobNumberJumpChip', () => {
     expect(screen.queryByLabelText('Job number (C# or HCP) — Enter jumps to the job')).toBeNull()
   })
 
+  it('opens focused on "n" pressed anywhere, but not while typing, with a modifier, or under a dialog', () => {
+    const onJump = vi.fn(() => true)
+    const { unmount } = render(
+      <div>
+        <input aria-label="Other field" />
+        <StagesJobNumberJumpChip onJump={onJump} />
+      </div>,
+    )
+    const jumpInputQuery = () => screen.queryByLabelText('Job number (C# or HCP) — Enter jumps to the job')
+
+    fireEvent.keyDown(screen.getByLabelText('Other field'), { key: 'n' })
+    expect(jumpInputQuery()).toBeNull()
+    fireEvent.keyDown(window, { key: 'n', ctrlKey: true })
+    expect(jumpInputQuery()).toBeNull()
+
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    document.body.appendChild(dialog)
+    fireEvent.keyDown(window, { key: 'n' })
+    expect(jumpInputQuery()).toBeNull()
+    dialog.remove()
+
+    fireEvent.keyDown(window, { key: 'n' })
+    const input = jumpInputQuery() as HTMLInputElement
+    expect(input).toBeTruthy()
+    expect(document.activeElement).toBe(input)
+    unmount()
+  })
+
   it('collapses on blur only while empty and ignores Enter on empty input', () => {
     const onJump = vi.fn(() => true)
     render(<StagesJobNumberJumpChip onJump={onJump} />)
