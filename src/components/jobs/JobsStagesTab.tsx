@@ -137,6 +137,8 @@ import {
   saveStagesSortMode,
   type StagesBoardSortMode,
 } from '../../lib/jobsStagesSortMode'
+import JobsRecentlyAddedList from './JobsRecentlyAddedList'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
@@ -750,6 +752,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setStagesExcludeFiltersState(next)
     saveStagesExcludeFilters(next)
   }, [])
+  // "Recently added" view (v2.1809): flat last-100-by-created_at list, any
+  // status, replacing the sections while open. ?view=recent deep-links in
+  // (read-only init — the tab never writes search params, per the seam).
+  const [stagesRecentViewOpen, setStagesRecentViewOpen] = useState<boolean>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('view') === 'recent'
+    } catch {
+      return false
+    }
+  })
+  const jobDetailModal = useJobDetailModal()
   // Row sort mode (v2.1807): classic newest-number-first, or by time added.
   // Lives in the ⋯ Pipeline tools menu; per-device persistence.
   const [stagesSortMode, setStagesSortModeState] = useState<StagesBoardSortMode>(() => loadStagesSortMode())
@@ -2454,6 +2467,34 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </>
               ) : null}
             </div>
+            {/* "Recently added" view toggle (v2.1809) — swaps the sections for a
+                flat last-100-by-time-added list, any status incl. Paid. */}
+            <button
+              type="button"
+              onClick={() => setStagesRecentViewOpen((o) => !o)}
+              aria-pressed={stagesRecentViewOpen}
+              aria-label={stagesRecentViewOpen ? 'Back to the pipeline board' : 'Show the last 100 jobs added, any status'}
+              title={stagesRecentViewOpen ? 'Back to the pipeline board' : 'Show the last 100 jobs added, any status'}
+              style={{
+                marginLeft: 'auto',
+                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                padding: '0.2rem 0.65rem',
+                borderRadius: 9999,
+                border: '1px solid var(--border-strong)',
+                background: stagesRecentViewOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: stagesRecentViewOpen ? 'var(--text-link)' : 'var(--text-700)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span aria-hidden>🕒</span>
+              {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
+            </button>
             {stagesJobsWithoutCustomer.length > 0 || stagesWorkingJobsWithoutPictures.length > 0 ? (
               <div
                 style={{
@@ -2584,6 +2625,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
           )}
           {(() => {
+            // "Recently added" view (v2.1809) replaces the sections while open.
+            if (stagesRecentViewOpen) {
+              return <JobsRecentlyAddedList onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })} />
+            }
             const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows } = stagesBoardLists
 
             function toggleStages(key: keyof typeof stagesSectionOpen) {

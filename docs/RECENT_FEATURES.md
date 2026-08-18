@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1807)
+last_updated: 2026-08-18 (v2.1809)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1809)
+
+### Pipeline: the Recently added view — last 100 jobs, any status (2026-08-18)
+Owner request (mockup approved; companion to the v2.1807 sort): "I just added a job, where did it go?" had no answer — the board hides Paid until expanded and orders by number. A **🕒 Recently added** pill at the right end of the section-jump strip swaps the sections for ONE flat list ([`JobsRecentlyAddedList`](../src/components/jobs/JobsRecentlyAddedList.tsx)): the **last 100 jobs by `created_at` desc, any status** — its own lean one-shot query (7 columns, no embeds, never the board cache, so Paid rows appear without the heavy paid-jobs merge), fetched fresh each time the view opens. Rows: effective number, name · customer, **status chip** (board vocabulary: Waiting gray / Working blue / Ready to Bill indigo / Billed amber / Paid green), and "today 12:08 PM" / "Aug 17" added stamps (company TZ); clicking a row opens the **Job Detail modal** (`useJobDetailModal`, id-only). The pill flips to "Back to board" (blue, `aria-pressed`); `?view=recent` deep-links in (read-only init — the tab still never writes search params). New kernel [`recentlyAddedJobs.ts`](../src/lib/jobs/recentlyAddedJobs.ts) (+3 tests): ordering with dateless sink, today-vs-date labels, null status = Working (board parity). Verified live: 100 rows with this morning's chase-list entries (866 Omar Kahn et al.) on top, row click opens the modal, deep link lands in-view. Help guide `find-a-job-you-just-added`. Client-only — no migration.
 
 ## Latest Updates (v2.1807)
 

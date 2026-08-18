@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1809',
+    date: '2026-08-18',
+    title: 'Find a job you just added — the Recently added view',
+    kind: 'feature',
+    highlights: [
+      'A new "Recently added" button on Jobs → Pipeline (right end of the section strip) shows the last 100 jobs added to the app in one flat list — every status included, even Paid.',
+      'Each row shows the job\'s status and when it was added ("today 12:08 PM"); click a row to open the job, or "Back to board" to return.',
+      'Handy right after entering a job: it\'s always at the top of this list, no matter which section it landed in.',
+    ],
+  },
+  {
     version: 'v2.1807',
     date: '2026-08-18',
     title: 'Sort the Pipeline by when jobs were added',
