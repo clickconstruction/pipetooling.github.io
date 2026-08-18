@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-17 (v2.1792)
+last_updated: 2026-08-18 (v2.1793)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1793)
+
+### Customers list: the money rail — paid · billed · unbilled on every row (2026-08-18)
+Owner request, design iterated through mockups (labelled triplet + proportion bar hybrid, dots on the caps, paid-first order). The single green LCV figure on [`Customers`](../src/pages/Customers.tsx) rows becomes **`CustomerMoneyRail`**: three fixed-width right-aligned columns — **paid** (green dot/figure, lifetime collected), **billed** (amber dot, strong figure — the amber dot reads as billed-not-yet-collected, matching the owes chip), **unbilled** (faded blue, revenue on the books not yet invoiced) — over a 6px stacked proportion bar (paid/owed/unbilled shares of billed+unbilled; paid segment clamps when job-level payments exceed billed). Zero-money rows render three faint dashes and no bar. Kernel: [`customersListRollup`](../src/lib/customers/customersListLcv.ts) gains **`lifetimePaid`** (Σ payment rows per customer) and **`unbilled`** (Σ max(0, revenue − billed contribution) per job, the lifetimeBilled shell rule) — +2 tests incl. the over-billed floor; no new queries. `$ Top customers` still sorts by billed. Verified live: DSI $2,011,055/$2,030,534/$166,637 with a near-solid green bar; Michael Palmer's paid>billed edge renders clamped. Help guide row-reading section updated. Client-only — no migration.
 
 ## Latest Updates (v2.1792)
 

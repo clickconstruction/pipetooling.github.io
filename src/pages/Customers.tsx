@@ -61,6 +61,79 @@ function signalChipStyle(variant: 'blue' | 'amber' | 'red' | 'gray'): CSSPropert
   }
 }
 
+/** Money rail (v2.1791): paid · billed · unbilled triplet over a proportion bar. */
+function CustomerMoneyRail({ rollup }: { rollup: CustomerListRollup | undefined }) {
+  const paid = rollup?.lifetimePaid ?? 0
+  const billed = rollup?.lcv ?? 0
+  const unbilled = rollup?.unbilled ?? 0
+  const capStyle: CSSProperties = {
+    fontSize: '0.56rem',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: 'var(--text-faint)',
+    whiteSpace: 'nowrap',
+  }
+  const dotStyle = (bg: string, faded?: boolean): CSSProperties => ({
+    display: 'inline-block',
+    width: 6,
+    height: 6,
+    borderRadius: 9999,
+    marginRight: 3,
+    verticalAlign: 1,
+    background: bg,
+    opacity: faded ? 0.55 : 1,
+  })
+  const valStyle = (color: string, zero: boolean): CSSProperties => ({
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: zero ? 500 : 700,
+    fontSize: '0.85rem',
+    color: zero ? 'var(--text-faint)' : color,
+  })
+  const cell: CSSProperties = { width: 86, textAlign: 'right' }
+  const fmt = (n: number) => (n > 0.5 ? `$${Math.round(n).toLocaleString('en-US')}` : '—')
+  const barTotal = billed + unbilled
+  const paidSeg = Math.min(paid, billed)
+  const owedSeg = Math.max(0, billed - paid)
+  return (
+    <span
+      title="Lifetime money with this customer — paid (collected), billed (everything ever invoiced), unbilled (work on the books not yet invoiced)"
+      style={{ display: 'inline-flex', flexDirection: 'column', flexShrink: 0 }}
+    >
+      <span style={{ display: 'flex' }}>
+        <span style={cell}>
+          <span style={capStyle}>
+            <span aria-hidden style={dotStyle('var(--text-green-600)')} />
+            paid
+          </span>
+          <span style={{ display: 'block', ...valStyle('var(--text-green-600)', paid <= 0.5) }}>{fmt(paid)}</span>
+        </span>
+        <span style={cell}>
+          <span style={capStyle}>
+            <span aria-hidden style={dotStyle('#d97706')} />
+            billed
+          </span>
+          <span style={{ display: 'block', ...valStyle('var(--text-strong)', billed <= 0.5) }}>{fmt(billed)}</span>
+        </span>
+        <span style={cell}>
+          <span style={capStyle}>
+            <span aria-hidden style={dotStyle('var(--text-link)', true)} />
+            unbilled
+          </span>
+          <span style={{ display: 'block', ...valStyle('var(--text-link)', unbilled <= 0.5) }}>{fmt(unbilled)}</span>
+        </span>
+      </span>
+      {barTotal > 0.5 ? (
+        <span aria-hidden style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--bg-muted)', marginTop: 4 }}>
+          <span style={{ width: `${(paidSeg / barTotal) * 100}%`, background: 'var(--text-green-600)' }} />
+          <span style={{ width: `${(owedSeg / barTotal) * 100}%`, background: '#d97706' }} />
+          <span style={{ width: `${(unbilled / barTotal) * 100}%`, background: 'var(--text-link)', opacity: 0.45 }} />
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 const QUIET_AFTER_DAYS = 90
 
 function lastActivityLabel(iso: string | null, kind: 'job' | 'payment' | null): { text: string; quiet: boolean } | null {
@@ -898,7 +971,6 @@ export default function Customers() {
                 {(() => {
                   const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
                   const rollup = rollupByCustomerId[c.id]
-                  const lcv = rollup?.lcv ?? 0
                   const owes = rollup?.openBalance ?? 0
                   const activity = rollup ? lastActivityLabel(rollup.lastActivityIso, rollup.lastActivityKind) : null
                   return (
@@ -981,21 +1053,7 @@ export default function Customers() {
                       >
                         notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
                       </button>
-                      <Link
-                        to={`/customers/${c.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        title={`Lifetime value — everything ever billed to ${(c.name ?? 'this customer').trim() || 'this customer'}`}
-                        style={{
-                          fontWeight: lcv > 0 ? 600 : 500,
-                          color: lcv > 0 ? 'var(--text-green-600)' : 'var(--text-faint)',
-                          textDecoration: 'none',
-                          fontVariantNumeric: 'tabular-nums',
-                          minWidth: 64,
-                          textAlign: 'right',
-                        }}
-                      >
-                        {lcv > 0 ? `$${Math.round(lcv).toLocaleString('en-US')}` : '—'}
-                      </Link>
+                      <CustomerMoneyRail rollup={rollup} />
                     </>
                   )
                 })()}

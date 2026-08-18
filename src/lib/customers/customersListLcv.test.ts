@@ -75,3 +75,34 @@ describe('customersListRollup', () => {
     expect(map).toEqual({ c1: 1000 })
   })
 })
+
+describe('money rail fields (lifetimePaid + unbilled)', () => {
+  it('sums payments per customer and computes unbilled as revenue beyond the billed contribution', () => {
+    const rollup = customersListRollup(
+      [
+        { id: 'j1', customer_id: 'c1', status: 'working', revenue: 46600 }, // no billed invoices → all unbilled
+        { id: 'j2', customer_id: 'c1', status: 'billed', revenue: 5000 }, // shell-billed → nothing unbilled
+        { id: 'j3', customer_id: 'c1', status: 'working', revenue: 10000 }, // partially billed via invoice
+      ],
+      [{ id: 'i1', job_id: 'j3', status: 'billed', amount: 4000 }],
+      [
+        { job_id: 'j1', invoice_id: null, amount: 32245, paid_on: '2026-08-01' },
+        { job_id: 'j3', invoice_id: 'i1', amount: 1000, paid_on: '2026-08-05' },
+      ],
+    )
+    const c1 = rollup['c1']!
+    expect(c1.lifetimePaid).toBe(32245 + 1000)
+    expect(c1.unbilled).toBe(46600 + 0 + (10000 - 4000))
+    // reconciliation the UI relies on: billed − paid-on-billed ≈ open (invoice basis)
+    expect(c1.lcv).toBe(5000 + 4000)
+  })
+
+  it('over-billed jobs (invoices beyond revenue) contribute zero unbilled, never negative', () => {
+    const rollup = customersListRollup(
+      [{ id: 'j1', customer_id: 'c1', status: 'working', revenue: 1000 }],
+      [{ id: 'i1', job_id: 'j1', status: 'billed', amount: 1500 }],
+      [],
+    )
+    expect(rollup['c1']!.unbilled).toBe(0)
+  })
+})
