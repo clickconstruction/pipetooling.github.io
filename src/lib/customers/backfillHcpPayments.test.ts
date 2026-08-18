@@ -7,7 +7,7 @@ import {
   type BackfillJobInput,
 } from './backfillHcpPayments'
 
-const HEADER = ['Job #', 'Customer name', 'Job created date', 'Job completed date', 'Job paid in full date', 'Paid amount']
+const HEADER = ['Job #', 'Customer name', 'Job created date', 'Job completed date', 'Job paid in full date', 'Paid amount', 'Job amount', 'Tip amount']
 
 function csvRow(over: Partial<Record<(typeof HEADER)[number], string>>): string[] {
   return HEADER.map((h) => over[h] ?? '')
@@ -37,13 +37,13 @@ describe('normalizeHcpNumber', () => {
 })
 
 describe('parseHcpJobsExport', () => {
-  it('extracts dates and paid amount by header name', () => {
+  it('extracts dates and amounts by header name', () => {
     const rows = parseHcpJobsExport([
       HEADER,
-      csvRow({ 'Job #': '="010"', 'Job created date': '2026-02-01 08:00', 'Job paid in full date': '2026-03-04', 'Paid amount': '$3,732.50' }),
+      csvRow({ 'Job #': '="010"', 'Job created date': '2026-02-01 08:00', 'Job paid in full date': '2026-03-04', 'Paid amount': '$3,732.50', 'Job amount': '$3,732.50', 'Tip amount': '$10.00' }),
     ])
     expect(rows).toEqual([
-      { hcpNumber: '10', paidOn: '2026-03-04', completedOn: null, createdOn: '2026-02-01', paidAmount: 3732.5 },
+      { hcpNumber: '10', paidOn: '2026-03-04', completedOn: null, createdOn: '2026-02-01', paidAmount: 3732.5, jobAmount: 3732.5, tipAmount: 10 },
     ])
   })
 

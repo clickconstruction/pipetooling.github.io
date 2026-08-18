@@ -27,6 +27,10 @@ export type HcpExportRow = {
   completedOn: string | null
   createdOn: string | null
   paidAmount: number
+  /** HCP "Job amount" — the invoice total INCLUDING any tip (0 when the column is absent). */
+  jobAmount: number
+  /** HCP "Tip amount" (0 when the column is absent). */
+  tipAmount: number
 }
 
 export type BackfillDateSource = 'hcp_paid' | 'hcp_completed' | 'hcp_created' | 'ledger_created'
@@ -77,6 +81,8 @@ export function parseHcpJobsExport(rows: string[][]): HcpExportRow[] | null {
   const completedCol = col('job completed date')
   const createdCol = col('job created date')
   const paidAmtCol = col('paid amount')
+  const jobAmtCol = col('job amount')
+  const tipAmtCol = col('tip amount')
   if (jobCol === -1 || paidDateCol === -1 || createdCol === -1) return null
 
   const out: HcpExportRow[] = []
@@ -90,6 +96,8 @@ export function parseHcpJobsExport(rows: string[][]): HcpExportRow[] | null {
       completedOn: completedCol === -1 ? null : isoDate(row[completedCol]),
       createdOn: isoDate(row[createdCol]),
       paidAmount: paidAmtCol === -1 ? 0 : money(row[paidAmtCol]),
+      jobAmount: jobAmtCol === -1 ? 0 : money(row[jobAmtCol]),
+      tipAmount: tipAmtCol === -1 ? 0 : money(row[tipAmtCol]),
     }
     const prev = seen.get(n)
     // Duplicate numbers: keep the row that actually has a paid date.

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1803)
+last_updated: 2026-08-18 (v2.1804)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1804)
+
+### HCP backfill: the tips pass — tip line items + tip payments (2026-08-18)
+Owner request working the HCP transaction confusion (job 584: HCP collected $370, app said $360 — the $10 was a tip): HCP's "Job amount" includes tips but jobs imported at the pre-tip figure, so tips were invisible. The **Backfill from HCP** modal ([`BackfillHcpPaymentsModal`](../src/components/customers/BackfillHcpPaymentsModal.tsx)) gains a second pass on the same CSV: a **Tips** section listing every tipped HCP job with before → after totals; each checked row adds a **Tip (HCP)** line item ([`jobs_ledger_fixtures`]) + revenue bump + a matching tip payment on the backfill's date-fallback chain, and a Billed job fully covered once its tip lands is flipped via `mark_job_paid` (zero-remaining branch). New kernel [`hcpTipsSweep.ts`](../src/lib/customers/hcpTipsSweep.ts) (+12 tests): never double-counts (revenue already at HCP total = "included"; existing tip-named line = "done", so re-runs are safe), never guesses between two app jobs sharing a number (033 vs 33 → held for review), everything else unreconcilable is held too. `parseHcpJobsExport` gains `jobAmount`/`tipAmount` (additive); payments section header gains none/all toggles; per-job failures collect instead of aborting (v2.1789 rule). Verified live: 8 tips ($526.23) applied across Sunny RV/JoAnn Evans/Chris Owen/Janice Teykl/Henrietta Han, job 561 auto-flipped to Paid, 445 correctly skipped (tip already in total), 33 correctly held (duplicate number). Help guide gains the tips section. Client-only — no migration.
 
 ## Latest Updates (v2.1803)
 
