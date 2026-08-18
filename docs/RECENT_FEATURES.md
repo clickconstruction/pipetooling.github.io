@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1804)
+last_updated: 2026-08-18 (v2.1805)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1805)
+
+### Jobs: set_job_pct_from_field RPC — field % done train PR 1 (2026-08-18)
+Owner request (design agreed via mockup): subs and helpers should move a job's **% done** from their dashboards — today the Stages "Payment & progress" % sits empty on jobs only field crews touch, because `jobs_ledger` UPDATE is office+primary only and the report percent field never writes `pct_complete`. Migration [`20260818175530_set_job_pct_from_field.sql`](../supabase/migrations/20260818175530_set_job_pct_from_field.sql): SECURITY DEFINER RPC `set_job_pct_from_field(p_job_id, p_pct, p_note)` following the `update_job_status` precedent — validates 0–100, gates on office relations / job team membership / `job_schedule_blocks` assignment (dispatched onto a job = working it), then **atomically** posts the `"N% complete — <note>"` thread note as the caller (the exact [`stagesPctNote.ts`](../src/lib/jobs/stagesPctNote.ts) format, so the My Schedule day-delta layer (v2.1567), Stages activity, and Job Detail all light up with zero client changes) and writes `pct_complete`. Returns `{ok, previous, pct}`. The stepper modal (±1/±5/±20, before → after, optional note) ships next in the train. Backend-only — no client change.
 
 ## Latest Updates (v2.1804)
 
