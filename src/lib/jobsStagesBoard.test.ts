@@ -466,6 +466,30 @@ describe('filterJobsByStagesSearch', () => {
   })
 })
 
+describe('buildJobsStagesBoardLists sort modes (v2.1807)', () => {
+  const older = jobStub({ id: 'older', status: 'working', invoices: [], hcp_number: '900', created_at: '2026-08-01T10:00:00Z' })
+  const newest = jobStub({ id: 'newest', status: 'working', invoices: [], hcp_number: '850', created_at: '2026-08-18T10:00:00Z' })
+  const middle = jobStub({ id: 'middle', status: 'working', invoices: [], hcp_number: '875', created_at: '2026-08-10T10:00:00Z' })
+
+  it('default stays newest-number-first', () => {
+    const { working } = buildJobsStagesBoardLists([older, newest, middle], '')
+    expect(working.map((j) => j.id)).toEqual(['older', 'middle', 'newest'])
+  })
+
+  it("'added' orders by created_at desc inside the section", () => {
+    const { working } = buildJobsStagesBoardLists([older, newest, middle], '', null, 'added')
+    expect(working.map((j) => j.id)).toEqual(['newest', 'middle', 'older'])
+  })
+
+  it("'added' breaks created_at ties by effective number, missing dates sink", () => {
+    const twinA = jobStub({ id: 'twin-a', status: 'working', invoices: [], hcp_number: '10', created_at: '2026-08-10T10:00:00Z' })
+    const twinB = jobStub({ id: 'twin-b', status: 'working', invoices: [], hcp_number: '20', created_at: '2026-08-10T10:00:00Z' })
+    const dateless = jobStub({ id: 'dateless', status: 'working', invoices: [], hcp_number: '999', created_at: null })
+    const { working } = buildJobsStagesBoardLists([twinA, dateless, twinB], '', null, 'added')
+    expect(working.map((j) => j.id)).toEqual(['twin-b', 'twin-a', 'dateless'])
+  })
+})
+
 describe('buildJobsStagesBoardLists', () => {
   it('includes working job with ready_to_bill invoice in readyToBillRows (Break off invoice parity)', () => {
     const inv = rtbInvoiceStub({

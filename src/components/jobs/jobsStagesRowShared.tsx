@@ -220,11 +220,32 @@ export function renderStagesJobHcpChip(job: JobWithDetails, extraStyle?: CSSProp
   return <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }}>Job: {t}</span>
 }
 
-export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
+export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties, addedStamp?: string | null) {
   const chip = renderStagesJobHcpChip(job)
-  if (chip) return <div style={extraWrap}>{chip}</div>
+  // "added Aug 18" pill while the board sorts by time added (v2.1807) — the
+  // visible number makes number-sort scannable; this does the same for dates.
+  const stamp = addedStamp ? (
+    <span
+      style={{
+        marginLeft: 6,
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0 7px',
+        height: 16,
+        borderRadius: 9999,
+        fontSize: '0.64rem',
+        fontWeight: 700,
+        background: 'var(--bg-green-tint)',
+        color: 'var(--text-green-600)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {addedStamp}
+    </span>
+  ) : null
+  if (chip) return <div style={extraWrap}>{chip}{stamp}</div>
   return (
-    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—</div>
+    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—{stamp}</div>
   )
 }
 
