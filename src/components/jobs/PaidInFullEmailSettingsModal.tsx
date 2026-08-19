@@ -16,13 +16,14 @@ import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS,
+  APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
   APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS,
 } from '../../lib/appSettingsKeys'
 import {
-  DEFAULT_READY_TO_BILL_NOTIFY_CHANNELS,
+  composeRecipientPrefsFromV1,
   parseReadyToBillNotifyChannels,
-  serializeReadyToBillNotifyChannels,
-  type ReadyToBillNotifyChannels,
+  parseReadyToBillRecipientPrefs,
+  serializeReadyToBillRecipientPrefs,
 } from '../../lib/readyToBillNotify'
 import {
   fetchPaidJobEmailPreview,
@@ -126,12 +127,18 @@ export default function PaidInFullEmailSettingsModal({
   const [users, setUsers] = useState<RecipientUser[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [saving, setSaving] = useState(false)
-  // ready_to_bill only: delivery channels + who has push enabled on a device.
+  // ready_to_bill only (v2.1844): per-person channel prefs + push coverage.
+  // A user in the map is a recipient (≥1 channel on); toggling the last
+  // channel off removes them.
   const isReadyToBill = variant === 'ready_to_bill'
-  const [channels, setChannels] = useState<ReadyToBillNotifyChannels>({
-    ...DEFAULT_READY_TO_BILL_NOTIFY_CHANNELS,
-  })
+  const [rtbPrefs, setRtbPrefs] = useState<Map<string, { email: boolean; push: boolean }>>(
+    () => new Map(),
+  )
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string>>(() => new Set())
+  // Preview & test is collapsed by default (v2.1844).
+  const [previewOpen, setPreviewOpen] = useState(false)
+  // '' = the caller ("Myself") — recipient_user_id is omitted from the request.
+  const [testRecipientId, setTestRecipientId] = useState('')
 
   const [jobSearch, setJobSearch] = useState('')
   const [jobSearching, setJobSearching] = useState(false)
@@ -183,8 +190,19 @@ export default function PaidInFullEmailSettingsModal({
         setUsers(rows.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || 'Unknown', role: u.role, email: u.email })))
         setSelectedIds(new Set(parsePaidJobEmailRecipients(settingRes?.value_text ?? null)))
         if (variant === 'ready_to_bill') {
-          // Channels + push coverage (dev/master can SELECT push_subscriptions).
-          const [channelsRes, pushRes] = await Promise.all([
+          // v2 per-person prefs (falling back to the v1 list + org-wide
+          // channels until the first v2 save) + push coverage (dev/master can
+          // SELECT push_subscriptions).
+          const [v2Res, channelsRes, pushRes] = await Promise.all([
+            withSupabaseRetry<{ value_text: string | null } | null>(
+              () =>
+                supabase
+                  .from('app_settings')
+                  .select('value_text')
+                  .eq('key', APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2)
+                  .maybeSingle(),
+              'ready to bill recipients v2',
+            ),
             withSupabaseRetry<{ value_text: string | null } | null>(
               () =>
                 supabase
@@ -200,7 +218,14 @@ export default function PaidInFullEmailSettingsModal({
             ),
           ])
           if (cancelled) return
-          setChannels(parseReadyToBillNotifyChannels(channelsRes?.value_text ?? null))
+          const v2Prefs =
+            v2Res?.value_text != null
+              ? parseReadyToBillRecipientPrefs(v2Res.value_text)
+              : composeRecipientPrefsFromV1(
+                  parsePaidJobEmailRecipients(settingRes?.value_text ?? null),
+                  parseReadyToBillNotifyChannels(channelsRes?.value_text ?? null),
+                )
+          setRtbPrefs(new Map(v2Prefs.map((p) => [p.id, { email: p.email, push: p.push }])))
           setPushEnabledIds(
             new Set(((pushRes ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)),
           )
@@ -262,29 +287,46 @@ export default function PaidInFullEmailSettingsModal({
     })
   }
 
+  /** ready_to_bill: flip one channel for one person; the last channel off removes them. */
+  const toggleRtbChannel = (id: string, channel: 'email' | 'push') => {
+    if (!canEditRecipients) return
+    setRtbPrefs((prev) => {
+      const next = new Map(prev)
+      const cur = next.get(id) ?? { email: false, push: false }
+      const flipped = { ...cur, [channel]: !cur[channel] }
+      if (!flipped.email && !flipped.push) next.delete(id)
+      else next.set(id, flipped)
+      return next
+    })
+  }
+
   const saveRecipients = async () => {
     if (!canEditRecipients || saving) return
     setSaving(true)
     try {
-      const ids = users.filter((u) => selectedIds.has(u.id)).map((u) => u.id)
-      const { error } = await supabase
-        .from('app_settings')
-        .upsert(
-          { key: copy.settingKey, value_text: serializePaidJobEmailRecipients(ids) },
-          { onConflict: 'key' },
-        )
-      if (error) throw error
       if (isReadyToBill) {
-        const { error: chErr } = await supabase
+        const prefs = users
+          .filter((u) => rtbPrefs.has(u.id))
+          .map((u) => ({ id: u.id, ...rtbPrefs.get(u.id)! }))
+        const { error } = await supabase
           .from('app_settings')
           .upsert(
             {
-              key: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS,
-              value_text: serializeReadyToBillNotifyChannels(channels),
+              key: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
+              value_text: serializeReadyToBillRecipientPrefs(prefs),
             },
             { onConflict: 'key' },
           )
-        if (chErr) throw chErr
+        if (error) throw error
+      } else {
+        const ids = users.filter((u) => selectedIds.has(u.id)).map((u) => u.id)
+        const { error } = await supabase
+          .from('app_settings')
+          .upsert(
+            { key: copy.settingKey, value_text: serializePaidJobEmailRecipients(ids) },
+            { onConflict: 'key' },
+          )
+        if (error) throw error
       }
       showToast(
         isReadyToBill
@@ -315,12 +357,24 @@ export default function PaidInFullEmailSettingsModal({
     }
   }
 
+  const testRecipientName = useMemo(() => {
+    if (!testRecipientId) return null
+    return users.find((u) => u.id === testRecipientId)?.name ?? null
+  }, [testRecipientId, users])
+
   const runTestSend = async () => {
     if (!pickedJob || previewBusy) return
     setPreviewBusy('test')
     try {
-      await sendPaidJobEmailTest(pickedJob.id, isReadyToBill ? 'ready_to_bill' : undefined)
-      showToast('Test email sent to your address.', 'success')
+      await sendPaidJobEmailTest(
+        pickedJob.id,
+        isReadyToBill ? 'ready_to_bill' : undefined,
+        isReadyToBill && testRecipientId ? testRecipientId : undefined,
+      )
+      showToast(
+        testRecipientName ? `Test email sent to ${testRecipientName}.` : 'Test email sent to your address.',
+        'success',
+      )
     } catch (e) {
       showToast(formatErrorMessage(e, 'Test send failed'), 'error')
     } finally {
@@ -332,11 +386,14 @@ export default function PaidInFullEmailSettingsModal({
     if (!pickedJob || previewBusy) return
     setPreviewBusy('push')
     try {
-      const sent = await sendReadyToBillPushTest(pickedJob.id)
+      const sent = await sendReadyToBillPushTest(pickedJob.id, testRecipientId || undefined)
+      const who = testRecipientName ?? 'you'
       showToast(
         sent > 0
-          ? `Test push sent to ${sent} device${sent === 1 ? '' : 's'}.`
-          : 'No push devices found — enable push notifications in Settings → Your account first.',
+          ? `Test push sent to ${sent} of ${who === 'you' ? 'your' : `${testRecipientName}'s`} device${sent === 1 ? '' : 's'}.`
+          : who === 'you'
+            ? 'No push devices found — enable push notifications in Settings → Your account first.'
+            : `${testRecipientName} has no push devices — they can enable push in Settings → Your account.`,
         sent > 0 ? 'success' : 'error',
       )
     } catch (e) {
@@ -378,7 +435,13 @@ export default function PaidInFullEmailSettingsModal({
     fontWeight: 500,
   })
 
-  const selectedCount = useMemo(() => users.filter((u) => selectedIds.has(u.id)).length, [users, selectedIds])
+  const selectedCount = useMemo(
+    () =>
+      isReadyToBill
+        ? users.filter((u) => rtbPrefs.has(u.id)).length
+        : users.filter((u) => selectedIds.has(u.id)).length,
+    [users, selectedIds, rtbPrefs, isReadyToBill],
+  )
 
   return (
     <div
@@ -422,56 +485,12 @@ export default function PaidInFullEmailSettingsModal({
           {copy.description}
         </p>
 
-        {isReadyToBill && (
-          <>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Delivery channels</h3>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              {(
-                [
-                  { key: 'email' as const, name: '📧 Email', sub: 'Sent within ~15 minutes, batched' },
-                  { key: 'push' as const, name: '🔔 Push notification', sub: 'To recipients with push enabled on a device' },
-                ]
-              ).map((ch) => (
-                <label
-                  key={ch.key}
-                  style={{
-                    flex: '1 1 200px',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.6rem',
-                    cursor: canEditRecipients ? 'pointer' : 'default',
-                    border: `1px solid ${channels[ch.key] ? 'var(--text-blue-700)' : 'var(--border-strong)'}`,
-                    borderRadius: 6,
-                    padding: '0.6rem 0.75rem',
-                    background: channels[ch.key] ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                    opacity: canEditRecipients ? 1 : 0.8,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={channels[ch.key]}
-                    disabled={!canEditRecipients}
-                    onChange={() => setChannels((prev) => ({ ...prev, [ch.key]: !prev[ch.key] }))}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>{ch.name}</span>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 1 }}>
-                      {ch.sub}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            {!channels.email && !channels.push && (
-              <p style={{ margin: '-0.5rem 0 1rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
-                Both channels are off — nobody will be notified.
-              </p>
-            )}
-          </>
-        )}
-
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
+        {isReadyToBill && (
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Each person picks their own channels — 📧 email, 🔔 push, or both. Nothing checked = not notified.
+          </p>
+        )}
         {!canEditRecipients && (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Read-only — only devs can change the recipient list.
@@ -483,49 +502,97 @@ export default function PaidInFullEmailSettingsModal({
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: '0.75rem', maxHeight: 260, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem' }}>
-            {users.map((u) => (
-              <label
-                key={u.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.875rem',
-                  padding: '3px 4px',
-                  cursor: canEditRecipients ? 'pointer' : 'default',
-                  opacity: canEditRecipients ? 1 : 0.8,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(u.id)}
-                  disabled={!canEditRecipients}
-                  onChange={() => toggleRecipient(u.id)}
-                />
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {u.name}
-                  {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
-                </span>
-                {isReadyToBill && channels.push && !pushEnabledIds.has(u.id) && (
-                  <span
-                    title="Hasn't enabled push notifications on any device — will receive email only"
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '1px 8px',
-                      borderRadius: 9999,
-                      background: 'var(--bg-muted)',
-                      color: 'var(--text-muted)',
-                      border: '1px dashed var(--border-strong)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    no push device
+            {users.map((u) =>
+              isReadyToBill ? (
+                <div
+                  key={u.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    padding: '3px 4px',
+                    opacity: canEditRecipients ? 1 : 0.8,
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.name}
+                    {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
                   </span>
-                )}
-                {badge(u.role)}
-              </label>
-            ))}
+                  <label
+                    title={`Email ${u.name} when a job moves to Ready to Bill`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: canEditRecipients ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rtbPrefs.get(u.id)?.email ?? false}
+                      disabled={!canEditRecipients}
+                      onChange={() => toggleRtbChannel(u.id, 'email')}
+                    />
+                    <span aria-hidden style={{ fontSize: '0.8125rem' }}>{'📧'}</span>
+                  </label>
+                  <label
+                    title={
+                      pushEnabledIds.has(u.id)
+                        ? `Push to ${u.name}'s devices when a job moves to Ready to Bill`
+                        : `${u.name} hasn't enabled push on any device yet — the push will start working once they do`
+                    }
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: canEditRecipients ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rtbPrefs.get(u.id)?.push ?? false}
+                      disabled={!canEditRecipients}
+                      onChange={() => toggleRtbChannel(u.id, 'push')}
+                    />
+                    <span aria-hidden style={{ fontSize: '0.8125rem', opacity: pushEnabledIds.has(u.id) ? 1 : 0.45 }}>{'🔔'}</span>
+                  </label>
+                  {!pushEnabledIds.has(u.id) && (
+                    <span
+                      title="Hasn't enabled push notifications on any device"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '1px 8px',
+                        borderRadius: 9999,
+                        background: 'var(--bg-muted)',
+                        color: 'var(--text-muted)',
+                        border: '1px dashed var(--border-strong)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      no push device
+                    </span>
+                  )}
+                  {badge(u.role)}
+                </div>
+              ) : (
+                <label
+                  key={u.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    padding: '3px 4px',
+                    cursor: canEditRecipients ? 'pointer' : 'default',
+                    opacity: canEditRecipients ? 1 : 0.8,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(u.id)}
+                    disabled={!canEditRecipients}
+                    onChange={() => toggleRecipient(u.id)}
+                  />
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.name}
+                    {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
+                  </span>
+                  {badge(u.role)}
+                </label>
+              ),
+            )}
             {users.length === 0 && (
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No eligible users found.</p>
             )}
@@ -554,9 +621,34 @@ export default function PaidInFullEmailSettingsModal({
 
         <hr style={{ margin: '1.25rem 0', border: 'none', borderTop: '1px solid var(--border)' }} />
 
-        <h3 style={{ margin: '0 0 0.25rem', fontSize: '0.9375rem' }}>Preview &amp; test</h3>
-        <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Pick a job to see the email as recipients would, or send yourself a test.
+        {/* Collapsed by default (v2.1844) — testing is the occasional path. */}
+        <button
+          type="button"
+          onClick={() => setPreviewOpen((v) => !v)}
+          aria-expanded={previewOpen}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'inherit',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            marginBottom: previewOpen ? '0.25rem' : 0,
+          }}
+        >
+          <span aria-hidden>{previewOpen ? '▼' : '▶'}</span>
+          Preview &amp; test
+        </button>
+        {previewOpen && (
+          <>
+        <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {isReadyToBill
+            ? 'Pick a job, then preview the email or send a test — to yourself or a teammate.'
+            : 'Pick a job to see the email as recipients would, or send yourself a test.'}
         </p>
         <input
           type="search"
@@ -634,25 +726,62 @@ export default function PaidInFullEmailSettingsModal({
           >
             {previewBusy === 'summary' ? 'Building…' : 'Preview summary'}
           </button>
-          <button
-            type="button"
-            onClick={() => void runTestSend()}
-            disabled={!pickedJob || previewBusy !== null}
-            style={actionBtnStyle(!pickedJob || previewBusy !== null)}
-          >
-            {previewBusy === 'test' ? 'Sending…' : 'Email me a test'}
-          </button>
-          {isReadyToBill && (
+          {!isReadyToBill && (
+            <button
+              type="button"
+              onClick={() => void runTestSend()}
+              disabled={!pickedJob || previewBusy !== null}
+              style={actionBtnStyle(!pickedJob || previewBusy !== null)}
+            >
+              {previewBusy === 'test' ? 'Sending…' : 'Email me a test'}
+            </button>
+          )}
+        </div>
+        {isReadyToBill && (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}>
+              Send test to
+              <select
+                value={testRecipientId}
+                onChange={(e) => setTestRecipientId(e.target.value)}
+                style={{
+                  height: 32,
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  background: 'var(--surface)',
+                  color: 'inherit',
+                  fontSize: '0.8125rem',
+                  maxWidth: 180,
+                }}
+              >
+                <option value="">Myself</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => void runTestSend()}
+              disabled={!pickedJob || previewBusy !== null}
+              style={actionBtnStyle(!pickedJob || previewBusy !== null)}
+            >
+              {previewBusy === 'test' ? 'Sending…' : 'Email a test'}
+            </button>
             <button
               type="button"
               onClick={() => void runTestPush()}
               disabled={!pickedJob || previewBusy !== null}
               style={actionBtnStyle(!pickedJob || previewBusy !== null)}
             >
-              {previewBusy === 'push' ? 'Sending…' : 'Push me a test'}
+              {previewBusy === 'push' ? 'Sending…' : 'Push a test'}
             </button>
-          )}
-        </div>
+          </div>
+        )}
+          </>
+        )}
       </div>
     </div>
   )

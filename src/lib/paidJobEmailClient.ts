@@ -47,22 +47,42 @@ export async function fetchPaidJobEmailPreview(
   return html
 }
 
-/** mode 'test_send' — the detailed variant to the caller's own email, [TEST]-prefixed. */
-export async function sendPaidJobEmailTest(jobId: string, kind?: 'ready_to_bill'): Promise<void> {
+/**
+ * mode 'test_send' — a [TEST]-prefixed email. Default: the detailed variant to
+ * the caller's own address. With `recipientUserId` (ready_to_bill only,
+ * v2.1844) it goes to that user instead, variant picked by THEIR role — a
+ * tester can never mail financials to a summary-tier teammate.
+ */
+export async function sendPaidJobEmailTest(
+  jobId: string,
+  kind?: 'ready_to_bill',
+  recipientUserId?: string,
+): Promise<void> {
   const r = (await supabase.functions.invoke('paid-job-email', {
-    body: { mode: 'test_send', job_id: jobId, ...(kind ? { kind } : {}) },
+    body: {
+      mode: 'test_send',
+      job_id: jobId,
+      ...(kind ? { kind } : {}),
+      ...(recipientUserId ? { recipient_user_id: recipientUserId } : {}),
+    },
   })) as FnResult
   const err = fnError(r, 'Test send failed')
   if (err) throw new Error(err)
 }
 
 /**
- * mode 'test_push' — a Ready to Bill web-push to the CALLER's own devices only
- * (v2.1836). Resolves to how many devices were reached (0 = none subscribed).
+ * mode 'test_push' — a [TEST]-prefixed Ready to Bill web-push (v2.1836).
+ * Default: the caller's own devices; with `recipientUserId` (v2.1844), that
+ * user's devices. Resolves to how many devices were reached (0 = none
+ * subscribed).
  */
-export async function sendReadyToBillPushTest(jobId: string): Promise<number> {
+export async function sendReadyToBillPushTest(jobId: string, recipientUserId?: string): Promise<number> {
   const r = (await supabase.functions.invoke('paid-job-email', {
-    body: { mode: 'test_push', job_id: jobId },
+    body: {
+      mode: 'test_push',
+      job_id: jobId,
+      ...(recipientUserId ? { recipient_user_id: recipientUserId } : {}),
+    },
   })) as FnResult
   const err = fnError(r, 'Test push failed')
   if (err) throw new Error(err)

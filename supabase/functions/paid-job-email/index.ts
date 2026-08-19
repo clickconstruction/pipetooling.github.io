@@ -12,18 +12,22 @@
  * - { mode: 'send_to', job_id, recipient_user_id } — same role gate; sends the
  *   REAL email to the chosen active user, variant decided by the RECIPIENT's
  *   role, with a 'Sent manually by …' footer (v2.970).
- * - { mode: 'test_send', job_id, kind? } — same role gate; sends the DETAILED
- *   variant via Resend to the CALLER's own email only, subject prefixed [TEST].
- * - { mode: 'test_push', job_id } — same role gate; sends a Ready to Bill
- *   web-push to the CALLER's own push_subscriptions devices only.
+ * - { mode: 'test_send', job_id, kind?, recipient_user_id? } — same role gate;
+ *   [TEST]-prefixed email. Default: DETAILED variant to the CALLER's own
+ *   email. With recipient_user_id (ready_to_bill, v2.1844): to that active
+ *   user, variant picked by THEIR role.
+ * - { mode: 'test_push', job_id, recipient_user_id? } — same role gate;
+ *   [TEST]-prefixed Ready to Bill web-push to the caller's (default) or the
+ *   chosen user's push_subscriptions devices.
  * - cron (no mode or { mode: 'dispatch' }) — X-Cron-Secret header must equal
  *   CRON_SECRET. Drains paid_job_email_queue (sent_at IS NULL, attempts < 5).
  *   paid_in_full / payment rows email their app_settings lists (detailed to
  *   dev/master_technician, sterilized summary to everyone else).
- *   ready_to_bill rows read 'ready_to_bill_notify_recipients_v1' plus the
- *   channels setting 'ready_to_bill_notify_channels_v1' and fan out email
- *   and/or web push (push bodies follow the same detailed/summary split;
- *   dead subscriptions are pruned).
+ *   ready_to_bill rows read 'ready_to_bill_notify_recipients_v2' (per-person
+ *   { id, email, push } channel prefs, v2.1844; falls back to the v1
+ *   list+channels pair until v2 exists) and fan out email and/or web push per
+ *   person (push bodies follow the same detailed/summary split; dead
+ *   subscriptions are pruned).
  *
  * Secrets used: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY,
  * RESEND_API_KEY, CRON_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
@@ -60,7 +64,13 @@ const corsHeaders = {
 const RECIPIENTS_SETTING_KEY = 'paid_job_email_recipients_v1'
 /** Payment-made stream (v2.1310): fires on every payment row; separate list. */
 const PAYMENT_RECIPIENTS_SETTING_KEY = 'payment_made_email_recipients_v1'
-/** Ready to Bill stream (v2.1836): fires on status→ready_to_bill; email + push. */
+/**
+ * Ready to Bill stream (v2.1836): fires on status→ready_to_bill; email + push.
+ * v2 (v2.1844): per-person channel prefs — JSON array of { id, email, push }.
+ * The v1 pair (uuid list + org-wide channels) remains the fallback until the
+ * first v2 save / the conversion migration.
+ */
+const RTB_RECIPIENTS_V2_SETTING_KEY = 'ready_to_bill_notify_recipients_v2'
 const RTB_RECIPIENTS_SETTING_KEY = 'ready_to_bill_notify_recipients_v1'
 const RTB_CHANNELS_SETTING_KEY = 'ready_to_bill_notify_channels_v1'
 const DETAILED_ROLES = new Set(['dev', 'master_technician'])
@@ -69,6 +79,8 @@ const MAX_ATTEMPTS = 5
 
 type QueueKind = 'paid_in_full' | 'payment' | 'ready_to_bill'
 type RtbChannels = { email: boolean; push: boolean }
+/** RecipientRow + this person's channel choices (v2). */
+type RtbRecipient = RecipientRow & { emailOn: boolean; pushOn: boolean }
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -98,7 +110,7 @@ async function fetchReadyToBillPayload(admin: Admin, jobId: string): Promise<Rea
   return data as ReadyToBillPayload
 }
 
-/** Channels for the ready_to_bill stream: missing/garbage ⇒ both on; only explicit false disables. */
+/** v1 channels (fallback only): missing/garbage ⇒ both on; only explicit false disables. */
 async function loadRtbChannels(admin: Admin): Promise<RtbChannels> {
   const { data: setting } = await admin
     .from('app_settings')
@@ -116,6 +128,61 @@ async function loadRtbChannels(admin: Admin): Promise<RtbChannels> {
   return { email: true, push: true }
 }
 
+/**
+ * Ready to Bill recipients with per-person channels (v2), joined to active
+ * users. Falls back to the v1 list + org-wide channels when the v2 key has
+ * never been written. Mirrors src/lib/readyToBillNotify.ts — keep in sync.
+ */
+async function loadRtbRecipients(admin: Admin): Promise<RtbRecipient[]> {
+  const { data: v2Setting } = await admin
+    .from('app_settings')
+    .select('value_text')
+    .eq('key', RTB_RECIPIENTS_V2_SETTING_KEY)
+    .maybeSingle()
+
+  let prefs: Array<{ id: string; email: boolean; push: boolean }> = []
+  if (v2Setting?.value_text != null) {
+    try {
+      const parsed = JSON.parse(v2Setting.value_text)
+      if (Array.isArray(parsed)) {
+        const seen = new Set<string>()
+        for (const x of parsed) {
+          if (!x || typeof x !== 'object' || Array.isArray(x)) continue
+          const id = typeof x.id === 'string' ? x.id.trim() : ''
+          if (!id || seen.has(id)) continue
+          const email = x.email !== false
+          const push = x.push !== false
+          if (!email && !push) continue
+          seen.add(id)
+          prefs.push({ id, email, push })
+        }
+      }
+    } catch {
+      prefs = []
+    }
+  } else {
+    // v1 fallback: uuid list + org-wide channels.
+    const v1 = await loadRecipients(admin, RTB_RECIPIENTS_SETTING_KEY, false)
+    const channels = await loadRtbChannels(admin)
+    if (!channels.email && !channels.push) return []
+    return v1.map((r) => ({ ...r, emailOn: channels.email, pushOn: channels.push }))
+  }
+
+  if (prefs.length === 0) return []
+  const { data: users } = await admin
+    .from('users')
+    .select('id, email, name, role, archived_at')
+    .in('id', prefs.map((p) => p.id))
+    .is('archived_at', null)
+  const byId = new Map(
+    ((users ?? []) as Array<RecipientRow & { archived_at: string | null }>).map((u) => [u.id, u]),
+  )
+  return prefs.flatMap((p) => {
+    const u = byId.get(p.id)
+    return u ? [{ ...u, emailOn: p.email, pushOn: p.push }] : []
+  })
+}
+
 type PushSubRow = { id: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string }
 
 /**
@@ -128,6 +195,7 @@ async function sendReadyToBillPush(
   admin: Admin,
   recipients: RecipientRow[],
   payload: ReadyToBillPayload,
+  titlePrefix = '',
 ): Promise<{ sent: number; errors: string[] }> {
   const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
   const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
@@ -144,7 +212,7 @@ async function sendReadyToBillPush(
 
   webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
   const detailedById = new Map(recipients.map((r) => [r.id, DETAILED_ROLES.has(String(r.role))]))
-  const title = readyToBillPushTitle(payload)
+  const title = `${titlePrefix}${readyToBillPushTitle(payload)}`
 
   let sent = 0
   const errors: string[] = []
@@ -308,51 +376,41 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
       .in('id', superseded)
   }
 
-  const recipientsByKind: Record<QueueKind, RecipientRow[]> = {
+  const recipientsByKind: Record<Exclude<QueueKind, 'ready_to_bill'>, RecipientRow[]> = {
     paid_in_full: await loadRecipients(admin),
     payment: await loadRecipients(admin, PAYMENT_RECIPIENTS_SETTING_KEY),
-    ready_to_bill: await loadRecipients(admin, RTB_RECIPIENTS_SETTING_KEY, false),
   }
-  const rtbChannels = rows.some((r) => kindOf(r) === 'ready_to_bill')
-    ? await loadRtbChannels(admin)
-    : { email: true, push: true }
+  const rtbRecipients = rows.some((r) => kindOf(r) === 'ready_to_bill')
+    ? await loadRtbRecipients(admin)
+    : []
 
   let sent = 0
   const errors: string[] = []
 
   for (const row of rows) {
     try {
-      const recipients = recipientsByKind[kindOf(row)]
-      if (recipients.length === 0) {
-        // Don't retry forever when nobody is configured.
-        await admin
-          .from('paid_job_email_queue')
-          .update({ sent_at: new Date().toISOString(), error: 'no recipients configured' })
-          .eq('id', row.id)
-        continue
-      }
-
       if (kindOf(row) === 'ready_to_bill') {
-        if (!rtbChannels.email && !rtbChannels.push) {
+        if (rtbRecipients.length === 0) {
+          // Don't retry forever when nobody is configured.
           await admin
             .from('paid_job_email_queue')
-            .update({ sent_at: new Date().toISOString(), error: 'no channels enabled' })
+            .update({ sent_at: new Date().toISOString(), error: 'no recipients configured' })
             .eq('id', row.id)
           continue
         }
         const rtbPayload = await fetchReadyToBillPayload(admin, row.job_ledger_id)
 
+        // Per-person channels (v2): email the emailOn set, push the pushOn set.
         const emailErrors: string[] = []
-        if (rtbChannels.email) {
+        const emailRecipients = rtbRecipients.filter((r) => r.emailOn && (r.email ?? '').trim() !== '')
+        if (emailRecipients.length > 0) {
           const subject = readyToBillSubject(rtbPayload)
           const text = readyToBillText(rtbPayload)
           const detailedHtml = renderReadyToBillDetailed(rtbPayload)
           const summaryHtml = renderReadyToBillSummary(rtbPayload)
-          for (const r of recipients) {
-            const email = (r.email ?? '').trim()
-            if (!email) continue
+          for (const r of emailRecipients) {
             const html = DETAILED_ROLES.has(String(r.role)) ? detailedHtml : summaryHtml
-            const mail = await sendEmailViaResend(email, subject, text, html, resendApiKey)
+            const mail = await sendEmailViaResend((r.email ?? '').trim(), subject, text, html, resendApiKey)
             if (!mail.success) emailErrors.push(`${r.id}: ${mail.error ?? 'resend'}`)
           }
         }
@@ -360,8 +418,9 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
         // Push runs even when some emails failed; push failures never retry
         // the row (that would re-email every recipient) — they're noted only.
         const pushNotes: string[] = []
-        if (rtbChannels.push) {
-          const pushResult = await sendReadyToBillPush(admin, recipients, rtbPayload)
+        const pushRecipients = rtbRecipients.filter((r) => r.pushOn)
+        if (pushRecipients.length > 0) {
+          const pushResult = await sendReadyToBillPush(admin, pushRecipients, rtbPayload)
           pushNotes.push(...pushResult.errors)
         }
 
@@ -384,6 +443,16 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
             .eq('id', row.id)
           errors.push(`${row.id}: ${emailErrors.join('; ')}`)
         }
+        continue
+      }
+
+      const recipients = recipientsByKind[kindOf(row) as Exclude<QueueKind, 'ready_to_bill'>]
+      if (recipients.length === 0) {
+        // Don't retry forever when nobody is configured.
+        await admin
+          .from('paid_job_email_queue')
+          .update({ sent_at: new Date().toISOString(), error: 'no recipients configured' })
+          .eq('id', row.id)
         continue
       }
 
@@ -460,10 +529,24 @@ serve(async (req) => {
       // The ready_to_bill stream has its own payload + templates (v2.1836).
       const isRtb = body.kind === 'ready_to_bill' || mode === 'test_push'
 
+      // Optional test target (v2.1844): a chosen active user instead of the
+      // caller. The RECIPIENT's role picks the variant, same as send_to.
+      const testRecipientId =
+        typeof body.recipient_user_id === 'string' ? body.recipient_user_id.trim() : ''
+      let testTarget: RecipientRow = { id: gate.userId, email: gate.email, name: gate.name, role: 'dev' }
+      if (testRecipientId && (mode === 'test_push' || (mode === 'test_send' && isRtb))) {
+        const { data: rec } = await admin
+          .from('users')
+          .select('id, email, name, role, archived_at')
+          .eq('id', testRecipientId)
+          .maybeSingle()
+        if (!rec || rec.archived_at) return jsonResponse({ error: 'Recipient not found or archived' }, 404)
+        testTarget = { id: rec.id, email: rec.email, name: rec.name, role: rec.role }
+      }
+
       if (mode === 'test_push') {
         const rtbPayload = await fetchReadyToBillPayload(admin, jobId)
-        const me: RecipientRow = { id: gate.userId, email: gate.email, name: gate.name, role: 'dev' }
-        const result = await sendReadyToBillPush(admin, [me], rtbPayload)
+        const result = await sendReadyToBillPush(admin, [testTarget], rtbPayload, '[TEST] ')
         if (result.errors.length > 0 && result.sent === 0) {
           return jsonResponse({ error: result.errors.join('; ') }, 502)
         }
@@ -512,20 +595,30 @@ serve(async (req) => {
         return jsonResponse({ success: true, variant: detailed ? 'detailed' : 'summary' })
       }
 
-      // test_send — detailed variant to the caller's own email only.
+      // test_send — [TEST]-prefixed email. Default: detailed to the caller;
+      // with recipient_user_id (ready_to_bill), the target's role picks the
+      // variant so financials never reach a summary-tier inbox.
       const resendApiKey = Deno.env.get('RESEND_API_KEY')
       if (!resendApiKey) return jsonResponse({ error: 'RESEND_API_KEY not configured' }, 500)
-      if (!gate.email) return jsonResponse({ error: 'Your account has no email on file' }, 400)
+      const testEmail = (testTarget.email ?? '').trim()
+      if (!testEmail) {
+        return jsonResponse(
+          { error: testTarget.id === gate.userId ? 'Your account has no email on file' : 'Recipient has no email on file' },
+          400,
+        )
+      }
       const mail = rtbPayload
         ? await sendEmailViaResend(
-            gate.email,
+            testEmail,
             `[TEST] ${readyToBillSubject(rtbPayload)}`,
             readyToBillText(rtbPayload),
-            renderReadyToBillDetailed(rtbPayload),
+            DETAILED_ROLES.has(String(testTarget.role))
+              ? renderReadyToBillDetailed(rtbPayload)
+              : renderReadyToBillSummary(rtbPayload),
             resendApiKey,
           )
         : await sendEmailViaResend(
-            gate.email,
+            testEmail,
             `[TEST] ${paidJobEmailSubject(payload!)}`,
             paidJobEmailText(payload!),
             renderPaidJobEmailDetailed(payload!),
