@@ -17,6 +17,8 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
+import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
+import { groupEventsByInstance, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 
 type UserRole =
   | 'dev'
@@ -37,6 +39,8 @@ type ChecklistInstance = {
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
+  reviewed_at: string | null
+  reviewed_by: string | null
   checklist_items?: {
     title: string
     links?: string[] | null
@@ -287,7 +291,9 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   const [upcomingExpanded, setUpcomingExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const toggleCompleteInFlightRef = useRef(new Set<string>())
-  const [notesByInstance, setNotesByInstance] = useState<Record<string, string>>({})
+  /** Oldest-first card history per instance (checklist_instance_events, v2.1842). */
+  const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
+  const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
@@ -328,7 +334,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -345,7 +351,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -373,13 +379,54 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       return a.scheduled_date.localeCompare(b.scheduled_date)
     })
     setTodayInstances(merged)
-    setNotesByInstance((prev) => {
-      const next = { ...prev }
-      merged.forEach((r: ChecklistInstance) => {
-        if (r.notes != null) next[r.id] = r.notes
-      })
-      return next
+    void loadCardEvents(merged.map((r) => r.id))
+  }
+
+  /** Fetch the card history for the visible instances + names for its actors. */
+  async function loadCardEvents(instanceIds: string[]) {
+    if (instanceIds.length === 0) {
+      setEventsByInstance(new Map())
+      return
+    }
+    const { data, error: e } = await supabase
+      .from('checklist_instance_events')
+      .select('id, instance_id, event_type, actor_user_id, body, created_at')
+      .in('instance_id', instanceIds)
+      .order('created_at', { ascending: true })
+    if (e) return
+    const events = (data ?? []) as ChecklistCardEvent[]
+    setEventsByInstance(groupEventsByInstance(events))
+    const actorIds = [...new Set(events.map((ev) => ev.actor_user_id).filter((v): v is string => !!v))]
+    const missing = actorIds.filter((id) => !(id in eventActorNameById))
+    if (missing.length > 0) {
+      const { data: nameRows } = await supabase.from('users').select('id, name').in('id', missing)
+      if (nameRows) {
+        setEventActorNameById((prev) => {
+          const next = { ...prev }
+          for (const r of nameRows as Array<{ id: string; name: string | null }>) {
+            next[r.id] = (r.name ?? '').trim() || 'Someone'
+          }
+          return next
+        })
+      }
+    }
+  }
+
+  /** Post a comment event; returns true on success (card clears its draft). */
+  async function postCardComment(inst: ChecklistInstance, body: string): Promise<boolean> {
+    if (!authUserId) return false
+    const { error: e } = await supabase.from('checklist_instance_events').insert({
+      instance_id: inst.id,
+      event_type: 'comment',
+      actor_user_id: authUserId,
+      body,
     })
+    if (e) {
+      setError(e.message)
+      return false
+    }
+    void loadCardEvents(todayInstances.map((r) => r.id))
+    return true
   }
 
   async function loadUpcoming() {
@@ -387,7 +434,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
@@ -403,9 +450,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
 
     setError(null)
     const isCompleted = !!inst.completed_at
-    const notes = notesByInstance[inst.id] ?? inst.notes ?? ''
     const nextCompletedAt = isCompleted ? null : new Date().toISOString()
-    const nextNotes = isCompleted ? null : notes || null
     const nextCompletedBy = isCompleted ? null : authUserId
     const previous = inst
 
@@ -415,26 +460,19 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
           ? {
               ...row,
               completed_at: nextCompletedAt,
-              notes: nextNotes,
               completed_by_user_id: nextCompletedBy,
             }
           : row,
       ),
     )
-    if (isCompleted) {
-      setNotesByInstance((prev) => {
-        const next = { ...prev }
-        delete next[inst.id]
-        return next
-      })
-    }
 
     try {
+      // Notes are no longer written here — card comments live in
+      // checklist_instance_events; the completion trigger logs the transition.
       const { error: e } = await supabase
         .from('checklist_instances')
         .update({
           completed_at: nextCompletedAt,
-          notes: nextNotes,
           completed_by_user_id: nextCompletedBy,
         })
         .eq('id', inst.id)
@@ -446,12 +484,6 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       }
     } catch (e: unknown) {
       setTodayInstances((prev) => prev.map((row) => (row.id === inst.id ? previous : row)))
-      setNotesByInstance((prev) => {
-        const next = { ...prev }
-        if (previous.notes != null && previous.notes !== '') next[inst.id] = previous.notes
-        else delete next[inst.id]
-        return next
-      })
       setError(e instanceof Error ? e.message : 'Failed to update checklist')
     } finally {
       toggleCompleteInFlightRef.current.delete(inst.id)
@@ -526,16 +558,6 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       )
     }
     await loadUpcoming()
-  }
-
-  async function saveNotes(inst: ChecklistInstance) {
-    if (!authUserId) return
-    const notes = notesByInstance[inst.id] ?? ''
-    await supabase
-      .from('checklist_instances')
-      .update({ notes: notes || null })
-      .eq('id', inst.id)
-    await loadToday()
   }
 
   function isNotificationRecipient(inst: ChecklistInstance): boolean {
@@ -630,83 +652,59 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
             {todayInstances.map((inst) => {
               const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
               const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
-              const isCompleted = !!inst.completed_at
               return (
-                <li
+                <ChecklistInstanceCard
                   key={inst.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.75rem',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isCompleted}
-                    onChange={() => void toggleComplete(inst)}
-                    style={{ marginTop: '0.25rem' }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}><ChecklistTitleWithLinks title={title} links={links} /></div>
-                    <textarea
-                      value={notesByInstance[inst.id] ?? inst.notes ?? ''}
-                      onChange={(e) => setNotesByInstance((prev) => ({ ...prev, [inst.id]: e.target.value }))}
-                      onBlur={() => saveNotes(inst)}
-                      placeholder="Notes (optional)"
-                      rows={2}
-                      style={{ width: '100%', fontSize: '0.875rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    />
-                    {inst.completed_at && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                        Completed {new Date(inst.completed_at).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
-                    {isNotificationRecipient(inst) && (
-                      <button
-                        type="button"
-                        onClick={() => openMuteModal(inst)}
-                        style={{
-                          padding: '0.35rem',
-                          border: '1px solid var(--border-strong)',
-                          borderRadius: 4,
-                          background: 'var(--surface)',
-                          cursor: 'pointer',
-                          fontSize: '1rem',
-                          lineHeight: 1,
-                        }}
-                        title="Mute notifications for this task"
-                        aria-label="Mute notifications for this task"
-                      >
-                        🔕
-                      </button>
-                    )}
-                    {isDev && (
-                      <button
-                        type="button"
-                        className="fwd-btn-desktop"
-                        onClick={() => openFwd(inst)}
-                        style={{
-                          padding: '0.35rem 0.6rem',
-                          fontSize: '0.8125rem',
-                          fontWeight: 500,
-                          border: '1px solid #3b82f6',
-                          borderRadius: 4,
-                          background: '#3b82f6',
-                          color: 'white',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        FWD
-                      </button>
-                    )}
-                  </div>
-                </li>
+                  instance={inst}
+                  title={<ChecklistTitleWithLinks title={title} links={links} />}
+                  events={eventsByInstance.get(inst.id) ?? []}
+                  nameById={eventActorNameById}
+                  currentUserId={authUserId}
+                  onToggleComplete={() => void toggleComplete(inst)}
+                  onPostComment={(body) => postCardComment(inst, body)}
+                  actions={
+                    <>
+                      {isNotificationRecipient(inst) && (
+                        <button
+                          type="button"
+                          onClick={() => openMuteModal(inst)}
+                          style={{
+                            padding: '0.35rem',
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: 4,
+                            background: 'var(--surface)',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            lineHeight: 1,
+                          }}
+                          title="Mute notifications for this task"
+                          aria-label="Mute notifications for this task"
+                        >
+                          🔕
+                        </button>
+                      )}
+                      {isDev && (
+                        <button
+                          type="button"
+                          className="fwd-btn-desktop"
+                          onClick={() => openFwd(inst)}
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            fontSize: '0.8125rem',
+                            fontWeight: 500,
+                            border: '1px solid #3b82f6',
+                            borderRadius: 4,
+                            background: '#3b82f6',
+                            color: 'white',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          FWD
+                        </button>
+                      )}
+                    </>
+                  }
+                />
               )
             })}
           </ul>
@@ -947,7 +945,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     const endStr = toLocalDateString(end)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, reviewed_at, reviewed_by, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', selectedUserId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)

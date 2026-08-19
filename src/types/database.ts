@@ -1467,6 +1467,48 @@ export type Database = {
           },
         ]
       }
+      checklist_instance_events: {
+        Row: {
+          actor_user_id: string | null
+          body: string
+          created_at: string
+          event_type: string
+          id: string
+          instance_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          body?: string
+          created_at?: string
+          event_type: string
+          id?: string
+          instance_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          body?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          instance_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instance_events_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instance_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_instances: {
         Row: {
           checklist_item_id: string
@@ -1475,6 +1517,8 @@ export type Database = {
           created_at: string | null
           id: string
           notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           scheduled_date: string
         }
         Insert: {
@@ -1484,6 +1528,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scheduled_date: string
         }
         Update: {
@@ -1493,6 +1539,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scheduled_date?: string
         }
         Relationships: [

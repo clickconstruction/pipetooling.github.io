@@ -23,6 +23,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1846',
+    date: '2026-08-19',
+    title: 'A better checklist card',
+    kind: 'feature',
+    highlights: [
+      'Today tasks are now compact cards: tap the big checkbox to complete — no more textarea under every task.',
+      'Notes became a conversation: anyone who can see a task can add a note, and the whole thread lives on the card.',
+      'Cards remember their story — completed, reopened (with the reason), and signed off, with who and when.',
+    ],
+  },
+  {
     version: 'v2.1844',
     date: '2026-08-19',
     title: 'Ready to Bill notifications: everyone picks their own channels',
