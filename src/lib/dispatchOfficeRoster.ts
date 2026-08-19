@@ -6,9 +6,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
  * 08:00–16:00). `ensure_office_schedule_blocks` materializes the blocks for a
  * visible date range — idempotent, time-off- and overlap-aware, and a
  * hand-deleted block is never recreated (tombstone ledger). Reads are
- * universal; writes are the schedule-dispatch cohort including controller.
- * (Tables ship ahead of regenerated types — `as never`, the swim-lanes
- * precedent.) */
+ * universal; writes are the schedule-dispatch cohort including controller. */
 
 export const OFFICE_ROSTER_DEFAULT_START = '08:00'
 export const OFFICE_ROSTER_DEFAULT_END = '16:00'
@@ -40,27 +38,27 @@ export async function fetchDispatchOfficeRoster(): Promise<{ data: OfficeRosterE
     const rows = await withSupabaseRetry(
       async () =>
         await supabase
-          .from('dispatch_office_roster' as never)
+          .from('dispatch_office_roster')
           .select('user_id, time_start, time_end'),
       'fetchDispatchOfficeRoster',
     )
-    return { data: ((rows ?? []) as unknown as OfficeRosterEntry[]), error: null }
+    return { data: (rows ?? []) as OfficeRosterEntry[], error: null }
   } catch (e: unknown) {
     return { data: [], error: formatErrorMessage(e, 'Could not load the office roster') }
   }
 }
 
 export async function addToDispatchOfficeRoster(userId: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('dispatch_office_roster' as never).insert({
+  const { error } = await supabase.from('dispatch_office_roster').insert({
     user_id: userId,
     time_start: OFFICE_ROSTER_DEFAULT_START,
     time_end: OFFICE_ROSTER_DEFAULT_END,
-  } as never)
+  })
   return { error: error ? error.message : null }
 }
 
 export async function removeFromDispatchOfficeRoster(userId: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('dispatch_office_roster' as never).delete().eq('user_id', userId)
+  const { error } = await supabase.from('dispatch_office_roster').delete().eq('user_id', userId)
   return { error: error ? error.message : null }
 }
 
@@ -70,8 +68,8 @@ export async function updateDispatchOfficeRosterWindow(
   timeEnd: string,
 ): Promise<{ error: string | null }> {
   const { error } = await supabase
-    .from('dispatch_office_roster' as never)
-    .update({ time_start: timeStart, time_end: timeEnd } as never)
+    .from('dispatch_office_roster')
+    .update({ time_start: timeStart, time_end: timeEnd })
     .eq('user_id', userId)
   return { error: error ? error.message : null }
 }
@@ -82,10 +80,10 @@ export async function ensureOfficeScheduleBlocks(
   toYmd: string,
 ): Promise<{ created: number; error: string | null }> {
   try {
-    const { data, error } = await supabase.rpc('ensure_office_schedule_blocks' as never, {
+    const { data, error } = await supabase.rpc('ensure_office_schedule_blocks', {
       p_from: fromYmd,
       p_to: toYmd,
-    } as never)
+    })
     if (error) return { created: 0, error: error.message }
     const res = data as unknown as { ok?: boolean; created?: number; error?: string } | null
     if (!res?.ok) return { created: 0, error: res?.error ?? 'Could not fill the office schedule' }

@@ -2930,6 +2930,71 @@ export type Database = {
           },
         ]
       }
+      dispatch_office_roster: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          time_end: string
+          time_start: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          time_end?: string
+          time_start?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          time_end?: string
+          time_start?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_office_roster_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_office_roster_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_office_schedule_fills: {
+        Row: {
+          created_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_office_schedule_fills_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_po_other_items: {
         Row: {
           created_at: string | null
@@ -13126,6 +13191,7 @@ export type Database = {
         Args: { p_target_user_id: string }
         Returns: boolean
       }
+      can_edit_schedule_dispatch: { Args: never; Returns: boolean }
       can_manage_checklist_tech_tree_roadmap_members: {
         Args: { p_roadmap_id: string }
         Returns: boolean
@@ -13323,6 +13389,10 @@ export type Database = {
       }
       duplicate_purchase_order: {
         Args: { p_created_by: string; p_source_po_id: string }
+        Returns: Json
+      }
+      ensure_office_schedule_blocks: {
+        Args: { p_from: string; p_to: string }
         Returns: Json
       }
       ensure_single_ready_to_bill_invoice_for_job: {
