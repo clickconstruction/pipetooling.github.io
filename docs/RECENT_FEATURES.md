@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1849)
+last_updated: 2026-08-19 (v2.1853)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1853)
+
+### Ready to Bill notifications: channel checkboxes move right; copy says who edits (2026-08-19)
+Owner polish on v2.1844: in [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) the per-row 📧/🔔 checkboxes move to the END of each recipient row (after the "no push device" pill and the Detailed/Summary badge) so names and badges align; the explainer becomes "Set each person's channels…" — the old "Each person picks their own" implied self-service, but the list is dev-write (masters read-only), same as ever. Help guide `ready-to-bill-pipeline` example updated to match. Client-only — no migration.
 
 ## Latest Updates (v2.1849)
 

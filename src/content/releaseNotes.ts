@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1853',
+    date: '2026-08-19',
+    title: 'Ready to Bill notifications: tidier recipient rows',
+    kind: 'fix',
+    highlights: [
+      'The 📧/🔔 checkboxes now sit at the right end of each row, after the badges, so the list scans cleanly.',
+      'Clearer wording: a dev sets each person\'s channels — the note no longer implies people configure themselves.',
+    ],
+  },
+  {
     version: 'v2.1849',
     date: '2026-08-19',
     title: 'Checklist review: sign off or send back',

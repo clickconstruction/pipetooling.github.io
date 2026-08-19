@@ -488,7 +488,7 @@ export default function PaidInFullEmailSettingsModal({
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
         {isReadyToBill && (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Each person picks their own channels — 📧 email, 🔔 push, or both. Nothing checked = not notified.
+            Set each person's channels — 📧 email, 🔔 push, or both. Nothing checked = not notified.
           </p>
         )}
         {!canEditRecipients && (
@@ -519,6 +519,24 @@ export default function PaidInFullEmailSettingsModal({
                     {u.name}
                     {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
                   </span>
+                  {!pushEnabledIds.has(u.id) && (
+                    <span
+                      title="Hasn't enabled push notifications on any device"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '1px 8px',
+                        borderRadius: 9999,
+                        background: 'var(--bg-muted)',
+                        color: 'var(--text-muted)',
+                        border: '1px dashed var(--border-strong)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      no push device
+                    </span>
+                  )}
+                  {badge(u.role)}
                   <label
                     title={`Email ${u.name} when a job moves to Ready to Bill`}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: canEditRecipients ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
@@ -547,24 +565,6 @@ export default function PaidInFullEmailSettingsModal({
                     />
                     <span aria-hidden style={{ fontSize: '0.8125rem', opacity: pushEnabledIds.has(u.id) ? 1 : 0.45 }}>{'🔔'}</span>
                   </label>
-                  {!pushEnabledIds.has(u.id) && (
-                    <span
-                      title="Hasn't enabled push notifications on any device"
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        padding: '1px 8px',
-                        borderRadius: 9999,
-                        background: 'var(--bg-muted)',
-                        color: 'var(--text-muted)',
-                        border: '1px dashed var(--border-strong)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      no push device
-                    </span>
-                  )}
-                  {badge(u.role)}
                 </div>
               ) : (
                 <label
