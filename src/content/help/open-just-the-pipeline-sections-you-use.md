@@ -23,4 +23,6 @@ Waiting stays collapsed all week — its 17 jobs are never fetched, but the head
 
 Some tools need the whole board, and they fetch it automatically the moment you use them: typing in **search**, the **#** number jump, the GC/Development/Account-man filters (and hidden groups), and the cross-section tools (Weekly money, GC Review, Accounts Receivable, Capable of Being Billed breakdown). You never have to think about what's loaded — using a tool loads what it needs.
 
+While a search is active, the matching text **lights up amber** on every result — in the job number, name, address, customer, GC, and development — so you can see at a glance why each row matched.
+
 **Paid in Full** works exactly as before: expand it (or use the search chip / # jump) to load paid jobs on demand.

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { StagesSearchMark } from './StagesSearchMark'
 
 /**
  * Job-column address text. Renders the street on its own line with the city line
@@ -40,14 +41,14 @@ export function JobAddressText({ line1, line2 }: { line1: string; line2?: string
     // orphaning the last word ("…Converse | TX"). The outer span is a flex
     // item (blockified), so balance applies.
     <span ref={outerRef} style={{ textWrap: 'balance' }}>
-      <span ref={line1Ref}>{line1}</span>
+      <span ref={line1Ref}><StagesSearchMark text={line1} /></span>
       {line2 ? (
         line1Wrapped ? (
-          ` ${line2}`
+          <> <StagesSearchMark text={line2} /></>
         ) : (
           <>
             <br />
-            {line2}
+            <StagesSearchMark text={line2} />
           </>
         )
       ) : null}
