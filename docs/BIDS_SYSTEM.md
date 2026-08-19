@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-08-19
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -209,14 +209,17 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
 
 **Edit Bid Modal**:
 - Opened by clicking gear icon in Edit column
-- **Cancel button** in top-right next to modal title
+- **The Bid window** (`RECENT_FEATURES.md` **v2.1847**): editing an existing bid opens **[`BidWindowModal`](../src/components/bids/BidWindowModal.tsx)** — tabs **Bid** ([`BidPreviewModal`](../src/components/bids/BidPreviewModal.tsx) in `paneMode`) · **Edit** ([`BidFormModal`](../src/components/bids/BidFormModal.tsx) `embedded`), one ✕, Esc closes (blocked while a stacked modal is above). Both panes stay mounted, so unsaved edits survive a flip. **New Bid renders the plain form** (no window). The `openBidEdit=1` deep link and every board Edit button land on the Edit tab.
+- **Cancel** is the window's ✕ (the plain New Bid form keeps its own ✕ in the top-right)
 - **Pickers**: **Estimator**, **Account Man**, **Service Type**, and **Win/Loss** use **`SearchableSelect`** ([`src/components/SearchableSelect.tsx`](../src/components/SearchableSelect.tsx)): button trigger, optional search, list in a **portal** above the modal. **Service Type** and **Project Name** are required for save (client-side `bidFormMissingFields`). **Estimator** and **Account Man** options come from **`loadEstimatorUsers`** in [`Bids.tsx`](../src/pages/Bids.tsx): **non-archived** users (`archived_at` null), **not** the **Helper** role (`helpers`), ordered by name (**`withSupabaseRetry`**); client-side drop if **name** trim equals **`delete`** case-insensitively (**`RECENT_FEATURES.md`** **v2.449**). Rare legacy rows may still reference excluded users until reassigned.
-- **Field order** (see `bidFormOpen` in [`src/pages/Bids.tsx`](../src/pages/Bids.tsx)):
-  1. **Top grid (desktop)**: Row 1 — Estimator, Account Man, Bid Date; Row 2 — Bid #, Project Name* (Project Name spans two columns). **Mobile**: Row 1 — Estimator | Account Man; Row 2 — Bid # | Bid Date; Row 3 — Project Name* full width.
-  2. **Service Type***, Win/Loss, Bid Date Sent (one flex row)
-  3. Loss reason (when Lost); Start Date (when Won)
-  4. Project Address (full width), then **Distance to Office (miles)** | **Plan Pages** (two-column row; map link by distance)
-  5. Project Folder, Job Plans / Design Drawing Plan Date, Count Tooling / Bid Submission, GC/Builder (customer), Project Contact fields, Submitted to, financial fields, Last Contact, Notes, actions
+- **Field order** (sectioned form since the v2.1839 redesign — see `RECENT_FEATURES.md` **v2.1839** for the full map):
+  1. **Hero**: Project Name* (heading-size) | Bid #; Linked Project picker under the name
+  2. **People row**: Estimator | Account Man | Service Type*
+  3. **Status & dates** section: Bid Due Date (+due time) | Bid Date Sent (+attestation microcopy) | Last Contact; **Win/Loss segmented control** (Open · Won · Lost · Started/Complete) with Loss reason / Start Date revealing inline
+  4. **Location** section: Project Address (full width, map link), Distance to Office | Plan Pages
+  5. **Files & links** section: Project Folder, then Job Plans | CountTooling, then Bid Submission | Design Drawing Plan Date (paste buttons kept)
+  6. **People** section: GC/Builder (customer) with read-only contact chips, Project Contact | Submitted to
+  7. **Money** section (Bid Value | Agreed Value | Maximum Profit), **Notes**, then the **sticky save bar** (Delete bid… quiet-left, Archive from board, required hint, Save and Open Counts, Save)
 - **Win/Loss change log** (**`RECENT_FEATURES.md`** **v2.507**): When **Win/Loss** is saved with a different value than before (including on a **New bid** first save), an automatic line is appended to **`bids_submission_entries`** (same place as **Bid notes**): human-readable from → to labels, **who made the change** (display name from **`useAuth` `profileName`**, else email), optional **Loss reason** when the new outcome is **Lost**, and **`bids.last_contact`** is set to that note’s **`occurred_at`**. Implementation: [`outcomeChangeBidNote.ts`](../src/lib/outcomeChangeBidNote.ts), [`Bids.tsx`](../src/pages/Bids.tsx) **`insertOutcomeChangeBidNoteAfterSave`** on **Save** / **Save and start Counts**.
 - **Copy Bid** (**Service Type** chip — **`RECENT_FEATURES.md`** **v2.493**): Opens a nested dialog titled **Copy Bid** (other-trade bids for the same address: **Open B…** on a saved sibling bid, **Copy to new … bid**). Bottom **Job** section: **Open Job** closes the overlay and opens the app-wide **New Job** form via **[`JobFormModalContext`](../src/contexts/JobFormModalContext.tsx)** **`openNewJob({ prefillBidId })`**; **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)** runs **`applyPrefillFromBid`** after **`initDone`** (same outcome as **Jobs → New Job → Import** when a bid is chosen). **Open Job** stays disabled with *Save the bid first* until the current bid has an id.
 

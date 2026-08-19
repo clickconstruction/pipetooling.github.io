@@ -39,6 +39,8 @@ export type BidPreviewModalProps = {
   onNotesMutatedCustomer?: () => void
   /** Light red panel when Submission & Followup "no update" highlight applies to this bid. */
   staleNoUpdateHighlight?: boolean
+  /** Render as a pane inside BidWindowModal: no overlay/dialog chrome, no Edit/Close buttons. */
+  paneMode?: boolean
 }
 
 function displayUser(u: EstimatorUser | null | undefined): string {
@@ -250,6 +252,7 @@ export function BidPreviewModal({
   onNotesMutated,
   onNotesMutatedCustomer,
   staleNoUpdateHighlight = false,
+  paneMode = false,
 }: BidPreviewModalProps) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -333,19 +336,23 @@ export function BidPreviewModal({
 
   return (
     <div
-      className="bid-preview-overlay"
-      style={overlayStyle}
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+      className={paneMode ? undefined : 'bid-preview-overlay'}
+      style={paneMode ? undefined : overlayStyle}
+      role={paneMode ? undefined : 'presentation'}
+      onMouseDown={
+        paneMode
+          ? undefined
+          : (e) => {
+              if (e.target === e.currentTarget) onClose()
+            }
+      }
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="bid-preview-title"
-        style={modalStyle}
-        onMouseDown={(e) => e.stopPropagation()}
+        role={paneMode ? undefined : 'dialog'}
+        aria-modal={paneMode ? undefined : true}
+        aria-labelledby={paneMode ? undefined : 'bid-preview-title'}
+        style={paneMode ? { background: staleNoUpdateHighlight ? 'var(--bg-red-tint)' : undefined } : modalStyle}
+        onMouseDown={paneMode ? undefined : (e) => e.stopPropagation()}
       >
         <div
           style={{
@@ -357,7 +364,7 @@ export function BidPreviewModal({
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <h2 id="bid-preview-title" style={{ margin: '0 0 0.15rem', fontSize: '1.3rem', letterSpacing: '-0.01em', overflowWrap: 'break-word' }}>
+            <h2 id={paneMode ? undefined : 'bid-preview-title'} style={{ margin: '0 0 0.15rem', fontSize: '1.3rem', letterSpacing: '-0.01em', overflowWrap: 'break-word' }}>
               {bid ? bid.project_name?.trim() || '—' : 'Preview Bid'}
             </h2>
             {bid ? (
@@ -404,7 +411,7 @@ export function BidPreviewModal({
                 Copy for text
               </button>
             ) : null}
-            {bid ? (
+            {bid && !paneMode ? (
               <button
                 type="button"
                 onClick={() => onRequestEditBid(bid.id)}
@@ -413,15 +420,17 @@ export function BidPreviewModal({
                 Edit bid
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              title="Close"
-              style={{ padding: '0.45rem 0.55rem', fontSize: '0.85rem', lineHeight: 1, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)' }}
-            >
-              ✕
-            </button>
+            {!paneMode ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                title="Close"
+                style={{ padding: '0.45rem 0.55rem', fontSize: '0.85rem', lineHeight: 1, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)' }}
+              >
+                ✕
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -483,12 +492,16 @@ export function BidPreviewModal({
                 }
                 sub={gcContact || 'no contact on file'}
               />
-              <Fact
-                label="Estimator · Acct man"
-                value={displayUser(bid.estimator as EstimatorUser | null | undefined)}
-                sub={displayUser(bid.account_manager as EstimatorUser | null | undefined)}
-                last
-              />
+              <div style={{ padding: '0.7rem 1rem 0.75rem', minWidth: 0 }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'break-word' }}>
+                  {displayUser(bid.estimator as EstimatorUser | null | undefined)}
+                </div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>(Estimator)</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'break-word' }}>
+                  {displayUser(bid.account_manager as EstimatorUser | null | undefined)}
+                </div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>(Account Man)</div>
+              </div>
             </div>
 
             <div style={{ padding: '1.1rem 1.4rem 1.3rem', display: 'grid', gap: '1.15rem' }}>

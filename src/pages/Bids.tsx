@@ -30,6 +30,7 @@ import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { ModalShell } from '../components/bids/ModalShell'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
+import { BidWindowModal } from '../components/bids/BidWindowModal'
 import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { Database } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
@@ -267,6 +268,7 @@ export default function Bids() {
   const [deleteConfirmProjectName, setDeleteConfirmProjectName] = useState('')
   const [deletingBid, setDeletingBid] = useState(false)
   const [deleteBidModalOpen, setDeleteBidModalOpen] = useState(false)
+  const [bidFormServiceTypeSwitchOpen, setBidFormServiceTypeSwitchOpen] = useState(false)
   const [gcCustomerDropdownOpen, setGcCustomerDropdownOpen] = useState(false)
   const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
   const [evaluateChecked, setEvaluateChecked] = useState<{ [key: string]: boolean }>({})
@@ -3343,51 +3345,80 @@ export default function Bids() {
         />
       )}
 
-      {/* New/Edit Bid Modal */}
-      <BidFormModal
-        open={bidFormOpen}
-        editingBid={editingBid}
-        onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
-        closeBidForm={closeBidForm}
-        saveBid={saveBid}
-        form={bidForm}
-        projects={projectsForPicker ?? []}
-        estimatorUsers={estimatorUsers}
-        myRole={myRole === 'controller' ? 'assistant' : myRole}
-        visibleServiceTypes={visibleServiceTypes}
-        bidDateSent={bidDateSent}
-        handleBidDateSentInputChange={handleBidDateSentInputChange}
-        handleBidDateSentBlur={handleBidDateSentBlur}
-        pendingAttestationForDate={pendingAttestationForDate}
-        pendingBidDateSentAttestation={pendingBidDateSentAttestation}
-        gcCustomerDropdownOpen={gcCustomerDropdownOpen}
-        setGcCustomerDropdownOpen={setGcCustomerDropdownOpen}
-        customers={customers}
-        loadCustomers={loadCustomers}
-        openNewCustomerModal={newCustomerModal?.openNewCustomerModal}
-        getCustomerDisplay={getCustomerDisplay}
-        getGcBuilderPhone={getGcBuilderPhone}
-        getGcBuilderEmail={getGcBuilderEmail}
-        saveBidAndOpenCounts={saveBidAndOpenCounts}
-        savingBid={savingBid}
-        setDeleteBidModalOpen={setDeleteBidModalOpen}
-        setDeleteConfirmProjectName={setDeleteConfirmProjectName}
-        setError={setError}
-        showArchiveFromUnsentWorking={Boolean(
-          editingBid &&
-            !editingBid.working_board_archived_at &&
-            bidEligibleForWorkingBoardArchive(editingBid) &&
-            canUserArchiveBidOnWorkingBoard(editingBid, authUser?.id, myRole),
-        )}
-        archiveFromUnsentWorkingBusy={archiveWorkingBoardBusyBidId === editingBid?.id}
-        onRequestArchiveFromUnsentWorking={
-          editingBid ? () => promptArchiveWorkingBoardBid(editingBid.id) : undefined
+      {/* New/Edit Bid Modal — editing an existing bid opens the tabbed Bid window
+          (Bid · Edit, mirrors the Job window); New Bid keeps the plain form. */}
+      {(() => {
+        const bidFormModalElement = (
+          <BidFormModal
+            open={bidFormOpen}
+            editingBid={editingBid}
+            onOpenEvaluateChecklist={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
+            closeBidForm={closeBidForm}
+            saveBid={saveBid}
+            form={bidForm}
+            projects={projectsForPicker ?? []}
+            estimatorUsers={estimatorUsers}
+            myRole={myRole === 'controller' ? 'assistant' : myRole}
+            visibleServiceTypes={visibleServiceTypes}
+            bidDateSent={bidDateSent}
+            handleBidDateSentInputChange={handleBidDateSentInputChange}
+            handleBidDateSentBlur={handleBidDateSentBlur}
+            pendingAttestationForDate={pendingAttestationForDate}
+            pendingBidDateSentAttestation={pendingBidDateSentAttestation}
+            gcCustomerDropdownOpen={gcCustomerDropdownOpen}
+            setGcCustomerDropdownOpen={setGcCustomerDropdownOpen}
+            customers={customers}
+            loadCustomers={loadCustomers}
+            openNewCustomerModal={newCustomerModal?.openNewCustomerModal}
+            getCustomerDisplay={getCustomerDisplay}
+            getGcBuilderPhone={getGcBuilderPhone}
+            getGcBuilderEmail={getGcBuilderEmail}
+            saveBidAndOpenCounts={saveBidAndOpenCounts}
+            savingBid={savingBid}
+            setDeleteBidModalOpen={setDeleteBidModalOpen}
+            setDeleteConfirmProjectName={setDeleteConfirmProjectName}
+            setError={setError}
+            showArchiveFromUnsentWorking={Boolean(
+              editingBid &&
+                !editingBid.working_board_archived_at &&
+                bidEligibleForWorkingBoardArchive(editingBid) &&
+                canUserArchiveBidOnWorkingBoard(editingBid, authUser?.id, myRole),
+            )}
+            archiveFromUnsentWorkingBusy={archiveWorkingBoardBusyBidId === editingBid?.id}
+            onRequestArchiveFromUnsentWorking={
+              editingBid ? () => promptArchiveWorkingBoardBid(editingBid.id) : undefined
+            }
+            serviceTypeSwitchSiblings={bidServiceTypeSwitchSiblings}
+            onServiceTypeSwitchModalOpen={refreshBidServiceTypeSwitchSiblings}
+            onDuplicateBidToServiceType={duplicateBidToServiceTypeHandler}
+            onOpenExistingBidFromServiceTypeSwitch={openExistingBidFromServiceTypeSwitch}
+            embedded={Boolean(bidFormOpen && editingBid)}
+            onServiceTypeSwitchOpenChange={setBidFormServiceTypeSwitchOpen}
+          />
+        )
+        if (bidFormOpen && editingBid) {
+          return (
+            <BidWindowModal
+              bidId={editingBid.id}
+              onRequestClose={closeBidForm}
+              onNavigateToBidsTab={(tab, bidId) => {
+                closeBidForm()
+                navigate(`/bids?tab=${tab}&bidId=${bidId}`)
+              }}
+              escBlocked={
+                deleteBidModalOpen ||
+                evaluateModalOpen ||
+                bidSentAttestModalOpen ||
+                bidFormServiceTypeSwitchOpen ||
+                gcCustomerDropdownOpen
+              }
+            >
+              {bidFormModalElement}
+            </BidWindowModal>
+          )
         }
-        serviceTypeSwitchSiblings={bidServiceTypeSwitchSiblings}
-        onServiceTypeSwitchModalOpen={refreshBidServiceTypeSwitchSiblings}
-        onDuplicateBidToServiceType={duplicateBidToServiceTypeHandler}
-        onOpenExistingBidFromServiceTypeSwitch={openExistingBidFromServiceTypeSwitch}
-      />
+        return bidFormModalElement
+      })()}
 
       {bidSentAttestModalOpen && (
         <div
