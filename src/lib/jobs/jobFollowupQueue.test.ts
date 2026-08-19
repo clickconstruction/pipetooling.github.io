@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_JOB_FOLLOWUP_SETTINGS,
+  JOB_FOLLOWUP_STAGES,
   computeJobFollowupQueue,
   dropDeletedFollowupCandidates,
+  followupStagesCoveredByScopes,
   jobFollowupQuietDays,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
@@ -144,19 +146,58 @@ describe('computeJobFollowupQueue', () => {
 })
 
 describe('dropDeletedFollowupCandidates', () => {
+  const ALL_STAGES = new Set(JOB_FOLLOWUP_STAGES)
+
   it('drops candidates whose job left the live list', () => {
     const a = job({ id: 'a' })
     const b = job({ id: 'b' })
-    expect(dropDeletedFollowupCandidates([a, b], new Set(['a']))).toEqual([a])
+    expect(dropDeletedFollowupCandidates([a, b], new Set(['a']), ALL_STAGES)).toEqual([a])
   })
 
   it('returns the same array when nothing is missing (memo-friendly)', () => {
     const list = [job({ id: 'a' }), job({ id: 'b' })]
-    expect(dropDeletedFollowupCandidates(list, new Set(['a', 'b', 'c']))).toBe(list)
+    expect(dropDeletedFollowupCandidates(list, new Set(['a', 'b', 'c']), ALL_STAGES)).toBe(list)
   })
 
   it('never wipes the deck while the jobs list is still loading (empty set)', () => {
     const list = [job({ id: 'a' })]
-    expect(dropDeletedFollowupCandidates(list, new Set())).toBe(list)
+    expect(dropDeletedFollowupCandidates(list, new Set(), ALL_STAGES)).toBe(list)
+  })
+
+  it('only treats covered stages as authoritative — a scoped board load cannot wipe the deck (v2.1824 regression)', () => {
+    // Board has only Ready to Bill loaded; billed/working candidates are
+    // absent from the live list because their sections were never fetched.
+    const rtb = job({ id: 'rtb', stage: 'ready_to_bill' })
+    const working = job({ id: 'w', stage: 'working' })
+    const billed = job({ id: 'b', stage: 'billed' })
+    const list = [rtb, working, billed]
+    expect(dropDeletedFollowupCandidates(list, new Set(['rtb']), new Set(['ready_to_bill']))).toBe(list)
+  })
+
+  it('still drops a deleted job inside a covered stage while keeping uncovered stages', () => {
+    const deletedRtb = job({ id: 'gone', stage: 'ready_to_bill' })
+    const liveRtb = job({ id: 'rtb', stage: 'ready_to_bill' })
+    const working = job({ id: 'w', stage: 'working' })
+    expect(
+      dropDeletedFollowupCandidates([deletedRtb, liveRtb, working], new Set(['rtb']), new Set(['ready_to_bill'])),
+    ).toEqual([liveRtb, working])
+  })
+
+  it('keeps everything when no stage is covered yet', () => {
+    const list = [job({ id: 'a' })]
+    expect(dropDeletedFollowupCandidates(list, new Set(['x']), new Set())).toBe(list)
+  })
+})
+
+describe('followupStagesCoveredByScopes', () => {
+  it('maps loaded board scopes to the stages their fetches actually return', () => {
+    expect(followupStagesCoveredByScopes(new Set(['waiting', 'working', 'ready_to_bill', 'billed_all']))).toEqual(
+      new Set(['waiting', 'working', 'ready_to_bill', 'billed']),
+    )
+    expect(followupStagesCoveredByScopes(new Set(['ready_to_bill']))).toEqual(new Set(['ready_to_bill']))
+    // No scoped fetch returns a literal 'collections' status, and paid jobs
+    // are never candidates — neither scope covers anything.
+    expect(followupStagesCoveredByScopes(new Set(['paid']))).toEqual(new Set())
+    expect(followupStagesCoveredByScopes(new Set())).toEqual(new Set())
   })
 })

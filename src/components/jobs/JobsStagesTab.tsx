@@ -166,6 +166,7 @@ import {
 } from '../../lib/jobsStagesScheduleSessionSearch'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { JobsFollowupModal, type JobsFollowupStageRowResult } from './JobsFollowupModal'
+import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -1802,7 +1803,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   // Live jobs_ledger ids for the deck: a card whose job disappears (deleted
   // from the Job window, migrated to a bid, …) drops immediately (v2.1756).
+  // The ids only speak for the scopes the board has loaded (v2.1824 scoped
+  // loading) — followupLiveJobStages tells the deck which stages those are,
+  // so candidates in unloaded sections don't read as deleted.
   const followupLiveJobIds = useMemo(() => new Set(jobs.map((j) => j.id)), [jobs])
+  const followupLiveJobStages = useMemo(() => followupStagesCoveredByScopes(cacheMergedScopes), [cacheMergedScopes])
 
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
@@ -1873,6 +1878,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 onOpenActivity={openFollowupActivity}
                 activityExpandOpen={activityExpandJob != null}
                 liveJobIds={followupLiveJobIds}
+                liveJobStages={followupLiveJobStages}
               />
             ) : null}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}

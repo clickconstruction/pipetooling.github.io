@@ -31,6 +31,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1840',
+    date: '2026-08-19',
+    title: 'Follow-ups deck no longer empties itself',
+    kind: 'fix',
+    highlights: [
+      'Opening Jobs → Pipeline → Follow-ups briefly showed every job needing a follow-up, then wrongly flipped to "All caught up" on devices with only some Pipeline sections open.',
+      'The deck now knows which sections your device has loaded and keeps its cards regardless — jobs deleted while the deck is open still drop correctly.',
+    ],
+  },
+  {
     version: 'v2.1839',
     date: '2026-08-19',
     title: 'Bid preview and Edit Bid, redesigned — plus Copy for text',
