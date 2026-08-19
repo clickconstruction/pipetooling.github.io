@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1822',
+    date: '2026-08-19',
+    title: 'Under the hood: schema type definitions caught up',
+    kind: 'fix',
+    highlights: [
+      'Internal type definitions for the standing office schedule (rosters and auto-filled Office blocks) are now generated from the live database — no visible changes, just firmer footing for upcoming work.',
+    ],
+  },
+  {
     version: 'v2.1820',
     date: '2026-08-19',
     title: 'Share with supply house — send it from your own inbox',

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1820)
+last_updated: 2026-08-19 (v2.1822)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1822)
+
+### Types catch-up: office-roster schema lands in database.ts (2026-08-19)
+`npm run gen-types:linked` after the v2.1820 migration push surfaced the deferred regen from the standing-office-schedule work (v2.1810/1812 shipped its migration without regenerating): [`database.ts`](../src/types/database.ts) gains `dispatch_office_roster` + `dispatch_office_schedule_fills` table types and the `ensure_office_schedule_blocks` / `can_edit_schedule_dispatch` function signatures (+70 lines, pure addition — the v2.1820 `send_method` hand-edit matched the generator exactly and is untouched). No behavior change; closes the "gen-types cleanup pending" item. Client-only — no migration.
 
 ## Latest Updates (v2.1820)
 
