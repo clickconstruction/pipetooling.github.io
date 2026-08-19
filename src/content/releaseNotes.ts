@@ -32,6 +32,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1830',
+    date: '2026-08-19',
+    title: 'Pipeline search shows you why each job matched',
+    kind: 'feature',
+    highlights: [
+      'While you search the Pipeline, the matching text lights up amber on every result — in the job number, name, address, customer, GC, and development.',
+      'Handy now that search covers every section including Paid in Full: no more guessing why a row is in your results.',
+    ],
+  },
+  {
     version: 'v2.1829',
     date: '2026-08-19',
     title: 'Change orders: the document takes shape',

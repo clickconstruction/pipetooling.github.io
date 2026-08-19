@@ -124,6 +124,12 @@ function boardJobs() {
   ]
 }
 
+
+/** Matches an element whose OWN textContent equals `name` even when the
+ * search highlight (v2.1830) splits it into <mark>/<span> segments. */
+const byJobName = (name: string) => (_: string, el: Element | null) =>
+  el?.textContent === name && el.children.length <= 3 && !['TR', 'TD', 'TBODY', 'TABLE'].includes(el.tagName)
+
 describe('JobsStagesTab render smoke', () => {
   beforeEach(() => {
     // The v2.1824 per-device default opens Ready to Bill only; these smokes
@@ -153,7 +159,7 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText(/Paid in Full \(/)).toBeTruthy()
     // Working opens by default → its rows render
     expect(screen.getByText('Working Duplex')).toBeTruthy()
-    expect(screen.getByText('Working Villa')).toBeTruthy()
+    expect(screen.getAllByText(byJobName('Working Villa'))[0]).toBeTruthy()
   })
 
   it('stages search filters the board sections', () => {
@@ -163,7 +169,7 @@ describe('JobsStagesTab render smoke', () => {
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Villa' } })
     expect(screen.getByText(/Working \(1\)/)).toBeTruthy()
     expect(screen.queryByText('Working Duplex')).toBeNull()
-    expect(screen.getByText('Working Villa')).toBeTruthy()
+    expect(screen.getAllByText(byJobName('Working Villa'))[0]).toBeTruthy()
   })
 
   it('toggles a section closed and open again', () => {
@@ -179,9 +185,9 @@ describe('JobsStagesTab render smoke', () => {
     // Waiting starts closed; opening it reveals its rows
     const waitingHeader = screen.getByText(/Waiting \(1\)/)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText('Waiting Casa')).toBeNull()
+    expect((screen.queryAllByText(byJobName('Waiting Casa'))[0] ?? null)).toBeNull()
     fireEvent.click(waitingHeader)
-    expect(screen.getByText('Waiting Casa')).toBeTruthy()
+    expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
   })
 
   it('tab-owned state SURVIVES an active → inactive → active round trip (always-mounted contract)', () => {
@@ -190,7 +196,7 @@ describe('JobsStagesTab render smoke', () => {
     const view = renderWithProviders(<JobsStagesTab ref={ref} {...props} />)
     // Set state: open the Waiting section and type a search
     fireEvent.click(screen.getByText(/Waiting \(1\)/))
-    expect(screen.getByText('Waiting Casa')).toBeTruthy()
+    expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
     const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement
     fireEvent.change(search, { target: { value: 'Casa' } })
     expect(screen.queryByText('Working Duplex')).toBeNull()
@@ -203,7 +209,7 @@ describe('JobsStagesTab render smoke', () => {
     expect(searchAgain.value).toBe('Casa')
     const waitingHeader = screen.getByText(/Waiting \(1\)/)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByText('Waiting Casa')).toBeTruthy()
+    expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
   })
 
   it('imperative handle methods are callable without throwing', () => {
