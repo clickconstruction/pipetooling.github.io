@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1841',
+    date: '2026-08-19',
+    title: 'Ready to Bill notifications: gear icon renders',
+    kind: 'fix',
+    highlights: [
+      'The new Ready to Bill notifications button showed the text "\\u2699" instead of its gear icon — it now shows the ⚙ like its Paid siblings.',
+    ],
+  },
+  {
     version: 'v2.1839',
     date: '2026-08-19',
     title: 'Bid preview and Edit Bid, redesigned — plus Copy for text',

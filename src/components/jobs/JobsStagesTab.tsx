@@ -3047,7 +3047,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                {/* Header row mirrors the Paid in Full section: toggle left, \u2699 flushed right. */}
+                {/* Header row mirrors the Paid in Full section: toggle left, gear flushed right. */}
                 <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
@@ -3080,7 +3080,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         fontSize: '1rem',
                       }}
                     >
-                      <span aria-hidden>\u2699</span>
+                      <span aria-hidden>{'\u2699'}</span>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Ready to Bill notifications</span>
                     </button>
                   )}
