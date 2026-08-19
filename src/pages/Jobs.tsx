@@ -49,6 +49,7 @@ import type { JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } 
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
+import { readStagesSectionOpenPrefs, scopesForOpenStagesSections } from '../lib/jobs/stagesSectionPrefs'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
@@ -111,6 +112,7 @@ export default function Jobs() {
     paidJobsMergedForKey,
     jobsListError,
     runFetchJobs,
+    runFetchScopes,
     fetchPaidJobsIfNeeded,
   } = useJobsListCache()
   const jobDetailModal = useJobDetailModal()
@@ -156,6 +158,16 @@ export default function Jobs() {
   const loadJobs = useCallback(() => {
     return runFetchJobs(customerFilterForFetch)
   }, [runFetchJobs, customerFilterForFetch])
+  /**
+   * Scoped first paint for the Pipeline (v2.1824, plan PR 3): fetch only the
+   * sections the device left open (fresh devices: Ready to Bill). Every other
+   * jobs-cache tab (Billing, Parts, Sub-sheet) still full-loads via loadJobs —
+   * and once any full load has run, the scoped path is a no-op refresh of the
+   * same scopes. Mutation refreshes stay full until plan PR 5.
+   */
+  const loadJobsScopedForStages = useCallback(() => {
+    return runFetchScopes(scopesForOpenStagesSections(readStagesSectionOpenPrefs()), customerFilterForFetch)
+  }, [runFetchScopes, customerFilterForFetch])
 
   const jobsListPipelineBusy = jobsListLoading || jobsListRefreshing
 
@@ -597,7 +609,10 @@ export default function Jobs() {
     }
     loadJobsFromEffectTimerRef.current = setTimeout(() => {
       loadJobsFromEffectTimerRef.current = null
-      void loadJobs()
+      // Stages alone affords the scoped first paint; other tabs read the full
+      // list, and a full load supersedes any scoped one for the session key.
+      if (activeTabRef.current === 'stages') void loadJobsScopedForStages()
+      else void loadJobs()
     }, LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS)
     return () => {
       if (loadJobsFromEffectTimerRef.current) {
@@ -605,7 +620,7 @@ export default function Jobs() {
         loadJobsFromEffectTimerRef.current = null
       }
     }
-  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobs, shouldLoadJobsListForActiveTab])
+  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobs, loadJobsScopedForStages, shouldLoadJobsListForActiveTab])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return

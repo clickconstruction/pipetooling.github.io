@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1823)
+last_updated: 2026-08-19 (v2.1824)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1824)
+
+### Pipeline: sections load on expand — scoped-load plan PR 3 (2026-08-19)
+The train's visible flip. The board fetches ONLY the sections the device has open: fresh devices open **Ready to Bill** alone (~6 embedded rows + the lean stats read instead of the whole company), and per-device persistence (new kernel [`stagesSectionPrefs.ts`](../src/lib/jobs/stagesSectionPrefs.ts), +3 tests, `pipetooling_stages_sections_v2`) makes whatever you leave open what next visit loads — [`Jobs.tsx`](../src/pages/Jobs.tsx) reads the prefs pre-fetch and calls the new `runFetchScopes`. Expanding a section fetches its scope on the spot ("— loading" beside the title); collapsed headers stay live from the v2.1821 stats layer (counts, totals, 30/90 aging chips, Capable of Being Billed — `…` bridges the first stats load). Honesty guards fetch ALL non-paid scopes the moment anything cross-section engages: search text, the # jump opening, active GC/development/account-man/hidden-group filters, or the Weekly money / GC Review / AR / Capable breakdown modals — so filtered or searched boards always show row-derived numbers. Sections whose scope is loading render a loading line instead of misleading empty tables. Render smokes pin the pre-scoping layout via an all-merged context mock + prefs preset. Verified live: first paint ran exactly the RTB scope + rtb_gate companion + stats queries; expanding Working fired only the working query; prefs survived reload. Mutation refreshes stay full-board until PR 5. Help guide `open-just-the-pipeline-sections-you-use`. Client-only — no migration.
 
 ## Latest Updates (v2.1823)
 
