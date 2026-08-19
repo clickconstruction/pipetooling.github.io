@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1825',
+    date: '2026-08-19',
+    title: 'Pipeline search now covers every job — paid included, automatically',
+    kind: 'feature',
+    highlights: [
+      'Type two characters and the board searches ALL jobs — every section, Paid in Full included — and shows matches even in sections you keep collapsed.',
+      'Search also matches the customer name on the job now.',
+      'The "Search Paid in Full too" chip is gone because it is no longer needed, and the # number jump finds any job in any status the same way.',
+    ],
+  },
+  {
     version: 'v2.1824',
     date: '2026-08-19',
     title: 'The Pipeline opens in a blink — sections load when you open them',

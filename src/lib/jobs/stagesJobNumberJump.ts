@@ -38,41 +38,6 @@ export function findJobsByNumber<T extends Pick<JobNumberJumpCandidate, 'hcp_num
 }
 
 /**
- * Paid-fallback state for a jump that missed the loaded board (v2.1808).
- * The Paid in Full list is lazy, so a paid job's number isn't in memory until
- * `fetchPaidJobsIfNeeded` merges it. When Enter misses, the shell parks the
- * digits as a pending jump and re-runs this resolver as the cache updates:
- *
- *   - paid rows already merged for the current cache key → the miss is final
- *     (done, hit = whatever the fresh match finds — normally null).
- *   - paid fetch still loading, OR the main board list is still
- *     loading/refreshing → keep waiting (not done). The main-list case is the
- *     v2.1813 prod race: fetchPaidJobsIfNeeded refuses to start while the main
- *     load is in flight, so "not loading and not merged" during that window
- *     means "couldn't start yet", not "failed" — the shell re-kicks the fetch
- *     when the main load settles.
- *   - otherwise (fetch failed or never started, nothing busy) → give up with
- *     the current match rather than spin forever.
- */
-export function resolvePendingNumberJump<T extends Pick<JobNumberJumpCandidate, 'hcp_number' | 'click_number'>>(args: {
-  jobs: T[]
-  digits: string
-  paidJobsLoading: boolean
-  /** `paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null` — paid rows are in `jobs`. */
-  paidMergedForCurrentKey: boolean
-  /** Main board list loading or refreshing — the paid fetch can't start while it runs. */
-  mainListBusy: boolean
-}): { done: false } | { done: true; matches: T[] } {
-  const matches = findJobsByNumber(args.jobs, args.digits)
-  // A hit is always final — no reason to keep the user waiting on the rest of
-  // the paid fetch when the number already resolves.
-  if (matches.length > 0) return { done: true, matches }
-  if (args.paidMergedForCurrentKey) return { done: true, matches }
-  if (args.paidJobsLoading || args.mainListBusy) return { done: false }
-  return { done: true, matches }
-}
-
-/**
  * Stages section-open key the job's row lives under. Unlike
  * stagesSectionKeyForJobStatus (stage-move destinations), this covers the
  * whole board: billed rows flagged collections_at sit in Collections, and
