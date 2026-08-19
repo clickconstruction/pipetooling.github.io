@@ -31,7 +31,6 @@ export type BidEditFormValues = {
   bidDueTime: string
   estimatedJobStartDate: string
   designDrawingPlanDate: string
-  planPages: string
   submittedTo: string
   outcome: BidEditOutcomeOption
   lossReason: string
@@ -66,7 +65,6 @@ export type BidEditFormSetters = {
   setBidDueTime: Dispatch<SetStateAction<string>>
   setEstimatedJobStartDate: Dispatch<SetStateAction<string>>
   setDesignDrawingPlanDate: Dispatch<SetStateAction<string>>
-  setPlanPages: Dispatch<SetStateAction<string>>
   setSubmittedTo: Dispatch<SetStateAction<string>>
   setOutcome: Dispatch<SetStateAction<BidEditOutcomeOption>>
   setLossReason: Dispatch<SetStateAction<string>>
@@ -139,7 +137,6 @@ export function useBidEditForm(): BidEditForm {
   const [bidDueTime, setBidDueTime] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
-  const [planPages, setPlanPages] = useState('')
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<BidEditOutcomeOption>('')
   const [lossReason, setLossReason] = useState('')
@@ -159,7 +156,6 @@ export function useBidEditForm(): BidEditForm {
     setBidSubmissionLink('')
     setItbLinks([])
     setDesignDrawingPlanDate('')
-    setPlanPages('')
     setGcCustomerId(opts.customer?.id ?? '')
     setGcCustomerSearch(opts.customer?.display ?? '')
     setProjectName(opts.project?.name?.trim() ?? '')
@@ -209,7 +205,6 @@ export function useBidEditForm(): BidEditForm {
     setBidDueTime(((bid as { bid_due_time?: string | null }).bid_due_time ?? '').slice(0, 5))
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
-    setPlanPages(bid.plan_pages ?? '')
     setSubmittedTo((bid as { submitted_to?: string | null }).submitted_to ?? '')
     setOutcome((bid.outcome ?? '') as BidEditOutcomeOption)
     setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
@@ -252,7 +247,6 @@ export function useBidEditForm(): BidEditForm {
     bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
-    planPages,
     submittedTo,
     outcome,
     lossReason,
@@ -287,7 +281,6 @@ export function useBidEditForm(): BidEditForm {
     setBidDueTime,
     setEstimatedJobStartDate,
     setDesignDrawingPlanDate,
-    setPlanPages,
     setSubmittedTo,
     setOutcome,
     setLossReason,

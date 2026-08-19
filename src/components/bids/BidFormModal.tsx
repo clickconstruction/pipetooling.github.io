@@ -13,6 +13,7 @@ import {
 } from '../../lib/bidDateSentDisplay'
 import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { itbLinkLabel } from '../../lib/itbLinks'
+import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -140,12 +141,19 @@ export function BidFormModal(props: BidFormModalProps) {
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
   const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
   const [dueTimeOpen, setDueTimeOpen] = useState(false)
+  const [distanceAutoStatus, setDistanceAutoStatus] = useState<
+    | null
+    | { kind: 'busy' }
+    | { kind: 'done'; source: 'routed' | 'estimate'; anchorLabel: string }
+    | { kind: 'error'; message: string }
+  >(null)
 
   useEffect(() => {
     if (!props.open) {
       setServiceTypeSwitchOpen(false)
       setDuplicatingToServiceTypeId(null)
       setDueTimeOpen(false)
+      setDistanceAutoStatus(null)
     }
   }, [props.open])
 
@@ -222,7 +230,6 @@ export function BidFormModal(props: BidFormModalProps) {
     bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
-    planPages,
     submittedTo,
     outcome,
     lossReason,
@@ -256,7 +263,6 @@ export function BidFormModal(props: BidFormModalProps) {
     setBidDueTime,
     setEstimatedJobStartDate,
     setDesignDrawingPlanDate,
-    setPlanPages,
     setSubmittedTo,
     setOutcome,
     setLossReason,
@@ -281,6 +287,22 @@ export function BidFormModal(props: BidFormModalProps) {
   function openServiceTypeSwitch() {
     setServiceTypeSwitchOpen(true)
     void Promise.resolve(onServiceTypeSwitchModalOpen?.())
+  }
+
+  /** Auto-fill Distance to Office: routed Google miles, straight-line estimate as fallback. */
+  function runDistanceAutoFill(force: boolean) {
+    if (!address.trim()) return
+    if (!force && distanceFromOffice.trim()) return
+    setDistanceAutoStatus({ kind: 'busy' })
+    void (async () => {
+      const r = await computeBidDistanceToOffice(address)
+      if (r.ok) {
+        setDistanceFromOffice(r.milesText)
+        setDistanceAutoStatus({ kind: 'done', source: r.source, anchorLabel: r.anchorLabel })
+      } else {
+        setDistanceAutoStatus({ kind: 'error', message: r.message })
+      }
+    })()
   }
 
   return (
@@ -700,18 +722,9 @@ export function BidFormModal(props: BidFormModalProps) {
                 <div style={FORM_SECTION_LABEL_STYLE}>Location</div>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— street, town, state zip</span></label>
-                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} onBlur={() => runDistanceAutoFill(false)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
-                <div
-                  className="bid-form-grid-2"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-                    gap: '1rem',
-                    alignItems: 'start',
-                  }}
-                >
-                  <div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to Office (miles)</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
@@ -738,21 +751,33 @@ export function BidFormModal(props: BidFormModalProps) {
                           </svg>
                         </a>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => runDistanceAutoFill(true)}
+                        disabled={distanceAutoStatus?.kind === 'busy' || !address.trim()}
+                        title={address.trim() ? 'Compute driving miles from the project address' : 'Enter the project address first'}
+                        style={{
+                          padding: '0.35rem 0.6rem',
+                          fontSize: '0.8125rem',
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border-strong)',
+                          borderRadius: 5,
+                          color: 'var(--text-700)',
+                          cursor: distanceAutoStatus?.kind === 'busy' || !address.trim() ? 'default' : 'pointer',
+                        }}
+                      >
+                        {distanceAutoStatus?.kind === 'busy' ? 'Measuring…' : '\u21BB Auto'}
+                      </button>
                     </div>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Plan Pages</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={planPages}
-                      onChange={(e) => setPlanPages(e.target.value)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      placeholder="e.g. 5"
-                      style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    />
-                  </div>
+                  {distanceAutoStatus && distanceAutoStatus.kind !== 'busy' ? (
+                    <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: distanceAutoStatus.kind === 'error' ? 'var(--text-amber-700)' : 'var(--text-muted)', lineHeight: 1.4 }}>
+                      {distanceAutoStatus.kind === 'error'
+                        ? distanceAutoStatus.message
+                        : distanceAutoStatus.source === 'routed'
+                          ? `Driving miles via Google — from ${distanceAutoStatus.anchorLabel}`
+                          : `\u2248 straight-line estimate — from ${distanceAutoStatus.anchorLabel}`}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div style={FORM_SECTION_STYLE}>

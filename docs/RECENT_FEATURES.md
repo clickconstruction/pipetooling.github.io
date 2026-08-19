@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1853)
+last_updated: 2026-08-19 (v2.1855)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1855)
+
+### Distance to Office fills itself — and Plan Pages is gone (2026-08-19)
+Estimator request: automate the bid form's Distance to Office from the project address, and kill the Plan Pages field. **Auto-fill**: typing a Project Address (when Distance is blank) or clicking the new **↻ Auto** button geocodes the address (`geocode-one`, cached in `address_geocodes`) and asks the new **[`driving-distance`](../supabase/functions/driving-distance/index.ts)** edge function (Google **Routes API**, DRIVE mode — **deploy after merge**: `supabase functions deploy driving-distance`; config.toml `verify_jwt=false` like geocode-one; roles dev/master/assistant/controller/estimator) for real driven miles. **Every failure falls back** to straight-line × the road-winding factor from [`jobTravelEstimate.ts`](../src/lib/jobTravelEstimate.ts) — including the Routes API not being enabled on `GOOGLE_MAPS_API_KEY` yet — and the hint line says which you got: "Driving miles via Google — from <office>" vs "≈ straight-line estimate — from <office>". A hand-entered distance is never overwritten (blur only fills blanks; ↻ recomputes on demand). **Office anchor**: new `app_settings.office_address_v1` ([`officeAddressSettings.ts`](../src/lib/officeAddressSettings.ts)), set in **Settings → Templates → Office address** (geocoded once on save; dev-only write like the Map default view block it mirrors), falling back to the **Map default view** center when unset. Kernel [`bidDistanceToOffice.ts`](../src/lib/bidDistanceToOffice.ts) (5 tests: meters→miles, winding estimate, input formatting). **Plan Pages removed** from the Edit Bid form, `useBidEditForm`, both save payloads, and the preview details (the `bids.plan_pages` column and existing data stay; Bid Costs/Submission read-only surfaces untouched). Verified live: CASTROVILLE TX → 87.5 mi ≈ estimate from the Kingsbury map-default anchor. Help guide `auto-fill-distance-to-office.md` (new). Client + edge function — no migration.
 
 ## Latest Updates (v2.1853)
 

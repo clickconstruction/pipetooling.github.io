@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1855',
+    date: '2026-08-19',
+    title: 'Distance to Office fills itself',
+    kind: 'feature',
+    highlights: [
+      'Type a project address on a bid and the Distance to Office fills in by itself — real Google driving miles when available, a close estimate otherwise. A small note tells you which one you got.',
+      'A ↻ Auto button recomputes on demand, and a number you typed yourself is never overwritten.',
+      'Set your office address once under Settings → Templates → Office address; until then it measures from the Map default view address.',
+      'The Plan Pages field is gone from the bid form.',
+    ],
+  },
+  {
     version: 'v2.1853',
     date: '2026-08-19',
     title: 'Ready to Bill notifications: tidier recipient rows',

@@ -503,6 +503,10 @@ verify_jwt = false
 [functions.geocode-one]
 verify_jwt = false
 
+# Same pattern as geocode-one: in-function auth (getUser + role check); gateway verify_jwt caused 401s.
+[functions.driving-distance]
+verify_jwt = false
+
 # Day-view travel hints (Option B): routed drive times between consecutive scheduled jobs via Google Routes; reads/fills public.job_travel_times. JWT + scheduling role in function. Needs GOOGLE_MAPS_API_KEY.
 [functions.travel-time-batch]
 verify_jwt = false
