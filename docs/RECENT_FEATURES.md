@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1827)
+last_updated: 2026-08-19 (v2.1829)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1829)
+
+### Change-order document kernel + signed credit lines — CO train PR 2 (2026-08-19)
+Pure logic for change orders on the estimates rails (schema landed v2.1826): [`estimateChangeOrder.ts`](../src/lib/estimateChangeOrder.ts) parses/serializes the `change_order_fields` jsonb narrative (description of change, reason, schedule impact, response-by), computes the signed **net change to contract** from line items, and builds the CO document (HTML + text) following the Bids generator's layout — cost table with credit rows and a ruled net-change total (`formatSignedCentsUsd` renders credits as −$390.00). [`estimateLineItemNormalize.ts`](../src/lib/estimateLineItemNormalize.ts) gains an `allowNegative` option (default off — existing estimate behavior byte-identical) so CO credit lines survive normalization instead of clamping to $0. +10 kernel tests. No UI yet — the entry point lands next.
 
 ## Latest Updates (v2.1827)
 

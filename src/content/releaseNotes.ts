@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1829',
+    date: '2026-08-19',
+    title: 'Change orders: the document takes shape',
+    kind: 'feature',
+    highlights: [
+      'More groundwork: the change-order document itself is built — description of change, reason, schedule impact, and a cost table where credit lines subtract into a computed "Net change to contract".',
+      'Still under the hood — the New change order button appears in Estimates in the next update.',
+    ],
+  },
+  {
     version: 'v2.1827',
     date: '2026-08-19',
     title: 'The Pipeline diet is complete — updates now cost almost nothing',
