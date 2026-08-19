@@ -1697,7 +1697,9 @@ function EstimateList() {
               master_user_id: masterUserId,
               created_by: user.id,
               title: '',
-              line_items_snapshot: [defaultDraftFirstLine()],
+              // COs start with no lines: Impact on cost opens with the guided
+              // prompt instead of the estimate's "Custom Service Visit" stub.
+              line_items_snapshot: docKind === 'change_order' ? [] : [defaultDraftFirstLine()],
               terms_snapshot: '',
               total_cents: 0,
               project_id: projectId?.trim() || null,
@@ -2413,7 +2415,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       const rowIsCO = isChangeOrderDocKind(r.doc_kind)
       const parsedLines = lineItemsFromJson(r.line_items_snapshot, rowIsCO)
       setLines(
-        r.status === 'draft' && parsedLines.length === 0 ? [defaultDraftFirstLine()] : parsedLines,
+        // CO drafts stay empty so Impact on cost opens with the guided prompt.
+        r.status === 'draft' && parsedLines.length === 0 && !rowIsCO
+          ? [defaultDraftFirstLine()]
+          : parsedLines,
       )
       setCoFields(parseEstimateChangeOrderFields(r.change_order_fields))
       setCustomerId(r.customer_id ?? null)

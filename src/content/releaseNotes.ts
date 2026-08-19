@@ -23,6 +23,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1843',
+    date: '2026-08-19',
+    title: 'Change orders: cost lines start from your change, not a stub',
+    kind: 'feature',
+    highlights: [
+      'New change orders no longer open with a "Custom Service Visit" line — Impact on cost starts empty, ready for lines that describe the actual change.',
+      'Groundwork for the guided "What does this change include?" prompt coming next: added-work and credit lines with live "+/− to contract" math.',
+    ],
+  },
+  {
     version: 'v2.1842',
     date: '2026-08-19',
     title: 'Groundwork: checklist cards remember their story',
