@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1856)
+last_updated: 2026-08-19 (v2.1857)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1857)
+
+### Bid Board due-date colors now belong to open bids only (2026-08-19)
+Owner call after a design discussion: a Won bid wearing a red "(+120) overdue" chip is a false alarm, and 135 decided bids full of red/amber teach the eye to ignore the colors where they matter (the 113 open ones). [`bidBoardDueCellParts`](../src/lib/bids/bidBoardDateCells.ts) gains an `outcome` param: terminal outcomes (won / lost / started_or_complete) force urgency `normal` and set a new `decided` flag; [`BidsBidBoardTab`](../src/components/bids/BidsBidBoardTab.tsx)'s due chip passes `bid.outcome` and drops the day-count line when decided — decided bids show a quiet gray date, nothing else. The due-color legend gains a closing note ("Colors apply to open bids only…"). Kernel tests +4 (decided quiets any date; null/empty/unknown outcomes keep urgency). Verified live: 38 open chips kept colors + day counts, 31 decided chips rendered quiet. Client-only — no migration.
 ## Latest Updates (v2.1856)
 
 ### Ready to Bill notifications: red no-push warning, auto-save, slimmer legend (2026-08-19)

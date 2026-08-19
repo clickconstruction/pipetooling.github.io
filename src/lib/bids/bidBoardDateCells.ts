@@ -22,7 +22,11 @@ export type BidBoardDateCellParts = {
   deltaLabel: string
 }
 
-export type BidBoardDueCellParts = BidBoardDateCellParts & { urgency: BidBoardDueUrgency }
+export type BidBoardDueCellParts = BidBoardDateCellParts & {
+  urgency: BidBoardDueUrgency
+  /** True when the bid has a terminal outcome — the deadline no longer calls for action. */
+  decided: boolean
+}
 
 /** Due dates this many days out (or closer, including today) get the amber "soon" chip. */
 export const DUE_SOON_WINDOW_DAYS = 3
@@ -42,15 +46,32 @@ function partsFromDate(d: Date, today: Date): BidBoardDateCellParts {
   }
 }
 
-/** Due-date chip parts from a date-only `YYYY-MM-DD` string (bids.bid_due_date). */
-export function bidBoardDueCellParts(dateStr: string | null | undefined, today: Date = new Date()): BidBoardDueCellParts | null {
+/**
+ * Due-date chip parts from a date-only `YYYY-MM-DD` string (bids.bid_due_date).
+ *
+ * `outcome`: once a bid is decided (won / lost / started_or_complete) the
+ * urgency colors would be false alarms — a Won bid is not "overdue" — so the
+ * chip goes quiet: urgency 'normal' and `decided: true` (renderers drop the
+ * day-count line). Red/amber stay exclusive to open bids.
+ */
+export function bidBoardDueCellParts(
+  dateStr: string | null | undefined,
+  today: Date = new Date(),
+  outcome?: string | null,
+): BidBoardDueCellParts | null {
   if (!dateStr || !dateStr.trim()) return null
   const d = new Date(dateStr.trim() + 'T12:00:00')
   if (isNaN(d.getTime())) return null
   const base = partsFromDate(d, today)
-  const urgency: BidBoardDueUrgency =
-    base.deltaDays > 0 ? 'overdue' : base.deltaDays >= -DUE_SOON_WINDOW_DAYS ? 'soon' : 'normal'
-  return { ...base, urgency }
+  const decided = outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete'
+  const urgency: BidBoardDueUrgency = decided
+    ? 'normal'
+    : base.deltaDays > 0
+      ? 'overdue'
+      : base.deltaDays >= -DUE_SOON_WINDOW_DAYS
+        ? 'soon'
+        : 'normal'
+  return { ...base, urgency, decided }
 }
 
 /** Last-contact cell parts from a timestamp ISO string (bids.last_contact). */

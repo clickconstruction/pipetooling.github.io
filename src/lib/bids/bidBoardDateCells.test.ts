@@ -7,12 +7,24 @@ const TODAY = new Date('2026-08-03T15:30:00')
 describe('bidBoardDueCellParts', () => {
   it('renders weekday + M/D with (+N) for past-due dates and flags overdue', () => {
     const p = bidBoardDueCellParts('2026-07-30', TODAY)
-    expect(p).toEqual({ dateLabel: 'Thu 7/30', deltaDays: 4, deltaLabel: '(+4)', urgency: 'overdue' })
+    expect(p).toEqual({ dateLabel: 'Thu 7/30', deltaDays: 4, deltaLabel: '(+4)', urgency: 'overdue', decided: false })
   })
 
   it('renders (-N) for future dates', () => {
     const p = bidBoardDueCellParts('2026-08-14', TODAY)
-    expect(p).toEqual({ dateLabel: 'Fri 8/14', deltaDays: -11, deltaLabel: '(-11)', urgency: 'normal' })
+    expect(p).toEqual({ dateLabel: 'Fri 8/14', deltaDays: -11, deltaLabel: '(-11)', urgency: 'normal', decided: false })
+  })
+
+  it('goes quiet for decided bids: urgency normal + decided, whatever the date', () => {
+    // Long past due, but Won — no false alarm.
+    expect(bidBoardDueCellParts('2026-04-01', TODAY, 'won')).toMatchObject({ urgency: 'normal', decided: true })
+    expect(bidBoardDueCellParts('2026-08-02', TODAY, 'lost')).toMatchObject({ urgency: 'normal', decided: true })
+    expect(bidBoardDueCellParts('2026-08-04', TODAY, 'started_or_complete')).toMatchObject({ urgency: 'normal', decided: true })
+  })
+
+  it('keeps urgency for open bids (null / empty / unknown outcome)', () => {
+    expect(bidBoardDueCellParts('2026-08-02', TODAY, null)).toMatchObject({ urgency: 'overdue', decided: false })
+    expect(bidBoardDueCellParts('2026-08-04', TODAY, '')).toMatchObject({ urgency: 'soon', decided: false })
   })
 
   it('marks due-today and the next 3 days as soon', () => {
