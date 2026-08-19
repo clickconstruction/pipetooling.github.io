@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1832',
+    date: '2026-08-19',
+    title: 'Change orders: the editor is here',
+    kind: 'feature',
+    highlights: [
+      'Open a change order and the editor asks the right questions: description of change, reason, impact on schedule, and a response-by date.',
+      'Cost impact is real line items — enter a negative price for a credit, and the total becomes a computed "Net change to contract".',
+      'Next up: sending it for signature.',
+    ],
+  },
+  {
     version: 'v2.1831',
     date: '2026-08-19',
     title: 'New change order — right from Estimates',

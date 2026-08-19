@@ -18,7 +18,13 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { isChangeOrderDocKind } from '../lib/estimateChangeOrder'
+import {
+  EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
+  formatSignedCentsUsd,
+  isChangeOrderDocKind,
+  parseEstimateChangeOrderFields,
+  type EstimateChangeOrderFields,
+} from '../lib/estimateChangeOrder'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
@@ -63,7 +69,6 @@ import { CustomerSnapshotModal } from '../components/customers/CustomerSnapshotM
 import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
 import EstimateCustomerDocument, {
-  estimatePublicLineItems,
   EstimateLineItemsTable,
 } from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
@@ -657,8 +662,8 @@ function emptyCatalogEditRow(): EstimateCatalogLineItem {
   }
 }
 
-function lineItemsFromJson(raw: unknown): LineItem[] {
-  return normalizeEstimateLineItemsFromJson(raw)
+function lineItemsFromJson(raw: unknown, allowNegative?: boolean): LineItem[] {
+  return normalizeEstimateLineItemsFromJson(raw, { allowNegative })
 }
 
 function sumLineItems(lines: LineItem[]): number {
@@ -2421,10 +2426,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setRow(r)
       setAcceptHeaderBrand(parseAcceptHeaderBrand(r.accept_header_brand))
       setTerms(r.terms_snapshot ?? '')
-      const parsedLines = lineItemsFromJson(r.line_items_snapshot)
+      const rowIsCO = isChangeOrderDocKind(r.doc_kind)
+      const parsedLines = lineItemsFromJson(r.line_items_snapshot, rowIsCO)
       setLines(
         r.status === 'draft' && parsedLines.length === 0 ? [defaultDraftFirstLine()] : parsedLines,
       )
+      setCoFields(parseEstimateChangeOrderFields(r.change_order_fields))
       setCustomerId(r.customer_id ?? null)
       const vu = (r.valid_until ?? '').trim()
       if (r.status === 'draft') {
@@ -2617,6 +2624,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }, [editCustomerModal, customerId, refetchCustomersAfterEdit])
 
   const isDraft = row?.status === 'draft'
+  /** CO train (v2.1832): change orders reuse this whole page in CO mode. */
+  const isCO = isChangeOrderDocKind(row?.doc_kind)
+  const [coFields, setCoFields] = useState<EstimateChangeOrderFields>(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
   const draftNeedsCustomer = isDraft && !customerId
 
   const acceptNotifyOtherSelectOptions = useMemo((): SearchableSelectOption[] => {
@@ -3100,6 +3110,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               customer_attachment_url: attDb.url,
               customer_attachment_label: attDb.label,
               accept_notify_user_ids: [...new Set(acceptNotifyUserIds.filter((id) => typeof id === 'string' && id.length > 0))],
+              ...(isCO ? { change_order_fields: coFields } : {}),
             })
             .eq('id', row.id)
             .eq('status', 'draft'),
@@ -3315,7 +3326,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       if (!Number.isFinite(quantity) || quantity <= 0) quantity = 1
       const unit_price_cents =
         patch.unit_price_cents !== undefined ? patch.unit_price_cents : cur.unit_price_cents
-      const amount_cents = computeEstimateLineExtendedCents(quantity, unit_price_cents)
+      const amount_cents = computeEstimateLineExtendedCents(quantity, unit_price_cents, { allowNegative: isCO })
       next[i] = { line_item, description, quantity, unit_price_cents, amount_cents }
       return next
     })
@@ -3734,12 +3745,31 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <strong>Acceptance page logo:</strong>{' '}
             {acceptanceDocHeaderBrand ? acceptHeaderBrandLabel(acceptanceDocHeaderBrand) : 'None'}
           </p>
+          {isCO ? (
+            <section style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
+              <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>Change order</h2>
+              <p style={{ margin: '0.25rem 0' }}>
+                <strong>Description of change:</strong> {coFields.description_of_change.trim() || '—'}
+              </p>
+              <p style={{ margin: '0.25rem 0' }}>
+                <strong>Reason for change:</strong> {coFields.reason_for_change.trim() || '—'}
+              </p>
+              <p style={{ margin: '0.25rem 0' }}>
+                <strong>Impact on schedule:</strong> {coFields.impact_on_schedule.trim() || '—'}
+              </p>
+              {coFields.response_requested_by.trim() ? (
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Response requested by:</strong> {coFields.response_requested_by}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
           <section style={{ marginTop: '1rem' }}>
             <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>
-              {staffResolvedExperience?.docLineItemsHeading ?? 'Line items'}
+              {staffResolvedExperience?.docLineItemsHeading ?? (isCO ? 'Impact on cost' : 'Line items')}
             </h2>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
-              <EstimateLineItemsTable lines={estimatePublicLineItems(row.line_items_snapshot)} />
+              <EstimateLineItemsTable lines={normalizeEstimateLineItemsFromJson(row.line_items_snapshot, { allowNegative: isCO })} />
             </div>
           </section>
         </>
@@ -3925,6 +3955,61 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             }
             lineItemsSlot={
           <section style={{ marginTop: 0 }}>
+            {isCO ? (
+              <div
+                style={{
+                  border: '1px solid #f59e0b',
+                  borderRadius: 8,
+                  padding: '0.6rem 0.8rem 0.8rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.6rem',
+                }}
+              >
+                <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Change order</h2>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Description of change
+                  <AutosizeTextarea
+                    value={coFields.description_of_change}
+                    onChange={(e) => setCoFields((prev) => ({ ...prev, description_of_change: e.target.value }))}
+                    placeholder="What is changing — scope, plan reference…"
+                    minRows={2}
+                    style={{ ...estInputBase, fontWeight: 400, width: '100%', padding: '0.5rem' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Reason for change
+                  <AutosizeTextarea
+                    value={coFields.reason_for_change}
+                    onChange={(e) => setCoFields((prev) => ({ ...prev, reason_for_change: e.target.value }))}
+                    placeholder="Owner directive, field condition, plan revision…"
+                    minRows={1}
+                    style={{ ...estInputBase, fontWeight: 400, width: '100%', padding: '0.5rem' }}
+                  />
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600, flex: '1 1 200px' }}>
+                    Impact on schedule
+                    <input
+                      value={coFields.impact_on_schedule}
+                      onChange={(e) => setCoFields((prev) => ({ ...prev, impact_on_schedule: e.target.value }))}
+                      placeholder='"+2 working days", "none"…'
+                      style={{ ...estInputBase, fontWeight: 400, padding: '0.5rem' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600, flex: '0 1 180px' }}>
+                    Response requested by
+                    <input
+                      type="date"
+                      value={coFields.response_requested_by}
+                      onChange={(e) => setCoFields((prev) => ({ ...prev, response_requested_by: e.target.value }))}
+                      style={{ ...estInputBase, fontWeight: 400, padding: '0.5rem' }}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
             <div
               style={{
                 display: 'flex',
@@ -3934,7 +4019,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 marginBottom: '0.5rem',
               }}
             >
-              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Line items</h2>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{isCO ? 'Impact on cost' : 'Line items'}</h2>
               {lineItemRecentChips.map((c) => {
                 const primary = (c.line_item.trim() || c.description.trim() || '(line)').slice(0, 40)
                 const short = primary.length > 36 ? `${primary.slice(0, 35)}…` : primary
@@ -4370,9 +4455,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         <input
                           className="no-spinner"
                           type="number"
-                          min={0}
+                          min={isCO ? undefined : 0}
                           step="0.01"
                           placeholder="Unit ($)"
+                          title={isCO ? 'Negative unit price = credit line' : undefined}
                           value={ln.unit_price_cents ? ln.unit_price_cents / 100 : ''}
                           onChange={(e) =>
                             updateLine(i, { unit_price_cents: Math.round(Number(e.target.value || '0') * 100) })
@@ -4501,7 +4587,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </div>
               </li>
             </ul>
-            <p style={{ fontWeight: 600, textAlign: 'right' }}>Total: {formatMoney(totalCents)}</p>
+            <p style={{ fontWeight: 600, textAlign: 'right' }}>
+              {isCO ? <>Net change to contract: {formatSignedCentsUsd(totalCents)}</> : <>Total: {formatMoney(totalCents)}</>}
+            </p>
             {customerAttachmentPreview ?
               <EstimateCustomerAttachmentCard attachment={customerAttachmentPreview} />
             : (
@@ -4926,7 +5014,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </div>
           ) : (
             <p>
-              <strong>Total:</strong> {formatMoney(row.total_cents)}
+              {isCO ? (
+                <>
+                  <strong>Net change to contract:</strong> {formatSignedCentsUsd(row.total_cents)}
+                </>
+              ) : (
+                <>
+                  <strong>Total:</strong> {formatMoney(row.total_cents)}
+                </>
+              )}
             </p>
           )}
           {(row.customer_id || row.customer_email) && (
