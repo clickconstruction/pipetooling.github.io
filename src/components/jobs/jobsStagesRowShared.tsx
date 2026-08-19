@@ -15,6 +15,7 @@ import { formatEstimatedCompletionDisplay, formatUsdNoCents } from '../../lib/jo
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { formatAddressTwoLines, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { JobAddressText } from './JobAddressText'
+import { StagesSearchMark } from './StagesSearchMark'
 import { invoiceOpenRemainingOnJob, jobStagesInvoiceJumpChipTargets } from '../../lib/jobs/invoiceBilling'
 import {
   formatDispatchNoteDaysAgoShort,
@@ -213,11 +214,15 @@ export function renderStagesJobHcpChip(job: JobWithDetails, extraStyle?: CSSProp
     }
     return (
       <span style={mergedChipStyle} title={stName}>
-        {t} {serviceLabel}
+        <StagesSearchMark text={t} onColor={!!tagInfo} /> {serviceLabel}
       </span>
     )
   }
-  return <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }}>Job: {t}</span>
+  return (
+    <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }}>
+      Job: <StagesSearchMark text={t} />
+    </span>
+  )
 }
 
 export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties, addedStamp?: string | null) {
@@ -574,7 +579,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
       >
         <CustomerContactCardIcon size={13} style={{ flexShrink: 0 }} />
-        <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn || '—'}</span>
+        <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn ? <StagesSearchMark text={cn} /> : '—'}</span>
       </button>
       {gcName || developmentName ? (
         // GC and development share one muted row — they're the same "who/where
@@ -585,7 +590,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
           {gcName ? (
             <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-              <span>{gcName}</span>
+              <span><StagesSearchMark text={gcName} /></span>
             </span>
           ) : null}
           {developmentName ? (
@@ -615,12 +620,12 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
                 }}
               >
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span>{developmentName}</span>
+                <span><StagesSearchMark text={developmentName} /></span>
               </button>
             ) : (
               <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span>{developmentName}</span>
+                <span><StagesSearchMark text={developmentName} /></span>
               </span>
             )
           ) : null}
@@ -734,7 +739,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
           {gcName ? (
             <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-              <span>{gcName}</span>
+              <span><StagesSearchMark text={gcName} /></span>
             </span>
           ) : null}
           {developmentName ? (
@@ -764,12 +769,12 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
                 }}
               >
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span>{developmentName}</span>
+                <span><StagesSearchMark text={developmentName} /></span>
               </button>
             ) : (
               <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span>{developmentName}</span>
+                <span><StagesSearchMark text={developmentName} /></span>
               </span>
             )
           ) : null}

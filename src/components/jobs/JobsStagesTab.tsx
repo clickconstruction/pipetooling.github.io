@@ -141,6 +141,7 @@ import JobsRecentlyAddedList from './JobsRecentlyAddedList'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
+import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { fetchLeanJobIdsByNumber, fetchLeanJobSearchIds } from '../../lib/jobs/leanJobSearch'
@@ -768,9 +769,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           textUnderlineOffset: '2px',
         }}
       >
-        <span style={{ color: 'inherit', textDecoration: 'inherit' }}>{fmt.line1}</span>
+        <span style={{ color: 'inherit', textDecoration: 'inherit' }}><StagesSearchMark text={fmt.line1} /></span>
         {fmt.line2 ? (
-          <div style={{ fontSize: '0.75rem', color: 'inherit', marginTop: '0.15rem', textDecoration: 'inherit' }}>{fmt.line2}</div>
+          <div style={{ fontSize: '0.75rem', color: 'inherit', marginTop: '0.15rem', textDecoration: 'inherit' }}><StagesSearchMark text={fmt.line2} /></div>
         ) : null}
       </button>
     )
@@ -1803,7 +1804,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const followupLiveJobIds = useMemo(() => new Set(jobs.map((j) => j.id)), [jobs])
 
   return (
-    <>
+    <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
       {active && (
         <div>
           {(error || jobsListError) && (
@@ -4761,7 +4762,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           </button>
         </div>
       ) : null}
-    </>
+    </StagesSearchHighlightProvider>
   )
 })
 
