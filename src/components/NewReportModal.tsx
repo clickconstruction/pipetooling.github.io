@@ -8,6 +8,7 @@ import { additionalReportModalTemplateChipLabel, isJobCompleteTemplateName } fro
 import { isTurnawayTemplateName } from '../lib/turnaway'
 import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
+import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
@@ -326,15 +327,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         .invoke('send-report-email', { body: { report_id: inserted.id } })
         .catch(() => { /* report email is best-effort */ })
     }
-    // If this is a job report marked 100% complete and the job is still Working, offer to move it
-    // to Ready to bill before closing.
-    if (jobLedgerId && reportSaysJobComplete(fv)) {
-      const { data: jobRow } = await supabase
-        .from('jobs_ledger')
-        .select('status')
-        .eq('id', jobLedgerId)
-        .maybeSingle()
-      if ((jobRow as { status?: string | null } | null)?.status === 'working') {
+    // Job reports: mirror the completion percent into jobs_ledger.pct_complete
+    // (best-effort — the Stages % done, progress dot, and My Schedule deltas
+    // follow from it), then offer Ready to bill when a 100% report lands on a
+    // Working job.
+    if (jobLedgerId) {
+      const { jobStatus } = await propagateReportPctToJob(jobLedgerId, fv)
+      if (reportSaysJobComplete(fv) && jobStatus === 'working') {
         setReadyToBillJob({
           id: jobLedgerId,
           hcpNumber: selectedJob.hcp_number || '—',

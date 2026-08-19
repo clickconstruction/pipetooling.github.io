@@ -22,6 +22,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1833',
+    date: '2026-08-19',
+    title: 'Field reports now move the job’s % done',
+    kind: 'feature',
+    highlights: [
+      'When a report includes "How complete is the job?", that percent now becomes the job’s % done everywhere — the Pipeline progress bar and % box, dashboard cards, and the job’s activity feed update the moment the report saves.',
+      'The activity feed shows it as "N% complete — from field report", so the office can see the number came from the crew.',
+      'A 100% report on a Working job still offers to move it to Ready to Bill, same as before.',
+    ],
+  },
+  {
     version: 'v2.1832',
     date: '2026-08-19',
     title: 'Change orders: the editor is here',
