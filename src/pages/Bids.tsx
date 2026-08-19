@@ -31,6 +31,7 @@ import { ModalShell } from '../components/bids/ModalShell'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { BidWindowModal } from '../components/bids/BidWindowModal'
+import { serializeItbLinks } from '../lib/itbLinks'
 import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { Database } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
@@ -309,6 +310,7 @@ export default function Bids() {
     plansLink,
     countToolingPlansLink,
     bidSubmissionLink,
+    itbLinks,
     projectName,
     projectId: formProjectId,
     bidNumber,
@@ -2001,6 +2003,7 @@ export default function Bids() {
       plans_link: plansLink.trim() || null,
       count_tooling_plans_link: countToolingPlansLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
+      itb_links: serializeItbLinks(itbLinks),
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
@@ -2108,6 +2111,7 @@ export default function Bids() {
       plans_link: plansLink.trim() || null,
       count_tooling_plans_link: countToolingPlansLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
+      itb_links: serializeItbLinks(itbLinks),
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,

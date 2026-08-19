@@ -745,6 +745,7 @@ export type Database = {
           gc_contact_phone: string | null
           id: string
           include_payment_schedule: boolean
+          itb_links: Json
           last_contact: string | null
           loss_category: string | null
           loss_reason: string | null
@@ -800,6 +801,7 @@ export type Database = {
           gc_contact_phone?: string | null
           id?: string
           include_payment_schedule?: boolean
+          itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
           loss_reason?: string | null
@@ -855,6 +857,7 @@ export type Database = {
           gc_contact_phone?: string | null
           id?: string
           include_payment_schedule?: boolean
+          itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
           loss_reason?: string | null
