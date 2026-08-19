@@ -10,18 +10,18 @@ The **Checklist → Today** tab is your task list for the day. Each task is a ca
 :::example A task card
 {{button:outline|☐}} Install sheet metal across the front of the office
 
-{{chip:blue|💬 2 notes}} {{chip:gray|Add note}}
+{{button:outline|💬 Notes 2}} {{button:outline|＋ Add note}}
 :::
 
 ## Completing a task
 
-Tap the checkbox. That's it — no save button. If you want to say something about how it went ("used the scrap ply, looks clean"), tap **Add note** and post it; the note travels with the task.
+Tap the checkbox. That's it — no save button. If you want to say something about how it went ("used the scrap ply, looks clean"), tap the big **＋ Add note** button and post it; the note travels with the task.
 
 Tapping the checkbox again reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
 
 ## Notes are a conversation
 
-Tap the {{chip:blue|💬 notes}} chip to open the card's thread. You'll see every note anyone has left, plus the card's history — completed, reopened, signed off — in order. Type in the box and hit **Post** to add yours.
+Tap the **💬 Notes** button (the blue badge counts them) to open the card's thread. You'll see every note anyone has left, plus the card's history — completed, reopened, signed off — in order. Type in the box and hit **Post** to add yours.
 
 ## When a card comes back
 

@@ -34,6 +34,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1854',
+    date: '2026-08-19',
+    title: 'Checklist buttons you can hit in the sun',
+    kind: 'feature',
+    highlights: [
+      'The Notes and Add note buttons on checklist cards are now big, bold, full-width bars — easy to read and tap on a dim phone outdoors.',
+      'Task status shows as solid chips (Waiting on review, Signed off) instead of faint gray text, and the complete checkbox got bigger too.',
+    ],
+  },
+  {
     version: 'v2.1853',
     date: '2026-08-19',
     title: 'Ready to Bill notifications: tidier recipient rows',

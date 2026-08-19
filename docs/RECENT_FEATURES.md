@@ -27,6 +27,11 @@ Estimator request: automate the bid form's Distance to Office from the project a
 ### Ready to Bill notifications: channel checkboxes move right; copy says who edits (2026-08-19)
 Owner polish on v2.1844: in [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) the per-row 📧/🔔 checkboxes move to the END of each recipient row (after the "no push device" pill and the Detailed/Summary badge) so names and badges align; the explainer becomes "Set each person's channels…" — the old "Each person picks their own" implied self-service, but the list is dev-write (masters read-only), same as ever. Help guide `ready-to-bill-pipeline` example updated to match. Client-only — no migration.
 
+## Latest Updates (v2.1854)
+
+### Checklist cards pass the sunlight test — 48px action bar, glare-proof contrast (2026-08-19)
+Owner feedback on the v2.1846 cards from the field surface's real context (dim phone, sun behind you): the 💬/Add-note chips were ~26px with muted-gray-on-gray text — the first thing glare erases. [`ChecklistInstanceCard`](../src/components/checklist/ChecklistInstanceCard.tsx) presentation pass, no data/behavior changes: the two chips become a **full-card-width 48px split action bar** ("💬 Notes" + solid-blue count badge / "＋ Add note"; single full-width "＋ Add a note" when the card has no comments yet) with 2px `--text-600` borders (the app has no dark border token; caught live — the originally-authored `--border-stronger` doesn't exist, so the border silently rendered 0px), `--text-strong` 1rem/600 labels — border weight and type size carry the design instead of color tints. Status text becomes chips: solid-blue **Waiting on review**, solid-green **Signed off**; the reopened callout's border strengthens to 2px amber; the complete toggle grows 28→**34px** with a 2.5px ring; thread text bumps to 0.9375rem and the composer input/Post button to 48px. New render smoke `ChecklistInstanceCard.render.test.tsx` (7 tests). Help guide example updated. Client-only — no migration.
+
 ## Latest Updates (v2.1851)
 
 ### ITB links on bids — PlanHub / BuildingConnected pages, one click away (2026-08-19)
