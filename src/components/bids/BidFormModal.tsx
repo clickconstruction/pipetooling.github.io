@@ -81,6 +81,55 @@ function serviceTypePillStyle(st: { name: string; color: string | null }): CSSPr
   return { background: 'var(--bg-200)', color: 'var(--text-700)' }
 }
 
+const FORM_SECTION_LABEL_STYLE: CSSProperties = {
+  fontSize: '0.68rem',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: 'var(--text-muted)',
+  marginBottom: '0.6rem',
+}
+
+const FORM_SECTION_STYLE: CSSProperties = {
+  borderTop: '1px solid var(--border)',
+  paddingTop: '0.9rem',
+  marginBottom: '1rem',
+}
+
+function PasteButton({ onPaste, label }: { onPaste: (text: string) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          const text = await navigator.clipboard.readText()
+          onPaste(text)
+        } catch (err) {
+          console.error('Failed to read clipboard:', err)
+        }
+      }}
+      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      title="Paste from clipboard"
+      aria-label={label}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
+    </button>
+  )
+}
+
+const OUTCOME_SEGMENTS: { value: BidFormOutcomeOption; label: string }[] = [
+  { value: '', label: 'Open' },
+  { value: 'won', label: 'Won' },
+  { value: 'lost', label: 'Lost' },
+  { value: 'started_or_complete', label: 'Started / Complete' },
+]
+
+function outcomeSegmentSelectedStyle(value: BidFormOutcomeOption): CSSProperties {
+  if (value === 'won' || value === 'started_or_complete') return { background: 'var(--bg-green-tint)', color: 'var(--text-green-600)', fontWeight: 600 }
+  if (value === 'lost') return { background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', fontWeight: 600 }
+  return { background: 'var(--bg-blue-tint)', color: 'var(--text-link)', fontWeight: 600 }
+}
+
 export function BidFormModal(props: BidFormModalProps) {
   const jobFormModal = useJobFormModal()
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
@@ -231,12 +280,10 @@ export function BidFormModal(props: BidFormModalProps) {
               }
               .bid-form-grid-2 { grid-template-columns: 1fr !important; }
               .bid-form-grid-3 { grid-template-columns: 1fr !important; }
-              .bid-form-top-fields {
-                grid-template-columns: 1fr 1fr !important;
-                grid-template-areas:
-                  "est am"
-                  "bidnum bd"
-                  "proj proj" !important;
+              .bid-form-savebar {
+                margin: 1rem -1rem -1rem !important;
+                padding: 0.75rem 1rem !important;
+                border-radius: 0 !important;
               }
               .bid-form-modal {
                 padding: 1rem !important;
@@ -320,141 +367,34 @@ export function BidFormModal(props: BidFormModalProps) {
               <button
                 type="button"
                 onClick={closeBidForm}
+                aria-label="Cancel"
+                title="Cancel"
                 style={{
-                  padding: '0.5rem 1rem',
+                  padding: '0.5rem 0.7rem',
+                  lineHeight: 1,
                   background: 'var(--bg-muted)',
                   border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
+                  borderRadius: 5,
                   cursor: 'pointer',
                   justifySelf: 'end',
+                  color: 'var(--text-strong)',
                 }}
               >
-                Cancel
+                ✕
               </button>
             </div>
             <form onSubmit={saveBid}>
               <div
-                className="bid-form-top-fields"
+                className="bid-form-hero"
                 style={{
                   display: 'grid',
                   gap: '1rem',
                   marginBottom: '1rem',
-                  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
-                  gridTemplateAreas: `
-                    "est am bd"
-                    "bidnum proj proj"
-                  `,
+                  gridTemplateColumns: 'minmax(0, 1fr) 8rem',
+                  alignItems: 'start',
                 }}
               >
-                <div style={{ gridArea: 'est' }}>
-                  <label htmlFor="bid-form-estimator" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
-                  <SearchableSelect
-                    id="bid-form-estimator"
-                    value={estimatorId}
-                    onChange={setEstimatorId}
-                    options={estimatorUsers.map((u) => ({ value: u.id, label: u.name || u.email }))}
-                    emptyOption={{ value: '', label: '—' }}
-                    placeholder="—"
-                    listAriaLabel="Estimator"
-                  />
-                </div>
-                <div style={{ gridArea: 'am' }}>
-                  <label htmlFor="bid-form-account-man" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
-                  <SearchableSelect
-                    id="bid-form-account-man"
-                    value={accountManagerId}
-                    onChange={setAccountManagerId}
-                    options={estimatorUsers.map((u) => ({ value: u.id, label: u.name || u.email }))}
-                    emptyOption={{ value: '', label: '—' }}
-                    placeholder="—"
-                    listAriaLabel="Account manager"
-                  />
-                </div>
-                <div style={{ gridArea: 'bd' }}>
-                  <label htmlFor="bid-form-bid-due-date" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Due Date</label>
-                  <input
-                    id="bid-form-bid-due-date"
-                    type="date"
-                    value={bidDueDate}
-                    onChange={(e) => {
-                      setBidDueDate(e.target.value)
-                      if (!e.target.value) {
-                        setBidDueTime('')
-                        setDueTimeOpen(false)
-                      }
-                    }}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                  {bidDueTime === '' && !dueTimeOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => setDueTimeOpen(true)}
-                      disabled={!bidDueDate}
-                      title={bidDueDate ? 'Add the time of day this bid is due' : 'Pick a due date first'}
-                      style={{
-                        marginTop: '0.35rem',
-                        padding: 0,
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '0.8125rem',
-                        color: bidDueDate ? 'var(--text-link)' : 'var(--text-faint)',
-                        cursor: bidDueDate ? 'pointer' : 'default',
-                      }}
-                    >
-                      + Add due time
-                    </button>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem' }}>
-                      <input
-                        id="bid-form-bid-due-time"
-                        type="time"
-                        aria-label="Bid due time"
-                        value={bidDueTime}
-                        onChange={(e) => setBidDueTime(e.target.value)}
-                        style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                      />
-                      <button
-                        type="button"
-                        aria-label="Remove due time"
-                        title="Remove due time"
-                        onClick={() => {
-                          setBidDueTime('')
-                          setDueTimeOpen(false)
-                        }}
-                        style={{
-                          padding: '0.2rem 0.45rem',
-                          background: 'none',
-                          border: '1px solid var(--border)',
-                          borderRadius: 4,
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          lineHeight: 1,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div style={{ gridArea: 'bidnum' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>
-                  <input
-                    type="text"
-                    value={editingBid ? bidNumber : ''}
-                    onChange={(e) => { if (editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))) { setBidNumber(e.target.value); setError(null) } }}
-                    placeholder={editingBid ? 'e.g. 456' : 'Auto'}
-                    readOnly={!editingBid || myRole === 'estimator' || myRole === 'primary'}
-                    disabled={!editingBid || myRole === 'estimator' || myRole === 'primary'}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      ...((!editingBid || myRole === 'estimator' || myRole === 'primary') && { background: 'var(--bg-muted)', color: 'var(--text-muted)', cursor: 'not-allowed' }),
-                    }}
-                  />
-                </div>
-                <div style={{ gridArea: 'proj' }}>
+                <div>
                   <label htmlFor="bid-form-project-name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
                   <input
                     id="bid-form-project-name"
@@ -465,7 +405,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       setError(null)
                     }}
                     required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem 0.6rem', fontSize: '1.15rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 5 }}
                   />
                   <div style={{ marginTop: '0.5rem' }}>
                     <label htmlFor="bid-form-linked-project" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project</label>
@@ -510,9 +450,51 @@ export function BidFormModal(props: BidFormModalProps) {
                     })()}
                   </div>
                 </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>
+                  <input
+                    type="text"
+                    value={editingBid ? bidNumber : ''}
+                    onChange={(e) => { if (editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))) { setBidNumber(e.target.value); setError(null) } }}
+                    placeholder={editingBid ? 'e.g. 456' : 'Auto'}
+                    readOnly={!editingBid || myRole === 'estimator' || myRole === 'primary'}
+                    disabled={!editingBid || myRole === 'estimator' || myRole === 'primary'}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 4,
+                      ...((!editingBid || myRole === 'estimator' || myRole === 'primary') && { background: 'var(--bg-muted)', color: 'var(--text-muted)', cursor: 'not-allowed' }),
+                    }}
+                  />
+                </div>
               </div>
-              <div className="bid-form-service-outcome-sent-row" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label htmlFor="bid-form-estimator" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
+                  <SearchableSelect
+                    id="bid-form-estimator"
+                    value={estimatorId}
+                    onChange={setEstimatorId}
+                    options={estimatorUsers.map((u) => ({ value: u.id, label: u.name || u.email }))}
+                    emptyOption={{ value: '', label: '—' }}
+                    placeholder="—"
+                    listAriaLabel="Estimator"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="bid-form-account-man" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
+                  <SearchableSelect
+                    id="bid-form-account-man"
+                    value={accountManagerId}
+                    onChange={setAccountManagerId}
+                    options={estimatorUsers.map((u) => ({ value: u.id, label: u.name || u.email }))}
+                    emptyOption={{ value: '', label: '—' }}
+                    placeholder="—"
+                    listAriaLabel="Account manager"
+                  />
+                </div>
+                <div>
                   <label htmlFor="bid-form-service-type" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Service Type *</label>
                   <SearchableSelect
                     id="bid-form-service-type"
@@ -525,84 +507,172 @@ export function BidFormModal(props: BidFormModalProps) {
                     listAriaLabel="Service type"
                   />
                 </div>
-                <div style={{ flex: '0 0 auto', minWidth: 0, maxWidth: '100%' }}>
-                  <label htmlFor="bid-form-win-loss" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/Loss</label>
-                  <SearchableSelect
-                    id="bid-form-win-loss"
-                    value={outcome}
-                    onChange={(v) => setOutcome(v as BidFormOutcomeOption)}
-                    options={[
-                      { value: 'won', label: 'Won' },
-                      { value: 'lost', label: 'Lost' },
-                      { value: 'started_or_complete', label: 'Started or Complete' },
-                    ]}
-                    emptyOption={{ value: '', label: '—' }}
-                    placeholder="—"
-                    searchable={false}
-                    listAriaLabel="Win or loss"
-                  />
-                </div>
-                <div style={{ flex: 1, minWidth: '10rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
-                  <input
-                    type="date"
-                    value={bidDateSent}
-                    onChange={handleBidDateSentInputChange}
-                    onBlur={handleBidDateSentBlur}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                  {bidDateSent.trim() &&
-                    (() => {
-                      const dNorm = normalizeBidDateInput(bidDateSent)
-                      const days = wholeCalendarDaysSinceSentDate(dNorm)
-                      const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
-                      const bidRow = editingBid as Bid | null
-                      const fromPending =
-                        pendingAttestationForDate === dNorm && pendingBidDateSentAttestation !== null
-                      const ackById = fromPending
-                        ? pendingBidDateSentAttestation!.bid_date_sent_attested_by
-                        : serverSent === dNorm
-                          ? bidRow?.bid_date_sent_attested_by ?? null
-                          : null
-                      return (
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.35rem', lineHeight: 1.45 }}>
-                          <div>
-                            Sent {days} day{days === 1 ? '' : 's'} ago (by calendar date).
+              </div>
+              <div style={FORM_SECTION_STYLE}>
+                <div style={FORM_SECTION_LABEL_STYLE}>Status &amp; dates</div>
+                <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <label htmlFor="bid-form-bid-due-date" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Due Date</label>
+                    <input
+                      id="bid-form-bid-due-date"
+                      type="date"
+                      value={bidDueDate}
+                      onChange={(e) => {
+                        setBidDueDate(e.target.value)
+                        if (!e.target.value) {
+                          setBidDueTime('')
+                          setDueTimeOpen(false)
+                        }
+                      }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                    />
+                    {bidDueTime === '' && !dueTimeOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => setDueTimeOpen(true)}
+                        disabled={!bidDueDate}
+                        title={bidDueDate ? 'Add the time of day this bid is due' : 'Pick a due date first'}
+                        style={{
+                          marginTop: '0.35rem',
+                          padding: 0,
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '0.8125rem',
+                          color: bidDueDate ? 'var(--text-link)' : 'var(--text-faint)',
+                          cursor: bidDueDate ? 'pointer' : 'default',
+                        }}
+                      >
+                        + Add due time
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem' }}>
+                        <input
+                          id="bid-form-bid-due-time"
+                          type="time"
+                          aria-label="Bid due time"
+                          value={bidDueTime}
+                          onChange={(e) => setBidDueTime(e.target.value)}
+                          style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Remove due time"
+                          title="Remove due time"
+                          onClick={() => {
+                            setBidDueTime('')
+                            setDueTimeOpen(false)
+                          }}
+                          style={{
+                            padding: '0.2rem 0.45rem',
+                            background: 'none',
+                            border: '1px solid var(--border)',
+                            borderRadius: 4,
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
+                    <input
+                      type="date"
+                      value={bidDateSent}
+                      onChange={handleBidDateSentInputChange}
+                      onBlur={handleBidDateSentBlur}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                    />
+                    {bidDateSent.trim() &&
+                      (() => {
+                        const dNorm = normalizeBidDateInput(bidDateSent)
+                        const days = wholeCalendarDaysSinceSentDate(dNorm)
+                        const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
+                        const bidRow = editingBid as Bid | null
+                        const fromPending =
+                          pendingAttestationForDate === dNorm && pendingBidDateSentAttestation !== null
+                        const ackById = fromPending
+                          ? pendingBidDateSentAttestation!.bid_date_sent_attested_by
+                          : serverSent === dNorm
+                            ? bidRow?.bid_date_sent_attested_by ?? null
+                            : null
+                        return (
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                            <div>
+                              Sent {days} day{days === 1 ? '' : 's'} ago (by calendar date).
+                            </div>
+                            {ackById ? (
+                              <div>Acknowledged by {bidAttestationDisplayName(estimatorUsers, ackById)}</div>
+                            ) : dNorm && serverSent === dNorm && !fromPending ? (
+                              <div style={{ color: 'var(--text-amber-700)' }}>No attestation on file (saved before this feature).</div>
+                            ) : null}
                           </div>
-                          {ackById ? (
-                            <div>Acknowledged by {bidAttestationDisplayName(estimatorUsers, ackById)}</div>
-                          ) : dNorm && serverSent === dNorm && !fromPending ? (
-                            <div style={{ color: 'var(--text-amber-700)' }}>No attestation on file (saved before this feature).</div>
-                          ) : null}
-                        </div>
-                      )
-                    })()}
+                        )
+                      })()}
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
+                    <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.9rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win / Loss</label>
+                    <div role="group" aria-label="Win or loss" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                      {OUTCOME_SEGMENTS.map((seg, i) => (
+                        <button
+                          key={seg.label}
+                          type="button"
+                          aria-pressed={outcome === seg.value}
+                          onClick={() => setOutcome(seg.value)}
+                          style={{
+                            font: 'inherit',
+                            fontSize: '0.82rem',
+                            padding: '0.38rem 0.7rem',
+                            border: 'none',
+                            borderRight: i < OUTCOME_SEGMENTS.length - 1 ? '1px solid var(--border-strong)' : 'none',
+                            cursor: 'pointer',
+                            ...(outcome === seg.value
+                              ? outcomeSegmentSelectedStyle(seg.value)
+                              : { background: 'var(--surface)', color: 'var(--text-700)' }),
+                          }}
+                        >
+                          {seg.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {outcome === 'lost' && (
+                    <div style={{ flex: 1, minWidth: '12rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Why did we lose?</label>
+                      <input
+                        type="text"
+                        value={lossReason}
+                        onChange={(e) => setLossReason(e.target.value)}
+                        placeholder="e.g. Price, schedule, competitor, no response…"
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      />
+                    </div>
+                  )}
+                  {outcome === 'won' && (
+                    <div style={{ flex: 1, minWidth: '12rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Start Date</label>
+                      <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    </div>
+                  )}
                 </div>
               </div>
-              {outcome === 'lost' && (
+              <div style={{ ...FORM_SECTION_STYLE, width: '100%' }}>
+                <div style={FORM_SECTION_LABEL_STYLE}>Location</div>
                 <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Why did we lose?</label>
-                  <input
-                    type="text"
-                    value={lossReason}
-                    onChange={(e) => setLossReason(e.target.value)}
-                    placeholder="e.g. Price, schedule, competitor, no response…"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                </div>
-              )}
-              {outcome === 'won' && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Start Date</label>
-                  <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                </div>
-              )}
-              <div style={{ marginBottom: '1rem', width: '100%' }}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>— street, town, state zip</span></label>
                   <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div
+                  className="bid-form-grid-2"
                   style={{
                     display: 'grid',
                     gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
@@ -654,109 +724,62 @@ export function BidFormModal(props: BidFormModalProps) {
                   </div>
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                  Project Folder{'\u00A0'.repeat(10)}
-                  bid folders:{' '}
-                  <a href="https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing') }} style={{ color: 'var(--text-blue-500)' }}>
-                    [plumbing]
-                  </a>
-                  {' '}
-                  <a href="https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing') }} style={{ color: 'var(--text-blue-500)' }}>
-                    [electrical]
-                  </a>
-                  {' '}
-                  <a href="https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link') }} style={{ color: 'var(--text-blue-500)' }}>
-                    [HVAC]
-                  </a>
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText()
-                        setDriveLink(text)
-                      } catch (err) {
-                        console.error('Failed to read clipboard:', err)
-                      }
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Paste from clipboard"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
-                  </button>
-                </div>
-              </div>
-              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
+              <div style={FORM_SECTION_STYLE}>
+                <div style={FORM_SECTION_LABEL_STYLE}>Files &amp; links</div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                    Project Folder{'\u00A0'.repeat(10)}
+                    bid folders:{' '}
+                    <a href="https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing') }} style={{ color: 'var(--text-blue-500)' }}>
+                      [plumbing]
+                    </a>
+                    {' '}
+                    <a href="https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing') }} style={{ color: 'var(--text-blue-500)' }}>
+                      [electrical]
+                    </a>
+                    {' '}
+                    <a href="https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link') }} style={{ color: 'var(--text-blue-500)' }}>
+                      [HVAC]
+                    </a>
+                  </label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const text = await navigator.clipboard.readText()
-                          setPlansLink(text)
-                        } catch (err) {
-                          console.error('Failed to read clipboard:', err)
-                        }
-                      }}
-                      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Paste from clipboard"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
-                    </button>
+                    <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    <PasteButton onPaste={setDriveLink} label="Paste project folder link" />
                   </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
-                  <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                </div>
-              </div>
-              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const text = await navigator.clipboard.readText()
-                          setCountToolingPlansLink(text)
-                        } catch (err) {
-                          console.error('Failed to read clipboard:', err)
-                        }
-                      }}
-                      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Paste from clipboard"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
-                    </button>
+                <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <PasteButton onPaste={setPlansLink} label="Paste job plans link" />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <PasteButton onPaste={setCountToolingPlansLink} label="Paste CountTooling link" />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const text = await navigator.clipboard.readText()
-                          setBidSubmissionLink(text)
-                        } catch (err) {
-                          console.error('Failed to read clipboard:', err)
-                        }
-                      }}
-                      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Paste from clipboard"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
-                    </button>
+                <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <PasteButton onPaste={setBidSubmissionLink} label="Paste bid submission link" />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
+                    <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   </div>
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem', position: 'relative' }}>
+              <div style={FORM_SECTION_STYLE}>
+                <div style={FORM_SECTION_LABEL_STYLE}>People</div>
+                <div style={{ marginBottom: '1rem', position: 'relative' }}>
                 <label htmlFor="bid-form-gc-builder" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GC/Builder (customer)</label>
                 <input
                   id="bid-form-gc-builder"
@@ -866,50 +889,33 @@ export function BidFormModal(props: BidFormModalProps) {
                   </div>
                 )}
               </div>
-              {/* Display GC/Builder contact info (read-only) */}
-              {(gcCustomerId || (editingBid?.gc_builder_id && editingBid?.bids_gc_builders)) && (
-                <>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>
-                      GC/Builder (customer) Contact Phone
-                    </label>
-                    <input
-                      type="text"
-                      value={getGcBuilderPhone()}
-                      disabled
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: 'var(--bg-subtle)',
-                        color: 'var(--text-muted)',
-                        cursor: 'not-allowed'
-                      }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>
-                      GC/Builder (customer) Contact Email
-                    </label>
-                    <input
-                      type="text"
-                      value={getGcBuilderEmail()}
-                      disabled
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: 'var(--bg-subtle)',
-                        color: 'var(--text-muted)',
-                        cursor: 'not-allowed'
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-              <div style={{ marginBottom: '1rem' }}>
+              {(gcCustomerId || (editingBid?.gc_builder_id && editingBid?.bids_gc_builders)) &&
+                (() => {
+                  // The getters return '\u2014' as their own empty placeholder \u2014 treat it as no value.
+                  const phone = getGcBuilderPhone().trim()
+                  const email = getGcBuilderEmail().trim()
+                  const hasPhone = Boolean(phone) && phone !== '\u2014'
+                  const hasEmail = Boolean(email) && email !== '\u2014'
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '-0.5rem 0 1rem' }}>
+                      {hasPhone ? (
+                        <span style={{ fontSize: '0.78rem', padding: '0.25rem 0.55rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)' }}>
+                          {'\u260E'} {phone}
+                        </span>
+                      ) : null}
+                      {hasEmail ? (
+                        <span style={{ fontSize: '0.78rem', padding: '0.25rem 0.55rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)' }}>
+                          {'\u2709'} {email}
+                        </span>
+                      ) : null}
+                      {!hasPhone && !hasEmail ? (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No contact on file for this customer.</span>
+                      ) : null}
+                    </div>
+                  )
+                })()}
+              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
+                <div>
                 <button
                   type="button"
                   aria-expanded={projectContactExpanded}
@@ -950,10 +956,14 @@ export function BidFormModal(props: BidFormModalProps) {
                   </div>
                 )}
               </div>
-              <div style={{ marginBottom: '1rem' }}>
+                <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Submitted to (name, phone, email):</label>
                 <input type="text" value={submittedTo} onChange={(e) => setSubmittedTo(e.target.value)} placeholder="e.g. Architect name, 555-123-4567, architect@example.com" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                </div>
               </div>
+              </div>
+              <div style={FORM_SECTION_STYLE}>
+                <div style={FORM_SECTION_LABEL_STYLE}>Money</div>
               <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label htmlFor="bid-form-bid-value" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Value</label>
@@ -968,26 +978,37 @@ export function BidFormModal(props: BidFormModalProps) {
                   <input type="number" step="0.01" value={profit} onChange={(e) => setProfit(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
-                <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+              <div style={{ ...FORM_SECTION_STYLE, marginBottom: '1.5rem' }}>
+                <div style={FORM_SECTION_LABEL_STYLE}>Notes</div>
+                <textarea aria-label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Anything the next person should know…" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={saveBidAndOpenCounts}
-                  disabled={!bidFormCanSubmit || savingBid}
-                  title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined}
-                  style={{ marginRight: 'auto', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Save and Open Counts
-                </button>
+              <div
+                className="bid-form-savebar"
+                style={{
+                  position: 'sticky',
+                  bottom: 0,
+                  zIndex: 5,
+                  margin: '1.5rem -2rem -2rem',
+                  padding: '0.85rem 2rem',
+                  background: 'var(--surface)',
+                  borderTop: '1px solid var(--border)',
+                  borderRadius: '0 0 8px 8px',
+                  display: 'flex',
+                  gap: '0.6rem',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                }}
+              >
                 {editingBid && (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginRight: 'auto' }}>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { setDeleteBidModalOpen(true); setDeleteConfirmProjectName(''); setError(null) }}
+                      style={{ padding: '0.45rem 0.25rem', background: 'none', border: 'none', color: '#b91c1b', cursor: 'pointer', fontSize: '0.85rem' }}
+                    >
+                      Delete bid…
+                    </button>
                     {showArchiveFromUnsentWorking && onRequestArchiveFromUnsentWorking ? (
                       <button
                         type="button"
@@ -995,7 +1016,8 @@ export function BidFormModal(props: BidFormModalProps) {
                         disabled={archiveFromUnsentWorkingBusy || savingBid}
                         title="Hide from Working board, unsent lists, and clock quick picks (column placement kept)"
                         style={{
-                          padding: '0.5rem 1rem',
+                          padding: '0.45rem 0.7rem',
+                          fontSize: '0.85rem',
                           color: 'var(--text-700)',
                           background: 'var(--surface)',
                           border: '1px solid var(--border-strong)',
@@ -1006,26 +1028,24 @@ export function BidFormModal(props: BidFormModalProps) {
                         {archiveFromUnsentWorkingBusy ? 'Archiving…' : 'Archive from board'}
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={() => { setDeleteBidModalOpen(true); setDeleteConfirmProjectName(''); setError(null) }}
-                      style={{ padding: '0.5rem 1rem', color: '#b91c1b', background: 'var(--surface)', border: '1px solid #b91c1b', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Delete bid
-                    </button>
-                  </div>
+                  </>
                 )}
+                <span style={{ flex: 1 }} />
+                {!bidFormCanSubmit && !savingBid && bidFormMissingFields.length > 0 && (
+                  <span style={{ fontSize: '0.8rem', color: '#FF6600' }}>Required: {bidFormMissingFields.join(', ')}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={saveBidAndOpenCounts}
+                  disabled={!bidFormCanSubmit || savingBid}
+                  title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Save and Open Counts
+                </button>
                 <button type="submit" disabled={!bidFormCanSubmit || savingBid} title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                   {savingBid ? 'Saving…' : 'Save'}
                 </button>
-                {!bidFormCanSubmit && !savingBid && bidFormMissingFields.length > 0 && (
-                  <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
-                  <span style={{ display: 'block' }}>Required:</span>
-                  {bidFormMissingFields.map((f) => (
-                    <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                  ))}
-                </span>
-                )}
               </div>
             </form>
           </div>
