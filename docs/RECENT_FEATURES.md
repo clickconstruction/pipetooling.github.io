@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1822)
+last_updated: 2026-08-19 (v2.1823)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1823)
+
+### Jobs board: scope-aware cache — scoped-load plan PR 2 (2026-08-19)
+The Paid-in-Full lazy pattern, generalized to every section with zero visible change. [`fetchJobsLedgerWithDetailsForStages`](../src/lib/fetchJobsLedgerWithDetailsForStages.ts) gains per-section `statusScope`s (`waiting` / `working` / `ready_to_bill` / `billed_all`) — `ready_to_bill` runs a companion query for working-status jobs carrying an RTB invoice (aliased `rtb_gate:jobs_ledger_invoices!inner` gating, so the job's real invoice embed stays complete). [`JobsListCacheContext`](../src/contexts/JobsListCacheContext.tsx) replaces the paid-only bookkeeping with `mergedScopes` / `scopeLoading` / `fetchScopeIfNeeded` (new kernel [`boardScopes.ts`](../src/lib/jobs/boardScopes.ts), +5 tests: primary-scope ownership, stale-row eviction, RTB-companion merges that never purge working rows, moved-status dedupe); `fetchPaidJobsIfNeeded` and the `paidJobsLoading`/`paidJobsMergedForKey` fields every consumer reads become compat derivations over the scope sets, so nothing else changes. A full board load marks all non-paid scopes merged — behavior is byte-identical until PR 3 starts loading subsets. Verified live: board loads unchanged, Paid expand + search chip work through the new path. Client-only — no migration.
 
 ## Latest Updates (v2.1822)
 

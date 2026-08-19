@@ -18,7 +18,20 @@ type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['R
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 
-export type JobsLedgerStatusScope = 'all' | 'non_paid' | 'paid'
+/**
+ * v2.1823 (scoped-load plan PR 2): per-section scopes join the historical
+ * three. `ready_to_bill` ALSO returns working-status jobs that carry an RTB
+ * invoice (the board's RTB section shows their invoice rows) via a second
+ * inner-join-gated query.
+ */
+export type JobsLedgerStatusScope =
+  | 'all'
+  | 'non_paid'
+  | 'paid'
+  | 'waiting'
+  | 'working'
+  | 'ready_to_bill'
+  | 'billed_all'
 
 /** List primary query omits materials/fixtures; those load in a second round (see batch in enrich). */
 export type JobsLedgerStagesPrimaryRow = JobsLedgerRow & {
@@ -61,6 +74,33 @@ function buildJobsListStagesQuery(customerFilter: string | null, statusScope: Jo
     q = q.or('status.is.null,status.neq.paid')
   } else if (statusScope === 'paid') {
     q = q.eq('status', 'paid')
+  } else if (statusScope === 'waiting') {
+    q = q.eq('status', 'waiting')
+  } else if (statusScope === 'working') {
+    q = q.or('status.is.null,status.eq.working')
+  } else if (statusScope === 'ready_to_bill') {
+    q = q.eq('status', 'ready_to_bill')
+  } else if (statusScope === 'billed_all') {
+    q = q.eq('status', 'billed')
+  }
+  return q
+}
+
+/**
+ * Companion query for the `ready_to_bill` scope: working/null-status jobs that
+ * carry an RTB invoice. The `rtb_gate` aliased INNER embed does the gating so
+ * the job's REAL `jobs_ledger_invoices` embed stays complete (an unaliased
+ * !inner filter would strip the job's billed invoices from the payload).
+ */
+function buildWorkingWithRtbInvoiceQuery(customerFilter: string | null) {
+  let q = supabase
+    .from('jobs_ledger')
+    .select(`${buildJobsListStagesPrimarySelect()}, rtb_gate:jobs_ledger_invoices!inner(id)`)
+    .or('status.is.null,status.eq.working')
+    .eq('rtb_gate.status', 'ready_to_bill')
+    .order('hcp_number', { ascending: false })
+  if (customerFilter) {
+    q = q.eq('customer_id', customerFilter)
   }
   return q
 }
@@ -347,6 +387,17 @@ export async function fetchJobsLedgerWithDetailsForStages(
       'fetch jobs_ledger for stages',
     )) as unknown
     rows = (data as JobsLedgerStagesPrimaryRow[] | null) ?? []
+    if (statusScope === 'ready_to_bill') {
+      const companion = (await withSupabaseRetry(
+        async () => buildWorkingWithRtbInvoiceQuery(customerFilter),
+        'fetch working-with-RTB jobs for stages',
+      )) as unknown
+      const seen = new Set(rows.map((r) => r.id))
+      for (const raw of (companion as Array<JobsLedgerStagesPrimaryRow & { rtb_gate?: unknown }> | null) ?? []) {
+        const { rtb_gate: _gate, ...row } = raw
+        if (!seen.has(row.id)) rows.push(row as JobsLedgerStagesPrimaryRow)
+      }
+    }
   } catch (e: unknown) {
     return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
   }
