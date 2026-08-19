@@ -8,12 +8,22 @@ export type EstimateLineItemNormalized = {
   amount_cents: number
 }
 
-export function computeEstimateLineExtendedCents(quantity: number, unitPriceCents: number): number {
+export type EstimateLineNormalizeOptions = {
+  /** Change orders (v2.1826+): credit lines carry negative prices — skip the ≥0 clamp. */
+  allowNegative?: boolean
+}
+
+export function computeEstimateLineExtendedCents(
+  quantity: number,
+  unitPriceCents: number,
+  opts?: EstimateLineNormalizeOptions
+): number {
+  const clamp = (n: number) => (opts?.allowNegative ? Math.round(n) : Math.max(0, Math.round(n)))
   const q = Number(quantity)
   if (!Number.isFinite(q) || q <= 0) {
-    return Math.max(0, Math.round(unitPriceCents))
+    return clamp(unitPriceCents)
   }
-  return Math.max(0, Math.round(q * unitPriceCents))
+  return clamp(q * unitPriceCents)
 }
 
 function parseEstimateQuantity(raw: unknown): number {
@@ -24,7 +34,11 @@ function parseEstimateQuantity(raw: unknown): number {
 }
 
 /** One element from `line_items_snapshot` JSON array; supports legacy `{ description, amount_cents }`. */
-export function normalizeEstimateLineItemFromJsonElement(x: unknown): EstimateLineItemNormalized {
+export function normalizeEstimateLineItemFromJsonElement(
+  x: unknown,
+  opts?: EstimateLineNormalizeOptions
+): EstimateLineItemNormalized {
+  const clamp = (n: number) => (opts?.allowNegative ? Math.round(n) : Math.max(0, Math.round(n)))
   const o = x as Record<string, unknown>
   const rawDesc = String(o.description ?? '')
   const qtyMissing = o.quantity === undefined || o.quantity === null
@@ -39,25 +53,28 @@ export function normalizeEstimateLineItemFromJsonElement(x: unknown): EstimateLi
     line_item = ''
     description = rawDesc
     quantity = 1
-    unit_price_cents = Math.max(0, Math.round(Number(o.amount_cents ?? 0)))
+    unit_price_cents = clamp(Number(o.amount_cents ?? 0))
   } else {
     line_item = String(o.line_item ?? '').trim()
     description = rawDesc
     quantity = parseEstimateQuantity(o.quantity)
-    unit_price_cents = Math.max(0, Math.round(Number(o.unit_price_cents ?? 0)))
+    unit_price_cents = clamp(Number(o.unit_price_cents ?? 0))
     const legacyLineTotal = Math.max(0, Math.round(Number(o.amount_cents ?? 0)))
     if (unit_price_cents === 0 && legacyLineTotal > 0) {
       unit_price_cents = Math.max(0, Math.round(legacyLineTotal / quantity))
     }
   }
 
-  const amount_cents = computeEstimateLineExtendedCents(quantity, unit_price_cents)
+  const amount_cents = computeEstimateLineExtendedCents(quantity, unit_price_cents, opts)
   return { line_item, description, quantity, unit_price_cents, amount_cents }
 }
 
-export function normalizeEstimateLineItemsFromJson(raw: unknown): EstimateLineItemNormalized[] {
+export function normalizeEstimateLineItemsFromJson(
+  raw: unknown,
+  opts?: EstimateLineNormalizeOptions
+): EstimateLineItemNormalized[] {
   if (!Array.isArray(raw)) return []
-  return raw.map((x) => normalizeEstimateLineItemFromJsonElement(x))
+  return raw.map((x) => normalizeEstimateLineItemFromJsonElement(x, opts))
 }
 
 export function sumNormalizedLineItems(lines: EstimateLineItemNormalized[]): number {
