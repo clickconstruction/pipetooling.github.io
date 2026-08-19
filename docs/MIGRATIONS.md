@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 19, 2026
 
+**`20260819171817_estimates_change_order_kind.sql`** _(apply via `supabase db push` after the v2.1826 merge — additive columns with defaults; existing rows and clients unaffected)_
+- **Purpose**: Change orders ride the estimates rails (CO train PR 1). `estimates.doc_kind text NOT NULL DEFAULT 'estimate'` (CHECK `estimate | change_order`) marks a row as a change order so it inherits the whole acceptance machine (public accept page, typed signature, send email, notify, status pipeline); `change_order_fields jsonb` holds the CO narrative (description of change, reason, schedule impact, response-by date, checklists); `bid_id uuid` (FK `bids`, `ON DELETE SET NULL`, partial index) is the Bids → Estimates bridge for CO train PR 6. Existing estimates RLS covers the new columns.
+- **Category**: Estimates / columns
+
 **`20260819152848_supply_house_share_send_method.sql`** _(applied via `supabase db push` with the v2.1820 merge — additive column with default + new INSERT policy; old clients and the undeployed edge function unaffected, their inserts take the `'app'` default)_
 - **Purpose**: "Share with supply house" user-send paths. `supply_house_job_accounts.send_method text NOT NULL DEFAULT 'app'` (CHECK `app | user_email`) records whether the packet went out via the edge function's Resend send or from the user's own inbox (mailto draft / clipboard copy, confirmed in the modal). New policy `supply_house_job_accounts_insert_office_self` opens the previously service-role-only ledger to client inserts by office roles (dev/master/assistant/controller) attributed to themselves (`sent_by = auth.uid()`). Read-only guards re-attached.
 - **Category**: Jobs / column + RLS
