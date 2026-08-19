@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1847',
+    date: '2026-08-19',
+    title: 'One Bid window: flip between preview and edit',
+    kind: 'feature',
+    highlights: [
+      'Editing a bid now opens one window with two tabs — Bid (the preview) and Edit (the form) — just like the Job window. One ✕ or Escape closes it.',
+      'Flip to Bid to check the GC, the due date, or copy the bid for a text, then flip back — your half-typed edits are exactly where you left them.',
+      'The preview’s people cell now reads name-first: Wendi (Estimator), Wendi (Account Man).',
+      'New Bid keeps the simple form, and previews opened from other pages jump into the window when you hit Edit bid.',
+    ],
+  },
+  {
     version: 'v2.1842',
     date: '2026-08-19',
     title: 'Groundwork: checklist cards remember their story',

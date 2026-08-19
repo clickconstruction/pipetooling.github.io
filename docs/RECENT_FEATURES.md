@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1842)
+last_updated: 2026-08-19 (v2.1847)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1847)
+
+### The Bid window — Preview and Edit merge into one tabbed modal (2026-08-19)
+Owner request: flip between a bid's read view and its edit form the way the Job window does (v2.1675). New **[`BidWindowModal`](../src/components/bids/BidWindowModal.tsx)** (Bids page only — the form's engine lives in `Bids.tsx`): tabs **Bid · Edit**, one ✕, esc-to-close hint, backdrop close. The Bid pane is **[`BidPreviewModal`](../src/components/bids/BidPreviewModal.tsx)** in new **`paneMode`** (no overlay/dialog chrome, no Edit/Close buttons — Copy for text stays); the window owns the pane's fetch via `fetchBidForPreview` and refetches when notes mutate. The Edit pane is the existing **[`BidFormModal`](../src/components/bids/BidFormModal.tsx)** in new **`embedded`** mode (no overlay/box, header ✕ hidden — the window closes; sticky save bar margins line up with the pane's padding via `.bid-window-form-pane`, mobile rules in the window's style block). Both panes stay **mounted** (display-toggled) so unsaved form edits survive a flip; the Bid pane always shows the saved bid; Save still closes. **Escape** closes the window unless a stacked modal is above it — delete confirm, evaluate checklist, sent-attestation, the GC customer dropdown, or the form's service-type switcher (reported up via new `onServiceTypeSwitchOpenChange`). `Bids.tsx` wires it: **editing an existing bid** renders the window (initial tab Edit — every board Edit button and the `openBidEdit=1` deep link land there); **New Bid keeps the plain form** (nothing to preview). The standalone preview (BidPreviewModalContext, other pages) is unchanged; its Edit bid button now lands in the window as it navigates. Also: the preview facts strip's people cell now reads name-first with captions — **Wendi / (Estimator) / Wendi / (Account Man)** — instead of a combined label. Help guide `flip-between-a-bids-view-and-edit.md` (new). Client-only — no migration.
 
 ## Latest Updates (v2.1842)
 

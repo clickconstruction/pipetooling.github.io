@@ -72,6 +72,10 @@ export type BidFormModalProps = {
   onServiceTypeSwitchModalOpen?: () => void | Promise<void>
   onDuplicateBidToServiceType?: (targetServiceTypeId: string) => Promise<void>
   onOpenExistingBidFromServiceTypeSwitch?: (bidId: string) => void
+  /** Render as a pane inside BidWindowModal: no overlay/box chrome, no header ✕ (the window owns close). */
+  embedded?: boolean
+  /** Reports the service-type switcher's open state up (the window blocks Esc while it stacks above). */
+  onServiceTypeSwitchOpenChange?: (open: boolean) => void
 }
 
 function serviceTypePillStyle(st: { name: string; color: string | null }): CSSProperties {
@@ -153,6 +157,11 @@ export function BidFormModal(props: BidFormModalProps) {
     return () => document.removeEventListener('keydown', onKey)
   }, [serviceTypeSwitchOpen])
 
+  const onServiceTypeSwitchOpenChange = props.onServiceTypeSwitchOpenChange
+  useEffect(() => {
+    onServiceTypeSwitchOpenChange?.(serviceTypeSwitchOpen)
+  }, [serviceTypeSwitchOpen, onServiceTypeSwitchOpenChange])
+
   if (!props.open) return null
   const {
     editingBid,
@@ -189,6 +198,7 @@ export function BidFormModal(props: BidFormModalProps) {
     onServiceTypeSwitchModalOpen,
     onDuplicateBidToServiceType,
     onOpenExistingBidFromServiceTypeSwitch,
+    embedded = false,
   } = props
   const {
     driveLink,
@@ -271,7 +281,14 @@ export function BidFormModal(props: BidFormModalProps) {
   }
 
   return (
-        <div className="bid-form-overlay" style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div
+          className={embedded ? undefined : 'bid-form-overlay'}
+          style={
+            embedded
+              ? undefined
+              : { position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }
+          }
+        >
           <style>{`
             @media (max-width: 640px) {
               .bid-form-overlay {
@@ -302,7 +319,14 @@ export function BidFormModal(props: BidFormModalProps) {
               }
             }
           `}</style>
-          <div className="bid-form-modal" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+          <div
+            className={embedded ? undefined : 'bid-form-modal'}
+            style={
+              embedded
+                ? undefined
+                : { background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }
+            }
+          >
             <div
               className="bid-form-modal-header"
               style={{
@@ -364,24 +388,28 @@ export function BidFormModal(props: BidFormModalProps) {
                   </button>
                 ) : null}
               </div>
-              <button
-                type="button"
-                onClick={closeBidForm}
-                aria-label="Cancel"
-                title="Cancel"
-                style={{
-                  padding: '0.5rem 0.7rem',
-                  lineHeight: 1,
-                  background: 'var(--bg-muted)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 5,
-                  cursor: 'pointer',
-                  justifySelf: 'end',
-                  color: 'var(--text-strong)',
-                }}
-              >
-                ✕
-              </button>
+              {embedded ? (
+                <span />
+              ) : (
+                <button
+                  type="button"
+                  onClick={closeBidForm}
+                  aria-label="Cancel"
+                  title="Cancel"
+                  style={{
+                    padding: '0.5rem 0.7rem',
+                    lineHeight: 1,
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 5,
+                    cursor: 'pointer',
+                    justifySelf: 'end',
+                    color: 'var(--text-strong)',
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <form onSubmit={saveBid}>
               <div
