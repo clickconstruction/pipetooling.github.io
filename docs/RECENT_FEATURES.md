@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Fix: Ready to Bill notifications gear rendered as a literal escape (2026-08-19)
 The v2.1836 header button's icon was written as the six characters backslash-u-2-6-9-9 in JSX **text** position, where escape sequences are not interpreted — the button displayed the escape verbatim (screenshot from the owner). Now a braced JS string expression (which React does interpret) in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx); the sibling Paid buttons were unaffected. One-line fix, client-only.
 
+## Latest Updates (v2.1840)
+
+### Follow-ups deck: scoped board loads no longer wipe it to "All caught up" (2026-08-19)
+Taunya-reported regression, same-day collision between two features: the deck's v2.1756 deleted-job guard drops any candidate missing from the Stages tab's `jobs` array, and v2.1824's scoped loading made that array hold ONLY the sections the device has open — so on a board with (say) just Ready to Bill loaded, the first scoped refresh after the deck's own org-wide candidates fetch "deleted" every card outside it: all ~52 jobs flashed, then All (0) 🎉. Fix keeps both features honest: [`followupStagesCoveredByScopes`](../src/lib/jobs/jobFollowupQueue.ts) maps the cache's `mergedScopes` to the follow-up stages their fetches actually return (`billed_all` → `billed` only; nothing covers the literal-`collections` status or `paid`), [`dropDeletedFollowupCandidates`](../src/lib/jobs/jobFollowupQueue.ts) gains a `coveredStages` param and only treats absence as deletion inside covered stages (empty covered set = keep everything), and [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) threads the set to [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) as new prop `liveJobStages`. A fully-loaded board (search/filter honesty guards, pre-scoping devices) behaves exactly as v2.1756 did; the deleted-job cleanup still works within whatever sections are loaded. +4 kernel tests (scoped load can't wipe, covered-stage delete still drops, empty coverage no-op, scope→stage mapping). Client-only — no migration.
+
 ## Latest Updates (v2.1839)
 
 ### Bid modals redesigned + "Copy for text" export (2026-08-19)

@@ -4,6 +4,8 @@
  * review them. IO lives in `jobFollowupStore.ts`; this file is data → data.
  */
 
+import type { JobsBoardScope } from './boardScopes'
+
 export type JobFollowupStage = 'waiting' | 'working' | 'ready_to_bill' | 'billed' | 'collections'
 
 export const JOB_FOLLOWUP_STAGES: JobFollowupStage[] = [
@@ -215,19 +217,39 @@ export function jobFollowupStageCounts(entries: JobFollowupQueueEntry[]): Record
 }
 
 /**
+ * The follow-up stages a set of loaded board scopes is authoritative for.
+ * Mirrors buildJobsListStagesQuery's per-scope status filters: `billed_all`
+ * fetches only status='billed', and no scoped fetch returns a literal
+ * 'collections' status (the board derives Collections from billed +
+ * collections_at, so real candidates carry 'billed' anyway).
+ */
+export function followupStagesCoveredByScopes(scopes: ReadonlySet<JobsBoardScope>): Set<JobFollowupStage> {
+  const covered = new Set<JobFollowupStage>()
+  if (scopes.has('waiting')) covered.add('waiting')
+  if (scopes.has('working')) covered.add('working')
+  if (scopes.has('ready_to_bill')) covered.add('ready_to_bill')
+  if (scopes.has('billed_all')) covered.add('billed')
+  return covered
+}
+
+/**
  * Drops candidates whose job no longer exists in the tab's live jobs list —
  * a job deleted while the deck is open (Job window Edit tab, migrate-to-bid,
  * another user) otherwise lingers as a stale card whose every action errors
- * "Job not found" (v2.1756). An empty live set means the jobs list hasn't
- * loaded yet — never wipe the deck on that flash. Returns the same array when
- * nothing is missing so memoized consumers skip re-renders.
+ * "Job not found" (v2.1756). Since scoped loading (v2.1824) the tab's list
+ * only holds the sections the device has open, so "missing from the list"
+ * only means "deleted" for stages whose scope was actually fetched —
+ * `coveredStages` says which those are; candidates in other stages always
+ * survive. An empty live set means the jobs list hasn't loaded yet — never
+ * wipe the deck on that flash. Returns the same array when nothing is
+ * missing so memoized consumers skip re-renders.
  */
 export function dropDeletedFollowupCandidates(
   candidates: JobFollowupCandidate[],
   liveJobIds: ReadonlySet<string>,
+  coveredStages: ReadonlySet<JobFollowupStage>,
 ): JobFollowupCandidate[] {
-  if (liveJobIds.size === 0) return candidates
-  return candidates.every((c) => liveJobIds.has(c.id))
-    ? candidates
-    : candidates.filter((c) => liveJobIds.has(c.id))
+  if (liveJobIds.size === 0 || coveredStages.size === 0) return candidates
+  const deleted = (c: JobFollowupCandidate) => coveredStages.has(c.stage) && !liveJobIds.has(c.id)
+  return candidates.some(deleted) ? candidates.filter((c) => !deleted(c)) : candidates
 }

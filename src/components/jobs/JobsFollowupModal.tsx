@@ -177,7 +177,7 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
   )
 }
 
-export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen, liveJobIds }: {
+export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen, liveJobIds, liveJobStages }: {
   open: boolean
   onClose: () => void
   /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
@@ -190,6 +190,13 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   activityExpandOpen?: boolean
   /** The tab's live jobs_ledger ids — a card whose job vanishes (deleted) drops from the deck (v2.1756). */
   liveJobIds?: ReadonlySet<string>
+  /**
+   * Stages whose board scope is actually loaded — liveJobIds is only
+   * authoritative for these. Under scoped loading (v2.1824) the tab's jobs
+   * list holds just the open sections; without this guard every candidate
+   * outside them read as "deleted" and the deck wiped itself to All caught up.
+   */
+  liveJobStages?: ReadonlySet<JobFollowupStage>
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -248,10 +255,12 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   // A job deleted while the deck is open (Job window Edit tab, migrate-to-bid,
   // even another user) leaves the tab's jobs list — drop its card instead of
   // stranding a stale card whose every action errors "Job not found" (v2.1756).
+  // Only stages whose scope the board actually loaded count (liveJobStages) —
+  // scoped loading (v2.1824) means absence elsewhere proves nothing.
   useEffect(() => {
-    if (!liveJobIds) return
-    setCandidates((prev) => dropDeletedFollowupCandidates(prev, liveJobIds))
-  }, [liveJobIds])
+    if (!liveJobIds || !liveJobStages) return
+    setCandidates((prev) => dropDeletedFollowupCandidates(prev, liveJobIds, liveJobStages))
+  }, [liveJobIds, liveJobStages])
 
   const fullQueue = useMemo(
     () => (settings ? computeJobFollowupQueue(candidates, reviews, settings, todayYmd) : []),
