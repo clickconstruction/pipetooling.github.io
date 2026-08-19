@@ -108,6 +108,8 @@ export default function ManagePersonDayModal({
   const [reloadKey, setReloadKey] = useState(0)
   /** groupId → crew member names, for the linked-crew chips (v2.1601). Best-effort. */
   const [crewNames, setCrewNames] = useState<ReadonlyMap<string, string[]>>(() => new Map())
+  /** Block id mid-nudge (v2.1817) — disables the ±30 chips while one saves. */
+  const [nudgingId, setNudgingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -230,7 +232,6 @@ export default function ManagePersonDayModal({
    * default: a linked block's whole crew moves together (unlinking stays an
    * Edit-flow decision; one-tap actions never ask questions).
    */
-  const [nudgingId, setNudgingId] = useState<string | null>(null)
   const quickNudge = async (b: DispatchModeAgendaBlock, action: PersonDayNudgeAction) => {
     if (nudgingId || saving) return
     const next = nudgeScheduleBlockTimes(b.timeStart, b.timeEnd, action)
