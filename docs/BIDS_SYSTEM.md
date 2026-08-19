@@ -216,7 +216,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
   1. **Hero**: Project Name* (heading-size) | Bid #; Linked Project picker under the name
   2. **People row**: Estimator | Account Man | Service Type*
   3. **Status & dates** section: Bid Due Date (+due time) | Bid Date Sent (+attestation microcopy) | Last Contact; **Win/Loss segmented control** (Open · Won · Lost · Started/Complete) with Loss reason / Start Date revealing inline
-  4. **Location** section: Project Address (full width, map link), Distance to Office | Plan Pages
+  4. **Location** section: Project Address (full width, map link), Distance to Office with **↻ Auto** fill (v2.1855 — routed Google miles via `driving-distance`, straight-line ≈ estimate fallback, anchored to Settings → Office address; auto-fills on address blur when blank, never overwrites a typed value). *Plan Pages removed in v2.1855 (column + old data kept).*
   5. **Files & links** section: Project Folder, then Job Plans | CountTooling, then Bid Submission | Design Drawing Plan Date (paste buttons kept)
   6. **People** section: GC/Builder (customer) with read-only contact chips, Project Contact | Submitted to
   7. **ITB & submission links** section (v2.1851): repeating URL rows for the bid's ITB portal pages (`bids.itb_links` jsonb) — live portal label (PlanHub, BuildingConnected, …), paste, × remove, + Add ITB link

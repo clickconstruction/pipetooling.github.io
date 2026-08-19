@@ -319,7 +319,6 @@ export function BidPreviewModal({
         ...(bid.outcome === 'won' || bid.estimated_job_start_date
           ? [{ label: 'Start date', value: formatYmd(bid.estimated_job_start_date), empty: !bid.estimated_job_start_date?.trim() }]
           : []),
-        { label: 'Plan pages', value: bid.plan_pages != null ? String(bid.plan_pages) : '—', empty: bid.plan_pages == null },
         {
           label: 'Distance to office (mi)',
           value: bid.distance_from_office != null ? String(bid.distance_from_office) : '—',

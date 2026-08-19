@@ -22,6 +22,9 @@ export const APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE = 'field_dispatch_phone_v1' a
  */
 export const APP_SETTINGS_KEY_MAP_DEFAULT_VIEW_V1 = 'map_default_view_v1' as const
 
+/** Office street address + geocoded coords — anchor for bid "Distance to Office" auto-fill. */
+export const APP_SETTINGS_KEY_OFFICE_ADDRESS_V1 = 'office_address_v1' as const
+
 /** UUID of `jobs_ledger.id` for People → Overhead “office job” (non–revenue work bucket). Dev writes; readers use Overhead tab. */
 export const APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 = 'overhead_office_job_ledger_id_v1' as const
 
