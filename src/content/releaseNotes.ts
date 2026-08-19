@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1817',
+    date: '2026-08-18',
+    title: 'A clock on every schedule block — rearrange someone\u2019s whole day',
+    kind: 'feature',
+    highlights: [
+      'Every block on the Schedule grids now has a clock button: tap it to see that person\u2019s entire day — every visit, times, and who\u2019s linked on each one.',
+      'One-tap nudges on every visit: shift the whole block ±30 minutes, or stretch/trim just the end — perfect for "the job\u2019s running long".',
+      'Nudging a linked visit moves the whole crew together. The Edit pencil still handles exact times, day moves, and "this person only" (which unlinks them).',
+    ],
+  },
+  {
     version: 'v2.1816',
     date: '2026-08-18',
     title: 'Schedule blocks: a drag handle you can see',

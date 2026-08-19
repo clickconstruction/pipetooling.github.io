@@ -16,6 +16,7 @@ import { computeManageDaySummary, crewNamesByGroup } from '../../lib/dispatchMan
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
+import { nudgeScheduleBlockTimes, type PersonDayNudgeAction } from '../../lib/personDayBlockNudge'
 import { deleteJobScheduleBlock, updateJobScheduleBlock } from '../../lib/jobScheduleBlocks'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
@@ -220,6 +221,46 @@ export default function ManagePersonDayModal({
     const moved = edit.workDate !== ymd
     showToast(moved ? `Moved to ${dispatchModeAgendaHeading(edit.workDate, todayYmd)}.` : 'Block updated.', 'success')
     setEdit(null)
+    mutated()
+  }
+
+  /**
+   * One-tap ±30 nudges (v2.1817) — the common "running behind / job ran long"
+   * edits without opening the form. Same save path as Edit with the linked
+   * default: a linked block's whole crew moves together (unlinking stays an
+   * Edit-flow decision; one-tap actions never ask questions).
+   */
+  const [nudgingId, setNudgingId] = useState<string | null>(null)
+  const quickNudge = async (b: DispatchModeAgendaBlock, action: PersonDayNudgeAction) => {
+    if (nudgingId || saving) return
+    const next = nudgeScheduleBlockTimes(b.timeStart, b.timeEnd, action)
+    if (!next.ok) {
+      showToast(next.error, 'info')
+      return
+    }
+    setNudgingId(b.id)
+    const res = await saveEditedScheduleBlockTimes({
+      blockId: b.id,
+      jobId: b.jobId,
+      assigneeUserId: b.assigneeUserId,
+      workDate: ymd,
+      sharedBlockGroupId: b.sharedBlockGroupId,
+      timeStart: next.timeStart,
+      timeEnd: next.timeEnd,
+      note: b.note ?? '',
+      newWorkDate: ymd,
+    })
+    setNudgingId(null)
+    if (!res.ok) {
+      showToast(res.error, 'error')
+      return
+    }
+    showToast(
+      `${formatDispatchQuickTimeLabel(next.timeStart)}–${formatDispatchQuickTimeLabel(next.timeEnd)}${
+        b.sharedBlockGroupId ? ' — whole crew' : ''
+      }`,
+      'success',
+    )
     mutated()
   }
 
@@ -462,6 +503,42 @@ export default function ManagePersonDayModal({
                     </span>
                   ) : null}
                 </div>
+
+                {!isEditing && !isRemoving ? (
+                  <div style={{ marginTop: '0.35rem', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {(
+                      [
+                        ['shift-back', '⇤ −30', 'Shift the whole block 30 minutes earlier'],
+                        ['shift-fwd', '+30 ⇥', 'Shift the whole block 30 minutes later'],
+                        ['end-back', 'end −30', 'End 30 minutes earlier'],
+                        ['end-fwd', 'end +30', 'End 30 minutes later'],
+                      ] as const
+                    ).map(([action, label, tip]) => (
+                      <button
+                        key={action}
+                        type="button"
+                        disabled={nudgingId != null || saving}
+                        title={b.sharedBlockGroupId ? `${tip} — whole crew moves together` : tip}
+                        aria-label={`${tip} for ${num}`}
+                        onClick={() => void quickNudge(b, action)}
+                        style={{
+                          padding: '0.2rem 0.55rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: 600,
+                          fontVariantNumeric: 'tabular-nums',
+                          border: '1px solid var(--border-strong)',
+                          borderRadius: 999,
+                          background: 'var(--surface)',
+                          color: nudgingId === b.id ? 'var(--text-faint)' : 'var(--text-700)',
+                          cursor: nudgingId != null || saving ? 'default' : 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
 
                 {isRemoving ? (
                   <div

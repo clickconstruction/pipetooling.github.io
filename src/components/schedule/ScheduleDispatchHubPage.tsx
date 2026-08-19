@@ -47,6 +47,7 @@ import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
 import { ScheduleDispatchAssignJobPickerModal } from './ScheduleDispatchAssignJobPickerModal'
 import { LinkedScheduleGroupModal } from './LinkedScheduleGroupModal'
+import ManagePersonDayModal from '../dispatchMode/ManagePersonDayModal'
 import { ScheduleDispatchHub } from './ScheduleDispatchHub'
 import { ScheduleShareModal } from './ScheduleShareModal'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
@@ -281,6 +282,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [highlightLinkedGroups])
 
   const [linkedGroupModalId, setLinkedGroupModalId] = useState<string | null>(null)
+  /** Clock button on block cards (v2.1817): one person's whole day, editable. */
+  const [personDayModal, setPersonDayModal] = useState<{ userId: string; name: string; ymd: string } | null>(null)
 
   const visibleDayKeys = useMemo(
     () => (isTomorrow ? [tomorrowYmd] : getScheduleDispatchVisibleDayKeys(weekStart, hideWeekend)),
@@ -2316,6 +2319,13 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onHubMultiCellAddToggle={canEdit ? onHubMultiCellAddToggle : undefined}
             onRequestHubMultiCellAddMode={canEdit ? onRequestHubMultiCellAddMode : undefined}
             onRequestEditBlockNote={canEdit ? (b) => { setBlockNoteError(null); setBlockNoteEdit(b) } : undefined}
+            onOpenPersonDay={(b) =>
+              setPersonDayModal({
+                userId: b.assignee_user_id,
+                name: hubPeopleNameById.get(b.assignee_user_id) ?? 'This person',
+                ymd: b.work_date,
+              })
+            }
             userTimeOffByCell={hubUserTimeOffByCell}
             onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
             onMarkNotComingInForCell={canEdit ? onMarkNotComingInForCell : undefined}
@@ -2485,6 +2495,16 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             getJobDisplayTitle={getHubJobDisplayTitle}
             canManage={canEdit}
             addPeople={hubAllPeopleRows.map((r) => ({ userId: r.userId, displayName: r.displayName }))}
+            onChanged={() => void loadHub({ quiet: true })}
+          />
+        ) : null}
+        {personDayModal ? (
+          <ManagePersonDayModal
+            open
+            personUserId={personDayModal.userId}
+            personName={personDayModal.name}
+            initialYmd={personDayModal.ymd}
+            onClose={() => setPersonDayModal(null)}
             onChanged={() => void loadHub({ quiet: true })}
           />
         ) : null}

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1816)
+last_updated: 2026-08-18 (v2.1817)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1817)
+
+### Dispatch: clock button opens the person's whole day — block-moving train PR 2 (2026-08-18)
+The owner's idea, validated against what already existed: every block card on the People grid (and the job-week grid) gains a **clock button** beside the instructions pencil that opens [`ManagePersonDayModal`](../src/components/dispatchMode/ManagePersonDayModal.tsx) — the battle-tested per-person day editor from Dispatch Mode and the clock strip (v2.1600–1601: every block with times, mini timeline, linked-crew chips, edit with crew-vs-this-person-only scope where "this person only" unlinks the leg, remove, ‹ › day arrows) — for the block's assignee and day. The grid was the one place with no road to it. The modal also grows **one-tap ±30 nudge chips** on every block row (new kernel [`personDayBlockNudge.ts`](../src/lib/personDayBlockNudge.ts), +7 tests): `⇤ −30` / `+30 ⇥` shift the whole block, `end −30` / `end +30` move just the end — same save path as Edit, so a linked block's whole crew moves together (one-tap actions never ask; unlinking stays an Edit decision). Refusals (past midnight, under the 30-min floor) toast instead of clamping silently. `onOpenPersonDay` threads the same four layers as the note-pencil prop; page mounts the modal with `loadHub({quiet})` on change. Verified live: Abraham's 3-block day opened from J473's clock, `end +30` moved the linked crew to 5:30 PM (header 9h 30m), `end −30` restored 9h 0m exactly. +1 render test (chips + crew tooltips). Help guide gains "Rearranging someone's whole day". Client-only — no migration.
 
 ## Latest Updates (v2.1816)
 
