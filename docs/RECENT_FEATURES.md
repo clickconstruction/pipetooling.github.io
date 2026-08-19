@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1825)
+last_updated: 2026-08-19 (v2.1827)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1827)
+
+### Pipeline: refreshes cost only what's open — scoped-load plan PR 5, train complete (2026-08-19)
+The train's last car, and its biggest steady-state saving: every mutation and tab-return used to refetch the ENTIRE loaded board. Now `refreshMergedScopes` ([`JobsListCacheContext`](../src/contexts/JobsListCacheContext.tsx)) refetches only the currently-merged non-paid scopes — a dispatcher living in Ready to Bill pays ~6 rows per mutation instead of the whole company — with merged **paid rows preserved as-is** (refetching 667 embedded rows after every payment was the pre-train pathology; paid re-fetches on demand only). Full-merge and nothing-merged states fall back to the classic full path; the 30s visibility guard carries over. [`Jobs.tsx`](../src/pages/Jobs.tsx) routes mutation + visibility refreshes through it when the Pipeline is the active tab; other tabs keep their full reload. Also: opening the ⋯ tools menu now loads all scopes so its GC/development/account-man dropdowns list every option. Verified live: a visibility refresh with working+RTB merged fired exactly the two scope queries + the rtb_gate companion + the lean stats read — no full-board query. **Scoped-load plan complete (PRs 0–5, `JOBS_BOARD_SCOPED_LOAD_PLAN.md`)** — measurement against the 2026-08-19 baseline (68 realtime timeout errors/24h, ~5 stall windows) lands after a few normal weekdays. Client-only — no migration.
 
 ## Latest Updates (v2.1825)
 

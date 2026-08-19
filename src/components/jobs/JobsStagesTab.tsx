@@ -794,7 +794,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // (whole-section, unfiltered) would disagree with a filtered board.
   // Search stopped needing this in v2.1825: the lean lookup covers all jobs.
   const stagesNeedsAllScopesForModal =
-    weeklyMoneyModalOpen || weeklyMovementModalOpen || gcReviewModalOpen || billedTotalByNameModalOpen || bankPaymentsModalOpen || capableToBillModalOpen
+    weeklyMoneyModalOpen ||
+    weeklyMovementModalOpen ||
+    gcReviewModalOpen ||
+    billedTotalByNameModalOpen ||
+    bankPaymentsModalOpen ||
+    capableToBillModalOpen ||
+    // ⋯ tools menu (v2.1827): its GC/development/account-man dropdowns derive
+    // their options from loaded rows — open it, get the whole board.
+    stagesToolsMenuOpen
   const stagesHasActiveDisplayFilter =
     countStagesExclusions(stagesExcludeFilters) > 0 ||
     Boolean(stagesGcFilter) ||

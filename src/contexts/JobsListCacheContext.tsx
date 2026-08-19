@@ -69,7 +69,20 @@ type JobsListCacheContextValue = {
    * ~one section instead of the whole company. Marks exactly those scopes
    * merged; header stats refresh alongside. Other tabs keep `runFetchJobs`.
    */
-  runFetchScopes: (scopes: readonly JobsBoardScope[], customerFilter: string | null) => Promise<void>
+  runFetchScopes: (
+    scopes: readonly JobsBoardScope[],
+    customerFilter: string | null,
+    options?: { preservePaid?: boolean },
+  ) => Promise<void>
+  /**
+   * Scoped refresh (v2.1827, plan PR 5): refetch only the currently-merged
+   * non-paid scopes (falling back to a full load when everything is merged
+   * anyway, or nothing is). Merged paid rows are preserved as-is — paid
+   * changes rarely, and refetching 667 embedded rows after every mutation was
+   * the pre-train pathology. The Stages mutation/visibility refreshes use
+   * this; other tabs keep runFetchJobs.
+   */
+  refreshMergedScopes: (customerFilter: string | null, options?: { kind?: 'default' | 'visibility' }) => Promise<void>
 }
 
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
@@ -94,6 +107,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const lastFetchCompletedAtRef = useRef(0)
   const runFetchJobsRef = useRef<RunFetchJobsFn | null>(null)
   const refreshHeaderStatsRef = useRef<((customerFilter: string | null) => Promise<void>) | null>(null)
+  const runFetchScopesRef = useRef<
+    ((scopes: readonly JobsBoardScope[], customerFilter: string | null, options?: { preservePaid?: boolean }) => Promise<void>) | null
+  >(null)
   const lastNonPaidKeyRef = useRef<string | null>(null)
   const mergedScopesRef = useRef<Set<JobsBoardScope>>(new Set())
   const scopeFetchInFlightRef = useRef<Set<JobsBoardScope>>(new Set())
@@ -137,8 +153,33 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     [fetchScopeIfNeeded],
   )
 
+  const refreshMergedScopes = useCallback(
+    async (customerFilter: string | null, options?: { kind?: 'default' | 'visibility' }): Promise<void> => {
+      if (
+        options?.kind === 'visibility' &&
+        Date.now() - lastFetchCompletedAtRef.current < VISIBILITY_REFETCH_MIN_MS
+      ) {
+        return
+      }
+      const merged = mergedScopesRef.current
+      const nonPaidMerged = NON_PAID_SCOPES.filter((sc) => merged.has(sc))
+      // Nothing merged yet (first load still pending) or everything merged →
+      // the classic full path is both correct and simpler.
+      if (nonPaidMerged.length === 0 || nonPaidMerged.length === NON_PAID_SCOPES.length) {
+        await runFetchJobsRef.current?.(customerFilter)
+        return
+      }
+      await runFetchScopesRef.current?.(nonPaidMerged, customerFilter, { preservePaid: true })
+    },
+    [],
+  )
+
   const runFetchScopes = useCallback(
-    async (scopes: readonly JobsBoardScope[], customerFilter: string | null): Promise<void> => {
+    async (
+      scopes: readonly JobsBoardScope[],
+      customerFilter: string | null,
+      options?: { preservePaid?: boolean },
+    ): Promise<void> => {
       if (!user?.id) return
       if (loadInFlightRef.current) return
       const key = buildJobsListCacheKey(user.id, customerFilter)
@@ -177,8 +218,16 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-        setJobs(rows)
-        mergedScopesRef.current = new Set(scopes)
+        const keepPaid = options?.preservePaid === true && mergedScopesRef.current.has('paid')
+        if (keepPaid) {
+          setJobs((prev) => [
+            ...rows,
+            ...prev.filter((p) => (p.status ?? 'working') === 'paid' && !seen.has(p.id)),
+          ])
+        } else {
+          setJobs(rows)
+        }
+        mergedScopesRef.current = new Set(keepPaid ? [...scopes, 'paid'] : scopes)
         setMergedScopes(new Set(mergedScopesRef.current))
         lastSuccessfulDataKeyRef.current = key
         completedKeysRef.current.add(key)
@@ -305,6 +354,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   )
   runFetchJobsRef.current = runFetchJobs
   refreshHeaderStatsRef.current = refreshHeaderStats
+  runFetchScopesRef.current = runFetchScopes
 
   // Reset when auth user id changes
   useEffect(() => {
@@ -353,6 +403,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     scopeLoading,
     fetchScopeIfNeeded,
     runFetchScopes,
+    refreshMergedScopes,
   }
 
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>

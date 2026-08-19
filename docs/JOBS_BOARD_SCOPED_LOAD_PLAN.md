@@ -4,7 +4,7 @@
 file: JOBS_BOARD_SCOPED_LOAD_PLAN.md
 type: Plan
 purpose: Cut the Pipeline board's database footprint by an order of magnitude — fetch-on-expand sections, aggregate headers, server-side search
-status: Approved 2026-08-19; PR 0 (v2.1819) + PR 1 (v2.1821) shipped; ARCHITECTURE AMENDED — all client-side lean fetches, no migrations (see PR 1 note)
+status: COMPLETE 2026-08-19 — PRs 0-5 shipped (v2.1819, v2.1821, v2.1823, v2.1824, v2.1825, v2.1827), all client-side, zero migrations; measurement vs the 08-19 baseline pending a few weekdays
 last_updated: 2026-08-19
 ---
 

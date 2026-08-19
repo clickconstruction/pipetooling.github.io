@@ -113,6 +113,7 @@ export default function Jobs() {
     jobsListError,
     runFetchJobs,
     runFetchScopes,
+    refreshMergedScopes,
     fetchPaidJobsIfNeeded,
   } = useJobsListCache()
   const jobDetailModal = useJobDetailModal()
@@ -194,7 +195,11 @@ export default function Jobs() {
     }
     loadJobsAfterMutationTimerRef.current = setTimeout(() => {
       loadJobsAfterMutationTimerRef.current = null
-      void runFetchJobs(customerFilterForFetchRef.current ?? null)
+      // v2.1827 (plan PR 5): Stages refreshes only the sections it has loaded
+      // (merged paid rows ride along un-refetched); other tabs keep the full
+      // reload they read from.
+      if (activeTabRef.current === 'stages') void refreshMergedScopes(customerFilterForFetchRef.current ?? null)
+      else void runFetchJobs(customerFilterForFetchRef.current ?? null)
       if (activeTabRef.current === 'job-summary' || jobSummaryLedgerSnapshotLoadedRef.current) {
         void loadJobSummaryLedgerRef.current()
       }
@@ -627,11 +632,12 @@ export default function Jobs() {
     if (!shouldLoadJobsListForActiveTab) return
     const onVis = () => {
       if (document.visibilityState !== 'visible') return
-      void runFetchJobs(customerFilterForFetch, { kind: 'visibility' })
+      if (activeTabRef.current === 'stages') void refreshMergedScopes(customerFilterForFetch, { kind: 'visibility' })
+      else void runFetchJobs(customerFilterForFetch, { kind: 'visibility' })
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
-  }, [authUser?.id, authLoading, activeTab, customerFilterForFetch, runFetchJobs, shouldLoadJobsListForActiveTab])
+  }, [authUser?.id, authLoading, activeTab, customerFilterForFetch, runFetchJobs, refreshMergedScopes, shouldLoadJobsListForActiveTab])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return

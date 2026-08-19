@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1827',
+    date: '2026-08-19',
+    title: 'The Pipeline diet is complete — updates now cost almost nothing',
+    kind: 'feature',
+    highlights: [
+      'Every change on the Jobs board (marking ready to bill, recording a payment, a teammate\u2019s edit) now refreshes only the sections you have open — not the whole company\u2019s job list.',
+      'Paid in Full jobs you\u2019ve loaded stay put during refreshes instead of re-downloading each time.',
+      'This wraps the week\u2019s Pipeline speed work: open-on-demand sections, live collapsed headers, and search that covers every job.',
+    ],
+  },
+  {
     version: 'v2.1825',
     date: '2026-08-19',
     title: 'Pipeline search now covers every job — paid included, automatically',
