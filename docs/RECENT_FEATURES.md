@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1832)
+last_updated: 2026-08-19 (v2.1834)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1834)
+
+### Change orders send for signature — CO train PR 5 (2026-08-19)
+The acceptance machine now speaks change-order: a **wording overlay** in the customer-experience default chain (`changeOrderExperienceOverlay` in both [`src/lib/estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts) and the edge `_shared` twin — applied AFTER estimate-tuned app_settings, per-row overrides still win; +3 tests) swaps subject ("Change order: …"), email body, accept instructions/checkbox, doc title fallback, "Impact on cost" heading, and "Net change to contract" total label. [`EstimateCustomerDocument`](../src/components/estimates/EstimateCustomerDocument.tsx) gains a `changeOrder` prop rendering the narrative block (signed money + `allowNegative` normalization so credits print as −$390.00); `EstimateAcceptBody` passes it through, so the public accept page (`EstimateAccept`), staff preview, sent-document modal, and acceptance-record modal all render the CO document; the approve modal titles "Approve Change Order". Both edge functions (`get-estimate-for-customer`, `send-estimate-to-customer`) select + pass `doc_kind`/`change_order_fields` — **redeploy both after merge**. Draft-save title fallback becomes "Change order" for COs. Help guide: `write-a-change-order.md` (new). Verified via staff preview on prod draft #47 (deleted). Signature capture/status pipeline untouched.
 
 ## Latest Updates (v2.1832)
 

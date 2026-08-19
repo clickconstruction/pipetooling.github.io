@@ -750,7 +750,7 @@ function defaultEstimateTitle(customerName: string): string {
 
 function isGenericEstimateTitle(t: string): boolean {
   const s = t.trim()
-  return s === '' || s === 'New estimate' || s === 'Estimate'
+  return s === '' || s === 'New estimate' || s === 'Estimate' || s === 'Change order'
 }
 
 function estimateListCustomerSubline(r: EstimateListRow): string {
@@ -2857,11 +2857,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (!row) return null
     const snap = parseEstimateCustomerExperienceSnapshot(row.customer_experience_sent)
     if (snap) return snap
-    return resolveEstimateCustomerExperience(appCxSettings, cxOverrideFields, {
-      acceptUrl: acceptUrlForTemplatePreview,
-      title: previewEmailTitle.trim() || '',
-      estimateNumber: row.estimate_number,
-    })
+    return resolveEstimateCustomerExperience(
+      appCxSettings,
+      cxOverrideFields,
+      {
+        acceptUrl: acceptUrlForTemplatePreview,
+        title: previewEmailTitle.trim() || '',
+        estimateNumber: row.estimate_number,
+      },
+      { docKind: row.doc_kind },
+    )
   }, [
     row,
     appCxSettings,
@@ -2885,8 +2890,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }, [staffResolvedExperience, acceptanceDocHeaderBrand])
 
   const cxTemplateDefaults = useMemo(
-    () => mergeEstimateExperienceStrings(appCxSettings, {}),
-    [appCxSettings],
+    () => mergeEstimateExperienceStrings(appCxSettings, {}, { docKind: row?.doc_kind }),
+    [appCxSettings, row?.doc_kind],
   )
 
   function buildCustomerExperienceOverridesPayload(): Record<string, string> | null {
@@ -3095,7 +3100,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           await supabase
             .from('estimates')
             .update({
-              title: title.trim() || 'Estimate',
+              title: title.trim() || (isCO ? 'Change order' : 'Estimate'),
               terms_snapshot: terms,
               line_items_snapshot: lines,
               total_cents: totalCents,
@@ -5003,8 +5008,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 termsSnapshot={row.terms_snapshot ?? ''}
                 totalCents={row.total_cents}
                 headerBrand={acceptanceDocHeaderBrand}
-                lineItemsHeading={staffResolvedExperience?.docLineItemsHeading ?? 'Line items'}
+                lineItemsHeading={staffResolvedExperience?.docLineItemsHeading ?? (isCO ? 'Impact on cost' : 'Line items')}
                 termsHeading={staffResolvedExperience?.docTermsHeading ?? 'Terms'}
+                totalLabel={staffResolvedExperience?.docTotalLabel ?? (isCO ? 'Net change to contract' : 'Total')}
+                changeOrder={isCO ? coFields : null}
               />
               {customerAttachmentPreview ? (
                 <div style={{ marginTop: '1.25rem' }}>

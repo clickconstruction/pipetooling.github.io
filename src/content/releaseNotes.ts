@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1834',
+    date: '2026-08-19',
+    title: 'Change orders: send them for signature',
+    kind: 'feature',
+    highlights: [
+      'Send to customer now works on change orders: the customer gets a "Change order: …" email, reviews the full document — description, reason, cost breakdown with credits, net change, schedule impact — and signs it right on the page.',
+      'Same signature record, same accepted notifications, same paper trail as estimates.',
+      'New help guide: "write a change order and send it for signature".',
+    ],
+  },
+  {
     version: 'v2.1832',
     date: '2026-08-19',
     title: 'Change orders: the editor is here',

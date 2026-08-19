@@ -108,7 +108,7 @@ export default function EstimateSentDocumentModal({ open, onClose, estimateId }:
           acceptUrl: PREVIEW_EMAIL_ACCEPT_URL,
           title: row.title ?? '',
           estimateNumber: row.estimate_number,
-        })
+        }, { docKind: row.doc_kind })
     return toClientCustomerExperience(resolved)
   }, [row, appCxSettings])
 
