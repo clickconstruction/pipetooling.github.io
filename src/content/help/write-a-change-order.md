@@ -37,6 +37,10 @@ The **net change** is computed from the lines, so the customer sees exactly how 
 
 {{button:amber|Send to customer}} works exactly like an estimate: the customer gets an email ("Change order: …") with a private link, reviews the change-order document — description, reason, cost breakdown, net change, schedule impact — and signs it by typing or drawing their name. You get the same accepted notification, and the signature record (name, time, IP) is stored with the change order.
 
+## Starting from Bids
+
+Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always — fill it out, {{button:blue|Copy to clipboard}} or open the Google Docs template for GCs who want their own paper. But now there's also {{button:green|Send for signature →}}: it creates a change-order draft in Estimates, prefilled from the form (description, reason, schedule impact, response-by date) and linked to the bid. The cost impact from the Bids form rides along as an internal note — enter it as real line items in the draft, then send it like any change order.
+
 ## Keeping track
 
 Change orders appear in the Estimates Pipeline and Ledger alongside estimates, with the amber chip telling them apart. Statuses are the same: Draft → Sent → Accepted (or Declined).

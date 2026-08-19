@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1834)
+last_updated: 2026-08-19 (v2.1835)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1835)
+
+### Bids → Estimates change-order bridge — CO train PR 6, the train arrives (2026-08-19)
+The long-term goal from the owner's original ask: start a change order in either surface. [`BidChangeOrderTab`](../src/components/bids/BidChangeOrderTab.tsx) gains **Send for signature →** beside Copy/Google Docs: it inserts a `doc_kind='change_order'` estimate draft prefilled from the bids form (description/reason/schedule/response-by → `change_order_fields`; bid's customer + project address; `bid_id` linked — the v2.1826 column earns its keep) and navigates straight to the Estimates editor. The free-text cost impact can't become line items automatically, so it lands in `internal_notes` with a prompt to enter real lines (line items are the CO cost contract per the v2.1832 editor). Ownership resolves exactly like New estimate: `resolveMasterUserId` extracted from Estimates.tsx to [`estimateMasterUser.ts`](../src/lib/estimateMasterUser.ts) (bid's customer master wins when present). Help guide gains "Starting from Bids". Client-only — no migration.
 
 ## Latest Updates (v2.1834)
 

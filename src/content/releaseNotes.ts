@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1835',
+    date: '2026-08-19',
+    title: 'Bids and Estimates connected: change orders flow between them',
+    kind: 'feature',
+    highlights: [
+      'The Bids change-order form now has Send for signature: one click creates a matching change-order draft in Estimates — prefilled and linked to the bid — ready for cost lines and the customer\u2019s signature.',
+      'Copy to clipboard and Google Docs stay for GCs who require their own paperwork.',
+      'This completes the change-order build: start in Bids or Estimates, either way it ends with a signed document on file.',
+    ],
+  },
+  {
     version: 'v2.1834',
     date: '2026-08-19',
     title: 'Change orders: send them for signature',

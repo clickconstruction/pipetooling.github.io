@@ -18,6 +18,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { resolveEstimateMasterUserId as resolveMasterUserId } from '../lib/estimateMasterUser'
 import {
   EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
   formatSignedCentsUsd,
@@ -691,23 +692,6 @@ function statusLabel(s: EstimateRow['status']): string {
   }
 }
 
-async function resolveMasterUserId(
-  userId: string,
-  role: UserRole | null,
-): Promise<string | null> {
-  if (role === 'dev' || role === 'master_technician') return userId
-  if (isAssistantLike(role)) {
-    const { data } = await supabase
-      .from('master_assistants')
-      .select('master_id')
-      .eq('assistant_id', userId)
-      .limit(1)
-      .maybeSingle()
-    const mid = (data as { master_id: string } | null)?.master_id
-    return mid ?? userId
-  }
-  return userId
-}
 
 type EstimateDraftCustomerGateProps = {
   active: boolean
