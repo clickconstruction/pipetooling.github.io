@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 20, 2026
 
+**`20260820040000_add_bids_itb_links.sql`** _(apply via `supabase db push` after the v2.1851 merge — additive; old clients ignore the column, and the new client's Save writes it, so push promptly after merge)_
+- **Purpose**: ITB / submission web links on bids (estimator request — most bids live on PlanHub, BuildingConnected, etc., often more than one when bidding to multiple GCs). `bids.itb_links jsonb NOT NULL DEFAULT '[]'` — a JSON array of URL strings. Edited as repeating rows in the Edit Bid form (ITB & submission links section), shown as labeled chips (PlanHub / BuildingConnected / hostname) in the bid preview. Row RLS already covers the column; no policy changes.
+- **Category**: Bids
+
 **`20260820020000_rtb_per_recipient_channels.sql`** _(apply via `supabase db push` after the v2.1844 merge, then redeploy `paid-job-email` — either order degrades cleanly: the function reads v2 with a v1 fallback)_
 - **Purpose**: Ready to Bill notifications v2 — per-recipient delivery channels. One-time conversion of the v1 pair (`ready_to_bill_notify_recipients_v1` uuid list + org-wide `ready_to_bill_notify_channels_v1`) into `ready_to_bill_notify_recipients_v2` (`[{ id, email, push }]`, only when v2 doesn't exist yet); rebuilds `get_my_email_schedule()` (RTB membership = a v2 entry with ≥1 channel) and `get_global_email_schedule()` (`ready_to_bill_recipients` gains per-person `email`/`push` flags) from their live 20260819230000 bodies.
 - **Category**: Jobs / notifications
