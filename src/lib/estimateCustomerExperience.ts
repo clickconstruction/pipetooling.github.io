@@ -103,6 +103,27 @@ export function builtinEstimateExperience(): Record<EstimateExperienceOverrideKe
   }
 }
 
+
+/**
+ * Change-order wording (CO train v2.1834): when the row is a change order,
+ * these replace the ESTIMATE-specific builtins AND any org app_settings
+ * (which are tuned for estimates) — per-row overrides still win.
+ */
+export function changeOrderExperienceOverlay(): Partial<Record<EstimateExperienceOverrideKey, string>> {
+  return {
+    email_subject_template: 'Change order: {{title}}',
+    email_body_template:
+      'Please review and sign the change order.\n\nOpen this link:\n{{accept_url}}\n\nThank you.',
+    accept_instructions:
+      'Type your full name and confirm you agree to the change order and terms above.',
+    accept_checkbox_label:
+      'I agree to conduct business electronically with Click Plumbing and Electrical and have read and agree to this change order and the terms above.',
+    doc_title_fallback: 'Change order',
+    doc_line_items_heading: 'Impact on cost',
+    doc_total_label: 'Net change to contract',
+  }
+}
+
 export type EstimateTemplateVars = {
   acceptUrl: string
   /** Shown in email subject; empty title becomes "Your estimate" for {{title}}. */
@@ -154,6 +175,7 @@ export function parseEstimateExperienceOverrides(raw: unknown): Partial<Record<E
 export function mergeEstimateExperienceStrings(
   appRows: { key: string; value_text: string | null }[] | null,
   overridesJson: unknown,
+  opts?: { docKind?: string | null },
 ): Record<EstimateExperienceOverrideKey, string> {
   const builtins = builtinEstimateExperience()
   const settingsMap = appSettingsToMap(appRows)
@@ -163,6 +185,10 @@ export function mergeEstimateExperienceStrings(
     const appKey = ESTIMATE_APP_SETTING_KEYS[k]
     const fromApp = settingsMap[appKey]
     if (fromApp != null && fromApp !== '') merged[k] = clampLen(fromApp, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN)
+  }
+  if (opts?.docKind === 'change_order') {
+    // CO wording beats estimate-tuned builtins/app settings; row overrides still win below.
+    Object.assign(merged, changeOrderExperienceOverlay())
   }
   for (const k of OVERRIDE_KEYS) {
     const o = overrides[k]
@@ -175,8 +201,9 @@ export function resolveEstimateCustomerExperience(
   appRows: { key: string; value_text: string | null }[] | null,
   overridesJson: unknown,
   vars: EstimateTemplateVars,
+  opts?: { docKind?: string | null },
 ): EstimateCustomerExperienceResolved {
-  const m = mergeEstimateExperienceStrings(appRows, overridesJson)
+  const m = mergeEstimateExperienceStrings(appRows, overridesJson, opts)
   const emailSubject = substituteEstimateTemplates(m.email_subject_template, vars)
   const emailBody = substituteEstimateTemplates(m.email_body_template, vars)
   return {

@@ -11,6 +11,28 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1834',
+    date: '2026-08-19',
+    title: 'Change orders: send them for signature',
+    kind: 'feature',
+    highlights: [
+      'Send to customer now works on change orders: the customer gets a "Change order: …" email, reviews the full document — description, reason, cost breakdown with credits, net change, schedule impact — and signs it right on the page.',
+      'Same signature record, same accepted notifications, same paper trail as estimates.',
+      'New help guide: "write a change order and send it for signature".',
+    ],
+  },
+  {
+    version: 'v2.1833',
+    date: '2026-08-19',
+    title: 'Field reports now move the job’s % done',
+    kind: 'feature',
+    highlights: [
+      'When a report includes "How complete is the job?", that percent now becomes the job’s % done everywhere — the Pipeline progress bar and % box, dashboard cards, and the job’s activity feed update the moment the report saves.',
+      'The activity feed shows it as "N% complete — from field report", so the office can see the number came from the crew.',
+      'A 100% report on a Working job still offers to move it to Ready to Bill, same as before.',
+    ],
+  },
+  {
     version: 'v2.1832',
     date: '2026-08-19',
     title: 'Change orders: the editor is here',

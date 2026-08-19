@@ -14,6 +14,7 @@ import { isTurnawayTemplateName } from '../lib/turnaway'
 import AutoGrowTextarea from './AutoGrowTextarea'
 import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
+import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -250,17 +251,13 @@ export default function AdditionalReportModal({
         .invoke('send-report-email', { body: { report_id: inserted.id } })
         .catch(() => { /* report email is best-effort */ })
     }
-    // If the job was marked 100% complete and is still Working, offer to move it to Ready to bill.
-    if (reportSaysJobComplete(fv)) {
-      const { data: jobRow } = await supabase
-        .from('jobs_ledger')
-        .select('status')
-        .eq('id', jobId)
-        .maybeSingle()
-      if ((jobRow as { status?: string | null } | null)?.status === 'working') {
-        setReadyToBillJob({ id: jobId, hcpNumber: hcpNumber || '—', jobName: jobName || '—' })
-        return
-      }
+    // Mirror the report's completion percent into jobs_ledger.pct_complete
+    // (best-effort), then offer Ready to bill when a 100% report lands on a
+    // Working job.
+    const { jobStatus } = await propagateReportPctToJob(jobId, fv)
+    if (reportSaysJobComplete(fv) && jobStatus === 'working') {
+      setReadyToBillJob({ id: jobId, hcpNumber: hcpNumber || '—', jobName: jobName || '—' })
+      return
     }
     onSaved()
     handleClose()

@@ -7,10 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1832)
+last_updated: 2026-08-19 (v2.1834)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1834)
+
+### Change orders send for signature — CO train PR 5 (2026-08-19)
+The acceptance machine now speaks change-order: a **wording overlay** in the customer-experience default chain (`changeOrderExperienceOverlay` in both [`src/lib/estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts) and the edge `_shared` twin — applied AFTER estimate-tuned app_settings, per-row overrides still win; +3 tests) swaps subject ("Change order: …"), email body, accept instructions/checkbox, doc title fallback, "Impact on cost" heading, and "Net change to contract" total label. [`EstimateCustomerDocument`](../src/components/estimates/EstimateCustomerDocument.tsx) gains a `changeOrder` prop rendering the narrative block (signed money + `allowNegative` normalization so credits print as −$390.00); `EstimateAcceptBody` passes it through, so the public accept page (`EstimateAccept`), staff preview, sent-document modal, and acceptance-record modal all render the CO document; the approve modal titles "Approve Change Order". Both edge functions (`get-estimate-for-customer`, `send-estimate-to-customer`) select + pass `doc_kind`/`change_order_fields` — **redeploy both after merge**. Draft-save title fallback becomes "Change order" for COs. Help guide: `write-a-change-order.md` (new). Verified via staff preview on prod draft #47 (deleted). Signature capture/status pipeline untouched.
+
+## Latest Updates (v2.1833)
+
+### Reports: the completion percent now moves the job's % done (2026-08-19)
+Owner report: a sub filing "100% done" in a Status Report expected the Pipeline's progress bar and "% done" to follow — but the report percent lived only in `reports.field_values`, and `jobs_ledger.pct_complete` (what the board, dashboard cards, and progress dot read) was never written; the v2.1805 migration had documented exactly this gap ("the report percent field stores only into the report") and closed it for the My Schedule stepper only. Now both report writers ([`NewReportModal`](../src/components/NewReportModal.tsx) Leave Report + [`AdditionalReportModal`](../src/components/AdditionalReportModal.tsx)) call new helper [`propagateReportPctToJob`](../src/lib/propagateReportPctToJob.ts) after a job report saves: it reads the job's current `pct_complete`+`status` once, and when the report's completion percent differs (kernel [`reportPctPropagation.ts`](../src/lib/reportPctPropagation.ts), +9 tests — same new-key-wins parse as `reportSaysJobComplete`; downward corrections propagate; unchanged values skip so no redundant note posts) invokes the v2.1805 `set_job_pct_from_field` RPC — which writes the percent AND posts the load-bearing `"N% complete — from field report"` thread note, so Stages activity, My Schedule day deltas, and Job Detail light up through their existing paths. Best-effort: a propagation failure never blocks the already-saved report. The status fetch folds into the existing 100%-report → `MarkJobReadyToBillPrompt` check (behavior unchanged). Report EDITS deliberately don't propagate — rewriting an old report shouldn't stomp newer progress. Help guide `reports` updated. Client-only — no migration.
 
 ## Latest Updates (v2.1832)
 

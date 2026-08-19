@@ -24,6 +24,8 @@ type PublicEstimate = {
   total_cents: number
   valid_until: string | null
   customer_attachment: CustomerAttachmentPayload | null
+  doc_kind: string | null
+  change_order_fields: unknown
 }
 
 function PublicEstimateShell({ children }: { children: ReactNode }) {
@@ -122,6 +124,8 @@ export default function EstimateAccept() {
             total_cents: Number(json.total_cents ?? 0),
             valid_until: json.valid_until ?? null,
             customer_attachment,
+            doc_kind: typeof (json as { doc_kind?: unknown }).doc_kind === 'string' ? (json as { doc_kind: string }).doc_kind : null,
+            change_order_fields: (json as { change_order_fields?: unknown }).change_order_fields ?? null,
           })
         }
       } catch (err) {
@@ -215,6 +219,8 @@ export default function EstimateAccept() {
           line_items_snapshot: estimate.line_items_snapshot,
           terms_snapshot: estimate.terms_snapshot,
           total_cents: estimate.total_cents,
+          doc_kind: estimate.doc_kind,
+          change_order_fields: estimate.change_order_fields,
         }}
         experience={experience}
         printedName={printedName}

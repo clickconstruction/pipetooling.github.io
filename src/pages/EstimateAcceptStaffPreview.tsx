@@ -138,7 +138,7 @@ export default function EstimateAcceptStaffPreview() {
       if (staffSnapshot) {
         const overridesJson =
           staffSnapshot.overrides != null ? staffSnapshot.overrides : data.customer_experience_overrides
-        const resolved = resolveEstimateCustomerExperience(appSettings, overridesJson, templateVars)
+        const resolved = resolveEstimateCustomerExperience(appSettings, overridesJson, templateVars, { docKind: data.doc_kind })
         client = toClientCustomerExperience(resolved)
       } else {
         const sentSnap = parseEstimateCustomerExperienceSnapshot(data.customer_experience_sent)
@@ -149,6 +149,7 @@ export default function EstimateAcceptStaffPreview() {
             appSettings,
             data.customer_experience_overrides,
             templateVars,
+            { docKind: data.doc_kind },
           )
           client = toClientCustomerExperience(resolved)
         }
@@ -216,6 +217,8 @@ export default function EstimateAcceptStaffPreview() {
           line_items_snapshot: lineItemsSnapshot,
           terms_snapshot: termsSnapshot,
           total_cents: totalCents,
+          doc_kind: row?.doc_kind ?? null,
+          change_order_fields: row?.change_order_fields ?? null,
         }}
         experience={experience}
         printedName=""
