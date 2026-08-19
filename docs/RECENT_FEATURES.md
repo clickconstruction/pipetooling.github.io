@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1841)
+last_updated: 2026-08-19 (v2.1842)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1842)
+
+### Checklist cards get a history spine — events, comments, review stamps (2026-08-19)
+Phase 1 (DB-only) of the owner-approved checklist-card redesign (mobile-friendly cards, card history, multi-person comments, lead review with dismiss/reopen). Migration [`20260820010000_checklist_instance_events.sql`](../supabase/migrations/20260820010000_checklist_instance_events.sql): append-only **`checklist_instance_events`** — `completed`/`reopened`/`accepted` rows written by a BEFORE UPDATE trigger on `checklist_instances` (so the CURRENT Today tab starts feeding history with zero client changes; reopen also auto-clears the new `reviewed_at`/`reviewed_by` stamps), `comment` rows written by clients under an insert-own-comments-only policy; read visibility delegates to the instance's own RLS via nested EXISTS (assignees, item creator, dev/master/assistant). Event inserts are exception-guarded so history can never fail a completion toggle (the `archive_deleted_record` never-break rule). Backfill: one `completed` event per already-completed instance, one `comment` event per legacy non-empty `instance.notes` (author = completer) — no history lost, idempotent. Phase 2 (card UI) and Phase 3 (review queue in the Teams Inbox) build on this; design + mockups approved in-session. DB-only — **`supabase db push` after merge**, then `npm run gen-types:linked`.
 
 ## Latest Updates (v2.1841)
 

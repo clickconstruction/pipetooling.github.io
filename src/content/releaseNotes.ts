@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1842',
+    date: '2026-08-19',
+    title: 'Groundwork: checklist cards remember their story',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes, every checklist task now keeps a history — when it was completed, reopened, or signed off, and by whom.',
+      'Existing notes were carried over; nothing changes on screen yet.',
+      'Coming next: a cleaner mobile checklist card with comments, and a review inbox for whoever assigned the task.',
+    ],
+  },
+  {
     version: 'v2.1841',
     date: '2026-08-19',
     title: 'Ready to Bill notifications: gear icon renders',

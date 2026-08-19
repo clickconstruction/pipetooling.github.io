@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-19
+last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: "240 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 19, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 20, 2026
+
+**`20260820010000_checklist_instance_events.sql`** _(apply via `supabase db push` after the v2.1842 merge — additive; existing checklist UI keeps working unchanged and starts feeding history automatically via the trigger)_
+- **Purpose**: Checklist card history + comments + lead review, Phase 1 (data spine). New append-only `checklist_instance_events` (`completed` / `reopened` / `accepted` trigger-written transitions + client-written `comment` rows; index on `(instance_id, created_at)`); `checklist_instances` gains `reviewed_at` / `reviewed_by` (the review queue's "dismiss" stamp); BEFORE UPDATE trigger `checklist_instance_transitions_trigger` logs completion transitions from ANY write path, clears review stamps on reopen, and guards every event INSERT so history can never break a completion toggle. Events RLS delegates to the parent instance's SELECT policies via nested EXISTS; clients may INSERT only `comment` rows as themselves. Backfills a `completed` event per already-completed instance and a `comment` event per legacy non-empty `notes`.
+- **Category**: Checklist / activity
 
 #### August 19, 2026
 
