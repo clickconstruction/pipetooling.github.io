@@ -54,6 +54,8 @@ import {
   STAGES_TABLE_MIN_WIDTH,
   STAGES_EDIT_MODE_RAIL_WIDTH,
   renderStagesEditModeRail,
+  stagesInvoiceRowAccentRowStyle,
+  stagesInvoiceRowAccentRailStyle,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 
@@ -879,6 +881,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     data-stages-job-id={job.id}
                     style={{
                       borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
+                      ...stagesInvoiceRowAccentRowStyle,
                       ...flashRowStyle(inv.id),
                       ...(stagesJobFlashId === job.id
                         ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
@@ -895,6 +898,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
                         verticalAlign: 'top',
                         position: 'relative',
+                        ...stagesInvoiceRowAccentRailStyle,
                       }}
                     >
                       {stagesEditMode ? renderStagesEditModeRail(job, openEdit) : null}

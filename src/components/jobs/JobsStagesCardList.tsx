@@ -52,6 +52,8 @@ import {
   renderStagesEditModeRail,
   shouldSuppressStagesRowJobThreadToggle,
   STAGES_EDIT_MODE_RAIL_WIDTH,
+  stagesInvoiceRowAccentRowStyle,
+  stagesInvoiceRowAccentRailStyle,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 
@@ -988,6 +990,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
             style={{
               ...cardStyle,
               ...accountManOnlyStripeStyle(j),
+              ...(row.kind === 'invoice' ? { ...stagesInvoiceRowAccentRowStyle, ...stagesInvoiceRowAccentRailStyle } : {}),
               ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
               ...(flash ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2 } : {}),
             }}

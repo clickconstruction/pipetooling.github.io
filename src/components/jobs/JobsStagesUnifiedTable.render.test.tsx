@@ -13,6 +13,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import JobsStagesUnifiedTable, { type JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
+import { JobsStagesUnifiedCardList } from './JobsStagesCardList'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 
@@ -135,6 +136,54 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     )
     const row = document.querySelector(`tr[data-stages-invoice-id="${billedInvoice.id}"]`) as HTMLElement
     expect(row.style.backgroundColor).toBe('')
+  })
+
+  it('green invoice accent marks standalone invoice rows only (v2.1828)', () => {
+    const floaterJob = makeJob({ job_name: 'Floater Job', status: 'working' })
+    const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
+    const bareJob = makeJob({ job_name: 'Bare Job', status: 'ready_to_bill' })
+    const billedJob = makeJob({ job_name: 'Merged Job', status: 'billed' })
+    const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 900, status: 'billed' })
+    const rows: StageRow[] = [
+      { kind: 'invoice', inv: floaterInvoice, job: floaterJob },
+      { kind: 'job', job: bareJob },
+      { kind: 'job_with_merged_billed', job: billedJob, inv: billedInvoice },
+    ]
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows })} />)
+    const standalone = document.querySelector(`tr[data-stages-invoice-id="${floaterInvoice.id}"]`) as HTMLElement
+    expect(standalone.style.backgroundColor).toBe('var(--bg-green-tint)')
+    expect((standalone.querySelector('td') as HTMLElement).style.borderLeft).toContain('rgb(22, 163, 74)')
+    const merged = document.querySelector(`tr[data-stages-invoice-id="${billedInvoice.id}"]`) as HTMLElement
+    expect(merged.style.backgroundColor).toBe('')
+    const jobRow = document.querySelector(`tr[data-stages-job-id="${bareJob.id}"]`) as HTMLElement
+    expect(jobRow.style.backgroundColor).toBe('')
+  })
+
+  it('flash styling wins over the green invoice accent (spread order)', () => {
+    const floaterJob = makeJob({ job_name: 'Flash Floater', status: 'working' })
+    const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
+    const rows: StageRow[] = [{ kind: 'invoice', inv: floaterInvoice, job: floaterJob }]
+    renderWithProviders(
+      <JobsStagesUnifiedTable {...makeProps({ rows, flashInvoiceId: floaterInvoice.id })} />,
+    )
+    const row = document.querySelector(`tr[data-stages-invoice-id="${floaterInvoice.id}"]`) as HTMLElement
+    expect(row.style.backgroundColor).toBe('var(--bg-amber-100)')
+  })
+
+  it('mobile unified cards: the standalone invoice card carries the green accent', () => {
+    const floaterJob = makeJob({ job_name: 'Card Floater', status: 'working' })
+    const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
+    const plainJob = makeJob({ job_name: 'Plain Card Job', status: 'billed' })
+    const rows: StageRow[] = [
+      { kind: 'invoice', inv: floaterInvoice, job: floaterJob },
+      { kind: 'job', job: plainJob },
+    ]
+    renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows })} />)
+    const card = document.querySelector(`[data-stages-invoice-id="${floaterInvoice.id}"]`) as HTMLElement
+    expect(card.style.backgroundColor).toBe('var(--bg-green-tint)')
+    expect(card.style.borderLeft).toContain('rgb(22, 163, 74)')
+    const plainCard = document.querySelector(`[data-stages-job-id="${plainJob.id}"]`) as HTMLElement
+    expect(plainCard.style.borderLeft).toBe('')
   })
 
   it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', () => {

@@ -31,6 +31,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1828',
+    date: '2026-08-19',
+    title: 'Invoices on the Pipeline now look like invoices',
+    kind: 'feature',
+    highlights: [
+      'When a partial invoice floats through the Pipeline apart from its job (like a break-off billed while the crew keeps working), its row is now tinted green with a green edge stripe — so an invoice never reads as a second copy of the job.',
+      'Works on both the desktop table and the phone card view. Job rows are unchanged.',
+    ],
+  },
+  {
     version: 'v2.1827',
     date: '2026-08-19',
     title: 'The Pipeline diet is complete — updates now cost almost nothing',
