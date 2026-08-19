@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1819',
+    date: '2026-08-19',
+    title: 'Pipeline search: paid jobs are now opt-in (and the board got lighter)',
+    kind: 'feature',
+    highlights: [
+      'Searching the Pipeline no longer quietly loads every Paid in Full job on your first keystroke — that was a heavy hidden cost on every search.',
+      'Instead, a chip appears in the search bar: "+ Paid in Full" while your search is matching active jobs, turning solid "Search Paid in Full too" when nothing active matches — one tap pulls paid jobs into the search.',
+      'Once tapped it shows "✓ Paid in Full included" and stays on for the rest of your visit.',
+    ],
+  },
+  {
     version: 'v2.1818',
     date: '2026-08-19',
     title: 'Schedule blocks: tidier corner controls',
