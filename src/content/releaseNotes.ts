@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1839',
+    date: '2026-08-19',
+    title: 'Bid preview and Edit Bid, redesigned — plus Copy for text',
+    kind: 'feature',
+    highlights: [
+      'The bid preview now leads with the bid itself: project name up top, then a facts strip with the due date (and a countdown), bid value, GC, and estimator. File links are one row of chips, and empty fields tuck away behind "Show all fields".',
+      'New Copy for text button in the preview: puts the project name, address, and bid due date on your clipboard, ready to paste into a text message.',
+      'Edit Bid is organized into sections — Status & dates, Location, Files & links, People, Money, Notes — with Win/Loss as one-click buttons and the project name front and center.',
+      'Save no longer scrolls away: the save bar sticks to the bottom of the Edit Bid form, with Delete tucked quietly to the left.',
+    ],
+  },
+  {
     version: 'v2.1838',
     date: '2026-08-19',
     title: 'Dark mode: customer search and Estimates links now follow your theme',

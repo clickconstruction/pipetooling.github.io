@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1838)
+last_updated: 2026-08-19 (v2.1839)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1839)
+
+### Bid modals redesigned + "Copy for text" export (2026-08-19)
+Owner-approved redesign of both bid modals (mockups reviewed as an artifact first). **[`BidPreviewModal`](../src/components/bids/BidPreviewModal.tsx)**: the bid identity becomes the header (project name as title; BP-number · trade · address · Map subline); a four-cell **facts strip** (Bid due with `formatRelativeDayPhrase` countdown vs the Chicago calendar day, amber-tinted while the bid is open; Bid value with agreed-value subline; GC/Builder → snapshot; Estimator · Acct man) replaces the centered field scatter; file links collapse to **chips** (missing → dashed "— none"); details become a left-aligned two-column ledger with **empty fields folded** behind a "Show all fields" toggle; Open-in-Bids chips group by phase (**Scope / Price / Send** — `buildTabActionGroups`, same role gating: Bid Costs dev-only in Scope, superintendent loses Price + Submission); Close shrinks to ✕. New header button **Copy for text** puts project name, address, and `Bid due: M/D/YYYY` on the clipboard for pasting into a text message — kernel [`bidCopyForText.ts`](../src/lib/bidCopyForText.ts) (5 tests; skips blanks, no-Date date formatting). **[`BidFormModal`](../src/components/bids/BidFormModal.tsx)**: Project Name becomes the hero field (Bid # beside it); Estimator/Account Man/Service Type align on one row; labeled sections **Status & dates** (due/sent/last-contact on one row; Win/Loss becomes a segmented control with the conditional "Why did we lose?"/Start Date revealing inline), **Location**, **Files & links** (links pack two-across, paste buttons deduped into `PasteButton`), **People** (GC read-only phone/email render as chips — the '—' placeholder from `getGcBuilderPhone/Email` treated as empty), **Money**, **Notes**; the footer becomes a **sticky save bar** (Save primary, Save-and-Open-Counts beside it, compact required-fields hint, Delete bid… demoted to a quiet red text button far left, Archive-from-board beside it). All handlers, role gating (Bid # read-only for estimator/primary), date-sent attestation microcopy, and the service-type switch/delete modals untouched. `.bid-preview-facts` responsive rules in [`index.css`](../src/index.css) (2×2 on phones). Help guide `text-a-bids-basics-to-someone.md` (new). Client-only — no migration.
 
 ## Latest Updates (v2.1838)
 
