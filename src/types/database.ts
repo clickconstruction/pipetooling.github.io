@@ -1494,17 +1494,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "checklist_instance_events_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_instances"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "checklist_instance_events_actor_user_id_fkey"
             columns: ["actor_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instance_events_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
             referencedColumns: ["id"]
           },
         ]
@@ -1554,6 +1554,13 @@ export type Database = {
           {
             foreignKeyName: "checklist_instances_completed_by_user_id_fkey"
             columns: ["completed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instances_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -13733,6 +13740,10 @@ export type Database = {
           id: string
           name: string
         }[]
+      }
+      get_ready_to_bill_email_payload: {
+        Args: { p_job_id: string }
+        Returns: Json
       }
       get_supply_house_price_counts: {
         Args: never
