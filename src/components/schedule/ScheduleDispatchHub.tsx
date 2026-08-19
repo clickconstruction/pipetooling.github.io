@@ -593,7 +593,6 @@ function HubPeopleBlockCard({
   const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
   const showEditNoteBtn = canEdit && !placementPickingActive && !linkedCopyActive && !!onRequestEditBlockNote
   const showPersonDayBtn = !placementPickingActive && !linkedCopyActive && !!onOpenPersonDay
-  const showTopRightControls = showEditNoteBtn || showPersonDayBtn
   const showMinusPlusButtons = canEdit && !placementPickingActive && !linkedCopyActive
   const linkedAccent =
     highlightLinkedGroups && groupId && linkPeerCount > 1
@@ -802,7 +801,7 @@ function HubPeopleBlockCard({
           ) : null}
         </button>
       </div>
-      {showTopRightControls ? (
+      {showEditNoteBtn ? (
         <div
           style={{
             position: 'absolute',
@@ -815,71 +814,72 @@ function HubPeopleBlockCard({
             gap: 0,
           }}
         >
-          {showPersonDayBtn ? (
-            <button
-              type="button"
-              title="See this person's whole day — rearrange times, unlink"
-              aria-label="See this person's whole day"
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenPersonDay?.(block)
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 51,
-                height: 51,
-                minWidth: 51,
-                minHeight: 51,
-                boxSizing: 'border-box',
-                padding: 0,
-                color: 'var(--text-700)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                margin: 0,
-                ...scheduleBlockControlPlateBackgroundStyle,
-                ...scheduleBlockActionLinkedIconButtonStyle,
-              }}
-            >
-              {/* Clock face, currentColor — mirrors the note icon's plate. */}
-              <svg width={26} height={26} viewBox="0 0 24 24" aria-hidden focusable={false}>
-                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-                <path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          ) : null}
-          {showEditNoteBtn ? (
-            <button
-              type="button"
-              title="Edit job instructions"
-              aria-label="Edit job instructions"
-              onClick={(e) => {
-                e.stopPropagation()
-                onRequestEditBlockNote?.(block)
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 51,
-                height: 51,
-                minWidth: 51,
-                minHeight: 51,
-                boxSizing: 'border-box',
-                padding: 0,
-                color: editNoteColor,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                margin: 0,
-                ...scheduleBlockControlPlateBackgroundStyle,
-                ...scheduleBlockActionLinkedIconButtonStyle,
-              }}
-            >
-              <ScheduleDispatchBlockNoteIcon size={32} />
-            </button>
-          ) : null}
+          <button
+            type="button"
+            title="Edit job instructions"
+            aria-label="Edit job instructions"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRequestEditBlockNote?.(block)
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 51,
+              height: 51,
+              minWidth: 51,
+              minHeight: 51,
+              boxSizing: 'border-box',
+              padding: 0,
+              color: editNoteColor,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              margin: 0,
+              ...scheduleBlockControlPlateBackgroundStyle,
+              ...scheduleBlockActionLinkedIconButtonStyle,
+            }}
+          >
+            <ScheduleDispatchBlockNoteIcon size={32} />
+          </button>
         </div>
+      ) : null}
+      {showPersonDayBtn ? (
+        <button
+          type="button"
+          title="See this person's whole day — rearrange times, unlink"
+          aria-label="See this person's whole day"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenPersonDay?.(block)
+          }}
+          style={{
+            position: 'absolute',
+            // Top-left corner of the note plate, mirroring the chain (top-right)
+            // and −/+ (bottom corners); falls left of the chain when no plate.
+            top: 2,
+            right: showEditNoteBtn ? 33 : 24,
+            zIndex: 4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 20,
+            height: 20,
+            padding: 0,
+            margin: 0,
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-700)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            ...scheduleBlockActionLinkedIconButtonStyle,
+          }}
+        >
+          <svg width={14} height={14} viewBox="0 0 24 24" aria-hidden focusable={false}>
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.5" />
+            <path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       ) : null}
       {showLinkedFloat ? (
         <button

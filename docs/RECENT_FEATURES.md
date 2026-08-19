@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1817)
+last_updated: 2026-08-19 (v2.1818)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1818)
+
+### Dispatch: clock button shrinks into the note plate's corner (2026-08-19)
+Owner request (drew the target on a screenshot): the v2.1817 clock button was a second 51×51 plate crowding every block card. It becomes a 20×20 corner icon at the **top-left of the instructions plate** — completing the four-corner cluster (chain top-right, − / + along the bottom) with the same transparent-background + drop-shadow-halo treatment as the chain ([`scheduleBlockActionLinkedIconButtonStyle`](../src/lib/scheduleBlockActionChromeStyle.ts)); strokes thickened 2→2.5 so the face reads at 14px. When the note plate is absent (read-only viewers), the clock parks just left of the chain instead. Same handler and tooltip; verified live on the People grid (modal opens, ±30 nudges work). Help guide's "Rearranging someone's whole day" opener updated. Client-only — no migration.
 
 ## Latest Updates (v2.1817)
 
