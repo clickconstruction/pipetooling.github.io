@@ -6,9 +6,13 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
-  APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS,
+  APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
 } from '../../lib/appSettingsKeys'
 import { parsePaidJobEmailRecipients, serializePaidJobEmailRecipients } from '../../lib/paidJobEmail'
+import {
+  parseReadyToBillRecipientPrefs,
+  serializeReadyToBillRecipientPrefs,
+} from '../../lib/readyToBillNotify'
 import { cancelBilledReportSend } from '../../lib/billedReportEmailClient'
 import { cancelGcStatementSend } from '../../lib/gcStatementEmailRequests'
 import { cancelWeeklyMovementSend } from '../../lib/weeklyMovementEmailRequests'
@@ -40,8 +44,8 @@ type GlobalEmailSchedule = {
   }>
   paid_recipients: Array<{ user_id: string; name: string }>
   payment_recipients: Array<{ user_id: string; name: string }>
-  /** Ready to Bill stream (v2.1836) — optional so either deploy order of client vs migration degrades gracefully. */
-  ready_to_bill_recipients?: Array<{ user_id: string; name: string }>
+  /** Ready to Bill stream (v2.1836; per-person channel flags since v2.1844) — optional so either deploy order of client vs migration degrades gracefully. */
+  ready_to_bill_recipients?: Array<{ user_id: string; name: string; email?: boolean; push?: boolean }>
   billed_requests: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   schedule_day_requests: Array<{ id: string; recipient_name: string; send_at: string; work_date: string }>
   // The RPC has returned these three since their streams shipped (v2.1428/38/49);
@@ -259,6 +263,36 @@ export default function SettingsEmailStreamsSection({ focus }: {
     }
   }
 
+  /** Ready to Bill uses the v2 `{ id, email, push }` format — a v1 read-modify-write here would wipe it. */
+  async function removeRtbRecipient(userId: string, name: string) {
+    const { data: row, error: readErr } = await supabase
+      .from('app_settings')
+      .select('value_text')
+      .eq('key', APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2)
+      .maybeSingle()
+    if (readErr) {
+      showToast(formatErrorMessage(readErr, 'Could not load recipients'), 'error')
+      return
+    }
+    const prefs = parseReadyToBillRecipientPrefs(
+      (row as { value_text: string | null } | null)?.value_text,
+    ).filter((p) => p.id !== userId)
+    const { error: e } = await supabase
+      .from('app_settings')
+      .upsert(
+        {
+          key: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
+          value_text: serializeReadyToBillRecipientPrefs(prefs),
+        },
+        { onConflict: 'key' },
+      )
+    if (e) showToast(formatErrorMessage(e, 'Could not remove recipient'), 'error')
+    else {
+      showToast(`${name} removed.`, 'success')
+      await load()
+    }
+  }
+
   async function cancelBilled(id: string, name: string) {
     await cancelRequest(() => cancelBilledReportSend(id), name)
   }
@@ -387,13 +421,23 @@ export default function SettingsEmailStreamsSection({ focus }: {
         open={!!openCards['ready_to_bill']}
         onToggle={() => toggleCard('ready_to_bill')}
         title="Ready to Bill notifications"
-        cadence="event — job moves to Ready to Bill (email + push)"
+        cadence="event — job moves to Ready to Bill (email + push, per person)"
         manage="full manager → Jobs → Pipeline ⚙ Ready to Bill notifications"
       >
         {(data.ready_to_bill_recipients ?? []).length === 0
           ? none
           : (data.ready_to_bill_recipients ?? []).map((r) => (
-              <RecipientChip key={r.user_id} label={r.name} onRemove={() => void removeSettingRecipient(APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS, r.user_id, r.name)} />
+              <RecipientChip
+                key={r.user_id}
+                label={r.name}
+                extra={
+                  <span aria-hidden style={{ fontSize: '0.62rem' }}>
+                    {r.email !== false ? '📧' : ''}
+                    {r.push !== false ? '🔔' : ''}
+                  </span>
+                }
+                onRemove={() => void removeRtbRecipient(r.user_id, r.name)}
+              />
             ))}
       </StreamCard>
 

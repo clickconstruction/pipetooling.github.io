@@ -23,6 +23,18 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1844',
+    date: '2026-08-19',
+    title: 'Ready to Bill notifications: everyone picks their own channels',
+    kind: 'feature',
+    highlights: [
+      'Each recipient now has their own 📧 email and 🔔 push checkboxes — some people prefer a push on their phone, others an email, and now the list says so per person.',
+      'Send a test to anyone: pick a teammate in the new "Send test to" dropdown, then Email a test or Push a test. Tests carry a [TEST] subject and follow the recipient’s own detailed/summary tier.',
+      'The Preview & test tools are tucked behind a collapsed toggle so the settings window opens on what matters — who gets notified.',
+      'Existing settings carry over automatically.',
+    ],
+  },
+  {
     version: 'v2.1843',
     date: '2026-08-19',
     title: 'Change orders: cost lines start from your change, not a stub',

@@ -165,20 +165,27 @@ Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** 
 
 The third stream watches the **front** of the billing pipeline: the moment any job moves to {{chip:yellow|Ready to Bill}} — a crew finishing up, the office moving it by hand, or a job coming **back** from Billed after an invoice is deleted or reverted — the people on its list are notified so billing can start right away.
 
-This stream is the first that can reach you **two ways**. Behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header (same rules: devs and masters open it, devs edit it), a **Delivery channels** block offers:
+This stream is the first that can reach people **two ways — and each person picks their own**. Behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header (same rules: devs and masters open it, devs edit it), every person in the list has their own **📧 email** and **🔔 push** checkboxes:
 
 - **📧 Email** — sent within ~15 minutes, batched with the other notification emails. Devs and masters get the detailed version (the billable amount, draft bills, payments so far); everyone else gets a summary with no dollar figures.
-- **🔔 Push notification** — a short alert straight to your phone or computer, for anyone on the list who has enabled push notifications on a device (Settings → Your account). People without a push device show a small **no push device** hint in the list — they still get the email. Push follows the same detailed/summary rule: dollar amounts only for devs and masters.
+- **🔔 Push notification** — a short alert straight to that person's phone or computer, once they've enabled push notifications on a device (Settings → Your account). People who haven't show a small **no push device** hint — checking 🔔 is still fine, it starts working the moment they enable push. Push follows the same detailed/summary rule: dollar amounts only for devs and masters.
 
-The same window has the familiar **Preview & test** block — pick a job, preview the detailed or summary email, **Email me a test**, or **Push me a test** to see the push land on your own devices before anyone else does.
+Check either box, or both; someone with nothing checked isn't notified at all.
+
+:::example Recipients
+Taunya · taunya@clickplumbing.com &nbsp; ☑ 📧 &nbsp; ☑ 🔔 &nbsp; {{chip:gray|Summary}}
+Robert · robert@douglasmining.com &nbsp; ☐ 📧 &nbsp; ☑ 🔔 &nbsp; {{chip:yellow|Detailed}}
+:::
+
+Below the list, **Preview & test** stays tucked behind a collapsed toggle until you need it. Open it, pick a job, and you can preview the detailed or summary email — or send a real test **to yourself or any teammate**: choose a name in "Send test to", then **Email a test** or **Push a test**. Tests carry a `[TEST]` subject, and a test email to a teammate follows *their* role — summary-tier people get the summary even in tests.
 
 :::example Preview & test
 Selected: **J512** · Smith House Repipe
 
-{{button:outline|Preview detailed}} &nbsp; {{button:outline|Preview summary}} &nbsp; {{button:outline|Email me a test}} &nbsp; {{button:outline|Push me a test}}
+Send test to: **Taunya** &nbsp; {{button:outline|Email a test}} &nbsp; {{button:outline|Push a test}}
 :::
 
-If several moves happen back-to-back on the same job, they collapse into one notification. Turning both channels off pauses the stream without losing the list.
+If several moves happen back-to-back on the same job, they collapse into one notification.
 
 ## Sharing the Billed report
 
