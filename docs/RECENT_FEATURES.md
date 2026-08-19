@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1835)
+last_updated: 2026-08-19 (v2.1837)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1837)
+
+### Farm Mode — a checklist-only lens for any account (2026-08-19)
+Owner request: like Job Mode, but for people whose whole day is the recurring checklist (farm crew). New per-user, per-device gear-menu toggle **Farm Mode** — [`farmModeToggle.ts`](../src/lib/farmModeToggle.ts) + [`useFarmModeEnabled`](../src/hooks/useFarmModeEnabled.ts) are byte-pattern clones of the Job Mode pair (`farm_mode_<userId>` key, same-tab change event; 5 unit tests). Any role may turn it on — it narrows what the device shows, never what RLS allows. While on, [`Layout`](../src/components/Layout.tsx): nav (desktop row + mobile dropdown, both via `renderNavLinks`) collapses to a single **Checklist** link; a hard redirect bounces every other path to `/checklist` (post-login `/dashboard` default, deep links, the assistant dispatch-landing jump); header extras hide (global search, Map, Task dispatch, Estimator inbox, estimator New Bid, mobile dashboard strip) while the add-checklist-task button, theme, impersonation, and sign-out stay; `navContentKey` gains a farm bit so the nav-fit measurer re-runs. Precedence: Farm Mode wins — `dispatchModeActive` and `jobModeFooterActive` both gain `&& !farmModeActive`, and the Dispatch/Job toggles keep their stored state for when it's turned off. [`Checklist.tsx`](../src/pages/Checklist.tsx): tabs trim to **Today + History** (`canManageChecklists`/`canSeeRoadmap` gain `!farmModeEnabled`), `tab=review|manage|roadmap` deep links rewrite to `today`, and the office-role default tab falls back from `review` to `today`; History's `canViewOthers` follows, so office users in Farm Mode see only their own history — consistent with the lens. Help guide `farm-mode.md` (roles: all). Client-only — no migration.
 
 ## Latest Updates (v2.1835)
 
