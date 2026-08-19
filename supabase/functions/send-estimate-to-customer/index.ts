@@ -136,7 +136,7 @@ serve(async (req) => {
     const { data: est, error: selErr } = await userClient
       .from('estimates')
       .select(
-        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label',
+        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind',
       )
       .eq('id', estimate_id)
       .single()
@@ -178,6 +178,7 @@ serve(async (req) => {
         title: String(est.title ?? ''),
         estimateNumber: Number(est.estimate_number ?? 0),
       },
+      { docKind: (est as { doc_kind?: string | null }).doc_kind ?? null },
     )
     const sentPayload = serializableSnapshot(resolved)
     const estRow = est as {

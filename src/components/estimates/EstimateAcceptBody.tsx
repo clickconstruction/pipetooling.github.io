@@ -15,6 +15,7 @@ import EstimateTermsHeaderNotice from './EstimateTermsHeaderNotice'
 import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExperience'
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
+import { isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 
 const ESTIMATE_ACCEPT_MODAL_TITLE = 'Approve Estimate'
 const ESTIMATE_ACCEPT_NAME_PLACEHOLDER = 'Your name'
@@ -56,6 +57,9 @@ export type EstimateAcceptBodyEstimate = {
   line_items_snapshot: unknown
   terms_snapshot: string
   total_cents: number
+  /** CO train (v2.1834): 'change_order' renders the CO document + wording. */
+  doc_kind?: string | null
+  change_order_fields?: unknown
 }
 
 /** Shown inline on staff Page mock-up when estimate is already customer_accepted. */
@@ -284,6 +288,11 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
         termsHeading={cx.docTermsHeading}
         totalLabel={cx.docTotalLabel}
         headerBrand={headerBrand}
+        changeOrder={
+          isChangeOrderDocKind(estimate.doc_kind)
+            ? parseEstimateChangeOrderFields(estimate.change_order_fields)
+            : null
+        }
       />
 
       {customerAttachment ? <EstimateCustomerAttachmentCard attachment={customerAttachment} /> : null}
@@ -466,7 +475,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
                   minWidth: 0,
                 }}
               >
-                {ESTIMATE_ACCEPT_MODAL_TITLE}
+                {isChangeOrderDocKind(estimate.doc_kind) ? 'Approve Change Order' : ESTIMATE_ACCEPT_MODAL_TITLE}
               </h2>
               <button
                 type="button"

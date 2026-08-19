@@ -6,6 +6,7 @@ import {
   normalizeEstimateLineItemsFromJson,
   type EstimateLineItemNormalized,
 } from '../../lib/estimateLineItemNormalize'
+import { formatSignedCentsUsd, type EstimateChangeOrderFields } from '../../lib/estimateChangeOrder'
 
 export type EstimatePublicLineItem = EstimateLineItemNormalized
 
@@ -135,6 +136,8 @@ export type EstimateCustomerDocumentProps = {
   totalLabel?: string
   /** Top-right logo on acceptance document */
   headerBrand?: EstimateAcceptHeaderBrand | null
+  /** CO train (v2.1834): set on change orders — renders the narrative block and signs the money. */
+  changeOrder?: EstimateChangeOrderFields | null
 }
 
 export default function EstimateCustomerDocument({
@@ -151,8 +154,9 @@ export default function EstimateCustomerDocument({
   termsHeading = 'Terms',
   totalLabel = 'Total',
   headerBrand = null,
+  changeOrder = null,
 }: EstimateCustomerDocumentProps) {
-  const lines = estimatePublicLineItems(lineItemsSnapshot)
+  const lines = normalizeEstimateLineItemsFromJson(lineItemsSnapshot, { allowNegative: changeOrder != null })
   const termsBody = (termsSnapshot ?? '').trim()
   const docMetaRowStyle = {
     margin: '0.5rem 0 0',
@@ -228,11 +232,31 @@ export default function EstimateCustomerDocument({
         </p>
       ) : null}
 
+      {changeOrder ? (
+        <section style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
+          <h2 style={{ fontSize: '1.1rem' }}>Change order</h2>
+          <p style={{ margin: '0.25rem 0', whiteSpace: 'pre-wrap' }}>
+            <strong>Description of change:</strong> {changeOrder.description_of_change.trim() || '—'}
+          </p>
+          <p style={{ margin: '0.25rem 0', whiteSpace: 'pre-wrap' }}>
+            <strong>Reason for change:</strong> {changeOrder.reason_for_change.trim() || '—'}
+          </p>
+          <p style={{ margin: '0.25rem 0' }}>
+            <strong>Impact on schedule:</strong> {changeOrder.impact_on_schedule.trim() || '—'}
+          </p>
+          {changeOrder.response_requested_by.trim() ? (
+            <p style={{ margin: '0.25rem 0' }}>
+              <strong>Response requested by:</strong> {formatValidUntilForDisplay(changeOrder.response_requested_by)}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
       <section style={{ marginTop: '1.5rem' }}>
         <h2 style={{ fontSize: '1.1rem' }}>{lineItemsHeading}</h2>
         <EstimateLineItemsTable lines={lines} />
         <p style={{ fontWeight: 600, textAlign: 'right', width: '100%', marginTop: '0.75rem' }}>
-          {totalLabel}: {formatMoney(totalCents)}
+          {totalLabel}: {changeOrder ? formatSignedCentsUsd(totalCents) : formatMoney(totalCents)}
         </p>
       </section>
 

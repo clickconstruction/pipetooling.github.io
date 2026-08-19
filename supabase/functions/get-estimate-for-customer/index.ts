@@ -40,6 +40,8 @@ type EstRow = {
   customer_id: string | null
   accept_header_brand: string | null
   customer_attachment_sent: unknown
+  doc_kind: string | null
+  change_order_fields: unknown
 }
 
 async function resolveEstimateForLine(
@@ -59,11 +61,16 @@ async function resolveEstimateForLine(
 function buildCustomerExperienceForClient(row: EstRow, appRows: { key: string; value_text: string | null }[]) {
   const snap = parseEstimateCustomerExperienceSnapshot(row.customer_experience_sent)
   if (snap) return toClientCustomerExperience(snap)
-  const resolved = resolveEstimateCustomerExperience(appRows, row.customer_experience_overrides, {
-    acceptUrl: '',
-    title: String(row.title ?? ''),
-    estimateNumber: Number(row.estimate_number ?? 0),
-  })
+  const resolved = resolveEstimateCustomerExperience(
+    appRows,
+    row.customer_experience_overrides,
+    {
+      acceptUrl: '',
+      title: String(row.title ?? ''),
+      estimateNumber: Number(row.estimate_number ?? 0),
+    },
+    { docKind: row.doc_kind },
+  )
   return toClientCustomerExperience(resolved)
 }
 
@@ -105,7 +112,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('estimates')
       .select(
-        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent',
+        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -190,6 +197,8 @@ serve(async (req) => {
         customer_experience,
         accept_header_brand,
         customer_attachment,
+        doc_kind: est.doc_kind,
+        change_order_fields: est.change_order_fields,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
