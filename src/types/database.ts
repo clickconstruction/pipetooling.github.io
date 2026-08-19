@@ -10657,6 +10657,7 @@ export type Database = {
           contact_label: string
           id: string
           job_id: string
+          send_method: string
           sent_at: string
           sent_by: string | null
           sent_by_name: string
@@ -10666,6 +10667,7 @@ export type Database = {
           contact_label: string
           id?: string
           job_id: string
+          send_method?: string
           sent_at?: string
           sent_by?: string | null
           sent_by_name?: string
@@ -10675,6 +10677,7 @@ export type Database = {
           contact_label?: string
           id?: string
           job_id?: string
+          send_method?: string
           sent_at?: string
           sent_by?: string | null
           sent_by_name?: string

@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-18
+last_updated: 2026-08-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "239 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 18, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "240 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 19, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -102,6 +102,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### August 2026
+
+#### August 19, 2026
+
+**`20260819152848_supply_house_share_send_method.sql`** _(applied via `supabase db push` with the v2.1820 merge — additive column with default + new INSERT policy; old clients and the undeployed edge function unaffected, their inserts take the `'app'` default)_
+- **Purpose**: "Share with supply house" user-send paths. `supply_house_job_accounts.send_method text NOT NULL DEFAULT 'app'` (CHECK `app | user_email`) records whether the packet went out via the edge function's Resend send or from the user's own inbox (mailto draft / clipboard copy, confirmed in the modal). New policy `supply_house_job_accounts_insert_office_self` opens the previously service-role-only ledger to client inserts by office roles (dev/master/assistant/controller) attributed to themselves (`sent_by = auth.uid()`). Read-only guards re-attached.
+- **Category**: Jobs / column + RLS
 
 #### August 18, 2026
 

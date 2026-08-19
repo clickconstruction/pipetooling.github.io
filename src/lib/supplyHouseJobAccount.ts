@@ -126,6 +126,54 @@ export function jobAccountSoftGaps(info: JobAccountInfo): string[] {
   return gaps
 }
 
+export interface JobAccountSendRecipient {
+  label: string
+  email: string
+}
+
+/**
+ * Above this URL length, hand the user a clipboard copy instead of a mailto —
+ * some mail handlers (notably desktop Outlook) silently truncate long links.
+ * The packet normally lands well under 2k; this only trips on pathological
+ * pasted-in addresses/notes.
+ */
+export const JOB_ACCOUNT_MAILTO_MAX_CHARS = 7000
+
+/** mailto: draft for the packet — comma-joined recipients, subject + plain-text body. */
+export function buildJobAccountMailtoUrl(
+  recipients: JobAccountSendRecipient[],
+  subject: string,
+  text: string
+): string {
+  const to = recipients.map((r) => r.email.trim()).filter(Boolean).join(',')
+  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+}
+
+export function jobAccountMailtoTooLong(url: string): boolean {
+  return url.length > JOB_ACCOUNT_MAILTO_MAX_CHARS
+}
+
+/**
+ * Clipboard packet for "Copy for email": To/Subject header lines so nothing is
+ * lost between the modal and the user's compose window, then the same plain
+ * text the mailto path uses.
+ */
+export function buildJobAccountClipboardText(
+  recipients: JobAccountSendRecipient[],
+  subject: string,
+  text: string
+): string {
+  const to = recipients
+    .map((r) => {
+      const label = r.label.trim()
+      const email = r.email.trim()
+      return label && email ? `${label} <${email}>` : email || label
+    })
+    .filter(Boolean)
+    .join(', ')
+  return [`To: ${to}`, `Subject: ${subject}`, '', text].join('\n')
+}
+
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 

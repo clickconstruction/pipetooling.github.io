@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildJobAccountClipboardText,
+  buildJobAccountMailtoUrl,
   composeJobAccountEmail,
+  JOB_ACCOUNT_MAILTO_MAX_CHARS,
+  jobAccountMailtoTooLong,
   jobAccountOwnerGaps,
   jobAccountSendBlocked,
   jobAccountSoftGaps,
@@ -135,5 +139,39 @@ describe('composeJobAccountEmail (sectioned, v2.1609)', () => {
     expect(text).not.toContain('General contractor')
     expect(text).toContain('  Homeowner: Pat')
     expect(text).toContain('job account for our office')
+  })
+})
+
+describe('user-send builders (v2.1820)', () => {
+  const recipients = [
+    { label: 'Reece', email: 'reece@morsco.com' },
+    { label: 'Ferguson — Central desk', email: 'orders@ferguson.com' },
+  ]
+
+  it('mailto URL joins recipients, encodes subject and body', () => {
+    const url = buildJobAccountMailtoUrl(recipients, 'Job account setup — J1', 'Line one\nLine two & three')
+    expect(url.startsWith('mailto:reece%40morsco.com%2Corders%40ferguson.com?')).toBe(true)
+    expect(url).toContain('subject=Job%20account%20setup%20%E2%80%94%20J1')
+    expect(url).toContain('body=Line%20one%0ALine%20two%20%26%20three')
+    expect(jobAccountMailtoTooLong(url)).toBe(false)
+  })
+
+  it('mailto skips blank recipient emails', () => {
+    const url = buildJobAccountMailtoUrl([{ label: 'X', email: '  ' }, { label: 'Y', email: 'y@z.com' }], 's', 'b')
+    expect(url.startsWith('mailto:y%40z.com?')).toBe(true)
+  })
+
+  it('too-long guard trips past the limit', () => {
+    expect(jobAccountMailtoTooLong('m'.repeat(JOB_ACCOUNT_MAILTO_MAX_CHARS + 1))).toBe(true)
+  })
+
+  it('clipboard packet carries To/Subject headers then the body', () => {
+    const out = buildJobAccountClipboardText(recipients, 'Subj', 'Body text')
+    expect(out).toBe('To: Reece <reece@morsco.com>, Ferguson — Central desk <orders@ferguson.com>\nSubject: Subj\n\nBody text')
+  })
+
+  it('clipboard falls back to bare email when the label is blank', () => {
+    const out = buildJobAccountClipboardText([{ label: ' ', email: 'a@b.com' }], 'S', 'B')
+    expect(out).toContain('To: a@b.com\n')
   })
 })

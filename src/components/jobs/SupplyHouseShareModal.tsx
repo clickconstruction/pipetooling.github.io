@@ -11,7 +11,10 @@ import {
 } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
+  buildJobAccountClipboardText,
+  buildJobAccountMailtoUrl,
   composeJobAccountEmail,
+  jobAccountMailtoTooLong,
   jobAccountOwnerGaps,
   jobAccountSendBlocked,
   jobAccountSoftGaps,
@@ -21,6 +24,7 @@ import {
 } from '../../lib/supplyHouseJobAccount'
 import {
   shareContactDisplay,
+  shareSendMethodLabel,
   summarizeJobShares,
   type JobAccountShareRow,
 } from '../../lib/supplyHouseJobAccountsLedger'
@@ -71,6 +75,13 @@ const missingChip = (
  * hard-blocked until it is. Owner info the office types is upserted to
  * job_property_owners so resends and other desks prefill. Contacts shortlist
  * (v2.1605) + already-shared hint (v2.1606) + org intro (v2.1608) unchanged.
+ *
+ * Sending (v2.1820): the primary paths go from the USER'S OWN inbox — "Email
+ * from my inbox" opens a prefilled mailto draft, "Copy for email" puts the
+ * addressed packet on the clipboard; both park on a confirm step and only
+ * "Sent — log it" writes the share-ledger rows (send_method 'user_email').
+ * The original Resend path lives under "Other → Send from app" (unchanged,
+ * logs 'app' via the edge function's default).
  */
 export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; job: JobWithDetails; onClose: () => void }) {
   const { user: authUser, profileName } = useAuth()
@@ -83,6 +94,11 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   const [addEmail, setAddEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [sending, setSending] = useState(false)
+  /** User-send flow (v2.1820): the packet leaves from the user's own inbox. */
+  const [phase, setPhase] = useState<'form' | 'confirm'>('form')
+  const [userMethod, setUserMethod] = useState<'mailto' | 'copy'>('mailto')
+  const [otherOpen, setOtherOpen] = useState(false)
+  const [logging, setLogging] = useState(false)
   const [priorShares, setPriorShares] = useState<JobAccountShareRow[]>([])
   const [priorOpen, setPriorOpen] = useState(false)
   const [issuer, setIssuer] = useState<PhysicalInvoiceIssuer | null>(null)
@@ -100,9 +116,11 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     setPriorShares([])
     setPriorOpen(false)
     setRequestPreselected(false)
+    setPhase('form')
+    setOtherOpen(false)
     void supabase
       .from('supply_house_job_accounts')
-      .select('job_id, contact_label, contact_email, sent_by_name, sent_at')
+      .select('job_id, contact_label, contact_email, sent_by_name, sent_at, send_method')
       .eq('job_id', job.id)
       .order('sent_at', { ascending: false })
       .limit(50)
@@ -224,22 +242,121 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
     setAddOpen(false)
   }
 
-  const send = async () => {
-    if (!info) return
+  /** Remember the owner for this job (v2.1609) — best-effort; resends prefill. */
+  const rememberOwner = async (i: JobAccountInfo) => {
+    await supabase
+      .from('job_property_owners')
+      .upsert(
+        {
+          job_id: job.id,
+          owner_mode: i.ownerMode,
+          owner_name: i.ownerName.trim(),
+          company_name: i.companyName.trim(),
+          mailing_address: i.mailingAddress.trim(),
+          owner_email: i.ownerEmail.trim(),
+          updated_by: authUser?.id ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'job_id' }
+      )
+  }
+
+  /** Toasts and returns null when the packet is not ready to go anywhere. */
+  const guardReadyToSend = (): ContactRow[] | null => {
+    if (!info) return null
     if (blocked) {
       showToast(`Owner required before sending: ${ownerGaps.join(', ')}`, 'info', 4500)
-      return
+      return null
     }
-    if (selectedIds.size === 0) {
+    const picked = contacts.filter((c) => selectedIds.has(c.id))
+    if (picked.length === 0) {
       showToast('Pick at least one supply house contact', 'info')
+      return null
+    }
+    return picked
+  }
+
+  /**
+   * User-send paths (v2.1820): open a prefilled mailto draft, or copy the
+   * packet for pasting into any compose window. Either way the email leaves
+   * from the USER'S OWN address — the app can't see whether it was actually
+   * sent, so the flow parks on a confirm step and only "Sent — log it" writes
+   * the share-history rows. Owner info is saved right away (it's known
+   * regardless of whether the email goes out).
+   */
+  const startUserSend = async (method: 'mailto' | 'copy') => {
+    if (!info) return
+    const picked = guardReadyToSend()
+    if (!picked) return
+    const { subject, text } = composeJobAccountEmail(info, jobLabel, profileName ?? '', {
+      companyName: issuer?.companyName,
+      officePhone: issuer?.phone,
+    })
+    const recipients = picked.map((c) => ({ label: c.label, email: c.email }))
+    let usedMethod = method
+    if (method === 'mailto') {
+      const url = buildJobAccountMailtoUrl(recipients, subject, text)
+      if (jobAccountMailtoTooLong(url)) {
+        usedMethod = 'copy'
+      } else {
+        window.location.href = url
+      }
+    }
+    if (usedMethod === 'copy') {
+      try {
+        await navigator.clipboard.writeText(buildJobAccountClipboardText(recipients, subject, text))
+      } catch {
+        showToast('Could not copy — your browser blocked clipboard access', 'error')
+        return
+      }
+      if (method === 'mailto') {
+        showToast('Packet too long for a mail link — copied to your clipboard instead', 'info', 4500)
+      }
+    }
+    void rememberOwner(info)
+    setUserMethod(usedMethod)
+    setOtherOpen(false)
+    setPhase('confirm')
+  }
+
+  /** The user confirmed they sent it from their inbox — log it like an app send. */
+  const logUserSend = async () => {
+    const picked = contacts.filter((c) => selectedIds.has(c.id))
+    if (picked.length === 0) return
+    setLogging(true)
+    const { error } = await supabase.from('supply_house_job_accounts').insert(
+      picked.map((c) => ({
+        job_id: job.id,
+        contact_label: c.label,
+        contact_email: c.email,
+        sent_by: authUser?.id ?? null,
+        sent_by_name: profileName ?? '',
+        send_method: 'user_email',
+      }))
+    )
+    if (error) {
+      setLogging(false)
+      showToast(formatErrorMessage(error, 'Could not log the send'), 'error')
       return
     }
+    // The send completes the "find the owner" errand — close any open request (v2.1610).
+    if (authUser?.id) await closeOpenFindOwnerRequestsAfterSend(job.id, authUser.id)
+    setLogging(false)
+    showToast(`Logged — sent to ${picked.length} ${picked.length === 1 ? 'contact' : 'contacts'} from your inbox.`, 'success')
+    onClose()
+  }
+
+  const send = async () => {
+    if (!info) return
+    const picked = guardReadyToSend()
+    if (!picked) return
     setSending(true)
+    setOtherOpen(false)
     const { subject, text, html } = composeJobAccountEmail(info, jobLabel, profileName ?? '', {
       companyName: issuer?.companyName,
       officePhone: issuer?.phone,
     })
-    const recipients = contacts.filter((c) => selectedIds.has(c.id)).map((c) => ({ label: c.label, email: c.email }))
+    const recipients = picked.map((c) => ({ label: c.label, email: c.email }))
     const toEmails = recipients.map((r) => r.email)
     const { data, error } = await supabase.functions.invoke('send-supply-house-job-account', {
       body: { job_id: job.id, recipients, to_emails: toEmails, subject, email_html: html, email_text: text },
@@ -250,23 +367,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
       showToast(`Could not send: ${fnError}`, 'error')
       return
     }
-    // Remember the owner for this job (v2.1609) — best-effort; resends prefill.
-    await supabase
-      .from('job_property_owners')
-      .upsert(
-        {
-          job_id: job.id,
-          owner_mode: info.ownerMode,
-          owner_name: info.ownerName.trim(),
-          company_name: info.companyName.trim(),
-          mailing_address: info.mailingAddress.trim(),
-          owner_email: info.ownerEmail.trim(),
-          updated_by: authUser?.id ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'job_id' }
-      )
-    // The send completes the "find the owner" errand — close any open request (v2.1610).
+    await rememberOwner(info)
     if (authUser?.id) await closeOpenFindOwnerRequestsAfterSend(job.id, authUser.id)
     setSending(false)
     showToast(`Job account info sent to ${toEmails.length} ${toEmails.length === 1 ? 'contact' : 'contacts'}.`, 'success')
@@ -303,6 +404,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
   )
 
   const sendDisabled = sending || blocked || selectedIds.size === 0
+  const selectedLabels = contacts.filter((c) => selectedIds.has(c.id)).map((c) => c.label)
 
   return (
     <div
@@ -373,6 +475,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                     <div key={idx} style={{ fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.1rem 0' }}>
                       {when} · <span title={s.contact_email}>{shareContactDisplay(s)}</span>
                       {s.sent_by_name ? <span style={{ color: 'var(--text-muted)' }}> · by {s.sent_by_name}</span> : null}
+                      {shareSendMethodLabel(s) ? <span style={{ color: 'var(--text-muted)' }}> · {shareSendMethodLabel(s)}</span> : null}
                     </div>
                   )
                 })}
@@ -574,45 +677,116 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>Contacts are remembered for next time.</p>
 
             <div style={{ marginTop: '0.8rem', background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Sends “Job account setup — {jobLabel}” from PipeTooling with the info above. Replies go to your email.
+              Opens a “Job account setup — {jobLabel}” draft in your email app, addressed to{' '}
+              {selectedLabels.length > 0 ? selectedLabels.join(', ') : 'the contacts you pick'} — you press send there, from
+              your own address. Replies come straight to you. Under Other, the app can send it for you instead.
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: '0.8rem' }}>
-              <span style={{ fontSize: '0.75rem', color: blocked ? 'var(--text-amber-800)' : softGaps.length ? 'var(--text-muted)' : 'var(--text-green-600)' }}>
-                {blocked
-                  ? `Owner required: ${ownerGaps.join(', ')}`
-                  : softGaps.length
-                    ? `Missing: ${softGaps.join(', ')} — you can send anyway.`
-                    : 'Ready to send.'}
-              </span>
-              <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={sending}
-                  style={{ padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontSize: '0.8125rem', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  aria-disabled={sendDisabled}
-                  onClick={() => void send()}
-                  style={{
-                    padding: '0.45rem 1rem',
-                    border: 'none',
-                    borderRadius: 6,
-                    background: sendDisabled ? 'var(--bg-muted)' : '#2563eb',
-                    color: sendDisabled ? 'var(--text-muted)' : '#fff',
-                    fontSize: '0.8125rem',
-                    fontWeight: 700,
-                    cursor: sendDisabled ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {sending ? 'Sending…' : 'Send email'}
-                </button>
-              </span>
-            </div>
+            {phase === 'confirm' ? (
+              <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
+                <p style={{ margin: 0, fontSize: '0.8125rem' }}>
+                  {userMethod === 'mailto'
+                    ? `Draft opened in your mail app, addressed to ${selectedLabels.join(', ')}.`
+                    : `Packet copied — paste it into an email to ${contacts
+                        .filter((c) => selectedIds.has(c.id))
+                        .map((c) => `${c.label} (${c.email})`)
+                        .join(', ')}.`}
+                </p>
+                <p style={{ margin: '0.35rem 0 0.6rem', fontSize: '0.71875rem', color: 'var(--text-muted)' }}>
+                  Owner info is saved either way. Logging the send keeps this job’s share history honest for other desks.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPhase('form')}
+                    disabled={logging}
+                    style={{ padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontSize: '0.8125rem', cursor: 'pointer' }}
+                  >
+                    Didn’t send it
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void logUserSend()}
+                    disabled={logging}
+                    style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 700, cursor: logging ? 'wait' : 'pointer' }}
+                  >
+                    {logging ? 'Logging…' : 'Sent — log it'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', color: blocked ? 'var(--text-amber-800)' : softGaps.length ? 'var(--text-muted)' : 'var(--text-green-600)' }}>
+                  {blocked
+                    ? `Owner required: ${ownerGaps.join(', ')}`
+                    : softGaps.length
+                      ? `Missing: ${softGaps.join(', ')} — you can send anyway.`
+                      : 'Ready to send.'}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={sending}
+                    style={{ padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontSize: '0.8125rem', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    aria-expanded={otherOpen}
+                    onClick={() => setOtherOpen((v) => !v)}
+                    disabled={sending}
+                    style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: otherOpen ? 'var(--bg-subtle)' : 'var(--surface)', color: 'var(--text-muted)', fontSize: '0.8125rem', cursor: 'pointer' }}
+                  >
+                    Other {otherOpen ? '▴' : '▾'}
+                  </button>
+                  <button
+                    type="button"
+                    aria-disabled={sendDisabled}
+                    onClick={() => void startUserSend('copy')}
+                    title="Copy the addressed packet — paste it into any email"
+                    style={{ padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontSize: '0.8125rem', cursor: sendDisabled ? 'not-allowed' : 'pointer', color: sendDisabled ? 'var(--text-muted)' : 'var(--text-700)' }}
+                  >
+                    Copy for email
+                  </button>
+                  <button
+                    type="button"
+                    aria-disabled={sendDisabled}
+                    onClick={() => void startUserSend('mailto')}
+                    style={{
+                      padding: '0.45rem 1rem',
+                      border: 'none',
+                      borderRadius: 6,
+                      background: sendDisabled ? 'var(--bg-muted)' : '#2563eb',
+                      color: sendDisabled ? 'var(--text-muted)' : '#fff',
+                      fontSize: '0.8125rem',
+                      fontWeight: 700,
+                      cursor: sendDisabled ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Email from my inbox
+                  </button>
+                </span>
+              </div>
+              {otherOpen ? (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => void send()}
+                    disabled={sending}
+                    style={{ textAlign: 'left', padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', cursor: sending ? 'wait' : 'pointer', color: 'var(--text-700)' }}
+                  >
+                    {sending ? 'Sending…' : 'Send from app'}
+                    <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                      PipeTooling sends it — replies go to you
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+              </>
+            )}
           </>
         )}
       </div>
