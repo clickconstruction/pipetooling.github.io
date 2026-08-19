@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1855)
+last_updated: 2026-08-19 (v2.1856)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1856)
+
+### Ready to Bill notifications: red no-push warning, auto-save, slimmer legend (2026-08-19)
+Owner polish on v2.1853, three pieces in [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx): (1) the "no push device" pill now renders ONLY when that person's 🔔 checkbox is checked AND they have no `push_subscriptions` row — i.e. exactly when a configured push would silently go nowhere — and it renders red (`--bg-red-tint`/`--text-red-700`, dashed `#fecaca`) instead of muted gray; (2) **checkbox toggles auto-save** — each flip upserts the v2 setting through a chained promise (rapid clicks can't land out of order), a failed write reverts the checkbox + toasts, and the Save recipients button is gone for this variant (the paid variants keep theirs — different list model); (3) the channel legend shrinks to "📧 email | 🔔 push". Help guide sentence updated. Client-only — no migration.
 
 ## Latest Updates (v2.1855)
 
