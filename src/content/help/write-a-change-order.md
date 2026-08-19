@@ -46,6 +46,16 @@ The **net change** is computed from the lines, so the customer sees exactly how 
 
 Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always — fill it out, {{button:blue|Copy to clipboard}} or open the Google Docs template for GCs who want their own paper. But now there's also {{button:green|Send for signature →}}: it creates a change-order draft in Estimates, prefilled from the form (description, reason, schedule impact, response-by date) and linked to the bid. The cost impact from the Bids form rides along as an internal note — enter it as real line items in the draft, then send it like any change order.
 
+## After the customer signs
+
+An accepted change order's money needs to land on a job. On the accepted row (or the detail page), tap {{button:outline|Apply to job}}:
+
+- **Add to an existing job** — the usual case. Search for the job, and the preview shows exactly what will happen: how many lines join the job's Specific Work and the job total before → after, moved by the **net change** (credits subtract). Tap **Apply to job** and the job's activity feed gets a note — *"Change order #52 applied: +$2,450.00 — …"* — so the office sees it in Pipeline and Job Detail.
+- **Create a new job** — for change-order work you want billed on its own job number. Works exactly like creating a job from an estimate; the lines carry over as Specific Work.
+- **Link only (no cost change)** — the quiet escape hatch for jobs already billed or tracked elsewhere: connects the change order to the job without touching its numbers.
+
+Applying is one-time: once a change order is linked to a job, the button becomes a link to that job.
+
 ## Keeping track
 
 Change orders appear in the Estimates Pipeline and Ledger alongside estimates, with the amber chip telling them apart. Statuses are the same: Draft → Sent → Accepted (or Declined).

@@ -16,6 +16,7 @@ navigation: "No table of contents — find entries by grepping for the version (
 
 ### Bid Board due-date colors now belong to open bids only (2026-08-19)
 Owner call after a design discussion: a Won bid wearing a red "(+120) overdue" chip is a false alarm, and 135 decided bids full of red/amber teach the eye to ignore the colors where they matter (the 113 open ones). [`bidBoardDueCellParts`](../src/lib/bids/bidBoardDateCells.ts) gains an `outcome` param: terminal outcomes (won / lost / started_or_complete) force urgency `normal` and set a new `decided` flag; [`BidsBidBoardTab`](../src/components/bids/BidsBidBoardTab.tsx)'s due chip passes `bid.outcome` and drops the day-count line when decided — decided bids show a quiet gray date, nothing else. The due-color legend gains a closing note ("Colors apply to open bids only…"). Kernel tests +4 (decided quiets any date; null/empty/unknown outcomes keep urgency). Verified live: 38 open chips kept colors + day counts, 31 decided chips rendered quiet. Client-only — no migration.
+
 ## Latest Updates (v2.1856)
 
 ### Ready to Bill notifications: red no-push warning, auto-save, slimmer legend (2026-08-19)
@@ -35,6 +36,11 @@ Owner feedback on the v2.1846 cards from the field surface's real context (dim p
 
 ### Ready to Bill notifications: channel checkboxes move right; copy says who edits (2026-08-19)
 Owner polish on v2.1844: in [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) the per-row 📧/🔔 checkboxes move to the END of each recipient row (after the "no push device" pill and the Detailed/Summary badge) so names and badges align; the explainer becomes "Set each person's channels…" — the old "Each person picks their own" implied self-service, but the list is dev-write (masters read-only), same as ever. Help guide `ready-to-bill-pipeline` example updated to match. Client-only — no migration.
+
+## Latest Updates (v2.1852)
+
+### "Apply change order #N" — the accepted-CO chooser — CO money train PR 4, train complete (2026-08-19)
+The v2.1850 RPC gets its UI. [`CreateJobFromEstimateModal`](../src/components/estimates/CreateJobFromEstimateModal.tsx) forks on `doc_kind`: change orders title **Apply change order #N**, show the Impact-on-cost table + signed net up top, and lead with **Add to an existing job** — same job search, plus a preview strip (how many lines append to Specific Work; job total before → after with the signed net; the target's current revenue fetched on selection) and an **Apply to job** primary that calls `apply_estimate_to_job` with the same fixtures payload as the create path. The old pointer-only link demotes to a quiet **Link only (no cost change)** escape hatch; **or create a new job** keeps today's create form below. Standard estimates render byte-identical (Save link and all). Found by the new render smoke and fixed: BOTH client normalize paths clamped CO credit lines to $0 (`normalizeEstimateLineItemsFromJson` default) — the modal preview and `submitCreateJobFromEstimate` now pass `allowNegative` for COs, so credits survive into fixtures and the net. List/detail buttons read **Apply to job** on CO rows. `EstimateForCreateJob` gains `doc_kind`/`estimate_number`; `apply_estimate_to_job` hand-typed into `database.ts` (v2.1826 pattern). +2 render tests. Help guide gains "After the customer signs". Client-only — **requires the v2.1850 migration pushed first**.
 
 ## Latest Updates (v2.1851)
 

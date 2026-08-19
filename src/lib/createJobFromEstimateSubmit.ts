@@ -7,6 +7,7 @@ import {
   normalizeEstimateLineItemsFromJson,
   type EstimateLineItemNormalized,
 } from './estimateLineItemNormalize'
+import { isChangeOrderDocKind } from './estimateChangeOrder'
 
 /** Fields required to call `create_job_from_estimate` with the same rules as Estimate detail. */
 export type EstimateForCreateJob = Pick<
@@ -20,6 +21,9 @@ export type EstimateForCreateJob = Pick<
   | 'for_address'
   | 'total_cents'
   | 'line_items_snapshot'
+  // CO money train PR 4: the modal speaks change-order (title, apply-to-job lead path).
+  | 'doc_kind'
+  | 'estimate_number'
 >
 
 export type CreateJobFixtureRpcRow = {
@@ -116,7 +120,10 @@ export async function submitCreateJobFromEstimate(
       customers,
     )
 
-    const normalized = normalizeEstimateLineItemsFromJson(estimate.line_items_snapshot)
+    // CO credit lines are negative-price by design (v2.1829) — don't clamp them.
+    const normalized = normalizeEstimateLineItemsFromJson(estimate.line_items_snapshot, {
+      allowNegative: isChangeOrderDocKind(estimate.doc_kind),
+    })
     const fixtures = fixturesPayloadForCreateJobFromEstimate(normalized)
 
     const rpcArgs = {
