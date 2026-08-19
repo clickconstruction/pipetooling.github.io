@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1839)
+last_updated: 2026-08-19 (v2.1841)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1841)
+
+### Fix: Ready to Bill notifications gear rendered as a literal escape (2026-08-19)
+The v2.1836 header button's icon was written as the six characters backslash-u-2-6-9-9 in JSX **text** position, where escape sequences are not interpreted — the button displayed the escape verbatim (screenshot from the owner). Now a braced JS string expression (which React does interpret) in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx); the sibling Paid buttons were unaffected. One-line fix, client-only.
 
 ## Latest Updates (v2.1839)
 
