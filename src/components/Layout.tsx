@@ -51,6 +51,7 @@ import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
+import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import {
   showEstimatorInboxButton,
   showHeaderTaskChecklistButton,
@@ -116,13 +117,17 @@ export default function Layout() {
   useAssistantDispatchLanding()
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
+  // Farm Mode: checklist-only lens, any role. Wins over the Dispatch/Job Mode
+  // shells while on; their toggles keep their stored state for when it's off.
+  const [farmModeEnabled, setFarmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
+  const farmModeActive = farmModeEnabled && !!authUser?.id
   // Assistants and masters get Dispatch Mode ON by default (until they explicitly turn it off).
   const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(
     authUser?.id ?? null,
     isAssistantLike(role) || role === 'master_technician',
   )
   const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
-  const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible
+  const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible && !farmModeActive
 
   // Org-added address-split cities (Stages/Billing rows, lien prefill) — hydrate once per session.
   useEffect(() => {
@@ -160,7 +165,8 @@ export default function Layout() {
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [dispatchScheduleReturnEligible, navigate])
-  const jobModeFooterActive = jobModeEnabled && jobModeMenuEligible && !dispatchModeActive
+  const jobModeFooterActive =
+    jobModeEnabled && jobModeMenuEligible && !dispatchModeActive && !farmModeActive
   // Job Mode header "Contact:" row — the dispatch line phone plus the three task
   // buttons spelled out; falls back to the icon buttons (with the phone kept on
   // the left) when the viewport is too narrow to fit the labels.
@@ -228,7 +234,7 @@ export default function Layout() {
   // resizing the window. `role` is the big one — it is null on cold load and
   // flips ~0.5s later, bringing the rest of the links with it. Nothing here may
   // depend on `isMobile`, which is derived from this hook's own answer.
-  const navContentKey = `${role ?? ''}|${impersonating ? 1 : 0}|${jobModeFooterActive ? 1 : 0}`
+  const navContentKey = `${role ?? ''}|${impersonating ? 1 : 0}|${jobModeFooterActive ? 1 : 0}|${farmModeActive ? 1 : 0}`
   const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow, navContentKey)
   const isMobile = viewportNarrow || navOverflowCollapsed
   const jobModeContactRowFits = jobModeFooterActive && !isMobile
@@ -262,7 +268,16 @@ export default function Layout() {
     }
   }, [checklistAddModal, location.search, location.pathname, navigate])
   const headerSearchEligible =
-    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !farmModeActive
+
+  // Farm Mode is a hard lens: whatever route the user lands on (post-login
+  // default, deep link, stale bookmark), bounce to the checklist. The gear
+  // menu stays reachable, so turning the mode off is always one tap away.
+  useEffect(() => {
+    if (!farmModeActive) return
+    if (location.pathname === '/checklist') return
+    navigate('/checklist', { replace: true })
+  }, [farmModeActive, location.pathname, navigate])
   const navSearchOverlayBg = impersonating && isMobile ? 'var(--bg-amber-100)' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
@@ -421,10 +436,11 @@ export default function Layout() {
     isSubcontractorLikeRole(role)
 
   const canShowMapNav =
-    role === 'dev' ||
-    role === 'master_technician' ||
-    isAssistantLike(role) ||
-    role === 'estimator'
+    (role === 'dev' ||
+      role === 'master_technician' ||
+      isAssistantLike(role) ||
+      role === 'estimator') &&
+    !farmModeActive
 
   const dashboardIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -484,6 +500,7 @@ export default function Layout() {
   )
 
   function renderMobileHeaderLinks() {
+    if (farmModeActive) return null
     const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
       display: 'inline-flex' as const,
       alignItems: 'center',
@@ -519,6 +536,11 @@ export default function Layout() {
   function renderNavLinks(onNavClick?: () => void, excludeHeaderLinks?: boolean) {
     const linkStyle = onNavClick ? dropdownLinkStyle : navStyle
     const dashboardContent = dashboardIcon
+    if (farmModeActive) {
+      return (
+        <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
+      )
+    }
     if (role === 'estimator') {
       return (
         <>
@@ -863,7 +885,7 @@ export default function Layout() {
               </svg>
             </a>
           )}
-          {showTaskDispatchButton(role) && jobModeContactRowFits && (
+          {showTaskDispatchButton(role) && !farmModeActive && jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -881,7 +903,7 @@ export default function Layout() {
               dispatch
             </button>
           )}
-          {showEstimatorInboxButton(role) && jobModeContactRowFits && (
+          {showEstimatorInboxButton(role) && !farmModeActive && jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -917,7 +939,7 @@ export default function Layout() {
               teammate
             </button>
           )}
-          {showTaskDispatchButton(role) && !jobModeContactRowFits && (
+          {showTaskDispatchButton(role) && !farmModeActive && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -935,7 +957,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showEstimatorInboxButton(role) && !jobModeContactRowFits && (
+          {showEstimatorInboxButton(role) && !farmModeActive && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -972,7 +994,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {role === 'estimator' && (
+          {role === 'estimator' && !farmModeActive && (
             <button
               type="button"
               onClick={() => navigate('/bids?new=true')}
@@ -1260,6 +1282,55 @@ export default function Layout() {
                       }}
                     >
                       {dispatchModePoEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
+                {authUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFarmModeEnabled(!farmModeEnabled)
+                      setGearOpen(false)
+                    }}
+                    title={farmModeEnabled ? 'Turn Farm Mode off' : 'Turn Farm Mode on — checklist only'}
+                    aria-label="Toggle Farm Mode"
+                    aria-pressed={farmModeEnabled}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: farmModeEnabled ? 600 : 400,
+                    }}
+                  >
+                    <span>Farm Mode</span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: farmModeEnabled ? '#65a30d' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {farmModeEnabled ? '✓' : ''}
                     </span>
                   </button>
                 )}

@@ -6,6 +6,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
@@ -73,12 +74,25 @@ export default function Checklist() {
     })
   }, [authUser?.id])
 
+  // Farm Mode (checklist-only lens): the page keeps just Today + History; the
+  // office tabs hide and their deep links bounce to Today until the mode is off.
+  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
+
   // Roadmap is dev-only for now (owner request, 2026-08-10) — hide the tab and
   // bounce deep links for everyone else. Widen this gate to re-release it.
-  const canSeeRoadmap = role === 'dev'
+  const canSeeRoadmap = role === 'dev' && !farmModeEnabled
 
   useEffect(() => {
     const tab = searchParams.get('tab')
+    if (farmModeEnabled && (tab === 'review' || tab === 'manage' || tab === 'roadmap')) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'today')
+        next.delete('roadmap')
+        return next
+      }, { replace: true })
+      return
+    }
     if (tab === 'roadmap' && role !== null && !canSeeRoadmap) {
       // Deep link from a non-dev: rewrite to their default tab instead.
       const fallbackTab =
@@ -95,16 +109,19 @@ export default function Checklist() {
       setActiveTab(tab)
     } else if (!tab && role !== null) {
       const defaultTab =
-        role === 'dev' || role === 'master_technician' || isAssistantLike(role) ? 'review' : 'today'
+        !farmModeEnabled && (role === 'dev' || role === 'master_technician' || isAssistantLike(role))
+          ? 'review'
+          : 'today'
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', defaultTab)
         return next
       }, { replace: true })
     }
-  }, [searchParams, role, canSeeRoadmap])
+  }, [searchParams, role, canSeeRoadmap, farmModeEnabled])
 
-  const canManageChecklists = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  const canManageChecklists =
+    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !farmModeEnabled
   /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
   const canEditTechTree =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
