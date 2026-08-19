@@ -23,11 +23,16 @@ The editor asks for the change-order story:
 - **Impact on schedule** — plain words: "+2 working days", "none".
 - **Response requested by** — the date you want an answer.
 
-**Impact on cost is real line items**, not a typed total. Add lines the same way as an estimate — and enter a **negative unit price for a credit** (work removed from the original scope):
+**Impact on cost is real line items**, not a typed total. A new change order opens the section with one question — *What does this change include?* — and two ways to answer:
+
+- {{button:outline|+ Added work}} — work going **into** the contract. Name the work, note what's included (fixtures, materials, labor…), set quantity and unit price.
+- {{button:outline-amber|− Credit / removed work}} — work coming **out**. Same short form; the price you enter is credited back, and the line is labeled "Credit — " automatically.
+
+As you type, the form shows the math live — *= $2,840.00 added to contract* or *= −$390.00 credited back* — so a wrong sign is caught before it becomes a line. Repeat-priced work is still one tap away in the **line-item catalog**.
 
 :::example Impact on cost
 Reroute condensate line — labor + materials — **$2,840.00**
-Credit: delete original stub-out — **−$390.00**
+Credit — delete original stub-out — **−$390.00**
 **Net change to contract: $2,450.00**
 :::
 
