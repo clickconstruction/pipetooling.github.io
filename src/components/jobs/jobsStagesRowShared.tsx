@@ -522,6 +522,21 @@ export function accountManOnlyStripeStyle(job: JobWithDetails): CSSProperties {
     : {}
 }
 
+/**
+ * Green accent for STANDALONE invoice rows (v2.1828) — a break-off floating in
+ * a section apart from its job used to render nearly identical to a job row
+ * (Taunya: "invoices and jobs look too similar"). Tint + left rail say
+ * "invoice" before any text is read, in the board's green=invoice / blue=job
+ * color language. Job rows — including bundled job+invoice rows — stay plain.
+ */
+export const stagesInvoiceRowAccentRowStyle: CSSProperties = {
+  backgroundColor: 'var(--bg-green-tint)',
+}
+
+export const stagesInvoiceRowAccentRailStyle: CSSProperties = {
+  borderLeft: '4px solid #16a34a',
+}
+
 export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { customers, openEditJobAndCreateCustomerFlow } = ctx
   const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
