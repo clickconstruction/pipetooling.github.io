@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1857',
+    date: '2026-08-19',
+    title: 'Bid Board: due-date colors mean something again',
+    kind: 'fix',
+    highlights: [
+      'Once a bid is Won, Lost, or Started, its due-date chip goes quiet — plain gray, no days-late count. No more red alarms on bids that were decided months ago.',
+      'Red and amber now always mean an open bid needs attention before its deadline.',
+      'The color legend (the little stripes button on the board) explains the rule.',
+    ],
+  },
+  {
     version: 'v2.1856',
     date: '2026-08-19',
     title: 'Ready to Bill notifications: instant save + red no-push warning',

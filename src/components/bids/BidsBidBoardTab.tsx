@@ -509,9 +509,10 @@ export function BidsBidBoardTab({
     )
   }
 
-  /** Weekday+date on top, signed day count below — (+4) days after, (-2) until. */
+  /** Weekday+date on top, signed day count below — (+4) days after, (-2) until.
+      Decided bids (won/lost/started) render quiet: gray chip, no day count. */
   function renderBidBoardDueChip(bid: BidWithBuilder, inline = false) {
-    const parts = bidBoardDueCellParts(bid.bid_due_date)
+    const parts = bidBoardDueCellParts(bid.bid_due_date, new Date(), bid.outcome)
     if (!parts) return <span style={{ color: 'var(--text-muted)' }}>—</span>
     const colors = BID_BOARD_DUE_CHIP_COLORS[parts.urgency]
     return (
@@ -534,7 +535,9 @@ export function BidsBidBoardTab({
         }}
       >
         <span>{parts.dateLabel}</span>
-        <span style={{ fontSize: '0.625rem', fontWeight: 600, opacity: 0.85 }}>{parts.deltaLabel}</span>
+        {!parts.decided ? (
+          <span style={{ fontSize: '0.625rem', fontWeight: 600, opacity: 0.85 }}>{parts.deltaLabel}</span>
+        ) : null}
       </span>
     )
   }
@@ -1418,6 +1421,10 @@ export function BidsBidBoardTab({
                   <span>{text}</span>
                 </div>
               ))}
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }}>
+                Colors apply to open bids only — once a bid is Won, Lost, or Started, its chip goes quiet (gray, no day
+                count), so red and amber always mean something needs attention.
+              </div>
             </div>
           </div>
         </div>
