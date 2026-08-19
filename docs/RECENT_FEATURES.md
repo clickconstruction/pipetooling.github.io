@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1824)
+last_updated: 2026-08-19 (v2.1825)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1825)
+
+### Pipeline: server-side search across every job — scoped-load plan PR 4 (2026-08-19)
+Search stops depending on what's loaded. ≥2 characters → 300ms debounce → one lean id-only lookup over EVERY visible job, any status ([`leanJobSearch.ts`](../src/lib/jobs/leanJobSearch.ts), +4 tests: PostgREST or= across number/click/name/address/**customer name** — a column the client filter never matched — with injection-safe term sanitizing) → full-detail fetch for just the hits (`fetchJobsLedgerWithDetailsForStages` gains an `ids` option) → matches ride the extra-ids channel into the board. **An active search forces every section visible** (`sectionShown`) with match-derived headers, so a hit can never hide inside a collapsed section. A "searching all jobs…" whisper shows while the lookup runs. Retired with it: the v2.1819 **Search Paid in Full too** chip (`paidSearchChip.ts` deleted — search just covers paid now), the v2.1808/1813 pending-jump resolver (`resolvePendingNumberJump` deleted), and the search/jump fetch-everything safety nets — the **# jump** now misses into the same lean number lookup (prefix on both number columns) and lands anywhere, paid included, via the v2.1808 filter-mode landing. Cross-section modals and active display filters still load the full board (honesty guard). Verified live: 'sunny' → exactly 2 queries (id lookup + by-ids fetch), 14 matches under a force-shown Paid section with the full paid list never loaded; # 561 lands in filter mode. Client-only — no migration.
 
 ## Latest Updates (v2.1824)
 
