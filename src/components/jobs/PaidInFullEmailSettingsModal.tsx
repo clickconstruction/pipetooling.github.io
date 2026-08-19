@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -287,55 +287,57 @@ export default function PaidInFullEmailSettingsModal({
     })
   }
 
-  /** ready_to_bill: flip one channel for one person; the last channel off removes them. */
-  const toggleRtbChannel = (id: string, channel: 'email' | 'push') => {
-    if (!canEditRecipients) return
-    setRtbPrefs((prev) => {
-      const next = new Map(prev)
-      const cur = next.get(id) ?? { email: false, push: false }
-      const flipped = { ...cur, [channel]: !cur[channel] }
-      if (!flipped.email && !flipped.push) next.delete(id)
-      else next.set(id, flipped)
-      return next
+  /**
+   * ready_to_bill saves automatically on every toggle (v2.1856, no Save
+   * button). Writes are chained so rapid clicks can't land out of order; a
+   * failed write reverts the checkbox and toasts.
+   */
+  const rtbSaveChain = useRef<Promise<void>>(Promise.resolve())
+  const persistRtbPrefs = (next: Map<string, { email: boolean; push: boolean }>, revertTo: Map<string, { email: boolean; push: boolean }>) => {
+    const prefs = users.filter((u) => next.has(u.id)).map((u) => ({ id: u.id, ...next.get(u.id)! }))
+    rtbSaveChain.current = rtbSaveChain.current.then(async () => {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          {
+            key: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
+            value_text: serializeReadyToBillRecipientPrefs(prefs),
+          },
+          { onConflict: 'key' },
+        )
+      if (error) throw error
+    }).catch((e: unknown) => {
+      setRtbPrefs(revertTo)
+      showToast(formatErrorMessage(e, 'Could not save — change undone'), 'error')
     })
   }
 
+  /** ready_to_bill: flip one channel for one person; the last channel off removes them. Saves immediately. */
+  const toggleRtbChannel = (id: string, channel: 'email' | 'push') => {
+    if (!canEditRecipients) return
+    const next = new Map(rtbPrefs)
+    const cur = next.get(id) ?? { email: false, push: false }
+    const flipped = { ...cur, [channel]: !cur[channel] }
+    if (!flipped.email && !flipped.push) next.delete(id)
+    else next.set(id, flipped)
+    setRtbPrefs(next)
+    persistRtbPrefs(next, rtbPrefs)
+  }
+
+  /** Paid streams only — the ready_to_bill variant saves on every toggle instead. */
   const saveRecipients = async () => {
     if (!canEditRecipients || saving) return
     setSaving(true)
     try {
-      if (isReadyToBill) {
-        const prefs = users
-          .filter((u) => rtbPrefs.has(u.id))
-          .map((u) => ({ id: u.id, ...rtbPrefs.get(u.id)! }))
-        const { error } = await supabase
-          .from('app_settings')
-          .upsert(
-            {
-              key: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
-              value_text: serializeReadyToBillRecipientPrefs(prefs),
-            },
-            { onConflict: 'key' },
-          )
-        if (error) throw error
-      } else {
-        const ids = users.filter((u) => selectedIds.has(u.id)).map((u) => u.id)
-        const { error } = await supabase
-          .from('app_settings')
-          .upsert(
-            { key: copy.settingKey, value_text: serializePaidJobEmailRecipients(ids) },
-            { onConflict: 'key' },
-          )
-        if (error) throw error
-      }
-      showToast(
-        isReadyToBill
-          ? 'Ready to Bill notification settings saved.'
-          : variant === 'payment'
-            ? 'Payment-email recipients saved.'
-            : 'Paid-email recipients saved.',
-        'success',
-      )
+      const ids = users.filter((u) => selectedIds.has(u.id)).map((u) => u.id)
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          { key: copy.settingKey, value_text: serializePaidJobEmailRecipients(ids) },
+          { onConflict: 'key' },
+        )
+      if (error) throw error
+      showToast(variant === 'payment' ? 'Payment-email recipients saved.' : 'Paid-email recipients saved.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save recipients'), 'error')
     } finally {
@@ -488,7 +490,7 @@ export default function PaidInFullEmailSettingsModal({
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
         {isReadyToBill && (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Set each person's channels — 📧 email, 🔔 push, or both. Nothing checked = not notified.
+            📧 email | 🔔 push
           </p>
         )}
         {!canEditRecipients && (
@@ -519,17 +521,17 @@ export default function PaidInFullEmailSettingsModal({
                     {u.name}
                     {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
                   </span>
-                  {!pushEnabledIds.has(u.id) && (
+                  {(rtbPrefs.get(u.id)?.push ?? false) && !pushEnabledIds.has(u.id) && (
                     <span
-                      title="Hasn't enabled push notifications on any device"
+                      title="Push is on for this person but they haven't enabled push notifications on any device — they won't receive pushes until they do (Settings → Your account)"
                       style={{
                         fontSize: 11,
                         fontWeight: 600,
                         padding: '1px 8px',
                         borderRadius: 9999,
-                        background: 'var(--bg-muted)',
-                        color: 'var(--text-muted)',
-                        border: '1px dashed var(--border-strong)',
+                        background: 'var(--bg-red-tint)',
+                        color: 'var(--text-red-700)',
+                        border: '1px dashed #fecaca',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -598,7 +600,7 @@ export default function PaidInFullEmailSettingsModal({
             )}
           </div>
         )}
-        {canEditRecipients && (
+        {canEditRecipients && !isReadyToBill && (
           <button
             type="button"
             onClick={() => void saveRecipients()}

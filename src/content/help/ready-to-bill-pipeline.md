@@ -168,9 +168,9 @@ The third stream watches the **front** of the billing pipeline: the moment any j
 This stream is the first that can reach people **two ways — set per person**. Behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header (same rules: devs and masters open it, devs edit it), every person in the list has their own **📧 email** and **🔔 push** checkboxes, at the right end of their row:
 
 - **📧 Email** — sent within ~15 minutes, batched with the other notification emails. Devs and masters get the detailed version (the billable amount, draft bills, payments so far); everyone else gets a summary with no dollar figures.
-- **🔔 Push notification** — a short alert straight to that person's phone or computer, once they've enabled push notifications on a device (Settings → Your account). People who haven't show a small **no push device** hint — checking 🔔 is still fine, it starts working the moment they enable push. Push follows the same detailed/summary rule: dollar amounts only for devs and masters.
+- **🔔 Push notification** — a short alert straight to that person's phone or computer, once they've enabled push notifications on a device (Settings → Your account). Checking 🔔 for someone who hasn't enabled push yet shows a red **no push device** warning — the checkbox is still fine to leave on, and pushes start the moment they enable it. Push follows the same detailed/summary rule: dollar amounts only for devs and masters.
 
-Check either box, or both; someone with nothing checked isn't notified at all.
+Check either box, or both; someone with nothing checked isn't notified at all. Changes save the moment you click — there's no Save button on this list.
 
 :::example Recipients
 Taunya · taunya@clickplumbing.com &nbsp; {{chip:gray|Summary}} &nbsp; ☑ 📧 &nbsp; ☑ 🔔
