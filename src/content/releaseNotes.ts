@@ -65,6 +65,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1850',
+    date: '2026-08-19',
+    title: 'Groundwork: accepted change orders will land on existing jobs',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes, the database can now apply an accepted change order to an existing job: its lines join the job\'s Specific Work and the job total moves by the signed net change.',
+      'Nothing changes on screen yet — the "Apply change order" chooser ships next.',
+    ],
+  },
+  {
     version: 'v2.1849',
     date: '2026-08-19',
     title: 'Checklist review: sign off or send back',
