@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Types catch-up: office-roster schema lands in database.ts (2026-08-19)
 `npm run gen-types:linked` after the v2.1820 migration push surfaced the deferred regen from the standing-office-schedule work (v2.1810/1812 shipped its migration without regenerating): [`database.ts`](../src/types/database.ts) gains `dispatch_office_roster` + `dispatch_office_schedule_fills` table types and the `ensure_office_schedule_blocks` / `can_edit_schedule_dispatch` function signatures (+70 lines, pure addition — the v2.1820 `send_method` hand-edit matched the generator exactly and is untouched), and [`dispatchOfficeRoster.ts`](../src/lib/dispatchOfficeRoster.ts) drops its nine interim `as never` casts now that the real types exist. No behavior change; closes the "gen-types cleanup pending" item. Client-only — no migration.
 
+## Latest Updates (v2.1821)
+
+### Jobs board: lean header-stats machinery — scoped-load plan PR 1 (2026-08-19)
+Foundation for collapsed-by-default sections (plan PR 3), with an architecture amendment made at build time: the planned SQL stats RPC is dropped — the header math runs through invoice-bundling rules (`is_primary_rtb_bundle`, cents rounding, merged-shell decisions) that a SQL port would mirror forever, so instead [`stagesHeaderStats.ts`](../src/lib/jobs/stagesHeaderStats.ts) computes every section-header figure (counts, Σ(revenue−payments), RTB exposure, billed/collections remaining, Capable of Being Billed, 30/90 aging buckets) by running the EXISTING kernels over three lean no-embed selects ([`fetchStagesHeaderStats.ts`](../src/lib/jobs/fetchStagesHeaderStats.ts): jobs 8 cols · invoices 7 · payments 3) — parity by construction, pinned by a fixture test covering every bundling branch (implicit sole-RTB merge, primary bundle, split shell, working-job stray billed invoice, collections, aging). `JobsListCacheContext` refreshes `headerStats` beside every successful board load (best-effort, never blocks). No visible change yet; headers still render from full rows until PR 3. Verified live: the three lean selects fire beside the board refetch, headers byte-identical. Whole train now client-only — zero migrations. Client-only — no migration.
+
 ## Latest Updates (v2.1820)
 
 ### Share with supply house: the email comes from YOUR inbox (2026-08-19)

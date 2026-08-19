@@ -4,7 +4,7 @@
 file: JOBS_BOARD_SCOPED_LOAD_PLAN.md
 type: Plan
 purpose: Cut the Pipeline board's database footprint by an order of magnitude — fetch-on-expand sections, aggregate headers, server-side search
-status: Approved by owner 2026-08-19; PR 0 shipped (v2.1819), PRs 1–5 not started
+status: Approved 2026-08-19; PR 0 (v2.1819) + PR 1 (v2.1821) shipped; ARCHITECTURE AMENDED — all client-side lean fetches, no migrations (see PR 1 note)
 last_updated: 2026-08-19
 ---
 
@@ -34,7 +34,21 @@ app's single heaviest steady-state read.
 Generalize the proven Paid-in-Full lazy pattern ("Expand to load" + `paidJobsMergedForKey`)
 from one special case to every section, and stop deriving header numbers from full rows.
 
-### 1. Header stats RPC (no rows, one grouped query)
+### 1. Header stats — lean rows + existing kernels (AMENDED at build time)
+
+**The SQL RPC was dropped during PR 1**: the header math runs through invoice-bundling
+rules (`is_primary_rtb_bundle`, cents rounding, merged-shell decisions in
+`readyToBillMergedPrimaryInvoiceId`) that a SQL port would have to mirror forever — the
+parity risk outweighed the marginal saving. Shipped instead
+([`stagesHeaderStats.ts`](../src/lib/jobs/stagesHeaderStats.ts) +
+[`fetchStagesHeaderStats.ts`](../src/lib/jobs/fetchStagesHeaderStats.ts)): three lean
+no-embed selects (jobs 8 cols · invoices 7 · payments 3) assembled into kernel-shaped
+objects and run through the EXISTING header kernels — parity by construction, pinned by a
+fixture test that exercises every bundling branch. RLS still scopes stats per role. The
+same amendment applies to PR 4: `jobs_ledger.customer_name` exists, so search is a lean
+PostgREST `or=ilike` — **the whole train is client-only, zero migrations**.
+
+### 1b. (superseded) original stats-RPC sketch
 
 New `jobs_board_section_stats(p_customer_filter uuid default null)`:
 
