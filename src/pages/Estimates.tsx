@@ -26,6 +26,13 @@ import {
   parseEstimateChangeOrderFields,
   type EstimateChangeOrderFields,
 } from '../lib/estimateChangeOrder'
+import {
+  coCostPromptConsequence,
+  emptyCoCostPromptDraft,
+  validateCoCostPromptDraft,
+  type CoCostPromptDraft,
+  type CoCostPromptMode,
+} from '../lib/coCostLinePrompt'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
@@ -612,6 +619,27 @@ function estimateLinkedJobHcp(r: { jobs_ledger?: { hcp_number: string } | null }
   return t || null
 }
 type LineItem = EstimateLineItemNormalized
+
+/** Guided CO cost-entry chips (“+ Added work” / “− Credit / removed work”). */
+function coPromptChipStyle(kind: 'add' | 'credit'): CSSProperties {
+  return {
+    padding: '0.45rem 1rem',
+    fontWeight: 600,
+    fontSize: '0.85rem',
+    borderRadius: 9999,
+    border: `1.5px dashed ${kind === 'add' ? 'var(--text-green-600)' : 'var(--text-red-700)'}`,
+    background: 'var(--bg-subtle)',
+    color: 'var(--text-700)',
+    cursor: 'pointer',
+  }
+}
+
+const coPromptPanelStyle: CSSProperties = {
+  border: '1px solid var(--border)',
+  background: 'var(--bg-subtle)',
+  borderRadius: 8,
+  padding: '0.85rem 0.95rem',
+}
 
 const DEFAULT_DRAFT_FIRST_LINE_ITEM = 'Custom Service Visit'
 
@@ -2616,6 +2644,27 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   /** CO train (v2.1832): change orders reuse this whole page in CO mode. */
   const isCO = isChangeOrderDocKind(row?.doc_kind)
   const [coFields, setCoFields] = useState<EstimateChangeOrderFields>(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
+  // Guided cost-impact entry (CO money train PR 2): every new CO line starts
+  // from the "added work" / "credit" prompt instead of a blank row.
+  const [coPromptDraft, setCoPromptDraft] = useState<CoCostPromptDraft | null>(null)
+  const [coPromptError, setCoPromptError] = useState('')
+
+  function openCoPrompt(mode: CoCostPromptMode) {
+    setCoPromptDraft(emptyCoCostPromptDraft(mode))
+    setCoPromptError('')
+  }
+
+  function submitCoPrompt() {
+    if (!coPromptDraft) return
+    const v = validateCoCostPromptDraft(coPromptDraft)
+    if (!v.ok) {
+      setCoPromptError(v.error)
+      return
+    }
+    setLines((p) => [...p, v.line])
+    setCoPromptDraft(null)
+    setCoPromptError('')
+  }
   const draftNeedsCustomer = isDraft && !customerId
 
   const acceptNotifyOtherSelectOptions = useMemo((): SearchableSelectOption[] => {
@@ -4405,6 +4454,42 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </div>
               </div>
             ) : null}
+            {isCO && lines.length === 0 && coPromptDraft == null ? (
+              <div style={{ ...coPromptPanelStyle, textAlign: 'center', marginBottom: '0.75rem' }}>
+                <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>What does this change include?</p>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Each line becomes part of the signed contract change.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => openCoPrompt('add')} style={coPromptChipStyle('add')}>
+                    + Added work
+                  </button>
+                  <button type="button" onClick={() => openCoPrompt('credit')} style={coPromptChipStyle('credit')}>
+                    − Credit / removed work
+                  </button>
+                </div>
+                {canManageEstimateCatalog || catalogLineItems.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setCatalogModalOpen(true)}
+                    style={{
+                      marginTop: '0.6rem',
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      fontSize: '0.8rem',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '2px',
+                    }}
+                  >
+                    or pick from the line-item catalog
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <ul
               style={{
                 paddingLeft: '1.25rem',
@@ -4503,6 +4588,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   </div>
                 </li>
               ))}
+              {isCO && (lines.length === 0 || coPromptDraft != null) ? null : (
               <li style={{ marginBottom: '0.35rem' }}>
                 <div
                   style={{
@@ -4510,8 +4596,19 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     alignItems: 'center',
                     gap: '0.5rem',
                     minHeight: 38,
+                    flexWrap: 'wrap',
                   }}
                 >
+                  {isCO ? (
+                    <>
+                      <button type="button" onClick={() => openCoPrompt('add')} style={coPromptChipStyle('add')}>
+                        + Added work
+                      </button>
+                      <button type="button" onClick={() => openCoPrompt('credit')} style={coPromptChipStyle('credit')}>
+                        − Credit / removed work
+                      </button>
+                    </>
+                  ) : (
                   <button
                     type="button"
                     onClick={() => setLines((p) => [...p, emptyDraftLine()])}
@@ -4537,6 +4634,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   >
                     +
                   </button>
+                  )}
                   <button
                     type="button"
                     aria-label="Open line item catalog"
@@ -4580,7 +4678,81 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   </button>
                 </div>
               </li>
+              )}
             </ul>
+            {isCO && coPromptDraft != null ? (
+              <div style={{ ...coPromptPanelStyle, margin: '0.35rem 0 0.5rem' }}>
+                <p style={{ margin: '0 0 0.55rem', fontWeight: 600 }}>
+                  {coPromptDraft.mode === 'add' ? 'New line — added work' : 'New line — credit / removed work'}
+                </p>
+                <input
+                  autoFocus
+                  value={coPromptDraft.label}
+                  onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, label: e.target.value } : p))}
+                  placeholder={
+                    coPromptDraft.mode === 'add' ? 'What work is being added?' : 'What work is being credited or removed?'
+                  }
+                  aria-label={
+                    coPromptDraft.mode === 'add' ? 'What work is being added?' : 'What work is being credited or removed?'
+                  }
+                  style={{ ...estInputBase, width: '100%', boxSizing: 'border-box', padding: '0.5rem', marginBottom: '0.5rem' }}
+                />
+                <input
+                  value={coPromptDraft.description}
+                  onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, description: e.target.value } : p))}
+                  placeholder="What's included — fixtures, materials, labor… (optional)"
+                  aria-label="What's included (optional)"
+                  style={{ ...estInputBase, width: '100%', boxSizing: 'border-box', padding: '0.5rem', marginBottom: '0.5rem' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input
+                    value={coPromptDraft.quantityText}
+                    onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, quantityText: e.target.value } : p))}
+                    inputMode="decimal"
+                    aria-label="Qty"
+                    title="Qty"
+                    style={{ ...estInputBase, width: '4.5rem', textAlign: 'center', padding: '0.5rem' }}
+                  />
+                  <input
+                    value={coPromptDraft.unitPriceText}
+                    onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, unitPriceText: e.target.value } : p))}
+                    inputMode="decimal"
+                    placeholder="Unit ($)"
+                    aria-label="Unit price ($)"
+                    style={{ ...estInputBase, width: '7rem', textAlign: 'center', padding: '0.5rem' }}
+                  />
+                  <span
+                    aria-live="polite"
+                    style={{
+                      flex: '1 1 auto',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: coPromptDraft.mode === 'credit' ? 'var(--text-red-700)' : 'var(--text-green-600)',
+                    }}
+                  >
+                    {coCostPromptConsequence(coPromptDraft)}
+                  </span>
+                  <button type="button" onClick={submitCoPrompt} style={estPrimaryButton(false)}>
+                    Add line
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCoPromptDraft(null)
+                      setCoPromptError('')
+                    }}
+                    style={estSecondaryButton()}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {coPromptError ? (
+                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
+                    {coPromptError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <p style={{ fontWeight: 600, textAlign: 'right' }}>
               {isCO ? <>Net change to contract: {formatSignedCentsUsd(totalCents)}</> : <>Total: {formatMoney(totalCents)}</>}
             </p>

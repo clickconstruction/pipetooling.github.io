@@ -22,10 +22,16 @@ Owner polish on v2.1844: in [`PaidInFullEmailSettingsModal`](../src/components/j
 ### Checklist review queue — sign off or send back your people's completed tasks (2026-08-19)
 Phase 3 of the checklist-card redesign (Phase 1 = v2.1842 events spine, Phase 2 = v2.1846 cards). New self-contained [`ChecklistReviewInboxSection`](../src/components/checklist/ChecklistReviewInboxSection.tsx): completed-but-unreviewed instances from the last 7 days (older ones age out — deliberate, no cron), scoped by new kernel [`checklistReviewQueue.ts`](../src/lib/checklistReviewQueue.ts) (+7 tests) to the item's **creator or notify-on-complete target** (devs see all; your own completions never queue to you). Rows expand to the full card history + a comment box; **Dismiss** stamps `reviewed_at`/`reviewed_by` (trigger logs `accepted`; the worker's card flips to "signed off"), **Reopen with comment** requires the comment, inserts it, clears `completed_at`/`completed_by_user_id` (trigger logs `reopened` + clears review stamps), and best-effort pings each assignee via the existing `send-checklist-notification` edge function (no redeploy — generic payload). Mounted once in [`DashboardTeamsInboxCard`](../src/components/dashboard/DashboardTeamsInboxCard.tsx) (covers Dashboard AND Dispatch Mode → Inbox) and in the Checklist **Review** tab ([`ChecklistReviewInboxes`](../src/components/checklist/ChecklistReviewInboxes.tsx) — including the assistant-like and no-inbox branches that previously returned null, since reviewing is not office-inbox-gated). Renders nothing when empty. Known scope note: non-office notify-targets only see rows their RLS already allows (office roles + item creators + assignees read instances). Help guide `review-my-teams-completed-tasks.md` (new). Client-only — requires the v2.1842 migration pushed.
 
+## Latest Updates (v2.1848)
+
+### Change orders: "What does this change include?" — guided cost entry — CO money train PR 2 (2026-08-19)
+The PR 1 kernel gets its UI. A fresh CO draft's **Impact on cost** opens with the question and two dashed chips — **+ Added work** (green edge) / **− Credit / removed work** (red edge) — plus an "or pick from the line-item catalog" underline (hidden when the role has no catalog access). Either chip opens the guided panel: work name first (mode-worded placeholder), what's-included second, then qty + unit price with the kernel's live consequence line ("= $2,840.00 added to contract" green / "= −$390.00 credited back" red) and Add line / Cancel; validation errors render inline via `role="alert"`. With lines present the chips replace the estimate's bare "+" in the add-row (catalog icon stays); the add-row hides entirely while the panel or empty state is showing so there's exactly one entry point at a time. All `isCO`-gated in [`Estimates.tsx`](../src/pages/Estimates.tsx) — standard estimates byte-identical. Verified live on prod: CO draft #53 — empty state → guided add $2,840 → credit $390 with auto "Credit — " prefix → net $2,450.00 → save/reload round-trip → deleted. Help guide `write-a-change-order` rewritten around the prompt. Client-only — no migration.
+
 ## Latest Updates (v2.1847)
 
 ### The Bid window — Preview and Edit merge into one tabbed modal (2026-08-19)
 Owner request: flip between a bid's read view and its edit form the way the Job window does (v2.1675). New **[`BidWindowModal`](../src/components/bids/BidWindowModal.tsx)** (Bids page only — the form's engine lives in `Bids.tsx`): tabs **Bid · Edit**, one ✕, esc-to-close hint, backdrop close. The Bid pane is **[`BidPreviewModal`](../src/components/bids/BidPreviewModal.tsx)** in new **`paneMode`** (no overlay/dialog chrome, no Edit/Close buttons — Copy for text stays); the window owns the pane's fetch via `fetchBidForPreview` and refetches when notes mutate. The Edit pane is the existing **[`BidFormModal`](../src/components/bids/BidFormModal.tsx)** in new **`embedded`** mode (no overlay/box, header ✕ hidden — the window closes; sticky save bar margins line up with the pane's padding via `.bid-window-form-pane`, mobile rules in the window's style block). Both panes stay **mounted** (display-toggled) so unsaved form edits survive a flip; the Bid pane always shows the saved bid; Save still closes. **Escape** closes the window unless a stacked modal is above it — delete confirm, evaluate checklist, sent-attestation, the GC customer dropdown, or the form's service-type switcher (reported up via new `onServiceTypeSwitchOpenChange`). `Bids.tsx` wires it: **editing an existing bid** renders the window (initial tab Edit — every board Edit button and the `openBidEdit=1` deep link land there); **New Bid keeps the plain form** (nothing to preview). The standalone preview (BidPreviewModalContext, other pages) is unchanged; its Edit bid button now lands in the window as it navigates. Also: the preview facts strip's people cell now reads name-first with captions — **Wendi / (Estimator) / Wendi / (Account Man)** — instead of a combined label. Help guide `flip-between-a-bids-view-and-edit.md` (new). Client-only — no migration.
+
 ## Latest Updates (v2.1846)
 
 ### Checklist Today cards: tap-to-complete, comment threads, live card history (2026-08-19)
@@ -105,6 +111,7 @@ The entry point lands: **New change order** sits beside New estimate on `/estima
 
 ### Pipeline search: matched text lights up (2026-08-19)
 Owner request on top of the scoped-load train's all-jobs search: every result now shows WHY it matched. New kernel [`stagesSearchHighlight.ts`](../src/lib/jobs/stagesSearchHighlight.ts) (+6 tests) splits display text on the exact single case-insensitive substring `filterJobsByStagesSearch` and the server ilike use — highlights can never claim a match the filter didn't make. [`StagesSearchMark`](../src/components/jobs/StagesSearchMark.tsx) reads the active query from a tab-level context provider (no prop threading through the table layers) and renders `<mark>` segments — amber tint on normal text, a translucent white wash inside the solid trade chips ("970 PLUM"). Wired everywhere the matchable fields render: job name (both lines), address ([`JobAddressText`](../src/components/jobs/JobAddressText.tsx)), number chip + Job badge, and the customer line's customer/GC/development names — which covers every match source, so no separate "matched via hidden field" annotation is needed (the mockup's fallback note turned out unnecessary: all six fields render on the row). Zero cost with no search active (bare string, no extra nodes). Verified live: name, customer, address, and in-chip number marks + zero marks on clear. Client-only — no migration.
+
 ## Latest Updates (v2.1829)
 
 ### Change-order document kernel + signed credit lines — CO train PR 2 (2026-08-19)
@@ -214,6 +221,7 @@ Owner request (mockup approved; companion to the v2.1807 sort): "I just added a 
 
 ### Jobs Pipeline: "#" jump falls through to Paid in Full (2026-08-18)
 Owner request: the toolbar's **#** micro-search (v2.1135) shook red on paid jobs' numbers because the Paid in Full section is lazy — its rows aren't in memory until the section expands (the broad search already prefetched them when typing via `fetchPaidJobsIfNeeded`; the # jump never did). Three moves, all client-side: **(1) prefetch on open** — opening the chip (click or "n") fires the same `fetchPaidJobsIfNeeded`, so paid rows usually merge before Enter; **(2) graceful in-flight miss** — an Enter that misses while the fetch is loading parks as a pending jump instead of false-missing: the chip disables into a "Checking Paid in Full…" state (Esc/blur inert until settled) and new kernel fn [`resolvePendingNumberJump`](../src/lib/jobs/stagesJobNumberJump.ts) re-matches as the cache updates — red flash only when the miss is real, give-up (no spin) when the fetch fails, and paid rows already merged shake instantly with no spinner; **(3) paid hits land in FILTER mode** — the jump sets the board search to the number (toast explains; clearing the search restores the board) instead of scroll-hunting the row inside the full 600+-row paid section, whose layout keeps inflating for tens of seconds as per-row data streams in, so no scroll position holds (verified live: the one-shot scroll drifted ~50k px off). Non-paid jumps unchanged (open section, smooth-scroll, flash — same for the filtered paid row). `onJump` may now return a promise (+4 kernel tests, +3 chip render tests). Other `findJobsByNumber` reusers (schedule pickers) untouched. Verified live: cold board → n → 561 → Enter → "Checking Paid in Full…" → board filters to the paid job. Client-only — no migration.
+
 ## Latest Updates (v2.1807)
 
 ### Pipeline: sort rows by time added (2026-08-18)
@@ -253,14 +261,17 @@ Owner-reported bug: the Job Detail Profit band computed profit as revenue − su
 
 ### Dashboard nudge into Why we lost — why-we-lost train PR 4 (2026-08-18)
 The closer: the dashboard's lost-bids banner is upgraded from the old text-only, Lost-summary-routing version into the lens's front door. [`DashboardLostBidsMissingReasonBanner`](../src/components/DashboardLostBidsMissingReasonBanner.tsx) now reads "N lost bids have no reason recorded · $X.XM unexplained · **Start call mode →**" and deep-links to `?tab=why-we-lost`. Three behavior changes via new kernel [`dashboardLostBidNudge.ts`](../src/lib/dashboardLostBidNudge.ts) (+9 tests): **(1) threshold-gated** — hidden below 5 uncategorized bids, so a stray loss never summons a banner (owner-picked flavor); **(2) counts by `loss_category`** like the lens queue (legacy free text alone doesn't clear a bid); **(3) whole-team scope** — the old personal estimator/account-man filter would have hidden the 61-bid backlog from everyone (Wendi's personal count is 1; most lost bids have someone else or nobody as estimator). Audience = the lens's: superintendents no longer see it. Compact $ formatting ($5.9M / $714k). Verified live: 61 · $5.9M renders and the click lands on the lens. Client-only — no migration.
+
 ## Latest Updates (v2.1799)
 
 ### Loss-reason chips everywhere bids get marked lost — why-we-lost train PR 3 (2026-08-18)
 Closes the capture loop: the same six category chips from the Why we lost lens now appear in **both places bids already get marked lost**, so a reason recorded live lands in `loss_category` no matter where it's typed. **(1) Call session** ([`BuilderCallSessionModal`](../src/components/bids/BuilderCallSessionModal.tsx)): tapping **Lost…** now reveals the chip row + a "loss detail" input; the [`builderCallSession`](../src/lib/bids/builderCallSession.ts) kernel's outcome updates carry `loss_category` (+3 tests: category+detail folding into the entry note "Marked lost on call — Price too high: 6 grand over", won-taps clearing a stale category). **(2) Bid Board Lost summary** ([`BidBoardLostSummaryModal`](../src/components/bids/BidBoardLostSummaryModal.tsx)): the per-bid edit gains the chip row above the free-text box, display rows show the category as a colored chip before the text, and the red "missing reason" row highlight now clears when **either** a category or text exists. Client-only — no migration.
+
 ## Latest Updates (v2.1798)
 
 ### Bids Followup: the Why we lost lens — why-we-lost train PR 2 (2026-08-18)
 The Friday call-mode workspace on the v2.1796 column (design agreed via interactive mockups). **Why we lost** joins By builder / By status as the Followup tab's third lens ([`BidsWhyWeLostLens`](../src/components/bids/BidsWhyWeLostLens.tsx)): left rail is the **builder call queue** (builders with unexplained lost bids first, most unexplained $ on top — CIVE's $1.36M leads today); the work area is one builder's call — tappable phone, **street-name jump pills** for every lost bid (GCs talk in addresses, not bid numbers; done pills go green), a bid card with the **tap-to-Google-Maps address pill** (reuses `bidAddressMapsUrl`), six one-tap **reason chips** (keyboard 1–6; arrows move between bids), an optional "what they said" note (saved into `loss_reason` with the next chip tap), skip, and auto-advance to the next unexplained bid then the next builder. Below: the **rollup** — counts + $ per category and the headline stat: loss rate **with and without GC-lost** (73% vs 69% live — GC-lost isn't a competitive loss). New kernel [`bidLossCategories.ts`](../src/lib/bidLossCategories.ts) (+14 tests): category vocabulary (single source for the migration comment), call-queue grouping, rollup math, next-bid stepper. A red "N need a reason" chip on the other two lenses jumps in; superintendents don't see the lens (same gate as By status). Deep link `?tab=why-we-lost`. `database.ts` +3 lines (`loss_category`). Client + regenerated types — migration applied with v2.1796.
+
 ## Latest Updates (v2.1797)
 
 ### Customers: backfill payment history from HCP (2026-08-18)
@@ -270,14 +281,17 @@ Owner request (money-rail follow-up): jobs imported from HouseCall Pro were stam
 
 ### Bids: loss_category column — why-we-lost train PR 1 (2026-08-18)
 Owner request (design iterated through interactive mockups): Wendi's Friday GC calls need structured "why we lost" recording and review — today 56 of 100 lost bids ($10.4M) have no reason at all, and the 44 free-text reasons cluster into six buckets. Migration [`20260818160000_bid_loss_category.sql`](../supabase/migrations/20260818160000_bid_loss_category.sql): additive `bids.loss_category text` (`gc_lost | price | other_sub | project_died | no_bid | no_answer` — app-validated, single source coming in `bidLossCategories.ts`); `loss_reason` stays the free-text detail. Conservative ILIKE backfill maps only the unambiguous existing texts ("gc lost", "pricing was too high", "on hold indefinitely"…); fuzzy ones stay NULL for the Friday triage queue. The "Why we lost" lens ships next in the train. Backend-only — no client change.
+
 ## Latest Updates (v2.1795)
 
 ### Payroll ledger: Hide paid toggle (2026-08-18)
 Owner request: the People → Payroll ledger lists every pay report ever generated, so the open items drown in paid history. New **Hide paid** button in the ledger's top action cluster ([`PeoplePayStubsTab`](../src/components/people/PeoplePayStubsTab.tsx)): shows the paid count up front ("Hide paid (262)"), flips to a pressed green "Hiding 262 paid" while active, and filters the table to unpaid + partial rows only — the same `stubNetPay` / `isPayStubFullyPaid` math the rows and the open-balance summary already use, so "paid" means fully paid net of deductions/additionals, and the "N open · $X remaining" line is unchanged (hidden rows were never open). Composes with the name search; an all-paid result gets an inline "show paid" link instead of an empty table. Session-only (resets on reload) so paid history is never silently missing next visit. Verified live: 262 paid hidden → 29 open rows remain, toggles cleanly. Client-only — no migration.
+
 ## Latest Updates (v2.1794)
 
 ### Draft Payroll: Cash Due matches the pay report (office vs. field rates) (2026-08-18)
 Owner-reported bug with a live repro: Bryan's Draft Payroll row showed **$642.70** (12.85h × flat $50 field wage) while his generated report PDF said **$450.10** — his hours were all office time at the $35 office rate. Two-layer fix via new kernel [`draftPayrollPreviewCost.ts`](../src/lib/draftPayrollPreviewCost.ts) (+10 tests): **(1) report is authoritative** — `draftPayrollRowCashDue` makes the row (and the Print summary) show the generated stub's stored gross when one exists, matching the PDF by construction (the modal's Total line already did this; now the rows agree with it); **(2) honest estimate** — `draftPayrollPreviewDayCost` prices pre-report rows for dual-rate people with the same `splitDayHoursByRate` math `generatePayStub` uses ([`People`](../src/pages/People.tsx) loads session-derived office/job buckets per period for dual-rate people with a unique login user; ambiguous-user fallback stays flat wage, mirroring the generator). Single-rate people are numerically unchanged. Verified live: Bryan's row now reads $450.10. Client-only — no migration.
+
 ## Latest Updates (v2.1793)
 
 ### Customers list: the money rail — paid · billed · unbilled on every row (2026-08-18)
@@ -287,14 +301,17 @@ Owner request, design iterated through mockups (labelled triplet + proportion ba
 
 ### Add Part: price effective date defaults to today (2026-08-17)
 Estimator request (Wendi): in the Add Part modal (Bids → Takeoffs → Add part line, also Materials → Parts Book and Settings → Catalogs), the price row's Effective date field started blank, so every fast entry meant typing today's date by hand. New `applyPartPriceRowPatch` in the [`partPriceRows`](../src/lib/partPriceRows.ts) kernel (+7 tests): the moment a blank row becomes active (gains a supply house or a price), an empty Effective date fills with today (`todayYmdChicago` — app calendar TZ) while staying fully editable; explicitly set or cleared dates are never overwritten (clearing sticks — no re-default on later edits), and untouched trailing blank rows stay blank so the v2.1325 fast-entry contract (blank rows drop on save) is unchanged. Verified live in Materials → Add Part: typing a price fills the date instantly. Client-only — no migration.
+
 ## Latest Updates (v2.1791)
 
 ### Bids Pricing: job address in Package and send, tap-to-open in Google Maps (2026-08-17)
 Estimator request (Wendi): the Pricing → Share → **Package and send** package had no job address, so the recipient had to hunt for where the job is. New **Job address** section at the top of [`PackageAndSendBidPricingModal`](../src/components/bids/PackageAndSendBidPricingModal.tsx) (Open in Maps button + the address; muted "No address on this bid" + Edit bid when blank — never blocks sending), and the address rides along in every outgoing format via new `bidAddressMapsUrl` in the mirrored kernels ([`buildBidPricingPackageHtml.ts`](../src/lib/buildBidPricingPackageHtml.ts) ↔ [`_shared/bidPricingPackage.ts`](../supabase/functions/_shared/bidPricingPackage.ts), +11 tests): the email renders the address itself as a Google Maps link ("Tap the address to open it in Google Maps"), and the mailto plain text + Copy-for-text SMS carry `Address:` + a `Map:` URL that's tappable in text apps. `send-bid-pricing-package` now selects `bids.address` and passes it through (redeployed). Verified live on BP376 MPH CASA LINDA. No migration.
+
 ## Latest Updates (v2.1790)
 
 ### Customers list: notes chip anchored beside the value (2026-08-17)
 Owner feedback (screenshot): with conditional chips right-packed, the notes chip floated to a different spot on every row — rows with nothing but notes stacked it against the far edge. One-move fix in [`Customers`](../src/pages/Customers.tsx): the notes chip relocates from first chip to the fixed slot immediately LEFT of the lifetime value, so every row ends in a stable `notes · $value` rail regardless of which other chips render. Verified live: rows with full chip sets and notes-only rows all align. Note: v2.1789 (link-sweep ownership fix) shipped in a parallel PR of this train. Client-only — no migration.
+
 ## Latest Updates (v2.1789)
 
 ### Link-jobs sweep: ownership-aware + failure-resilient (2026-08-17)
@@ -309,6 +326,7 @@ Completes the owner's multiple-addresses ask on the v2.1787 table. [`EditCustome
 
 ### Customer addresses: the table (addresses train PR 1) (2026-08-17)
 Owner request: customers need multiple addresses, each with a note. Migration [`20260817224600_customer_addresses.sql`](../supabase/migrations/20260817224600_customer_addresses.sql): new `customer_addresses` table (`customer_id` CASCADE, `address`, `note`, `sequence_order`), RLS mirroring `customer_contact_persons` (office + estimator via parent-customer access, four verbs), both read-only training-mode blocks. **`customers.address` stays the primary address** — map links, pickers, and supply-house prefill are untouched; rows here are additive. UI ships next in the train (Edit-form Addresses section + hub display). Note: v2.1786 (link-jobs sweep) shipped in a parallel PR. Backend-only — no client change.
+
 ## Latest Updates (v2.1786)
 
 ### Customers: the link-jobs sweep — attach 500+ orphaned jobs to their customers (2026-08-17)
@@ -318,6 +336,7 @@ Owner request: ~528 `jobs_ledger` rows (mostly the HCP-import era) have a custom
 
 ### Customer merge un-blocked for accepted estimates (2026-08-17)
 Live bug found working the duplicate-merge list: merging a duplicate whose row holds a **customer-accepted estimate** failed with "estimate is accepted; only job_ledger_id and internal_notes can change" — `merge_customers`' estimates re-link collides with the `estimates_protect_after_accept` immutability guard. Migration [`20260817221950_merge_customers_accepted_estimates.sql`](../supabase/migrations/20260817221950_merge_customers_accepted_estimates.sql): `merge_customers` sets a **transaction-local** `app.merging_customers` flag before its re-link UPDATEs, and the guard permits a `customer_id` change only under that flag — the signed document's content stays immutable in every other path (the merge only re-points provenance between two rows for the same real customer). Both functions `CREATE OR REPLACE`d verbatim otherwise; RPC signature unchanged so no client change ships with this. Note: v2.1784 (row polish) shipped in a parallel PR of this train.
+
 ## Latest Updates (v2.1784)
 
 ### Customers list: clickable rows, visible separators, "notes" spelled out (2026-08-17)
@@ -572,11 +591,11 @@ Owner request: the Stages board's row — Crew & Dates / Job / Progress & paymen
 
 ### Follow-ups: "Open job ↗" actually opens the Job window (2026-08-16)
 The deck's "Open job ↗" button looked dead: it went through `JobDetailOpenerBridgeContext`, which DID open the Job window — at `zIndex` 1010, underneath the deck's own overlay (`DECK_Z` 1040), so nothing visibly happened. [`JobsFollowupModal`](../src/components/jobs/JobsFollowupModal.tsx) now calls [`useJobDetailModal()`](../src/contexts/JobDetailModalContext.tsx) directly (it renders below the provider — the bridge is for components above it) and, while the context reports the Job window open, hides its own overlay with `display: none` — deck state (current card, note draft, scroll) survives untouched and reappears when the window closes. The deck's window-level Escape handler also stands down while the Job window is on top, so Esc closes only the window, not both. Verified live: deck → Open job → Job window (Job/Edit/Bill tabs) → Esc → same card, same scroll. Client-only — no migration.
+
 ## Latest Updates (v2.1737)
 
 ### Sub Labor: "Outstanding by contractor" keys by person, not name text (2026-08-16)
 Closes the RUN_SUBS_PLAN PR 3.4 item that shipped unflipped: [`buildSubLaborOutstandingByPerson`](../src/lib/subLaborOutstanding.ts) grouped "who is owed what" by `normalizePersonNameKey(assigned_to_name)`, so a renamed sub split into two rows. Now: a sheet with exactly ONE junction assignee (`people_labor_job_assignees`) groups under `id:<people.id>` and displays the person's **current** roster name (junction fetched in [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) with a `people(name)` embed, fail-soft). Multi-assignee sheets deliberately keep the combined-name row — this is AP, you pay the sheet, not half of it — and junction-less sheets degrade to the legacy name key (+3 tests; pre-existing cases pass unchanged as the parity check). Verified live: panel renders, totals match the Sub Labor Due figure, zero failed requests across a full ledger reload. Client-only — no migration.
-
 
 ## Latest Updates (v2.1736)
 
@@ -942,6 +961,7 @@ Owner-designed (both mockups approved): "Motor pool" becomes a real hand-off des
 
 ### Vehicles: search box moves under the title (2026-08-14)
 Owner request. [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx): the "Search vehicles or people" input moves out of the header's right-side button group to its own left-aligned row directly below the **Vehicles** title (above the summary chips); **Insurance plans** and **+ Add Vehicle** stay on the right of the title row. Layout-only — no behavior change (verified live: filtering works from the new spot). Client-only — no migration.
+
 ## Latest Updates (v2.1661)
 
 ### Quickfill: Match sessions spreads out on the page (2026-08-14)
@@ -966,6 +986,7 @@ Owner request ("for jobs with no activity, I would like the bar to be the same s
 
 ### Pipeline job activity expands to a full-page view (2026-08-14)
 Owner-designed feature (mockup approved, then "fold all of the dropdown's pieces in"). New [`JobsStagesActivityExpandModal`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) — a full-page overlay over the board (z 1001, ✕ / Escape / backdrop close; Escape while typing first blurs the composer, draft kept) — opened from **two entry points**: a new corner expand button on the wide-screen Job activity box and the row's **"N Reports" chip** (which previously opened the thread panel's fullscreen mode; the panel's own ⛶ toggle is untouched). One instance lives at tab level behind a new `StagesRowRenderContext.openJobActivityExpand(job)` (threaded through both Stages tables + the card list), reading live from the thread store so realtime posts appear in place. **Content is the full timeline**: notes/reports keep the box's stable circled numbers (1 = oldest, assigned pre-filter by the same comparator — "check note 3" never shifts) rendered unclamped with **full report field lines** (`displayReportTemplateName` + `allReportFieldLinesForThread`), while schedule blocks, clock sessions (pending-approval badge), and status/billing/crew events interleave as unnumbered tag-styled rows, all grouped under **Chicago day separators** ("Wed, Aug 12" / "Fri, Aug 14 · Today"). Folded in from the dropdown panel: the **All/Notes/Reports/Status/Billing/Crew filter pills** with counts (shared `jobActivityFilter` kernels; empty buckets demote to quiet text), the **% complete readout + Set-%-complete editor** (same `clampCompletenessPct`/`validatePctCommit` validation, committing through `commitStagesPctWithNote` and patching the modal's snapshot), and the **team-members / manage-people header** (opens the existing modal at z 1002). The pinned green NEXT line and always-open composer (same `submitNoteWithBody` pipeline) carry over from the box design. Rode along: activity meta lines in the box + modal now read **`Thu 3:45 PM (1d)`** / `(today)` instead of `· 1d ago` (owner request), and the box's NEXT line switched to border longhands (the v2.770 shorthand-mix warning surfaced by the new sibling button). Kernel: [`buildJobActivityModalItems` / `filterJobActivityModalItems` / `groupJobActivityModalItemsByDay`](../src/lib/jobs/jobActivityBoxFeed.ts) (+6 tests, day-splits on Chicago midnight); render tests: modal 6 cases (mixed timeline, filters, team/people, % validation+commit, loading, composer Escape-blur), box asserts the shared opener. Help guides `open-job-activity-full-screen` + `ready-to-bill-pipeline` updated. Client-only — no migration.
+
 ## Latest Updates (v2.1656)
 
 ### Quickfill: Match sessions joins the Unassigned field time station (2026-08-14)
@@ -1000,6 +1021,7 @@ Root-cause fix for the office-visible "Failed to load …: canceling statement d
 
 ### Vehicles tab opens to all assistants (2026-08-14)
 Owner decision ("All Assistants should be able to see the Vehicles tab") closing the gap the v2.1644–48 fleet build surfaced: the tab was still hidden behind `canAccessPay` from the v2.660–663 pay bundle, while the vehicle-table RLS had admitted plain `is_assistant()` since v2.661 (the "latent grant"). New **`canAccessVehicles`** flag in [`usePeopleAccess.ts`](../src/hooks/usePeopleAccess.ts) — dev / controller / Pay-Approved master / **assistant** — gates the tab button and render site in [`People.tsx`](../src/pages/People.tsx) instead of `canAccessPay`. No DB change (RLS already matched); Housing/Payroll/Offsets stay pay-gated. `ACCESS_CONTROL.md` matrix + assistants note updated. Client-only — no migration.
+
 ## Latest Updates (v2.1649)
 
 ### Edit-Job New Invoice amount: typed dollars survive blur (2026-08-14)
@@ -2257,7 +2279,6 @@ Found while walking the Send flow for the owner: the Send-for-signature modal al
 ### Stages mobile cards: ⋯ button + action sheet (2026-08-05)
 Owner report (phone): the Stages mobile cards had no way to reach View job, Edit job, and the other desktop-row tools. They actually existed — a "toolbelt" appeared when you tapped the card body — but with zero affordance nobody found it. Fix: every card's footer icon row ends with a visible **⋯** button opening the new bottom sheet [`StagesCardMoreActionsSheet.tsx`](../src/components/jobs/StagesCardMoreActionsSheet.tsx) (job number + name header, labeled rows, backdrop/Esc/Cancel close; actions run then close). Contents mirror the desktop rows per section: simple sections get View job / Edit job / Activity and notes (note-count badge) / Calendar / Click Tooling report / Partial invoice (when unallocated remains) / AIA G702-G703 (gated) / Hazmat fee (gated, "live" badge) / Send back; unified sections (Ready to Bill / Billed / Collections) get View bill, Lien Tooling, and Flag for collections in place of the simple-only items, with Click Tooling honoring `showClickTooling`. The hidden toolbelt is removed from both card variants ([`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx)) — card tap now expands just the thread panel. 4 render tests pin the ⋯ button, sheet contents/gating, run-and-close, and Cancel. Verified live at 375px (sheet → View job opened Job Detail). Client-only.
 
-
 ## Latest Updates (v2.1401)
 
 ### Linked crew modal: leg cards instead of the cramped table (2026-08-05)
@@ -2464,6 +2485,7 @@ Owner call — the `(Dispatch hub)` suffix named the *implementation* (the secti
 
 ### Add job to schedule: match highlighting + a "#" number-only search (2026-08-03)
 Two dispatcher asks on the shared **Add job to schedule** picker ([`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx)). **(1) Match highlighting**: the parts of each result matching what the user typed render tinted+bold (`<mark>` with theme tokens) in both the title and the subline — kernel [`assignJobPickerHighlight.ts`](../src/lib/assignJobPickerHighlight.ts) (`splitTextForQueryHighlight`, +6 tests; case-insensitive, every occurrence). **(2) "#" number search**: a round **#** chip beside the search box (the Jobs → Pipeline jump-chip pattern, v2.1135) expands into a digits-only field that filters the list to **C# / HCP number matches only** — reusing the Pipeline's exact matcher [`findJobsByNumber`](../src/lib/jobs/stagesJobNumberJump.ts) (generic widened to number-fields-only; exact hits first, then prefix, HCP before C#), so "92" puts job 92 above 926/925/…. The two modes are exclusive: opening # clears the text search, typing text closes # mode; Enter with a single match picks it; Esc collapses. Wired through all four picker hosts — Dispatch Mode Assign work ([`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx), number mode bypasses the newest-first sort to keep tier order), Schedule Dispatch hub ([`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx)), and both Quickfill schedule pickers. The search box itself sheds its browser-default look for a rounded pill with a blue focus ring, matching the # chip and the modal's button language. Verified live at 390×844 ("beck" highlights, "# 92" → 92 · 926 · 925…). Client-only — no migration.
+
 ## Latest Updates (v2.1374)
 
 ### Bid Board: the staff column sits between Due Date and Last Contact (2026-08-03)
@@ -2677,18 +2699,15 @@ The Count Tool link column on the Bid Board (and the same CountTooling Plans lin
 ### Bid-aware pins: one click back to a specific bid's tab (2026-08-03)
 Estimator ask: return to ONE bid's page constantly (e.g. BP352 → Pricing). Pins previously stored only `{path, tab}` — pinning while on a bid reopened the tab without the bid. Now `user_pinned_tabs` gains `bid_id` (migration `20260803184515`: column + FK ON DELETE CASCADE so deleting a bid cleans its pins; the unique expression index widens to `(user_id, path, COALESCE(tab,''), COALESCE(bid_id::text,''))` so several bids can pin the same tab). **On /bids with a bid selected (`?bidId=`), the Pin button becomes "Pin bid"** — the pin stores the bid and a fetched `BP352`-style label (service-type ledger prefix + bid number via `LedgerDisplayPrefixContext`), and the Dashboard chip reads **"BP352 · pricing"**, deep-linking to `/bids?tab=pricing&bidId=…`. Without a bid selected, pinning is unchanged. Everything downstream is bid-aware: [`pinnedTabs.ts`](../src/lib/pinnedTabs.ts) identity/toggle/delete/reorder (`pinKey` + `computeReorderedSort` include the bid — two same-tab bid pins reorder without colliding; +4 tests), the Dashboard quick-row chip/link, Settings pin management rows, and dev **"Pin for someone"** (drop a teammate straight onto a bid's tab). Known accepted edge: `merge_user_accounts` dedupes pins on path+tab only, so a merge could drop one of two same-tab bid pins (cosmetic; re-pin). Help guide `settings-basics` updated. See `docs/MIGRATIONS.md`.
 
-
 ## Latest Updates (v2.1334)
 
 ### Settings "How it works" tab removed; the orientation guide is the single source (2026-08-03)
 The Settings → How it works tab (`SettingsHowItWorksTab.tsx`, deleted) was a stale duplicate of the `how-the-app-works` help guide — it still claimed three roles (there are nine), "adopt assistants in Settings" (office access is automatic), "private notes" (renamed Notes for Office), "assistants can't see financial totals" (they can — what they never see is wages, v2.660), and subs who "can only Start and Complete" (they also accept/decline work orders and see their own pay since the run-subs work). Rather than maintain two orientation texts that drift, the tab is gone (unknown deep-linked tab ids already self-heal to the first group) and the **guide** got the accuracy pass: nine-role intro with the whole-shop framing (Bids/Estimates → Projects/Jobs/Dispatch → billing/payroll/banking), Sharing corrected (Notes for Office; job/project money visible, wages never, controllers see payroll; master-shares are view-only), Subs updated (work orders + own-pay Dashboard view). "Subscribed Steps" survives — that Dashboard feature is real and the guide's wording matches the UI. `settings-basics` guide's tab reference now points at the guide; `docs/SETTINGS_TABS_ARCHITECTURE.md` rows removed. Client-only — no migration.
 
-
 ## Latest Updates (v2.1333)
 
 ### Edit Assembly modal: visual refresh to match the authoring family (2026-08-03)
 The Edit Assembly modal (Bids → Takeoffs, via a bundle line's breakdown or a By-Stage mapping) catches up visually to the v2.1325–v2.1327 modals — behavior unchanged, shell rebuilt in [`TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx). **Boxed sections with header-band hints**: an Items box (the search moves to the TOP — no more scrolling past a long assembly to add something; the Adding…/qty hint lives in the band) and a Bundle prices box. **The Type/Name/Qty table becomes chip rows** — the Add Assembly layout: blue P / violet A chips, ellipsized names, the same keyed inline qty inputs (blur/Enter commit), per-part Prices link, mouse-only × (`tabIndex={-1}`) replacing the red Remove buttons (the remove confirm stays — writes are immediate). **Bundle prices drop the Edit/Save/Cancel link choreography**: the price itself is the control — dashed-underline button ("Click a price to change it"), click → right-aligned input that commits on Enter/blur and cancels on Escape (no-op commit when unchanged/invalid); remove is a mouse-only ×; the v2.1327 searchable add-row keeps Enter-to-add. Editable-name header and single Close footer (everything saves as you go) unchanged. Verified live on a real bundle assembly (BP329 "NICK AND MOES T-1L"): chip rows, click-price→input→Escape-reverts, zero writes during verification. Client-only — no migration.
-
 
 ## Latest Updates (v2.1332)
 
@@ -2700,7 +2719,6 @@ Phone-viewport fix for `/bids?tab=bid-board` per the `docs/E2E_SMOKE.md` viewpor
 ### Bids header: responsive rebuild — segmented trades, scrollable tab strips (2026-08-03)
 The Bids header broke at every width under ~1200px (trade chips colliding with "Bid Board" at ~760, chips stacking three-tall at ~1000, a ~700px-tall stacked header on phones). Rebuilt in [`Bids.tsx`](../src/pages/Bids.tsx): **(1) trades become a compact segmented control** (joined Plumbing | Electrical | HVAC, Builder-Review gray-out preserved); **(2) New Bid pins top-right at every width**; **(3) tab strips never wrap — they scroll**: new reusable [`ScrollableTabStrip`](../src/components/ScrollableTabStrip.tsx) centers its tabs while they fit (inner `margin-inline: auto` so the left edge stays reachable) and becomes a single scrollable row with edge fades when they don't, auto-scrolling the active tab into view on `?tab=` deep links (hidden scrollbar via the new `.tab-strip-scroll` class). Both the five board tabs and the nine bid-detail tabs (safety-orange highlights + `|` separators unchanged, Unsent/Working badge kept) use it. Layout: ≥1151px one row (`auto minmax(0,1fr) auto` grid) via new `wideBidsHeader` `useMatchMedia`; below that trades + New Bid share a row and the board tabs get their own strip — the `narrowViewport640` special-casing and the **four copy-pasted board-tab JSX blocks** are deleted (new `selectBidsTab` helper dedupes all 14 tab onClicks). Verified live at 375/760/1280 incl. deep-link auto-scroll. Pre-existing Bid Board table/search-row phone overflow flagged as a follow-up (not header-caused). Client-only — no migration.
 
-
 ## Latest Updates (v2.1330)
 
 ### Settings: My email subscriptions — every event stream, subscribed or not (2026-08-03)
@@ -2710,7 +2728,6 @@ The "Also, when it happens" tail of Settings → Your account → My email sched
 
 ### Takeoffs Qty: click clears for fresh entry, leaving restores the old number (2026-08-03)
 Fast-entry behavior for the rough ("Combined") sheet's Qty column in [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) + [`SortableRoughPartLineRow.tsx`](../src/components/bids/SortableRoughPartLineRow.tsx). Clicking (or tabbing into) a Qty cell now **starts the draft BLANK** — the old quantity shows as a gray placeholder — so numpad or keyboard digits type a fresh number instead of appending to the existing one. Leaving without entering anything (blur, Escape, scroll-close, drag-start, or focusing another Qty) **restores the pre-focus quantity untouched** — previously the close paths ran `clampRoughQtyFromDraft('')` which would have stamped the 0.0001 floor. Mechanics: new `roughQtyNumpadOriginalRef` captures the pre-focus quantity; all five close paths route through the new pure kernel [`resolveRoughQtyOnClose(draft, original)`](../src/lib/bids/bidTakeoffHelpers.ts) (+5 tests) — empty draft → original (floored), anything typed → the usual clamp; the per-keystroke live commits (line-total updates as you type) are unchanged except an empty draft no longer commits. The line-switch commit in `onRoughQtyFocus` moved out of the setState updater so the previous line's draft/original refs are read before being overwritten. Verified live via dev-login (click → blank + placeholder + numpad; click away → 1 restored, no write). Client-only — no migration.
-
 
 ## Latest Updates (v2.1328)
 
@@ -4323,7 +4340,6 @@ Improvement-plan item #8. "Not now" on the new-version pill used to dismiss it u
 ### Dashboard: the Call button (with call logging) on every job card (2026-07-24)
 Improvement-plan item #7 — and cheaper than planned: the phone lives on `jobs_ledger.customer_phone` (the same column My Schedule reads), so **no RPC migrations** — new hook [`useJobCustomerPhones`](../src/hooks/useJobCustomerPhones.ts) fetches phones for the visible job ids client-side (RLS already scopes reads). New shared [`JobRowCallButton`](../src/components/dashboard/dashboardJobRowShared.tsx) (2.5em glyph, photo-icon size) wired into all three sections — [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx), [`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx), [`DashboardSuperintendentJobsSection`](../src/components/dashboard/DashboardSuperintendentJobsSection.tsx) — each opening the v2.995 [`CallCustomerModal`](../src/components/dashboard/CallCustomerModal.tsx) (mis-click guard: big tel: button + "Log call" notes that post to the job's activity thread everywhere). Renders only when the job has a phone. The v2.1004 extraction made this one wiring per section instead of three copies in a 2k-line page. Verified live as a subcontractor: 12 call buttons across RTB + Assigned cards, correct job label + number in the modal.
 
-
 ## Latest Updates (v2.1005)
 
 ### Modal sweep, part 2: field-facing job/dashboard dialogs fit phones (2026-07-24)
@@ -5222,7 +5238,6 @@ Step 7 of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_T
 
 ### People → Hours UI pass: dark-mode approved styling + Generate remaining confirm modal (2026-07-20)
 Two small People → Hours UI fixes. **(1) Dark-mode approved styling**: the day-audit modal's per-session status pill ([`PeopleHoursDayAuditModal.tsx`](../src/components/PeopleHoursDayAuditModal.tsx)) hardcoded the *light-theme token values* as literals for the Approved branch — `background: '#f0fdf4'` and `color: '#166534'` are exactly light `--bg-green-tint` / `--text-green-800` — so in dark mode approved rows showed a glaring near-white chip while the Pending chip (already tokenized) themed correctly. Now `var(--bg-green-tint)` / `var(--text-green-800)`; the Open branch's raw neutral border `#6b7280` becomes `var(--border-strong)` (the saturated status borders `#16a34a`/`#d97706` stay literal per convention). Same-class one-token contrast fixes: the audit modal's Approve button text `#15803d` → `var(--text-green-800)`, and the Pending Sessions table Approve button text `#16a34a` → `var(--text-green-800)` ([`PeopleHoursSessions.tsx`](../src/components/people/PeopleHoursSessions.tsx)). Note: the raw `#6b7280` escaped `theme-tokenize --check`, likely because it sits inside a template-literal border string — checker gap tracked separately. **(2) Draft Payroll "Generate remaining" confirm modal**: `bulkGenerateMissingPayStubsInModal` in [`People.tsx`](../src/pages/People.tsx) replaced its `window.confirm` with an in-app nested modal in the exact `payStubDeleteConfirm` idiom (owned by People.tsx, `zIndex: Z_PEOPLE_PAY_MODAL_NESTED` (1200) above the Draft Payroll modal's 1100, `role="dialog"` + `aria-modal` + `aria-labelledby`). The handler now snapshots `{ start, end, candidates }` into new `bulkGenerateConfirm` state (same freeze semantics as the old browser confirm) and the loop moved verbatim to `runBulkGeneratePayStubs(candidates)`, fired from the modal's blue primary `Generate N report(s)` button after closing; Cancel is a no-op. Copy preserved: `Generate N pay report(s) for {start} through {end}?` + muted `People who already have a report for this period are skipped.` The zero-candidates path still short-circuits to the info toast without opening the modal, and the existing `bulkGenerating` flag keeps the trigger disabled during a run. Client-only; no DB / types / RPC changes. Verified: `npx tsc --noEmit` clean; zero new lints on touched files. Files: modified [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/PeopleHoursDayAuditModal.tsx`](../src/components/PeopleHoursDayAuditModal.tsx), [`src/components/people/PeopleHoursSessions.tsx`](../src/components/people/PeopleHoursSessions.tsx).
-
 
 ## Latest Updates (v2.826)
 
@@ -16382,59 +16397,6 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ---
 
-## Latest Updates (v2.108)
-
-**Date**: 2026-04-15
-
-### Jobs – Stages Tab: Ham Mode Date Buttons, Stage Notes, Job Name Wrap, View Reports Modal
-
-- **Ham mode -1 / +1 buttons**: When Ham mode is ON (dev/assistant only), -1 and +1 buttons appear below the T-2 (tue) last bill date display. Clicking adjusts the job's `last_bill_date` by one day without opening Edit Job. If no date exists, +1 sets tomorrow, -1 sets yesterday.
-- **Stage Notes**: Input changed to textarea for text wrapping; no placeholder when empty; transparent background; maxWidth removed, column minWidth 200 so the box expands to fill available space.
-- **Job name wrap at comma**: When a job name contains a comma (e.g. "Smith Residence, Phase 2"), the text after the comma displays on a second line in gray, matching the address display pattern.
-- **View Reports modal**: Escape and Spacebar close the full-screen modal. If a nested modal (viewing a report or adding an additional report) is open, that closes first. Spacebar is ignored when focus is in an input or textarea.
-
-**Files**: `src/pages/Jobs.tsx`, `src/components/JobReportsModal.tsx`
-
----
-
-## Latest Updates (v2.109)
-
-**Date**: 2026-04-16
-
-### Checklist – Item Links
-
-- **`links` column**: Added `links text[] DEFAULT '{}'` to `checklist_items`. Placeholders `[1]`, `[2]`, etc. in the title map to `links[0]`, `links[1]`, etc.
-- **Add/Edit modal**: Links section with `[1]`, `[2]`, URL inputs, `[+ add]`, and insert-at-cursor buttons to insert placeholders into the title.
-- **`ChecklistTitleWithLinks` component**: Renders checklist item titles with `[1]`, `[2]`, etc. as clickable links (opens in new tab).
-- **Dashboard, Checklist, People**: Fetch `checklist_items(title, links)` and use `ChecklistTitleWithLinks` for display.
-- **Migration**: `20260415120003_add_checklist_item_links.sql`
-
-### Per-Task Mute Preferences
-
-- **`user_checklist_item_mute_preferences` table**: Per-task mute (user_id, checklist_item_id, muted_until). Users mute completed-task push notifications for specific checklist items.
-- **Inline bell-off icon**: Checklist Today, Manage, Dashboard show mute icon for notification recipients (notify_on_complete_user_id or creator when notify_creator_on_complete). Click opens `ChecklistItemMuteModal` with Turn on / 1 week / 1 month / Forever.
-- **Settings "Muted Tasks" list**: Shows per-task mutes with Unmute/Change; replaces global mute modal.
-- **`send-checklist-notification` Edge Function**: Parses checklist_instance_id from tag, gets checklist_item_id; queries `user_checklist_item_mute_preferences` for (recipient, checklist_item_id) where muted_until > now; skips sending if match found (returns success with `push_sent: 0`).
-- **Migrations**: `20260417120000_create_user_checklist_item_mute_preferences.sql`, `20260417120001_drop_user_completed_task_mute_preferences.sql`
-
----
-
-## Latest Updates (v2.119)
-
-**Date**: 2026-04-23
-
-### Bids – Team Labor (clocked) in Cost Breakdown
-
-- **people_crew_bids table**: Mirrors `people_crew_jobs` for bids; stores `bid_assignments` JSONB `[{ bid_id, pct }]` per person per work date.
-- **Sync from clock**: When a clock session with `bid_id` is approved, `approve_clock_sessions` calls `sync_crew_bids_from_clock`; when revoked, `revoke_clock_sessions` recomputes or removes the row.
-- **Bids Pricing cost breakdown**: When viewing a bid's Cost Model, "Team Labor (clocked)" line shows the cost of hours clocked to that bid; included in total cost.
-- **loadTeamLaborDataForBids**: Fetches `people_crew_bids`, `people_hours`, `people_pay_config`; uses `get_bids_by_ids` RPC to resolve bid details; powers the display.
-- **Cascade person name**: `people_crew_bids` updated when person names change (same as `people_crew_jobs`).
-
-**Files**: `supabase/migrations/20260423120000_people_crew_bids.sql`, `src/utils/teamLabor.ts`, `src/pages/Bids.tsx`, `src/lib/cascadePersonName.ts`
-
----
-
 ## Latest Updates (v2.120)
 
 **Date**: 2026-03-22
@@ -16455,6 +16417,22 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **Crew Jobs / Bids labeling**: Section headers and nav buttons updated from "Crew Jobs" to "Crew Jobs / Bids" in Quickfill and Jobs Team Labor tab. Assignments column supports both jobs and bids; Add job or bid modal searches both.
 
 **Files**: `src/pages/People.tsx`, `src/components/CrewJobsBlock.tsx`, `src/pages/Quickfill.tsx`, `src/components/quickfill/HoursSection.tsx`
+
+---
+
+## Latest Updates (v2.119)
+
+**Date**: 2026-04-23
+
+### Bids – Team Labor (clocked) in Cost Breakdown
+
+- **people_crew_bids table**: Mirrors `people_crew_jobs` for bids; stores `bid_assignments` JSONB `[{ bid_id, pct }]` per person per work date.
+- **Sync from clock**: When a clock session with `bid_id` is approved, `approve_clock_sessions` calls `sync_crew_bids_from_clock`; when revoked, `revoke_clock_sessions` recomputes or removes the row.
+- **Bids Pricing cost breakdown**: When viewing a bid's Cost Model, "Team Labor (clocked)" line shows the cost of hours clocked to that bid; included in total cost.
+- **loadTeamLaborDataForBids**: Fetches `people_crew_bids`, `people_hours`, `people_pay_config`; uses `get_bids_by_ids` RPC to resolve bid details; powers the display.
+- **Cascade person name**: `people_crew_bids` updated when person names change (same as `people_crew_jobs`).
+
+**Files**: `supabase/migrations/20260423120000_people_crew_bids.sql`, `src/utils/teamLabor.ts`, `src/pages/Bids.tsx`, `src/lib/cascadePersonName.ts`
 
 ---
 
@@ -16640,17 +16618,40 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 ---
 
-## Latest Updates (v2.106)
+## Latest Updates (v2.109)
 
-**Date**: 2026-03-15
+**Date**: 2026-04-16
 
-### Dev Login (Testing Without Credentials)
+### Checklist – Item Links
 
-- **`/dev-login` route**: Sign in as any user by email when running the dev server. No password required. Enables AI agents and automated tests to authenticate for checklist testing, E2E, etc.
-- **Flow**: Frontend calls `dev-login` Edge Function with email + shared secret; function returns magic link; browser redirects; user lands authenticated.
-- **Security**: Only active when `import.meta.env.DEV` is true. Requires `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for the Edge Function. Production builds redirect to sign-in.
-- **Usage**: Open `http://localhost:5175/dev-login?as=user@example.com` or use the form at `/dev-login`. The email must exist in `auth.users`; use an existing user email for testing.
-- **Docs**: `EDGE_FUNCTIONS.md` → dev-login; `AGENTS.md` and `AI_CONTEXT.md` → "Testing without credentials" in Where to Look For.
+- **`links` column**: Added `links text[] DEFAULT '{}'` to `checklist_items`. Placeholders `[1]`, `[2]`, etc. in the title map to `links[0]`, `links[1]`, etc.
+- **Add/Edit modal**: Links section with `[1]`, `[2]`, URL inputs, `[+ add]`, and insert-at-cursor buttons to insert placeholders into the title.
+- **`ChecklistTitleWithLinks` component**: Renders checklist item titles with `[1]`, `[2]`, etc. as clickable links (opens in new tab).
+- **Dashboard, Checklist, People**: Fetch `checklist_items(title, links)` and use `ChecklistTitleWithLinks` for display.
+- **Migration**: `20260415120003_add_checklist_item_links.sql`
+
+### Per-Task Mute Preferences
+
+- **`user_checklist_item_mute_preferences` table**: Per-task mute (user_id, checklist_item_id, muted_until). Users mute completed-task push notifications for specific checklist items.
+- **Inline bell-off icon**: Checklist Today, Manage, Dashboard show mute icon for notification recipients (notify_on_complete_user_id or creator when notify_creator_on_complete). Click opens `ChecklistItemMuteModal` with Turn on / 1 week / 1 month / Forever.
+- **Settings "Muted Tasks" list**: Shows per-task mutes with Unmute/Change; replaces global mute modal.
+- **`send-checklist-notification` Edge Function**: Parses checklist_instance_id from tag, gets checklist_item_id; queries `user_checklist_item_mute_preferences` for (recipient, checklist_item_id) where muted_until > now; skips sending if match found (returns success with `push_sent: 0`).
+- **Migrations**: `20260417120000_create_user_checklist_item_mute_preferences.sql`, `20260417120001_drop_user_completed_task_mute_preferences.sql`
+
+---
+
+## Latest Updates (v2.108)
+
+**Date**: 2026-04-15
+
+### Jobs – Stages Tab: Ham Mode Date Buttons, Stage Notes, Job Name Wrap, View Reports Modal
+
+- **Ham mode -1 / +1 buttons**: When Ham mode is ON (dev/assistant only), -1 and +1 buttons appear below the T-2 (tue) last bill date display. Clicking adjusts the job's `last_bill_date` by one day without opening Edit Job. If no date exists, +1 sets tomorrow, -1 sets yesterday.
+- **Stage Notes**: Input changed to textarea for text wrapping; no placeholder when empty; transparent background; maxWidth removed, column minWidth 200 so the box expands to fill available space.
+- **Job name wrap at comma**: When a job name contains a comma (e.g. "Smith Residence, Phase 2"), the text after the comma displays on a second line in gray, matching the address display pattern.
+- **View Reports modal**: Escape and Spacebar close the full-screen modal. If a nested modal (viewing a report or adding an additional report) is open, that closes first. Spacebar is ignored when focus is in an input or textarea.
+
+**Files**: `src/pages/Jobs.tsx`, `src/components/JobReportsModal.tsx`
 
 ---
 
@@ -16666,6 +16667,20 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 - **FWD and Reschedule flows**: Updated to use junction tables; FWD modal assigns to one user; Manage tab shows comma-separated assignees.
 - **`send-scheduled-reminders` Edge Function**: Uses `checklist_instance_assignees` for assignee lookup.
 - **Migrations**: `20260415120004_create_checklist_item_assignees`, `20260415120001_create_checklist_instance_assignees`, `20260415120002_drop_checklist_assigned_to_user_id`.
+
+---
+
+## Latest Updates (v2.106)
+
+**Date**: 2026-03-15
+
+### Dev Login (Testing Without Credentials)
+
+- **`/dev-login` route**: Sign in as any user by email when running the dev server. No password required. Enables AI agents and automated tests to authenticate for checklist testing, E2E, etc.
+- **Flow**: Frontend calls `dev-login` Edge Function with email + shared secret; function returns magic link; browser redirects; user lands authenticated.
+- **Security**: Only active when `import.meta.env.DEV` is true. Requires `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for the Edge Function. Production builds redirect to sign-in.
+- **Usage**: Open `http://localhost:5175/dev-login?as=user@example.com` or use the form at `/dev-login`. The email must exist in `auth.users`; use an existing user email for testing.
+- **Docs**: `EDGE_FUNCTIONS.md` → dev-login; `AGENTS.md` and `AI_CONTEXT.md` → "Testing without credentials" in Where to Look For.
 
 ---
 
@@ -16902,59 +16917,6 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 ---
 
-## Latest Updates (v2.86)
-
-**Date**: 2026-03-09
-
-### People – Review Tab
-
-- **Profit Before Overhead**: Renamed "Total Revenue Before Overhead" to "Profit Before Overhead".
-- **Users Contribution to Profit**: Renamed "Users Contribution to Revenue" to "Users Contribution to Profit".
-- **Users Profit this Day**: Renamed "Users Revenue this Day" to "Users Profit this Day".
-- **Formula B for Profit**: Profit Before Overhead now uses `valueCreated - partsCost - totalJobLabor` (direct formula) instead of the proportional scaling formula.
-- **Sub labor in crew-only jobs**: Fixed allocationJobsMap crew-only branch to include sub labor (`laborCostByHcp`) so Profit Before Overhead correctly subtracts Parts and Subs for all jobs.
-- **Team Labor excludes Subs**: "Total Labor on Job" now shows team labor only (`otherTeammatesLabor + userTotalLaborOnJob`). Subs remain displayed separately under "Subs:" and are still subtracted in the Profit formula.
-
-### Jobs – Job Summary Tab
-
-- **Parts Cost from Total Parts Cost**: Job Summary Parts Cost now matches Total Parts Cost in Jobs Parts tab: Parts from Tally (including `fixture_cost` for fixture-only parts) + Invoices from Supply Houses.
-
-### People – Review Tab (Parts Cost)
-
-- **Parts Cost from Total Parts Cost**: People Review job dropdown "Parts:" now matches Total Parts Cost: Parts from Tally + Invoices from Supply Houses. Uses `get_invoice_amounts_for_jobs` RPC and `fixture_cost` for `part_id == null` tally parts.
-
-### People – Team Costs Tab
-
-- **Crew Jobs Hours column**: Added "Hours" column between Name and Crew in the Crew Jobs table. Shows each person's reported hours from `people_hours` for the selected date. Displays "—" when no hours are logged for that date.
-
----
-
-## Latest Updates (v2.87)
-
-**Date**: 2026-03-09
-
-### Timezone Fix Across App
-
-- **Local date formatting**: Replaced `toISOString().slice(0, 10)` with `toLocaleDateString('en-CA')` for user-facing dates across the app. Fixes timezone bugs where late-evening users (e.g. CST) saw wrong dates (e.g. Crew Jobs showing today instead of yesterday).
-- **Files updated**: People.tsx, Jobs.tsx, Checklist.tsx, Prospects.tsx, Materials.tsx, Bids.tsx, SupplyHousesSection, ChecklistItemEditModal, HoursUnassignedModal, HoursSection, useCostMatrixTotal, CrewJobsSection. Settings backup filenames remain UTC.
-
-### People Page
-
-- **Mobile tabs**: Tabs now scroll horizontally on narrow screens (overflowX: auto, WebkitOverflowScrolling: touch). Matches Jobs page pattern.
-- **Team Costs – Crew Jobs**: Removed thin grey border between header and content.
-
-### Jobs Page
-
-- **Search bars**: Added search to Team Labor, Sub Labor, and Jobs Summary tabs. Filter by HCP, job name, address (and contractor for Sub Labor).
-- **Team Labor**: Removed "Combined Job Labor" title; search bar full width.
-- **Job Summary**: Search bar full width.
-
-### People – Review Tab
-
-- **Last Month = last 30 days**: "Last Month" period now uses a rolling 30-day window (today minus 30 days through today) instead of the previous calendar month.
-
----
-
 ## Latest Updates (v2.93)
 
 **Date**: 2026-04-10
@@ -17044,6 +17006,59 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 - **Sub Labor source label**: Jobs from the Sub Labor tab (Jobs page) now display "Sub Labor" in the Source column instead of "Labor".
 - **Rest of Teams Labor**: Renamed "Teams Labor" to "Rest of Teams Labor" in expanded job details.
 - **User on Job Rev/hr and Profit/hr**: Renamed "Rev/hr" and "Profit/hr" to "User on Job Rev/hr" and "User on Job Profit/hr" in the Jobs Worked table and expanded details to clarify these are per-person, per-job metrics.
+
+---
+
+## Latest Updates (v2.87)
+
+**Date**: 2026-03-09
+
+### Timezone Fix Across App
+
+- **Local date formatting**: Replaced `toISOString().slice(0, 10)` with `toLocaleDateString('en-CA')` for user-facing dates across the app. Fixes timezone bugs where late-evening users (e.g. CST) saw wrong dates (e.g. Crew Jobs showing today instead of yesterday).
+- **Files updated**: People.tsx, Jobs.tsx, Checklist.tsx, Prospects.tsx, Materials.tsx, Bids.tsx, SupplyHousesSection, ChecklistItemEditModal, HoursUnassignedModal, HoursSection, useCostMatrixTotal, CrewJobsSection. Settings backup filenames remain UTC.
+
+### People Page
+
+- **Mobile tabs**: Tabs now scroll horizontally on narrow screens (overflowX: auto, WebkitOverflowScrolling: touch). Matches Jobs page pattern.
+- **Team Costs – Crew Jobs**: Removed thin grey border between header and content.
+
+### Jobs Page
+
+- **Search bars**: Added search to Team Labor, Sub Labor, and Jobs Summary tabs. Filter by HCP, job name, address (and contractor for Sub Labor).
+- **Team Labor**: Removed "Combined Job Labor" title; search bar full width.
+- **Job Summary**: Search bar full width.
+
+### People – Review Tab
+
+- **Last Month = last 30 days**: "Last Month" period now uses a rolling 30-day window (today minus 30 days through today) instead of the previous calendar month.
+
+---
+
+## Latest Updates (v2.86)
+
+**Date**: 2026-03-09
+
+### People – Review Tab
+
+- **Profit Before Overhead**: Renamed "Total Revenue Before Overhead" to "Profit Before Overhead".
+- **Users Contribution to Profit**: Renamed "Users Contribution to Revenue" to "Users Contribution to Profit".
+- **Users Profit this Day**: Renamed "Users Revenue this Day" to "Users Profit this Day".
+- **Formula B for Profit**: Profit Before Overhead now uses `valueCreated - partsCost - totalJobLabor` (direct formula) instead of the proportional scaling formula.
+- **Sub labor in crew-only jobs**: Fixed allocationJobsMap crew-only branch to include sub labor (`laborCostByHcp`) so Profit Before Overhead correctly subtracts Parts and Subs for all jobs.
+- **Team Labor excludes Subs**: "Total Labor on Job" now shows team labor only (`otherTeammatesLabor + userTotalLaborOnJob`). Subs remain displayed separately under "Subs:" and are still subtracted in the Profit formula.
+
+### Jobs – Job Summary Tab
+
+- **Parts Cost from Total Parts Cost**: Job Summary Parts Cost now matches Total Parts Cost in Jobs Parts tab: Parts from Tally (including `fixture_cost` for fixture-only parts) + Invoices from Supply Houses.
+
+### People – Review Tab (Parts Cost)
+
+- **Parts Cost from Total Parts Cost**: People Review job dropdown "Parts:" now matches Total Parts Cost: Parts from Tally + Invoices from Supply Houses. Uses `get_invoice_amounts_for_jobs` RPC and `fixture_cost` for `part_id == null` tally parts.
+
+### People – Team Costs Tab
+
+- **Crew Jobs Hours column**: Added "Hours" column between Name and Crew in the Crew Jobs table. Shows each person's reported hours from `people_hours` for the selected date. Displays "—" when no hours are logged for that date.
 
 ---
 
@@ -17754,6 +17769,23 @@ Workflow stage card UI improvements: collapsible sections for Notify, Notes, Pri
 
 ---
 
+## Latest Updates (v2.58)
+
+### Subcontractor Job Tally Submit for Review RLS fix
+
+**Date**: 2026-02-22
+
+**Overview**:
+Subcontractors (e.g. Abraham) could not submit for review in Job Tally; they saw "new row violates row-level security policy for table jobs_tally_parts". The jobs_tally_parts INSERT policy for subcontractors checks team membership via `jobs_ledger_team_members`, but subcontractors had no SELECT policy on that table, so the subquery returned no rows and the INSERT failed.
+
+**Fix**:
+- Add policy "Subcontractors can read own jobs ledger team member rows" on jobs_ledger_team_members: subcontractors can SELECT rows where user_id = auth.uid()
+- Allows subs to verify they are on a job's team without exposing other team members
+
+**Files**: `supabase/migrations/20260228100000_subcontractors_read_jobs_ledger_team_members.sql`
+
+---
+
 ## Latest Updates (v2.57)
 
 ### Dashboard reports modal, icons, hide, delete dev-only
@@ -17783,23 +17815,6 @@ Dashboard Recent Reports: click to view in modal, envelope icon on unread, hide 
 **Files**: `src/pages/Dashboard.tsx`, `src/components/ReportViewModal.tsx`, `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`, `src/App.tsx`, `src/contexts/ToastContext.tsx`
 
 **Migrations**: `20260225000000_primary_jobs_tally_parts.sql`, `20260225000001_reports_to_realtime.sql`, `20260226000000_reports_delete_dev_only.sql`
-
----
-
-## Latest Updates (v2.58)
-
-### Subcontractor Job Tally Submit for Review RLS fix
-
-**Date**: 2026-02-22
-
-**Overview**:
-Subcontractors (e.g. Abraham) could not submit for review in Job Tally; they saw "new row violates row-level security policy for table jobs_tally_parts". The jobs_tally_parts INSERT policy for subcontractors checks team membership via `jobs_ledger_team_members`, but subcontractors had no SELECT policy on that table, so the subquery returned no rows and the INSERT failed.
-
-**Fix**:
-- Add policy "Subcontractors can read own jobs ledger team member rows" on jobs_ledger_team_members: subcontractors can SELECT rows where user_id = auth.uid()
-- Allows subs to verify they are on a job's team without exposing other team members
-
-**Files**: `supabase/migrations/20260228100000_subcontractors_read_jobs_ledger_team_members.sql`
 
 ---
 
@@ -18461,6 +18476,233 @@ The "Include in combined document" checkbox for Design Drawings Plan Date is now
 
 ---
 
+## Latest Updates (v2.36)
+
+**Date**: February 13, 2026
+
+### Assembly Types System
+
+Added comprehensive assembly type categorization system for material assemblies/templates.
+
+**Database Changes**:
+- Created `assembly_types` table with service-type-specific categorization
+- Structure mirrors `part_types`: `id`, `service_type_id`, `name`, `category`, `sequence_order`
+- Added `assembly_type_id` column to `material_templates` (nullable, ON DELETE SET NULL)
+- Unique constraint on `(service_type_id, name)` per assembly type
+- RLS policies for authenticated viewing and authorized management
+- Seeded initial assembly types for Plumbing: Bathroom, Kitchen, Utility, Commercial, Residential, Other
+
+**Settings Page Enhancements**:
+- Added "Material Assembly Types" section (dev-only)
+- Service type selector for managing types per service
+- CRUD operations: Create, Edit, Delete, Reorder (up/down arrows)
+- Assembly count badges showing usage per type
+- "Remove All Unused Assembly Types" bulk action
+- Form modal for adding/editing assembly types
+
+**Materials Page Enhancements**:
+- Assembly type filter dropdown in Assemblies section
+- Search now includes assembly type names
+- Assembly type field in Add/Edit Assembly modal
+- Templates can be categorized and filtered by type
+
+### Assembly Book Tab
+
+Added new dedicated "Assembly Book" tab in Materials for focused assembly management.
+
+**Tab Navigation**:
+- New tab positioned between "Price Book" and "Assemblies & Purchase Orders"
+- Clear separation: Assembly Book for building/checking assemblies, Assemblies & POs for creating purchase orders
+
+**Assembly List View**:
+- Filter by assembly type dropdown
+- Search by name, description, or type
+- Each assembly card displays:
+  - Assembly name and description
+  - Assembly type badge (blue)
+  - Pricing status badge:
+    - Green "All Priced" - All parts have prices
+    - Yellow "X Missing" - Some parts missing prices
+    - Red "No Prices" - No parts have prices
+    - Gray "Empty" - No parts in assembly
+  - Part count and nested assembly count
+  - Total estimated cost
+  - Edit button
+- Click assembly to view details
+
+**Assembly Details Panel**:
+- Appears on right when assembly selected
+- Assembly name, description, and type displayed at top
+
+**Parts Section**:
+- Lists all parts in assembly with:
+  - Part name, manufacturer, and part type
+  - Quantity in assembly with inline edit capability
+  - Current price (lowest available from all supply houses)
+  - Line total (quantity × price)
+  - Price per unit
+- Click any part to expand details showing:
+  - Quantity editor: View and edit quantity in assembly
+  - All prices at different supply houses (sorted low to high)
+  - "LOWEST" badge on cheapest option
+  - "Edit Prices" button (green) - Opens price management
+  - "Edit Part" button (blue) - Opens part editor
+- Missing price warnings highlighted in red
+
+**Nested Assemblies Section**:
+- Lists nested assemblies with:
+  - Assembly name
+  - Quantity
+  - Recursive part counts
+  - Calculated cost (includes all nested parts)
+- Blue background to distinguish from direct parts
+
+**Cost Summary**:
+- Direct parts subtotal
+- Nested assemblies subtotal (if any)
+- Grand total estimated cost (green, bold)
+- Warning badge if any prices missing
+
+**Cost Calculation**:
+- Recursive calculation through nested assemblies
+- Uses lowest available price per part
+- Accounts for quantities at all levels
+- Prevents infinite recursion with visited tracking
+
+**Quick Actions**:
+- "View Price Book" button to jump to pricing tab
+
+---
+
+## Latest Updates (v2.35)
+
+### Service-Type-Specific Book Systems
+
+**Date**: 2026-02-10
+
+**Overview**:
+Made price books, labor books, and takeoff books service-type-specific so each trade (Plumbing, Electrical, HVAC) has completely separate book libraries.
+
+**Features**:
+- Each service type now has its own isolated set of books
+- Switching service types shows only that type's books
+- Creating new book versions automatically tags them with the current service type
+- All existing books (4 price books, 1 labor book, 1 takeoff book) migrated to Plumbing
+- Electrical and HVAC start with empty book lists for clean setup
+
+**Database Changes**:
+- Added `service_type_id` (UUID, NOT NULL, FK to service_types) to:
+  - `price_book_versions`
+  - `labor_book_versions`
+  - `takeoff_book_versions`
+- All existing books automatically assigned to Plumbing service type
+- Foreign key with CASCADE for data integrity
+- Indexes added for performance
+
+**Frontend Changes**:
+- Load functions filter by `selectedServiceTypeId`:
+  - `loadPriceBookVersions()`
+  - `loadLaborBookVersions()`
+  - `loadTakeoffBookVersions()`
+- Create functions include `service_type_id` in INSERT
+- Books automatically reload when switching service types
+- Empty states for Electrical/HVAC until books are created
+
+**Files Modified**:
+- `src/pages/Bids.tsx` - Book filtering, creation, and reload logic
+- `src/types/database.ts` - Type regeneration with service_type_id
+
+**Migration File**:
+- `supabase/migrations/20260210_add_service_type_to_book_versions.sql`
+
+### Service-Type-Specific Google Docs Templates
+
+**Date**: 2026-02-10
+
+**Overview**:
+Cover Letter "Open in Google Docs" button now uses different proposal templates based on the bid's service type.
+
+**Features**:
+- Electrical bids open Electrical proposal template
+- Plumbing bids open Plumbing proposal template
+- HVAC bids open Plumbing template (until HVAC template available)
+- Document title format: `ClickProposal_YYMMDD_ProjectName`
+
+**Template URLs**:
+- Plumbing: `1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8`
+- Electrical: `1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips`
+- HVAC: Uses Plumbing template (TODO: update when available)
+
+**Implementation**:
+- Dynamically selects template ID based on `bid.service_type_id`
+- Looks up service type name from `serviceTypes` state
+- Falls back to Plumbing template if service type not found
+
+**Files Modified**:
+- `src/pages/Bids.tsx` - Google Docs URL generation (line ~7702)
+
+### Assistant Access to Estimators
+
+**Date**: 2026-02-10
+
+**Overview**:
+Added RLS policy allowing assistants to see estimator users in the Bids estimator and account manager dropdowns.
+
+**Problem Fixed**:
+- Previously, assistants couldn't see estimator users (like "Bryan")
+- RLS policies only allowed viewing own user, assistants, and adopted masters
+- Estimators were blocked from all user queries
+
+**Solution**:
+- Added new RLS policy: "Users can see all estimators"
+- Allows any authenticated user to SELECT users where `role = 'estimator'`
+- Follows same pattern as existing "Masters and devs can see all assistants" policy
+
+**Database Changes**:
+- New RLS policy on `public.users` table
+- Read-only access (SELECT only)
+- Authenticated users only
+
+**Impact**:
+- Assistants can now see and assign estimators to bids
+- Estimators visible in both "Estimator" and "Account Man" dropdowns
+- Enables proper bid assignment workflow for all user roles
+
+**Migration File**:
+- `supabase/migrations/20260210_allow_users_to_see_estimators.sql`
+
+### Bug Fixes
+
+**Materials Service Type Switching**:
+- Fixed race condition where switching service types would show parts from the previous type
+- Root cause: `loadParts()` and `loadAllParts()` captured stale `selectedServiceTypeId` from closure
+- Solution: Pass service type ID as explicit parameter to avoid closure capture
+- Now correctly filters parts immediately when switching between Plumbing/Electrical/HVAC
+
+**Bids Count Rows Invalid Join**:
+- Fixed 5 queries attempting to join `bids_count_rows` with `fixture_types`
+- These joins were invalid after reverting count rows to free text
+- Removed `fixture_types(name)` joins from count row queries
+- Affected: Counts tab, Takeoff tab, Cost Estimate tab, Pricing tab, Submission & Followup
+
+**Price Book Entries Invalid Column**:
+- Fixed queries attempting to order by non-existent `fixture_name` column
+- `price_book_entries` now use `fixture_type_id` FK (no text column)
+- Removed invalid `.order('fixture_name')` clauses
+- Now orders only by `sequence_order`
+
+**Part Type Update Refresh**:
+- Fixed issue where updating a part's part type didn't show immediately
+- PartFormModal now includes `part_types(*)` join when fetching updated part
+- UI updates immediately without requiring page refresh
+
+**Files Modified**:
+- `src/pages/Materials.tsx` - Service type switching fix
+- `src/pages/Bids.tsx` - Count row joins, price book ordering
+- `src/components/PartFormModal.tsx` - Part type join on update
+
+---
+
 ## Latest Updates (v2.34)
 
 ### Duplicate Materials Page Enhancements
@@ -18860,233 +19102,6 @@ Updated Fixture Types description to reflect:
 - Flexible pricing for flat-rate vs per-unit items
 - Better cost visibility in reports
 - More accurate revenue calculations
-
----
-
-## Latest Updates (v2.36)
-
-**Date**: February 13, 2026
-
-### Assembly Types System
-
-Added comprehensive assembly type categorization system for material assemblies/templates.
-
-**Database Changes**:
-- Created `assembly_types` table with service-type-specific categorization
-- Structure mirrors `part_types`: `id`, `service_type_id`, `name`, `category`, `sequence_order`
-- Added `assembly_type_id` column to `material_templates` (nullable, ON DELETE SET NULL)
-- Unique constraint on `(service_type_id, name)` per assembly type
-- RLS policies for authenticated viewing and authorized management
-- Seeded initial assembly types for Plumbing: Bathroom, Kitchen, Utility, Commercial, Residential, Other
-
-**Settings Page Enhancements**:
-- Added "Material Assembly Types" section (dev-only)
-- Service type selector for managing types per service
-- CRUD operations: Create, Edit, Delete, Reorder (up/down arrows)
-- Assembly count badges showing usage per type
-- "Remove All Unused Assembly Types" bulk action
-- Form modal for adding/editing assembly types
-
-**Materials Page Enhancements**:
-- Assembly type filter dropdown in Assemblies section
-- Search now includes assembly type names
-- Assembly type field in Add/Edit Assembly modal
-- Templates can be categorized and filtered by type
-
-### Assembly Book Tab
-
-Added new dedicated "Assembly Book" tab in Materials for focused assembly management.
-
-**Tab Navigation**:
-- New tab positioned between "Price Book" and "Assemblies & Purchase Orders"
-- Clear separation: Assembly Book for building/checking assemblies, Assemblies & POs for creating purchase orders
-
-**Assembly List View**:
-- Filter by assembly type dropdown
-- Search by name, description, or type
-- Each assembly card displays:
-  - Assembly name and description
-  - Assembly type badge (blue)
-  - Pricing status badge:
-    - Green "All Priced" - All parts have prices
-    - Yellow "X Missing" - Some parts missing prices
-    - Red "No Prices" - No parts have prices
-    - Gray "Empty" - No parts in assembly
-  - Part count and nested assembly count
-  - Total estimated cost
-  - Edit button
-- Click assembly to view details
-
-**Assembly Details Panel**:
-- Appears on right when assembly selected
-- Assembly name, description, and type displayed at top
-
-**Parts Section**:
-- Lists all parts in assembly with:
-  - Part name, manufacturer, and part type
-  - Quantity in assembly with inline edit capability
-  - Current price (lowest available from all supply houses)
-  - Line total (quantity × price)
-  - Price per unit
-- Click any part to expand details showing:
-  - Quantity editor: View and edit quantity in assembly
-  - All prices at different supply houses (sorted low to high)
-  - "LOWEST" badge on cheapest option
-  - "Edit Prices" button (green) - Opens price management
-  - "Edit Part" button (blue) - Opens part editor
-- Missing price warnings highlighted in red
-
-**Nested Assemblies Section**:
-- Lists nested assemblies with:
-  - Assembly name
-  - Quantity
-  - Recursive part counts
-  - Calculated cost (includes all nested parts)
-- Blue background to distinguish from direct parts
-
-**Cost Summary**:
-- Direct parts subtotal
-- Nested assemblies subtotal (if any)
-- Grand total estimated cost (green, bold)
-- Warning badge if any prices missing
-
-**Cost Calculation**:
-- Recursive calculation through nested assemblies
-- Uses lowest available price per part
-- Accounts for quantities at all levels
-- Prevents infinite recursion with visited tracking
-
-**Quick Actions**:
-- "View Price Book" button to jump to pricing tab
-
----
-
-## Latest Updates (v2.35)
-
-### Service-Type-Specific Book Systems
-
-**Date**: 2026-02-10
-
-**Overview**:
-Made price books, labor books, and takeoff books service-type-specific so each trade (Plumbing, Electrical, HVAC) has completely separate book libraries.
-
-**Features**:
-- Each service type now has its own isolated set of books
-- Switching service types shows only that type's books
-- Creating new book versions automatically tags them with the current service type
-- All existing books (4 price books, 1 labor book, 1 takeoff book) migrated to Plumbing
-- Electrical and HVAC start with empty book lists for clean setup
-
-**Database Changes**:
-- Added `service_type_id` (UUID, NOT NULL, FK to service_types) to:
-  - `price_book_versions`
-  - `labor_book_versions`
-  - `takeoff_book_versions`
-- All existing books automatically assigned to Plumbing service type
-- Foreign key with CASCADE for data integrity
-- Indexes added for performance
-
-**Frontend Changes**:
-- Load functions filter by `selectedServiceTypeId`:
-  - `loadPriceBookVersions()`
-  - `loadLaborBookVersions()`
-  - `loadTakeoffBookVersions()`
-- Create functions include `service_type_id` in INSERT
-- Books automatically reload when switching service types
-- Empty states for Electrical/HVAC until books are created
-
-**Files Modified**:
-- `src/pages/Bids.tsx` - Book filtering, creation, and reload logic
-- `src/types/database.ts` - Type regeneration with service_type_id
-
-**Migration File**:
-- `supabase/migrations/20260210_add_service_type_to_book_versions.sql`
-
-### Service-Type-Specific Google Docs Templates
-
-**Date**: 2026-02-10
-
-**Overview**:
-Cover Letter "Open in Google Docs" button now uses different proposal templates based on the bid's service type.
-
-**Features**:
-- Electrical bids open Electrical proposal template
-- Plumbing bids open Plumbing proposal template
-- HVAC bids open Plumbing template (until HVAC template available)
-- Document title format: `ClickProposal_YYMMDD_ProjectName`
-
-**Template URLs**:
-- Plumbing: `1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8`
-- Electrical: `1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips`
-- HVAC: Uses Plumbing template (TODO: update when available)
-
-**Implementation**:
-- Dynamically selects template ID based on `bid.service_type_id`
-- Looks up service type name from `serviceTypes` state
-- Falls back to Plumbing template if service type not found
-
-**Files Modified**:
-- `src/pages/Bids.tsx` - Google Docs URL generation (line ~7702)
-
-### Assistant Access to Estimators
-
-**Date**: 2026-02-10
-
-**Overview**:
-Added RLS policy allowing assistants to see estimator users in the Bids estimator and account manager dropdowns.
-
-**Problem Fixed**:
-- Previously, assistants couldn't see estimator users (like "Bryan")
-- RLS policies only allowed viewing own user, assistants, and adopted masters
-- Estimators were blocked from all user queries
-
-**Solution**:
-- Added new RLS policy: "Users can see all estimators"
-- Allows any authenticated user to SELECT users where `role = 'estimator'`
-- Follows same pattern as existing "Masters and devs can see all assistants" policy
-
-**Database Changes**:
-- New RLS policy on `public.users` table
-- Read-only access (SELECT only)
-- Authenticated users only
-
-**Impact**:
-- Assistants can now see and assign estimators to bids
-- Estimators visible in both "Estimator" and "Account Man" dropdowns
-- Enables proper bid assignment workflow for all user roles
-
-**Migration File**:
-- `supabase/migrations/20260210_allow_users_to_see_estimators.sql`
-
-### Bug Fixes
-
-**Materials Service Type Switching**:
-- Fixed race condition where switching service types would show parts from the previous type
-- Root cause: `loadParts()` and `loadAllParts()` captured stale `selectedServiceTypeId` from closure
-- Solution: Pass service type ID as explicit parameter to avoid closure capture
-- Now correctly filters parts immediately when switching between Plumbing/Electrical/HVAC
-
-**Bids Count Rows Invalid Join**:
-- Fixed 5 queries attempting to join `bids_count_rows` with `fixture_types`
-- These joins were invalid after reverting count rows to free text
-- Removed `fixture_types(name)` joins from count row queries
-- Affected: Counts tab, Takeoff tab, Cost Estimate tab, Pricing tab, Submission & Followup
-
-**Price Book Entries Invalid Column**:
-- Fixed queries attempting to order by non-existent `fixture_name` column
-- `price_book_entries` now use `fixture_type_id` FK (no text column)
-- Removed invalid `.order('fixture_name')` clauses
-- Now orders only by `sequence_order`
-
-**Part Type Update Refresh**:
-- Fixed issue where updating a part's part type didn't show immediately
-- PartFormModal now includes `part_types(*)` join when fetching updated part
-- UI updates immediately without requiring page refresh
-
-**Files Modified**:
-- `src/pages/Materials.tsx` - Service type switching fix
-- `src/pages/Bids.tsx` - Count row joins, price book ordering
-- `src/components/PartFormModal.tsx` - Part type join on update
 
 ---
 

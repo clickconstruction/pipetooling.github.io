@@ -32,6 +32,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1848',
+    date: '2026-08-19',
+    title: 'Change orders ask what the change includes',
+    kind: 'feature',
+    highlights: [
+      'Impact on cost now opens with "What does this change include?" and two buttons: + Added work and − Credit / removed work.',
+      'Each button opens a short form — name the work, note what\'s included, set quantity and price — with the math shown live: "= $2,840.00 added to contract" or "= −$390.00 credited back".',
+      'Credits label themselves "Credit — " automatically, and the catalog is still one tap away for repeat-priced work.',
+    ],
+  },
+  {
     version: 'v2.1847',
     date: '2026-08-19',
     title: 'One Bid window: flip between preview and edit',
@@ -9144,4 +9155,5 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'Team Prospects is organized into Screen → Interview → Hire sub-tabs.',
     ],
   },
+
 ]
