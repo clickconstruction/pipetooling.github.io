@@ -143,6 +143,14 @@ import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, resolvePendingNumberJump, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { paidSearchChipState } from '../../lib/jobs/paidSearchChip'
+import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
+import {
+  readStagesSectionOpenPrefs,
+  scopeForStagesSection,
+  writeStagesSectionOpenPrefs,
+  type StagesSectionOpenState,
+} from '../../lib/jobs/stagesSectionPrefs'
+import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -501,14 +509,33 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // "Follow cards I move": scroll to + flash a job row after a stage move (invoice-focus idiom).
   const [pendingStagesJobFocusId, setPendingStagesJobFocusId] = useState<string | null>(null)
   const [stagesJobFlashId, setStagesJobFlashId] = useState<string | null>(null)
-  const [stagesSectionOpen, setStagesSectionOpen] = useState({
-    waiting: false,
-    working: true,
-    readyToBill: true,
-    billed: true,
-    collections: true,
-    paid: false,
-  })
+  // v2.1824 (plan PR 3): per-device persistence — whatever you leave open is
+  // what next visit fetches. Fresh devices open Ready to Bill only.
+  const [stagesSectionOpen, setStagesSectionOpen] = useState<StagesSectionOpenState>(() => readStagesSectionOpenPrefs())
+  useEffect(() => {
+    writeStagesSectionOpenPrefs(stagesSectionOpen)
+  }, [stagesSectionOpen])
+  /**
+   * Scope machinery straight from the cache context (the page threads the
+   * pre-scope fields as props; the v2.1823 scope API is read here directly to
+   * spare a five-layer prop drill).
+   */
+  const {
+    mergedScopes: cacheMergedScopes,
+    scopeLoading: cacheScopeLoading,
+    fetchScopeIfNeeded: cacheFetchScopeIfNeeded,
+    headerStats: cacheHeaderStats,
+  } = useJobsListCache()
+  // Fetch-on-expand: any open section whose scope isn't merged kicks its fetch
+  // (idempotent; the context guards in-flight and merged states).
+  useEffect(() => {
+    if (!active) return
+    for (const section of Object.keys(stagesSectionOpen) as Array<keyof StagesSectionOpenState>) {
+      if (!stagesSectionOpen[section]) continue
+      void cacheFetchScopeIfNeeded(scopeForStagesSection(section), customerFilterForFetch)
+    }
+  }, [active, stagesSectionOpen, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
+
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
   const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
@@ -745,9 +772,30 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const stagesDevelopmentFilterOptions = useMemo(() => developmentFilterOptionsFromJobs(jobs), [jobs])
   /** Stages Account Man filter (v2.1477): '' = all, STAGES_ACCOUNT_MAN_FILTER_NONE = jobs without one, else user id. */
   const [stagesAccountManFilter, setStagesAccountManFilter] = useState('')
+
   const stagesAccountManFilterOptions = useMemo(() => accountManFilterOptionsFromJobs(jobs), [jobs])
   /** "Hide groups" exclusions (v2.1476): per-device; applied before the include filters and search. */
   const [stagesExcludeFilters, setStagesExcludeFiltersState] = useState<StagesExcludeFilters>(() => loadStagesExcludeFilters())
+  // Until plan PR 4's server search: any query, cross-section modal, or
+  // ACTIVE DISPLAY FILTER (GC / development / account-man / hidden groups)
+  // needs the whole non-paid board in memory — filters apply to loaded rows,
+  // so the collapsed-header stats (whole-section, unfiltered) would disagree
+  // with a filtered board. Loading everything restores row-derived headers.
+  const stagesNeedsAllScopesForModal =
+    weeklyMoneyModalOpen || weeklyMovementModalOpen || gcReviewModalOpen || billedTotalByNameModalOpen || bankPaymentsModalOpen || capableToBillModalOpen
+  const stagesHasActiveDisplayFilter =
+    countStagesExclusions(stagesExcludeFilters) > 0 ||
+    Boolean(stagesGcFilter) ||
+    Boolean(stagesDevelopmentFilter) ||
+    Boolean(stagesAccountManFilter)
+  useEffect(() => {
+    if (!active) return
+    if (!stagesSearchQuery.trim() && !stagesNeedsAllScopesForModal && !stagesHasActiveDisplayFilter) return
+    for (const scope of NON_PAID_SCOPES) {
+      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
+    }
+  }, [active, stagesSearchQuery, stagesNeedsAllScopesForModal, stagesHasActiveDisplayFilter, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
+
   const [stagesHideGroupsModalOpen, setStagesHideGroupsModalOpen] = useState(false)
   const setStagesExcludeFilters = useCallback((next: StagesExcludeFilters) => {
     setStagesExcludeFiltersState(next)
@@ -1030,7 +1078,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     return 'Accounts Receivable: apply bank deposits to billed lines (non-Stripe)'
   }, [authRole, bankPaymentsModalBilledRows.length, arBankTxUnallocatedCount])
 
-  const billedAgingBuckets = useMemo(() => buildBilledAgingBuckets(stagesFilteredJobs), [stagesFilteredJobs])
+  const billedAgingBuckets = useMemo(
+    () =>
+      cacheMergedScopes.has('billed_all')
+        ? buildBilledAgingBuckets(stagesFilteredJobs)
+        : (cacheHeaderStats?.billedAging ?? { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 }),
+    [stagesFilteredJobs, cacheMergedScopes, cacheHeaderStats],
+  )
 
   /** Debounce: stagesFilteredJobs changes every Stages search keystroke; avoids overlapping multi-chunk RPC bursts. */
   const THREAD_STATS_STAGES_DEBOUNCE_MS = 320
@@ -1902,7 +1956,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </button>
               ) : null}
               <StagesJobNumberJumpChip
-                onOpen={() => void fetchPaidJobsIfNeeded(customerFilterForFetch)}
+                onOpen={() => {
+                  // A number can live in ANY section — jump needs the whole
+                  // board (paid included) in memory until PR 4's lean lookup.
+                  for (const scope of NON_PAID_SCOPES) void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
+                  void fetchPaidJobsIfNeeded(customerFilterForFetch)
+                }}
                 onJump={(digits) => {
                   const matches = findJobsByNumber(jobs, digits)
                   if (matches.length > 0) return jumpToNumberMatches(matches, digits)
@@ -2787,6 +2846,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               ? billedActiveRows.filter((r) => billedStageRowAgingBucket(r) === billedAgingFilter)
               : billedActiveRows
             const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            // v2.1824: sections whose scope isn't fetched render header numbers
+            // from the lean stats layer ('…' bridges the first stats load);
+            // their bodies show a loading line on expand instead of empty tables.
+            const sectionMerged = (section: keyof StagesSectionOpenState) =>
+              cacheMergedScopes.has(scopeForStagesSection(section))
+            const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
+              cacheScopeLoading.has(scopeForStagesSection(section))
+            const sectionHdr = (
+              section: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections',
+              liveCount: number,
+              liveTotal: number,
+            ): { count: string; total: string } => {
+              if (sectionMerged(section)) {
+                return { count: String(liveCount), total: formatCurrencyAbbrevTruncated(liveTotal) }
+              }
+              const v = cacheHeaderStats?.[section === 'readyToBill' ? 'readyToBill' : section]
+              return v
+                ? { count: String(v.count), total: formatCurrencyAbbrevTruncated(v.total) }
+                : { count: '…', total: '…' }
+            }
+            const sectionLoadingSuffix = (section: keyof StagesSectionOpenState) =>
+              stagesSectionOpen[section] && !sectionMerged(section) && sectionScopeBusy(section) ? ' — loading' : ''
+            const sectionBodyLoading = (label: string) => (
+              <p style={{ margin: '0.5rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Loading {label}…
+              </p>
+            )
+            const waitingHdr = sectionHdr('waiting', waiting.length, waitingTotal)
+            const workingHdr = sectionHdr('working', working.length, workingTotal)
+            const readyToBillHdr = sectionHdr('readyToBill', readyToBillRows.length, readyToBillTotal)
+            const billedHdr = sectionHdr('billed', billedActiveRows.length, billedTotal)
+            const collectionsHdr = sectionHdr('collections', collectionsRows.length, collectionsTotal)
+            const capableDisplay = sectionMerged('working')
+              ? formatCurrencyNoCents(capableToBillTotal)
+              : cacheHeaderStats
+                ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
+                : '…'
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
             const canManageCollections =
               authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
@@ -2800,10 +2896,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.waiting ? '▼' : '▶'}</span>
-                    Waiting ({waiting.length}) - ${formatCurrencyAbbrevTruncated(waitingTotal)}
+                    Waiting ({waitingHdr.count}) - ${waitingHdr.total}{sectionLoadingSuffix('waiting')}
                   </button>
                 </div>
-                {stagesSectionOpen.waiting && (
+                {stagesSectionOpen.waiting && !sectionMerged('waiting') && sectionBodyLoading('Waiting jobs')}
+                {stagesSectionOpen.waiting && sectionMerged('waiting') && (
                   <StagesSectionList
                     jobList={waiting}
                     stagesSortMode={stagesSortMode}
@@ -2873,17 +2970,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
-                    Working ({working.length}) - ${formatCurrencyAbbrevTruncated(workingTotal)}
+                    Working ({workingHdr.count}) - ${workingHdr.total}{sectionLoadingSuffix('working')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setCapableToBillModalOpen(true)}
                     style={{ fontSize: '0.9375rem', color: 'var(--text-muted)', fontWeight: 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
-                    Capable of Being Billed: <span style={{ fontWeight: 600 }}>${formatCurrencyNoCents(capableToBillTotal)}</span>
+                    Capable of Being Billed: <span style={{ fontWeight: 600 }}>${capableDisplay}</span>
                   </button>
                 </div>
-                {stagesSectionOpen.working && (
+                {stagesSectionOpen.working && !sectionMerged('working') && sectionBodyLoading('Working jobs')}
+                {stagesSectionOpen.working && sectionMerged('working') && (
                   <StagesSectionList
                     jobList={working}
                     stagesSortMode={stagesSortMode}
@@ -2959,10 +3057,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
-                    Ready to Bill ({readyToBillRows.length}) - ${formatCurrencyAbbrevTruncated(readyToBillTotal)}
+                    Ready to Bill ({readyToBillHdr.count}) - ${readyToBillHdr.total}{sectionLoadingSuffix('readyToBill')}
                   </button>
                 </div>
-                {stagesSectionOpen.readyToBill && (
+                {stagesSectionOpen.readyToBill && !sectionMerged('readyToBill') && sectionBodyLoading('Ready to Bill')}
+                {stagesSectionOpen.readyToBill && sectionMerged('readyToBill') && (
                   <StagesUnifiedSectionList
                     rows={readyToBillRows}
                     stagesSortMode={stagesSortMode}
@@ -3099,7 +3198,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{stagesSectionOpen.billed ? '▼' : '▶'}</span>
-                      Billed Awaiting Payment ({billedActiveRows.length}) - ${formatCurrencyAbbrevTruncated(billedTotal)}
+                      Billed Awaiting Payment ({billedHdr.count}) - ${billedHdr.total}{sectionLoadingSuffix('billed')}
                     </button>
                     {([
                       { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by est. bill date) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
@@ -3252,7 +3351,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     </button>
                   </p>
                 )}
-                                {stagesSectionOpen.billed && (
+                                {stagesSectionOpen.billed && !sectionMerged('billed') && sectionBodyLoading('Billed Awaiting Payment')}
+                {stagesSectionOpen.billed && sectionMerged('billed') && (
                   <StagesUnifiedSectionList
                     rows={billedListRows}
                     stagesSortMode={stagesSortMode}
@@ -3356,13 +3456,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.collections ? '▼' : '▶'}</span>
-                    Collections ({collectionsRows.length}) - ${formatCurrencyAbbrevTruncated(collectionsTotal)}
+                    Collections ({collectionsHdr.count}) - ${collectionsHdr.total}{sectionLoadingSuffix('collections')}
                   </button>
                   <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment
                   </span>
                 </div>
-                {stagesSectionOpen.collections && (collectionsRows.length === 0 ? (
+                {stagesSectionOpen.collections && !sectionMerged('collections') && sectionBodyLoading('Collections')}
+                {stagesSectionOpen.collections && sectionMerged('collections') && (collectionsRows.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
                     No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
                   </p>

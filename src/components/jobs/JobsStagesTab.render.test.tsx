@@ -10,8 +10,26 @@
  * in Jobs.tsx.
  */
 import { act, createRef } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
+
+// v2.1824: the tab reads the scope API straight from the cache context; the
+// smoke props still supply `jobs`, so present every scope as merged (row-derived
+// headers and bodies, exactly the pre-scoping behavior these tests pin).
+vi.mock('../../contexts/JobsListCacheContext', async () => {
+  const actual = await vi.importActual<typeof import('../../contexts/JobsListCacheContext')>(
+    '../../contexts/JobsListCacheContext',
+  )
+  return {
+    ...actual,
+    useJobsListCache: () => ({
+      mergedScopes: new Set(['waiting', 'working', 'ready_to_bill', 'billed_all', 'paid']),
+      scopeLoading: new Set(),
+      fetchScopeIfNeeded: async () => {},
+      headerStats: null,
+    }),
+  }
+})
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -107,6 +125,15 @@ function boardJobs() {
 }
 
 describe('JobsStagesTab render smoke', () => {
+  beforeEach(() => {
+    // The v2.1824 per-device default opens Ready to Bill only; these smokes
+    // interact with Working/Billed content, so pin the old all-open layout.
+    localStorage.setItem(
+      'pipetooling_stages_sections_v2',
+      JSON.stringify({ waiting: false, working: true, readyToBill: true, billed: true, collections: true, paid: false }),
+    )
+  })
+
   it('mounts with active=false without rendering the board (hooks still run)', () => {
     renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ active: false })} />)
     expect(screen.queryByPlaceholderText(SEARCH_PLACEHOLDER)).toBeNull()

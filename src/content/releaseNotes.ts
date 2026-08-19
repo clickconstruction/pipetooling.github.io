@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1824',
+    date: '2026-08-19',
+    title: 'The Pipeline opens in a blink — sections load when you open them',
+    kind: 'feature',
+    highlights: [
+      'The Jobs Pipeline now loads only the sections you keep open. Fresh devices start with Ready to Bill; open any other section once and it loads instantly — and stays open on that device from then on.',
+      'Collapsed sections still show live counts, dollar totals, and the aging chips — without loading their rows.',
+      'Search, the # jump, filters, and the money tools automatically load whatever they need, so nothing ever comes up short.',
+    ],
+  },
+  {
     version: 'v2.1823',
     date: '2026-08-19',
     title: 'Groundwork: the Jobs board learns to load one section at a time',
