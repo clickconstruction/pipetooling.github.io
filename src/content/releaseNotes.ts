@@ -20,6 +20,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1821',
+    date: '2026-08-19',
+    title: 'Groundwork: a lighter Jobs board is coming',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes, the Pipeline can now compute its section headers (counts and dollar totals) from a tiny fraction of the data it used to load — groundwork for a much faster board.',
+    ],
+  },
+  {
     version: 'v2.1820',
     date: '2026-08-19',
     title: 'Share with supply house — send it from your own inbox',

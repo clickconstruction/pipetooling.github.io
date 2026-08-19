@@ -11,6 +11,8 @@ import {
 } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
+import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
+import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 const VISIBILITY_REFETCH_MIN_MS = 30_000
@@ -42,6 +44,14 @@ type JobsListCacheContextValue = {
   runFetchJobs: RunFetchJobsFn
   /** Fetch `statusScope: 'paid'` once per non-paid snapshot key; no-op if already merged or main fetch in flight. */
   fetchPaidJobsIfNeeded: (customerFilter: string | null) => Promise<void>
+  /**
+   * Lean section-header stats (v2.1821, scoped-load plan PR 1): refreshed
+   * beside every main load so collapsed sections can show live counts/totals
+   * without their rows (plan PR 3). Null until the first stats fetch lands;
+   * stats failures never touch the board (best-effort layer).
+   */
+  headerStats: StagesHeaderStats | null
+  refreshHeaderStats: (customerFilter: string | null) => Promise<void>
 }
 
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
@@ -55,6 +65,8 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [paidJobsLoading, setPaidJobsLoading] = useState(false)
   const [jobsListDataKey, setJobsListDataKey] = useState<string | null>(null)
   const [paidJobsMergedForKey, setPaidJobsMergedForKey] = useState<string | null>(null)
+  const [headerStats, setHeaderStats] = useState<StagesHeaderStats | null>(null)
+  const headerStatsInFlightRef = useRef(false)
 
   const loadInFlightRef = useRef(false)
   const pendingRef = useRef<PendingRefetch | null>(null)
@@ -63,6 +75,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const lastUserIdRef = useRef<string | null>(null)
   const lastFetchCompletedAtRef = useRef(0)
   const runFetchJobsRef = useRef<RunFetchJobsFn | null>(null)
+  const refreshHeaderStatsRef = useRef<((customerFilter: string | null) => Promise<void>) | null>(null)
   const lastNonPaidKeyRef = useRef<string | null>(null)
   const paidMergedKeyRef = useRef<string | null>(null)
   const paidFetchInFlightRef = useRef(false)
@@ -93,6 +106,18 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     } finally {
       paidFetchInFlightRef.current = false
       setPaidJobsLoading(false)
+    }
+  }, [user?.id])
+
+  const refreshHeaderStats = useCallback(async (customerFilter: string | null): Promise<void> => {
+    if (!user?.id) return
+    if (headerStatsInFlightRef.current) return
+    headerStatsInFlightRef.current = true
+    try {
+      const res = await fetchStagesHeaderStats(customerFilter)
+      if (res.ok) setHeaderStats(res.stats)
+    } finally {
+      headerStatsInFlightRef.current = false
     }
   }, [user?.id])
 
@@ -171,6 +196,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobsListLoading(false)
         setJobsListRefreshing(false)
         lastFetchCompletedAtRef.current = Date.now()
+        // Best-effort, deliberately not awaited — headers refresh in the
+        // background of every successful board load.
+        void refreshHeaderStatsRef.current?.(customerFilter)
 
         return first.jobs
       } finally {
@@ -185,6 +213,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     [user?.id],
   )
   runFetchJobsRef.current = runFetchJobs
+  refreshHeaderStatsRef.current = refreshHeaderStats
 
   // Reset when auth user id changes
   useEffect(() => {
@@ -226,6 +255,8 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     setJobsListError,
     runFetchJobs,
     fetchPaidJobsIfNeeded,
+    headerStats,
+    refreshHeaderStats,
   }
 
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>
