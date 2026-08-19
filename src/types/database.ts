@@ -3473,6 +3473,8 @@ export type Database = {
           acceptor_printed_name: string | null
           acceptor_signature_storage_path: string | null
           acceptor_user_agent: string | null
+          bid_id: string | null
+          change_order_fields: Json | null
           created_at: string
           created_by: string
           customer_attachment_label: string | null
@@ -3482,6 +3484,7 @@ export type Database = {
           customer_experience_overrides: Json | null
           customer_experience_sent: Json | null
           customer_id: string | null
+          doc_kind: string
           estimate_number: number
           for_address: string | null
           id: string
@@ -3508,6 +3511,8 @@ export type Database = {
           acceptor_printed_name?: string | null
           acceptor_signature_storage_path?: string | null
           acceptor_user_agent?: string | null
+          bid_id?: string | null
+          change_order_fields?: Json | null
           created_at?: string
           created_by: string
           customer_attachment_label?: string | null
@@ -3517,6 +3522,7 @@ export type Database = {
           customer_experience_overrides?: Json | null
           customer_experience_sent?: Json | null
           customer_id?: string | null
+          doc_kind?: string
           estimate_number?: number
           for_address?: string | null
           id?: string
@@ -3543,6 +3549,8 @@ export type Database = {
           acceptor_printed_name?: string | null
           acceptor_signature_storage_path?: string | null
           acceptor_user_agent?: string | null
+          bid_id?: string | null
+          change_order_fields?: Json | null
           created_at?: string
           created_by?: string
           customer_attachment_label?: string | null
@@ -3552,6 +3560,7 @@ export type Database = {
           customer_experience_overrides?: Json | null
           customer_experience_sent?: Json | null
           customer_id?: string | null
+          doc_kind?: string
           estimate_number?: number
           for_address?: string | null
           id?: string
@@ -3571,6 +3580,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "estimates_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "estimates_created_by_fkey"
             columns: ["created_by"]

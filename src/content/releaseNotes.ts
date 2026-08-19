@@ -22,6 +22,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1826',
+    date: '2026-08-19',
+    title: 'Groundwork: change orders are coming to Estimates',
+    kind: 'feature',
+    highlights: [
+      'Under the hood, an estimate can now be marked as a change order — the first step toward writing a change order in Estimates and sending it for signature like any estimate.',
+      'Nothing visible changes yet: the New change order button, editor, and signature flow arrive in the next updates.',
+    ],
+  },
+  {
     version: 'v2.1825',
     date: '2026-08-19',
     title: 'Pipeline search now covers every job — paid included, automatically',
