@@ -1,6 +1,12 @@
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { resolveEstimateMasterUserId } from '../../lib/estimateMasterUser'
 import type { User } from '@supabase/supabase-js'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { bidDisplayName, formatDateYYMMDD } from '../../lib/bids/bidFormatting'
@@ -28,6 +34,64 @@ export function BidChangeOrderTab({ bids, authUser, selectedBid, onSelectBid, on
   const narrowViewport640 = useNarrowViewport640()
   const bidPreview = useBidPreview()
   const [changeOrderSearchQuery, setChangeOrderSearchQuery] = useState('')
+  /** Bids → Estimates bridge (CO train v2.1835): create a signable CO draft from this form. */
+  const [sendingForSignature, setSendingForSignature] = useState(false)
+  const navigate = useNavigate()
+  const { role } = useAuth()
+  const { showToast } = useToastContext()
+
+  const sendForSignature = async (bid: BidWithBuilder, form: ChangeOrderFormData) => {
+    if (!authUser?.id || sendingForSignature) return
+    setSendingForSignature(true)
+    try {
+      const masterUserId =
+        bid.customers?.master_user_id ?? (await resolveEstimateMasterUserId(authUser.id, role))
+      if (!masterUserId) {
+        showToast('Could not determine the account owner for this change order.', 'error')
+        return
+      }
+      const contextNotes = [
+        'Created from Bids → Change Order.',
+        form.impactOnCost.trim()
+          ? `Cost impact (from the Bids form — enter it as line items): ${form.impactOnCost.trim()}`
+          : '',
+        form.submittedTo.trim() ? `Bid submitted to: ${form.submittedTo.trim()}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+      const { data, error } = await supabase
+        .from('estimates')
+        .insert({
+          master_user_id: masterUserId,
+          created_by: authUser.id,
+          doc_kind: 'change_order',
+          bid_id: bid.id,
+          customer_id: bid.customers?.id ?? null,
+          title: (bid.project_name ?? '').trim() ? `Change order — ${(bid.project_name ?? '').trim()}` : 'Change order',
+          for_address: (bid.address ?? '').trim() || null,
+          line_items_snapshot: [],
+          terms_snapshot: '',
+          total_cents: 0,
+          internal_notes: contextNotes,
+          change_order_fields: {
+            description_of_change: form.detailedDescriptionOfChange.trim(),
+            reason_for_change: form.reasonForChange.trim(),
+            impact_on_schedule: form.impactOnSchedule.trim(),
+            response_requested_by: form.responseRequestDate.trim(),
+          },
+        })
+        .select('estimate_number')
+        .single()
+      if (error) throw error
+      const num = (data as { estimate_number: number } | null)?.estimate_number
+      showToast('Change order draft created — add cost lines, then send for signature.', 'success')
+      if (num != null) navigate(`/estimates/${num}`)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not create the change order draft'), 'error')
+    } finally {
+      setSendingForSignature(false)
+    }
+  }
   const [changeOrderFormByBid, setChangeOrderFormByBid] = useState<Record<string, ChangeOrderFormData>>({})
   const [changeOrderCopySuccess, setChangeOrderCopySuccess] = useState(false)
 
@@ -250,6 +314,15 @@ export function BidChangeOrderTab({ bids, authUser, selectedBid, onSelectBid, on
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{changeOrderCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
                 <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                <button
+                  type="button"
+                  disabled={sendingForSignature}
+                  title="Create a signable change order in Estimates — prefilled from this form; add cost lines there and send it"
+                  onClick={() => void sendForSignature(bid, form)}
+                  style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature ? 'wait' : 'pointer' }}
+                >
+                  {sendingForSignature ? 'Creating…' : 'Send for signature →'}
+                </button>
               </div>
             </div>
           </div>
