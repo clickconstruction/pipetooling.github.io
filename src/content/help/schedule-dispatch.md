@@ -58,6 +58,10 @@ Type the bid number in the Assign-work search, pick the {{chip:purple|Bid}} row,
 
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.
 
+### Moving a block — no need to delete and re-add
+
+Every block has a **dotted grip** on its left edge. **Drag the grip** to any other person or day cell and the block moves there — its times ride along, linked crew copies move together, and you get a warning if the landing spot overlaps something already scheduled. The grip turns red while a special mode (multi-cell add, linked copy) is active or when you don't have edit rights — tap it and it tells you why.
+
 ## Grouping people into swim lanes
 
 Swim lanes are named crews everyone in the office shares — useful when the same people tend to ride together. The People grid starts out grouped **by swim lanes**: each lane appears as its own section (in your office's lane order), with anyone unassigned collected under **Everyone else**. Click the **Person** header cell to cycle to the other groupings — alphabetical → by role → back to lanes; your pick is remembered on that device.

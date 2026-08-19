@@ -649,8 +649,14 @@ function HubPeopleBlockCard({
           : { ...listeners, ...attributes })}
         style={{
           flexShrink: 0,
-          width: 14,
+          // v2.1816: the handle was a bare 14px sliver nobody could find —
+          // dispatchers were deleting + re-adding blocks instead of moving
+          // them. Wider, with visible grip dots and a tooltip.
+          width: 22,
           minHeight: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           touchAction: dragDisabled ? undefined : 'none',
           cursor: dragDisabled ? 'pointer' : 'grab',
           background: dragDisabled
@@ -659,10 +665,28 @@ function HubPeopleBlockCard({
           borderRight: `1px solid ${dragDisabled ? 'var(--border-red)' : 'var(--border-blue)'}`,
           outline: 'none',
         }}
+        title={
+          dragDisabled ? undefined : 'Drag to move this block to another day or person'
+        }
         aria-label={
           dragDisabled ? disabledStripAriaLabel : 'Drag to move block to another day or person row'
         }
-      />
+      >
+        <span
+          aria-hidden
+          style={{
+            pointerEvents: 'none',
+            userSelect: 'none',
+            fontSize: '0.7rem',
+            lineHeight: 1,
+            letterSpacing: '-1px',
+            color: dragDisabled ? 'var(--text-red-600)' : 'var(--text-blue-900)',
+            opacity: 0.6,
+          }}
+        >
+          ⠿
+        </span>
+      </div>
       <div
         style={{
           flex: 1,
