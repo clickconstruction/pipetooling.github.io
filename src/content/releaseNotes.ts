@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1815',
+    date: '2026-08-18',
+    title: 'Dispatch: the multi-cell add button now reads ×',
+    kind: 'fix',
+    highlights: [
+      'The Schedule People-toolbar button for putting one job on several cells now shows × (multiply) instead of ++ — one job × many cells, which is what it does.',
+    ],
+  },
+  {
     version: 'v2.1814',
     date: '2026-08-18',
     title: 'Recently added rows show the address and GC',

@@ -1802,7 +1802,9 @@ function HubPeoplePanel({
                 }}
                 onClick={onRequestHubMultiCellAddMode}
               >
-                ++
+                {/* Multiplication sign (v2.1815, owner request): the mode takes ONE
+                    job × many cells, so × reads truer than ++ ("add twice"). */}
+                ×
               </button>
             ) : null}
             {onStartLinkedCopyMode ? (

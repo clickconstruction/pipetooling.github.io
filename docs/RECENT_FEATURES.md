@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1814)
+last_updated: 2026-08-18 (v2.1815)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1815)
+
+### Dispatch: multi-cell add button reads × (2026-08-18)
+Owner request: the People-toolbar multi-cell-add button showed **++**, but the mode's whole point is ONE job **×** many cells — so the glyph becomes the multiplication sign (**×**), matching what the tool does. Same amber active state, tooltips, and behavior; help guide's chains-button reference updated. Client-only — no migration.
 
 ## Latest Updates (v2.1814)
 
