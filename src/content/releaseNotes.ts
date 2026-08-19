@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1849',
+    date: '2026-08-19',
+    title: 'Checklist review: sign off or send back',
+    kind: 'feature',
+    highlights: [
+      'A new Checklist review section in the Teams Inbox (Dashboard, Dispatch Mode Inbox, and Checklist → Review) shows tasks your people completed.',
+      'Open a row to read the whole card history, then Dismiss to sign off — or Reopen with a comment, which puts it back on their Today list and pings them with your reason.',
+      'Quiet items age out after 7 days, and your own completions never queue to you.',
+    ],
+  },
+  {
     version: 'v2.1847',
     date: '2026-08-19',
     title: 'One Bid window: flip between preview and edit',

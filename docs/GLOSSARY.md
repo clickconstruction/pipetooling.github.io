@@ -272,6 +272,11 @@ The office-side companion to Job Mode: a per-user, per-device gear-menu toggle (
 
 **See also** — **`RECENT_FEATURES.md`** **v2.888–v2.893**, help guide `dispatch-mode.md`.
 
+### Checklist review queue
+The **Checklist review** section of the Teams Inbox (Dashboard, Dispatch Mode → Inbox, Checklist → Review): completed-but-unreviewed `checklist_instances` from the last 7 days, shown to the item's creator / notify-on-complete target (devs see all). **Dismiss** stamps `reviewed_at`/`reviewed_by`; **Reopen with comment** clears the completion, logs the reason on the card, and notifies the assignees. Backed by the append-only **`checklist_instance_events`** card history (v2.1842).
+
+**See also** — **`RECENT_FEATURES.md`** **v2.1842/v2.1846/v2.1849**, help guides `check-off-my-daily-tasks.md`, `review-my-teams-completed-tasks.md`.
+
 ### Farm Mode (app-wide)
 The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist`, and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs. Wins over Job Mode and Dispatch Mode while on; their stored toggles are untouched. Toggle lib **[`farmModeToggle.ts`](../src/lib/farmModeToggle.ts)** + hook **[`useFarmModeEnabled`](../src/hooks/useFarmModeEnabled.ts)** mirror the Job Mode pair. Display-only — RLS and role permissions are unchanged.
 

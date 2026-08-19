@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1847)
+last_updated: 2026-08-19 (v2.1849)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1849)
+
+### Checklist review queue — sign off or send back your people's completed tasks (2026-08-19)
+Phase 3 of the checklist-card redesign (Phase 1 = v2.1842 events spine, Phase 2 = v2.1846 cards). New self-contained [`ChecklistReviewInboxSection`](../src/components/checklist/ChecklistReviewInboxSection.tsx): completed-but-unreviewed instances from the last 7 days (older ones age out — deliberate, no cron), scoped by new kernel [`checklistReviewQueue.ts`](../src/lib/checklistReviewQueue.ts) (+7 tests) to the item's **creator or notify-on-complete target** (devs see all; your own completions never queue to you). Rows expand to the full card history + a comment box; **Dismiss** stamps `reviewed_at`/`reviewed_by` (trigger logs `accepted`; the worker's card flips to "signed off"), **Reopen with comment** requires the comment, inserts it, clears `completed_at`/`completed_by_user_id` (trigger logs `reopened` + clears review stamps), and best-effort pings each assignee via the existing `send-checklist-notification` edge function (no redeploy — generic payload). Mounted once in [`DashboardTeamsInboxCard`](../src/components/dashboard/DashboardTeamsInboxCard.tsx) (covers Dashboard AND Dispatch Mode → Inbox) and in the Checklist **Review** tab ([`ChecklistReviewInboxes`](../src/components/checklist/ChecklistReviewInboxes.tsx) — including the assistant-like and no-inbox branches that previously returned null, since reviewing is not office-inbox-gated). Renders nothing when empty. Known scope note: non-office notify-targets only see rows their RLS already allows (office roles + item creators + assignees read instances). Help guide `review-my-teams-completed-tasks.md` (new). Client-only — requires the v2.1842 migration pushed.
 
 ## Latest Updates (v2.1847)
 
