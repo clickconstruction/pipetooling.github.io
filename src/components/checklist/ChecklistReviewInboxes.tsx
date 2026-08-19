@@ -7,6 +7,7 @@ import { DispatchInboxSection } from '../DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
 import { HelpFeedbackInboxSection } from '../HelpFeedbackInboxSection'
+import { ChecklistReviewInboxSection } from './ChecklistReviewInboxSection'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /**
@@ -57,8 +58,11 @@ export function ChecklistReviewInboxes() {
 
   const jobFormModal = useJobFormModal()
 
-  if (isAssistantLike(role)) return null
-  if (!dispatchInboxEligible && !estimatorInboxEligible && role !== 'dev') return null
+  // The checklist review queue shows for every role that has cards to review
+  // (item creators / notify-targets) even where the dispatch/estimator cards
+  // below stay hidden — it renders itself only when non-empty.
+  if (isAssistantLike(role)) return <ChecklistReviewInboxSection />
+  if (!dispatchInboxEligible && !estimatorInboxEligible && role !== 'dev') return <ChecklistReviewInboxSection />
 
   const dispatchOpenRows = dispatchRequests.filter((r) => r.status === 'open')
   const dispatchClosedRows = dispatchRequests.filter((r) => r.status === 'closed')
@@ -71,6 +75,7 @@ export function ChecklistReviewInboxes() {
   return (
     <div style={{ marginBottom: '1.5rem' }}>
       <HelpFeedbackInboxSection />
+      <ChecklistReviewInboxSection />
       {dispatchInboxEligible ? (
         <DispatchInboxSection
           variant="card"

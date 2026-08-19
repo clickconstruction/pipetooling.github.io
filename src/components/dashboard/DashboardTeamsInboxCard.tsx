@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DashboardGroupCard } from './DashboardGroupCard'
+import { ChecklistReviewInboxSection } from '../checklist/ChecklistReviewInboxSection'
 import { DispatchInboxSection } from '../DispatchInboxSection'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
 import { HelpFeedbackInboxSection } from '../HelpFeedbackInboxSection'
@@ -85,6 +86,7 @@ export function DashboardTeamsInboxCard({
   return (
     <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
       {showHelpFeedback && <HelpFeedbackInboxSection />}
+      <ChecklistReviewInboxSection />
       {dispatchInboxEligible && (
         <DispatchInboxSection
           sectionOpen={dispatchRequestsOpen}
