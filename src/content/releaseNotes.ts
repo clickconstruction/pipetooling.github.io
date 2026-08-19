@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1837',
+    date: '2026-08-19',
+    title: 'Farm Mode: just your checklist',
+    kind: 'feature',
+    highlights: [
+      'New Farm Mode in the gear menu — turn it on and the app shows only the Checklist: one nav link, Today and History tabs, nothing else.',
+      'Great for crew whose whole day is recurring tasks. Everything else comes right back when you turn it off.',
+      'Per device and per account, just like Job Mode — flipping it on your phone does not change your computer.',
+    ],
+  },
+  {
     version: 'v2.1835',
     date: '2026-08-19',
     title: 'Bids and Estimates connected: change orders flow between them',

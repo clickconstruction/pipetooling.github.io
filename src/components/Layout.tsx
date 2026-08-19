@@ -416,6 +416,7 @@ export default function Layout() {
   )
 
   const canShowMaterialsNav =
+    !farmModeActive &&
     !isSubcontractorLikeRole(role) &&
     (role === null ||
       role === 'estimator' ||
@@ -425,15 +426,18 @@ export default function Layout() {
       isAssistantLike(role) ||
       role === 'superintendent')
 
+  // Farm Mode: the trimmed nav already carries the Checklist text link, so the
+  // header icon duplicate hides with the rest of the icon cluster.
   const canShowChecklistNav =
-    role === null ||
-    role === 'dev' ||
-    role === 'master_technician' ||
-    isAssistantLike(role) ||
-    role === 'estimator' ||
-    role === 'primary' ||
-    role === 'superintendent' ||
-    isSubcontractorLikeRole(role)
+    !farmModeActive &&
+    (role === null ||
+      role === 'dev' ||
+      role === 'master_technician' ||
+      isAssistantLike(role) ||
+      role === 'estimator' ||
+      role === 'primary' ||
+      role === 'superintendent' ||
+      isSubcontractorLikeRole(role))
 
   const canShowMapNav =
     (role === 'dev' ||
@@ -1063,7 +1067,7 @@ export default function Layout() {
             {checklistNavIcon}
           </NavLink>
           )}
-          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && (
+          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && !farmModeActive && (
             <>
               {!(isMobile && (role === 'dev' || role === 'master_technician')) && (
                 <NavLink
@@ -1404,7 +1408,8 @@ export default function Layout() {
                   role === null ||
                   role === 'dev' ||
                   role === 'master_technician' ||
-                  isAssistantLike(role)) && (
+                  isAssistantLike(role)) &&
+                  !farmModeActive && (
                   <NavLink
                     to="/documents"
                     onClick={() => setGearOpen(false)}
@@ -1492,7 +1497,7 @@ export default function Layout() {
                     Map
                   </NavLink>
                 )}
-                {(role === 'dev' || isAssistantLike(role) || role === 'master_technician') && (
+                {(role === 'dev' || isAssistantLike(role) || role === 'master_technician') && !farmModeActive && (
                   <NavLink
                     to="/banking"
                     onClick={() => setGearOpen(false)}
@@ -1514,6 +1519,7 @@ export default function Layout() {
                     Banking
                   </NavLink>
                 )}
+                {!farmModeActive && (
                 <NavLink
                   to="/calendar"
                   onClick={() => setGearOpen(false)}
@@ -1534,6 +1540,8 @@ export default function Layout() {
                   {calendarNavIcon}
                   Calendar
                 </NavLink>
+                )}
+                {!farmModeActive && (
                 <NavLink
                   to="/help"
                   onClick={() => setGearOpen(false)}
@@ -1554,6 +1562,8 @@ export default function Layout() {
                   {helpIcon}
                   Help
                 </NavLink>
+                )}
+                {!farmModeActive && (
                 <NavLink
                   to="/settings"
                   onClick={() => setGearOpen(false)}
@@ -1567,6 +1577,7 @@ export default function Layout() {
                 >
                   Settings
                 </NavLink>
+                )}
                 <button
                   type="button"
                   onClick={async () => {

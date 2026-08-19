@@ -272,6 +272,11 @@ The office-side companion to Job Mode: a per-user, per-device gear-menu toggle (
 
 **See also** — **`RECENT_FEATURES.md`** **v2.888–v2.893**, help guide `dispatch-mode.md`.
 
+### Farm Mode (app-wide)
+The checklist-only lens: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, any role) that trims the nav to a single **Checklist** link, redirects every other route to `/checklist`, and limits **[`Checklist.tsx`](../src/pages/Checklist.tsx)** to the **Today + History** tabs. Wins over Job Mode and Dispatch Mode while on; their stored toggles are untouched. Toggle lib **[`farmModeToggle.ts`](../src/lib/farmModeToggle.ts)** + hook **[`useFarmModeEnabled`](../src/hooks/useFarmModeEnabled.ts)** mirror the Job Mode pair. Display-only — RLS and role permissions are unchanged.
+
+**See also** — **`RECENT_FEATURES.md`** **v2.1837**, help guide `farm-mode.md`.
+
 ### User Review modal
 A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip). It pairs a read-only **schedule view** with an optional **Mercury transaction summary** for the same date window, all keyed to one subject user.
 
