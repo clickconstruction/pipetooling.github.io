@@ -62,6 +62,17 @@ describe('ManagePersonDayModal', () => {
     expect(fetchDayBlocks).toHaveBeenCalledWith('2026-08-10', 'u-1')
   })
 
+  it('renders the four ±30 nudge chips per block, crew-aware tooltips (v2.1817)', async () => {
+    fetchDayBlocks.mockResolvedValue({ data: [BLOCK], error: null })
+    renderWithProviders(<ManagePersonDayModal {...makeProps()} />)
+    await waitFor(() => expect(screen.getByText('951 · Shearer Pinpoint')).toBeTruthy())
+    const shiftBack = screen.getByLabelText('Shift the whole block 30 minutes earlier for 951')
+    expect(shiftBack.title).toContain('whole crew moves together')
+    expect(screen.getByLabelText('Shift the whole block 30 minutes later for 951')).toBeTruthy()
+    expect(screen.getByLabelText('End 30 minutes earlier for 951')).toBeTruthy()
+    expect(screen.getByLabelText('End 30 minutes later for 951')).toBeTruthy()
+  })
+
   it('edit expands with time/day/note fields and the crew-scope choice', async () => {
     fetchDayBlocks.mockResolvedValue({ data: [BLOCK], error: null })
     renderWithProviders(<ManagePersonDayModal {...makeProps()} />)

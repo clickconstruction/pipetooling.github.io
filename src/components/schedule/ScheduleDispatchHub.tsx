@@ -530,6 +530,7 @@ function HubPeopleBlockCard({
   onOpenHubJobDetail,
   onDeleteBlock,
   onRequestEditBlockNote,
+  onOpenPersonDay,
 }: {
   block: JobScheduleBlockRow
   linkedCopyStage?: 1 | 2 | null
@@ -554,6 +555,8 @@ function HubPeopleBlockCard({
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   onDeleteBlock: (id: string) => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  /** Clock button (v2.1817): open the assignee's whole-day Manage modal. */
+  onOpenPersonDay?: (b: JobScheduleBlockRow) => void
 }) {
   const { showToast } = useToastContext()
   const { requirementForBlock } = useDispatchNoteRequirements()
@@ -589,7 +592,8 @@ function HubPeopleBlockCard({
   const groupId = block.shared_block_group_id
   const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
   const showEditNoteBtn = canEdit && !placementPickingActive && !linkedCopyActive && !!onRequestEditBlockNote
-  const showTopRightControls = showEditNoteBtn
+  const showPersonDayBtn = !placementPickingActive && !linkedCopyActive && !!onOpenPersonDay
+  const showTopRightControls = showEditNoteBtn || showPersonDayBtn
   const showMinusPlusButtons = canEdit && !placementPickingActive && !linkedCopyActive
   const linkedAccent =
     highlightLinkedGroups && groupId && linkPeerCount > 1
@@ -811,6 +815,40 @@ function HubPeopleBlockCard({
             gap: 0,
           }}
         >
+          {showPersonDayBtn ? (
+            <button
+              type="button"
+              title="See this person's whole day — rearrange times, unlink"
+              aria-label="See this person's whole day"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenPersonDay?.(block)
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 51,
+                height: 51,
+                minWidth: 51,
+                minHeight: 51,
+                boxSizing: 'border-box',
+                padding: 0,
+                color: 'var(--text-700)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                margin: 0,
+                ...scheduleBlockControlPlateBackgroundStyle,
+                ...scheduleBlockActionLinkedIconButtonStyle,
+              }}
+            >
+              {/* Clock face, currentColor — mirrors the note icon's plate. */}
+              <svg width={26} height={26} viewBox="0 0 24 24" aria-hidden focusable={false}>
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ) : null}
           {showEditNoteBtn ? (
             <button
               type="button"
@@ -1032,6 +1070,7 @@ function HubPeopleDayCell({
   hubMultiCellAddSelectedKeys,
   onHubMultiCellAddToggle,
   onRequestEditBlockNote,
+  onOpenPersonDay,
   timeOffInfo,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
@@ -1069,6 +1108,7 @@ function HubPeopleDayCell({
   hubMultiCellAddSelectedKeys: ReadonlySet<string>
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  onOpenPersonDay?: (b: JobScheduleBlockRow) => void
   timeOffInfo?: UserTimeOffCellInfo | null
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
@@ -1308,6 +1348,7 @@ function HubPeopleDayCell({
               onOpenHubJobDetail={onOpenHubJobDetail}
               onDeleteBlock={onDeleteBlock}
               onRequestEditBlockNote={onRequestEditBlockNote}
+              onOpenPersonDay={onOpenPersonDay}
             />
           )
         })
@@ -1431,6 +1472,7 @@ type HubPeoplePanelProps = {
   columnFocusDayYmd: string
   columnScrollKey: string
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  onOpenPersonDay?: (b: JobScheduleBlockRow) => void
   /** When false, hide the Expected Manpower block below the People grid (e.g. Quickfill tomorrow snapshot). */
   showExpectedManpower?: boolean
   /** When false, hide the Hide weekend checkbox in the People toolbar (e.g. Quickfill tomorrow). */
@@ -1500,6 +1542,7 @@ function HubPeoplePanel({
   swimLanes = null,
   onRequestHubMultiCellAddMode,
   onRequestEditBlockNote,
+  onOpenPersonDay,
   showExpectedManpower = true,
   showHideWeekendToggle = true,
   userTimeOffByCell,
@@ -2322,6 +2365,7 @@ function HubPeoplePanel({
                         hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
                         onHubMultiCellAddToggle={onHubMultiCellAddToggle}
                         onRequestEditBlockNote={onRequestEditBlockNote}
+              onOpenPersonDay={onOpenPersonDay}
                         timeOffInfo={timeOffInfo}
                         onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                         onMarkNotComingInForCell={onMarkNotComingInForCell}
@@ -2891,6 +2935,7 @@ type Props = {
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
   onRequestHubMultiCellAddMode?: () => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  onOpenPersonDay?: (b: JobScheduleBlockRow) => void
   /** When false, hide Expected Manpower on the People tab. */
   showExpectedManpower?: boolean
   /** When set, the Day tab uses this as Quickfill schedule work date (e.g. tomorrow in Quickfill). */
@@ -3004,6 +3049,7 @@ export function ScheduleDispatchHub({
   onHubMultiCellAddToggle,
   onRequestHubMultiCellAddMode,
   onRequestEditBlockNote,
+  onOpenPersonDay,
   showExpectedManpower = true,
   dayTabWorkDateYmd,
   onDayScheduleChanged,
@@ -3434,6 +3480,7 @@ export function ScheduleDispatchHub({
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
+              onOpenPersonDay={onOpenPersonDay}
           showExpectedManpower={showExpectedManpower}
           showHideWeekendToggle={showHideWeekendToggle}
           userTimeOffByCell={userTimeOffByCell}
@@ -3531,6 +3578,7 @@ export function ScheduleDispatchHub({
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
+              onOpenPersonDay={onOpenPersonDay}
           showExpectedManpower={showExpectedManpower}
           showHideWeekendToggle={showHideWeekendToggle}
           userTimeOffByCell={userTimeOffByCell}
