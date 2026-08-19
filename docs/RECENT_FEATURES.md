@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1837)
+last_updated: 2026-08-19 (v2.1838)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1838)
+
+### Theme tokens: customer search rows + Estimates greens follow dark mode (2026-08-19)
+Tokenization cleanup: [`CustomerSearchCombobox`](../src/components/customers/CustomerSearchCombobox.tsx) row backgrounds move off raw hexes onto tokens — commercial tint `#fffbeb` → `var(--bg-amber-tint)`, selected `#f0fdf4` → `var(--bg-green-tint)`, keyboard highlight `#eff6ff` → `var(--bg-blue-tint)`, default `white` → `var(--surface)` — and rows gain an explicit `color: var(--text-strong)` so text stays legible on the dark palette. [`Estimates.tsx`](../src/pages/Estimates.tsx): the three `#15803d` greens (linked-job links in the table + cards, attachment-check status line) become `var(--text-green-600)`. Display-only, no behavior change; `theme-tokenize --check` clean on both files. Client-only — no migration.
 
 ## Latest Updates (v2.1837)
 

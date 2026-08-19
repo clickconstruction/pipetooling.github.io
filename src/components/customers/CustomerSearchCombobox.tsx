@@ -15,8 +15,8 @@ import {
   type CustomerRow,
 } from '../../lib/customerContactDisplay'
 
-/** Light yellow row tint for commercial (non-selected); selected rows use green instead. */
-const COMMERCIAL_ROW_BG = '#fffbeb'
+/** Yellow row tint for commercial (non-selected); selected rows use green instead. */
+const COMMERCIAL_ROW_BG = 'var(--bg-amber-tint)'
 
 const MAX_ROWS = 50
 
@@ -310,8 +310,8 @@ export default function CustomerSearchCombobox({
             filtered.map((c, index) => {
               const selected = valueId === c.id
               const highlighted = highlightIndex === index
-              const rowBg = selected ? '#f0fdf4' : c.customer_type === 'commercial' ? COMMERCIAL_ROW_BG : 'white'
-              const rowBackground = highlighted && !selected ? '#eff6ff' : rowBg
+              const rowBg = selected ? 'var(--bg-green-tint)' : c.customer_type === 'commercial' ? COMMERCIAL_ROW_BG : 'var(--surface)'
+              const rowBackground = highlighted && !selected ? 'var(--bg-blue-tint)' : rowBg
               const chip = customerTypeChipLabel(c)
               return (
                 <button
@@ -334,6 +334,7 @@ export default function CustomerSearchCombobox({
                     border: 'none',
                     borderBottom: '1px solid var(--border)',
                     background: rowBackground,
+                    color: 'var(--text-strong)',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
                     boxSizing: 'border-box',
