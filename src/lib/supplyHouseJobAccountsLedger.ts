@@ -11,6 +11,13 @@ export interface JobAccountShareRow {
   contact_email: string
   sent_by_name: string
   sent_at: string
+  /** 'app' (Resend via the edge function) or 'user_email' (sent from the user's own inbox, v2.1820). */
+  send_method?: string | null
+}
+
+/** History-line suffix naming the send channel — null for app sends (the default, not worth ink). */
+export function shareSendMethodLabel(row: Pick<JobAccountShareRow, 'send_method'>): string | null {
+  return row.send_method === 'user_email' ? 'from their inbox' : null
 }
 
 export interface JobAccountLedgerRow {

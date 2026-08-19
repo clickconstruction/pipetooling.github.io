@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1819)
+last_updated: 2026-08-19 (v2.1820)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1820)
+
+### Share with supply house: the email comes from YOUR inbox (2026-08-19)
+Owner request, flow designed together over two interactive mockups: the job-account packet should leave from the user's own address, not `team@noreply` — supply houses reply to a real mailbox and the sender's Sent folder keeps the record. [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx)'s footer becomes **Other ▾ · Copy for email · Email from my inbox**: the primary opens a prefilled `mailto:` draft (new kernel builders in [`supplyHouseJobAccount.ts`](../src/lib/supplyHouseJobAccount.ts) — recipients/subject/body encoded, +5 tests; a 7k-char guard auto-falls back to clipboard for pathological packets), **Copy for email** puts a `To:/Subject:` -headed plain-text packet on the clipboard for browser-mail users, and the original Resend path lives under the **Other** expander (inline, not a popup — the dialog's overflow clips floating menus). Since the app can't see the user's inbox, both user paths park on a **confirm step** ("Draft opened… / Packet copied…") and only **Sent — log it** writes the `supply_house_job_accounts` rows — now client-insertable with `send_method: 'user_email'` (migration `20260819152848`: column + office-roles-self INSERT policy on the previously service-role-only ledger; app sends keep the `'app'` default so the edge function is untouched). Owner upsert happens at draft time (the info is known regardless); the find-owner errand closes only on log/send. History lines gain a "from their inbox" tag (`shareSendMethodLabel`, +1 test). Owner hard-block, Send-to chips, Dispatch errand all unchanged. Verified live on job 949: footer, Other expander, mailto→confirm→"Didn't send it" round-trip (clipboard write is denied by the embedded test pane — the error toast path — but works in real browsers). Help guide "Sending" section rewritten.
 
 ## Latest Updates (v2.1819)
 

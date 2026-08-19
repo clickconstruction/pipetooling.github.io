@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1820',
+    date: '2026-08-19',
+    title: 'Share with supply house — send it from your own inbox',
+    kind: 'feature',
+    highlights: [
+      'Email from my inbox opens a ready-to-send draft in your mail app — recipients, subject, and the whole packet filled in. You press send, so it comes from your address and replies land in your inbox.',
+      'Copy for email puts the addressed packet on your clipboard for pasting into any compose window.',
+      'After the draft opens, one honest tap — "Sent — log it" — records the share so other desks see it. The app can still send it for you under Other.',
+      'Share history now shows which sends went from someone’s own inbox.',
+    ],
+  },
+  {
     version: 'v2.1819',
     date: '2026-08-19',
     title: 'Pipeline search: paid jobs are now opt-in (and the board got lighter)',

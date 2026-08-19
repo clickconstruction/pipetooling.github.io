@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   groupJobAccountLedger,
   shareContactDisplay,
+  shareSendMethodLabel,
   summarizeJobShares,
   type JobAccountShareRow,
 } from './supplyHouseJobAccountsLedger'
@@ -58,5 +59,13 @@ describe('summarizeJobShares', () => {
         fmt
       )
     ).toBe('Already shared with Morrison — Bree · 08-12 · +1 more')
+  })
+})
+
+describe('shareSendMethodLabel (v2.1820)', () => {
+  it('names user-inbox sends, stays silent for app sends and legacy rows', () => {
+    expect(shareSendMethodLabel({ send_method: 'user_email' })).toBe('from their inbox')
+    expect(shareSendMethodLabel({ send_method: 'app' })).toBeNull()
+    expect(shareSendMethodLabel({})).toBeNull()
   })
 })
