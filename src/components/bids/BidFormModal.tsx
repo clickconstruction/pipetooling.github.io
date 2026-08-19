@@ -12,6 +12,7 @@ import {
   wholeCalendarDaysSinceSentDate,
 } from '../../lib/bidDateSentDisplay'
 import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
+import { itbLinkLabel } from '../../lib/itbLinks'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -205,6 +206,7 @@ export function BidFormModal(props: BidFormModalProps) {
     plansLink,
     countToolingPlansLink,
     bidSubmissionLink,
+    itbLinks,
     projectName,
     projectId,
     bidNumber,
@@ -238,6 +240,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setPlansLink,
     setCountToolingPlansLink,
     setBidSubmissionLink,
+    setItbLinks,
     setProjectName,
     setProjectId,
     setBidNumber,
@@ -989,6 +992,45 @@ export function BidFormModal(props: BidFormModalProps) {
                 <input type="text" value={submittedTo} onChange={(e) => setSubmittedTo(e.target.value)} placeholder="e.g. Architect name, 555-123-4567, architect@example.com" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
               </div>
+              </div>
+              <div style={FORM_SECTION_STYLE}>
+                <div style={FORM_SECTION_LABEL_STYLE}>ITB &amp; submission links</div>
+                <div style={{ display: 'grid', gap: '0.6rem' }}>
+                  {itbLinks.map((link, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input
+                        type="url"
+                        aria-label={`ITB link ${i + 1}`}
+                        value={link}
+                        onChange={(e) => setItbLinks((prev) => prev.map((l, j) => (j === i ? e.target.value : l)))}
+                        placeholder="https://app.planhub.com/… or buildingconnected.com/…"
+                        style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      />
+                      {link.trim() ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{itbLinkLabel(link)}</span>
+                      ) : null}
+                      <PasteButton onPaste={(text) => setItbLinks((prev) => prev.map((l, j) => (j === i ? text : l)))} label={`Paste ITB link ${i + 1}`} />
+                      <button
+                        type="button"
+                        aria-label={`Remove ITB link ${i + 1}`}
+                        title="Remove link"
+                        onClick={() => setItbLinks((prev) => prev.filter((_, j) => j !== i))}
+                        style={{ padding: '0.3rem 0.5rem', background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setItbLinks((prev) => [...prev, ''])}
+                      style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 5, color: 'var(--text-700)', cursor: 'pointer' }}
+                    >
+                      + Add ITB link
+                    </button>
+                  </div>
+                </div>
               </div>
               <div style={FORM_SECTION_STYLE}>
                 <div style={FORM_SECTION_LABEL_STYLE}>Money</div>

@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { buildBidCopyForText } from '../../lib/bidCopyForText'
+import { itbLinkLabels, parseItbLinks } from '../../lib/itbLinks'
 import { formatRelativeDayPhrase } from '../../lib/relativeDayPhrase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { CustomerSnapshotModal } from '../customers/CustomerSnapshotModal'
@@ -512,6 +513,12 @@ export function BidPreviewModal({
                   <LinkChip href={bid.plans_link} label="Plans" />
                   <LinkChip href={bid.count_tooling_plans_link} label="Takeoff" />
                   <LinkChip href={bid.bid_submission_link} label="Submission" />
+                  {(() => {
+                    const itbLinks = parseItbLinks((bid as { itb_links?: unknown }).itb_links)
+                    if (itbLinks.length === 0) return <LinkChip href={null} label="ITB" />
+                    const labels = itbLinkLabels(itbLinks)
+                    return itbLinks.map((url, i) => <LinkChip key={`${url}-${i}`} href={url} label={labels[i] ?? 'ITB'} />)
+                  })()}
                 </div>
               </div>
 

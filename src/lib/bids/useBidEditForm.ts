@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
+import { parseItbLinks } from '../itbLinks'
 
 export type BidEditOutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
@@ -11,6 +12,8 @@ export type BidEditFormValues = {
   plansLink: string
   countToolingPlansLink: string
   bidSubmissionLink: string
+  /** ITB / submission web links (PlanHub, BuildingConnected, …), one URL per row. */
+  itbLinks: string[]
   projectName: string
   /** Linked `projects.id` ('' = not linked). Distinct from the free-text projectName. */
   projectId: string
@@ -47,6 +50,7 @@ export type BidEditFormSetters = {
   setPlansLink: Dispatch<SetStateAction<string>>
   setCountToolingPlansLink: Dispatch<SetStateAction<string>>
   setBidSubmissionLink: Dispatch<SetStateAction<string>>
+  setItbLinks: Dispatch<SetStateAction<string[]>>
   setProjectName: Dispatch<SetStateAction<string>>
   setProjectId: Dispatch<SetStateAction<string>>
   setBidNumber: Dispatch<SetStateAction<string>>
@@ -119,6 +123,7 @@ export function useBidEditForm(): BidEditForm {
   const [plansLink, setPlansLink] = useState('')
   const [countToolingPlansLink, setCountToolingPlansLink] = useState('')
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
+  const [itbLinks, setItbLinks] = useState<string[]>([])
   const [projectName, setProjectName] = useState('')
   const [projectId, setProjectId] = useState('')
   const [bidNumber, setBidNumber] = useState('')
@@ -152,6 +157,7 @@ export function useBidEditForm(): BidEditForm {
     setPlansLink('')
     setCountToolingPlansLink('')
     setBidSubmissionLink('')
+    setItbLinks([])
     setDesignDrawingPlanDate('')
     setPlanPages('')
     setGcCustomerId(opts.customer?.id ?? '')
@@ -186,6 +192,7 @@ export function useBidEditForm(): BidEditForm {
     setPlansLink(bid.plans_link ?? '')
     setCountToolingPlansLink(bid.count_tooling_plans_link ?? '')
     setBidSubmissionLink(bid.bid_submission_link ?? '')
+    setItbLinks(parseItbLinks((bid as { itb_links?: unknown }).itb_links))
     setGcCustomerId(opts.gcCustomerId)
     setGcCustomerSearch(opts.gcCustomerSearch)
     setProjectName(bid.project_name ?? '')
@@ -229,6 +236,7 @@ export function useBidEditForm(): BidEditForm {
     plansLink,
     countToolingPlansLink,
     bidSubmissionLink,
+    itbLinks,
     projectName,
     projectId,
     bidNumber,
@@ -263,6 +271,7 @@ export function useBidEditForm(): BidEditForm {
     setPlansLink,
     setCountToolingPlansLink,
     setBidSubmissionLink,
+    setItbLinks,
     setProjectName,
     setProjectId,
     setBidNumber,

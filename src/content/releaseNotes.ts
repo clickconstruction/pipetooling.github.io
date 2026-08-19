@@ -21,6 +21,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1851',
+    date: '2026-08-19',
+    title: 'ITB links on bids',
+    kind: 'feature',
+    highlights: [
+      'Bids now have a spot for their ITB webpage links — PlanHub, BuildingConnected, or any portal. Add as many as you need when a project is out to multiple GCs.',
+      'Edit Bid gets an "ITB & submission links" section: paste a link, and it labels itself (PlanHub, BuildingConnected, …). Add or remove rows freely.',
+      'The bid preview shows each link as a one-click chip alongside Drive folder, Plans, Takeoff, and Submission.',
+    ],
+  },
+  {
     version: 'v2.1849',
     date: '2026-08-19',
     title: 'Checklist review: sign off or send back',
