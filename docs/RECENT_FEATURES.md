@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1831)
+last_updated: 2026-08-19 (v2.1832)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1832)
+
+### Estimates: the change-order editor — narrative, credit lines, net change — CO train PR 4 (2026-08-19)
+The detail page grows a CO mode (`isCO` on `doc_kind`): the draft editor opens with an amber-bordered **Change order** section (Description of change, Reason for change, Impact on schedule, Response requested by — persisted to `change_order_fields` in `saveDraft`), the line-items block reads **Impact on cost**, and negative unit prices become credit lines (the editor passes `allowNegative` into `computeEstimateLineExtendedCents`/`normalizeEstimateLineItemsFromJson` from v2.1829, and the price input drops its `min=0` in CO mode). The total line reads **Net change to contract** with signed formatting on both the draft editor and the sent/read-only view, which also renders the narrative read-only. Standard estimates byte-identical (all changes gated on `isCO`). Verified live on prod data: CO draft #46 — narrative + $2,840 line + −$390 credit → $2,450.00 net, saved, reloaded (jsonb + credit round-trip), deleted. Send-for-signature rendering (accept page + email) is PR 5. Client-only — no migration.
 
 ## Latest Updates (v2.1831)
 
