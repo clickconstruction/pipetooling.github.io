@@ -18,6 +18,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { isChangeOrderDocKind } from '../lib/estimateChangeOrder'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
@@ -502,6 +503,28 @@ function estInputBlock(extra?: CSSProperties): CSSProperties {
     padding: '0.5rem',
     ...extra,
   }
+}
+
+/** Amber "Change order" pill (v2.1831 CO train) — list rows + detail header. */
+function EstimateChangeOrderChip({ compact }: { compact?: boolean }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        background: 'var(--bg-orange-tint)',
+        color: 'var(--text-amber-800)',
+        border: '1px solid #f59e0b',
+        borderRadius: 999,
+        padding: compact ? '0 0.4rem' : '0.05rem 0.5rem',
+        fontSize: compact ? '0.625rem' : '0.6875rem',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+      }}
+    >
+      Change order
+    </span>
+  )
 }
 
 function estPrimaryButton(disabled: boolean): CSSProperties {
@@ -1061,7 +1084,10 @@ function EstimateListTable({
                     minWidth: 0,
                   }}
                 >
-                  <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flexWrap: 'wrap' }}>
+                    <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
+                    {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : null}
+                  </span>
                   {showCustomerColumn ? null : (
                     <span style={estimateListCustomerCellStyle}>{estimateListCustomerSubline(r)}</span>
                   )}
@@ -1496,6 +1522,7 @@ function EstimateListCards({
                   >
                     #{r.estimate_number}
                   </Link>
+                  {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : null}
                   <div
                     style={{
                       fontWeight: 600,
@@ -1664,7 +1691,7 @@ function EstimateList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, user?.id, setSearchParams])
 
-  async function createDraft(projectId?: string | null) {
+  async function createDraft(projectId?: string | null, docKind: 'estimate' | 'change_order' = 'estimate') {
     if (!user?.id || creating) return
     setCreating(true)
     try {
@@ -1685,6 +1712,8 @@ function EstimateList() {
               terms_snapshot: '',
               total_cents: 0,
               project_id: projectId?.trim() || null,
+              // CO train (v2.1831): a change order is an estimate flavor.
+              ...(docKind === 'change_order' ? { doc_kind: 'change_order', change_order_fields: {} } : {}),
             })
             .select('id, estimate_number')
             .single(),
@@ -1749,6 +1778,15 @@ function EstimateList() {
               Accepted notifications
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => void createDraft(null, 'change_order')}
+            disabled={creating}
+            title="Write a change order and send it for signature — same flow as an estimate"
+            style={estSecondaryButton(creating)}
+          >
+            New change order
+          </button>
           <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
             {creating ? 'Creating…' : 'New estimate'}
           </button>
@@ -3658,12 +3696,23 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 }}
               >
                 # {row.estimate_number}
+                {isChangeOrderDocKind(row.doc_kind) ? (
+                  <>
+                    {' '}
+                    <EstimateChangeOrderChip />
+                  </>
+                ) : null}
               </span>
           ) : (
             <h1 style={{ margin: 0 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
                 # {row.estimate_number}
               </span>{' '}
+              {isChangeOrderDocKind(row.doc_kind) ? (
+                <>
+                  <EstimateChangeOrderChip />{' '}
+                </>
+              ) : null}
               {title || 'Estimate'}
             </h1>
           )}

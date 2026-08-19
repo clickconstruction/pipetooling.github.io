@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1831',
+    date: '2026-08-19',
+    title: 'New change order — right from Estimates',
+    kind: 'feature',
+    highlights: [
+      'A New change order button now sits next to New estimate. It opens a draft that will ride the same rails as an estimate — and an amber Change order tag marks these everywhere in the list.',
+      'The change-order editor (description of change, credit lines, net change to contract) and send-for-signature arrive in the next two updates.',
+    ],
+  },
+  {
     version: 'v2.1829',
     date: '2026-08-19',
     title: 'Change orders: the document takes shape',

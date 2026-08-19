@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1829)
+last_updated: 2026-08-19 (v2.1831)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1831)
+
+### Estimates: "New change order" is live — CO train PR 3 (2026-08-19)
+The entry point lands: **New change order** sits beside New estimate on `/estimates` (same insert-draft-and-navigate flow, with `doc_kind: 'change_order'` + empty `change_order_fields`), and an amber **Change order** chip marks CO rows on the Pipeline/Ledger table, the narrow-viewport cards, and the detail header (draft + sent/accepted variants). Verified live: created CO draft #45 from the button (prod accepted the v2.1826 columns), chip rendered in the detail header, draft deleted. The detail editor still shows the standard estimate form — the CO narrative section, credit lines, and net-change total are PR 4; send-for-signature rendering is PR 5. Client-only — no migration.
 
 ## Latest Updates (v2.1829)
 
