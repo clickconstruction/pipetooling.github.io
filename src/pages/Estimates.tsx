@@ -1153,7 +1153,7 @@ function EstimateListTable({
                     {r.job_ledger_id ? (
                       <Link
                         to={`/jobs?edit=${r.job_ledger_id}`}
-                        style={{ fontSize: '0.85rem', fontWeight: 500, color: '#15803d' }}
+                        style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-green-600)' }}
                       >
                         {(() => {
                           const hcp = estimateLinkedJobHcp(r)
@@ -1360,7 +1360,7 @@ function EstimateListCards({
           {r.job_ledger_id ? (
             <Link
               to={`/jobs?edit=${r.job_ledger_id}`}
-              style={{ fontSize: '0.85rem', fontWeight: 500, color: '#15803d' }}
+              style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-green-600)' }}
             >
               {(() => {
                 const hcp = estimateLinkedJobHcp(r)
@@ -4746,7 +4746,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 {attachmentCheckStatus === 'success' && attachmentCheckMessage ? (
                   <p
                     role="status"
-                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.45 }}
+                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-green-600)', lineHeight: 1.45 }}
                   >
                     {attachmentCheckMessage}
                   </p>

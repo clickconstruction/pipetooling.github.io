@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1838',
+    date: '2026-08-19',
+    title: 'Dark mode: customer search and Estimates links now follow your theme',
+    kind: 'fix',
+    highlights: [
+      'The customer search dropdown (commercial yellow rows, selected green, keyboard highlight) now uses theme colors, so it reads correctly in dark mode instead of glowing white.',
+      'Green "linked job" links and the attachment-check status line in Estimates follow the theme too.',
+    ],
+  },
+  {
     version: 'v2.1837',
     date: '2026-08-19',
     title: 'Farm Mode: just your checklist',
