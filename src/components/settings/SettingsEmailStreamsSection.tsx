@@ -6,6 +6,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
+  APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS,
 } from '../../lib/appSettingsKeys'
 import { parsePaidJobEmailRecipients, serializePaidJobEmailRecipients } from '../../lib/paidJobEmail'
 import { cancelBilledReportSend } from '../../lib/billedReportEmailClient'
@@ -39,6 +40,8 @@ type GlobalEmailSchedule = {
   }>
   paid_recipients: Array<{ user_id: string; name: string }>
   payment_recipients: Array<{ user_id: string; name: string }>
+  /** Ready to Bill stream (v2.1836) — optional so either deploy order of client vs migration degrades gracefully. */
+  ready_to_bill_recipients?: Array<{ user_id: string; name: string }>
   billed_requests: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   schedule_day_requests: Array<{ id: string; recipient_name: string; send_at: string; work_date: string }>
   // The RPC has returned these three since their streams shipped (v2.1428/38/49);
@@ -373,6 +376,24 @@ export default function SettingsEmailStreamsSection({ focus }: {
           ? none
           : data.payment_recipients.map((r) => (
               <RecipientChip key={r.user_id} label={r.name} onRemove={() => void removeSettingRecipient(APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS, r.user_id, r.name)} />
+            ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('ready_to_bill')}
+        flash={flashKey === 'ready_to_bill'}
+        count={(data.ready_to_bill_recipients ?? []).length}
+        noun="subscriber"
+        open={!!openCards['ready_to_bill']}
+        onToggle={() => toggleCard('ready_to_bill')}
+        title="Ready to Bill notifications"
+        cadence="event — job moves to Ready to Bill (email + push)"
+        manage="full manager → Jobs → Pipeline ⚙ Ready to Bill notifications"
+      >
+        {(data.ready_to_bill_recipients ?? []).length === 0
+          ? none
+          : (data.ready_to_bill_recipients ?? []).map((r) => (
+              <RecipientChip key={r.user_id} label={r.name} onRemove={() => void removeSettingRecipient(APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS, r.user_id, r.name)} />
             ))}
       </StreamCard>
 

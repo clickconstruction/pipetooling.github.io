@@ -121,25 +121,27 @@ describe('gc_statement one-offs (v2.1428)', () => {
 })
 
 describe('normalizeMyEmailSubscriptions', () => {
-  it('maps a full v2.1330 payload', () => {
+  it('maps a full payload', () => {
     const subs = normalizeMyEmailSubscriptions({
-      events: { paid_in_full: true, payment_received: false, estimate_accepted_always: true },
+      events: { paid_in_full: true, payment_received: false, estimate_accepted_always: true, ready_to_bill: true },
       estimate_specific: { total: 7, titles: ['Askey remodel', 'Garza bath'] },
     })
     expect(subs).toEqual({
       paidInFull: true,
       paymentReceived: false,
       estimateAcceptedAlways: true,
+      readyToBill: true,
       estimateSpecificTotal: 7,
       estimateSpecificTitles: ['Askey remodel', 'Garza bath'],
     })
   })
 
-  it('defaults the v2.1330 keys when the RPC has not been migrated yet', () => {
+  it('defaults the v2.1330/v2.1836 keys when the RPC has not been migrated yet', () => {
     const subs = normalizeMyEmailSubscriptions({
       events: { paid_in_full: true, payment_received: true },
     })
     expect(subs.estimateAcceptedAlways).toBe(false)
+    expect(subs.readyToBill).toBe(false)
     expect(subs.estimateSpecificTotal).toBe(0)
     expect(subs.estimateSpecificTitles).toEqual([])
     expect(subs.paidInFull).toBe(true)
@@ -150,6 +152,7 @@ describe('normalizeMyEmailSubscriptions', () => {
       paidInFull: false,
       paymentReceived: false,
       estimateAcceptedAlways: false,
+      readyToBill: false,
       estimateSpecificTotal: 0,
       estimateSpecificTitles: [],
     })

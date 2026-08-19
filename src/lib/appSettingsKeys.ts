@@ -164,6 +164,27 @@ export const APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS = 'paid_job_email_recipi
 export const APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS = 'payment_made_email_recipients_v1' as const
 
 /**
+ * JSON array of `users.id` uuid strings in `value_text`: who is notified when a job moves to
+ * Ready to Bill (any writer — update_job_status, invoice reverts/deletes that land a job back).
+ * Same variant split as the paid streams (detailed vs sterilized). Unlike those, this stream
+ * can also send WEB PUSH — see APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS. The
+ * paid-job-email edge function reads both keys for queue rows with kind='ready_to_bill'.
+ * Dev writes; all authenticated read.
+ * @see `src/lib/readyToBillNotify.ts`
+ */
+export const APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS =
+  'ready_to_bill_notify_recipients_v1' as const
+
+/**
+ * JSON `{ email: boolean, push: boolean }` in `value_text`: which delivery channels the
+ * Ready to Bill stream uses for ALL its recipients (push only reaches recipients with a
+ * push_subscriptions row). Missing/garbage = both on. Dev writes; all authenticated read.
+ * @see `src/lib/readyToBillNotify.ts`
+ */
+export const APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS =
+  'ready_to_bill_notify_channels_v1' as const
+
+/**
  * JSON array of `users.id` uuid strings in `value_text`: who is emailed on EVERY estimate
  * acceptance ("always notify"), unioned with that estimate's own `accept_notify_user_ids`.
  * Dev writes (⚙ on Estimates); all authenticated read. The `accept-estimate` edge function

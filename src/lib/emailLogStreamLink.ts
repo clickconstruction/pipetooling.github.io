@@ -12,6 +12,7 @@ export type EmailStreamKey =
   | 'digest'
   | 'paid'
   | 'payment'
+  | 'ready_to_bill'
   | 'billed'
   | 'schedule_day'
   | 'weekly_money'
@@ -28,6 +29,7 @@ export function emailStreamCardId(key: EmailStreamKey): string {
 //   digest          recurringJobReportCore.ts  "Job activity summary — …"
 //   billed          billed-report-email        "Billed awaiting payment — …"
 //   paid/payment    paid-job-email             "Paid in full — …" / "Payment progress — …" / "Not paid — …"
+//   ready_to_bill   paid-job-email             "Ready to bill — …" (v2.1836 stream)
 //   schedule_day    schedule-day-email-dispatch "Dispatch schedule — …"
 //   weekly_money    weekly-money-email-dispatch "Weekly money movement — …"
 //   weekly_movement weekly-movement-email-dispatch "Weekly movement — …"
@@ -36,6 +38,7 @@ const SUBJECT_PATTERNS: Array<[RegExp, EmailStreamKey]> = [
   [/^job activity summary — /i, 'digest'],
   [/^billed awaiting payment — /i, 'billed'],
   [/^paid in full — /i, 'paid'],
+  [/^ready to bill — /i, 'ready_to_bill'],
   [/^payment progress — /i, 'payment'],
   [/^not paid — /i, 'payment'],
   [/^dispatch schedule — /i, 'schedule_day'],

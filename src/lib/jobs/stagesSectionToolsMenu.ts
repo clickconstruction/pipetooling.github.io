@@ -11,7 +11,8 @@
  * - Accounts Receivable: rendered for everyone, disabled unless
  *   dev / master_technician / assistant-like / primary (same as the header).
  * - Share / Print: dev / master_technician / assistant-like only.
- * - Paid notifications + Paid In Full notifications: dev / master_technician only.
+ * - Ready to Bill notifications + Paid notifications + Paid In Full
+ *   notifications: dev / master_technician only.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
 
@@ -19,6 +20,7 @@ export type StagesSectionToolKey =
   | 'weekly-movement'
   | 'weekly-money'
   | 'capable-to-bill'
+  | 'ready-to-bill-notifications'
   | 'gc-review'
   | 'accounts-receivable'
   | 'billed-share-print'
@@ -94,6 +96,20 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       },
     ],
   })
+
+  if (isDevOrMaster) {
+    groups.push({
+      section: 'Ready to Bill',
+      items: [
+        {
+          key: 'ready-to-bill-notifications',
+          label: 'Ready to Bill notifications',
+          title: 'Ready to Bill notification settings (email + push)',
+          disabled: false,
+        },
+      ],
+    })
+  }
 
   const billedItems: StagesSectionToolItem[] = [
     {

@@ -15,8 +15,21 @@ import {
 import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
+  APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS,
+  APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS,
 } from '../../lib/appSettingsKeys'
-import { fetchPaidJobEmailPreview, openHtmlInNewTab, sendPaidJobEmailTest } from '../../lib/paidJobEmailClient'
+import {
+  DEFAULT_READY_TO_BILL_NOTIFY_CHANNELS,
+  parseReadyToBillNotifyChannels,
+  serializeReadyToBillNotifyChannels,
+  type ReadyToBillNotifyChannels,
+} from '../../lib/readyToBillNotify'
+import {
+  fetchPaidJobEmailPreview,
+  openHtmlInNewTab,
+  sendPaidJobEmailTest,
+  sendReadyToBillPushTest,
+} from '../../lib/paidJobEmailClient'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /**
@@ -62,11 +75,13 @@ function isOfficeCapableRole(role: string | null): boolean {
 }
 
 /**
- * Which notification stream this modal configures (v2.1310). Both streams ride
- * the same edge function, templates, and variant split; only the trigger and
- * the recipient list differ.
+ * Which notification stream this modal configures (v2.1310; third stream
+ * v2.1836). All streams ride the same edge function and variant split; only
+ * the trigger and the recipient list differ. The ready_to_bill stream
+ * additionally offers DELIVERY CHANNELS (email and/or web push) — the other
+ * two are email-only.
  */
-export type PaidEmailSettingsVariant = 'paid_in_full' | 'payment'
+export type PaidEmailSettingsVariant = 'paid_in_full' | 'payment' | 'ready_to_bill'
 
 const VARIANT_COPY: Record<
   PaidEmailSettingsVariant,
@@ -86,6 +101,13 @@ const VARIANT_COPY: Record<
     description:
       'Whenever any payment is recorded on a job — Mark Paid, a bank-deposit allocation, or a Stripe payment — the people below get an email showing the job’s invoices and payment progress. Devs and masters receive the detailed financial review; everyone else receives a summary with no dollar amounts. When the payment completes the job, only the Paid in Full email is sent.',
   },
+  ready_to_bill: {
+    settingKey: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS,
+    ariaLabel: 'Ready to Bill notification settings',
+    heading: 'Ready to Bill notifications',
+    description:
+      'When a job moves to Ready to Bill, the people below are notified so billing can start right away — jobs sent back from Billed count too. Devs and masters receive the detailed version with dollar amounts; everyone else receives a summary.',
+  },
 }
 
 export default function PaidInFullEmailSettingsModal({
@@ -104,6 +126,12 @@ export default function PaidInFullEmailSettingsModal({
   const [users, setUsers] = useState<RecipientUser[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [saving, setSaving] = useState(false)
+  // ready_to_bill only: delivery channels + who has push enabled on a device.
+  const isReadyToBill = variant === 'ready_to_bill'
+  const [channels, setChannels] = useState<ReadyToBillNotifyChannels>({
+    ...DEFAULT_READY_TO_BILL_NOTIFY_CHANNELS,
+  })
+  const [pushEnabledIds, setPushEnabledIds] = useState<Set<string>>(() => new Set())
 
   const [jobSearch, setJobSearch] = useState('')
   const [jobSearching, setJobSearching] = useState(false)
@@ -122,7 +150,7 @@ export default function PaidInFullEmailSettingsModal({
     [jobResults],
   )
   const { jobEvidence, evidenceMode } = useJobBidSearchEvidence(jobResultsUnified)
-  const [previewBusy, setPreviewBusy] = useState<'detailed' | 'summary' | 'test' | null>(null)
+  const [previewBusy, setPreviewBusy] = useState<'detailed' | 'summary' | 'test' | 'push' | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -154,6 +182,29 @@ export default function PaidInFullEmailSettingsModal({
         )
         setUsers(rows.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || 'Unknown', role: u.role, email: u.email })))
         setSelectedIds(new Set(parsePaidJobEmailRecipients(settingRes?.value_text ?? null)))
+        if (variant === 'ready_to_bill') {
+          // Channels + push coverage (dev/master can SELECT push_subscriptions).
+          const [channelsRes, pushRes] = await Promise.all([
+            withSupabaseRetry<{ value_text: string | null } | null>(
+              () =>
+                supabase
+                  .from('app_settings')
+                  .select('value_text')
+                  .eq('key', APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS)
+                  .maybeSingle(),
+              'ready to bill channels setting',
+            ),
+            withSupabaseRetry(
+              () => supabase.from('push_subscriptions').select('user_id'),
+              'ready to bill push coverage',
+            ),
+          ])
+          if (cancelled) return
+          setChannels(parseReadyToBillNotifyChannels(channelsRes?.value_text ?? null))
+          setPushEnabledIds(
+            new Set(((pushRes ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)),
+          )
+        }
       } catch (e) {
         if (!cancelled) showToast(formatErrorMessage(e, 'Could not load recipients'), 'error')
       } finally {
@@ -163,7 +214,7 @@ export default function PaidInFullEmailSettingsModal({
     return () => {
       cancelled = true
     }
-  }, [showToast, copy.settingKey])
+  }, [showToast, copy.settingKey, variant])
 
   // Job search (debounced) via the same RPC the Dispatch Mode PO picker uses.
   useEffect(() => {
@@ -223,7 +274,26 @@ export default function PaidInFullEmailSettingsModal({
           { onConflict: 'key' },
         )
       if (error) throw error
-      showToast(variant === 'payment' ? 'Payment-email recipients saved.' : 'Paid-email recipients saved.', 'success')
+      if (isReadyToBill) {
+        const { error: chErr } = await supabase
+          .from('app_settings')
+          .upsert(
+            {
+              key: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_CHANNELS,
+              value_text: serializeReadyToBillNotifyChannels(channels),
+            },
+            { onConflict: 'key' },
+          )
+        if (chErr) throw chErr
+      }
+      showToast(
+        isReadyToBill
+          ? 'Ready to Bill notification settings saved.'
+          : variant === 'payment'
+            ? 'Payment-email recipients saved.'
+            : 'Paid-email recipients saved.',
+        'success',
+      )
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save recipients'), 'error')
     } finally {
@@ -231,11 +301,13 @@ export default function PaidInFullEmailSettingsModal({
     }
   }
 
-  const runPreview = async (variant: 'detailed' | 'summary') => {
+  const runPreview = async (previewVariant: 'detailed' | 'summary') => {
     if (!pickedJob || previewBusy) return
-    setPreviewBusy(variant)
+    setPreviewBusy(previewVariant)
     try {
-      openHtmlInNewTab(await fetchPaidJobEmailPreview(pickedJob.id, variant))
+      openHtmlInNewTab(
+        await fetchPaidJobEmailPreview(pickedJob.id, previewVariant, isReadyToBill ? 'ready_to_bill' : undefined),
+      )
     } catch (e) {
       showToast(formatErrorMessage(e, 'Preview failed'), 'error')
     } finally {
@@ -247,10 +319,28 @@ export default function PaidInFullEmailSettingsModal({
     if (!pickedJob || previewBusy) return
     setPreviewBusy('test')
     try {
-      await sendPaidJobEmailTest(pickedJob.id)
+      await sendPaidJobEmailTest(pickedJob.id, isReadyToBill ? 'ready_to_bill' : undefined)
       showToast('Test email sent to your address.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Test send failed'), 'error')
+    } finally {
+      setPreviewBusy(null)
+    }
+  }
+
+  const runTestPush = async () => {
+    if (!pickedJob || previewBusy) return
+    setPreviewBusy('push')
+    try {
+      const sent = await sendReadyToBillPushTest(pickedJob.id)
+      showToast(
+        sent > 0
+          ? `Test push sent to ${sent} device${sent === 1 ? '' : 's'}.`
+          : 'No push devices found — enable push notifications in Settings → Your account first.',
+        sent > 0 ? 'success' : 'error',
+      )
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Test push failed'), 'error')
     } finally {
       setPreviewBusy(null)
     }
@@ -332,6 +422,55 @@ export default function PaidInFullEmailSettingsModal({
           {copy.description}
         </p>
 
+        {isReadyToBill && (
+          <>
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Delivery channels</h3>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              {(
+                [
+                  { key: 'email' as const, name: '📧 Email', sub: 'Sent within ~15 minutes, batched' },
+                  { key: 'push' as const, name: '🔔 Push notification', sub: 'To recipients with push enabled on a device' },
+                ]
+              ).map((ch) => (
+                <label
+                  key={ch.key}
+                  style={{
+                    flex: '1 1 200px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.6rem',
+                    cursor: canEditRecipients ? 'pointer' : 'default',
+                    border: `1px solid ${channels[ch.key] ? 'var(--text-blue-700)' : 'var(--border-strong)'}`,
+                    borderRadius: 6,
+                    padding: '0.6rem 0.75rem',
+                    background: channels[ch.key] ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    opacity: canEditRecipients ? 1 : 0.8,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={channels[ch.key]}
+                    disabled={!canEditRecipients}
+                    onChange={() => setChannels((prev) => ({ ...prev, [ch.key]: !prev[ch.key] }))}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>{ch.name}</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                      {ch.sub}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {!channels.email && !channels.push && (
+              <p style={{ margin: '-0.5rem 0 1rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
+                Both channels are off — nobody will be notified.
+              </p>
+            )}
+          </>
+        )}
+
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
         {!canEditRecipients && (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -367,6 +506,23 @@ export default function PaidInFullEmailSettingsModal({
                   {u.name}
                   {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
                 </span>
+                {isReadyToBill && channels.push && !pushEnabledIds.has(u.id) && (
+                  <span
+                    title="Hasn't enabled push notifications on any device — will receive email only"
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '1px 8px',
+                      borderRadius: 9999,
+                      background: 'var(--bg-muted)',
+                      color: 'var(--text-muted)',
+                      border: '1px dashed var(--border-strong)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    no push device
+                  </span>
+                )}
                 {badge(u.role)}
               </label>
             ))}
@@ -486,6 +642,16 @@ export default function PaidInFullEmailSettingsModal({
           >
             {previewBusy === 'test' ? 'Sending…' : 'Email me a test'}
           </button>
+          {isReadyToBill && (
+            <button
+              type="button"
+              onClick={() => void runTestPush()}
+              disabled={!pickedJob || previewBusy !== null}
+              style={actionBtnStyle(!pickedJob || previewBusy !== null)}
+            >
+              {previewBusy === 'push' ? 'Sending…' : 'Push me a test'}
+            </button>
+          )}
         </div>
       </div>
     </div>
