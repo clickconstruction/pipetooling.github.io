@@ -13,19 +13,39 @@ function keysOf(groups: ReturnType<typeof buildStagesSectionToolsMenu>) {
 }
 
 describe('buildStagesSectionToolsMenu', () => {
-  it('dev sees every tool, grouped under the three stage sections', () => {
+  it('dev sees every tool, grouped under the stage sections', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })
-    expect(groups.map((g) => g.section)).toEqual(['Pipeline', 'Working', 'Billed Awaiting Payment', 'Paid in Full'])
+    expect(groups.map((g) => g.section)).toEqual([
+      'Pipeline',
+      'Working',
+      'Ready to Bill',
+      'Billed Awaiting Payment',
+      'Paid in Full',
+    ])
     expect(keysOf(groups)).toEqual([
       'weekly-movement',
       'weekly-money',
       'capable-to-bill',
+      'ready-to-bill-notifications',
       'gc-review',
       'accounts-receivable',
       'billed-share-print',
       'paid-notifications',
       'paid-in-full-notifications',
     ])
+  })
+
+  it('Ready to Bill notifications is dev/master only — group hidden for others', () => {
+    for (const authRole of ['dev', 'master_technician']) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain(
+        'ready-to-bill-notifications',
+      )
+    }
+    for (const authRole of ['assistant', 'controller', 'primary', 'superintendent', null]) {
+      const groups = buildStagesSectionToolsMenu({ ...base, authRole })
+      expect(keysOf(groups)).not.toContain('ready-to-bill-notifications')
+      expect(groups.some((g) => g.section === 'Ready to Bill')).toBe(false)
+    }
   })
 
   it('weekly money is dev/controller only — hidden (not disabled) for others', () => {

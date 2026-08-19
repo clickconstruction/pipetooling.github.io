@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 19, 2026
 
+**`20260819230000_ready_to_bill_notifications.sql`** _(apply via `supabase db push` after the v2.1836 merge, then deploy `paid-job-email` — either order degrades cleanly: unknown-kind queue rows just wait for the redeployed function)_
+- **Purpose**: Ready to Bill notification stream (email + web push) on the paid-job-email rail. Widens `paid_job_email_queue.kind` CHECK to include `'ready_to_bill'`; new trigger `enqueue_ready_to_bill_notification_au` — AFTER UPDATE OF status ON `jobs_ledger` WHEN `NEW.status='ready_to_bill'` (send-backs from Billed included by design); seeds `ready_to_bill_notify_recipients_v1` (`[]`) and `ready_to_bill_notify_channels_v1` (`{"email":true,"push":true}`); new service-role-only RPC `get_ready_to_bill_email_payload(p_job_id)` (job identity, RTB draft-bill total/count, payments total, latest `job_status_events` mover); rebuilds `get_my_email_schedule()` (events gains `ready_to_bill`) and `get_global_email_schedule()` (gains `ready_to_bill_recipients`) from their live v2.1449 bodies.
+- **Category**: Jobs / notifications
+
 **`20260819171817_estimates_change_order_kind.sql`** _(apply via `supabase db push` after the v2.1826 merge — additive columns with defaults; existing rows and clients unaffected)_
 - **Purpose**: Change orders ride the estimates rails (CO train PR 1). `estimates.doc_kind text NOT NULL DEFAULT 'estimate'` (CHECK `estimate | change_order`) marks a row as a change order so it inherits the whole acceptance machine (public accept page, typed signature, send email, notify, status pipeline); `change_order_fields jsonb` holds the CO narrative (description of change, reason, schedule impact, response-by date, checklists); `bid_id uuid` (FK `bids`, `ON DELETE SET NULL`, partial index) is the Bids → Estimates bridge for CO train PR 6. Existing estimates RLS covers the new columns.
 - **Category**: Estimates / columns

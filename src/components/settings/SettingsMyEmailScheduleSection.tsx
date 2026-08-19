@@ -205,6 +205,13 @@ export default function SettingsMyEmailScheduleSection() {
                       managedFrom="Jobs → Pipeline"
                     />
                     <SubscriptionRow
+                      dot="#2563eb"
+                      subscribed={subs.readyToBill}
+                      name="Ready to Bill"
+                      trigger="when a job moves to Ready to Bill (email + push)"
+                      managedFrom="Jobs → Pipeline"
+                    />
+                    <SubscriptionRow
                       dot="#7c3aed"
                       subscribed={subs.estimateAcceptedAlways}
                       name="Estimate accepted"

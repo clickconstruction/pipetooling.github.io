@@ -613,6 +613,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
+  const [readyToBillNotifySettingsOpen, setReadyToBillNotifySettingsOpen] = useState(false)
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
   // narrows the section list to rows the matching chip counts.
@@ -2482,6 +2483,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             'weekly-movement': () => setWeeklyMovementModalOpen(true),
                             'weekly-money': () => setWeeklyMoneyModalOpen(true),
                             'capable-to-bill': () => setCapableToBillModalOpen(true),
+                            'ready-to-bill-notifications': () => setReadyToBillNotifySettingsOpen(true),
                             'gc-review': () => setGcReviewModalOpen(true),
                             'accounts-receivable': () => setBankPaymentsModalOpen(true),
                             'billed-share-print': () => setBilledShareModalOpen(true),
@@ -3045,16 +3047,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem' }}>
+                {/* Header row mirrors the Paid in Full section: toggle left, \u2699 flushed right. */}
+                <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('readyToBill')}
                     aria-expanded={sectionShown('readyToBill')}
-                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', flex: 1, minWidth: 0 }}
                   >
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
                     Ready to Bill ({readyToBillHdr.count}) - ${readyToBillHdr.total}{sectionLoadingSuffix('readyToBill')}
                   </button>
+                  {(authRole === 'dev' || authRole === 'master_technician') && (
+                    <button
+                      type="button"
+                      onClick={() => setReadyToBillNotifySettingsOpen(true)}
+                      title="Ready to Bill notification settings (email + push)"
+                      aria-label="Ready to Bill notification settings"
+                      style={{
+                        flexShrink: 0,
+                        height: 32,
+                        padding: '0 0.6rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 4,
+                        background: 'var(--surface)',
+                        cursor: 'pointer',
+                        color: 'var(--text-700)',
+                        fontSize: '1rem',
+                      }}
+                    >
+                      <span aria-hidden>\u2699</span>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Ready to Bill notifications</span>
+                    </button>
+                  )}
                 </div>
                 {sectionShown('readyToBill') && !stagesSearchActive && !sectionMerged('readyToBill') && sectionBodyLoading('Ready to Bill')}
                 {sectionShown('readyToBill') && (stagesSearchActive || sectionMerged('readyToBill')) && (
@@ -4201,6 +4230,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {paymentEmailSettingsOpen && (
         <PaidInFullEmailSettingsModal variant="payment" onClose={() => setPaymentEmailSettingsOpen(false)} />
+      )}
+      {readyToBillNotifySettingsOpen && (
+        <PaidInFullEmailSettingsModal variant="ready_to_bill" onClose={() => setReadyToBillNotifySettingsOpen(false)} />
       )}
       {billedShareModalOpen && (
         <BilledReportShareModal

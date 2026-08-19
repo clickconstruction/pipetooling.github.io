@@ -32,6 +32,18 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1836',
+    date: '2026-08-19',
+    title: 'Ready to Bill notifications — email and push',
+    kind: 'feature',
+    highlights: [
+      'The Ready to Bill section header gains a ⚙ Ready to Bill notifications button: pick who hears the moment any job becomes ready to bill — including jobs sent back from Billed.',
+      'First stream with delivery channels: email (detailed with dollars for devs and masters, summary for everyone else), push notifications to your phone or computer, or both.',
+      'Preview & test works like the paid streams, plus a new "Push me a test" button.',
+      'The stream also appears in Settings → Email & notifications and in My email subscriptions.',
+    ],
+  },
+  {
     version: 'v2.1835',
     date: '2026-08-19',
     title: 'Bids and Estimates connected: change orders flow between them',

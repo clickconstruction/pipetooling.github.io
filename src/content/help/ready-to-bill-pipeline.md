@@ -47,10 +47,11 @@ The Dashboard's **Billing Pipeline** card has a round **i** button next to its t
 
 ## Section tools in one dropdown
 
-The stage headers down the board carry their own buttons — Capable of Being Billed on Working, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid In Full notifications on Paid in Full. The **hamburger menu icon just left of Waiting** in the stage strip (Waiting → Working → …) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
+The stage headers down the board carry their own buttons — Capable of Being Billed on Working, Ready to Bill notifications on Ready to Bill, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid In Full notifications on Paid in Full. The **hamburger menu icon just left of Waiting** in the stage strip (Waiting → Working → …) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
 
 :::example Section tools
 **Working** &nbsp; Capable of Being Billed: $48,450
+**Ready to Bill** &nbsp; Ready to Bill notifications
 **Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications
 **Paid in Full** &nbsp; Paid In Full notifications
 :::
@@ -159,6 +160,25 @@ The previews open the exact email in a new tab; **Email me a test** sends the de
 There's a second stream for jobs that aren't finished yet: whenever **any** payment lands on a job — the office marks a payment, a bank deposit is allocated in Accounts Receivable, or a Stripe payment comes in — the app can email a progress version of the same report. Instead of the green banner it leads with an amber **$X (Y%) OF $Z PAID** banner and the payment that just arrived, then the job's **Invoices** table exactly as the office sees it in Edit Job — each bill with its {{chip:yellow|Draft}} / {{chip:blue|Billed}} / {{chip:green|Paid}} status, sent date, amount, and how much of it is paid vs still open — followed by the line items. Detailed and Summary versions work like the paid-in-full email.
 
 Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header (same rules: devs and masters open it, devs edit it). When a payment finishes the job, only the paid-in-full email goes out — you never get both for the same payment.
+
+## Ready to Bill notifications
+
+The third stream watches the **front** of the billing pipeline: the moment any job moves to {{chip:yellow|Ready to Bill}} — a crew finishing up, the office moving it by hand, or a job coming **back** from Billed after an invoice is deleted or reverted — the people on its list are notified so billing can start right away.
+
+This stream is the first that can reach you **two ways**. Behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header (same rules: devs and masters open it, devs edit it), a **Delivery channels** block offers:
+
+- **📧 Email** — sent within ~15 minutes, batched with the other notification emails. Devs and masters get the detailed version (the billable amount, draft bills, payments so far); everyone else gets a summary with no dollar figures.
+- **🔔 Push notification** — a short alert straight to your phone or computer, for anyone on the list who has enabled push notifications on a device (Settings → Your account). People without a push device show a small **no push device** hint in the list — they still get the email. Push follows the same detailed/summary rule: dollar amounts only for devs and masters.
+
+The same window has the familiar **Preview & test** block — pick a job, preview the detailed or summary email, **Email me a test**, or **Push me a test** to see the push land on your own devices before anyone else does.
+
+:::example Preview & test
+Selected: **J512** · Smith House Repipe
+
+{{button:outline|Preview detailed}} &nbsp; {{button:outline|Preview summary}} &nbsp; {{button:outline|Email me a test}} &nbsp; {{button:outline|Push me a test}}
+:::
+
+If several moves happen back-to-back on the same job, they collapse into one notification. Turning both channels off pauses the stream without losing the list.
 
 ## Sharing the Billed report
 

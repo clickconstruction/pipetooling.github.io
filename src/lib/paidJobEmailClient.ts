@@ -27,10 +27,18 @@ function fnError(r: FnResult, fallback: string): string | null {
   return null
 }
 
-/** mode 'preview' — returns the rendered HTML (throws with a readable message on failure). */
-export async function fetchPaidJobEmailPreview(jobId: string, variant: 'detailed' | 'summary'): Promise<string> {
+/**
+ * mode 'preview' — returns the rendered HTML (throws with a readable message on
+ * failure). `kind: 'ready_to_bill'` renders the Ready to Bill template instead
+ * of the paid one (v2.1836); omitted = paid/payment (shared template).
+ */
+export async function fetchPaidJobEmailPreview(
+  jobId: string,
+  variant: 'detailed' | 'summary',
+  kind?: 'ready_to_bill',
+): Promise<string> {
   const r = (await supabase.functions.invoke('paid-job-email', {
-    body: { mode: 'preview', job_id: jobId, variant },
+    body: { mode: 'preview', job_id: jobId, variant, ...(kind ? { kind } : {}) },
   })) as FnResult
   const err = fnError(r, 'Preview failed')
   if (err) throw new Error(err)
@@ -40,12 +48,26 @@ export async function fetchPaidJobEmailPreview(jobId: string, variant: 'detailed
 }
 
 /** mode 'test_send' — the detailed variant to the caller's own email, [TEST]-prefixed. */
-export async function sendPaidJobEmailTest(jobId: string): Promise<void> {
+export async function sendPaidJobEmailTest(jobId: string, kind?: 'ready_to_bill'): Promise<void> {
   const r = (await supabase.functions.invoke('paid-job-email', {
-    body: { mode: 'test_send', job_id: jobId },
+    body: { mode: 'test_send', job_id: jobId, ...(kind ? { kind } : {}) },
   })) as FnResult
   const err = fnError(r, 'Test send failed')
   if (err) throw new Error(err)
+}
+
+/**
+ * mode 'test_push' — a Ready to Bill web-push to the CALLER's own devices only
+ * (v2.1836). Resolves to how many devices were reached (0 = none subscribed).
+ */
+export async function sendReadyToBillPushTest(jobId: string): Promise<number> {
+  const r = (await supabase.functions.invoke('paid-job-email', {
+    body: { mode: 'test_push', job_id: jobId },
+  })) as FnResult
+  const err = fnError(r, 'Test push failed')
+  if (err) throw new Error(err)
+  const sent = (r.data as { push_sent?: number } | null)?.push_sent
+  return typeof sent === 'number' ? sent : 0
 }
 
 /** mode 'send_to' — REAL email to a chosen user; the recipient's role picks the variant. */
