@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1818)
+last_updated: 2026-08-19 (v2.1819)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1819)
+
+### Pipeline search: "Search Paid in Full too" chip — scoped-load plan PR 0 (2026-08-19)
+First cut from the board-query diet ([`JOBS_BOARD_SCOPED_LOAD_PLAN.md`](JOBS_BOARD_SCOPED_LOAD_PLAN.md), born from the 2026-08-19 realtime-errors → DB-stall investigation): typing ONE character into the Stages search used to silently prefetch the entire Paid in Full list — ~667 jobs × 8 embeds + materials/fixtures/schedule/estimate batches, the app's most expensive accidental action, fired on every search anyone ran. The prefetch is deleted; paid inclusion is now an opt-in chip in the search bar (kernel [`paidSearchChip.ts`](../src/lib/jobs/paidSearchChip.ts), +5 tests): hidden with no text · quiet outline **+ Paid in Full** while loaded jobs match · solid blue **Search Paid in Full too** the moment nothing loaded matches (the "is it an old job?" moment; blue not red — red is error language on this board) · **Searching Paid in Full…** while the one on-demand fetch runs · green **✓ Paid in Full included** once merged (stays merged for the session, chip states verified live against prod data incl. the dead prefetch). The # jump's own paid fallback (v2.1808) is untouched. Chip retires when the train's PR 4 server search lands. Plan doc committed with this PR. Client-only — no migration.
 
 ## Latest Updates (v2.1818)
 

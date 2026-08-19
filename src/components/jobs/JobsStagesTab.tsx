@@ -142,6 +142,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { findJobsByNumber, resolvePendingNumberJump, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
+import { paidSearchChipState } from '../../lib/jobs/paidSearchChip'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -921,12 +922,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [active, stagesSearchQuery, stagesIncludeScheduleTimeInSearch, jobs, showToast])
 
-  // Stages search should match paid-status jobs too; lazy paid list loads on expand, so prefetch when searching.
-  useEffect(() => {
-    if (!active) return
-    if (!stagesSearchQuery.trim()) return
-    void fetchPaidJobsIfNeeded(customerFilterForFetch)
-  }, [active, stagesSearchQuery, customerFilterForFetch, fetchPaidJobsIfNeeded])
+  // v2.1819 (scoped-load plan PR 0): searching no longer auto-prefetches the
+  // full paid list (~667 fully-embedded jobs on the first keystroke — the
+  // app's most expensive accidental action). Paid inclusion is now opt-in via
+  // the "Search Paid in Full too" chip beside the search box; the # jump keeps
+  // its own paid fallback (v2.1808).
 
   /** Land the "#" jump on the first match: open its section, focus + flash the row. False = nothing to land on. */
   const jumpToNumberMatches = useCallback(
@@ -992,6 +992,27 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => buildJobsStagesBoardLists(jobs, '').billedRows,
     [jobs],
   )
+
+  /** Paid-search chip inputs: does the current query match ANYTHING loaded? */
+  const paidMergedForCurrentKey = paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
+  const stagesSearchHasNoLoadedMatches = useMemo(() => {
+    if (!stagesSearchQuery.trim()) return false
+    const l = stagesBoardLists
+    return (
+      l.waiting.length === 0 &&
+      l.working.length === 0 &&
+      l.paid.length === 0 &&
+      l.readyToBillRows.length === 0 &&
+      l.billedActiveRows.length === 0 &&
+      l.collectionsRows.length === 0
+    )
+  }, [stagesSearchQuery, stagesBoardLists])
+  const paidChipState = paidSearchChipState({
+    searchActive: stagesSearchQuery.trim() !== '',
+    paidMerged: paidMergedForCurrentKey,
+    paidLoading: paidJobsLoading,
+    zeroLoadedMatches: stagesSearchHasNoLoadedMatches,
+  })
 
   const accountsReceivableButtonAccessibleName = useMemo(() => {
     const can =
@@ -1824,6 +1845,61 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   + schedule &amp; clock…
                 </span>
+              ) : null}
+              {paidChipState !== 'hidden' ? (
+                <button
+                  type="button"
+                  disabled={paidChipState === 'loading' || paidChipState === 'included'}
+                  onClick={() => void fetchPaidJobsIfNeeded(customerFilterForFetch)}
+                  title={
+                    paidChipState === 'included'
+                      ? 'Paid in Full jobs are included in this search'
+                      : paidChipState === 'loading'
+                        ? 'Loading Paid in Full jobs…'
+                        : 'Also search jobs that are already Paid in Full'
+                  }
+                  aria-label={
+                    paidChipState === 'included'
+                      ? 'Paid in Full jobs included in search'
+                      : 'Search Paid in Full jobs too'
+                  }
+                  style={{
+                    flexShrink: 0,
+                    padding: '0.25rem 0.7rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    whiteSpace: 'nowrap',
+                    cursor: paidChipState === 'quiet' || paidChipState === 'prominent' ? 'pointer' : 'default',
+                    ...(paidChipState === 'prominent'
+                      ? { border: 'none', background: '#2563eb', color: '#ffffff' }
+                      : paidChipState === 'included'
+                        ? {
+                            border: '1px solid var(--border-green)',
+                            background: 'var(--bg-green-tint)',
+                            color: 'var(--text-green-600)',
+                          }
+                        : paidChipState === 'loading'
+                          ? {
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg-subtle)',
+                              color: 'var(--text-muted)',
+                            }
+                          : {
+                              border: '1px solid #2563eb',
+                              background: 'transparent',
+                              color: 'var(--text-link)',
+                            }),
+                  }}
+                >
+                  {paidChipState === 'included'
+                    ? '✓ Paid in Full included'
+                    : paidChipState === 'loading'
+                      ? 'Searching Paid in Full…'
+                      : paidChipState === 'prominent'
+                        ? 'Search Paid in Full too'
+                        : '+ Paid in Full'}
+                </button>
               ) : null}
               <StagesJobNumberJumpChip
                 onOpen={() => void fetchPaidJobsIfNeeded(customerFilterForFetch)}
