@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
+import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
@@ -52,6 +53,16 @@ type JobsListCacheContextValue = {
    */
   headerStats: StagesHeaderStats | null
   refreshHeaderStats: (customerFilter: string | null) => Promise<void>
+  /**
+   * Scope-aware cache (v2.1823, plan PR 2): which sections' rows the shared
+   * `jobs` array currently holds, per-scope loading, and the generalized
+   * fetch-on-demand `fetchPaidJobsIfNeeded` grew out of. A full board load
+   * marks every non-paid scope merged, so behavior is unchanged until PR 3
+   * starts loading subsets.
+   */
+  mergedScopes: ReadonlySet<JobsBoardScope>
+  scopeLoading: ReadonlySet<JobsBoardScope>
+  fetchScopeIfNeeded: (scope: JobsBoardScope, customerFilter: string | null) => Promise<void>
 }
 
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
@@ -62,9 +73,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
   const [jobsListError, setJobsListError] = useState<string | null>(null)
-  const [paidJobsLoading, setPaidJobsLoading] = useState(false)
+  const [scopeLoading, setScopeLoading] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
   const [jobsListDataKey, setJobsListDataKey] = useState<string | null>(null)
-  const [paidJobsMergedForKey, setPaidJobsMergedForKey] = useState<string | null>(null)
+  const [mergedScopes, setMergedScopes] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
   const [headerStats, setHeaderStats] = useState<StagesHeaderStats | null>(null)
   const headerStatsInFlightRef = useRef(false)
 
@@ -77,37 +88,47 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const runFetchJobsRef = useRef<RunFetchJobsFn | null>(null)
   const refreshHeaderStatsRef = useRef<((customerFilter: string | null) => Promise<void>) | null>(null)
   const lastNonPaidKeyRef = useRef<string | null>(null)
-  const paidMergedKeyRef = useRef<string | null>(null)
-  const paidFetchInFlightRef = useRef(false)
+  const mergedScopesRef = useRef<Set<JobsBoardScope>>(new Set())
+  const scopeFetchInFlightRef = useRef<Set<JobsBoardScope>>(new Set())
 
-  const fetchPaidJobsIfNeeded = useCallback(async (customerFilter: string | null) => {
-    if (!user?.id) return
-    if (loadInFlightRef.current) return
-    const key = buildJobsListCacheKey(user.id, customerFilter)
-    if (lastNonPaidKeyRef.current !== key) return
-    if (paidMergedKeyRef.current === key) return
-    if (paidFetchInFlightRef.current) return
-    paidFetchInFlightRef.current = true
-    setPaidJobsLoading(true)
-    try {
-      const second = await fetchJobsLedgerWithDetailsForStages({
-        customerFilter,
-        statusScope: 'paid',
-      })
-      if (second.ok) {
-        setJobs((prev) => [...prev, ...second.jobs])
-        paidMergedKeyRef.current = key
-        setPaidJobsMergedForKey(key)
-      } else {
-        console.warn('JobsListCache: paid jobs fetch failed (non-paid data kept):', second.error)
+  const fetchScopeIfNeeded = useCallback(
+    async (scope: JobsBoardScope, customerFilter: string | null) => {
+      if (!user?.id) return
+      if (loadInFlightRef.current) return
+      const key = buildJobsListCacheKey(user.id, customerFilter)
+      // Scopes anchor to the latest completed board snapshot key, exactly as
+      // the paid lazy-merge always did.
+      if (lastNonPaidKeyRef.current !== key) return
+      if (mergedScopesRef.current.has(scope)) return
+      if (scopeFetchInFlightRef.current.has(scope)) return
+      scopeFetchInFlightRef.current.add(scope)
+      setScopeLoading(new Set(scopeFetchInFlightRef.current))
+      try {
+        const second = await fetchJobsLedgerWithDetailsForStages({
+          customerFilter,
+          statusScope: scope,
+        })
+        if (second.ok) {
+          setJobs((prev) => mergeScopedRows(prev, second.jobs, scope))
+          mergedScopesRef.current.add(scope)
+          setMergedScopes(new Set(mergedScopesRef.current))
+        } else {
+          console.warn(`JobsListCache: ${scope} scope fetch failed (existing data kept):`, second.error)
+        }
+      } catch (e) {
+        console.warn(`JobsListCache: ${scope} scope fetch failed (existing data kept):`, e)
+      } finally {
+        scopeFetchInFlightRef.current.delete(scope)
+        setScopeLoading(new Set(scopeFetchInFlightRef.current))
       }
-    } catch (e) {
-      console.warn('JobsListCache: paid jobs fetch failed (non-paid data kept):', e)
-    } finally {
-      paidFetchInFlightRef.current = false
-      setPaidJobsLoading(false)
-    }
-  }, [user?.id])
+    },
+    [user?.id],
+  )
+
+  const fetchPaidJobsIfNeeded = useCallback(
+    async (customerFilter: string | null) => fetchScopeIfNeeded('paid', customerFilter),
+    [fetchScopeIfNeeded],
+  )
 
   const refreshHeaderStats = useCallback(async (customerFilter: string | null): Promise<void> => {
     if (!user?.id) return
@@ -129,9 +150,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobsListRefreshing(false)
         setJobsListError(null)
         setJobsListDataKey(null)
-        setPaidJobsMergedForKey(null)
+        setMergedScopes(new Set())
         lastNonPaidKeyRef.current = null
-        paidMergedKeyRef.current = null
+        mergedScopesRef.current = new Set()
         lastSuccessfulDataKeyRef.current = null
         completedKeysRef.current.clear()
         return undefined
@@ -157,9 +178,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobs([])
         setJobsListError(null)
         setJobsListDataKey(null)
-        setPaidJobsMergedForKey(null)
+        setMergedScopes(new Set())
         lastNonPaidKeyRef.current = null
-        paidMergedKeyRef.current = null
+        mergedScopesRef.current = new Set()
       }
 
       const hasLoadedThisKey = completedKeysRef.current.has(key)
@@ -186,8 +207,8 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           lastFetchCompletedAtRef.current = Date.now()
           return undefined
         }
-        paidMergedKeyRef.current = null
-        setPaidJobsMergedForKey(null)
+        mergedScopesRef.current = new Set(NON_PAID_SCOPES)
+        setMergedScopes(new Set(mergedScopesRef.current))
         setJobs(first.jobs)
         lastSuccessfulDataKeyRef.current = key
         completedKeysRef.current.add(key)
@@ -223,9 +244,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       setJobsListRefreshing(false)
       setJobsListError(null)
       setJobsListDataKey(null)
-      setPaidJobsMergedForKey(null)
+      setMergedScopes(new Set())
       lastNonPaidKeyRef.current = null
-      paidMergedKeyRef.current = null
+      mergedScopesRef.current = new Set()
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
       lastUserIdRef.current = null
@@ -236,9 +257,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
       setJobsListDataKey(null)
-      setPaidJobsMergedForKey(null)
+      setMergedScopes(new Set())
       lastNonPaidKeyRef.current = null
-      paidMergedKeyRef.current = null
+      mergedScopesRef.current = new Set()
     }
     lastUserIdRef.current = user.id
   }, [user?.id])
@@ -248,15 +269,19 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     setJobs,
     jobsListLoading,
     jobsListRefreshing,
-    paidJobsLoading,
+    // Compat derivations (pre-v2.1823 consumers): paid is just one scope now.
+    paidJobsLoading: scopeLoading.has('paid'),
     jobsListDataKey,
-    paidJobsMergedForKey,
+    paidJobsMergedForKey: mergedScopes.has('paid') ? jobsListDataKey : null,
     jobsListError,
     setJobsListError,
     runFetchJobs,
     fetchPaidJobsIfNeeded,
     headerStats,
     refreshHeaderStats,
+    mergedScopes,
+    scopeLoading,
+    fetchScopeIfNeeded,
   }
 
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>

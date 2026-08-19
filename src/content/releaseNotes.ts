@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1823',
+    date: '2026-08-19',
+    title: 'Groundwork: the Jobs board learns to load one section at a time',
+    kind: 'infra',
+    highlights: [
+      'More under-the-hood plumbing for the faster Pipeline: the board can now fetch and track each section (Waiting, Working, Ready to Bill, Billed, Paid) independently. Nothing changes on screen yet.',
+    ],
+  },
+  {
     version: 'v2.1822',
     date: '2026-08-19',
     title: 'Under the hood: schema type definitions caught up',
