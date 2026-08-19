@@ -34,6 +34,8 @@ export type MyEmailSchedulePayload = {
     payment_received: boolean
     /** Org-wide "always notify on estimate acceptance" list (v2.1330; absent from pre-v2.1330 RPC payloads). */
     estimate_accepted_always?: boolean
+    /** Ready to Bill stream (v2.1836; absent from pre-v2.1836 RPC payloads). */
+    ready_to_bill?: boolean
   }
   /** Per-estimate acceptance subscriptions (v2.1330; absent from pre-v2.1330 RPC payloads). */
   estimate_specific?: { total: number; titles: string[] }
@@ -47,6 +49,7 @@ export type MyEmailSubscriptions = {
   paidInFull: boolean
   paymentReceived: boolean
   estimateAcceptedAlways: boolean
+  readyToBill: boolean
   estimateSpecificTotal: number
   estimateSpecificTitles: string[]
 }
@@ -61,6 +64,7 @@ export function normalizeMyEmailSubscriptions(
     paidInFull: events?.paid_in_full === true,
     paymentReceived: events?.payment_received === true,
     estimateAcceptedAlways: events?.estimate_accepted_always === true,
+    readyToBill: events?.ready_to_bill === true,
     estimateSpecificTotal: Number.isFinite(total) && total > 0 ? Math.floor(total) : 0,
     estimateSpecificTitles: Array.isArray(specific?.titles)
       ? specific.titles.filter((t): t is string => typeof t === 'string' && t.trim() !== '')
