@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1856',
+    date: '2026-08-19',
+    title: 'Ready to Bill notifications: instant save + red no-push warning',
+    kind: 'fix',
+    highlights: [
+      '"no push device" now appears only when 🔔 is checked for someone who hasn\'t enabled push — and it shows in red, since that person won\'t get the push until they do.',
+      'Checkbox changes save instantly — the Save recipients button is gone. If a save fails, the checkbox snaps back and you\'ll see an error.',
+      'The channel legend slims down to "📧 email | 🔔 push".',
+    ],
+  },
+  {
     version: 'v2.1855',
     date: '2026-08-19',
     title: 'Distance to Office fills itself',
