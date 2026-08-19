@@ -370,6 +370,12 @@ export type FetchJobsLedgerWithDetailsForStagesOptions = {
    * (before enrichment) so we batch materials for fewer jobs.
    */
   minHcpExclusive?: number | null
+  /**
+   * v2.1825 (plan PR 4): fetch exactly these job ids (any status) with the
+   * full stages embeds — the second phase of the lean search. `statusScope`
+   * is ignored when set.
+   */
+  ids?: readonly string[]
 }
 
 export async function fetchJobsLedgerWithDetailsForStages(
@@ -380,14 +386,22 @@ export async function fetchJobsLedgerWithDetailsForStages(
   const jobSummaryEnrich = options.jobSummaryEnrich === true
   const minHcp = options.minHcpExclusive
 
+  const idsFilter = options.ids
   let rows: JobsLedgerStagesPrimaryRow[]
   try {
     const data = (await withSupabaseRetry(
-      async () => buildJobsListStagesQuery(customerFilter, statusScope),
+      async () =>
+        idsFilter != null
+          ? supabase
+              .from('jobs_ledger')
+              .select(buildJobsListStagesPrimarySelect())
+              .in('id', [...idsFilter])
+              .order('hcp_number', { ascending: false })
+          : buildJobsListStagesQuery(customerFilter, statusScope),
       'fetch jobs_ledger for stages',
     )) as unknown
     rows = (data as JobsLedgerStagesPrimaryRow[] | null) ?? []
-    if (statusScope === 'ready_to_bill') {
+    if (idsFilter == null && statusScope === 'ready_to_bill') {
       const companion = (await withSupabaseRetry(
         async () => buildWorkingWithRtbInvoiceQuery(customerFilter),
         'fetch working-with-RTB jobs for stages',
