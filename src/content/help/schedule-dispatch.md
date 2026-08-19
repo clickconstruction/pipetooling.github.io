@@ -64,7 +64,7 @@ Every block has a **dotted grip** on its left edge. **Drag the grip** to any oth
 
 ### Rearranging someone's whole day
 
-Every block also carries a **clock button** next to the instructions pencil. Tap it to open **that person's entire day** in one place — every block with times, a mini timeline, and who else is linked on each one:
+Every block also carries a small **clock button** tucked into the top-left corner of the instructions button (the chain link sits top-right, − and + along the bottom). Tap it to open **that person's entire day** in one place — every block with times, a mini timeline, and who else is linked on each one:
 
 - **One-tap nudges on every block**: {{button:outline|⇤ −30}} / {{button:outline|+30 ⇥}} shift the whole block half an hour; {{button:outline|end −30}} / {{button:outline|end +30}} stretch or trim just the end (the "job's running long" tap). On a linked block the nudge moves the **whole crew together**, so linked copies never drift apart.
 - **✎ Edit** still handles precise times, a day move, and note changes — and on a linked block it asks whether the change is for the whole crew or **this person only, which unlinks them** from the crew copy first.

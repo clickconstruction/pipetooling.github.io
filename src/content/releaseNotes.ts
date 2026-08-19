@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1818',
+    date: '2026-08-19',
+    title: 'Schedule blocks: tidier corner controls',
+    kind: 'fix',
+    highlights: [
+      'The clock button on schedule blocks moved into the top-left corner of the instructions button — same tap, same person-day view, much less crowding on each block.',
+      'Each corner now has one control: clock top-left, linked-crew chain top-right, remove and copy along the bottom.',
+    ],
+  },
+  {
     version: 'v2.1817',
     date: '2026-08-18',
     title: 'A clock on every schedule block — rearrange someone\u2019s whole day',
