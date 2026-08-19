@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "240 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "242 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820030000_apply_estimate_to_job.sql`** _(apply via `supabase db push` after the v2.1850 merge, BEFORE merging the PR 4 chooser UI that calls it — additive; nothing calls the RPC until then)_
+- **Purpose**: CO money train PR 3 — `apply_estimate_to_job(p_estimate_id, p_job_ledger_id, p_fixtures)`: applies a `customer_accepted` estimate/change order to an EXISTING job. SECURITY DEFINER sibling of `create_job_from_estimate` (same access gates + fixture payload shape): locks estimate + job FOR UPDATE, requires matching `master_user_id`, appends `jobs_ledger_fixtures` rows sequenced after existing Specific Work, moves `jobs_ledger.revenue` by the SIGNED net (credit lines subtract; zero usable rows → the estimate total), links `estimates.job_ledger_id`, and best-effort posts the `"Change order #N applied: +$X — desc"` `jobs_ledger_thread_notes` row. Idempotent — already-linked estimates return their link untouched. Read-only training mode still blocked by the v2.704 statement triggers.
+- **Category**: Estimates / Jobs
 
 **`20260820040000_add_bids_itb_links.sql`** _(apply via `supabase db push` after the v2.1851 merge — additive; old clients ignore the column, and the new client's Save writes it, so push promptly after merge)_
 - **Purpose**: ITB / submission web links on bids (estimator request — most bids live on PlanHub, BuildingConnected, etc., often more than one when bidding to multiple GCs). `bids.itb_links jsonb NOT NULL DEFAULT '[]'` — a JSON array of URL strings. Edited as repeating rows in the Edit Bid form (ITB & submission links section), shown as labeled chips (PlanHub / BuildingConnected / hostname) in the bid preview. Row RLS already covers the column; no policy changes.
