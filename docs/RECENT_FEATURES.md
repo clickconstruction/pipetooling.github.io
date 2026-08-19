@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-18 (v2.1815)
+last_updated: 2026-08-18 (v2.1816)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1816)
+
+### Dispatch: the block drag handle you can actually find (2026-08-18)
+Taunya-reported friction (relayed by the owner): moving a schedule block felt so hard she was deleting blocks and re-adding them. The drag machinery was always there — drop a block on any person-day cell and `executeScheduleDispatchBlockReassign` keeps times, warns on overlaps, and moves linked crew copies together — but the ONLY handle was an unlabeled 14px gradient sliver on the block's left edge (every other pixel of the card is a click target). The sliver becomes a real grip: 22px wide, visible braille-dot glyph (⠿), grab cursor, and a "Drag to move this block to another day or person" tooltip; the red disabled state keeps its glyph + tap-to-explain. Help guide gains a "Moving a block — no need to delete and re-add" section. First PR of the block-moving train — the pick-up-and-place move mode (mockup approved) comes next. Client-only — no migration.
 
 ## Latest Updates (v2.1815)
 

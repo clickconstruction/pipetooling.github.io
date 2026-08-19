@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1816',
+    date: '2026-08-18',
+    title: 'Schedule blocks: a drag handle you can see',
+    kind: 'feature',
+    highlights: [
+      'Every block on the Schedule People grid now shows a dotted grip on its left edge — drag it to any other person or day and the block moves there, times and all.',
+      'No more deleting a block and re-adding it somewhere else: the grip was always draggable, it was just invisible. Linked crew copies still move together and overlaps still warn.',
+    ],
+  },
+  {
     version: 'v2.1815',
     date: '2026-08-18',
     title: 'Dispatch: the multi-cell add button now reads ×',
