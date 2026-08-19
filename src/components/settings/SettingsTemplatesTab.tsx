@@ -23,6 +23,7 @@ import StripeInvoiceFooterDevSettingsBlock from './StripeInvoiceFooterDevSetting
 import PhysicalInvoiceFooterDevSettingsBlock from './PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from './BillCustomerMemoDevSettingsBlock'
 import MapDefaultViewSettingsBlock from './MapDefaultViewSettingsBlock'
+import OfficeAddressSettingsBlock from './OfficeAddressSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from './PhysicalInvoiceIssuerDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from './BidCoverLetterDefaultsSettingsBlock'
 
@@ -127,6 +128,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
           <BidCoverLetterDefaultsSettingsBlock />
+          <OfficeAddressSettingsBlock />
           <MapDefaultViewSettingsBlock />
           <div
             style={{
