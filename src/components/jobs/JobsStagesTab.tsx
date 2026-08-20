@@ -35,11 +35,14 @@ import AccountManIcon from '../icons/AccountManIcon'
 import {
   billedStageRowAgingBucket,
   buildBilledAgingBuckets,
+  effectiveInvoiceEstBillDate,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
+import { billedExpectedPayModel, parsePaySpeedsRpc, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import BilledExpectedPayChip from './BilledExpectedPayChip'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { PipelineOverview } from './PipelineOverview'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
@@ -55,7 +58,7 @@ import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/bi
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
 import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
-import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
@@ -699,6 +702,44 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadHazmatFeeJobIds()
   }, [loadHazmatFeeJobIds])
+  // Customer pay speeds for the Billed Awaiting Payment expected-payment
+  // chips (bill date + customer's median billed→paid gap, company-wide
+  // fallback for thin history). Same fail-soft posture as the hazmat lookup:
+  // an RPC error (including a not-yet-deployed function) leaves rows chipless.
+  const canSeeBilledExpectedPay =
+    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
+  const [billedPaySpeeds, setBilledPaySpeeds] = useState<PaySpeedData | null>(null)
+  useEffect(() => {
+    if (!canSeeBilledExpectedPay) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+        if (!cancelled) setBilledPaySpeeds(parsePaySpeedsRpc(data as unknown))
+      } catch {
+        // glanceable extra — never block the tab
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canSeeBilledExpectedPay])
+  const billedExpectedPayChipRenderer = useCallback(
+    (row: StageRow) => {
+      if (!billedPaySpeeds || row.kind === 'job') return null
+      const model = billedExpectedPayModel(
+        {
+          billedAtIso: row.inv.billed_at,
+          estBillYmd: effectiveInvoiceEstBillDate(row.inv),
+          customerId: row.job.customer_id,
+        },
+        billedPaySpeeds,
+        calendarYmdInAppTzFromIso(new Date().toISOString()),
+      )
+      return model ? <BilledExpectedPayChip model={model} /> : null
+    },
+    [billedPaySpeeds],
+  )
   const lienToolingSenderFallback = useMemo(() => {
     const job = lienToolingPrefillModal?.job
     const sessionName = authProfileName?.trim() ?? ''
@@ -3482,6 +3523,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     rows={billedListRows}
                     stagesSortMode={stagesSortMode}
+                    billedExpectedPayChip={billedExpectedPayChipRenderer}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
                     onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}

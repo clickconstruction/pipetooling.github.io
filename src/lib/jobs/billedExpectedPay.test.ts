@@ -1,0 +1,118 @@
+import { describe, expect, it } from 'vitest'
+import {
+  PAY_SPEED_MIN_SAMPLES,
+  billedExpectedPayModel,
+  billedReferenceYmd,
+  daysBetweenYmd,
+  formatYmdMonthDay,
+  parsePaySpeedsRpc,
+  type PaySpeedData,
+} from './billedExpectedPay'
+
+const data: PaySpeedData = {
+  company: { medianDays: 27, samples: 240 },
+  customers: {
+    knight: { medianDays: 35, samples: 12 },
+    thin: { medianDays: 2, samples: PAY_SPEED_MIN_SAMPLES - 1 },
+  },
+}
+
+describe('parsePaySpeedsRpc', () => {
+  it('parses the RPC shape and drops malformed entries', () => {
+    const parsed = parsePaySpeedsRpc({
+      company: { medianDays: 27.4, samples: 240 },
+      customers: {
+        a: { medianDays: 35, samples: 12 },
+        bad1: { medianDays: 'x', samples: 3 },
+        bad2: { medianDays: 10, samples: 0 },
+        bad3: null,
+      },
+    })
+    expect(parsed).toEqual({
+      company: { medianDays: 27, samples: 240 },
+      customers: { a: { medianDays: 35, samples: 12 } },
+    })
+  })
+
+  it('returns null for gate-refused (null) and malformed payloads', () => {
+    expect(parsePaySpeedsRpc(null)).toBeNull()
+    expect(parsePaySpeedsRpc('nope')).toBeNull()
+  })
+
+  it('clamps negative medians to 0 and tolerates a missing customers map', () => {
+    expect(parsePaySpeedsRpc({ company: { medianDays: -3, samples: 5 } })).toEqual({
+      company: { medianDays: 0, samples: 5 },
+      customers: {},
+    })
+  })
+})
+
+describe('billedReferenceYmd', () => {
+  it('prefers billed_at, slicing the ISO date part', () => {
+    expect(billedReferenceYmd({ billedAtIso: '2026-08-04T15:22:00+00:00', estBillYmd: '2026-08-01' })).toBe('2026-08-04')
+  })
+
+  it('falls back to the est. bill date', () => {
+    expect(billedReferenceYmd({ billedAtIso: null, estBillYmd: '2026-08-01' })).toBe('2026-08-01')
+    expect(billedReferenceYmd({ billedAtIso: '  ', estBillYmd: '2026-08-01' })).toBe('2026-08-01')
+  })
+
+  it('returns null with no usable date', () => {
+    expect(billedReferenceYmd({ billedAtIso: null, estBillYmd: null })).toBeNull()
+    expect(billedReferenceYmd({ billedAtIso: null, estBillYmd: 'soon' })).toBeNull()
+  })
+})
+
+describe('daysBetweenYmd / formatYmdMonthDay', () => {
+  it('counts calendar days across month and DST boundaries', () => {
+    expect(daysBetweenYmd('2026-08-30', '2026-09-02')).toBe(3)
+    expect(daysBetweenYmd('2026-03-07', '2026-03-09')).toBe(2)
+    expect(daysBetweenYmd('2026-09-02', '2026-08-30')).toBe(-3)
+  })
+
+  it('formats month-day', () => {
+    expect(formatYmdMonthDay('2026-09-08')).toBe('Sep 8')
+    expect(formatYmdMonthDay('2026-01-31')).toBe('Jan 31')
+  })
+})
+
+describe('billedExpectedPayModel', () => {
+  const row = { billedAtIso: '2026-08-04T15:22:00Z', estBillYmd: null, customerId: 'knight' }
+
+  it('upcoming: bill date + customer median', () => {
+    const m = billedExpectedPayModel(row, data, '2026-08-20')
+    expect(m).not.toBeNull()
+    expect(m!.expectedYmd).toBe('2026-09-08')
+    expect(m!.state).toBe('upcoming')
+    expect(m!.source).toBe('customer')
+    expect(m!.daysLate).toBe(0)
+    expect(m!.label).toBe('Expect pay ~Sep 8 · pays in ~35d')
+  })
+
+  it('the expected date itself is still upcoming; late starts the day after', () => {
+    expect(billedExpectedPayModel(row, data, '2026-09-08')!.state).toBe('upcoming')
+    const late = billedExpectedPayModel(row, data, '2026-09-09')!
+    expect(late.state).toBe('late')
+    expect(late.daysLate).toBe(1)
+    expect(late.label).toBe('1d past expected · pays in ~35d')
+  })
+
+  it('falls back to the company median below the sample threshold', () => {
+    const m = billedExpectedPayModel({ ...row, customerId: 'thin' }, data, '2026-08-20')!
+    expect(m.source).toBe('company')
+    expect(m.medianDays).toBe(27)
+    expect(m.label).toBe('Expect pay ~Aug 31 · company avg')
+  })
+
+  it('unknown customer uses the company median; no company stat → no chip', () => {
+    expect(billedExpectedPayModel({ ...row, customerId: 'stranger' }, data, '2026-08-20')!.source).toBe('company')
+    expect(
+      billedExpectedPayModel({ ...row, customerId: 'stranger' }, { company: null, customers: {} }, '2026-08-20'),
+    ).toBeNull()
+  })
+
+  it('no data / no reference date → no chip', () => {
+    expect(billedExpectedPayModel(row, null, '2026-08-20')).toBeNull()
+    expect(billedExpectedPayModel({ billedAtIso: null, estBillYmd: null, customerId: 'knight' }, data, '2026-08-20')).toBeNull()
+  })
+})

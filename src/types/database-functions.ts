@@ -182,3 +182,14 @@ export interface BidPricingHistoryRow {
   bid_value: number
   est_cost: number
 }
+
+/**
+ * Result shape of get_billed_customer_pay_speeds (jsonb; null when the caller
+ * is outside the dev/master/assistant-like/primary gate). Parse with
+ * `parsePaySpeedsRpc` in `src/lib/jobs/billedExpectedPay.ts` — the Billed
+ * Awaiting Payment expected-payment chips.
+ */
+export interface BilledCustomerPaySpeedsResult {
+  company: { medianDays: number; samples: number } | null
+  customers: Record<string, { medianDays: number; samples: number }>
+}
