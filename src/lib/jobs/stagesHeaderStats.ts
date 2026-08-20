@@ -48,7 +48,10 @@ export type StagesHeaderStats = {
 export const COLLECTED_WEEKS = 8
 
 /** Σ payment.amount per Monday-start week over the trailing COLLECTED_WEEKS weeks (UTC clock). */
-export function collectedByWeekFromJobs(jobs: JobWithDetails[], now = new Date()): CollectedWeekPoint[] {
+export function collectedByWeekFromPayments(
+  payments: ReadonlyArray<{ paid_on?: string | null; amount: number | null }>,
+  now = new Date(),
+): CollectedWeekPoint[] {
   const thisMonday = mondayOfWeekYmd(now.toISOString().slice(0, 10))
   const weeks: CollectedWeekPoint[] = []
   const index = new Map<string, number>()
@@ -57,17 +60,23 @@ export function collectedByWeekFromJobs(jobs: JobWithDetails[], now = new Date()
     index.set(weekStart, weeks.length)
     weeks.push({ weekStart, total: 0 })
   }
-  for (const j of jobs) {
-    for (const p of j.payments ?? []) {
-      const paidOn = (p as { paid_on?: string | null }).paid_on
-      if (!paidOn) continue
-      const at = index.get(mondayOfWeekYmd(paidOn.slice(0, 10)))
-      const week = at == null ? undefined : weeks[at]
-      if (!week) continue
-      week.total += Number(p.amount ?? 0)
-    }
+  for (const p of payments) {
+    const paidOn = p.paid_on
+    if (!paidOn) continue
+    const at = index.get(mondayOfWeekYmd(paidOn.slice(0, 10)))
+    const week = at == null ? undefined : weeks[at]
+    if (!week) continue
+    week.total += Number(p.amount ?? 0)
   }
   return weeks
+}
+
+/** collectedByWeek over the payments attached to `jobs` (the full-row board path). */
+export function collectedByWeekFromJobs(jobs: JobWithDetails[], now = new Date()): CollectedWeekPoint[] {
+  return collectedByWeekFromPayments(
+    jobs.flatMap((j) => (j.payments ?? []) as Array<{ paid_on?: string | null; amount: number | null }>),
+    now,
+  )
 }
 
 /**

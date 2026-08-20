@@ -17,6 +17,8 @@ import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 const VISIBILITY_REFETCH_MIN_MS = 30_000
+/** Header stats stay fresh-enough this long; only forced (post-mutation) refreshes bypass it (v2.1917). */
+const HEADER_STATS_TTL_MS = 60_000
 
 export function buildJobsListCacheKey(userId: string, customerFilter: string | null): string {
   const c = customerFilter?.trim() ?? ''
@@ -52,7 +54,7 @@ type JobsListCacheContextValue = {
    * stats failures never touch the board (best-effort layer).
    */
   headerStats: StagesHeaderStats | null
-  refreshHeaderStats: (customerFilter: string | null) => Promise<void>
+  refreshHeaderStats: (customerFilter: string | null, options?: { force?: boolean }) => Promise<void>
   /**
    * Scope-aware cache (v2.1823, plan PR 2): which sections' rows the shared
    * `jobs` array currently holds, per-scope loading, and the generalized
@@ -98,6 +100,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [mergedScopes, setMergedScopes] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
   const [headerStats, setHeaderStats] = useState<StagesHeaderStats | null>(null)
   const headerStatsInFlightRef = useRef(false)
+  const headerStatsLastFetchRef = useRef<{ key: string; at: number } | null>(null)
 
   const loadInFlightRef = useRef(false)
   const pendingRef = useRef<PendingRefetch | null>(null)
@@ -249,17 +252,31 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     [user?.id],
   )
 
-  const refreshHeaderStats = useCallback(async (customerFilter: string | null): Promise<void> => {
-    if (!user?.id) return
-    if (headerStatsInFlightRef.current) return
-    headerStatsInFlightRef.current = true
-    try {
-      const res = await fetchStagesHeaderStats(customerFilter)
-      if (res.ok) setHeaderStats(res.stats)
-    } finally {
-      headerStatsInFlightRef.current = false
-    }
-  }, [user?.id])
+  const refreshHeaderStats = useCallback(
+    async (customerFilter: string | null, options?: { force?: boolean }): Promise<void> => {
+      if (!user?.id) return
+      if (headerStatsInFlightRef.current) return
+      // Fresh-enough guard (v2.1917): the load/visibility piggyback callers
+      // refire after every board fetch; stats only need to move when data
+      // moved, so within the TTL only forced (post-mutation) refreshes run.
+      const key = `${user.id}|${customerFilter ?? ''}`
+      const last = headerStatsLastFetchRef.current
+      if (!options?.force && last != null && last.key === key && Date.now() - last.at < HEADER_STATS_TTL_MS) {
+        return
+      }
+      headerStatsInFlightRef.current = true
+      try {
+        const res = await fetchStagesHeaderStats(customerFilter)
+        if (res.ok) {
+          headerStatsLastFetchRef.current = { key, at: Date.now() }
+          setHeaderStats(res.stats)
+        }
+      } finally {
+        headerStatsInFlightRef.current = false
+      }
+    },
+    [user?.id],
+  )
 
   const runFetchJobs = useCallback<RunFetchJobsFn>(
     async (customerFilter: string | null, options?: { kind?: RefetchKind }): Promise<JobWithDetails[] | undefined> => {

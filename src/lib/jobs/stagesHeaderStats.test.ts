@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   assembleLeanStatsJobs,
+  COLLECTED_WEEKS,
+  collectedByWeekFromPayments,
   computeStagesHeaderStats,
   type LeanStatsInvoiceRow,
   type LeanStatsJobRow,
   type LeanStatsPaymentRow,
 } from './stagesHeaderStats'
+import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
+import { mondayOfWeekYmd } from './stagesWeeklyMovement'
 
 const NOW = new Date('2026-08-19T18:00:00Z')
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86400000).toISOString().slice(0, 10)
@@ -178,6 +182,62 @@ describe('computeStagesHeaderStats', () => {
     const { jobRows, invoiceRows, paymentRows } = stripToLean(FULL)
     const lean = assembleLeanStatsJobs(jobRows, invoiceRows, paymentRows)
     expect(computeStagesHeaderStats(lean, NOW)).toEqual(computeStagesHeaderStats(FULL, NOW))
+  })
+
+  it('bounded fetch simulation (v2.1917) matches the unbounded path, with paid count + collected overridden', () => {
+    // A paid job whose recent unlinked payment must still land in collectedByWeek.
+    const paidWithRecentPayment = job('p2', {
+      status: 'paid',
+      revenue: 100,
+      payments_made: 100,
+      payments: [{ invoice_id: null, amount: 100, paid_on: daysAgo(5) }],
+    })
+    const all = [...FULL, paidWithRecentPayment]
+    const { jobRows, invoiceRows, paymentRows } = stripToLean(all)
+
+    // Mirror the four bounded queries in fetchStagesHeaderStats:
+    const windowStart = addDaysYmd(mondayOfWeekYmd(NOW.toISOString().slice(0, 10)), -7 * (COLLECTED_WEEKS - 1))
+    const activeJobRows = jobRows.filter(
+      (j) => j.status == null || ['waiting', 'working', 'ready_to_bill', 'billed'].includes(j.status),
+    )
+    const paidCount = jobRows.filter((j) => j.status === 'paid').length
+    const activeInvoiceRows = invoiceRows.filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
+    const boundedPaymentRows = paymentRows.filter(
+      (p) => p.invoice_id != null || (p.paid_on != null && p.paid_on >= windowStart),
+    )
+
+    const bounded = {
+      ...computeStagesHeaderStats(assembleLeanStatsJobs(activeJobRows, activeInvoiceRows, boundedPaymentRows), NOW),
+      paid: { count: paidCount },
+      collectedByWeek: collectedByWeekFromPayments(boundedPaymentRows, NOW),
+    }
+    expect(bounded).toEqual(computeStagesHeaderStats(all, NOW))
+  })
+
+  it('documented delta: a billed invoice stranded on a paid job drops out of the bounded stats', () => {
+    const stranded = job('p3', {
+      status: 'paid',
+      revenue: 200,
+      invoices: [{ id: 'p3-b', amount: 200, status: 'billed', estimated_bill_date: daysAgo(40) }],
+    })
+    const all = [...FULL, stranded]
+    const full = computeStagesHeaderStats(all, NOW)
+    // Full path surfaces the stray invoice as an extra Billed row + aging entry…
+    expect(full.billed.count).toBe(4)
+    expect(full.billedAging.count30_90).toBe(2)
+
+    const { jobRows, invoiceRows, paymentRows } = stripToLean(all)
+    const activeJobRows = jobRows.filter(
+      (j) => j.status == null || ['waiting', 'working', 'ready_to_bill', 'billed'].includes(j.status),
+    )
+    const activeInvoiceRows = invoiceRows.filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
+    const bounded = computeStagesHeaderStats(
+      assembleLeanStatsJobs(activeJobRows, activeInvoiceRows, paymentRows),
+      NOW,
+    )
+    // …the bounded path drops it (paid job rows aren't fetched; orphan invoices are discarded).
+    expect(bounded.billed.count).toBe(3)
+    expect(bounded.billedAging.count30_90).toBe(1)
   })
 
   it('empty board → all zeros', () => {
