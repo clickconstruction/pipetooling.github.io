@@ -250,6 +250,7 @@ export function TakeoffBookAdminSection({
     setSavingTakeoffBookEntry(false)
   }
 
+  /** Returns false when the user cancels the confirm, true once they confirm (even if the delete errors). */
   async function deleteTakeoffBookEntry(entry: TakeoffBookEntryWithItems) {
     const n = entry.items.length
     if (
@@ -259,10 +260,11 @@ export function TakeoffBookAdminSection({
         danger: true,
       }))
     )
-      return
+      return false
     const { error: err } = await supabase.from('takeoff_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (takeoffBookEntriesVersionId) await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+    return true
   }
 
   return (
@@ -501,17 +503,7 @@ export function TakeoffBookAdminSection({
                         <button
                           type="button"
                           onClick={async () => {
-                            const n = editingTakeoffBookEntry.items?.length ?? 0
-                            if (
-                              !(await confirmDialog({
-                                message: `Delete "${editingTakeoffBookEntry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`,
-                                confirmLabel: 'Delete',
-                                danger: true,
-                              }))
-                            )
-                              return
-                            await deleteTakeoffBookEntry(editingTakeoffBookEntry)
-                            closeTakeoffBookEntryForm()
+                            if (await deleteTakeoffBookEntry(editingTakeoffBookEntry)) closeTakeoffBookEntryForm()
                           }}
                           style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                         >
