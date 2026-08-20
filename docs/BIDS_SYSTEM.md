@@ -936,6 +936,9 @@ Opens print-friendly PDF view with comprehensive cost breakdown:
 ### Purpose
 Compare estimated costs to price book revenue and analyze profit margins. Helps ensure bids are profitable.
 
+### Old / New views (v2.1906)
+The selected-bid card opens with **Old / New** pills (per-device, default Old). **Old** is the classic grid documented below, unchanged. **New** is the **Workbench**: sticky Revenue/Cost/Profit/Margin totals, a target-first solver (blended-margin slider or target total; 📌/fixed rows held; uncosted rows skipped; preview → Apply via the standard override write), a pricing-coverage meter, and a profit-concentration bar. Both views share `derivePricingWorkbench()` — one compute, two layouts.
+
 ### Header Layout
 
 When a bid is selected, the header shows the **Bid name** with the **[`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx)** — the **sole selector** for which pricing is active (the old centered "Price book" version dropdown was removed when the Version picker became the single selection surface; commit `08f471d` "Version picker is the sole selector") — and **Print / Review / Close** buttons.

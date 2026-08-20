@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAc
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
+import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
@@ -262,6 +263,32 @@ export function BidsPricingTab({
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
   const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
   const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
+  // Old/New layout pills (v2.NEXT): Old = the classic grid; New = the Workbench
+  // (target solver + live totals). Per-device, default Old while New is refined.
+  const [pricingView, setPricingView] = useState<'old' | 'new'>(() => {
+    try {
+      return window.localStorage.getItem('bids_pricing_view_v1') === 'new' ? 'new' : 'old'
+    } catch {
+      return 'old'
+    }
+  })
+  const switchPricingView = (next: 'old' | 'new') => {
+    setPricingView(next)
+    try {
+      window.localStorage.setItem('bids_pricing_view_v1', next)
+    } catch {
+      /* device just won't remember */
+    }
+  }
+  // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
+  // session-local locks, and the solver controls.
+  const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
+  const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
+  const [wbMarginPct, setWbMarginPct] = useState(45)
+  const [wbRound5, setWbRound5] = useState(true)
+  const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
+  const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
+  const [wbApplying, setWbApplying] = useState(false)
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
   const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
@@ -1032,6 +1059,162 @@ export function BidsPricingTab({
       )
     : bidsScopedForPricing
 
+  /** Workbench: build a PREVIEW from the solver (nothing writes until Apply). */
+  function runWorkbenchSolve(opts: { onlyUnpriced?: boolean; targetTotal?: number }) {
+    const derived = derivePricingWorkbench()
+    if (!derived) return
+    const fixtureCostSum = derived.rows.reduce((s, r) => s + (r.cost > 0 ? r.cost : 0), 0)
+    const overhead = Math.max(derived.totalCost - fixtureCostSum, 0)
+    const solverRows = derived.rows.map((r) => ({
+      id: r.countRow.id,
+      count: r.count,
+      rowCost: r.cost,
+      unitPrice: wbPreview?.[r.countRow.id] ?? r.unitPrice,
+      locked: r.isFixedPrice || wbLocks.has(r.countRow.id),
+    }))
+    const sol = solveWorkbenchPrices(solverRows, overhead, {
+      ...(opts.targetTotal == null ? { targetMarginPct: wbMarginPct } : { targetTotal: opts.targetTotal }),
+      onlyUnpriced: opts.onlyUnpriced === true,
+      roundTo5: wbRound5,
+    })
+    if (!sol) {
+      showToast('Nothing to solve — check the margin (1–95) and that unlocked rows have costs.', 'error')
+      return
+    }
+    setWbPreview((prev) => ({ ...(prev ?? {}), ...Object.fromEntries(sol.prices) }))
+    if (opts.targetTotal != null && sol.resultingMargin != null) {
+      setWbMarginPct(Math.min(95, Math.max(1, Math.round(sol.resultingMargin * 100))))
+    }
+    if (sol.uncostedIds.length > 0) {
+      showToast(`${sol.uncostedIds.length} row(s) skipped — no cost basis (enter Takeoffs costs first).`, 'error')
+    }
+  }
+
+  /** Workbench: commit the preview via the existing per-row override write. */
+  async function applyWorkbenchPreview() {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    const derived = derivePricingWorkbench()
+    if (!bidId || !versionId || !wbPreview || !derived) return
+    setWbApplying(true)
+    try {
+      for (const [rowId, price] of Object.entries(wbPreview)) {
+        const current = derived.rows.find((r) => r.countRow.id === rowId)?.unitPrice ?? null
+        if (current === price) continue
+        const err = await writeUnitPriceOverrideRow(rowId, price)
+        if (err) {
+          setError(err.message)
+          return
+        }
+      }
+      await loadBidPricingAssignments(bidId, versionId)
+      setWbPreview(null)
+      showToast('Prices applied.', 'success')
+    } finally {
+      setWbApplying(false)
+    }
+  }
+
+  /** Shared derive for BOTH pricing views (Old grid + New Workbench): totals,
+      decorated rows, and the row-breakdown opener. Null until a Pricing,
+      Counts, and cost estimate exist. */
+  function derivePricingWorkbench() {
+    if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) return null
+                const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+                const rate = pricingLaborRate ?? 0
+                const totalLaborHours = pricingLaborRows.reduce(
+                  (s, r) => s + laborRowHours(r),
+                  0
+                )
+                const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+                const laborCost = totalLaborHours * rate
+                const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
+                const ratePerMile = costEstimateDrivingRate(pricingCostEstimate)
+                const hrsPerTrip = costEstimateHoursPerTrip(pricingCostEstimate)
+                const numTrips = totalLaborHours / hrsPerTrip
+                const drivingCost = numTrips * ratePerMile * distance
+                const estimatorCost = costEstimateEstimatorCost(pricingCostEstimate, pricingCountRows.length)
+                const travelCost = computeTravelCost(pricingCostEstimate)
+                const equipmentRentalCost = sumEquipmentRows(pricingEquipmentRows)
+                const permitCost = sumEquipmentRows(pricingPermitRows)
+                const subcontractorCost = sumEquipmentRows(pricingSubcontractorRows)
+                const wasteCost = sumEquipmentRows(pricingWasteRows)
+                const otherCost = sumEquipmentRows(pricingOtherRows)
+                const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
+                const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
+                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost + equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
+                const assignmentsForVersion = bidPricingAssignments.filter(
+                  (a) => a.price_book_version_id === selectedPricingVersionId,
+                )
+                const pricingCalcResult = pricingRowsForGrid
+                if (!pricingCalcResult) return null
+
+                const totalRevenue = pricingCalcResult.totalRevenue
+                const rows = pricingCalcResult.rows.map((pr) => {
+                  const laborRow = pricingLaborRows.find(
+                    (l) =>
+                      (l.fixture ?? '').toLowerCase() === (pr.countRow.fixture ?? '').toLowerCase(),
+                  )
+                  const customPrice =
+                    bidCountRowCustomPrices.find(
+                      (c) =>
+                        c.count_row_id === pr.countRow.id &&
+                        c.price_book_version_id === selectedPricingVersionId,
+                    )?.unit_price ?? null
+                  const assignment = assignmentsForVersion.find((a) => a.count_row_id === pr.countRow.id)
+                  const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pr.countRow.id]
+                  const taxAmount =
+                    materialsFromTakeoff != null ? pr.materialsBeforeTax * (taxPercent / 100) : 0
+                  const marginVal = pr.marginPct
+                  const flag = marginFlag(marginVal)
+                  return {
+                    countRow: pr.countRow as BidCountRow,
+                    entry: pr.entry as PriceBookEntryWithFixture | undefined,
+                    laborRow,
+                    count: pr.count,
+                    cost: pr.cost,
+                    unitPrice: pr.unitPrice,
+                    isFixedPrice: pr.isFixedPrice,
+                    revenue: pr.revenue,
+                    margin: marginVal,
+                    flag,
+                    assignment,
+                    customPrice,
+                    materialsBeforeTax: pr.materialsBeforeTax,
+                    materialsWithTax: pr.materialsWithTax,
+                    taxAmount,
+                    laborCost: pr.laborCost,
+                    materialsFromTakeoff: materialsFromTakeoff ?? null,
+                    pctOfGrandTotal: pr.pctOfGrandTotal,
+                    omitFromSubmissionDocuments: pr.omitFromSubmissionDocuments,
+                    canToggleOmitSubmission: pricingRowCanToggleOmitFromSubmission(pr.countRow.id),
+                  }
+                })
+                // Fixtures with a Sale Price but no Takeoffs Unit-price cost: their margin reads "—"
+                // (no cost basis), and the bid-level Total margin treats them as full profit — so it
+                // is overstated until those costs are entered in Takeoffs.
+                const uncostedRevenueRows = rows.filter(
+                  (r) => r.revenue > 0 && (r.materialsFromTakeoff == null || r.materialsFromTakeoff === 0),
+                )
+                const uncostedRevenue = uncostedRevenueRows.reduce((s, r) => s + r.revenue, 0)
+                const openRowBreakdown = (r: (typeof rows)[number]) =>
+                  setPricingBreakdownRow({
+                    fixture: r.countRow.fixture ?? '',
+                    count: r.count,
+                    unitPrice: r.unitPrice,
+                    isFixedPrice: r.isFixedPrice,
+                    revenue: r.revenue,
+                    materialsBeforeTax: r.materialsBeforeTax,
+                    taxAmount: r.taxAmount,
+                    taxPercent,
+                    laborCost: r.laborCost,
+                    cost: r.cost,
+                    margin: r.margin,
+                    materialsFromTakeoff: r.materialsFromTakeoff,
+                  })
+    return { totalMaterials, rate, totalLaborHours, taxPercent, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
+  }
+
   return (
     <>
       <div>
@@ -1168,7 +1351,7 @@ export function BidsPricingTab({
                   gap: '0.5rem',
                 }}
               >
-                {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate ? (
+                {pricingView === 'old' && selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: '0 0 auto', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
                     <button
@@ -1209,6 +1392,19 @@ export function BidsPricingTab({
                 ) : null}
               </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.9rem' }}>
+              <button type="button" role="tab" aria-selected={pricingView === 'old'} onClick={() => switchPricingView('old')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pricingView === 'old' ? '#2563eb' : 'transparent', color: pricingView === 'old' ? '#fff' : 'var(--text-muted)' }}>
+                Old
+              </button>
+              <button type="button" role="tab" aria-selected={pricingView === 'new'} onClick={() => switchPricingView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pricingView === 'new' ? '#2563eb' : 'transparent', color: pricingView === 'new' ? '#fff' : 'var(--text-muted)' }}>
+                New
+              </button>
+              {pricingView === 'new' ? (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Workbench — solver previews, Apply writes. Same data as Old.</span>
+              ) : null}
+            </div>
+            {pricingView === 'old' ? (
+              <>
             {/* Price book selector (left) + partial-fill (right), styled like the Labor/Takeoffs tabs. */}
             <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               {/* Price-book picker: clone the chosen template into this bid as an editable copy. */}
@@ -1281,98 +1477,9 @@ export function BidsPricingTab({
               </p>
             )}
             {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (() => {
-              const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
-              const rate = pricingLaborRate ?? 0
-              const totalLaborHours = pricingLaborRows.reduce(
-                (s, r) => s + laborRowHours(r),
-                0
-              )
-              const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-              const laborCost = totalLaborHours * rate
-              const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
-              const ratePerMile = costEstimateDrivingRate(pricingCostEstimate)
-              const hrsPerTrip = costEstimateHoursPerTrip(pricingCostEstimate)
-              const numTrips = totalLaborHours / hrsPerTrip
-              const drivingCost = numTrips * ratePerMile * distance
-              const estimatorCost = costEstimateEstimatorCost(pricingCostEstimate, pricingCountRows.length)
-              const travelCost = computeTravelCost(pricingCostEstimate)
-              const equipmentRentalCost = sumEquipmentRows(pricingEquipmentRows)
-              const permitCost = sumEquipmentRows(pricingPermitRows)
-              const subcontractorCost = sumEquipmentRows(pricingSubcontractorRows)
-              const wasteCost = sumEquipmentRows(pricingWasteRows)
-              const otherCost = sumEquipmentRows(pricingOtherRows)
-              const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
-              const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
-              const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost + equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
-              const assignmentsForVersion = bidPricingAssignments.filter(
-                (a) => a.price_book_version_id === selectedPricingVersionId,
-              )
-              const pricingCalcResult = pricingRowsForGrid
-              if (!pricingCalcResult) return null
-
-              const totalRevenue = pricingCalcResult.totalRevenue
-              const rows = pricingCalcResult.rows.map((pr) => {
-                const laborRow = pricingLaborRows.find(
-                  (l) =>
-                    (l.fixture ?? '').toLowerCase() === (pr.countRow.fixture ?? '').toLowerCase(),
-                )
-                const customPrice =
-                  bidCountRowCustomPrices.find(
-                    (c) =>
-                      c.count_row_id === pr.countRow.id &&
-                      c.price_book_version_id === selectedPricingVersionId,
-                  )?.unit_price ?? null
-                const assignment = assignmentsForVersion.find((a) => a.count_row_id === pr.countRow.id)
-                const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pr.countRow.id]
-                const taxAmount =
-                  materialsFromTakeoff != null ? pr.materialsBeforeTax * (taxPercent / 100) : 0
-                const marginVal = pr.marginPct
-                const flag = marginFlag(marginVal)
-                return {
-                  countRow: pr.countRow as BidCountRow,
-                  entry: pr.entry as PriceBookEntryWithFixture | undefined,
-                  laborRow,
-                  count: pr.count,
-                  cost: pr.cost,
-                  unitPrice: pr.unitPrice,
-                  isFixedPrice: pr.isFixedPrice,
-                  revenue: pr.revenue,
-                  margin: marginVal,
-                  flag,
-                  assignment,
-                  customPrice,
-                  materialsBeforeTax: pr.materialsBeforeTax,
-                  materialsWithTax: pr.materialsWithTax,
-                  taxAmount,
-                  laborCost: pr.laborCost,
-                  materialsFromTakeoff: materialsFromTakeoff ?? null,
-                  pctOfGrandTotal: pr.pctOfGrandTotal,
-                  omitFromSubmissionDocuments: pr.omitFromSubmissionDocuments,
-                  canToggleOmitSubmission: pricingRowCanToggleOmitFromSubmission(pr.countRow.id),
-                }
-              })
-              // Fixtures with a Sale Price but no Takeoffs Unit-price cost: their margin reads "—"
-              // (no cost basis), and the bid-level Total margin treats them as full profit — so it
-              // is overstated until those costs are entered in Takeoffs.
-              const uncostedRevenueRows = rows.filter(
-                (r) => r.revenue > 0 && (r.materialsFromTakeoff == null || r.materialsFromTakeoff === 0),
-              )
-              const uncostedRevenue = uncostedRevenueRows.reduce((s, r) => s + r.revenue, 0)
-              const openRowBreakdown = (r: (typeof rows)[number]) =>
-                setPricingBreakdownRow({
-                  fixture: r.countRow.fixture ?? '',
-                  count: r.count,
-                  unitPrice: r.unitPrice,
-                  isFixedPrice: r.isFixedPrice,
-                  revenue: r.revenue,
-                  materialsBeforeTax: r.materialsBeforeTax,
-                  taxAmount: r.taxAmount,
-                  taxPercent,
-                  laborCost: r.laborCost,
-                  cost: r.cost,
-                  margin: r.margin,
-                  materialsFromTakeoff: r.materialsFromTakeoff,
-                })
+              const derived = derivePricingWorkbench()
+              if (!derived) return null
+              const { totalMaterials, laborCost, distance, ratePerMile, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown } = derived
               // Margin mode's per-row apply column (between Revenue and Margin/Total) widens the trailing groups.
               const marginModeColPad = pricingViewModel === 'price' && marginRowMode ? 1 : 0
               return (
@@ -2059,6 +2166,252 @@ export function BidsPricingTab({
                 </>
               )
             })()}
+            </>
+            ) : (
+              (() => {
+                const derived = derivePricingWorkbench()
+                if (!derived) {
+                  return (
+                    <div style={{ padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                      The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up (the Old view and the Counts / Labor tabs work as always), then come back.
+                    </div>
+                  )
+                }
+                const { rows, totalCost, uncostedRevenue, openRowBreakdown } = derived
+                const eff = rows.map((r) => {
+                  const pv = wbPreview?.[r.countRow.id]
+                  const unit = pv ?? r.unitPrice
+                  const revenue = unit != null ? unit * r.count : 0
+                  const rowMargin = unit != null && revenue > 0 && r.cost > 0 ? (revenue - r.cost) / revenue : null
+                  return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview: pv != null && pv !== r.unitPrice }
+                })
+                const effRevenue = eff.reduce((s, r) => s + r.effRevenue, 0)
+                const effProfit = effRevenue - totalCost
+                const effMargin = effRevenue > 0 ? effProfit / effRevenue : null
+                const previewCount = eff.filter((r) => r.isPreview).length
+                const costed = eff.filter((r) => r.cost > 0)
+                const pricedCount = costed.filter((r) => r.effUnit != null).length
+                const unpricedCost = costed.filter((r) => r.effUnit == null).reduce((s, r) => s + r.cost, 0)
+                const conc = profitConcentration(
+                  eff.map((r) => ({ id: r.countRow.id, label: r.countRow.fixture ?? '—', count: r.count, rowCost: r.cost, unitPrice: r.effUnit })),
+                )
+                const concColors = ['#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6', '#f59e0b', '#84cc16', '#ec4899', '#64748b', '#eab308']
+                const mColor = (m: number | null) => (m == null ? 'var(--text-muted)' : m >= 0.42 ? 'var(--text-green-600)' : m >= 0.28 ? 'var(--text-amber-700)' : 'var(--text-red-700)')
+                const visibleEff = wbShowUnpricedOnly ? eff.filter((r) => r.effUnit == null && r.cost > 0) : eff
+                const fmtM = (n: number) => `$${formatCurrency(n)}`
+                return (
+                  <>
+                    <div
+                      style={{
+                        position: 'sticky', top: 0, zIndex: 20,
+                        display: 'flex', flexWrap: 'wrap', alignItems: 'stretch',
+                        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.08)', marginBottom: '0.9rem', overflow: 'hidden',
+                      }}
+                    >
+                      {([
+                        ['Revenue', fmtM(effRevenue), 'var(--text-strong)'],
+                        ['Our cost', fmtM(totalCost), 'var(--text-strong)'],
+                        ['Profit', fmtM(effProfit), effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)'],
+                        ['Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin)],
+                      ] as const).map(([k, v, c]) => (
+                        <div key={k} style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }}>
+                          <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: c }}>{v}</div>
+                        </div>
+                      ))}
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.55rem 0.9rem', flexWrap: 'wrap' }}>
+                        {wbPreview && previewCount > 0 ? (
+                          <>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
+                              Previewing {previewCount} changed price{previewCount !== 1 ? 's' : ''} — nothing saved yet
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => void applyWorkbenchPreview()}
+                              disabled={wbApplying}
+                              style={{ padding: '0.42rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
+                            >
+                              {wbApplying ? 'Applying…' : 'Apply prices'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setWbPreview(null)}
+                              disabled={wbApplying}
+                              style={{ padding: '0.42rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
+                            >
+                              Discard
+                            </button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Solver changes preview here first — Apply writes them.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.3fr) minmax(150px, 1fr) auto auto', gap: '0.8rem', alignItems: 'end', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem', flexWrap: 'wrap' }} className="bid-form-grid-2">
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Blended margin — solve unlocked rows</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                          <input
+                            type="range" min={20} max={65} step={1} value={Math.min(65, Math.max(20, wbMarginPct))}
+                            onChange={(e) => setWbMarginPct(Number(e.target.value))}
+                            onMouseUp={() => runWorkbenchSolve({})}
+                            onTouchEnd={() => runWorkbenchSolve({})}
+                            style={{ flex: 1, accentColor: '#3b82f6' }}
+                            aria-label="Target blended margin"
+                          />
+                          <span style={{ fontSize: '1rem', fontWeight: 700, width: '2.9rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{wbMarginPct}%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>…or target total</span>
+                        <input
+                          type="text" inputMode="decimal" placeholder="e.g. 42,000" value={wbTargetTotalInput}
+                          onChange={(e) => setWbTargetTotalInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            const v = parseFloat(wbTargetTotalInput.replace(/[$,]/g, ''))
+                            if (!Number.isFinite(v) || v <= totalCost) {
+                              showToast(`Target must beat our cost ($${formatCurrency(totalCost)}).`, 'error')
+                              return
+                            }
+                            runWorkbenchSolve({ targetTotal: v })
+                            setWbTargetTotalInput('')
+                          }}
+                          style={{ width: '100%', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                        />
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
+                        <input type="checkbox" checked={wbRound5} onChange={() => setWbRound5((v) => !v)} /> round up to $5
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => runWorkbenchSolve({ onlyUnpriced: true })}
+                        style={{ padding: '0.42rem 0.7rem', fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
+                      >
+                        Price unpriced only
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.7rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
+                        {pricedCount} of {costed.length} costed rows priced{unpricedCost > 0 ? ` — $${formatCurrency(unpricedCost)} of cost has no sale price` : ' — all priced ✓'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 160, height: 8, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 999, width: `${costed.length > 0 ? (pricedCount / costed.length) * 100 : 0}%`, background: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)', transition: 'width 0.25s' }} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setWbShowUnpricedOnly((v) => !v)}
+                        style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.26rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', background: wbShowUnpricedOnly ? '#3b82f6' : 'var(--surface)', color: wbShowUnpricedOnly ? '#fff' : 'var(--text-700)' }}
+                      >
+                        {wbShowUnpricedOnly ? 'Showing unpriced — show all' : 'Show unpriced only'}
+                      </button>
+                      {uncostedRevenue > 0 ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>⚠ ${formatCurrency(uncostedRevenue)} of revenue has no Takeoffs cost — margins overstated.</span>
+                      ) : null}
+                    </div>
+
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem', minWidth: 760 }}>
+                        <thead>
+                          <tr>
+                            {['', 'Fixture or tie-in', 'Count', 'Cost/unit', 'Sale price/unit', 'Revenue', 'Profit', 'Margin'].map((h, i) => (
+                              <th key={h || 'lock'} style={{ textAlign: i >= 2 && i !== 4 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleEff.map((r) => {
+                            const locked = r.isFixedPrice || wbLocks.has(r.countRow.id)
+                            return (
+                              <tr
+                                key={r.countRow.id}
+                                onClick={() => openRowBreakdown(r)}
+                                style={{ cursor: 'pointer', background: r.effUnit == null && r.cost > 0 ? 'var(--bg-amber-tint)' : undefined }}
+                              >
+                                <td style={{ padding: '0.35rem 0.4rem 0.35rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (r.isFixedPrice) { showToast('Fixed-price row — always held by the solver.', 'error'); return }
+                                      setWbLocks((prev) => {
+                                        const next = new Set(prev)
+                                        if (next.has(r.countRow.id)) next.delete(r.countRow.id)
+                                        else next.add(r.countRow.id)
+                                        return next
+                                      })
+                                    }}
+                                    title={r.isFixedPrice ? 'Fixed price — always held' : locked ? 'Held — the solver will not move this row' : 'Hold this price while solving'}
+                                    style={{ font: 'inherit', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.05rem 0.2rem', opacity: locked ? 1 : 0.3 }}
+                                  >
+                                    📌
+                                  </button>
+                                </td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>
+                                  {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={wbPreview?.[r.countRow.id] != null ? String(wbPreview[r.countRow.id]) : r.effUnit != null ? String(Math.round(r.effUnit * 100) / 100) : ''}
+                                    placeholder="—"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                      const v = parseFloat(e.target.value.replace(/[$,]/g, ''))
+                                      setWbPreview((prev) => ({ ...(prev ?? {}), [r.countRow.id]: Number.isFinite(v) && v > 0 ? v : 0 }))
+                                    }}
+                                    style={{ width: '6rem', font: 'inherit', fontSize: '0.85rem', padding: '0.25rem 0.4rem', border: r.isPreview ? '1px solid var(--text-amber-700)' : '1px solid var(--border-strong)', borderRadius: 5, textAlign: 'right', background: r.isPreview ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}
+                                    aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
+                                  />
+                                  {r.isPreview ? <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-amber-700)', fontWeight: 700 }}>preview</span> : null}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.effUnit != null ? `$${formatCurrency(r.effRevenue)}` : '—'}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.effUnit != null && r.cost > 0 ? `$${formatCurrency(r.effRevenue - r.cost)}` : '—'}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: mColor(r.effMargin) }}>
+                                  {r.effMargin == null ? (r.effUnit != null && r.cost <= 0 ? 'no cost' : '—') : `${Math.round(r.effMargin * 100)}%`}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginTop: '0.9rem' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Where the profit lives</span>
+                      {conc.top2Share != null && conc.top2Share > 0.6 && conc.segments.length >= 2 ? (
+                        <span style={{ marginLeft: '0.6rem', fontSize: '0.78rem', color: 'var(--text-amber-700)' }}>
+                          ⚠ {Math.round(conc.top2Share * 100)}% of profit sits in {conc.segments[0]?.label} + {conc.segments[1]?.label} — a VE cut there guts the job.
+                        </span>
+                      ) : conc.totalProfit > 0 ? (
+                        <span style={{ marginLeft: '0.6rem', fontSize: '0.78rem', color: 'var(--text-green-600)' }}>Healthy spread.</span>
+                      ) : null}
+                      <div style={{ display: 'flex', height: 16, borderRadius: 6, overflow: 'hidden', marginTop: '0.45rem' }}>
+                        {conc.totalProfit <= 0 ? (
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No profit yet — price some rows.</span>
+                        ) : (
+                          conc.segments.map((s, i) => (
+                            <div key={s.id} title={`${s.label}: $${formatCurrency(s.profit)} (${Math.round(s.share * 100)}%)`} style={{ width: `${s.share * 100}%`, minWidth: 2, background: concColors[i % concColors.length] }} />
+                          ))
+                        )}
+                      </div>
+                      {conc.totalProfit > 0 ? (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                          {conc.segments.slice(0, 4).map((s) => `${s.label} ${Math.round(s.share * 100)}%`).join(' · ')}{conc.segments.length > 4 ? ' · …' : ''}
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                )
+              })()
+            )}
           </div>
         )}
         {marginPickerRow ? (
