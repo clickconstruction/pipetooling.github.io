@@ -13,6 +13,7 @@ import {
   type PartnershipModules,
 } from '../lib/partnerLedger/partnershipConfig'
 import type { Database, Json } from '../types/database'
+import { PartnershipJobReviewTab } from '../components/partnerships/PartnershipJobReviewTab'
 
 type PartnershipRow = Database['public']['Tables']['partnerships']['Row']
 type PersonOption = { id: string; name: string; kind: string | null }
@@ -31,7 +32,7 @@ type PersonOption = { id: string; name: string; kind: string | null }
  * deploy in either order.
  */
 
-const TAB_PLACEHOLDERS = ['Agreements', 'Job review', 'Statements', 'Ledger'] as const
+const TAB_PLACEHOLDERS = ['Agreements', 'Statements', 'Ledger'] as const
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -130,6 +131,7 @@ export default function Partnerships() {
   const [rows, setRows] = useState<PartnershipRow[]>([])
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'deal' | 'review'>('deal')
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [draft, setDraft] = useState<PartnershipConfig | null>(null)
@@ -469,11 +471,33 @@ export default function Partnerships() {
                 {statusChip(draft.status)}
               </div>
 
-              {/* Tab bar — Deal live now; the rest ship later in this train */}
+              {/* Tab bar — Deal + Job review live; the rest ship later in this train */}
               <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', margin: '0.75rem 0', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 650, color: 'var(--text-link)', borderBottom: '2px solid var(--text-link)', paddingBottom: '0.4rem' }}>
-                  Deal
-                </span>
+                {(
+                  [
+                    ['deal', 'Deal'],
+                    ['review', 'Job review'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveTab(key)}
+                    style={{
+                      font: 'inherit',
+                      fontSize: '0.85rem',
+                      fontWeight: 650,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0 0 0.4rem',
+                      color: activeTab === key ? 'var(--text-link)' : 'var(--text-muted)',
+                      borderBottom: activeTab === key ? '2px solid var(--text-link)' : '2px solid transparent',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
                 {TAB_PLACEHOLDERS.map((t) => (
                   <span key={t} title="Ships later in this train" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', paddingBottom: '0.4rem', opacity: 0.6 }}>
                     {t}
@@ -481,6 +505,10 @@ export default function Partnerships() {
                 ))}
               </div>
 
+              {activeTab === 'review' ? (
+                <PartnershipJobReviewTab partnershipId={selected.id} partnerName={selected.display_name || 'the partner'} />
+              ) : (
+                <>
               <div style={groupHeadStyle}>Status</div>
               {cfgRow(
                 'Partnership status',
@@ -568,6 +596,8 @@ export default function Partnerships() {
                 {savedAt ? <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Saved {savedAt}</span> : null}
                 {dirty && !savedAt ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Unsaved changes</span> : null}
               </div>
+                </>
+              )}
             </>
           )}
         </div>

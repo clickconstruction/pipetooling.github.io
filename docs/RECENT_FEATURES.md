@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1880)
+last_updated: 2026-08-20 (v2.1881)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1881)
+
+### Partnerships: the majority check-off gate (2026-08-20)
+Partnerships train PR 2 of 8. The §3 "majority of the work" decision becomes data: migration `20260820150000_partner_majority_anchors.sql` adds three nullable anchors to `jobs_ledger` (`partner_person_id` → people, `partner_confirmed_by`, `partner_confirmed_at` + partial index) and two dev-gated SECURITY DEFINER RPCs — `set_job_partner_majority(job, person|NULL)` (the toggle; NULL clears all three; stamps who/when) and `get_partner_job_review_queue(partnership)` (jobs where the partnership's person has approved clocked hours — approved, not rejected/revoked, clocked out — with partner-vs-total hours; unlinked person returns `{linked:false}` so the tab can say "link the person" instead of a silent void). New **Job review tab** on `/partnerships` ([`PartnershipJobReviewTab.tsx`](../src/components/partnerships/PartnershipJobReviewTab.tsx)): per-job rows with hours share bar (suggestion only — NO automatic threshold), confirmed-by/when stamp, and the visibility toggle; jobs assigned to a different partner render locked. Everything partner-facing in later PRs keys on this flag — a job doesn't exist in a partner's view until it's set, and clearing it hides the job without touching postings. Pure kernel [`jobReviewQueue.ts`](../src/lib/partnerLedger/jobReviewQueue.ts) (parse/share/sort, 7 tests). The Deal/Job review tab bar becomes real tab state. **`supabase db push` after merge** (tab fail-softs with a "run db push" note until then).
 
 ## Latest Updates (v2.1880)
 
