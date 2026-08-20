@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1897',
+    date: '2026-08-20',
+    title: 'Partner ledger: newest postings on top',
+    kind: 'fix',
+    highlights: [
+      'The Partnerships Ledger tab now lists postings newest-first, so today\u2019s activity and the current balance are the first thing you see.',
+    ],
+  },
+  {
     version: 'v2.1895',
     date: '2026-08-20',
     title: 'Cover Letter: the studio is the layout now',
