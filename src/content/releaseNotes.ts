@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1874',
+    date: '2026-08-19',
+    title: 'Confirmations look like PipeTooling, not the browser',
+    kind: 'feature',
+    highlights: [
+      'Confirmation prompts (like "Delete this draft?" and the $0-send check on estimates) are now proper in-app dialogs that match the app\'s look and dark mode — no more "pipetooling.com says" browser popup.',
+      'The rest of the app\'s confirmations move to the new dialog in a follow-up.',
+    ],
+  },
+  {
     version: 'v2.1872',
     date: '2026-08-19',
     title: 'Checklist Review: a real team board',

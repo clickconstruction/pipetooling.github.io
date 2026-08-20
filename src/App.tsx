@@ -48,6 +48,7 @@ import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
 import { wipeServiceWorkersAndCaches } from './lib/hardReload'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
+import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
@@ -335,11 +336,13 @@ export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
+        <ConfirmDialogProvider>
         <LedgerDisplayPrefixBridge>
           <DispatchNoteRequirementsBridge>
             <AppContent />
           </DispatchNoteRequirementsBridge>
         </LedgerDisplayPrefixBridge>
+        </ConfirmDialogProvider>
       </ToastProvider>
     </ThemeProvider>
   )
