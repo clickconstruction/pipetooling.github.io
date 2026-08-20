@@ -18,8 +18,9 @@ type Inv = {
   sequence_order?: number
   is_primary_rtb_bundle?: boolean
   estimated_bill_date?: string | null
+  billed_at?: string | null
 }
-type Pay = { invoice_id: string | null; amount: number }
+type Pay = { invoice_id: string | null; amount: number; paid_on?: string | null }
 
 function job(
   id: string,
@@ -50,8 +51,15 @@ function job(
       sequence_order: i.sequence_order ?? n + 1,
       is_primary_rtb_bundle: i.is_primary_rtb_bundle ?? null,
       estimated_bill_date: i.estimated_bill_date ?? null,
+      billed_at: i.billed_at ?? null,
     })),
-    payments: (o.payments ?? []).map((p, n) => ({ job_id: id, invoice_id: p.invoice_id, amount: p.amount, sequence_order: n + 1 })),
+    payments: (o.payments ?? []).map((p, n) => ({
+      job_id: id,
+      invoice_id: p.invoice_id,
+      amount: p.amount,
+      paid_on: p.paid_on ?? null,
+      sequence_order: n + 1,
+    })),
     materials: [],
     fixtures: [],
     team_members: [],
@@ -89,7 +97,7 @@ const FULL: JobWithDetails[] = [
     status: 'billed',
     revenue: 900,
     invoices: [{ id: 'b1-a', amount: 900, status: 'billed', estimated_bill_date: daysAgo(100) }],
-    payments: [{ invoice_id: 'b1-a', amount: 400 }],
+    payments: [{ invoice_id: 'b1-a', amount: 400, paid_on: daysAgo(3) }],
   }),
   job('b2', {
     status: 'billed',
@@ -126,10 +134,16 @@ function stripToLean(jobs: JobWithDetails[]): {
         sequence_order: i.sequence_order,
         is_primary_rtb_bundle: i.is_primary_rtb_bundle ?? null,
         estimated_bill_date: i.estimated_bill_date ?? null,
+        billed_at: (i as { billed_at?: string | null }).billed_at ?? null,
       })),
     ),
     paymentRows: jobs.flatMap((j) =>
-      (j.payments ?? []).map((p) => ({ job_id: j.id, invoice_id: p.invoice_id, amount: p.amount })),
+      (j.payments ?? []).map((p) => ({
+        job_id: j.id,
+        invoice_id: p.invoice_id,
+        amount: p.amount,
+        paid_on: (p as { paid_on?: string | null }).paid_on ?? null,
+      })),
     ),
   }
 }
@@ -150,6 +164,14 @@ describe('computeStagesHeaderStats', () => {
     // Aging over non-collections billed rows with est dates: k1-b at 45d (250), b1-a at 100d (500).
     expect(s.billedAging).toEqual({ count30_90: 1, sum30_90: 250, count90: 1, sum90: 500 })
     expect(s.capableToBill).toBeGreaterThan(0)
+    // b3 is the only billed row with a positive remainder and no billed_at/est date
+    // (b1-a and k1-b carry est dates; b2 is Collections and excluded).
+    expect(s.billedNoDate).toBe(1)
+    // b1's $400 payment landed 3 days before NOW (Sun 2026-08-16 → week of Mon 2026-08-10).
+    expect(s.collectedByWeek).toHaveLength(8)
+    expect(s.collectedByWeek[7]).toEqual({ weekStart: '2026-08-17', total: 0 })
+    expect(s.collectedByWeek[6]).toEqual({ weekStart: '2026-08-10', total: 400 })
+    expect(s.collectedByWeek.reduce((t, w) => t + w.total, 0)).toBe(400)
   })
 
   it('lean-assembled rows produce IDENTICAL stats to full objects (parity by construction)', () => {
@@ -163,5 +185,8 @@ describe('computeStagesHeaderStats', () => {
     expect(s.waiting).toEqual({ count: 0, total: 0 })
     expect(s.readyToBill).toEqual({ count: 0, total: 0 })
     expect(s.billedAging).toEqual({ count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 })
+    expect(s.billedNoDate).toBe(0)
+    expect(s.collectedByWeek).toHaveLength(8)
+    expect(s.collectedByWeek.every((w) => w.total === 0)).toBe(true)
   })
 })

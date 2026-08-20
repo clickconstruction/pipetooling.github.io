@@ -41,6 +41,7 @@ import {
   stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { PipelineOverview } from './PipelineOverview'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -636,6 +637,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
   // narrows the section list to rows the matching chip counts.
   const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | null>(null)
+  // Old/New pills (v2.1910, Counts precedent): Old = the classic board alone;
+  // New = the money story strip + Today's money moves above the same board.
+  // Per-device, default Old.
+  const [pipelineView, setPipelineView] = useState<'old' | 'new'>(() => {
+    try {
+      return window.localStorage.getItem('jobs_pipeline_view_v1') === 'new' ? 'new' : 'old'
+    } catch {
+      return 'old'
+    }
+  })
+  const switchPipelineView = (next: 'old' | 'new') => {
+    setPipelineView(next)
+    try {
+      window.localStorage.setItem('jobs_pipeline_view_v1', next)
+    } catch {
+      /* device just won't remember */
+    }
+  }
   const { count: arBankTxUnallocatedCount } = useArBankUnallocatedCount({
     enabled: active,
     authUserId: authUser?.id,
@@ -1833,6 +1852,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           {(error || jobsListError) && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pipelineView === 'old'}
+              onClick={() => switchPipelineView('old')}
+              style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pipelineView === 'old' ? '#2563eb' : 'transparent', color: pipelineView === 'old' ? '#fff' : 'var(--text-muted)' }}
+            >
+              Old
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pipelineView === 'new'}
+              onClick={() => switchPipelineView('new')}
+              style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pipelineView === 'new' ? '#2563eb' : 'transparent', color: pipelineView === 'new' ? '#fff' : 'var(--text-muted)' }}
+            >
+              New
+            </button>
+            {pipelineView === 'new' ? (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                the money story + today&#8217;s moves, above the same board as Old
+              </span>
+            ) : null}
+          </div>
           <div style={{ marginBottom: '1rem' }}>
             <span
               id="stages-search-supplemental-desc"
@@ -2411,6 +2455,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
             </div>
           </div>
+          {pipelineView === 'new' && (
+            <PipelineOverview
+              stats={cacheHeaderStats}
+              canOpenAr={
+                authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
+              }
+              canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+              arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
+              onOpenCapable={() => setCapableToBillModalOpen(true)}
+              onOpenAgingChart={() => setBilledAgingChartOpen(true)}
+              onOpenProfitChart={() => setPaidProfitChartOpen(true)}
+              onOpenAr={() => setBankPaymentsModalOpen(true)}
+              onFocusSection={focusStagesSection}
+              onChase90={() => {
+                setBilledAgingFilter('90')
+                focusStagesSection('billed')
+              }}
+            />
+          )}
           <div
             style={{
               marginBottom: '0.75rem',

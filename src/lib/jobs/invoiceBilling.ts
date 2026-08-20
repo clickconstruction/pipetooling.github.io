@@ -149,6 +149,28 @@ export function billedStageRowAgingBucket(row: StageRow, now = new Date()): Bill
  * section only). Extracted verbatim from the Jobs.tsx `billedAgingBuckets`
  * memo (Stage A, step 8 of the decomposition).
  */
+/**
+ * Billed rows that can never age or be chased: positive remainder but no
+ * billed_at and no est. bill date (job-shell rows included). Feeds the
+ * Pipeline New view's "fix dates" money move; Collections excluded to match
+ * the aging chips' cohort.
+ */
+export function countBilledRowsMissingDates(stagesFilteredJobs: JobWithDetails[]): number {
+  const st = (j: JobWithDetails) => (j.status ?? 'working') as string
+  const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
+  const billedJobsList = filtered.filter((j) => st(j) === 'billed')
+  const billedInvoicesList = filtered.flatMap((j) =>
+    (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
+  )
+  let n = 0
+  for (const r of buildBilledStageRows(billedJobsList, billedInvoicesList)) {
+    if (stageRowBilledRemainingAmount(r) <= 0) continue
+    const dated = r.kind !== 'job' && (Boolean(r.inv.billed_at?.trim()) || effectiveInvoiceEstBillDate(r.inv) != null)
+    if (!dated) n++
+  }
+  return n
+}
+
 export function buildBilledAgingBuckets(stagesFilteredJobs: JobWithDetails[], now = new Date()): BilledAgingBuckets {
   const st = (j: JobWithDetails) => (j.status ?? 'working') as string
   const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
