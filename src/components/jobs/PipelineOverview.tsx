@@ -7,7 +7,6 @@
  */
 import type { CSSProperties } from 'react'
 import { buildPipelineMoneyMoves, buildPipelineMoneyStory, type PipelineMoveKey, type PipelineStoryCard } from '../../lib/jobs/pipelineOverview'
-import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesHeaderStats } from '../../lib/jobs/stagesHeaderStats'
 
 type SectionKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
@@ -16,6 +15,8 @@ type PipelineOverviewProps = {
   stats: StagesHeaderStats | null
   canOpenAr: boolean
   canSeeCharts: boolean
+  /** dev/master only (owner call, v2.1916): the collected-cash card. */
+  canSeeCollected: boolean
   arUnallocatedCount: number | null
   onOpenCapable: () => void
   onOpenAgingChart: () => void
@@ -108,6 +109,7 @@ export function PipelineOverview({
   stats,
   canOpenAr,
   canSeeCharts,
+  canSeeCollected,
   arUnallocatedCount,
   onOpenCapable,
   onOpenAgingChart,
@@ -123,8 +125,8 @@ export function PipelineOverview({
       </div>
     )
   }
-  const cards = buildPipelineMoneyStory(stats)
-  const { moves, movesTotal } = buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr })
+  const cards = buildPipelineMoneyStory(stats, { includeCollected: canSeeCollected })
+  const moves = buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr })
   const cardAction: Record<PipelineStoryCard['key'], (() => void) | undefined> = {
     'ready-to-ask': onOpenCapable,
     'waiting-on-customers': canSeeCharts ? onOpenAgingChart : () => onFocusSection('billed'),
@@ -175,11 +177,6 @@ export function PipelineOverview({
           <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
             Today&#8217;s money moves
           </span>
-          {movesTotal > 0 && (
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>
-              → {formatUsdNoCents(movesTotal)}
-            </span>
-          )}
           {moves.length === 0 && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>nothing needs a move right now — the pipeline is clean ✅</span>
           )}

@@ -2462,6 +2462,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
               }
               canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+              canSeeCollected={authRole === 'dev' || authRole === 'master_technician'}
               arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
               onOpenCapable={() => setCapableToBillModalOpen(true)}
               onOpenAgingChart={() => setBilledAgingChartOpen(true)}
