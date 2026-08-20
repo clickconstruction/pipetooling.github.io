@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
@@ -24,6 +25,7 @@ export default function DocumentsJobBilledInvoiceModal({
   overlayZIndex?: number
 }) {
   const { role } = useAuth()
+  const { showToast } = useToastContext()
   const [job, setJob] = useState<JobWithDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -74,7 +76,7 @@ export default function DocumentsJobBilledInvoiceModal({
     if (!physicalDoc || !job) return
     const win = window.open('', '_blank')
     if (!win) {
-      window.alert('Pop-up blocked. Allow pop-ups for this site to preview the PDF.')
+      showToast('Pop-up blocked. Allow pop-ups for this site to preview the PDF.', 'warning')
       return
     }
     setPdfOpening(true)
@@ -94,7 +96,7 @@ export default function DocumentsJobBilledInvoiceModal({
     } finally {
       setPdfOpening(false)
     }
-  }, [physicalDoc, job, invoice])
+  }, [physicalDoc, job, invoice, showToast])
 
   if (!open || !invoice) return null
 
