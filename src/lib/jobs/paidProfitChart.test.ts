@@ -9,6 +9,7 @@ import {
   paidProfitY,
   paidProfitYDomain,
   paidProfitYTicks,
+  sqrtSpacedTicks,
 } from './paidProfitChart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -53,6 +54,32 @@ describe('buildPaidProfitChart', () => {
     expect(points[0]!.perHour).toBeNull()
     expect(stats.medianPerHour).toBeNull()
   })
+
+  it('untracked pass-throughs (cost 0, 0 hours) are counted, never plotted as pure profit', () => {
+    const { points, stats } = buildPaidProfitChart([job('a', 895000)], { a: { cost: 0, hours: 0 } })
+    expect(points).toHaveLength(0)
+    expect(stats.skippedNoStats).toBe(1)
+  })
+
+  it('excludes the overhead office job and filters by latest payment window', () => {
+    const now = new Date('2026-08-20T12:00:00Z')
+    const recent = job('recent', 5000, { payments: [{ paid_on: '2026-08-01', amount: 5000 }] as never })
+    const old = job('old', 5000, { payments: [{ paid_on: '2025-01-15', amount: 5000 }] as never })
+    const office = job('office', 0, { payments: [{ paid_on: '2026-08-01', amount: 1 }] as never })
+    const statsMap = {
+      recent: { cost: 3000, hours: 40 },
+      old: { cost: 3000, hours: 40 },
+      office: { cost: 96000, hours: 5000 },
+    }
+    const windowed = buildPaidProfitChart([recent, old, office], statsMap, {
+      windowDays: 365,
+      excludeJobId: 'office',
+      now,
+    })
+    expect(windowed.points.map((p) => p.jobId)).toEqual(['recent'])
+    const all = buildPaidProfitChart([recent, old, office], statsMap, { excludeJobId: 'office', now })
+    expect(all.points.map((p) => p.jobId).sort()).toEqual(['old', 'recent'])
+  })
 })
 
 describe('scales', () => {
@@ -73,25 +100,36 @@ describe('scales', () => {
     })
   })
 
-  it('maps linearly with the zero line inside the plot', () => {
+  it('sqrt scales: endpoints exact, zero line inside the plot, order preserved', () => {
     const dom = { min: -10000, max: 50000 }
     expect(paidProfitY(dom.max, dom, 20, 440)).toBe(20)
     expect(paidProfitY(dom.min, dom, 20, 440)).toBe(440)
-    expect(paidProfitY(0, dom, 20, 440)).toBe(370)
+    const zero = paidProfitY(0, dom, 20, 440)
+    expect(zero).toBeGreaterThan(20)
+    expect(zero).toBeLessThan(440)
+    // Signed-sqrt spreads small values: $1k sits farther from $0 than linear would put it.
+    const oneK = paidProfitY(1000, dom, 20, 440)
+    expect(zero - oneK).toBeGreaterThan((420 * 1000) / 60000)
     expect(paidProfitX(0, 400, 70, 820)).toBe(70)
     expect(paidProfitX(400, 400, 70, 820)).toBe(820)
+    expect(paidProfitX(100, 400, 70, 820)).toBe(445)
   })
 
-  it('y ticks are nice steps including 0', () => {
-    const ticks = paidProfitYTicks({ min: -10000, max: 50000 })
-    expect(ticks).toContain(0)
-    expect(ticks[0]).toBeGreaterThanOrEqual(-10000)
-    expect(ticks[ticks.length - 1]).toBeLessThanOrEqual(50000)
+  it('sqrt-spaced ticks are nice values including 0 and the max', () => {
+    const x = sqrtSpacedTicks(500, 5)
+    expect(x[0]).toBe(0)
+    expect(x[x.length - 1]).toBe(500)
+    expect(x.length).toBeGreaterThanOrEqual(4)
+    const y = paidProfitYTicks({ min: -10000, max: 50000 })
+    expect(y).toContain(0)
+    expect(y).toContain(50000)
+    expect(y[0]).toBeGreaterThanOrEqual(-10000)
   })
 
-  it('radius and signed money labels', () => {
+  it('radius caps for dense boards; signed money labels', () => {
     expect(paidProfitRadius(0)).toBe(3)
-    expect(paidProfitRadius(80000)).toBeCloseTo(28.3, 1)
+    expect(paidProfitRadius(25000)).toBeCloseTo(13.2, 1)
+    expect(paidProfitRadius(800000)).toBe(22)
     expect(paidProfitMoneyLabel(-6800)).toBe('−$6.8k')
     expect(paidProfitMoneyLabel(318000)).toBe('$318k')
     expect(paidProfitMoneyLabel(850)).toBe('$850')
