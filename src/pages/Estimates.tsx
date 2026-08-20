@@ -3605,7 +3605,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           style={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             marginBottom: '1rem',
           }}
         >
