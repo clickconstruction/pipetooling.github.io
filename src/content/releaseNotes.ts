@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1861',
+    date: '2026-08-19',
+    title: 'Ready to Bill notifications: legend over the checkboxes',
+    kind: 'fix',
+    highlights: [
+      'The "📧 email | 🔔 push" legend moves to the right edge, on the Recipients line, so it sits above the checkbox columns it labels.',
+    ],
+  },
+  {
     version: 'v2.1859',
     date: '2026-08-19',
     title: 'Checklist history you can read on a phone',
