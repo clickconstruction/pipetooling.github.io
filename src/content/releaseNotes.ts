@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1859',
+    date: '2026-08-19',
+    title: 'Checklist history you can read on a phone',
+    kind: 'feature',
+    highlights: [
+      'On phones, Checklist → History is now a day-by-day list — "Today · 4 of 5 done" with clear chips for done, missed, done-by-someone-else, and reopened — instead of a giant scrolling grid of tiny squares.',
+      'A summary strip shows your week percentage, current streak, and missed count at a glance.',
+      'Tap any day\'s task to see its full story — completions, reopens, sign-offs, and notes — and add a note right there.',
+      'The grid view is unchanged on desktop.',
+    ],
+  },
+  {
     version: 'v2.1857',
     date: '2026-08-19',
     title: 'Bid Board: due-date colors mean something again',

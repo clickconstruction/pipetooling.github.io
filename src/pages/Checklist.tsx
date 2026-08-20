@@ -18,6 +18,8 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
+import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
+import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 
 type UserRole =
@@ -901,9 +903,14 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
 }
 
 function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setError }: { authUserId: string | null; canViewOthers: boolean; canEditHistory: boolean; setError: (s: string | null) => void }) {
+  const isNarrow = useIsNarrowScreen()
   const [instances, setInstances] = useState<ChecklistInstance[]>([])
   const [loading, setLoading] = useState(true)
-  const [monthsBack, setMonthsBack] = useState(6)
+  // Phones default to 1 month — the day-ledger reads top-down and a season of
+  // scrollback buries last week; desktop keeps the 6-month grid default.
+  const [monthsBack, setMonthsBack] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches ? 1 : 6,
+  )
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [selectedUserId, setSelectedUserId] = useState<string>(authUserId ?? '')
   const [editMode, setEditMode] = useState(false)
@@ -1082,7 +1089,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
             onChange={(e) => setMonthsBack(Number(e.target.value))}
             style={{ padding: '0.35rem 0.5rem' }}
           >
-            {[3, 6, 12].map((n) => (
+            {[1, 3, 6, 12].map((n) => (
               <option key={n} value={n}>{n}</option>
             ))}
           </select>
@@ -1093,10 +1100,21 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
             <span style={{ fontSize: '0.875rem' }}>Edit mode</span>
           </label>
         )}
-        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Green = completed by you, Yellow = completed by someone else, Red = incomplete, White = not due
-        </span>
+        {!isNarrow && (
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            Green = completed by you, Yellow = completed by someone else, Red = incomplete, White = not due
+          </span>
+        )}
       </div>
+      {isNarrow ? (
+        <ChecklistHistoryLedger
+          instances={instances}
+          selectedUserId={selectedUserId}
+          currentUserId={authUserId}
+          todayStr={toLocalDateString(new Date())}
+          setError={setError}
+        />
+      ) : (
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
@@ -1152,7 +1170,8 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           </tbody>
         </table>
       </div>
-      {byItem.size === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>}
+      )}
+      {!isNarrow && byItem.size === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>}
     </div>
   )
 }

@@ -37,3 +37,7 @@ Fix it up, reply on the thread if useful, and check it off again.
 ## After you complete
 
 Your finished task may show **waiting on review** — that just means the person who assigned it hasn't looked yet. When they sign off it reads **signed off**, and nothing more is needed from you.
+
+## Looking back: the History tab
+
+On your phone, **Checklist → History** shows your days newest-first — each day says how many you finished, and every task carries a chip: {{chip:green|✓ 7:58 AM}} done, {{chip:yellow|✓ by Maria}} someone covered it, {{chip:red|✗ Missed}}, or {{chip:yellow|Reopened}}. The strip up top shows your week percentage and streak. Tap any task to read its whole story and add a note.
