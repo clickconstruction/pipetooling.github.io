@@ -539,11 +539,6 @@ export default function Layout() {
             {reviewIcon}
           </NavLink>
         )}
-        {role === 'dev' && !isMobile && (
-          <NavLink to="/partnerships" style={iconLinkStyle} title="Partnerships" aria-label="Partnerships">
-            {partnershipsIcon}
-          </NavLink>
-        )}
       </span>
     )
   }
@@ -647,11 +642,6 @@ export default function Layout() {
         {!excludeHeaderLinks && role === 'dev' && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
             {reviewIcon}
-          </NavLink>
-        )}
-        {!excludeHeaderLinks && role === 'dev' && (
-          <NavLink to="/partnerships" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Partnerships" aria-label="Partnerships">
-            {partnershipsIcon}
           </NavLink>
         )}
         {!excludeHeaderLinks && (
@@ -847,26 +837,6 @@ export default function Layout() {
                     >
                       {reviewIcon}
                       Review
-                    </NavLink>
-                  )}
-                  {role === 'dev' && (
-                    <NavLink
-                      to="/partnerships"
-                      onClick={() => setMenuOpen(false)}
-                      style={({ isActive }) => ({
-                        ...dropdownLinkStyle({ isActive }),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        padding: '0.5rem 1rem',
-                        width: '100%',
-                        boxSizing: 'border-box',
-                      })}
-                      title="Partnerships"
-                      aria-label="Partnerships"
-                    >
-                      {partnershipsIcon}
-                      Partnerships
                     </NavLink>
                   )}
                   {renderNavLinks(() => setMenuOpen(false), true)}
@@ -1439,6 +1409,28 @@ export default function Layout() {
                   >
                     Auto (dark 8pm–4am)
                   </button>
+                )}
+                {role === 'dev' && !farmModeActive && (
+                  <NavLink
+                    to="/partnerships"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Partnerships"
+                    aria-label="Partnerships"
+                  >
+                    {partnershipsIcon}
+                    Partnerships
+                  </NavLink>
                 )}
                 {(role === 'estimator' ||
                   role === null ||
