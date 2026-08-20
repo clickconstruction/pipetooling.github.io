@@ -50,6 +50,20 @@ export function isChangeOrderDocKind(docKind: string | null | undefined): boolea
   return docKind === 'change_order'
 }
 
+/**
+ * Customer-document heading for a change order. Stored titles default to
+ * "Estimate for <customer>" (and rows sent before the CO train kept that
+ * wording), so rewrite the estimate-flavored defaults; hand-written titles
+ * pass through untouched.
+ */
+export function changeOrderDocDisplayTitle(title: string): string {
+  const t = title.trim()
+  const m = /^estimate\s+for\s+(\S.*)$/i.exec(t)
+  if (m) return `Change Order for ${m[1]}`
+  if (/^(estimate|new estimate)$/i.test(t)) return 'Change order'
+  return t
+}
+
 /** Signed sum of line amounts — credits (negative lines) subtract. */
 export function changeOrderNetChangeCents(lines: Array<Pick<EstimateLineItemNormalized, 'amount_cents'>>): number {
   return lines.reduce((sum, l) => sum + Math.round(l.amount_cents), 0)
