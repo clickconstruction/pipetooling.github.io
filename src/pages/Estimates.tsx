@@ -34,6 +34,7 @@ import {
   type CoCostPromptMode,
 } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -2162,6 +2163,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const titleInputRef = useRef<HTMLInputElement>(null)
   const sendEmailOverrideInputRef = useRef<HTMLInputElement>(null)
   const customerSearchSectionRef = useRef<HTMLDivElement>(null)
+  const confirmDialog = useConfirmDialog()
   const lastCustomerGateToastAt = useRef(0)
   const customerGateHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [customerSearchHighlight, setCustomerSearchHighlight] = useState(false)
@@ -3244,7 +3246,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     }
     // Rail decision 1 (soft gate): a $0 document sends only after a confirm —
     // schedule-only change orders are legitimate, silent $0 sends are not.
-    if (totalCents === 0 && !window.confirm(isCO ? 'Send with a $0.00 net change to contract?' : 'Send with a $0.00 total?')) {
+    if (
+      totalCents === 0 &&
+      !(await confirmDialog({
+        message: isCO ? 'Send with a $0.00 net change to contract?' : 'Send with a $0.00 total?',
+        confirmLabel: 'Send anyway',
+      }))
+    ) {
       return
     }
     let sel = customers.find((c) => c.id === customerId)
@@ -3400,7 +3408,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   async function deleteDraft() {
     if (!row || !isDraft) return
-    if (!window.confirm('Delete this draft?')) return
+    if (!(await confirmDialog({ message: 'Delete this draft?', confirmLabel: 'Delete', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => await supabase.from('estimates').delete().eq('id', row.id).eq('status', 'draft'),

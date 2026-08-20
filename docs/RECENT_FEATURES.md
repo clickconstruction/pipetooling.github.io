@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1872)
+last_updated: 2026-08-19 (v2.1874)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1874)
+
+### In-app confirm dialogs — the browser popup retires (2026-08-19)
+Owner request (screenshot of the native "pipetooling.com says" dialog): confirmation prompts become real in-app modals. New [`ConfirmDialogContext`](../src/contexts/ConfirmDialogContext.tsx): promise-based `useConfirmDialog()` — `await confirmDialog({ message, title?, confirmLabel?, cancelLabel?, danger? })` resolves true/false; themed modal (tokens, dark-mode correct), Escape / backdrop-click cancel, focus lands on the confirm button, `z-index` above other modals so it works from inside dialogs, and a second request auto-cancels the first. Mounted app-wide in `App.tsx` inside ToastProvider. Converted in this PR: the estimate draft editor's two prompts — the $0-total/net-change send guard (confirm label "Send anyway") and Delete draft (danger red "Delete"). The remaining ~32 `window.confirm` call sites across 21 files convert mechanically to the same pattern in a follow-up sweep. Client-only — no migration.
 
 ## Latest Updates (v2.1872)
 
