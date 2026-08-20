@@ -369,6 +369,9 @@ Test suite: **[`bidEstimatorsTab.test.ts`](../src/lib/bidEstimatorsTab.test.ts)*
 ### Purpose
 Enter fixture and tie-in counts for each bid. Counts form the foundation for material takeoffs and labor estimates.
 
+### Old / New views (v2.1909)
+The selected-bid card opens with **Old / New** pills (per-device, default Old). **Old** is the classic drag-sortable table below, unchanged. **New** is the **Count Sheet**: a summary strip (items · units · no-plan-page (click-to-filter) · pages cited), a **By plan page** audit grouping (kernel `src/lib/bids/countSheet.ts`), chip-driven **quick add** with Enter-flow, a **duplicate guard** with one-click merge, and two-tap delete. Reorder/inline edits stay in Old; downstream costed/priced badges are the planned iteration 2.
+
 ### Layout
 
 **Selected Bid Panel** (at top):

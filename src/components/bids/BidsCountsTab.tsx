@@ -19,6 +19,7 @@ import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
 
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
@@ -70,6 +71,150 @@ export function BidsCountsTab({
   const [clearAllCountsOpen, setClearAllCountsOpen] = useState(false)
   const [clearAllCountsConfirm, setClearAllCountsConfirm] = useState('')
   const [clearAllCountsBusy, setClearAllCountsBusy] = useState(false)
+  // Old/New pills: Old = the classic sortable table; New = the Count Sheet
+  // (summary, by-page audit, quick add). Per-device, default Old.
+  const [countsView, setCountsView] = useState<'old' | 'new'>(() => {
+    try {
+      return window.localStorage.getItem('bids_counts_view_v1') === 'new' ? 'new' : 'old'
+    } catch {
+      return 'old'
+    }
+  })
+  const switchCountsView = (next: 'old' | 'new') => {
+    setCountsView(next)
+    try {
+      window.localStorage.setItem('bids_counts_view_v1', next)
+    } catch {
+      /* device just won't remember */
+    }
+  }
+  // Count Sheet (New view) state
+  const [sheetMode, setSheetMode] = useState<'list' | 'pages'>('list')
+  const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
+  const [qaCount, setQaCount] = useState('1')
+  const [qaFixture, setQaFixture] = useState('')
+  const [qaPage, setQaPage] = useState('')
+  const [qaBusy, setQaBusy] = useState(false)
+  const [sheetPendingDeleteId, setSheetPendingDeleteId] = useState<string | null>(null)
+  const [sheetChips, setSheetChips] = useState<string[]>([])
+  const qaCountRef = useRef<HTMLInputElement | null>(null)
+
+  // Quick-add chips: the service type's counts fixture groups (same source as
+  // NewCountRow's suggestions), flattened, first 14.
+  useEffect(() => {
+    const stId = selectedBidForCounts?.service_type_id
+    if (countsView !== 'new' || !stId) {
+      setSheetChips([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data: groupsData } = await supabase
+        .from('counts_fixture_groups')
+        .select('id, sequence_order')
+        .eq('service_type_id', stId)
+        .order('sequence_order', { ascending: true })
+      if (cancelled || !groupsData?.length) return
+      const { data: itemsData } = await supabase
+        .from('counts_fixture_group_items')
+        .select('group_id, name, sequence_order')
+        .in('group_id', (groupsData as { id: string }[]).map((g) => g.id))
+        .order('sequence_order', { ascending: true })
+      if (cancelled) return
+      const names: string[] = []
+      for (const g of groupsData as { id: string }[]) {
+        for (const i of (itemsData as { group_id: string; name: string }[]) ?? []) {
+          if (i.group_id === g.id && !names.includes(i.name)) names.push(i.name)
+        }
+      }
+      setSheetChips(names.slice(0, 14))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [countsView, selectedBidForCounts?.service_type_id])
+
+  useEffect(() => {
+    setSheetPendingDeleteId(null)
+    setSheetNoPageOnly(false)
+    setQaFixture('')
+    setQaCount('1')
+    setQaPage('')
+  }, [selectedBidForCounts?.id])
+
+  async function sheetQuickAdd() {
+    const bid = selectedBidForCounts
+    if (!bid) return
+    const fixture = qaFixture.trim()
+    const count = parseFloat(qaCount)
+    if (!fixture) {
+      showToast('Name the fixture first.', 'error')
+      return
+    }
+    if (!Number.isFinite(count) || count <= 0) {
+      showToast('Enter a count above zero.', 'error')
+      return
+    }
+    if (findDuplicateFixture(countRows, fixture)) {
+      showToast('Already on this bid — use Merge, or rename the row.', 'error')
+      return
+    }
+    setQaBusy(true)
+    try {
+      const { error } = await insertCountRows(bid.id, [{ fixture, count, group_tag: null, page: qaPage.trim() || null }])
+      if (error) {
+        showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
+        return
+      }
+      showToast(`${count} × ${fixture} added${qaPage.trim() ? ` (p. ${qaPage.trim()})` : ''}`, 'success')
+      setQaFixture('')
+      setQaCount('1')
+      refreshAfterCountsChange()
+      qaCountRef.current?.focus()
+      qaCountRef.current?.select()
+    } finally {
+      setQaBusy(false)
+    }
+  }
+
+  async function sheetMergeDuplicate(existingId: string) {
+    const dup = countRows.find((r) => r.id === existingId)
+    const add = parseFloat(qaCount)
+    if (!dup || !Number.isFinite(add) || add <= 0) return
+    setQaBusy(true)
+    try {
+      try {
+        await withSupabaseRetry(
+          async () => supabase.from('bids_count_rows').update({ count: dup.count + add }).eq('id', dup.id),
+          'merge duplicate count row'
+        )
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Merge failed'), 'error')
+        return
+      }
+      showToast(`Merged — ${dup.fixture} is now ${dup.count + add}`, 'success')
+      setQaFixture('')
+      setQaCount('1')
+      refreshAfterCountsChange()
+      qaCountRef.current?.focus()
+    } finally {
+      setQaBusy(false)
+    }
+  }
+
+  async function sheetDeleteRow(rowId: string) {
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('bids_count_rows').delete().eq('id', rowId),
+        'delete count row'
+      )
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Delete failed'), 'error')
+      return
+    }
+    setSheetPendingDeleteId(null)
+    refreshAfterCountsChange()
+  }
   const clearAllCountsConfirmInputRef = useRef<HTMLInputElement | null>(null)
   const countsTableRef = useRef<HTMLDivElement | null>(null)
 
@@ -362,6 +507,217 @@ export function BidsCountsTab({
               </div>
             </div>
           )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.9rem' }}>
+            <button type="button" role="tab" aria-selected={countsView === 'old'} onClick={() => switchCountsView('old')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: countsView === 'old' ? '#2563eb' : 'transparent', color: countsView === 'old' ? '#fff' : 'var(--text-muted)' }}>
+              Old
+            </button>
+            <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: countsView === 'new' ? '#2563eb' : 'transparent', color: countsView === 'new' ? '#fff' : 'var(--text-muted)' }}>
+              New
+            </button>
+            {countsView === 'new' ? (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Count Sheet — same rows as Old; reorder &amp; row edits live in Old for now</span>
+            ) : null}
+          </div>
+          {countsView === 'new' ? (() => {
+            const summary = countSheetSummary(countRows)
+            const groups = buildCountSheetPageGroups(countRows)
+            const showGroupTag = summary.withGroupTag > 0
+            const visibleRows = sheetNoPageOnly ? countRows.filter((r) => parsePlanPageTokens(r.page).length === 0) : countRows
+            const dup = findDuplicateFixture(countRows, qaFixture)
+            const sheetCell: React.CSSProperties = { padding: '0.42rem 0.75rem', borderBottom: '1px solid var(--border)' }
+            const sheetRowCells = (r: BidCountRow, withPage: boolean) => (
+              <>
+                <td style={{ ...sheetCell, textAlign: 'right', width: '5rem', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
+                <td style={{ ...sheetCell, fontWeight: 600 }}>{r.fixture}</td>
+                {showGroupTag ? <td style={sheetCell}>{(r.group_tag ?? '').trim() || '—'}</td> : null}
+                {withPage ? (
+                  <td style={sheetCell}>
+                    {parsePlanPageTokens(r.page).length > 0 ? parsePlanPageTokens(r.page).join(', ') : <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>no page</span>}
+                  </td>
+                ) : null}
+                <td style={{ ...sheetCell, textAlign: 'right', width: '7rem', whiteSpace: 'nowrap' }}>
+                  {sheetPendingDeleteId === r.id ? (
+                    <>
+                      <button type="button" onClick={() => void sheetDeleteRow(r.id)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', border: '1px solid var(--border-red)', background: 'var(--surface)', color: 'var(--text-red-700)', borderRadius: 5, cursor: 'pointer' }}>
+                        Delete
+                      </button>
+                      <button type="button" onClick={() => setSheetPendingDeleteId(null)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.45rem', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 5, cursor: 'pointer', marginLeft: '0.25rem' }}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => setSheetPendingDeleteId(r.id)} title="Delete row" aria-label={`Delete ${r.fixture}`} style={{ font: 'inherit', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-700)', fontSize: '0.9rem', padding: '0.1rem 0.3rem' }}>
+                      🗑
+                    </button>
+                  )}
+                </td>
+              </>
+            )
+            const sheetRow = (r: BidCountRow, withPage: boolean) => <tr key={r.id}>{sheetRowCells(r, withPage)}</tr>
+            return (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.9rem', overflow: 'hidden' }}>
+                  <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '6.5rem' }}>
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Items</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{summary.items}</div>
+                  </div>
+                  <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }}>
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Total units</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{summary.units.toLocaleString()}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => summary.noPageCount > 0 && setSheetNoPageOnly((v) => !v)}
+                    title={summary.noPageCount > 0 ? 'Show only rows with no plan page' : undefined}
+                    style={{ font: 'inherit', textAlign: 'left', padding: '0.55rem 1rem', border: 'none', borderRight: '1px solid var(--border)', minWidth: '8rem', background: sheetNoPageOnly ? 'var(--bg-subtle)' : 'none', cursor: summary.noPageCount > 0 ? 'pointer' : 'default' }}
+                  >
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>No plan page</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: summary.noPageCount > 0 ? 'var(--text-red-700)' : 'var(--text-green-600)' }}>
+                      {summary.noPageCount > 0 ? summary.noPageCount : '0 ✓'}
+                    </div>
+                  </button>
+                  <div style={{ padding: '0.55rem 1rem', minWidth: '8rem' }}>
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Plan pages cited</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{groups.pages.length}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
+                    <button type="button" onClick={() => setSheetMode('list')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'list' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'list' ? '#fff' : 'var(--text-muted)' }}>
+                      List
+                    </button>
+                    <button type="button" onClick={() => setSheetMode('pages')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'pages' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'pages' ? '#fff' : 'var(--text-muted)' }}>
+                      By plan page
+                    </button>
+                  </div>
+                  {sheetNoPageOnly ? (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)' }}>Showing only rows with no plan page — click the tile again to show all.</span>
+                  ) : null}
+                </div>
+
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem' }}>
+                  <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                    Quick add — tap a fixture, set the count, Enter adds and keeps going
+                  </div>
+                  {sheetChips.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.55rem' }}>
+                      {sheetChips.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => {
+                            setQaFixture(f)
+                            qaCountRef.current?.focus()
+                            qaCountRef.current?.select()
+                          }}
+                          style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.26rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      ref={qaCountRef}
+                      value={qaCount}
+                      onChange={(e) => setQaCount(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sheetQuickAdd() } }}
+                      inputMode="decimal"
+                      aria-label="Count"
+                      style={{ width: '4.4rem', font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, textAlign: 'right', background: 'var(--surface)', color: 'var(--text-strong)' }}
+                    />
+                    <input
+                      value={qaFixture}
+                      onChange={(e) => setQaFixture(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sheetQuickAdd() } }}
+                      placeholder="Fixture or tie-in…"
+                      aria-label="Fixture"
+                      style={{ flex: 1, minWidth: 160, font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                    />
+                    <input
+                      value={qaPage}
+                      onChange={(e) => setQaPage(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sheetQuickAdd() } }}
+                      placeholder="Plan page"
+                      aria-label="Plan page"
+                      style={{ width: '6.5rem', font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void sheetQuickAdd()}
+                      disabled={qaBusy || dup != null}
+                      style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: qaBusy || dup != null ? 'not-allowed' : 'pointer', opacity: dup != null ? 0.6 : 1 }}
+                    >
+                      {qaBusy ? 'Adding…' : 'Add ⏎'}
+                    </button>
+                  </div>
+                  {dup ? (
+                    <div style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.4rem 0.6rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      ⚠ <strong>{dup.fixture}</strong> is already on this bid ({dup.count}). Two rows with one name fork the takeoff assignment.
+                      <button type="button" onClick={() => void sheetMergeDuplicate(dup.id)} disabled={qaBusy} style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.2rem 0.55rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
+                        Merge into existing (+{qaCount || 1})
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem', minWidth: 560 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'right', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Count</th>
+                        <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Fixture or tie-in</th>
+                        {showGroupTag ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Group/Tag</th> : null}
+                        {sheetMode === 'list' ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Plan page</th> : null}
+                        <th style={{ borderBottom: '1px solid var(--border)' }} aria-label="Actions"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sheetMode === 'list'
+                        ? visibleRows.map((r) => sheetRow(r, true))
+                        : (
+                          <>
+                            {buildCountSheetPageGroups(visibleRows).pages.flatMap((g) => [
+                              <tr key={`head-${g.label}`}>
+                                <td colSpan={showGroupTag ? 4 : 3} style={{ background: 'var(--bg-subtle)', fontWeight: 700, fontSize: '0.78rem', padding: '0.4rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
+                                  Plan page {g.label} <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— {g.rows.length} item{g.rows.length !== 1 ? 's' : ''}, {g.units.toLocaleString()} units</span>
+                                </td>
+                              </tr>,
+                              ...g.rows.map((r) => (
+                                <tr key={`${g.label}-${r.id}`}>{sheetRowCells(r, false)}</tr>
+                              )),
+                            ])}
+                            {buildCountSheetPageGroups(visibleRows).noPage.length > 0 ? (
+                              <>
+                                <tr>
+                                  <td colSpan={showGroupTag ? 4 : 3} style={{ background: 'var(--bg-subtle)', fontWeight: 700, fontSize: '0.78rem', padding: '0.4rem 0.75rem', borderBottom: '1px solid var(--border)', color: 'var(--text-red-700)' }}>
+                                    No plan page <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— {buildCountSheetPageGroups(visibleRows).noPage.length} item(s); fix before submitting</span>
+                                  </td>
+                                </tr>
+                                {buildCountSheetPageGroups(visibleRows).noPage.map((r) => sheetRow(r, false))}
+                              </>
+                            ) : null}
+                          </>
+                        )}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => exportCountsToCsv()}
+                    disabled={countRows.length === 0}
+                    style={{ padding: '0.5rem 1rem', background: countRows.length === 0 ? 'var(--bg-muted)' : '#059669', color: countRows.length === 0 ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: 4, cursor: countRows.length === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Export as .csv
+                  </button>
+                </div>
+              </>
+            )
+          })() : (
+          <>
           <div ref={countsTableRef} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <DndContext
               sensors={countRowsSensors}
@@ -464,6 +820,8 @@ export function BidsCountsTab({
                 </button>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       )}
