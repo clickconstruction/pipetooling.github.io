@@ -3,6 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
+import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
+import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
+import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
@@ -289,6 +292,12 @@ export function BidsPricingTab({
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
+  // Iteration 2 — scenarios: revenue per bid-owned Pricing (the cover-letter
+  // bundle computation, one per scenario card). Keyed by pricing version id.
+  const [wbScenarioRevenue, setWbScenarioRevenue] = useState<Record<string, number>>({})
+  // Iteration 3 — win/loss calibration history (null = loading/unavailable).
+  const [wbHistory, setWbHistory] = useState<BidPricingHistoryRow[] | null>(null)
+  const [wbCloning, setWbCloning] = useState(false)
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
   const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
@@ -1058,6 +1067,101 @@ export function BidsPricingTab({
           bidNumberMatchesQuery(b, pricingSearchQuery, ledgerPrefixMap)
       )
     : bidsScopedForPricing
+
+  // Iteration 2 — per-scenario revenue. Mirrors the cover-letter bundle
+  // computation: for each bid-owned Pricing, fetch its entries + overlays and
+  // run the shared calc kernel; cost is scenario-independent.
+  useEffect(() => {
+    const bid = selectedBidForPricing
+    const versionIds = priceBookVersions.map((v) => v.id)
+    if (pricingView !== 'new' || !bid || versionIds.length < 2 || pricingCountRows.length === 0) {
+      setWbScenarioRevenue({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
+        supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
+        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+        supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+      ])
+      if (cancelled) return
+      const allEntries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
+      const allAssign = (assignRes.data as BidPricingAssignment[]) ?? []
+      const allCustom = (customRes.data as BidCountRowCustomPrice[]) ?? []
+      const allHides = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
+      const out: Record<string, number> = {}
+      for (const vid of versionIds) {
+        const customMap = new Map<string, number>()
+        for (const c of allCustom) if (c.price_book_version_id === vid) customMap.set(c.count_row_id, Number(c.unit_price))
+        const result = computeBidPricingRows({
+          countRows: pricingCountRows,
+          assignments: allAssign
+            .filter((a) => a.price_book_version_id === vid)
+            .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
+          entries: allEntries.filter((e) => e.version_id === vid),
+          customUnitPriceByCountRowId: customMap,
+          laborRows: [],
+          totalMaterials: 0,
+          laborRate: 0,
+          taxPercent: 0,
+          materialsFromTakeoffByCountRowId: {},
+          hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, vid),
+        })
+        out[vid] = coverLetterTotalsFromPricingRows(result.rows).revenueSum
+      }
+      setWbScenarioRevenue(out)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pricingView, selectedBidForPricing?.id, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
+
+  // Iteration 3 — win/loss calibration history for this service type.
+  useEffect(() => {
+    if (pricingView !== 'new' || !selectedServiceTypeId) {
+      setWbHistory(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data, error: rpcErr } = await supabase.rpc('bid_pricing_history', { p_service_type_id: selectedServiceTypeId })
+      if (cancelled) return
+      if (rpcErr || !Array.isArray(data)) {
+        setWbHistory([])
+        return
+      }
+      setWbHistory(data as unknown as BidPricingHistoryRow[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pricingView, selectedServiceTypeId])
+
+  /** Iteration 2 — duplicate the active Pricing as a fresh scenario and switch to it. */
+  async function duplicateWorkbenchScenario() {
+    const bid = selectedBidForPricing
+    const source = priceBookVersions.find((v) => v.id === selectedPricingVersionId)
+    if (!bid || !source) return
+    setWbCloning(true)
+    try {
+      const { data, error: err } = await supabase.rpc('clone_price_book_version_to_bid', {
+        p_source_version_id: source.id,
+        p_bid_id: bid.id,
+        p_name: `${source.name} copy`,
+      })
+      if (err) {
+        setError(err.message)
+        return
+      }
+      const newId = (data as string) ?? null
+      await attachAndActivateNewBidPricing(bid.id, newId)
+      showToast(`Scenario "${source.name} copy" created — edits here leave the original untouched.`, 'success')
+    } finally {
+      setWbCloning(false)
+    }
+  }
 
   /** Workbench: build a PREVIEW from the solver (nothing writes until Apply). */
   function runWorkbenchSolve(opts: { onlyUnpriced?: boolean; targetTotal?: number }) {
@@ -2201,6 +2305,58 @@ export function BidsPricingTab({
                 const fmtM = (n: number) => `$${formatCurrency(n)}`
                 return (
                   <>
+                    {(() => {
+                      const owned = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
+                      // Legacy bids: the active pricing can be a shared (non-bid-owned)
+                      // version — still show it as a card so Duplicate can birth the
+                      // first real scenario.
+                      const scenarios = owned.length > 0
+                        ? owned
+                        : selectedPricingVersionId
+                          ? [{ id: selectedPricingVersionId, name: 'Current pricing (shared)', sort_order: 0 } as (typeof owned)[number]]
+                          : []
+                      if (scenarios.length === 0) return null
+                      return (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+                          {scenarios.map((v) => {
+                            const active = v.id === selectedPricingVersionId
+                            const rev = active ? effRevenue : (wbScenarioRevenue[v.id] ?? null)
+                            const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
+                            return (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => { if (!active && selectedBidForPricing) void handlePricingVersionChange(selectedBidForPricing.id, v.id) }}
+                                title={active ? 'The active scenario — Cover Letter and Share use this one' : 'Switch to this scenario'}
+                                style={{
+                                  flex: '1 1 170px', minWidth: 150, textAlign: 'left', font: 'inherit',
+                                  background: 'var(--surface)', border: active ? '1px solid #3b82f6' : '1px solid var(--border)',
+                                  boxShadow: active ? '0 0 0 1px #3b82f6' : 'none',
+                                  borderRadius: 10, padding: '0.5rem 0.75rem', cursor: active ? 'default' : 'pointer', position: 'relative',
+                                }}
+                              >
+                                {active ? (
+                                  <span style={{ position: 'absolute', top: '0.45rem', right: '0.6rem', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-green-600)' }}>Active</span>
+                                ) : null}
+                                <div style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</div>
+                                <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{rev != null ? fmtM(rev) : '…'}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                  {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
+                                </div>
+                              </button>
+                            )
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => void duplicateWorkbenchScenario()}
+                            disabled={wbCloning}
+                            style={{ flex: '0 0 auto', alignSelf: 'center', font: 'inherit', fontSize: '0.8rem', padding: '0.45rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: wbCloning ? 'wait' : 'pointer' }}
+                          >
+                            {wbCloning ? 'Duplicating…' : '+ Duplicate as new scenario'}
+                          </button>
+                        </div>
+                      )
+                    })()}
                     <div
                       style={{
                         position: 'sticky', top: 0, zIndex: 20,
@@ -2295,6 +2451,65 @@ export function BidsPricingTab({
                       </button>
                     </div>
 
+                    {(() => {
+                      if (!wbHistory || wbHistory.length === 0) return null
+                      const cur = effMargin
+                      const currentBidId = selectedBidForPricing?.id
+                      const marginOfRow = (h: BidPricingHistoryRow) => (h.bid_value > 0 ? (h.bid_value - h.est_cost) / h.bid_value : null)
+                      const usable = wbHistory
+                        .filter((h) => h.bid_id !== currentBidId && h.est_cost > 0)
+                        .map((h) => ({ ...h, m: marginOfRow(h) }))
+                        .filter((h): h is BidPricingHistoryRow & { m: number } => h.m != null && h.m > -0.2 && h.m < 0.95)
+                      const won = usable.filter((h) => h.outcome === 'won')
+                      const lostPrice = usable.filter((h) => h.outcome === 'lost' && /price/i.test(h.loss_reason ?? ''))
+                      if (won.length + lostPrice.length < 3) return null
+                      const MIN = 20, MAX = 65
+                      const x = (mPct: number) => `${((Math.min(MAX, Math.max(MIN, mPct)) - MIN) / (MAX - MIN)) * 100}%`
+                      let verdict: { text: string; color: string } | null = null
+                      if (cur != null) {
+                        const curPct = cur * 100
+                        const wonAtOrBelow = won.filter((h) => h.m * 100 <= curPct + 0.5).length
+                        const lossesAtOrBelow = lostPrice.filter((h) => h.m * 100 <= curPct + 0.5).length
+                        const maxWon = won.length ? Math.max(...won.map((h) => h.m * 100)) : null
+                        if (maxWon != null && curPct <= maxWon && lossesAtOrBelow === 0) {
+                          verdict = { text: `In your winning range — ${wonAtOrBelow} of ${won.length} wins priced at or below ${Math.round(curPct)}% (estimated margins).`, color: 'var(--text-green-600)' }
+                        } else if (maxWon != null && curPct <= maxWon) {
+                          verdict = { text: `Mixed territory — wins exist here, but ${lossesAtOrBelow} price-loss${lossesAtOrBelow !== 1 ? 'es' : ''} sit at or below ${Math.round(curPct)}%.`, color: 'var(--text-amber-700)' }
+                        } else if (maxWon != null) {
+                          verdict = { text: `Above every recorded win (max ${Math.round(maxWon)}%) — ${lostPrice.length} bid${lostPrice.length !== 1 ? 's' : ''} lost on price in this range.`, color: 'var(--text-red-700)' }
+                        }
+                      }
+                      return (
+                        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 1rem 0.85rem', marginBottom: '0.9rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>This number vs your history <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(estimated margins from cost estimates)</span></span>
+                            {verdict ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: verdict.color }}>{verdict.text}</span> : null}
+                          </div>
+                          <div style={{ position: 'relative', height: 46, marginTop: '0.5rem' }}>
+                            <div style={{ position: 'absolute', top: 18, height: 10, borderRadius: 999, left: 0, width: '100%', background: 'var(--bg-muted)' }} />
+                            {won.map((h) => (
+                              <span key={h.bid_id} title={`Won: ${h.project_name ?? '—'} at ~${Math.round(h.m * 100)}%`} style={{ position: 'absolute', top: 20, width: 7, height: 7, borderRadius: 999, transform: 'translateX(-50%)', background: 'var(--text-green-600)', left: x(h.m * 100) }} />
+                            ))}
+                            {lostPrice.map((h) => (
+                              <span key={h.bid_id} title={`Lost on price: ${h.project_name ?? '—'} at ~${Math.round(h.m * 100)}%`} style={{ position: 'absolute', top: 20, width: 7, height: 7, borderRadius: 999, transform: 'translateX(-50%)', background: 'var(--text-red-700)', left: x(h.m * 100) }} />
+                            ))}
+                            {[20, 30, 40, 50, 60].map((a) => (
+                              <span key={a} style={{ position: 'absolute', top: 34, fontSize: '0.62rem', color: 'var(--text-muted)', transform: 'translateX(-50%)', left: x(a) }}>{a}%</span>
+                            ))}
+                            {cur != null ? (
+                              <span style={{ position: 'absolute', top: 2, transform: 'translateX(-50%)', textAlign: 'center', left: x(cur * 100), transition: 'left 0.15s' }}>
+                                <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 700 }}>{Math.round(cur * 100)}%</span>
+                                <span style={{ display: 'block', width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '9px solid var(--text-strong)', margin: '0 auto' }} />
+                              </span>
+                            ) : null}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: 'var(--text-green-600)', margin: '0 0.25rem 0 0' }} />won bids
+                            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: 'var(--text-red-700)', margin: '0 0.25rem 0 0.7rem' }} />lost on price · ▼ this pricing
+                          </div>
+                        </div>
+                      )
+                    })()}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.7rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
                         {pricedCount} of {costed.length} costed rows priced{unpricedCost > 0 ? ` — $${formatCurrency(unpricedCost)} of cost has no sale price` : ' — all priced ✓'}

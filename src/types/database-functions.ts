@@ -168,3 +168,17 @@ export interface DatabaseFunctions {
     Returns: RemoveJobsLedgerPaymentAndReconcileResult
   }
 }
+
+/**
+ * Row returned by bid_pricing_history (Workbench win/loss calibration strip):
+ * decided bids of a service type with asked price + estimated cost from the
+ * stored cost-estimate inputs (no clocked team labor — margins are estimates).
+ */
+export interface BidPricingHistoryRow {
+  bid_id: string
+  project_name: string | null
+  outcome: 'won' | 'lost'
+  loss_reason: string | null
+  bid_value: number
+  est_cost: number
+}
