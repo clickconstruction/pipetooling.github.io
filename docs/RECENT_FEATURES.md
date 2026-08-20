@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1865)
+last_updated: 2026-08-19 (v2.1867)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1867)
+
+### Notification test tools surface the function's real error (2026-08-19)
+Owner report: "Edge Function returned a non-2xx status code" on the Preview & test buttons — that's supabase-js's generic `FunctionsHttpError.message`; the function's actual reason (`{ error: "…" }`) lives in the response body. [`paidJobEmailClient.ts`](../src/lib/paidJobEmailClient.ts)'s `fnError` becomes async and reads `error.context` (the `Response`) first, falling back to the generic message when the body is unreadable — all four helpers (preview / test_send / test_push / send_to) now throw the real text, which the modal toasts show. Investigation note: every mode probed 200 against prod as the e2e user, including a targeted `test_push` that reached 2 real devices, and paid previews across 8 jobs of every status — the owner's failures most likely raced the evening's rapid client/function deploys; if it recurs, the toast now says exactly why. Client-only — no migration.
 
 ## Latest Updates (v2.1865)
 

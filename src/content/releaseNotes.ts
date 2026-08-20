@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1867',
+    date: '2026-08-19',
+    title: 'Notification tests: real error messages',
+    kind: 'fix',
+    highlights: [
+      'When a preview or test send fails, the toast now shows the actual reason (like "Recipient has no email on file") instead of "Edge Function returned a non-2xx status code".',
+      'Covers the Ready to Bill, Paid, and Paid In Full test tools and the Job Detail send-email modal.',
+    ],
+  },
+  {
     version: 'v2.1865',
     date: '2026-08-19',
     title: 'Groundwork: the estimate editor learns its own checklist',
