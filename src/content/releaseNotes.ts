@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1897',
+    date: '2026-08-20',
+    title: 'Partner ledger: newest postings on top',
+    kind: 'fix',
+    highlights: [
+      'The Partnerships Ledger tab now lists postings newest-first, so today\u2019s activity and the current balance are the first thing you see.',
+    ],
+  },
+  {
     version: 'v2.1895',
     date: '2026-08-20',
     title: 'Cover Letter: the studio is the layout now',
@@ -42,12 +51,42 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1892',
+    date: '2026-08-20',
+    title: 'Estimate sections you can see at a glance',
+    kind: 'feature',
+    highlights: [
+      'Each section of a draft now starts with its numbered step dot (matching the side guide), and light rules mark where one section ends and the next begins.',
+      'Delivery — who gets notified, the project link, internal notes — sits in its own card labeled "The customer never sees this section."',
+      'The section you\'re typing in gets a subtle highlight so you always know where you are.',
+    ],
+  },
+  {
+    version: 'v2.1891',
+    date: '2026-08-20',
+    title: 'The last browser popups are gone',
+    kind: 'feature',
+    highlights: [
+      'Naming a new roadmap and adding a prospect quick-note now use a proper in-app dialog with a text box, instead of the browser\'s bare prompt window.',
+      'Error and status messages that used to interrupt with a browser alert — price save errors, bid update errors, pop-up-blocked warnings, the test-email confirmation — now show as the app\'s normal toast notifications.',
+    ],
+  },
+  {
+    version: 'v2.1890',
+    date: '2026-08-20',
+    title: 'Under the hood: chart data calls fully typed',
+    kind: 'infra',
+    highlights: [
+      'The billed-aging and paid-profit chart modals now use the regenerated database types \u2014 no user-visible change.',
+    ],
+  },
+  {
     version: 'v2.1888',
     date: '2026-08-20',
     title: 'Partnerships: set the farm job without SQL',
     kind: 'feature',
     highlights: [
-      'The Deal tab now has a Farm job picker \u2014 search any job and set it as the partner\u2019s farm job, so hours clocked there price at the farm rate on statements.',
+      'The Deal tab now has a Farm job picker — search any job and set it as the partner’s farm job, so hours clocked there price at the farm rate on statements.',
       'Clear it any time; every change is logged like the rest of the deal.',
     ],
   },

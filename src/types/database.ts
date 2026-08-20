@@ -5341,6 +5341,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "jobs_ledger_partner_confirmed_by_fkey"
+            columns: ["partner_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_partner_person_id_fkey"
+            columns: ["partner_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "jobs_ledger_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -5571,6 +5585,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_materials_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]
@@ -7474,26 +7495,6 @@ export type Database = {
           },
         ]
       }
-      pay_approved_masters: {
-        Row: {
-          master_id: string
-        }
-        Insert: {
-          master_id: string
-        }
-        Update: {
-          master_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pay_approved_masters_master_id_fkey"
-            columns: ["master_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       partner_agreement_notices: {
         Row: {
           agreement_doc_id: string | null
@@ -7533,6 +7534,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "partner_agreement_notices_agreement_doc_id_fkey"
+            columns: ["agreement_doc_id"]
+            isOneToOne: false
+            referencedRelation: "person_contract_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_agreement_notices_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "partner_agreement_notices_partnership_id_fkey"
             columns: ["partnership_id"]
             isOneToOne: false
@@ -7568,17 +7583,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "partnership_events_partnership_id_fkey"
-            columns: ["partnership_id"]
-            isOneToOne: false
-            referencedRelation: "partnerships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "partnership_events_actor_user_id_fkey"
             columns: ["actor_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partnership_events_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
             referencedColumns: ["id"]
           },
         ]
@@ -7646,13 +7661,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "partnerships_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: true
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "partnerships_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -7660,9 +7668,43 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "partnerships_farm_job_ledger_id_fkey"
+            columns: ["farm_job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partnerships_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "partnerships_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_approved_masters: {
+        Row: {
+          master_id: string
+        }
+        Insert: {
+          master_id: string
+        }
+        Update: {
+          master_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_approved_masters_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -8602,6 +8644,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "person_contract_documents_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "person_contract_documents_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
@@ -8724,6 +8773,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "person_offsets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "person_offsets_pay_stub_id_fkey"
             columns: ["pay_stub_id"]
             isOneToOne: false
@@ -8735,6 +8791,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_offsets_reversal_of_offset_id_fkey"
+            columns: ["reversal_of_offset_id"]
+            isOneToOne: false
+            referencedRelation: "person_offsets"
             referencedColumns: ["id"]
           },
         ]
@@ -10664,6 +10727,13 @@ export type Database = {
             columns: ["pay_stub_id"]
             isOneToOne: false
             referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_acknowledgments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -13789,7 +13859,11 @@ export type Database = {
         Returns: Json
       }
       generate_partner_statement: {
-        Args: { p_override?: boolean; p_partnership_id: string; p_week_start: string }
+        Args: {
+          p_override?: boolean
+          p_partnership_id: string
+          p_week_start: string
+        }
         Returns: Json
       }
       get_archived_user_names: { Args: never; Returns: string[] }
@@ -13850,6 +13924,7 @@ export type Database = {
           service_type_id: string
         }[]
       }
+      get_billed_aging_costs: { Args: never; Returns: Json }
       get_billed_report_email_payload: { Args: never; Returns: Json }
       get_collect_payment_certify_payload: {
         Args: { p_job_id: string }
@@ -13984,17 +14059,12 @@ export type Database = {
         }[]
       }
       get_my_email_schedule: { Args: never; Returns: Json }
-      get_my_partner_ledger: {
-        Args: { p_weeks?: number }
-        Returns: Json
-      }
-      get_my_partner_job_costing: {
-        Args: { p_job_id: string }
-        Returns: Json
-      }
+      get_my_partner_job_costing: { Args: { p_job_id: string }; Returns: Json }
       get_my_partner_jobs: { Args: never; Returns: Json }
+      get_my_partner_ledger: { Args: { p_weeks?: number }; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
+      get_paid_profit_stats: { Args: never; Returns: Json }
       get_partner_bid_estimating_hours: {
         Args: { p_job_id: string }
         Returns: Json
@@ -14893,7 +14963,6 @@ export type Database = {
         }
         Returns: string
       }
-      my_partner_partnership_id: { Args: never; Returns: string }
       mark_invoice_paid: {
         Args: {
           p_amount?: number
@@ -14977,6 +15046,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      my_partner_partnership_id: { Args: never; Returns: string }
       next_job_number_suggestion: { Args: never; Returns: string }
       next_numeric_hcp_suggestion_for_master: {
         Args: { p_master_user_id: string }
@@ -14986,6 +15056,7 @@ export type Database = {
         Args: { p_license_id: string; p_link: string }
         Returns: string
       }
+      partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       pay_access_clock_week_fence_bypass: { Args: never; Returns: boolean }
       pay_staff_bulk_insert_user_time_off: {
         Args: {
@@ -15014,6 +15085,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      post_partner_profit_share: { Args: { p_job_id: string }; Returns: Json }
       preview_merge_customers: {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
@@ -15025,10 +15097,6 @@ export type Database = {
       recompute_people_hours_after_session_edit: {
         Args: { p_old_work_date?: string; p_session_id: string }
         Returns: undefined
-      }
-      post_partner_profit_share: {
-        Args: { p_job_id: string }
-        Returns: Json
       }
       record_estimate_public_link_view: {
         Args: {
@@ -15179,6 +15247,10 @@ export type Database = {
         Args: { p_job_id: string; p_note: string }
         Returns: Json
       }
+      reverse_partner_profit_share: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       revert_stripe_oob_invoice_payment: {
         Args: {
           p_invoice_id: string
@@ -15324,10 +15396,6 @@ export type Database = {
           p_note: string
           p_stripe_credit_note_id: string
         }
-        Returns: Json
-      }
-      reverse_partner_profit_share: {
-        Args: { p_job_id: string }
         Returns: Json
       }
       set_job_collections_flag: {

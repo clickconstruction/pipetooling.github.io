@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useToastContext } from '../../contexts/ToastContext'
 import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -139,6 +140,7 @@ export function BidsCoverLetterTab({
   setOnlyMyBids,
   isMyBid,
 }: BidsCoverLetterTabProps) {
+  const { showToast } = useToastContext()
   // Cover-letter-only UI state
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
@@ -238,7 +240,7 @@ export function BidsCoverLetterTab({
     const { error } = await supabase.from('bids').update({ include_payment_schedule: next }).eq('id', bid.id)
     if (error) {
       setPaymentScheduleEnabled(!next)
-      alert('Error updating bid: ' + error.message)
+      showToast('Error updating bid: ' + error.message, 'error')
       return
     }
     // Seed the company-standard 30/30/30/10 on first enable
@@ -406,7 +408,7 @@ export function BidsCoverLetterTab({
       .eq('id', bidId)
     
     if (error) {
-      alert('Error updating bid value: ' + error.message)
+      showToast('Error updating bid value: ' + error.message, 'error')
     } else {
       await loadBids()
       setBidValueAppliedSuccess(true)

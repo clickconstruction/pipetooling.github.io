@@ -10,6 +10,52 @@ import type { EstimateDraftStep, EstimateDraftSendGate, EstimateDraftStepKey } f
  */
 
 const RAIL_CSS = `
+  /* Paper-region delineation (owner request: obvious section boundaries). */
+  .est-step-margin-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 0.45rem;
+    vertical-align: -3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .est-step-margin-dot.done { border-color: var(--text-green-600); color: var(--text-green-600); }
+  .est-step-margin-dot.attention { border-color: #f59e0b; color: var(--text-amber-800); }
+  .est-region-ruled {
+    border-top: 1px solid var(--border);
+    margin-top: 1.35rem;
+    padding-top: 1.1rem;
+  }
+  .est-region-tint { transition: background 0.2s ease; border-radius: 8px; }
+  .est-region-tint:focus-within { background: var(--bg-subtle); }
+  .est-backstage-card {
+    margin-top: 1.35rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-subtle);
+    padding: 0.9rem 1rem 1rem;
+  }
+  .est-backstage-head {
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0 0 0.15rem;
+  }
+  .est-backstage-head .est-backstage-sub {
+    display: block;
+    font-weight: 500;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+  }
+
   .est-step-rail {
     display: none;
   }
