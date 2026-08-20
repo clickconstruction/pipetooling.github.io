@@ -41,12 +41,19 @@ import {
   type TechTreeEdge,
 } from '../../lib/checklistTechTreeGraph'
 import { computeRoadmapSearchMatches, type RoadmapSearchResult } from '../../lib/checklistTechTreeSearch'
-import { bridgeChipFor, type BridgeState } from '../../lib/roadmapBridge'
+import {
+  blockingStageTitles,
+  bridgeChipFor,
+  lockedStageHint,
+  stageBadgeFor,
+  type BridgeState,
+  type StageBadge,
+} from '../../lib/roadmapBridge'
 import type { Database } from '../../types/database'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Pencil, Plus, ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
+import { Pencil, Plus, ChevronDown, ChevronRight, GripVertical, Lock } from 'lucide-react'
 import {
   getCurrentFullscreenElement,
   isDomFullscreenEnabled,
@@ -257,6 +264,10 @@ type GroupNodeData = {
   locked: boolean
   collapsed: boolean
   taskCount: number
+  /** Progress badge: "✓ done" / "N of M done"; null for empty stages. */
+  badge: StageBadge
+  /** Locked stages only: "Unlocks when … is done" / auto-assign wording. */
+  lockedHint: string | null
   onToggleCollapse: () => void
   tasks: Array<{
     id: string
@@ -281,6 +292,32 @@ type GroupNodeData = {
 }
 
 type GroupTask = GroupNodeData['tasks'][0]
+
+/** Live bridge status chip on a task row — shared by the static and reorder rows. */
+function TaskBridgeChipSpan({ chip }: { chip: GroupTask['bridgeChip'] }) {
+  if (!chip) return null
+  return (
+    <span
+      className="nodrag"
+      style={{
+        marginLeft: 5,
+        fontSize: 10,
+        fontWeight: 600,
+        padding: '1px 6px',
+        borderRadius: 6,
+        verticalAlign: 'middle',
+        whiteSpace: 'nowrap',
+        ...(chip === 'in_review'
+          ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }
+          : chip === 'signed_off'
+            ? { background: '#16a34a', color: 'white' }
+            : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
+      }}
+    >
+      {chip === 'in_review' ? 'in review' : chip === 'signed_off' ? 'signed off' : 'on list'}
+    </span>
+  )
+}
 
 function TechTreeEmptyGroupDrop({ groupId, visible }: { groupId: string; visible: boolean }) {
   const { isOver, setNodeRef } = useDroppable({ id: techTreeEmptyGroupDropId(groupId) })
@@ -474,27 +511,7 @@ function TechTreeDndTaskRow({
             {task.assigneeLabel ? (
               <span style={{ color: 'var(--text-slate-500)' }}> — {task.assigneeLabel}</span>
             ) : null}
-            {task.bridgeChip ? (
-              <span
-                className="nodrag"
-                style={{
-                  marginLeft: 5,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: '1px 6px',
-                  borderRadius: 6,
-                  verticalAlign: 'middle',
-                  whiteSpace: 'nowrap',
-                  ...(task.bridgeChip === 'in_review'
-                    ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }
-                    : task.bridgeChip === 'signed_off'
-                      ? { background: '#16a34a', color: 'white' }
-                      : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
-                }}
-              >
-                {task.bridgeChip === 'in_review' ? 'in review' : task.bridgeChip === 'signed_off' ? 'signed off' : 'on list'}
-              </span>
-            ) : null}
+            <TaskBridgeChipSpan chip={task.bridgeChip} />
           </div>
         </div>
       </div>
@@ -518,7 +535,7 @@ function GroupNode({ data }: NodeProps) {
         minHeight: 80,
         padding: 10,
         borderRadius: 8,
-        border: `2px solid ${d.locked ? '#cbd5e1' : '#3b82f6'}`,
+        border: `2px solid ${d.badge?.kind === 'done' ? '#16a34a' : d.locked ? '#cbd5e1' : '#3b82f6'}`,
         background: d.locked ? 'var(--bg-slate-tint)' : 'var(--surface)',
         fontSize: 13,
         boxSizing: 'border-box',
@@ -651,16 +668,70 @@ function GroupNode({ data }: NodeProps) {
           >
             {d.title}
           </div>
-          {collapsed ? (
+          {d.badge || d.locked ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              {d.badge?.kind === 'done' ? (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 6,
+                    background: '#16a34a',
+                    color: 'white',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ✓ done
+                </span>
+              ) : d.badge?.kind === 'progress' ? (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 6,
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
+                    color: 'var(--text-slate-600)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {d.badge.done} of {d.badge.total} done
+                </span>
+              ) : null}
+              {d.locked ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 6,
+                    background: 'var(--bg-slate-tint)',
+                    border: '1px solid var(--border-strong)',
+                    color: 'var(--text-slate-600)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Lock size={10} strokeWidth={2.5} aria-hidden /> locked
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {collapsed && d.taskCount > 0 ? (
             <div style={{ color: 'var(--text-slate-500)', fontSize: 12, marginTop: 4, lineHeight: 1.3 }}>
               {d.taskCount === 1 ? '1 task' : `${d.taskCount} tasks`}
-              {d.locked ? ' · Locked' : ''}
             </div>
           ) : null}
         </div>
       </div>
       {!collapsed && d.locked ? (
-        <div style={{ color: 'var(--text-slate-500)', fontSize: 12, marginBottom: 6 }}>Complete prerequisite groups to unlock</div>
+        <div style={{ color: 'var(--text-slate-500)', fontSize: 12, marginBottom: 6, fontStyle: 'italic' }}>
+          {d.lockedHint ?? 'Complete prerequisite groups to unlock'}
+        </div>
       ) : null}
       {!collapsed && d.reorderMode && d.canEditStructure ? (
         <>
@@ -722,6 +793,7 @@ function GroupNode({ data }: NodeProps) {
                       {t.title}
                     </TechTreeEditableTaskTitle>
                     {t.assigneeLabel ? <span style={{ color: 'var(--text-slate-500)' }}> — {t.assigneeLabel}</span> : null}
+                    <TaskBridgeChipSpan chip={t.bridgeChip} />
                   </div>
                 </div>
               </li>
@@ -1356,6 +1428,11 @@ export function ChecklistTechTreeTab({
     })
   }, [roadmapSearch])
 
+  const titleByGroupId = useMemo(
+    () => new Map(groups.map((g) => [g.id, g.title])),
+    [groups],
+  )
+
   const flowNodes: Node[] = useMemo(() => {
     return layoutNodes.map((n) => {
       const gid = n.data.groupId as string
@@ -1371,6 +1448,13 @@ export function ChecklistTechTreeTab({
           groupId: gid,
           title: g?.title ?? 'Group',
           locked: !gu,
+          badge: stageBadgeFor(tlist.map((t) => ({ completedAt: t.completed_at }))),
+          lockedHint: gu
+            ? null
+            : lockedStageHint(
+                blockingStageTitles({ groupId: gid, edges: graphEdges, completeGroupIds, titleByGroupId }),
+                tlist.some((t) => t.assigneeIds.length > 0),
+              ),
           canEditStructure,
           onToggle: onToggleTask,
           onOpenGroupSettings: openGroupSettings,
@@ -1403,6 +1487,9 @@ export function ChecklistTechTreeTab({
     tasksByGroup,
     bridgeByTaskId,
     unlockedIds,
+    graphEdges,
+    completeGroupIds,
+    titleByGroupId,
     canEditStructure,
     onToggleTask,
     nameById,
