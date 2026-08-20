@@ -26,6 +26,10 @@ Field labor 22.5 h × $50, estimating 18.0 h × $35, a profit share from a finis
 
 When the office closes a week, the statement waits for your sign-off. The current week's card reminds you when last week is unacknowledged — step one **‹** back and tap {{button:blue|Acknowledge statement}}. That timestamps your side of the record; the office sees it immediately. Use {{button:outline|Print / save PDF}} for a paper copy of any closed week.
 
+## Your jobs and their costs
+
+Below the ledger, the **Your jobs** card lists every job the office has confirmed as majority-yours — with any profit share already posted. Tap {{button:outline|open costing}} on a job to see its cost sheet: reported **hours by person** (hours only — never anyone's wages), **supply house invoices** with how much of each was allocated to the job, **card charges**, and **direct expenses** including estimating moved onto the job at award. This is the same data behind your profit split, so every number in the split traces to a line you can see.
+
 ## What feeds the numbers
 
 Only **approved** hours post. Jobs appear in your profit shares only after the office confirms you did the majority of the work on them. If a week looks short, check whether hours are still pending approval before anything else.

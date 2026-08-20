@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1885)
+last_updated: 2026-08-20 (v2.1886)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1886)
+
+### Partners see their jobs' real costs — the §5 window opens (2026-08-20)
+Partnerships train PR 7 of 8. Migration `20260820200000_partner_costing_reads.sql`: two partner-facing SECURITY DEFINER RPCs, caller-resolved like PR 4's and hard-filtered on the majority flag. `get_my_partner_jobs()` — the checked-off list with status, confirmed-since, and any live profit-share posting. `get_my_partner_job_costing(job)` — one job's §5 cost sheet: reported hours PER PERSON (hours only, never wages — labor dollars appear only in job totals), supply-house invoice allocations (vendor, invoice #, date, pct → dollars), card-charge allocations (counterparty, date), direct rows (incl. §4h transfers), job total, and an as-of freshness stamp; refuses jobs not flagged for the caller and partnerships with `modules.costing` off. New [`DashboardPartnerJobsSection`](../src/components/dashboard/DashboardPartnerJobsSection.tsx) under the ledger card: tap "open costing" to expand the sheet inline (works the same phone or desktop). Help guide extended with the Your-jobs/costing section. This is what makes the profit split verifiable rather than taken on faith — every number in the split traces to a line the partner can see. **`supabase db push` after merge.**
 
 ## Latest Updates (v2.1885)
 

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1886',
+    date: '2026-08-20',
+    title: 'Partners: open the costs behind your jobs',
+    kind: 'feature',
+    highlights: [
+      'A new "Your jobs" card lists every job confirmed as majority-yours, with any posted profit share.',
+      'Tap "open costing" to see the job\u2019s cost sheet \u2014 everyone\u2019s reported hours (never wages), each supply-house invoice and how much of it hit the job, card charges, and direct expenses.',
+      'Every number in your profit split now traces to a line you can check yourself.',
+    ],
+  },
+  {
     version: 'v2.1885',
     date: '2026-08-20',
     title: 'Partnerships: estimating hours follow won bids',
