@@ -35,6 +35,12 @@ import {
 } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import {
+  computeEstimateListReadiness,
+  estimateDraftMeaningfulLineCount,
+  isEmptyEstimateDraft,
+  readinessDots,
+} from '../lib/estimatePipelineRefresh'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -1204,10 +1210,21 @@ function EstimateListTable({
                     )}
                   </div>
                 ) : (
-                  statusLabel(r.status)
+                  (r.status === 'draft' ? (() => {
+                    const d = readinessDots(computeEstimateListReadiness(r))
+                    return (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: d.ready ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
+                        <span aria-hidden style={{ letterSpacing: '0.1em' }}>
+                          <span style={{ color: 'var(--text-green-600)' }}>{'●'.repeat(d.done)}</span>
+                          <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
+                        </span>{' '}
+                        {d.label}
+                      </span>
+                    )
+                  })() : statusLabel(r.status))
                 )}
               </td>
-              <td style={{ padding: '0.5rem' }}>{formatMoney(r.total_cents)}</td>
+              <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : formatMoney(r.total_cents)}</td>
               <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                 {updatedLines ? (
                   <div
@@ -1413,7 +1430,18 @@ function EstimateListCards({
       )
     }
     return (
-      <div style={{ marginTop: '0.5rem', fontWeight: 600, color: 'var(--text-700)' }}>{statusLabel(r.status)}</div>
+      <div style={{ marginTop: '0.5rem', fontWeight: 600, color: 'var(--text-700)' }}>{(r.status === 'draft' ? (() => {
+                    const d = readinessDots(computeEstimateListReadiness(r))
+                    return (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: d.ready ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
+                        <span aria-hidden style={{ letterSpacing: '0.1em' }}>
+                          <span style={{ color: 'var(--text-green-600)' }}>{'●'.repeat(d.done)}</span>
+                          <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
+                        </span>{' '}
+                        {d.label}
+                      </span>
+                    )
+                  })() : statusLabel(r.status))}</div>
     )
   }
 
@@ -1559,7 +1587,7 @@ function EstimateListCards({
                   {renderCustomerSection(r)}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{formatMoney(r.total_cents)}</div>
+                  <div style={{ fontWeight: 600 }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : formatMoney(r.total_cents)}</div>
                   {updatedLines ? (
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.25 }}>
                       <span>{updatedLines.short}</span>
@@ -1675,6 +1703,42 @@ function EstimateList() {
   }, [rows, listSearch])
 
   const followupBuckets = useMemo(() => splitFollowupRows(filteredRows), [filteredRows])
+
+  // Pipeline refresh: empty-draft debris collapses behind one sweep button.
+  const listConfirmDialog = useConfirmDialog()
+  const emptyDraftIds = useMemo(
+    () => followupBuckets.unsent.filter((r) => isEmptyEstimateDraft(r)).map((r) => r.id),
+    [followupBuckets.unsent],
+  )
+  const unsentVisibleRows = useMemo(
+    () => followupBuckets.unsent.filter((r) => !isEmptyEstimateDraft(r)),
+    [followupBuckets.unsent],
+  )
+  const [cleaningEmpties, setCleaningEmpties] = useState(false)
+
+  async function cleanUpEmptyDrafts() {
+    if (cleaningEmpties || emptyDraftIds.length === 0) return
+    const n = emptyDraftIds.length
+    const ok = await listConfirmDialog({
+      message: `Delete ${n} empty draft${n === 1 ? '' : 's'}? These have no customer, title, or line items.`,
+      confirmLabel: `Delete ${n} draft${n === 1 ? '' : 's'}`,
+      danger: true,
+    })
+    if (!ok) return
+    setCleaningEmpties(true)
+    try {
+      await withSupabaseRetry(
+        async () => await supabase.from('estimates').delete().in('id', emptyDraftIds).eq('status', 'draft'),
+        'clean up empty drafts',
+      )
+      showToast(`Deleted ${n} empty draft${n === 1 ? '' : 's'}`, 'success')
+      await load()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not clean up drafts'), 'error')
+    } finally {
+      setCleaningEmpties(false)
+    }
+  }
 
   const THREAD_STATS_ESTIMATES_DEBOUNCE_MS = 320
   useEffect(() => {
@@ -1959,14 +2023,36 @@ function EstimateList() {
               }}
             >
               <section>
-                <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Unsent</h2>
-                {followupBuckets.unsent.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', margin: '0 0 0.5rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 600 }}>Unsent</h2>
+                  {emptyDraftIds.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void cleanUpEmptyDrafts()}
+                      disabled={cleaningEmpties}
+                      style={{
+                        marginLeft: 'auto',
+                        padding: '0.25rem 0.7rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 5,
+                        background: 'var(--bg-muted)',
+                        color: 'var(--text-muted)',
+                        cursor: cleaningEmpties ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {cleaningEmpties ? 'Cleaning…' : `🧹 Clean up ${emptyDraftIds.length} empty draft${emptyDraftIds.length === 1 ? '' : 's'}`}
+                    </button>
+                  ) : null}
+                </div>
+                {unsentVisibleRows.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (
                       <EstimateListCards
-                        rows={followupBuckets.unsent}
+                        rows={unsentVisibleRows}
                         setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
                         setCreateJobFromListRow={setCreateJobFromListRow}
                         showCustomerColumn
@@ -1975,7 +2061,7 @@ function EstimateList() {
                       />
                     ) : (
                       <EstimateListTable
-                        rows={followupBuckets.unsent}
+                        rows={unsentVisibleRows}
                         setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
                         setCreateJobFromListRow={setCreateJobFromListRow}
                         showCustomerColumn
