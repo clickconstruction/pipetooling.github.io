@@ -10,7 +10,12 @@ import {
   type TechTreeEdge,
 } from './checklistTechTreeGraph'
 
-export type BridgeState = { instanceCompletedAt: string | null; reviewedAt: string | null }
+export type BridgeState = {
+  instanceCompletedAt: string | null
+  reviewedAt: string | null
+  /** The materialized checklist instance (v2.1901) — feeds the task card modal's activity thread. */
+  instanceId?: string
+}
 
 export type BridgeChip = 'in_review' | 'signed_off' | 'on_list' | null
 

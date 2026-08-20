@@ -67,6 +67,8 @@ import {
 } from '../../lib/techTreeTaskOrder'
 import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
+import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
+import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { ChecklistTechTreeAddGroupModal } from './ChecklistTechTreeAddGroupModal'
 import { ChecklistTechTreeLineUpModal } from './ChecklistTechTreeLineUpModal'
 import { ChecklistTechTreeLinksModal } from './ChecklistTechTreeLinksModal'
@@ -205,13 +207,13 @@ function useTechTreeData(
         if (taskIds.length > 0) {
           const { data: bridgeRows } = await supabase
             .from('checklist_items')
-            .select('roadmap_group_task_id, checklist_instances(completed_at, reviewed_at)')
+            .select('roadmap_group_task_id, checklist_instances(id, completed_at, reviewed_at)')
             .in('roadmap_group_task_id', taskIds)
           const bmap = new Map<string, BridgeState>()
-          for (const row of (bridgeRows ?? []) as Array<{ roadmap_group_task_id: string | null; checklist_instances: Array<{ completed_at: string | null; reviewed_at: string | null }> | null }>) {
+          for (const row of (bridgeRows ?? []) as Array<{ roadmap_group_task_id: string | null; checklist_instances: Array<{ id: string; completed_at: string | null; reviewed_at: string | null }> | null }>) {
             if (!row.roadmap_group_task_id) continue
             const inst = (row.checklist_instances ?? [])[0]
-            if (inst) bmap.set(row.roadmap_group_task_id, { instanceCompletedAt: inst.completed_at, reviewedAt: inst.reviewed_at })
+            if (inst) bmap.set(row.roadmap_group_task_id, { instanceCompletedAt: inst.completed_at, reviewedAt: inst.reviewed_at, instanceId: inst.id })
           }
           setBridgeByTaskId(bmap)
         } else {
@@ -385,7 +387,7 @@ function TechTreeEditableTaskTitle({
         userSelect: 'text' as const,
         touchAction: 'manipulation' as const,
       }}
-      title="Press and hold to edit"
+      title="Press and hold to open"
       onClick={(e) => {
         if (suppressNextClickRef.current) {
           e.preventDefault()
@@ -787,7 +789,7 @@ function GroupNode({ data }: NodeProps) {
                   <div style={{ lineHeight: 1.4, flex: 1, minWidth: 0 }}>
                     <TechTreeEditableTaskTitle
                       taskId={t.id}
-                      canEdit={d.canEditStructure}
+                      canEdit
                       onEditTask={d.onEditTask}
                     >
                       {t.title}
@@ -1023,6 +1025,7 @@ export function ChecklistTechTreeTab({
   setError,
   roadmapIdFromUrl,
   onRoadmapUrlParamChange,
+  onOpenTodayTab,
 }: {
   authUserId: string | null
   /** true for dev, master, assistant, primary (matches is_dev_or_master_or_assistant RLS) */
@@ -1030,6 +1033,8 @@ export function ChecklistTechTreeTab({
   setError: (s: string | null) => void
   roadmapIdFromUrl: string | null
   onRoadmapUrlParamChange: (roadmapId: string) => void
+  /** Jump to the Today tab — the task card modal's "Open on the checklist". */
+  onOpenTodayTab?: () => void
 }) {
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
@@ -1209,14 +1214,12 @@ export function ChecklistTechTreeTab({
     setEditTaskId(null)
     setAddTaskModalGroupId(groupId)
   }, [])
-  const openEditTask = useCallback(
-    (taskId: string) => {
-      if (!canEditStructure) return
-      setAddTaskModalGroupId(null)
-      setEditTaskId(taskId)
-    },
-    [canEditStructure],
-  )
+  // Task card modal (v2.1901): everyone can open it — the activity thread and
+  // composer are the point; edit fields inside self-gate on canEditStructure.
+  const openEditTask = useCallback((taskId: string) => {
+    setAddTaskModalGroupId(null)
+    setEditTaskId(taskId)
+  }, [])
 
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(() => new Set())
   const toggleGroupCollapsed = useCallback((groupId: string) => {
@@ -1568,6 +1571,34 @@ export function ChecklistTechTreeTab({
   const editTaskModalGroup = editTaskForModal
     ? groups.find((g) => g.id === editTaskForModal.group_id) ?? null
     : null
+
+  /** Card history for the task modal — same events spine the Today cards read. */
+  const loadInstanceEvents = useCallback(async (instanceId: string): Promise<ChecklistCardEvent[]> => {
+    const { data } = await supabase
+      .from('checklist_instance_events')
+      .select('id, instance_id, event_type, actor_user_id, body, created_at')
+      .eq('instance_id', instanceId)
+      .order('created_at', { ascending: true })
+    return (data ?? []) as ChecklistCardEvent[]
+  }, [])
+
+  const postInstanceComment = useCallback(
+    async (instanceId: string, body: string): Promise<boolean> => {
+      if (!authUserId) return false
+      const { error: e } = await supabase.from('checklist_instance_events').insert({
+        instance_id: instanceId,
+        event_type: 'comment',
+        actor_user_id: authUserId,
+        body,
+      })
+      if (e) {
+        setError(e.message)
+        return false
+      }
+      return true
+    },
+    [authUserId, setError],
+  )
 
   const [linksModalOpen, setLinksModalOpen] = useState(false)
   const [linksSearchQuery, setLinksSearchQuery] = useState('')
@@ -2412,27 +2443,37 @@ export function ChecklistTechTreeTab({
         portalContainer={roadmapModalPortalHost ?? undefined}
       />
       <ChecklistTechTreeAddTaskModal
-        open={addTaskModalGroupId !== null || editTaskId !== null}
-        groupId={addTaskModalGroupId ?? editTaskForModal?.group_id ?? null}
-        groupTitle={addTaskModalGroup?.title ?? editTaskModalGroup?.title ?? ''}
+        open={addTaskModalGroupId !== null}
+        groupId={addTaskModalGroupId}
+        groupTitle={addTaskModalGroup?.title ?? ''}
         users={users}
         currentUserId={authUserId}
-        editingTaskId={editTaskId}
-        initialEditTitle={editTaskForModal?.title ?? ''}
-        initialEditAssigneeUserIds={editTaskForModal?.assigneeIds ?? []}
-        onClose={() => {
-          setAddTaskModalGroupId(null)
-          setEditTaskId(null)
-        }}
+        onClose={() => setAddTaskModalGroupId(null)}
         onSave={async (title, assigneeUserIds) => {
-          if (editTaskId) {
-            return updateTaskInGroup(editTaskId, title, assigneeUserIds)
-          }
           if (addTaskModalGroupId) {
             return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds)
           }
           return false
         }}
+        portalContainer={roadmapModalPortalHost ?? undefined}
+      />
+      <ChecklistTechTreeTaskCardModal
+        open={editTaskId !== null}
+        task={editTaskForModal ? { id: editTaskForModal.id, title: editTaskForModal.title, assigneeIds: editTaskForModal.assigneeIds } : null}
+        groupTitle={editTaskModalGroup?.title ?? ''}
+        bridge={editTaskForModal ? bridgeByTaskId.get(editTaskForModal.id) : undefined}
+        chip={editTaskForModal ? bridgeChipFor(editTaskForModal.completed_at, bridgeByTaskId.get(editTaskForModal.id)) : null}
+        users={users}
+        currentUserId={authUserId}
+        canEditStructure={canEditStructure}
+        loadEvents={loadInstanceEvents}
+        postComment={postInstanceComment}
+        onSave={async (title, assigneeUserIds) => {
+          if (!editTaskId) return false
+          return updateTaskInGroup(editTaskId, title, assigneeUserIds)
+        }}
+        onOpenTodayTab={onOpenTodayTab}
+        onClose={() => setEditTaskId(null)}
         portalContainer={roadmapModalPortalHost ?? undefined}
       />
       <ChecklistTechTreeGroupModal
