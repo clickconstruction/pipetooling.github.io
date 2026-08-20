@@ -18,11 +18,16 @@ import {
 } from '../jobsStagesBoard'
 import {
   buildBilledAgingBuckets,
+  countBilledRowsMissingDates,
   stageRowBilledRemainingAmount,
   type BilledAgingBuckets,
 } from './invoiceBilling'
+import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
+import { mondayOfWeekYmd } from './stagesWeeklyMovement'
 
 export type StagesSectionStat = { count: number; total: number }
+
+export type CollectedWeekPoint = { weekStart: string; total: number }
 
 export type StagesHeaderStats = {
   waiting: StagesSectionStat
@@ -34,6 +39,35 @@ export type StagesHeaderStats = {
   /** "Capable of Being Billed" figure over the Working section. */
   capableToBill: number
   billedAging: BilledAgingBuckets
+  /** Payments by Monday-start week, oldest→newest, last COLLECTED_WEEKS weeks (Pipeline New view). */
+  collectedByWeek: CollectedWeekPoint[]
+  /** Billed rows with a positive remainder but no billed_at / est. date (can't age or be chased). */
+  billedNoDate: number
+}
+
+export const COLLECTED_WEEKS = 8
+
+/** Σ payment.amount per Monday-start week over the trailing COLLECTED_WEEKS weeks (UTC clock). */
+export function collectedByWeekFromJobs(jobs: JobWithDetails[], now = new Date()): CollectedWeekPoint[] {
+  const thisMonday = mondayOfWeekYmd(now.toISOString().slice(0, 10))
+  const weeks: CollectedWeekPoint[] = []
+  const index = new Map<string, number>()
+  for (let i = COLLECTED_WEEKS - 1; i >= 0; i--) {
+    const weekStart = addDaysYmd(thisMonday, -7 * i)
+    index.set(weekStart, weeks.length)
+    weeks.push({ weekStart, total: 0 })
+  }
+  for (const j of jobs) {
+    for (const p of j.payments ?? []) {
+      const paidOn = (p as { paid_on?: string | null }).paid_on
+      if (!paidOn) continue
+      const at = index.get(mondayOfWeekYmd(paidOn.slice(0, 10)))
+      const week = at == null ? undefined : weeks[at]
+      if (!week) continue
+      week.total += Number(p.amount ?? 0)
+    }
+  }
+  return weeks
 }
 
 /**
@@ -62,6 +96,8 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
     paid: { count: l.paid.length },
     capableToBill: capableToBillTotalFromWorking(l.working),
     billedAging: buildBilledAgingBuckets(l.filtered, now),
+    collectedByWeek: collectedByWeekFromJobs(jobs, now),
+    billedNoDate: countBilledRowsMissingDates(l.filtered),
   }
 }
 
@@ -73,8 +109,8 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
 export const LEAN_STATS_JOB_COLUMNS =
   'id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number'
 export const LEAN_STATS_INVOICE_COLUMNS =
-  'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date'
-export const LEAN_STATS_PAYMENT_COLUMNS = 'job_id, invoice_id, amount'
+  'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at'
+export const LEAN_STATS_PAYMENT_COLUMNS = 'job_id, invoice_id, amount, paid_on'
 
 export type LeanStatsJobRow = {
   id: string
@@ -94,8 +130,14 @@ export type LeanStatsInvoiceRow = {
   sequence_order: number
   is_primary_rtb_bundle: boolean | null
   estimated_bill_date: string | null
+  billed_at: string | null
 }
-export type LeanStatsPaymentRow = { job_id: string; invoice_id: string | null; amount: number | null }
+export type LeanStatsPaymentRow = {
+  job_id: string
+  invoice_id: string | null
+  amount: number | null
+  paid_on: string | null
+}
 
 /**
  * Shape lean rows into the `JobWithDetails` surface the kernels consume. Only

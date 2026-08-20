@@ -5,7 +5,7 @@ file: docs/JOBS_STAGES_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the already-extracted Pipeline board — src/components/jobs/JobsStagesTab.tsx (3,664 lines) plus its table/row sub-files JobsStagesUnifiedTable.tsx (1,407), JobsStagesTable.tsx (659), and jobsStagesRowShared.tsx (1,204). The v2.831 extraction moved the tab out of Jobs.tsx, but the surface kept growing (18 commits of churn since; the v2.96x–v2.108x feature run landed almost entirely here). This map inventories every region so the next round of extraction — toolbar, modal tail, inline modals, prop-bundle seam for the two tables — can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-15
+last_updated: 2026-08-20
 ---
 
 ## What this surface is
@@ -30,6 +30,10 @@ Total surface: **6,934 lines**. This is a *sub*-decomposition map: how the tab w
 ### Mount/state semantics (preserve in every extraction)
 
 `Jobs.tsx` renders `<JobsStagesTab ref={stagesTabRef} active={activeTab === 'stages'} .../>` **unconditionally**. The board body (`{active && <div>…</div>}`, ~line 1089) renders only when active; the **modal tail (~2688–3294) renders regardless** — mirroring the page-level modal tail it came from, so all Pipeline state survives tab switches. Effects formerly keyed on `activeTab === 'stages'` are keyed on `active`. The tab reads `useSearchParams()` **read-only** (loading hint + return-edit banner); the router that writes params stays in `Jobs.tsx` and drives tab state through the handle (`followMovedJob`, `focusSection`, `focusJob`, `focusInvoice`, `openBankPayments`, `showBilledTotalByName`).
+
+### Old/New views (v2.1915)
+
+The tab opens with **Old / New** pills (`jobs_pipeline_view_v1` per-device, default Old; Counts precedent v2.1909). New renders [`PipelineOverview`](../src/components/jobs/PipelineOverview.tsx) — the money story strip + Today's money moves queue — between the toolbar and the jump strip; Old renders nothing extra. Both views share every state cluster, modal, and the board itself (the overview's actions reuse the existing openers: Capable modal, aging/profit charts, AR modal, `focusStagesSection`, `setBilledAgingFilter`). View-models come from the pure kernel [`pipelineOverview.ts`](../src/lib/jobs/pipelineOverview.ts) over `cacheHeaderStats` (extended in the same PR with `collectedByWeek` + `billedNoDate`) — no extra fetches.
 
 ---
 
