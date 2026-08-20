@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   computeEstimateListReadiness,
+  computeSentWait,
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
@@ -90,5 +91,38 @@ describe('list readiness', () => {
     expect(d.ready).toBe(false)
     expect(d.done + d.todo).toBe(5)
     expect(d.label).toBe('3 left: customer · the change · cost lines')
+  })
+})
+
+describe('computeSentWait', () => {
+  const now = Date.parse('2026-08-20T18:00:00Z')
+
+  it('neutral under a week, warn at 7+, null when never sent', () => {
+    expect(computeSentWait({ change_order_fields: null, sent_at: '2026-08-18T18:00:00Z' }, now)).toMatchObject({
+      level: 'ok',
+      label: 'sent 2d ago',
+    })
+    expect(computeSentWait({ change_order_fields: null, sent_at: '2026-08-11T12:00:00Z' }, now)).toMatchObject({
+      level: 'warn',
+      label: 'sent 9d ago — nudge?',
+    })
+    expect(computeSentWait({ change_order_fields: null, sent_at: null }, now)).toBeNull()
+    expect(computeSentWait({ change_order_fields: null, sent_at: '2026-08-20T15:00:00Z' }, now)?.label).toBe('sent today')
+  })
+
+  it('overdue response-by beats age, even on a fresh send', () => {
+    const r = computeSentWait(
+      { change_order_fields: { response_requested_by: '2026-08-15' }, sent_at: '2026-08-19T12:00:00Z' },
+      now,
+    )
+    expect(r).toMatchObject({ level: 'overdue', label: 'response requested by 8/15 — 5d overdue' })
+  })
+
+  it('future response-by stays neutral', () => {
+    const r = computeSentWait(
+      { change_order_fields: { response_requested_by: '2026-08-25' }, sent_at: '2026-08-18T12:00:00Z' },
+      now,
+    )
+    expect(r?.level).toBe('ok')
   })
 })

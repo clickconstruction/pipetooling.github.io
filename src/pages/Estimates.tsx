@@ -37,6 +37,7 @@ import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/est
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import {
   computeEstimateListReadiness,
+  computeSentWait,
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
@@ -1198,6 +1199,22 @@ function EstimateListTable({
                         })()}
                       </Link>
                     ) : (
+                      <>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          background: 'var(--bg-amber-tint)',
+                          border: '1px solid #f59e0b',
+                          color: 'var(--text-amber-800)',
+                          borderRadius: 999,
+                          padding: '0.05rem 0.5rem',
+                          fontSize: '0.68rem',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        not on a job yet
+                      </span>
                       <button
                         type="button"
                         onClick={() => setCreateJobFromListRow(r)}
@@ -1207,6 +1224,7 @@ function EstimateListTable({
                       >
                         {isChangeOrderDocKind(r.doc_kind) ? 'Apply to job' : 'Create job'}
                       </button>
+                      </>
                     )}
                   </div>
                 ) : (
@@ -1219,6 +1237,23 @@ function EstimateListTable({
                           <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
                         </span>{' '}
                         {d.label}
+                      </span>
+                    )
+                  })() : r.status === 'sent' ? (() => {
+                    const w = computeSentWait(r, Date.now())
+                    if (!w) return statusLabel(r.status)
+                    return (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color:
+                            w.level === 'overdue' ? 'var(--text-red-700)'
+                            : w.level === 'warn' ? 'var(--text-amber-800)'
+                            : 'var(--text-muted)',
+                        }}
+                      >
+                        {w.label}
                       </span>
                     )
                   })() : statusLabel(r.status))
@@ -1416,6 +1451,22 @@ function EstimateListCards({
               })()}
             </Link>
           ) : (
+            <>
+            <span
+              style={{
+                display: 'inline-block',
+                background: 'var(--bg-amber-tint)',
+                border: '1px solid #f59e0b',
+                color: 'var(--text-amber-800)',
+                borderRadius: 999,
+                padding: '0.05rem 0.5rem',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              not on a job yet
+            </span>
             <button
               type="button"
               onClick={() => setCreateJobFromListRow(r)}
@@ -1425,6 +1476,7 @@ function EstimateListCards({
             >
               {isChangeOrderDocKind(r.doc_kind) ? 'Apply to job' : 'Create job'}
             </button>
+            </>
           )}
         </div>
       )
@@ -1439,6 +1491,23 @@ function EstimateListCards({
                           <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
                         </span>{' '}
                         {d.label}
+                      </span>
+                    )
+                  })() : r.status === 'sent' ? (() => {
+                    const w = computeSentWait(r, Date.now())
+                    if (!w) return statusLabel(r.status)
+                    return (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color:
+                            w.level === 'overdue' ? 'var(--text-red-700)'
+                            : w.level === 'warn' ? 'var(--text-amber-800)'
+                            : 'var(--text-muted)',
+                        }}
+                      >
+                        {w.label}
                       </span>
                     )
                   })() : statusLabel(r.status))}</div>
