@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1861)
+last_updated: 2026-08-19 (v2.1862)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1862)
+
+### History grid grows up — sticky item column, glyph cells, rate column, edit-mode confirm (2026-08-19)
+The desktop half of the History overhaul (phones got the v2.1859 day-ledger). [`Checklist.tsx`](../src/pages/Checklist.tsx) grid: the **Item column goes sticky** (`position: sticky; left: 0` on th+td with `--surface` background) so scrolling months of dates never loses the row labels; cells double 12→**24px** and carry **glyphs** — white ✓ on green (you), amber-bordered ✓ (someone else), red-bordered ✗ (missed), and "not due" becomes a **dashed outline** instead of near-invisible white — color is no longer the only channel; a **2px month-boundary rule** marks month changes in header and body; each row gains a trailing **rate** column (completed ÷ due over the visible window, green when 100%); the prose legend ("Green = completed by you, …") becomes four self-explanatory chips. Dev **Edit mode** now `window.confirm`s before cycling a day (a single mis-click deleted/inserted prod instances). Ledger view untouched. Visual note: verified by gate only — the session's browser pane lost network/viewport mid-check; worth one desktop glance after deploy. Client-only — no migration.
 
 ## Latest Updates (v2.1861)
 
