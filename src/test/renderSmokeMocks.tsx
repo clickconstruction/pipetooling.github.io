@@ -19,6 +19,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { render, type RenderResult } from '@testing-library/react'
 import { ToastProvider } from '../contexts/ToastContext'
+import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { LaborJob } from '../types/laborJob'
 
@@ -177,19 +178,22 @@ export function installDomShims() {
 
 /**
  * Render wrapped in MemoryRouter (for useNavigate / useSearchParams consumers)
- * and the real ToastProvider (useToastContext throws without one; the modal
- * contexts return null without a provider, which the components tolerate).
+ * and the real ToastProvider + ConfirmDialogProvider (useToastContext and
+ * useConfirmDialog throw without one; the modal contexts return null without
+ * a provider, which the components tolerate).
  */
 export function renderWithProviders(ui: ReactElement): RenderResult {
   installDomShims()
-  // Both providers live in the wrapper (not in `ui`) so RenderResult.rerender
+  // All providers live in the wrapper (not in `ui`) so RenderResult.rerender
   // keeps them — the JobsStagesTab active-flip tests depend on that.
   return render(ui, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <ToastProvider>
-        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          {children}
-        </MemoryRouter>
+        <ConfirmDialogProvider>
+          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            {children}
+          </MemoryRouter>
+        </ConfirmDialogProvider>
       </ToastProvider>
     ),
   })

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import { payConfigForPerson } from '../../lib/people/payConfigLookup'
 import { KIND_LABELS } from './peopleUsersTabShared'
@@ -136,6 +137,7 @@ export default function PeopleEmploymentTab({
   onViewPayReport,
 }: PeopleEmploymentTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [rows, setRows] = useState<EmploymentPersonRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -481,7 +483,7 @@ export default function PeopleEmploymentTab({
 
   async function deleteTimeOff(id: string) {
     if (!timeOffUserId) return
-    if (!window.confirm('Remove this time off entry?')) return
+    if (!(await confirmDialog({ message: 'Remove this time off entry?', confirmLabel: 'Remove', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('user_time_off').delete().eq('id', id).eq('user_id', timeOffUserId),

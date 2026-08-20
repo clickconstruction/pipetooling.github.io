@@ -11,6 +11,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from './useAuth'
 import { useToastContext } from '../contexts/ToastContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { ServiceType, UserRow } from '../types/settingsRows'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
 import { EXTERNAL_MERGE_OPTION_PREFIX } from '../lib/mergeUserAccounts'
@@ -35,6 +36,7 @@ export type UseActiveAccountsManagementOptions = {
 export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiveAccountsManagementOptions) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
 
   const [users, setUsers] = useState<UserRow[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -632,9 +634,11 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     const newMasterLabel = newMasterUser?.name || newMasterUser?.email || 'New master'
     const roleLabel = convertNewRole === 'assistant' ? 'assistant' : 'subcontractor'
 
-    const confirmed = window.confirm(
-      `Convert "${masterLabel}" from master to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`
-    )
+    const confirmed = await confirmDialog({
+      message: `Convert "${masterLabel}" from master to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`,
+      confirmLabel: 'Convert',
+      danger: true,
+    })
     if (!confirmed) return
 
     setConvertSubmitting(true)

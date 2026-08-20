@@ -49,6 +49,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ymdAddDays, APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { forecastBarSwatch } from '../../lib/projectsForecastColors'
@@ -182,6 +183,7 @@ function wordCount(text: string | null | undefined): number {
 
 export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, onClose }: Props) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const canEdit = canEditExpectedDates(myRole)
 
   const [detail, setDetail] = useState<ForecastStageDetail | null>(null)
@@ -547,10 +549,14 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
     }
   }
 
-  const onBackdropClick = () => {
+  const onBackdropClick = async () => {
     if (saving) return
     if (dirty) {
-      const ok = window.confirm('Discard your changes to expected dates?')
+      const ok = await confirmDialog({
+        message: 'Discard your changes to expected dates?',
+        confirmLabel: 'Discard',
+        danger: true,
+      })
       if (!ok) return
     }
     onClose()
@@ -582,7 +588,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
       role="dialog"
       aria-modal="true"
       aria-label={`Step details for ${stage.name}`}
-      onClick={onBackdropClick}
+      onClick={() => void onBackdropClick()}
       style={{
         position: 'fixed',
         inset: 0,
@@ -715,7 +721,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
           ) : null}
           <button
             type="button"
-            onClick={onBackdropClick}
+            onClick={() => void onBackdropClick()}
             aria-label="Close"
             title="Close"
             style={{
@@ -1110,7 +1116,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                 >
                   Clear dates
                 </button>
-                <button type="button" onClick={onBackdropClick} disabled={saving} style={footerSecondaryStyle}>
+                <button type="button" onClick={() => void onBackdropClick()} disabled={saving} style={footerSecondaryStyle}>
                   Cancel
                 </button>
                 <button

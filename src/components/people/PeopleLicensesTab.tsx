@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
@@ -30,6 +31,7 @@ export type PeopleLicensesTabProps = {
 
 export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [licenses, setLicenses] = useState<PersonLicense[]>([])
   const [licensesLoading, setLicensesLoading] = useState(false)
   const [licensesError, setLicensesError] = useState<string | null>(null)
@@ -124,7 +126,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   }
 
   async function deleteCostLine(line: PersonLicenseCostLine) {
-    if (!window.confirm(`Delete cost line $${line.amount}?`)) return
+    if (!(await confirmDialog({ message: `Delete cost line $${line.amount}?`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('person_license_cost_lines').delete().eq('id', line.id)
     if (err) setLicensesError(err.message)
     else {
@@ -198,7 +200,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   }
 
   async function deleteLicense(l: PersonLicense) {
-    if (!window.confirm(`Delete ${l.license_type} for ${l.person_name}?`)) return
+    if (!(await confirmDialog({ message: `Delete ${l.license_type} for ${l.person_name}?`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('person_licenses').delete().eq('id', l.id)
     if (err) setLicensesError(err.message)
     else {

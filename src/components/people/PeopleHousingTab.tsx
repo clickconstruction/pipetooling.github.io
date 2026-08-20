@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
 
 type HousingUnit = {
@@ -20,6 +21,7 @@ export type PeopleHousingTabProps = {
 }
 
 export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
+  const confirmDialog = useConfirmDialog()
   const [housingUnits, setHousingUnits] = useState<HousingUnit[]>([])
   const [housingLoading, setHousingLoading] = useState(false)
   const [housingError, setHousingError] = useState<string | null>(null)
@@ -153,7 +155,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
   }
 
   async function deleteHousingUnit(u: HousingUnit) {
-    if (!window.confirm(`Delete housing at "${u.address}"? Assignments will be removed.`)) return
+    if (!(await confirmDialog({ message: `Delete housing at "${u.address}"? Assignments will be removed.`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('housing_units').delete().eq('id', u.id)
     if (err) setHousingError(err.message)
     else {

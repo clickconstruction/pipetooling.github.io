@@ -34,6 +34,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1877',
+    date: '2026-08-19',
+    title: 'Every confirmation is now an in-app dialog',
+    kind: 'feature',
+    highlights: [
+      'The sweep promised in v2.1874 is done: all remaining browser confirmation popups — deletes across People, Banking, Pay, Jobs, Bids, Checklist, and Settings, plus the approved-hours warnings when editing clock sessions — now use the in-app dialog.',
+      'Destructive confirmations show a red button naming the action (Delete, Remove, Discard) so it\'s clear what you\'re agreeing to.',
+    ],
+  },
+  {
     version: 'v2.1875',
     date: '2026-08-19',
     title: 'Groundwork: roadmap goals feed real checklists',

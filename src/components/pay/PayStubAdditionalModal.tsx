@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
 import {
   type PayStubAdditionalLineRow,
@@ -99,6 +100,7 @@ export function PayStubAdditionalModal({
   baseHourlyWage = 0,
   onOpenMyTimeForDay,
 }: PayStubAdditionalModalProps) {
+  const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
   const [savingRowId, setSavingRowId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -287,7 +289,7 @@ export function PayStubAdditionalModal({
     const description = humanPart
     const existing = existingLineForSession(lines, session.id)
     if (existing) {
-      if (!window.confirm('Replace existing prevailing line for this session?')) return
+      if (!(await confirmDialog({ message: 'Replace existing prevailing line for this session?', confirmLabel: 'Replace' }))) return
       await persistUpdate(existing.id, { description, quantity: hours, rate: delta })
       return
     }
@@ -312,7 +314,7 @@ export function PayStubAdditionalModal({
   }
 
   async function removeLine(id: string) {
-    if (!window.confirm('Remove this additional line?')) return
+    if (!(await confirmDialog({ message: 'Remove this additional line?', confirmLabel: 'Remove', danger: true }))) return
     setDeletingId(id)
     try {
       await withSupabaseRetry(

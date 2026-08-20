@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { defaultClockOutLocal } from '../../lib/forceClockOutDefaultOut'
@@ -27,6 +28,7 @@ export function ForceClockOutModal({
   showToast,
   zIndex = 1110,
 }: ForceClockOutModalProps) {
+  const confirmDialog = useConfirmDialog()
   const [clockOutLocal, setClockOutLocal] = useState(() => defaultClockOutLocal(session.clocked_in_at))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,9 +58,11 @@ export function ForceClockOutModal({
     }
 
     if (session.approved_at) {
-      const ok = window.confirm(
-        'This session was already approved. Setting clock-out will change recorded hours and may require re-approval. Continue?',
-      )
+      const ok = await confirmDialog({
+        message:
+          'This session was already approved. Setting clock-out will change recorded hours and may require re-approval.',
+        confirmLabel: 'Continue',
+      })
       if (!ok) return
     }
 

@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
@@ -938,6 +939,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
 }
 
 function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setError }: { authUserId: string | null; canViewOthers: boolean; canEditHistory: boolean; setError: (s: string | null) => void }) {
+  const confirmDialog = useConfirmDialog()
   const isNarrow = useIsNarrowScreen()
   const [instances, setInstances] = useState<ChecklistInstance[]>([])
   const [loading, setLoading] = useState(true)
@@ -1032,7 +1034,10 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
   async function handleCycleStatus(itemId: string, date: string) {
     if (!editMode || cyclingCell || !selectedUserId) return
     // Edit mode rewrites prod rows on a single click — make it a two-step.
-    const proceed = window.confirm(`Change ${date} for this item? (cycles completed → missed → not due)`)
+    const proceed = await confirmDialog({
+      message: `Change ${date} for this item? (cycles completed → missed → not due)`,
+      confirmLabel: 'Change',
+    })
     if (!proceed) return
     const key = `${itemId}-${date}`
     const rawStatus = byItem.get(itemId)?.dates[date]

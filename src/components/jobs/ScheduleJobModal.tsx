@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
 import { isSelectableOption } from '../SearchableSelect'
 import { SearchableMultiSelect } from '../SearchableMultiSelect'
@@ -100,6 +101,7 @@ export function ScheduleJobModal({
   assigneeCandidates: assigneeCandidatesProp,
   initialWorkDate,
 }: Props) {
+  const confirmDialog = useConfirmDialog()
   const assigneeCandidates = assigneeCandidatesProp ?? EMPTY_ASSIGNEE_CANDIDATES
   const draftsRef = useRef<Record<string, ScheduleFormDraft>>({})
   const [contextStack, setContextStack] = useState<ScheduleJobContext[]>(() => [
@@ -455,7 +457,7 @@ export function ScheduleJobModal({
   }
 
   const removeBlock = async (id: string) => {
-    if (!window.confirm('Remove this scheduled block?')) return
+    if (!(await confirmDialog({ message: 'Remove this scheduled block?', confirmLabel: 'Remove', danger: true }))) return
     setError(null)
     const { error: delErr } = await deleteJobScheduleBlock(id)
     if (delErr) {

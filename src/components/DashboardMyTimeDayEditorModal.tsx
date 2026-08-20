@@ -72,6 +72,7 @@ import {
   type MergeJobAllocOption,
 } from './my-time-day-editor/MyTimeMergeSegmentsModal'
 import { useToastContext } from '../contexts/ToastContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 import { forceClockOutDefaultOutIso } from '../lib/forceClockOutDefaultOut'
@@ -349,6 +350,7 @@ export function DashboardMyTimeDayEditorModal({
   saveableRangeOverride = null,
 }: Props) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
   void _editableRangeProp
   const fenceOverridden = saveableRangeOverride != null
@@ -1694,9 +1696,11 @@ export function DashboardMyTimeDayEditorModal({
       const dirtyApprovedNeedsRpc =
         c.some((s) => s.approved_at) && !noteOnlyApprovedSafe(c, split, last, now)
       if (dirtyApprovedNeedsRpc) {
-        const ok = window.confirm(
-          'One or more sessions were already approved. Saving splits or time changes will remove those hours from payroll until a lead approves the new segments again. Continue?'
-        )
+        const ok = await confirmDialog({
+          message:
+            'One or more sessions were already approved. Saving splits or time changes will remove those hours from payroll until a lead approves the new segments again.',
+          confirmLabel: 'Continue',
+        })
         if (!ok) return null
       }
 
@@ -2500,9 +2504,11 @@ export function DashboardMyTimeDayEditorModal({
       return !noteOnlyApprovedSafe(c, split, last, nowTick)
     })
     if (dirtyApprovedNeedsRpc) {
-      const ok = window.confirm(
-        'One or more sessions were already approved. Saving splits or time changes will remove those hours from payroll until a lead approves the new segments again. Continue?'
-      )
+      const ok = await confirmDialog({
+        message:
+          'One or more sessions were already approved. Saving splits or time changes will remove those hours from payroll until a lead approves the new segments again.',
+        confirmLabel: 'Continue',
+      })
       if (!ok) return
     }
     setSaving(true)

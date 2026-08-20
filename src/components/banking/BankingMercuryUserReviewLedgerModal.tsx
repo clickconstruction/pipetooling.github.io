@@ -16,6 +16,7 @@ import {
 } from '../../lib/fetchMercuryTransactionRaws'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -90,6 +91,7 @@ export function BankingMercuryUserReviewLedgerModal({
   onOpenTransactionDetail,
   zIndex = 1200,
 }: BankingMercuryUserReviewLedgerModalProps) {
+  const confirmDialog = useConfirmDialog()
   const reactId = useId()
   const titleId = `${reactId}-user-review-ledger-title`
   const searchInputId = `${reactId}-user-review-search`
@@ -205,7 +207,10 @@ export function BankingMercuryUserReviewLedgerModal({
       const label = userId || personId ? optionLabel(attributionOptions, value) : 'Unassigned'
       if (
         targets.length > 1 &&
-        !window.confirm(`Assign ${targets.length} transaction(s) to ${label}?`)
+        !(await confirmDialog({
+          message: `Assign ${targets.length} transaction(s) to ${label}?`,
+          confirmLabel: 'Assign',
+        }))
       ) {
         return
       }
@@ -236,7 +241,7 @@ export function BankingMercuryUserReviewLedgerModal({
         setBulkValue('')
       }
     },
-    [filteredRows, attributionOptions, onAttributionChanged, recentPersonPicksStorageKey, showToast],
+    [filteredRows, attributionOptions, onAttributionChanged, recentPersonPicksStorageKey, showToast, confirmDialog],
   )
 
   if (!open) return null

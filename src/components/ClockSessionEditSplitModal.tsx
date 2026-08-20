@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { splitOwnClockSessionSegments } from '../lib/splitOwnClockSessionSegments'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fromDatetimeLocal, toDatetimeLocal } from '../utils/datetimeLocal'
@@ -245,6 +246,7 @@ function ClockSessionCreateModal({
 }
 
 function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, zIndex = 1100 }: ClockSessionEditSplitModalEditProps) {
+  const confirmDialog = useConfirmDialog()
   const [clockIn, setClockIn] = useState('')
   const [clockOut, setClockOut] = useState('')
   const [notes, setNotes] = useState('')
@@ -530,9 +532,11 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                     setSaving(true)
                     try {
                       if (session.approved_at) {
-                        const ok = window.confirm(
-                          'This session was already approved. Saving will remove those hours from payroll until it is approved again. Continue?'
-                        )
+                        const ok = await confirmDialog({
+                          message:
+                            'This session was already approved. Saving will remove those hours from payroll until it is approved again.',
+                          confirmLabel: 'Continue',
+                        })
                         if (!ok) {
                           setSaving(false)
                           return
@@ -614,9 +618,11 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   setSaving(true)
                   try {
                     if (session.approved_at) {
-                      const ok = window.confirm(
-                        'This session was already approved. Saving will remove those hours from payroll until the new segments are approved again. Continue?'
-                      )
+                      const ok = await confirmDialog({
+                        message:
+                          'This session was already approved. Saving will remove those hours from payroll until the new segments are approved again.',
+                        confirmLabel: 'Continue',
+                      })
                       if (!ok) {
                         setSaving(false)
                         return

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Database } from '../../types/database'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { ModalShell } from './ModalShell'
@@ -54,6 +55,8 @@ export function BuilderCallSessionModal({
   onSaved: () => void
   onError: (msg: string | null) => void
 }) {
+  const confirmDialog = useConfirmDialog()
+  const discardConfirmOpenRef = useRef(false)
   const [decisions, setDecisions] = useState<Record<string, CallSessionBidDecision>>(() =>
     Object.fromEntries(openBids.map((b) => [b.id, { bidId: b.id, outcome: null, note: '', lossReason: '', lossCategory: null }])),
   )
@@ -71,12 +74,26 @@ export function BuilderCallSessionModal({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      // While the discard confirm is up, let the dialog's own Escape handling settle it.
+      if (discardConfirmOpenRef.current) return
       e.stopPropagation()
-      if (!dirty || window.confirm('Discard this call session? Nothing has been saved.')) onClose()
+      if (!dirty) {
+        onClose()
+        return
+      }
+      discardConfirmOpenRef.current = true
+      void confirmDialog({
+        message: 'Discard this call session? Nothing has been saved.',
+        confirmLabel: 'Discard',
+        danger: true,
+      }).then((ok) => {
+        discardConfirmOpenRef.current = false
+        if (ok) onClose()
+      })
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [dirty, onClose])
+  }, [dirty, onClose, confirmDialog])
 
   const setDecision = (bidId: string, patch: Partial<CallSessionBidDecision>) => {
     setDecisions((prev) => ({ ...prev, [bidId]: { ...(prev[bidId] ?? { bidId, outcome: null, note: '', lossReason: '', lossCategory: null }), ...patch } }))
@@ -321,9 +338,19 @@ export function BuilderCallSessionModal({
           <button
             type="button"
             disabled={saving}
-            onClick={() => {
-              if (!dirty || window.confirm('Discard this call session? Nothing has been saved.')) onClose()
-            }}
+            onClick={() =>
+              void (async () => {
+                if (
+                  !dirty ||
+                  (await confirmDialog({
+                    message: 'Discard this call session? Nothing has been saved.',
+                    confirmLabel: 'Discard',
+                    danger: true,
+                  }))
+                )
+                  onClose()
+              })()
+            }
             style={{ padding: '0.45rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem' }}
           >
             Cancel

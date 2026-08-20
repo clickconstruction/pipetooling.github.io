@@ -14,6 +14,7 @@ import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
@@ -301,6 +302,7 @@ export function BankingMercuryDragSortTab({
   onOrgNoteUpdated,
 }: BankingMercuryDragSortTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [labels, setLabels] = useState<DragLabelRow[]>([])
   const [assignmentLabelByTxId, setAssignmentLabelByTxId] = useState<Map<string, string>>(() => new Map())
   const [bucketStats, setBucketStats] = useState<DragSortBucketStats>(() => emptyBucketStats())
@@ -664,7 +666,13 @@ export function BankingMercuryDragSortTab({
         showToast('Built-in Accounting labels cannot be deleted.', 'error')
         return
       }
-      if (!window.confirm(`Delete Accounting Label "${label.name}"? Assigned transactions will lose this Accounting Label.`))
+      if (
+        !(await confirmDialog({
+          message: `Delete Accounting Label "${label.name}"? Assigned transactions will lose this Accounting Label.`,
+          confirmLabel: 'Delete',
+          danger: true,
+        }))
+      )
         return
       try {
         await withSupabaseRetry(async () => {
@@ -685,7 +693,7 @@ export function BankingMercuryDragSortTab({
         showToast(e instanceof Error ? e.message : 'Could not delete Accounting Label', 'error')
       }
     },
-    [labelById, loadLabels, loadAssignmentsForList, showToast, assignmentLabelByTxId, filteredTransactions],
+    [labelById, loadLabels, loadAssignmentsForList, showToast, assignmentLabelByTxId, filteredTransactions, confirmDialog],
   )
 
   const onDragStart = useCallback((event: DragStartEvent) => {
