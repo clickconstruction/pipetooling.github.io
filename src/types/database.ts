@@ -5201,6 +5201,9 @@ export type Database = {
           last_bill_date: string | null
           last_work_date: string | null
           master_user_id: string
+          partner_confirmed_at: string | null
+          partner_confirmed_by: string | null
+          partner_person_id: string | null
           payments_made: number | null
           pct_complete: number | null
           project_id: string | null
@@ -5237,6 +5240,9 @@ export type Database = {
           last_bill_date?: string | null
           last_work_date?: string | null
           master_user_id: string
+          partner_confirmed_at?: string | null
+          partner_confirmed_by?: string | null
+          partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
           project_id?: string | null
@@ -5273,6 +5279,9 @@ export type Database = {
           last_bill_date?: string | null
           last_work_date?: string | null
           master_user_id?: string
+          partner_confirmed_at?: string | null
+          partner_confirmed_by?: string | null
+          partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
           project_id?: string | null
@@ -13863,6 +13872,10 @@ export type Database = {
       }
       get_my_email_schedule: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
+      get_partner_job_review_queue: {
+        Args: { p_partnership_id: string }
+        Returns: Json
+      }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }
@@ -15180,6 +15193,10 @@ export type Database = {
       set_job_collections_flag: {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
+      }
+      set_job_partner_majority: {
+        Args: { p_job_id: string; p_person_id?: string }
+        Returns: undefined
       }
       set_job_pct_from_field: {
         Args: { p_job_id: string; p_note?: string; p_pct: number }

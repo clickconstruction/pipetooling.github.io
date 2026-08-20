@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "243 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "244 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820150000_partner_majority_anchors.sql`** _(apply via `supabase db push` after the v2.1881 merge — additive; the Job review tab fail-softs until applied)_
+- **Purpose**: Partnerships train PR 2 — the §3 majority gate. `jobs_ledger` gains `partner_person_id` (→ people, SET NULL), `partner_confirmed_by` (→ users), `partner_confirmed_at` + partial index. RPCs (both dev-gated in-function, SECURITY DEFINER): `set_job_partner_majority(p_job_id, p_person_id DEFAULT NULL)` — NULL clears all three anchors; `get_partner_job_review_queue(p_partnership_id)` — approved/clocked-out/not-rejected/not-revoked session hours for the partnership's person grouped by job vs total job hours, `{linked:false}` when the person has no account_user_id link. All partner-facing reads and profit-share postings in later PRs key on the flag.
+- **Category**: Partnerships / Jobs
 
 **`20260820130000_partnerships.sql`** _(apply via `supabase db push` after the v2.1880 merge — additive; the new page fail-softs with a "run db push" banner until applied)_
 - **Purpose**: Partnerships train PR 1 ([`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md)) — `partnerships` (one deal row per partner person: `person_id` UNIQUE → people, status draft/active/paused/ended, field/estimating/farm rates, company-first + partner-remainder split percentages, utilities allowance, `modules` jsonb toggles with `auto_notice`/`cap`/`w2` defaulting false) and append-only `partnership_events` (created / config_changed / status_changed with changed-keys patch). Both dev-only RLS (`is_dev()`), narrow grants, both read-only sweeps. Dollars are numeric(10,2) per house convention. Partner-facing surfaces never read these tables directly — later PRs' SECURITY DEFINER RPCs consume config server-side.

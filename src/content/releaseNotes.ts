@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1881',
+    date: '2026-08-20',
+    title: 'Partnerships: job check-offs decide what partners see',
+    kind: 'feature',
+    highlights: [
+      'New Job review tab on the Partnerships page: every job a partner clocked hours on queues up with their share of the hours as a suggestion.',
+      'The toggle is the real "majority of the work" call — recorded with who flipped it and when. Until a job is checked off, the partner sees nothing about it.',
+      'Turning a job off hides it again but never touches money already posted.',
+    ],
+  },
+  {
     version: 'v2.1880',
     date: '2026-08-20',
     title: 'Partnerships page (dev): partner deals as settings',
