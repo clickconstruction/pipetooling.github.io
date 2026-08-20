@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bridgeChipFor, goalsStripRows } from './roadmapBridge'
+import { blockingStageTitles, bridgeChipFor, goalsStripRows, lockedStageHint, stageBadgeFor } from './roadmapBridge'
 
 describe('bridgeChipFor', () => {
   it('no bridge -> no chip', () => {
@@ -47,5 +47,56 @@ describe('goalsStripRows', () => {
     expect(goalsStripRows({ roadmaps: [{ id: 'rX', title: 'Empty' }], groups: [], tasks: [], edges: [] })).toEqual([])
     const row = goalsStripRows({ roadmaps, groups, tasks, edges })[0]!
     expect(row.currentStages).not.toContain('Frame walls')
+  })
+})
+
+describe('stageBadgeFor', () => {
+  it('empty stage -> no badge', () => {
+    expect(stageBadgeFor([])).toBeNull()
+  })
+  it('partial -> progress with counts', () => {
+    expect(stageBadgeFor([{ completedAt: 'x' }, { completedAt: null }, { completedAt: null }])).toEqual({
+      kind: 'progress',
+      done: 1,
+      total: 3,
+    })
+  })
+  it('all complete -> done', () => {
+    expect(stageBadgeFor([{ completedAt: 'x' }, { completedAt: 'y' }])).toEqual({ kind: 'done' })
+  })
+})
+
+describe('blockingStageTitles / lockedStageHint', () => {
+  const edges = [
+    { fromGroupId: 'g1', toGroupId: 'g3' },
+    { fromGroupId: 'g2', toGroupId: 'g3' },
+  ]
+  const titleByGroupId = new Map([
+    ['g1', 'Pour slab'],
+    ['g2', 'Order trusses'],
+  ])
+  it('only incomplete predecessors block', () => {
+    expect(
+      blockingStageTitles({ groupId: 'g3', edges, completeGroupIds: new Set(['g1']), titleByGroupId }),
+    ).toEqual(['Order trusses'])
+  })
+  it('unknown predecessor falls back to a generic label', () => {
+    expect(
+      blockingStageTitles({
+        groupId: 'g3',
+        edges: [{ fromGroupId: 'gX', toGroupId: 'g3' }],
+        completeGroupIds: new Set(),
+        titleByGroupId,
+      }),
+    ).toEqual(['a previous stage'])
+  })
+  it('hint wording: assigned tasks get the auto-assign phrasing', () => {
+    expect(lockedStageHint(['Pour slab'], true)).toBe('Tasks auto-assign to lists when “Pour slab” is done')
+    expect(lockedStageHint(['Pour slab'], false)).toBe('Unlocks when “Pour slab” is done')
+  })
+  it('hint joins two blockers and truncates three or more', () => {
+    expect(lockedStageHint(['A', 'B'], false)).toBe('Unlocks when “A” and “B” are done')
+    expect(lockedStageHint(['A', 'B', 'C'], false)).toBe('Unlocks when “A” + 2 more are done')
+    expect(lockedStageHint([], false)).toBeNull()
   })
 })
