@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1862',
+    date: '2026-08-19',
+    title: 'History grid: easier to read, harder to break',
+    kind: 'feature',
+    highlights: [
+      'On desktop, the History grid keeps task names pinned while you scroll through dates, and the squares are twice as big with ✓ and ✗ marks — no more decoding colors.',
+      'Each row now ends with its completion rate, months are visibly divided, and the legend is real chips instead of a sentence.',
+      'Edit mode asks before changing a day.',
+    ],
+  },
+  {
     version: 'v2.1861',
     date: '2026-08-19',
     title: 'Ready to Bill notifications: legend over the checkboxes',

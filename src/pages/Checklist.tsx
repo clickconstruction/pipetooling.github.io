@@ -996,6 +996,9 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   async function handleCycleStatus(itemId: string, date: string) {
     if (!editMode || cyclingCell || !selectedUserId) return
+    // Edit mode rewrites prod rows on a single click — make it a two-step.
+    const proceed = window.confirm(`Change ${date} for this item? (cycles completed → missed → not due)`)
+    if (!proceed) return
     const key = `${itemId}-${date}`
     const rawStatus = byItem.get(itemId)?.dates[date]
     const status = deletedCells.has(key) ? undefined : rawStatus
@@ -1101,8 +1104,11 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           </label>
         )}
         {!isNarrow && (
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Green = completed by you, Yellow = completed by someone else, Red = incomplete, White = not due
+          <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: '#22c55e', color: 'white' }}>✓ You</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>✓ Someone else</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>✗ Missed</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, border: '1px dashed var(--border-400)', color: 'var(--text-muted)' }}>Not due</span>
           </span>
         )}
       </div>
@@ -1119,54 +1125,84 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
         <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Item</th>
-              {sortedDates.slice(-60).map((d) => {
+              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }}>Item</th>
+              {sortedDates.slice(-60).map((d, i, arr) => {
                 const parts = d.slice(5).split('-')
                 const month = parts[0] ?? ''
                 const day = parts[1] ?? ''
+                const monthBoundary = i > 0 && (arr[i - 1] ?? '').slice(5, 7) !== d.slice(5, 7)
                 return (
-                  <th key={d} style={{ padding: '0.15rem', borderBottom: '1px solid var(--border)', minWidth: 12, maxWidth: 12, fontSize: '0.625rem', lineHeight: 1.1 }} title={d}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}><span>{month}</span><span>{day}</span></div>
+                  <th key={d} style={{ padding: '0.15rem', borderBottom: '1px solid var(--border)', minWidth: 26, fontSize: '0.6875rem', lineHeight: 1.15, ...(monthBoundary ? { borderLeft: '2px solid var(--border-400)' } : {}) }} title={d}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}><span style={{ color: 'var(--text-muted)' }}>{month}</span><span>{day}</span></div>
                   </th>
                 )
               })}
+              <th style={{ padding: '0.15rem 0.4rem', borderBottom: '1px solid var(--border)', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>rate</th>
             </tr>
           </thead>
           <tbody>
-            {Array.from(byItem.entries()).map(([itemId, { title, links, dates }]) => (
+            {Array.from(byItem.entries()).map(([itemId, { title, links, dates }]) => {
+              const visibleDates = sortedDates.slice(-60)
+              let due = 0
+              let done = 0
+              for (const d of visibleDates) {
+                const st = deletedCells.has(`${itemId}-${d}`) ? undefined : dates[d]
+                if (st === 'completed' || st === 'completed_by_other') { due++; done++ }
+                else if (st === 'incomplete') due++
+              }
+              return (
               <tr key={itemId}>
-                <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
+                <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }} title={title}>
                   <ChecklistTitleWithLinks title={title} links={links} />
                 </td>
-                {sortedDates.slice(-60).map((d) => {
+                {visibleDates.map((d, i, arr) => {
                   const rawStatus = dates[d]
                   const status = deletedCells.has(`${itemId}-${d}`) ? undefined : rawStatus
-                  const bg = status === 'completed' ? '#22c55e' : status === 'completed_by_other' ? '#eab308' : status === 'incomplete' ? '#ef4444' : '#f9fafb'
                   const cellKey = `${itemId}-${d}`
                   const isCycling = cyclingCell === cellKey
                   const isClickable = editMode && !isCycling
+                  const monthBoundary = i > 0 && (arr[i - 1] ?? '').slice(5, 7) !== d.slice(5, 7)
+                  const cellStyle = {
+                    width: 24,
+                    height: 24,
+                    borderRadius: 5,
+                    display: 'flex' as const,
+                    alignItems: 'center' as const,
+                    justifyContent: 'center' as const,
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    boxSizing: 'border-box' as const,
+                    cursor: isClickable ? 'pointer' : undefined,
+                    opacity: isCycling ? 0.6 : 1,
+                    ...(status === 'completed'
+                      ? { background: '#22c55e', color: 'white' }
+                      : status === 'completed_by_other'
+                        ? { background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }
+                        : status === 'incomplete'
+                          ? { background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }
+                          : { border: '1.5px dashed var(--border-400)' }),
+                  }
                   return (
-                    <td key={d} style={{ padding: 2, borderBottom: '1px solid var(--border)' }}>
+                    <td key={d} style={{ padding: 2, borderBottom: '1px solid var(--border)', ...(monthBoundary ? { borderLeft: '2px solid var(--border-400)' } : {}) }}>
                       <div
                         role={isClickable ? 'button' : undefined}
                         tabIndex={isClickable ? 0 : undefined}
                         onClick={isClickable ? () => handleCycleStatus(itemId, d) : undefined}
                         onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCycleStatus(itemId, d) } } : undefined}
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: 2,
-                          backgroundColor: isCycling ? '#d1d5db' : bg,
-                          cursor: isClickable ? 'pointer' : undefined,
-                          opacity: isCycling ? 0.7 : 1,
-                        }}
+                        style={cellStyle}
                         title={`${d}: ${status || 'not due'}${editMode ? ' (click to cycle)' : ''}`}
-                      />
+                      >
+                        {status === 'completed' || status === 'completed_by_other' ? '✓' : status === 'incomplete' ? '✗' : ''}
+                      </div>
                     </td>
                   )
                 })}
+                <td style={{ padding: '0.15rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: due > 0 && done === due ? 'var(--text-green-800)' : 'var(--text-700)' }}>
+                  {due > 0 ? `${Math.round((done / due) * 100)}%` : '—'}
+                </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
