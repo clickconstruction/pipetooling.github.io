@@ -1695,7 +1695,7 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 **Verify JWT**: `false` in `supabase/config.toml` (in-function JWT/role or cron-secret validation).
 
-**Cron**: [`20260803100000_billed_report_email.sql`](../supabase/migrations/20260803100000_billed_report_email.sql) registers pg_cron **`billed-report-email`** (`*/5 * * * *`) with vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+**Cron**: [`20260803100000_billed_report_email.sql`](../supabase/migrations/20260803100000_billed_report_email.sql) registers pg_cron **`billed-report-email`** with vault **`PROJECT_URL`** + **`CRON_SECRET`**; [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) moved it to **`1-56/5 * * * *`** (v2.1919 stagger — each email dispatcher gets its own minute lane).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`
 
@@ -1727,7 +1727,7 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 **Verify JWT**: `false` in `supabase/config.toml` (in-function JWT/role or cron-secret validation).
 
-**Cron**: [`20260722260000_paid_job_email.sql`](../supabase/migrations/20260722260000_paid_job_email.sql) registers pg_cron job **`paid-job-email`** (`*/15 * * * *`) with vault **`PROJECT_URL`** + **`CRON_SECRET`** (same pattern as `recurring-job-report-dispatch`).
+**Cron**: [`20260722260000_paid_job_email.sql`](../supabase/migrations/20260722260000_paid_job_email.sql) registers pg_cron job **`paid-job-email`** with vault **`PROJECT_URL`** + **`CRON_SECRET`** (same pattern as `recurring-job-report-dispatch`); [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) moved it to **`7-52/15 * * * *`** (v2.1919 stagger).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (ready_to_bill push)
 
@@ -2220,6 +2220,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Deploy**: `supabase functions deploy gc-statement-email-dispatch --no-verify-jwt`. Requires migrations `20260806232759` (payload RPC) + `20260806233713` (requests table + pg_cron registration).
 
+**Cron**: pg_cron **`gc-statement-email-dispatch`** at **`2-57/5 * * * *`** since [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) (was `*/5`; v2.1919 stagger), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
 ---
 
 ### weekly-movement-email-dispatch
@@ -2232,6 +2234,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Deploy**: `supabase functions deploy weekly-movement-email-dispatch --no-verify-jwt`. Requires migration `20260807024222` (payload RPC + requests table + pg_cron).
 
+**Cron**: pg_cron **`weekly-movement-email-dispatch`** at **`3-58/5 * * * *`** since [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) (was `*/5`; v2.1919 stagger), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
 ---
 
 ### weekly-money-email-dispatch
@@ -2243,6 +2247,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Authentication**: `X-Cron-Secret` = `CRON_SECRET`; no user-JWT modes (scheduling/cancelling are direct RLS-gated writes).
 
 **Deploy**: `supabase functions deploy weekly-money-email-dispatch --no-verify-jwt`. Requires migrations `20260807053000`/`20260807060000` (payload RPC) and `20260807070000` (requests table + pg_cron).
+
+**Cron**: pg_cron **`weekly-money-email-dispatch`** at **`4-59/5 * * * *`** since [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) (was `*/5`; v2.1919 stagger), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
 
 ---
 
