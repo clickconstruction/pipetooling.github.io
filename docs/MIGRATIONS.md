@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "245 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "246 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820170000_partner_dashboard_rpcs.sql`** _(apply via `supabase db push` after the v2.1883 merge — additive; the dashboard card renders nothing until applied)_
+- **Purpose**: Partnerships train PR 4 — partner-scoped reads. `my_partner_partnership_id()` helper (caller → draft/active partnership via people.account_user_id); `get_my_partner_summary()` (balance, current-week so-far at deal rates, pending sessions/offsets, latest statement + acks); `get_my_partner_ledger(p_weeks)` (recent statement weeks: per-rate labor sums, additions, deductions, payments, acks); `acknowledge_partner_statement(stub)` (§9b partner co-sign, ownership-checked, idempotent). All SECURITY DEFINER; partner reads via RPC per the v2.1225 recursion lesson.
+- **Category**: Partnerships / Payroll
 
 **`20260820160000_partner_statements.sql`** _(apply via `supabase db push` after the v2.1882 merge — additive; the Statements/Ledger tabs fail-soft until applied)_
 - **Purpose**: Partnerships train PR 3 — the statement spine. person_offsets: +types `profit_share`/`utility_overage`, +`job_id`, +`reversal_of_offset_id`, partial-unique live-profit-share-per-job+person index. New `statement_acknowledgments` (stub × party unique, payroll-access RLS, both read-only sweeps). `partnerships.farm_job_ledger_id` (§1c farm bucket). `partnership_events` CHECK widened with `statement_generated`. RPC `generate_partner_statement(p_partnership_id, p_week_start, p_override)`: dev-gated; approved-session hours bucketed field/office/farm priced at current partnership rates into pay_stubs/pay_stub_days (`rate_at_time` stamped), pending offsets attached (additions vs deductions-up-to-gross), company ack stamped, event logged; guards on unapproved sessions + unreviewed jobs unless override; idempotent per person+week.

@@ -13323,6 +13323,10 @@ export type Database = {
         Args: { p_invoice_ids: string[]; p_mercury_transaction_id: string }
         Returns: undefined
       }
+      acknowledge_partner_statement: {
+        Args: { p_pay_stub_id: string }
+        Returns: Json
+      }
       add_collect_payment_fixture_from_job_book: {
         Args: { p_job_book_entry_id: string; p_job_id: string }
         Returns: Json
@@ -13916,6 +13920,11 @@ export type Database = {
         }[]
       }
       get_my_email_schedule: { Args: never; Returns: Json }
+      get_my_partner_ledger: {
+        Args: { p_weeks?: number }
+        Returns: Json
+      }
+      get_my_partner_summary: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_partner_job_review_queue: {
         Args: { p_partnership_id: string }
@@ -14807,6 +14816,7 @@ export type Database = {
         }
         Returns: string
       }
+      my_partner_partnership_id: { Args: never; Returns: string }
       mark_invoice_paid: {
         Args: {
           p_amount?: number

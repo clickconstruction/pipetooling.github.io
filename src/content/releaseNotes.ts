@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1883',
+    date: '2026-08-20',
+    title: 'Partners: your ledger, week by week',
+    kind: 'feature',
+    highlights: [
+      'Partners now see a "Your ledger" card on the Dashboard: balance so far this week, and \u2039 \u203a arrows to walk back through closed weeks \u2014 labor at your rates, profit shares, back-charges, and payouts, with every week\u2019s opening and closing balance.',
+      'Acknowledge each weekly statement right on the card, and print any closed week.',
+      'Hours still pending office approval show as no-dollar lines so the week never looks silently short.',
+    ],
+  },
+  {
     version: 'v2.1882',
     date: '2026-08-20',
     title: 'Partnerships: weekly statements arrive',
