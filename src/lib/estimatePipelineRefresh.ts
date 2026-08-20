@@ -110,3 +110,38 @@ export function readinessDots(r: EstimateDraftStepsResult): { done: number; todo
     label: ready ? 'ready to send' : r.sendGate.sentence.replace(/^\d+ steps? left: /, (m) => m.replace('steps left', 'left').replace('step left', 'left')),
   }
 }
+
+export type SentWaitLevel = 'ok' | 'warn' | 'overdue'
+export type SentWaitInfo = { level: SentWaitLevel; label: string; days: number }
+
+const DAY_MS = 86_400_000
+/** Amber after a week of silence. */
+const SENT_WARN_DAYS = 7
+
+/**
+ * Waiting-state for a Sent row (prototype: the section is a follow-up queue).
+ * Overdue beats age: a CO whose "Response requested by" date has passed goes
+ * red regardless of how recently it was sent. `nowMs` injected for tests.
+ */
+export function computeSentWait(
+  row: Pick<EstimatePipelineRowLike, 'change_order_fields'> & { sent_at?: string | null },
+  nowMs: number,
+): SentWaitInfo | null {
+  const sentMs = row.sent_at ? Date.parse(row.sent_at) : NaN
+  if (!Number.isFinite(sentMs)) return null
+  const days = Math.max(0, Math.floor((nowMs - sentMs) / DAY_MS))
+
+  const rby = parseEstimateChangeOrderFields(row.change_order_fields).response_requested_by.trim()
+  if (rby) {
+    const dueEndMs = Date.parse(rby) + DAY_MS
+    if (Number.isFinite(dueEndMs) && nowMs >= dueEndMs) {
+      const overdueDays = Math.max(1, Math.floor((nowMs - dueEndMs) / DAY_MS) + 1)
+      const [, m, d] = rby.split('-')
+      const dueLabel = m && d ? `${Number(m)}/${Number(d)}` : rby
+      return { level: 'overdue', days, label: `response requested by ${dueLabel} — ${overdueDays}d overdue` }
+    }
+  }
+
+  if (days >= SENT_WARN_DAYS) return { level: 'warn', days, label: `sent ${days}d ago — nudge?` }
+  return { level: 'ok', days, label: days === 0 ? 'sent today' : `sent ${days}d ago` }
+}
