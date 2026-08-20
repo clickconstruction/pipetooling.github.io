@@ -216,15 +216,16 @@ export default function BilledAgingChartModal({
                 </text>
               ))}
 
-            {/* bubble size legend */}
-            <g transform={`translate(${X0 + 8}, ${Y_TOP + 14})`}>
-              <text x={0} y={4} fontSize={10} fill="var(--text-muted)">our cost:</text>
-              <circle cx={62} cy={0} r={billedAgingRadius(500)} fill="none" stroke="var(--text-muted)" />
-              <text x={72} y={4} fontSize={10} fill="var(--text-muted)">$500</text>
-              <circle cx={122} cy={0} r={billedAgingRadius(5000)} fill="none" stroke="var(--text-muted)" />
-              <text x={142} y={4} fontSize={10} fill="var(--text-muted)">$5k</text>
-              <circle cx={196} cy={0} r={billedAgingRadius(20000)} fill="none" stroke="var(--text-muted)" />
-              <text x={230} y={4} fontSize={10} fill="var(--text-muted)">$20k</text>
+            {/* bubble size legend — vertical, far right middle (the 90+ zone is
+                the part of the plot you WANT empty, so it borrows that air). */}
+            <g transform={`translate(${X1 - 40}, ${(Y_TOP + Y_BOTTOM) / 2 - 80})`}>
+              <text x={0} y={0} fontSize={10} fill="var(--text-muted)" textAnchor="middle">our cost</text>
+              <circle cx={0} cy={20} r={billedAgingRadius(500)} fill="none" stroke="var(--text-muted)" />
+              <text x={0} y={38} fontSize={10} fill="var(--text-muted)" textAnchor="middle">$500</text>
+              <circle cx={0} cy={62} r={billedAgingRadius(5000)} fill="none" stroke="var(--text-muted)" />
+              <text x={0} y={90} fontSize={10} fill="var(--text-muted)" textAnchor="middle">$5k</text>
+              <circle cx={0} cy={128} r={billedAgingRadius(20000)} fill="none" stroke="var(--text-muted)" />
+              <text x={0} y={170} fontSize={10} fill="var(--text-muted)" textAnchor="middle">$20k</text>
             </g>
           </svg>
 
