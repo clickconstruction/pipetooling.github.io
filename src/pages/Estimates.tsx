@@ -1193,10 +1193,10 @@ function EstimateListTable({
                         type="button"
                         onClick={() => setCreateJobFromListRow(r)}
                         style={estimateListCreateJobButtonStyle}
-                        title="Create a linked job from this estimate"
-                        aria-label="Create job from estimate"
+                        title={isChangeOrderDocKind(r.doc_kind) ? 'Apply this change order to a job' : 'Create a linked job from this estimate'}
+                        aria-label={isChangeOrderDocKind(r.doc_kind) ? 'Apply change order to job' : 'Create job from estimate'}
                       >
-                        Create job
+                        {isChangeOrderDocKind(r.doc_kind) ? 'Apply to job' : 'Create job'}
                       </button>
                     )}
                   </div>
@@ -1400,10 +1400,10 @@ function EstimateListCards({
               type="button"
               onClick={() => setCreateJobFromListRow(r)}
               style={estimateListCreateJobButtonStyle}
-              title="Create a linked job from this estimate"
-              aria-label="Create job from estimate"
+              title={isChangeOrderDocKind(r.doc_kind) ? 'Apply this change order to a job' : 'Create a linked job from this estimate'}
+              aria-label={isChangeOrderDocKind(r.doc_kind) ? 'Apply change order to job' : 'Create job from estimate'}
             >
-              Create job
+              {isChangeOrderDocKind(r.doc_kind) ? 'Apply to job' : 'Create job'}
             </button>
           )}
         </div>
@@ -5286,7 +5286,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 {!row.job_ledger_id ? (
                   <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'center' }}>
                     <button type="button" onClick={openCreateJobModal} style={estimateDetailCreateJobButtonStyle}>
-                      Create job from estimate
+                      {isCO ? 'Apply change order to job' : 'Create job from estimate'}
                     </button>
                   </div>
                 ) : (

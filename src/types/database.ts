@@ -13158,6 +13158,14 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_estimate_to_job: {
+        Args: {
+          p_estimate_id: string
+          p_fixtures?: Json
+          p_job_ledger_id: string
+        }
+        Returns: string
+      }
       apply_read_only_stmt_blocks: { Args: never; Returns: number }
       apply_read_only_write_blocks: { Args: never; Returns: number }
       approve_clock_sessions: {

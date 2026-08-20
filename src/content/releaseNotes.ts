@@ -65,6 +65,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1852',
+    date: '2026-08-19',
+    title: 'Accepted change orders land on the job',
+    kind: 'feature',
+    highlights: [
+      'When a change order is signed, "Apply to job" opens a chooser: add it to the job it belongs to, or create a new job.',
+      'Adding to an existing job shows the before → after: which lines join the job\'s Specific Work and how the job total moves by the signed net change — credits subtract.',
+      'The job\'s activity feed gets a note ("Change order #52 applied: +$2,450.00"), and a quiet "Link only" option remains for jobs tracked elsewhere.',
+    ],
+  },
+  {
     version: 'v2.1851',
     date: '2026-08-19',
     title: 'ITB links on bids',

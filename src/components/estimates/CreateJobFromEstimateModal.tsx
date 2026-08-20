@@ -8,9 +8,14 @@ import {
   type EstimateForCreateJob,
 } from '../../lib/createJobFromEstimateSubmit'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
+import {
+  changeOrderNetChangeCents,
+  formatSignedCentsUsd,
+  isChangeOrderDocKind,
+} from '../../lib/estimateChangeOrder'
 import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import { EstimateLineItemsTable } from './EstimateCustomerDocument'
-import type { Tables } from '../../types/database'
+import type { Json, Tables } from '../../types/database'
 import type { JobPayloadCustomerRow } from '../../lib/jobLedgerCustomer'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -103,6 +108,9 @@ export default function CreateJobFromEstimateModal({
   const [linkJobLedgerId, setLinkJobLedgerId] = useState('')
   const [selectedJobPick, setSelectedJobPick] = useState<JobSearchResult | null>(null)
   const [linking, setLinking] = useState(false)
+  // CO money train PR 4: apply an accepted CO's lines + net change to an existing job.
+  const [applying, setApplying] = useState(false)
+  const [selectedJobRevenue, setSelectedJobRevenue] = useState<number | null>(null)
   const [jobLinkSearchQuery, setJobLinkSearchQuery] = useState('')
   const [jobLinkResults, setJobLinkResults] = useState<JobSearchResult[]>([])
   const linkPrefixMap = useLedgerPrefixMap()
@@ -123,10 +131,13 @@ export default function CreateJobFromEstimateModal({
     setJobAddress(d.jobAddress)
   }, [])
 
+  const isCO = isChangeOrderDocKind(estimate?.doc_kind)
+
   const normalizedLines = useMemo(() => {
     if (!estimate) return []
-    return normalizeEstimateLineItemsFromJson(estimate.line_items_snapshot)
-  }, [estimate])
+    // CO credit lines are negative-price by design (v2.1829) — don't clamp them.
+    return normalizeEstimateLineItemsFromJson(estimate.line_items_snapshot, { allowNegative: isCO })
+  }, [estimate, isCO])
 
   const bidDisplayDollars = useMemo(() => {
     if (!estimate) return 0
@@ -137,6 +148,39 @@ export default function CreateJobFromEstimateModal({
     () => fixturesPayloadForCreateJobFromEstimate(normalizedLines),
     [normalizedLines],
   )
+
+  /** Signed net the apply moves the job by — mirrors the RPC (no lines → estimate total). */
+  const applyNetCents = useMemo(() => {
+    if (!estimate) return 0
+    if (fixtureRowsForSubmit.length === 0) return estimate.total_cents ?? 0
+    return changeOrderNetChangeCents(normalizedLines)
+  }, [estimate, fixtureRowsForSubmit.length, normalizedLines])
+
+  // Before→after preview needs the selected job's current revenue.
+  useEffect(() => {
+    let cancelled = false
+    const jid = linkJobLedgerId.trim()
+    if (!open || !isCO || !jid) {
+      setSelectedJobRevenue(null)
+      return () => {
+        cancelled = true
+      }
+    }
+    void (async () => {
+      try {
+        const row = (await withSupabaseRetry(
+          async () => await supabase.from('jobs_ledger').select('revenue').eq('id', jid).maybeSingle(),
+          'load job revenue for apply preview',
+        )) as Pick<Tables<'jobs_ledger'>, 'revenue'> | null
+        if (!cancelled) setSelectedJobRevenue(row?.revenue != null ? Number(row.revenue) : null)
+      } catch {
+        if (!cancelled) setSelectedJobRevenue(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, isCO, linkJobLedgerId])
 
   useEffect(() => {
     if (!open || !estimate) return
@@ -315,6 +359,38 @@ export default function CreateJobFromEstimateModal({
     }
   }
 
+  async function handleApplyToJob() {
+    if (!estimate || applying || linking || submitting || estimate.status !== 'customer_accepted' || estimate.job_ledger_id) return
+    const jid = linkJobLedgerId.trim()
+    if (!jid) {
+      showToast('Search and select a job first.', 'error')
+      return
+    }
+    setApplying(true)
+    try {
+      const jobId = await withSupabaseRetry(
+        async () =>
+          await supabase.rpc('apply_estimate_to_job', {
+            p_estimate_id: estimate.id,
+            p_job_ledger_id: jid,
+            p_fixtures: fixtureRowsForSubmit as unknown as Json,
+          }),
+        'apply estimate to job',
+      )
+      if (!jobId) {
+        showToast('Could not apply to job.', 'error')
+        return
+      }
+      showToast(isCO ? 'Change order applied to job.' : 'Estimate applied to job.', 'success')
+      onClose()
+      onSuccess(jid)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not apply to job'), 'error')
+    } finally {
+      setApplying(false)
+    }
+  }
+
   async function handleSaveLink() {
     if (!estimate || linking || submitting || estimate.status !== 'customer_accepted' || estimate.job_ledger_id) return
     const jid = linkJobLedgerId.trim()
@@ -345,10 +421,190 @@ export default function CreateJobFromEstimateModal({
 
   if (!open || !estimate) return null
 
-  const busy = submitting || linking || customersLoading || fillFromCustomerLoading
+  const busy = submitting || linking || applying || customersLoading || fillFromCustomerLoading
   const showLinkSection = !estimate.job_ledger_id
-  const linkFieldsBusy = submitting || linking
+  const linkFieldsBusy = submitting || linking || applying
   const hasLinkedCustomer = (customerIdForPayload ?? estimate.customer_id) != null
+
+  const linkSectionNode = showLinkSection ? (
+    <>
+      {!isCO ? (
+        <p
+          aria-hidden="true"
+          style={{
+            margin: '0.75rem 0',
+            fontSize: '0.85rem',
+            color: 'var(--text-muted)',
+            textAlign: 'center',
+          }}
+        >
+          <strong style={{ color: 'var(--text-strong)' }}>or</strong>
+        </p>
+      ) : null}
+      <label htmlFor="create-job-from-estimate-link-search" style={{ ...labelStyle, marginTop: '0.25rem' }}>
+        {isCO ? 'Add to an existing job' : 'Link existing job'}
+      </label>
+      <input
+        id="create-job-from-estimate-link-search"
+        type="search"
+        value={jobLinkSearchQuery}
+        onChange={(e) => setJobLinkSearchQuery(e.target.value)}
+        placeholder="HCP, name, or address…"
+        disabled={linkFieldsBusy}
+        style={{ ...textInputStyle(linkFieldsBusy), marginBottom: '0.5rem' }}
+        autoComplete="off"
+      />
+      {(() => {
+        const showJobLinkListBox =
+          jobLinkSearchLoading ||
+          jobLinkResults.length > 0 ||
+          (jobLinkSearchQuery.trim() !== '' && !jobLinkSearchLoading)
+
+        if (!showJobLinkListBox) return null
+
+        return (
+          <div
+            role="list"
+            aria-label="Job search results"
+            style={{
+              maxHeight: 220,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              borderTop: '1px solid var(--border)',
+              borderLeft: '1px solid var(--border)',
+              borderRight: '1px solid var(--border)',
+              borderRadius: '6px 6px 0 0',
+              marginBottom: '0.75rem',
+            }}
+          >
+            {jobLinkSearchLoading ? (
+              <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Searching…</p>
+            ) : jobLinkResults.length === 0 && jobLinkSearchQuery.trim() ? (
+              <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs found.</p>
+            ) : (
+              jobLinkResults.map((row, index) => {
+                const isSelected = row.id === linkJobLedgerId.trim()
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    role="listitem"
+                    onClick={() => {
+                      setLinkJobLedgerId(row.id)
+                      setSelectedJobPick(row)
+                    }}
+                    disabled={linkFieldsBusy}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.5rem 0.75rem',
+                      border: 'none',
+                      borderTop: index === 0 ? 'none' : '1px solid var(--border)',
+                      background: isSelected ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
+                      opacity: linkFieldsBusy ? 0.65 : 1,
+                      font: 'inherit',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <UnifiedSearchResultRow
+                      result={{ source: 'job', ...row }}
+                      prefixMap={linkPrefixMap}
+                      jobEvidence={linkJobEvidence.get(row.id)}
+                      evidenceMode={linkEvidenceMode}
+                    />
+                  </button>
+                )
+              })
+            )}
+          </div>
+        )
+      })()}
+      {selectedJobPick ? (
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-green-800)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+          Selected:{' '}
+          <UnifiedSearchSelectionLabel result={{ source: 'job', ...selectedJobPick }} prefixMap={linkPrefixMap} />
+        </p>
+      ) : null}
+      {isCO && selectedJobPick ? (
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.55rem',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            background: 'var(--bg-amber-tint)',
+            borderRadius: 6,
+            padding: '0.5rem 0.7rem',
+            margin: '0 0 0.75rem',
+            fontSize: '0.85rem',
+          }}
+        >
+          <span>
+            {fixtureRowsForSubmit.length > 0
+              ? `${fixtureRowsForSubmit.length} line${fixtureRowsForSubmit.length === 1 ? '' : 's'} append to Specific Work`
+              : 'No line items — the job total moves by the accepted total'}
+          </span>
+          <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+            {selectedJobRevenue != null ? (
+              <>
+                ${formatCurrency(selectedJobRevenue)} →{' '}
+                <strong>${formatCurrency(selectedJobRevenue + applyNetCents / 100)}</strong>{' '}
+              </>
+            ) : null}
+            <strong style={{ color: applyNetCents < 0 ? 'var(--text-red-700)' : 'var(--text-green-600)' }}>
+              ({formatSignedCentsUsd(applyNetCents)})
+            </strong>
+          </span>
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {isCO ? (
+          <>
+            <button
+              type="button"
+              onClick={() => void handleSaveLink()}
+              disabled={linkFieldsBusy || !linkJobLedgerId.trim()}
+              title="Set the link only — the job's Specific Work and total stay unchanged"
+              style={{
+                marginRight: 'auto',
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                color: 'var(--text-muted)',
+                cursor: linkFieldsBusy || !linkJobLedgerId.trim() ? 'not-allowed' : 'pointer',
+                font: 'inherit',
+                fontSize: '0.8rem',
+                textDecoration: 'underline',
+                textUnderlineOffset: '2px',
+              }}
+            >
+              {linking ? 'Linking…' : 'Link only (no cost change)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleApplyToJob()}
+              disabled={linkFieldsBusy || !linkJobLedgerId.trim()}
+              style={primaryButtonStyle(linkFieldsBusy || !linkJobLedgerId.trim())}
+            >
+              {applying ? 'Applying…' : 'Apply to job'}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleSaveLink()}
+            disabled={linkFieldsBusy || !linkJobLedgerId.trim()}
+            style={primaryButtonStyle(linkFieldsBusy || !linkJobLedgerId.trim())}
+          >
+            {linking ? 'Saving…' : 'Save link'}
+          </button>
+        )}
+      </div>
+    </>
+  ) : null
 
   return (
     <div
@@ -411,7 +667,7 @@ export default function CreateJobFromEstimateModal({
               lineHeight: 1.3,
             }}
           >
-            Create job from estimate
+            {isCO ? `Apply change order #${estimate.estimate_number}` : 'Create job from estimate'}
           </h2>
           <button
             type="button"
@@ -423,8 +679,32 @@ export default function CreateJobFromEstimateModal({
           </button>
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-          Create a new job (HCP # required), or link an existing Jobs row using the search below.
+          {isCO
+            ? "Add this change order to the job it belongs to — its lines join the job's Specific Work and the job total moves by the net change — or create a new job."
+            : 'Create a new job (HCP # required), or link an existing Jobs row using the search below.'}
         </p>
+        {isCO ? (
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ ...labelStyle, marginBottom: '0.35rem' }}>Impact on cost</div>
+            <EstimateLineItemsTable lines={normalizedLines} />
+            <p style={{ margin: '0.4rem 0 0', fontWeight: 600, textAlign: 'right', fontSize: '0.9rem' }}>
+              Net change to contract: {formatSignedCentsUsd(applyNetCents)}
+            </p>
+          </div>
+        ) : null}
+        {isCO ? (
+          <>
+            {linkSectionNode}
+            {showLinkSection ? (
+              <p
+                aria-hidden="true"
+                style={{ margin: '0.75rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}
+              >
+                <strong style={{ color: 'var(--text-strong)' }}>or create a new job</strong>
+              </p>
+            ) : null}
+          </>
+        ) : null}
         {hasLinkedCustomer ? (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
             <button
@@ -486,10 +766,12 @@ export default function CreateJobFromEstimateModal({
           disabled={busy}
           style={{ ...textInputStyle(busy), marginBottom: '0.75rem' }}
         />
+        {!isCO ? (
         <div style={{ marginBottom: '0.75rem' }}>
           <div style={{ ...labelStyle, marginBottom: '0.35rem' }}>Line items</div>
           <EstimateLineItemsTable lines={normalizedLines} />
         </div>
+        ) : null}
         <div style={{ marginBottom: '0.75rem' }}>
           <span style={labelStyle}>Job Total ($)</span>
           <div
@@ -523,123 +805,7 @@ export default function CreateJobFromEstimateModal({
             {submitting ? 'Creating…' : 'Create job'}
           </button>
         </div>
-        {showLinkSection ? (
-          <>
-            <p
-              aria-hidden="true"
-              style={{
-                margin: '0.75rem 0',
-                fontSize: '0.85rem',
-                color: 'var(--text-muted)',
-                textAlign: 'center',
-              }}
-            >
-              <strong style={{ color: 'var(--text-strong)' }}>or</strong>
-            </p>
-            <label htmlFor="create-job-from-estimate-link-search" style={{ ...labelStyle, marginTop: '0.25rem' }}>
-              Link existing job
-            </label>
-            <input
-              id="create-job-from-estimate-link-search"
-              type="search"
-              value={jobLinkSearchQuery}
-              onChange={(e) => setJobLinkSearchQuery(e.target.value)}
-              placeholder="HCP, name, or address…"
-              disabled={linkFieldsBusy}
-              style={{ ...textInputStyle(linkFieldsBusy), marginBottom: '0.5rem' }}
-              autoComplete="off"
-            />
-            {(() => {
-              const showJobLinkListBox =
-                jobLinkSearchLoading ||
-                jobLinkResults.length > 0 ||
-                (jobLinkSearchQuery.trim() !== '' && !jobLinkSearchLoading)
-
-              if (!showJobLinkListBox) return null
-
-              return (
-                <div
-                  role="list"
-                  aria-label="Job search results"
-                  style={{
-                    maxHeight: 220,
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    borderTop: '1px solid var(--border)',
-                    borderLeft: '1px solid var(--border)',
-                    borderRight: '1px solid var(--border)',
-                    borderRadius: '6px 6px 0 0',
-                    marginBottom: '0.75rem',
-                  }}
-                >
-                  {jobLinkSearchLoading ? (
-                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Searching…</p>
-                  ) : jobLinkResults.length === 0 && jobLinkSearchQuery.trim() ? (
-                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs found.</p>
-                  ) : (
-                    jobLinkResults.map((row, index) => {
-                      const isSelected = row.id === linkJobLedgerId.trim()
-                      return (
-                        <button
-                          key={row.id}
-                          type="button"
-                          role="listitem"
-                          onClick={() => {
-                            setLinkJobLedgerId(row.id)
-                            setSelectedJobPick(row)
-                          }}
-                          disabled={linkFieldsBusy}
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: '0.5rem 0.75rem',
-                            border: 'none',
-                            borderTop: index === 0 ? 'none' : '1px solid var(--border)',
-                            background: isSelected ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                            cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
-                            opacity: linkFieldsBusy ? 0.65 : 1,
-                            font: 'inherit',
-                            fontSize: '0.875rem',
-                            boxSizing: 'border-box',
-                          }}
-                        >
-                          <UnifiedSearchResultRow
-                            result={{ source: 'job', ...row }}
-                            prefixMap={linkPrefixMap}
-                            jobEvidence={linkJobEvidence.get(row.id)}
-                            evidenceMode={linkEvidenceMode}
-                          />
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              )
-            })()}
-            {selectedJobPick ? (
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-green-800)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                Selected:{' '}
-                <UnifiedSearchSelectionLabel result={{ source: 'job', ...selectedJobPick }} prefixMap={linkPrefixMap} />
-              </p>
-            ) : null}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => void handleSaveLink()}
-                disabled={linkFieldsBusy || !linkJobLedgerId.trim()}
-                style={primaryButtonStyle(linkFieldsBusy || !linkJobLedgerId.trim())}
-              >
-                {linking ? 'Saving…' : 'Save link'}
-              </button>
-            </div>
-          </>
-        ) : null}
+        {!isCO ? linkSectionNode : null}
       </div>
     </div>
   )
