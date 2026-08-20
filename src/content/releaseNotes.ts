@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1875',
+    date: '2026-08-19',
+    title: 'Groundwork: roadmap goals feed real checklists',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes, roadmap stages can now hand their tasks to the people assigned — as real checklist tasks with reminders, notes, and sign-off.',
+      'Completing (or reopening) those tasks moves the roadmap automatically.',
+      'Nothing changes on screen yet — the roadmap view and goal chips come next.',
+    ],
+  },
+  {
     version: 'v2.1874',
     date: '2026-08-19',
     title: 'Confirmations look like PipeTooling, not the browser',

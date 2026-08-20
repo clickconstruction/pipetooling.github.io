@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1874)
+last_updated: 2026-08-19 (v2.1875)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1875)
+
+### Roadmap ⇄ checklist bridge — stages feed people's real task lists (2026-08-19)
+Phase R1 (DB-only) of the roadmap integration (design + mockups approved in-session): roadmap group tasks had assignees but assignment was decorative — nothing reached anyone's Today. Migration [`20260820041532_roadmap_checklist_bridge.sql`](../supabase/migrations/20260820041532_roadmap_checklist_bridge.sql): **(1)** `checklist_items.roadmap_group_task_id` (FK → `checklist_tech_tree_group_tasks`, ON DELETE SET NULL so a deleted roadmap task leaves an ordinary item with its history; partial index). **(2)** RPC **`sync_roadmap_to_checklist(p_roadmap_id)`** (SECURITY DEFINER; dev or roadmap editor via existing `can_edit_checklist_tech_tree_structure_for_roadmap`): recomputes group completeness (≥1 task, none incomplete — mirrors `isGroupComplete`) and unlock state (no incoming edges or all predecessors complete — mirrors `computeUnlockedGroupIds`), then materializes each **assigned, incomplete, unbridged** task in an **unlocked** group as a one-off `show_until_completed` checklist item + today instance + assignees copied from the roadmap task. Idempotent, returns `{created: n}`. **(3)** AFTER UPDATE OF completed_at trigger on `checklist_instances`: bridged instance completes → roadmap task completes (and vice-versa on reopen — a lead's reopen walks the stage back; exception-guarded so sync can never fail a toggle). Types hand-added pending `gen-types:linked`. Phase R2 (canvas status chips + goal chips across Today/Outstanding/Manage/Review) and R3 (Review Goals strip) follow. DB-only — **`supabase db push` after merge**.
 
 ## Latest Updates (v2.1874)
 
