@@ -30,9 +30,19 @@ describe('buildStagesSectionToolsMenu', () => {
       'gc-review',
       'accounts-receivable',
       'billed-share-print',
+      'billed-aging-chart',
       'paid-notifications',
       'paid-in-full-notifications',
     ])
+  })
+
+  it('the billed aging Chart is dev/controller only — hidden for others', () => {
+    for (const authRole of ['dev', 'controller']) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('billed-aging-chart')
+    }
+    for (const authRole of ['master_technician', 'assistant', 'primary', 'superintendent', null]) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('billed-aging-chart')
+    }
   })
 
   it('Ready to Bill notifications is dev/master only — group hidden for others', () => {
@@ -57,9 +67,11 @@ describe('buildStagesSectionToolsMenu', () => {
     }
   })
 
-  it('master_technician matches dev except the dev/controller-only weekly money tool', () => {
+  it('master_technician matches dev except the dev/controller-only tools', () => {
     expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'master_technician' }))).toEqual(
-      keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })).filter((k) => k !== 'weekly-money'),
+      keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })).filter(
+        (k) => k !== 'weekly-money' && k !== 'billed-aging-chart',
+      ),
     )
   })
 
@@ -74,6 +86,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'gc-review',
       'accounts-receivable',
       'billed-share-print',
+      'billed-aging-chart',
     ])
     expect(controllerGroups.some((g) => g.section === 'Paid in Full')).toBe(false)
   })

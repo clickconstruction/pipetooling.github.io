@@ -64,6 +64,18 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1871',
+    date: '2026-08-19',
+    title: 'Billed Awaiting Payment: the aging chart',
+    kind: 'feature',
+    highlights: [
+      'New 📊 Chart button on the Billed section: every open bill as a bubble — right means waiting longer, higher means more money open, bigger means the job cost us more.',
+      'Red dashed bubbles are underwater jobs (our cost already passed the revenue) — waiting on those hurts twice.',
+      'Shaded 30/60/90-day bands match the header chips; hover for the numbers, click a bubble to jump to that bill.',
+      'Devs and controllers only — bubble sizes use wage-derived cost data.',
+    ],
+  },
+  {
     version: 'v2.1870',
     date: '2026-08-19',
     title: 'Customer view: see exactly what they\'ll sign, as you type',
