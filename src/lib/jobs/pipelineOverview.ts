@@ -24,14 +24,20 @@ export type PipelineStoryCard = {
   spark?: number[]
 }
 
-export function buildPipelineMoneyStory(stats: StagesHeaderStats): PipelineStoryCard[] {
+export function buildPipelineMoneyStory(
+  stats: StagesHeaderStats,
+  opts: { includeCollected?: boolean } = {},
+): PipelineStoryCard[] {
+  // Collected is wage-adjacent cash flow — owner call (v2.1916): devs and
+  // master technicians only; everyone else gets the three billing cards.
+  const includeCollected = opts.includeCollected ?? true
   const readyToAsk = stats.capableToBill + stats.readyToBill.total
   const { billed, billedAging: aging, collections } = stats
   const oldSum = aging.sum90
   const midSum = aging.sum30_90
   const freshSum = Math.max(0, billed.total - oldSum - midSum)
   const collectedTotal = stats.collectedByWeek.reduce((s, w) => s + w.total, 0)
-  return [
+  const cards: PipelineStoryCard[] = [
     {
       key: 'ready-to-ask',
       label: 'ready to ask for',
@@ -67,6 +73,7 @@ export function buildPipelineMoneyStory(stats: StagesHeaderStats): PipelineStory
       spark: stats.collectedByWeek.map((w) => w.total),
     },
   ]
+  return includeCollected ? cards : cards.filter((c) => c.key !== 'collected')
 }
 
 export type PipelineMoveKey = 'bill-capable' | 'chase-90' | 'allocate-deposits' | 'fix-dates'
@@ -79,22 +86,14 @@ export type PipelineMove = {
   actionLabel: string
 }
 
-export type PipelineMoneyMoves = {
-  moves: PipelineMove[]
-  /** Σ of the dollar figures named in the moves (capable + 90+ tail). */
-  movesTotal: number
-}
-
 export function buildPipelineMoneyMoves(input: {
   stats: StagesHeaderStats
   arUnallocatedCount: number | null
   canOpenAr: boolean
-}): PipelineMoneyMoves {
+}): PipelineMove[] {
   const { stats, arUnallocatedCount, canOpenAr } = input
   const moves: PipelineMove[] = []
-  let movesTotal = 0
   if (stats.capableToBill > 0) {
-    movesTotal += stats.capableToBill
     moves.push({
       key: 'bill-capable',
       icon: '🧾',
@@ -104,7 +103,6 @@ export function buildPipelineMoneyMoves(input: {
     })
   }
   if (stats.billedAging.count90 > 0) {
-    movesTotal += stats.billedAging.sum90
     moves.push({
       key: 'chase-90',
       icon: '⏰',
@@ -132,5 +130,5 @@ export function buildPipelineMoneyMoves(input: {
       actionLabel: 'Open Billed',
     })
   }
-  return { moves, movesTotal }
+  return moves
 }

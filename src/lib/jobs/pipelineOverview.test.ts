@@ -37,6 +37,11 @@ describe('buildPipelineMoneyStory', () => {
     expect(cards[3]!.spark).toEqual([0, 0, 0, 0, 12000, 30000, 40000, 36000])
   })
 
+  it('includeCollected:false drops only the collected card (non dev/master viewers)', () => {
+    const cards = buildPipelineMoneyStory(stats(), { includeCollected: false })
+    expect(cards.map((c) => c.key)).toEqual(['ready-to-ask', 'waiting-on-customers', 'in-collections'])
+  })
+
   it('no 90+ tail → waiting card is plain, not red', () => {
     const cards = buildPipelineMoneyStory(stats({ billedAging: { count30_90: 2, sum30_90: 500, count90: 0, sum90: 0 } }))
     expect(cards[1]!.tone).toBe('plain')
@@ -51,10 +56,9 @@ describe('buildPipelineMoneyStory', () => {
 })
 
 describe('buildPipelineMoneyMoves', () => {
-  it('emits all four moves when every signal fires, with the dollar sum', () => {
-    const { moves, movesTotal } = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: true })
+  it('emits all four moves when every signal fires', () => {
+    const moves = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: true })
     expect(moves.map((m) => m.key)).toEqual(['bill-capable', 'chase-90', 'allocate-deposits', 'fix-dates'])
-    expect(movesTotal).toBe(71969 + 44000)
     expect(moves[0]!.claim).toBe('Bill the finished work — $71,969')
     expect(moves[1]!.why).toBe('4 bills waiting 90+ days')
     expect(moves[2]!.claim).toBe('Allocate 2 bank deposits')
@@ -62,7 +66,7 @@ describe('buildPipelineMoneyMoves', () => {
   })
 
   it('quiet board → empty queue', () => {
-    const { moves, movesTotal } = buildPipelineMoneyMoves({
+    const moves = buildPipelineMoneyMoves({
       stats: stats({
         capableToBill: 0,
         billedAging: { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 },
@@ -72,16 +76,15 @@ describe('buildPipelineMoneyMoves', () => {
       canOpenAr: true,
     })
     expect(moves).toEqual([])
-    expect(movesTotal).toBe(0)
   })
 
   it('AR move is suppressed for roles that cannot open Accounts Receivable', () => {
-    const { moves } = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: false })
+    const moves = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: false })
     expect(moves.some((m) => m.key === 'allocate-deposits')).toBe(false)
   })
 
   it('singular forms read correctly', () => {
-    const { moves } = buildPipelineMoneyMoves({
+    const moves = buildPipelineMoneyMoves({
       stats: stats({ billedAging: { count30_90: 0, sum30_90: 0, count90: 1, sum90: 500 }, billedNoDate: 1 }),
       arUnallocatedCount: 1,
       canOpenAr: true,
