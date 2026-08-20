@@ -17,6 +17,7 @@ import { PartnershipJobReviewTab } from '../components/partnerships/PartnershipJ
 import { PartnershipStatementsTab } from '../components/partnerships/PartnershipStatementsTab'
 import { PartnershipLedgerTab } from '../components/partnerships/PartnershipLedgerTab'
 import { PartnershipAgreementsTab } from '../components/partnerships/PartnershipAgreementsTab'
+import { PartnershipTimelineTab } from '../components/partnerships/PartnershipTimelineTab'
 
 type PartnershipRow = Database['public']['Tables']['partnerships']['Row']
 type PersonOption = { id: string; name: string; kind: string | null }
@@ -132,7 +133,7 @@ export default function Partnerships() {
   const [rows, setRows] = useState<PartnershipRow[]>([])
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'ledger'>('deal')
+  const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'timeline' | 'ledger'>('deal')
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [draft, setDraft] = useState<PartnershipConfig | null>(null)
@@ -546,6 +547,7 @@ export default function Partnerships() {
                     ['agr', 'Agreements'],
                     ['review', 'Job review'],
                     ['stmts', 'Statements'],
+                    ['timeline', 'Timeline'],
                     ['ledger', 'Ledger'],
                   ] as const
                 ).map(([key, label]) => (
@@ -586,6 +588,8 @@ export default function Partnerships() {
                   personName={selected.display_name || 'the partner'}
                   weeklyStatementOn={draft.modules.weekly_statement}
                 />
+              ) : activeTab === 'timeline' ? (
+                <PartnershipTimelineTab personId={selected.person_id} personName={selected.display_name || 'the partner'} />
               ) : activeTab === 'ledger' ? (
                 <PartnershipLedgerTab personId={selected.person_id} />
               ) : (
