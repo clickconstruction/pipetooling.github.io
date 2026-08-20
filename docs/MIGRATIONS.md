@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 20, 2026
 
+**`20260820041532_roadmap_checklist_bridge.sql`** _(apply via `supabase db push` after the v2.1875 merge — additive; nothing calls the RPC until the v2.1876 client ships)_
+- **Purpose**: Roadmap ⇄ checklist bridge, Phase R1. `checklist_items.roadmap_group_task_id` FK (+partial index); `sync_roadmap_to_checklist(p_roadmap_id)` RPC materializing assigned/incomplete tasks of UNLOCKED tech-tree groups as one-off checklist items + today instances (dev/editor-gated, idempotent); `sync_roadmap_task_from_instance_au` trigger syncing bridged instance completion/reopen back onto `checklist_tech_tree_group_tasks.completed_at`.
+- **Category**: Checklist / roadmap
+
 **`20260820030000_apply_estimate_to_job.sql`** _(apply via `supabase db push` after the v2.1850 merge, BEFORE merging the PR 4 chooser UI that calls it — additive; nothing calls the RPC until then)_
 - **Purpose**: CO money train PR 3 — `apply_estimate_to_job(p_estimate_id, p_job_ledger_id, p_fixtures)`: applies a `customer_accepted` estimate/change order to an EXISTING job. SECURITY DEFINER sibling of `create_job_from_estimate` (same access gates + fixture payload shape): locks estimate + job FOR UPDATE, requires matching `master_user_id`, appends `jobs_ledger_fixtures` rows sequenced after existing Specific Work, moves `jobs_ledger.revenue` by the SIGNED net (credit lines subtract; zero usable rows → the estimate total), links `estimates.job_ledger_id`, and best-effort posts the `"Change order #N applied: +$X — desc"` `jobs_ledger_thread_notes` row. Idempotent — already-linked estimates return their link untouched. Read-only training mode still blocked by the v2.704 statement triggers.
 - **Category**: Estimates / Jobs

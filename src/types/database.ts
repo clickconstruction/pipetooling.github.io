@@ -1616,6 +1616,7 @@ export type Database = {
           repeat_days_after: number | null
           repeat_days_of_week: number[] | null
           repeat_end_date: string | null
+          roadmap_group_task_id: string | null
           repeat_type: string
           show_until_completed: boolean
           start_date: string
@@ -1634,6 +1635,7 @@ export type Database = {
           repeat_days_after?: number | null
           repeat_days_of_week?: number[] | null
           repeat_end_date?: string | null
+          roadmap_group_task_id?: string | null
           repeat_type: string
           show_until_completed?: boolean
           start_date: string
@@ -1652,6 +1654,7 @@ export type Database = {
           repeat_days_after?: number | null
           repeat_days_of_week?: number[] | null
           repeat_end_date?: string | null
+          roadmap_group_task_id?: string | null
           repeat_type?: string
           show_until_completed?: boolean
           start_date?: string
@@ -15076,6 +15079,10 @@ export type Database = {
           p_pricing_source_version_id: string
         }
         Returns: string
+      }
+      sync_roadmap_to_checklist: {
+        Args: { p_roadmap_id: string }
+        Returns: Json
       }
       split_job_ledger_fixtures_to_new_job: {
         Args: {
