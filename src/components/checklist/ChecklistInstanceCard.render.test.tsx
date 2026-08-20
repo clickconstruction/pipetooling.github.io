@@ -58,7 +58,7 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     expect(row.children[1]).toBe(btn)
   })
 
-  it('with comments: split bar shows Notes with the count badge', () => {
+  it('with comments: Notes with count replaces Add note, right half behind the spacer (v2.1864)', () => {
     renderCard({
       events: [
         ev({ event_type: 'comment', created_at: '2026-08-19T10:00:00Z', body: 'first' }),
@@ -67,7 +67,11 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     })
     expect(screen.getByText('💬 Notes')).toBeTruthy()
     expect(screen.getByText('2')).toBeTruthy()
-    expect(screen.getByText(/Add note/)).toBeTruthy()
+    expect(screen.queryByText(/Add note|Add a note/)).toBeNull()
+    const row = screen.getByText('💬 Notes').closest('button')!.parentElement as HTMLElement
+    expect(row.children.length).toBe(2)
+    expect((row.children[0] as HTMLElement).tagName).toBe('SPAN')
+    expect((row.children[0] as HTMLElement).getAttribute('aria-hidden')).toBe('true')
   })
 
   it('Add a note opens the thread with the composer; posting calls back and clears', async () => {

@@ -10,12 +10,12 @@ The **Checklist → Today** tab is your task list for the day. Each task is a ca
 :::example A task card
 {{button:outline|☐}} Install sheet metal across the front of the office
 
-{{button:outline|💬 Notes 2}} {{button:outline|＋ Add note}}
+{{button:outline|💬 Notes 2}}
 :::
 
 ## Completing a task
 
-Tap the checkbox. That's it — no save button. If you want to say something about how it went ("used the scrap ply, looks clean"), tap the big **＋ Add note** button and post it; the note travels with the task.
+Tap the checkbox. That's it — no save button. If you want to say something about how it went ("used the scrap ply, looks clean"), tap **＋ Add a note** and post it; once a task has notes, the button becomes **💬 Notes** — open it to read the thread or add another.
 
 Tapping the checkbox again reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
 
@@ -37,6 +37,10 @@ Fix it up, reply on the thread if useful, and check it off again.
 ## After you complete
 
 Your finished task may show **waiting on review** — that just means the person who assigned it hasn't looked yet. When they sign off it reads **signed off**, and nothing more is needed from you.
+
+## Outstanding: overdue work that still needs doing
+
+Below your Today list you may see a red-framed **Outstanding** section: one-off tasks whose day came and went without getting done. Each row shows how overdue it is ("due Thu, Jul 30 · 20 days ago"). Check it off right there when you knock it out, or tap the row to read its notes first. Daily and weekly tasks never pile up here — only work that's still genuinely waiting.
 
 ## Looking back: the History tab
 

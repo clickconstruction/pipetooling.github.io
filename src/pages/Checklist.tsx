@@ -21,6 +21,8 @@ import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstance
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { sortOutstanding } from '../lib/checklistHistoryLedger'
+import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
 type UserRole =
   | 'dev'
@@ -295,6 +297,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   const toggleCompleteInFlightRef = useRef(new Set<string>())
   /** Oldest-first card history per instance (checklist_instance_events, v2.1842). */
   const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
+  /** Overdue one-offs + show-until-completed items (Outstanding section, v2.1864). */
+  const [outstandingInstances, setOutstandingInstances] = useState<ChecklistInstance[]>([])
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -344,10 +348,14 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       setError(e1.message)
       return
     }
+    // Outstanding (v2.1864): overdue instances whose work is still wanted —
+    // one-off tasks OR show-until-completed items. They render in their own
+    // section below Today's list (they used to be merged invisibly into it,
+    // and one-offs used to vanish entirely).
     const { data: itemsData } = await supabase
       .from('checklist_items')
       .select('id')
-      .eq('show_until_completed', true)
+      .or('show_until_completed.eq.true,repeat_type.eq.once')
     const itemIds = (itemsData ?? []).map((i) => i.id)
     let overdueData: ChecklistInstance[] = []
     if (itemIds.length > 0) {
@@ -358,10 +366,11 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         .is('completed_at', null)
         .lt('scheduled_date', today)
         .in('checklist_item_id', itemIds)
-        .order('scheduled_date', { ascending: true })
+        .order('scheduled_date', { ascending: false })
       overdueData = (data ?? []) as ChecklistInstance[]
     }
-    const merged = [...overdueData, ...(todayData ?? [])] as ChecklistInstance[]
+    setOutstandingInstances(sortOutstanding(overdueData))
+    const merged = [...(todayData ?? [])] as ChecklistInstance[]
     const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
     const orderMap = new Map<string, number>()
     if (mergedItemIds.length > 0) {
@@ -381,7 +390,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       return a.scheduled_date.localeCompare(b.scheduled_date)
     })
     setTodayInstances(merged)
-    void loadCardEvents(merged.map((r) => r.id))
+    void loadCardEvents([...merged.map((r) => r.id), ...overdueData.map((r) => r.id)])
   }
 
   /** Fetch the card history for the visible instances + names for its actors. */
@@ -712,6 +721,20 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
           </ul>
         )}
       </section>
+
+      <ChecklistOutstandingSection
+        instances={outstandingInstances}
+        eventsByInstance={eventsByInstance}
+        nameById={eventActorNameById}
+        currentUserId={authUserId}
+        todayStr={toLocalDateString(new Date())}
+        titleFor={(inst) => {
+          const item = (inst as ChecklistInstance).checklist_items as { title: string; links?: string[] | null } | null
+          return <ChecklistTitleWithLinks title={item?.title ?? 'Untitled'} links={item?.links} />
+        }}
+        onToggleComplete={(inst) => void toggleComplete(inst as ChecklistInstance)}
+        onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
+      />
 
       <section>
         <button
