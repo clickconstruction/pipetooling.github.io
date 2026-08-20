@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { STAGE_LABELS, type TakeoffStage } from '../../lib/bids/bidTakeoffHelpers'
 import type {
   MaterialTemplateWithAssemblyType,
@@ -53,6 +54,7 @@ export function TakeoffBookAdminSection({
   saveBidSelectedTakeoffBookVersion,
   loadBids,
 }: TakeoffBookAdminSectionProps) {
+  const confirmDialog = useConfirmDialog()
   const [takeoffBookSectionOpen, setTakeoffBookSectionOpen] = useState(true)
   const [takeoffBookVersionFormOpen, setTakeoffBookVersionFormOpen] = useState(false)
   const [editingTakeoffBookVersion, setEditingTakeoffBookVersion] = useState<TakeoffBookVersion | null>(null)
@@ -102,7 +104,14 @@ export function TakeoffBookAdminSection({
   }
 
   async function deleteTakeoffBookVersion(v: TakeoffBookVersion) {
-    if (!confirm(`Delete takeoff book "${v.name}"? This will delete all entries in this version.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete takeoff book "${v.name}"? This will delete all entries in this version.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('takeoff_book_versions').delete().eq('id', v.id)
     if (err) setError(err.message)
     else {
@@ -243,7 +252,14 @@ export function TakeoffBookAdminSection({
 
   async function deleteTakeoffBookEntry(entry: TakeoffBookEntryWithItems) {
     const n = entry.items.length
-    if (!confirm(`Delete "${entry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete "${entry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('takeoff_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (takeoffBookEntriesVersionId) await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
@@ -486,7 +502,14 @@ export function TakeoffBookAdminSection({
                           type="button"
                           onClick={async () => {
                             const n = editingTakeoffBookEntry.items?.length ?? 0
-                            if (!confirm(`Delete "${editingTakeoffBookEntry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`)) return
+                            if (
+                              !(await confirmDialog({
+                                message: `Delete "${editingTakeoffBookEntry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`,
+                                confirmLabel: 'Delete',
+                                danger: true,
+                              }))
+                            )
+                              return
                             await deleteTakeoffBookEntry(editingTakeoffBookEntry)
                             closeTakeoffBookEntryForm()
                           }}

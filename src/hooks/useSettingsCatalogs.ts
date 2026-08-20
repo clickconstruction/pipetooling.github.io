@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import {
   classifyOrphanMaterialPrices,
@@ -27,6 +28,7 @@ import type {
  * `setError` is the parent's shared error state (map quirk #4 — preserve).
  */
 export function useSettingsCatalogs({ setError }: { setError: (message: string | null) => void }) {
+  const confirmDialog = useConfirmDialog()
   const { reload: reloadLedgerPrefixMap } = useLedgerDisplayPrefixes()
 
   // Service Types state
@@ -133,7 +135,14 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
 
   async function deleteAllOrphanPrices() {
     if (orphanPrices.length === 0) return
-    if (!confirm('Delete ALL orphaned material prices listed here? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.')) return
+    if (
+      !(await confirmDialog({
+        message: 'Delete ALL orphaned material prices listed here? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.',
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const ids = orphanPrices.map((p) => p.id)
     const { error } = await supabase.from('material_part_prices').delete().in('id', ids)
     if (error) {
@@ -260,7 +269,13 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deleteServiceType(serviceType: ServiceType) {
-    if (!confirm(`Are you sure you want to delete "${serviceType.name}"? This will fail if any items are assigned to this service type.`)) {
+    if (
+      !(await confirmDialog({
+        message: `Are you sure you want to delete "${serviceType.name}"? This will fail if any items are assigned to this service type.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    ) {
       return
     }
     
@@ -480,7 +495,14 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
       setError('No unused book names found. All have at least one takeoff, labor, or price entry.')
       return
     }
-    if (!confirm(`Remove ${unused.length} book name${unused.length === 1 ? '' : 's'} with 0 takeoff, 0 labor, 0 price?\n\n${unused.map(ft => ft.name).join(', ')}`)) return
+    if (
+      !(await confirmDialog({
+        message: `Remove ${unused.length} book name${unused.length === 1 ? '' : 's'} with 0 takeoff, 0 labor, 0 price?\n\n${unused.map(ft => ft.name).join(', ')}`,
+        confirmLabel: 'Remove',
+        danger: true,
+      }))
+    )
+      return
     setRemovingUnusedFixtureTypes(true)
     setError(null)
     for (const ft of unused) {
@@ -496,7 +518,13 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deleteFixtureType(fixtureType: FixtureType) {
-    if (!confirm(`Are you sure you want to delete "${fixtureType.name}"? This will fail if any items are assigned to this book name.`)) {
+    if (
+      !(await confirmDialog({
+        message: `Are you sure you want to delete "${fixtureType.name}"? This will fail if any items are assigned to this book name.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    ) {
       return
     }
     
@@ -605,7 +633,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deleteCountsFixtureGroup(group: CountsFixtureGroup) {
-    if (!confirm(`Delete group "${group.label}" and all its fixtures?`)) return
+    if (!(await confirmDialog({ message: `Delete group "${group.label}" and all its fixtures?`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('counts_fixture_groups').delete().eq('id', group.id)
     if (err) setError(err.message)
     else await loadCountsFixtureGroups()
@@ -670,7 +698,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deleteCountsFixtureItem(item: CountsFixtureGroupItem) {
-    if (!confirm(`Delete "${item.name}"?`)) return
+    if (!(await confirmDialog({ message: `Delete "${item.name}"?`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('counts_fixture_group_items').delete().eq('id', item.id)
     if (err) setError(err.message)
     else await loadCountsFixtureGroups()
@@ -820,7 +848,13 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deletePartType(partType: PartType) {
-    if (!confirm(`Are you sure you want to delete "${partType.name}"? This will fail if any parts are assigned to this material part type.`)) {
+    if (
+      !(await confirmDialog({
+        message: `Are you sure you want to delete "${partType.name}"? This will fail if any parts are assigned to this material part type.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    ) {
       return
     }
     
@@ -851,9 +885,11 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     
     // Confirm with user
     const partTypeNames = unusedPartTypes.map(pt => pt.name).join(', ')
-    const confirmed = confirm(
-      `This will delete ${unusedPartTypes.length} unused material part type(s):\n\n${partTypeNames}\n\nAre you sure?`
-    )
+    const confirmed = await confirmDialog({
+      message: `This will delete ${unusedPartTypes.length} unused material part type(s):\n\n${partTypeNames}\n\nAre you sure?`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
     
     if (!confirmed) return
     
@@ -1036,7 +1072,13 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deleteAssemblyType(assemblyType: AssemblyType) {
-    if (!confirm(`Are you sure you want to delete "${assemblyType.name}"? This will remove the type from any assemblies using it.`)) {
+    if (
+      !(await confirmDialog({
+        message: `Are you sure you want to delete "${assemblyType.name}"? This will remove the type from any assemblies using it.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    ) {
       return
     }
     
@@ -1067,9 +1109,11 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     
     // Confirm with user
     const assemblyTypeNames = unusedAssemblyTypes.map(at => at.name).join(', ')
-    const confirmed = confirm(
-      `This will delete ${unusedAssemblyTypes.length} unused assembly type(s):\n\n${assemblyTypeNames}\n\nAre you sure?`
-    )
+    const confirmed = await confirmDialog({
+      message: `This will delete ${unusedAssemblyTypes.length} unused assembly type(s):\n\n${assemblyTypeNames}\n\nAre you sure?`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
     
     if (!confirmed) return
     

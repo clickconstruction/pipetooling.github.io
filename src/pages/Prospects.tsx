@@ -6,6 +6,7 @@ import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectT
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 
@@ -228,6 +229,7 @@ export default function Prospects() {
   const location = useLocation()
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [searchParams, setSearchParams] = useSearchParams()
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
@@ -1116,7 +1118,14 @@ export default function Prospects() {
   async function handleDeleteProspect() {
     const prospectToEdit = editingProspect ?? currentProspect
     if (!prospectToEdit || saving) return
-    if (!confirm(`Delete prospect "${prospectToEdit.company_name || 'Unknown'}"? This cannot be undone.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete prospect "${prospectToEdit.company_name || 'Unknown'}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setSaving(true)
     const { error } = await supabase.from('prospects').delete().eq('id', prospectToEdit.id)
     if (!error) {
@@ -1303,7 +1312,14 @@ export default function Prospects() {
 
   async function handleDeleteFromList(p: Prospect) {
     if (saving) return
-    if (!confirm(`Delete prospect "${p.company_name || 'Unknown'}"? This cannot be undone.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete prospect "${p.company_name || 'Unknown'}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setSaving(true)
     const { error } = await supabase.from('prospects').delete().eq('id', p.id)
     if (!error) {

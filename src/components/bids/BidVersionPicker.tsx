@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
 
 type BidVersionPickerProps = {
@@ -44,6 +45,7 @@ export function BidVersionPicker({
   reloadVersions,
 }: BidVersionPickerProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const isUnsplit = bidVersions.length === 0
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -180,7 +182,14 @@ export function BidVersionPicker({
       showToast('Can’t delete the only version. Add another first.', 'info')
       return
     }
-    if (!confirm(`Delete version "${v.name}"? Its takeoff and pricing are removed. This can’t be undone.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete version "${v.name}"? Its takeoff and pricing are removed. This can’t be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setBusy(true)
     try {
       const { error } = await supabase.from('bid_versions').delete().eq('id', v.id)

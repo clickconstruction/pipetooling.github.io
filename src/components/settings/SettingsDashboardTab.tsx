@@ -11,6 +11,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import type { Database } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
@@ -317,6 +318,7 @@ export default function SettingsDashboardTab({
   users,
 }: SettingsDashboardTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   // Local copy of the pin order for instant drag feedback; reconciled from `myPins` (which the
   // parent reloads on the pins-changed event after reorderPins persists).
   const [orderedPins, setOrderedPins] = useState<PinnedItem[]>(myPins)
@@ -1043,7 +1045,7 @@ export default function SettingsDashboardTab({
                           <button
                             type="button"
                             onClick={async () => {
-                              if (!confirm('Delete this goal?')) return
+                              if (!(await confirmDialog({ message: 'Delete this goal?', confirmLabel: 'Delete', danger: true }))) return
                               const { error: err } = await supabase.from('user_dashboard_goals').delete().eq('id', row.id)
                               if (err) setError(err.message)
                               else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))

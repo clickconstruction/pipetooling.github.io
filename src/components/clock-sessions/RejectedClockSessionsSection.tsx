@@ -1,4 +1,5 @@
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { restoreRejectedClockSessions } from '../../lib/restoreRejectedClockSessions'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -43,6 +44,7 @@ export function RejectedClockSessionsSection({
   canDeleteRejectedSessions = false,
 }: Props) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
 
   return (
     <ClockSessionsSection
@@ -60,7 +62,13 @@ export function RejectedClockSessionsSection({
           <button
             type="button"
             onClick={async () => {
-              if (!confirm('Return this session to Pending? You can edit and approve it there.')) return
+              if (
+                !(await confirmDialog({
+                  message: 'Return this session to Pending? You can edit and approve it there.',
+                  confirmLabel: 'Return',
+                }))
+              )
+                return
               try {
                 const rows = await restoreRejectedClockSessions([s.id])
                 const row = rows[0]
@@ -102,7 +110,7 @@ export function RejectedClockSessionsSection({
             <button
               type="button"
               onClick={async () => {
-                if (!confirm('Delete this clock session permanently?')) return
+                if (!(await confirmDialog({ message: 'Delete this clock session permanently?', confirmLabel: 'Delete', danger: true }))) return
                 try {
                   await withSupabaseRetry(
                     async () => supabase.from('clock_sessions').delete().eq('id', s.id),

@@ -110,6 +110,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
 import { useActiveAccountsModal } from '../contexts/ActiveAccountsModalContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../components/people/MatchClockSessionsModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
@@ -236,6 +237,7 @@ export default function People() {
   const { showToast } = useToastContext()
   const activeAccountsModal = useActiveAccountsModal()
   const prefixMap = useLedgerPrefixMap()
+  const confirmDialog = useConfirmDialog()
   const narrowViewport = useNarrowViewport640()
   const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
   const hoursGridFirstColW = hoursGridFirstColWidthPx ?? 200
@@ -1065,7 +1067,13 @@ export default function People() {
   }, [canAccessContracts])
 
   async function archivePerson(id: string) {
-    if (!confirm('Archive this person? They will be hidden from the roster but can be restored.')) return
+    if (
+      !(await confirmDialog({
+        message: 'Archive this person? They will be hidden from the roster but can be restored.',
+        confirmLabel: 'Archive',
+      }))
+    )
+      return
     setArchivingId(id)
     setError(null)
     const { error: err } = await supabase.from('people').update({ archived_at: new Date().toISOString() }).eq('id', id)

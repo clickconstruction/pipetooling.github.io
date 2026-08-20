@@ -7,6 +7,7 @@ import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
@@ -87,6 +88,7 @@ export function SupplyHousesTab({
 }: SupplyHousesTabProps) {
   const navigate = useNavigate()
   const { user: authUser, role: authRole } = useAuth()
+  const confirmDialog = useConfirmDialog()
   const myRole = myRoleProp ?? (authRole as UserRole | null) ?? null
 
   const [supplyHousesInternal, setSupplyHousesState] = useState<SupplyHouse[]>(supplyHousesProp ?? [])
@@ -423,7 +425,7 @@ export function SupplyHousesTab({
     const message = hasPrices
       ? 'Delete this supply house? All prices associated with it will also be removed.'
       : 'Delete this supply house?'
-    if (!confirm(message)) return
+    if (!(await confirmDialog({ message, confirmLabel: 'Delete', danger: true }))) return
     setError(null)
     const { error } = await supabase.from('supply_houses').delete().eq('id', supplyHouseId)
     if (error) setError(error.message)
@@ -633,7 +635,7 @@ export function SupplyHousesTab({
   }
 
   async function deleteInvoice(inv: SupplyHouseInvoice) {
-    if (!confirm('Delete this invoice?')) return
+    if (!(await confirmDialog({ message: 'Delete this invoice?', confirmLabel: 'Delete', danger: true }))) return
     const { error } = await supabase.from('supply_house_invoices').delete().eq('id', inv.id)
     if (!error && selectedSupplyHouseForDetail) {
       await loadSupplyHouseDetail(selectedSupplyHouseForDetail)

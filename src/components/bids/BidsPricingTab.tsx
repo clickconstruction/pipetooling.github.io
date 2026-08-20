@@ -36,6 +36,7 @@ import {
 } from '../../lib/bidDocuments/pricingPage'
 import type { ComputeBidPricingRowsResult } from '../../lib/bidPricingRowCalculations'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
@@ -224,6 +225,7 @@ export function BidsPricingTab({
   isMyBid,
 }: BidsPricingTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
 
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
   const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(false)
@@ -881,7 +883,14 @@ export function BidsPricingTab({
   }
 
   async function deletePricingEntry(entry: PriceBookEntryWithFixture) {
-    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this ${templatesMode ? 'price book' : 'pricing'}?`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete "${entry.fixture_types?.name ?? ''}" from this ${templatesMode ? 'price book' : 'pricing'}?`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('price_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else await reloadPanelEntries()
@@ -2806,7 +2815,14 @@ export function BidsPricingTab({
                       <button
                         type="button"
                         onClick={async () => {
-                          if (!confirm(`Delete "${editingPricingEntry.fixture_types?.name ?? ''}" from this price book?`)) return
+                          if (
+                            !(await confirmDialog({
+                              message: `Delete "${editingPricingEntry.fixture_types?.name ?? ''}" from this price book?`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                            }))
+                          )
+                            return
                           await deletePricingEntry(editingPricingEntry)
                           closePricingEntryForm()
                         }}

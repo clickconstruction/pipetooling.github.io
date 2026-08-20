@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Database } from '../../types/database'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -19,6 +20,7 @@ export function TemplatePricesManager({
   template: MaterialTemplate
   supplyHouses: SupplyHouse[]
 }) {
+  const confirmDialog = useConfirmDialog()
   const [prices, setPrices] = useState<(MaterialTemplatePrice & { supply_house: SupplyHouse | null })[]>([])
   const [loading, setLoading] = useState(true)
   const [editingPrice, setEditingPrice] = useState<MaterialTemplatePrice | null>(null)
@@ -92,7 +94,7 @@ export function TemplatePricesManager({
   }
 
   async function deletePrice(id: string) {
-    if (!confirm('Delete this bundle price?')) return
+    if (!(await confirmDialog({ message: 'Delete this bundle price?', confirmLabel: 'Delete', danger: true }))) return
     const { error } = await supabase.from('material_template_prices').delete().eq('id', id)
     if (error) alert(`Failed to delete bundle price: ${error.message}`)
     else await loadPrices()

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import {
   assignUserToDispatchSwimLane,
   createDispatchSwimLane,
@@ -44,6 +45,7 @@ export function DispatchSwimLanesSettingsSection({
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [lanes, setLanes] = useState<DispatchSwimLanesData | null>(null)
   const [busy, setBusy] = useState(false)
   const [newLaneName, setNewLaneName] = useState('')
@@ -203,10 +205,17 @@ export function DispatchSwimLanesSettingsSection({
                         type="button"
                         disabled={busy}
                         style={{ ...smallBtn, color: 'var(--text-red-700)' }}
-                        onClick={() => {
-                          if (!confirm(`Delete lane "${lane.name}"? Its people return to "Everyone else".`)) return
+                        onClick={() => void (async () => {
+                          if (
+                            !(await confirmDialog({
+                              message: `Delete lane "${lane.name}"? Its people return to "Everyone else".`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                            }))
+                          )
+                            return
                           void run(() => deleteDispatchSwimLane(lane.id))
-                        }}
+                        })()}
                       >
                         Delete
                       </button>

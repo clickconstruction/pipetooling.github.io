@@ -5,6 +5,7 @@ import { formatCompactNoteDateTime } from '../../utils/dateUtils'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { ContactMethodQuickPicks, contactMethodFieldInputStyle } from '../shared/ContactMethodQuickPicks'
 import {
   NOTE_CARD_BODY_PADDING_RIGHT_FOR_FLOATING_EDIT,
@@ -87,6 +88,7 @@ function BidNotesEntryRow({
   isLastInList: boolean
 }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [contactMethod, setContactMethod] = useState(entry.contact_method ?? '')
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [occurredAt, setOccurredAt] = useState(toDatetimeLocal(entry.occurred_at))
@@ -121,7 +123,7 @@ function BidNotesEntryRow({
   }
 
   async function remove() {
-    if (!confirm('Remove this entry?')) return
+    if (!(await confirmDialog({ message: 'Remove this entry?', confirmLabel: 'Remove', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('bids_submission_entries').delete().eq('id', entry.id),

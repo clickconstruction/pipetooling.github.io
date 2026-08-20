@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Database } from '../../types/database'
 import { loadPOItemsWithDetails, type PurchaseOrderWithItems } from '../../lib/materials/poItemDetails'
 import { fetchPricesForPart } from '../../lib/materials/partPrices'
@@ -105,6 +106,7 @@ export function MaterialsPurchaseOrdersTab({
   updatePartPriceInBook,
   addPartPriceFromPOModal,
 }: MaterialsPurchaseOrdersTabProps) {
+  const confirmDialog = useConfirmDialog()
   const [poStatusFilter, setPoStatusFilter] = useState<'all' | 'draft' | 'finalized'>('all')
   const [poSearchQuery, setPoSearchQuery] = useState('')
   const [viewedPOTaxPercent, setViewedPOTaxPercent] = useState('8.25')
@@ -357,7 +359,7 @@ export function MaterialsPurchaseOrdersTab({
   }
 
   async function finalizePO(poId: string) {
-    if (!confirm('Finalize this purchase order? It will become immutable.')) return
+    if (!(await confirmDialog({ message: 'Finalize this purchase order? It will become immutable.', confirmLabel: 'Finalize' }))) return
     setError(null)
     const { error } = await supabase
       .from('purchase_orders')
@@ -465,7 +467,7 @@ export function MaterialsPurchaseOrdersTab({
   }
 
   async function deletePO(poId: string) {
-    if (!confirm('Delete this purchase order?')) return
+    if (!(await confirmDialog({ message: 'Delete this purchase order?', confirmLabel: 'Delete', danger: true }))) return
     setError(null)
     const { error } = await supabase.from('purchase_orders').delete().eq('id', poId)
     if (error) {

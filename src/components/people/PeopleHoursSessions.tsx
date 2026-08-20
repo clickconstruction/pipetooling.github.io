@@ -10,6 +10,7 @@ import { CollapsibleSection } from '../CollapsibleSection'
 import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -77,6 +78,7 @@ export function PeopleHoursSessions({
   onToggleRejected,
 }: PeopleHoursSessionsProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   // v2.1654: collapsed by default (the list runs 30+ rows and pushed the grid
   // below the fold); an active session search forces it open so matches are
   // never hidden — same convention as the Users-tab roster search.
@@ -195,7 +197,7 @@ export function PeopleHoursSessions({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm(`Force clock out ${personName}?`)) return
+                        if (!(await confirmDialog({ message: `Force clock out ${personName}?`, confirmLabel: 'Force clock out' }))) return
                         const now = new Date().toISOString()
                         const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
                         if (error) setError(error.message)
@@ -276,7 +278,7 @@ export function PeopleHoursSessions({
                   <button
                     type="button"
                     onClick={async () => {
-                      if (!confirm('Reject this clock session?')) return
+                      if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
                       const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUserId ?? null }).eq('id', s.id)
                       if (error) setError(error.message)
                       else { showToast?.('Session rejected', 'success'); reloadSessions() }
@@ -316,7 +318,13 @@ export function PeopleHoursSessions({
               <button
                 type="button"
                 onClick={async () => {
-                  if (!confirm('Revoke this session? It will move back to Pending and remove its hours from Hours.')) return
+                  if (
+                    !(await confirmDialog({
+                      message: 'Revoke this session? It will move back to Pending and remove its hours from Hours.',
+                      confirmLabel: 'Revoke',
+                    }))
+                  )
+                    return
                   const { data, error } = await supabase.rpc('revoke_clock_sessions', { p_session_ids: [s.id] })
                   if (error) { setError(error.message); return }
                   const result = (data ?? []) as Array<{ revoked_count: number; error_message: string | null }>

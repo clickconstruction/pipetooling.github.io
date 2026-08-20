@@ -15,6 +15,7 @@ import {
 import type { ClockSessionRow } from '../types/clockSessions'
 import DashboardMyTeamPendingBanner from './DashboardMyTeamPendingBanner'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 
 function formatDecimalHours(hours: number): string {
   return `${hours.toFixed(2)}h`
@@ -102,6 +103,7 @@ export default function DashboardMyTeamSection({
     simpleLedgerGroups,
   } = myTeam
   const prefixMap = useLedgerPrefixMap()
+  const confirmDialog = useConfirmDialog()
 
   const refreshPendingAfterAction = useCallback(async () => {
     const y = window.scrollY
@@ -701,7 +703,7 @@ export default function DashboardMyTeamSection({
                         <button
                           type="button"
                           onClick={async () => {
-                            if (!confirm(`Force clock out ${personName}?`)) return
+                            if (!(await confirmDialog({ message: `Force clock out ${personName}?`, confirmLabel: 'Force clock out' }))) return
                             const now = new Date().toISOString()
                             try {
                               await withSupabaseRetry(
@@ -797,7 +799,7 @@ export default function DashboardMyTeamSection({
                       <button
                         type="button"
                         onClick={async () => {
-                          if (!confirm('Reject this clock session?')) return
+                          if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
                           try {
                             await withSupabaseRetry(
                               async () =>

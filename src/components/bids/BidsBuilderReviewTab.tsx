@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Database } from '../../types/database'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { CustomerNotesTable } from '../customerNotes/CustomerNotesTable'
@@ -72,6 +73,7 @@ export function BidsBuilderReviewTab({
   editCustomerModal,
 }: BidsBuilderReviewTabProps) {
   const navigate = useNavigate()
+  const confirmDialog = useConfirmDialog()
   // Builder bid map (v2.1162): per-customer won/lost/pending tallies for the
   // header chips, and whether any bid has an address (gates the map button).
   const builderBidMapStats = useMemo(() => {
@@ -487,7 +489,7 @@ export function BidsBuilderReviewTab({
                   <button
                     type="button"
                     onClick={async () => {
-                      if (!confirm('Delete this contact?')) return
+                      if (!(await confirmDialog({ message: 'Delete this contact?', confirmLabel: 'Delete', danger: true }))) return
                       await supabase.from('customer_contact_persons').delete().eq('id', cp.id)
                       onReloadContactPersons()
                     }}

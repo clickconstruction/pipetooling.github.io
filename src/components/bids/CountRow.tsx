@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidCountRow } from '../../types/bids'
 
 export function SortableCountRow({ row, highlight, onUpdate, onDelete }: {
@@ -56,6 +57,7 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
   const [page, setPage] = useState(row.page ?? '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const confirmDialog = useConfirmDialog()
 
   async function save() {
     setSaving(true)
@@ -70,7 +72,14 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
 
   async function remove() {
     const name = (row.fixture ?? '').trim()
-    if (!confirm(name ? `Remove "${name}" (count ${row.count})?` : 'Remove this row?')) return
+    if (
+      !(await confirmDialog({
+        message: name ? `Remove "${name}" (count ${row.count})?` : 'Remove this row?',
+        confirmLabel: 'Remove',
+        danger: true,
+      }))
+    )
+      return
     await supabase.from('bids_count_rows').delete().eq('id', row.id)
     onDelete()
   }

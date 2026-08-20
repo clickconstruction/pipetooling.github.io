@@ -21,6 +21,7 @@ import {
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
@@ -67,6 +68,7 @@ function hmsToDecimal(str: string): number {
 export function HoursSection() {
   const { user: authUser } = useAuth()
   const prefixMap = useLedgerPrefixMap()
+  const confirmDialog = useConfirmDialog()
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -514,7 +516,7 @@ export function HoursSection() {
                       <button
                         type="button"
                         onClick={async () => {
-                          if (!confirm(`Force clock out ${personName}?`)) return
+                          if (!(await confirmDialog({ message: `Force clock out ${personName}?`, confirmLabel: 'Force clock out' }))) return
                           const now = new Date().toISOString()
                           const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
                           if (error) setError(error.message)
@@ -545,7 +547,7 @@ export function HoursSection() {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (!confirm('Reject this clock session?')) return
+                            if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
                             const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null }).eq('id', s.id)
                             if (error) setError(error.message)
                             else loadAllClockSessionsRef.current?.()
@@ -576,7 +578,13 @@ export function HoursSection() {
               <button
                 type="button"
                 onClick={async () => {
-                  if (!confirm('Revoke this session? It will move back to Pending and remove its hours from Hours.')) return
+                  if (
+                    !(await confirmDialog({
+                      message: 'Revoke this session? It will move back to Pending and remove its hours from Hours.',
+                      confirmLabel: 'Revoke',
+                    }))
+                  )
+                    return
                   const { data, error } = await supabase.rpc('revoke_clock_sessions', { p_session_ids: [s.id] })
                   if (error) { setError(error.message); return }
                   const result = (data ?? []) as Array<{ revoked_count: number; error_message: string | null }>

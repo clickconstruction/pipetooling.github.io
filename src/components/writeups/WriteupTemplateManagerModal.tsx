@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import {
   type WriteupTemplateBlock,
   emptyAnswersForSchema,
@@ -41,6 +42,7 @@ type Props = {
 }
 
 export function WriteupTemplateManagerModal({ open, onClose, templates, authUserId, onAfterChange }: Props) {
+  const confirmDialog = useConfirmDialog()
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<'none' | 'create' | 'edit'>('none')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -203,7 +205,14 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
   }
 
   async function deleteTemplate(t: WriteupTemplateRow) {
-    if (!confirm(`Delete template "${t.name}"? Writeups that use it may block deletion.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete template "${t.name}"? Writeups that use it may block deletion.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setError(null)
     try {
       await withSupabaseRetry(async () => supabase.from('writeup_templates').delete().eq('id', t.id), 'delete writeup template')

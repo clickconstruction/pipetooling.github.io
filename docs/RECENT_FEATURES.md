@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1888)
+last_updated: 2026-08-20 (v2.1893)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1893)
+
+### Bare confirm() sweep — the last 69 native confirmation popups become in-app modals (2026-08-20)
+The v2.1877 sweep converted every `window.confirm(` call site, but its grep missed the bare `confirm(` form (no `window.` prefix). This follow-up converts all 69 remaining sites across 37 files to `useConfirmDialog()`; the only `confirm(` left in `src/` is a local function of that name in [`MarkJobReadyToBillPrompt`](../src/components/jobs/MarkJobReadyToBillPrompt.tsx). Same rules as v2.1877: message wording byte-identical, the action verb moves onto the confirm button (Delete, Remove, Finalize, Force clock out, Reject, Revoke, Return, Archive), and delete/remove/discard prompts get `danger: true` (red verb button) — non-destructive confirms (finalize PO, force clock out, reject/revoke/return clock sessions, archive person) keep the neutral button. Coverage: all bids takeoff/labor/pricing book, version, and entry deletes ([`BidsLaborTab`](../src/components/bids/BidsLaborTab.tsx), [`BidsPricingTab`](../src/components/bids/BidsPricingTab.tsx), [`TakeoffBookAdminSection`](../src/components/bids/TakeoffBookAdminSection.tsx), [`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx), count rows, assembly items); materials assemblies/templates/prices/purchase orders ([`Materials.tsx`](../src/pages/Materials.tsx), [`MaterialsPurchaseOrdersTab`](../src/components/materials/MaterialsPurchaseOrdersTab.tsx), both price managers); supply houses + invoices; all ten catalog deletes in [`useSettingsCatalogs`](../src/hooks/useSettingsCatalogs.ts) plus the people-directory delete and parts-tally remove (hooks call `useConfirmDialog()` directly); clock-session force-out/reject/revoke/return across the dashboard team strips, [`PeopleHoursSessions`](../src/components/people/PeopleHoursSessions.tsx), Quickfill Hours, and rejected sessions; prospect deletes (Prospects page + Quickfill Can't-reach); jobs reports/inspections/sub-labor payments and labor books; writeup + template deletes; customer/bid notes rows; Templates page; dispatch swim-lane delete; dashboard goal delete; team-lead remove; People archive. Client-only — no migration.
 
 ## Latest Updates (v2.1888)
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
 import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -187,6 +188,7 @@ export function BidsLaborTab({
   setOnlyMyBids,
   isMyBid,
 }: BidsLaborTabProps) {
+  const confirmDialog = useConfirmDialog()
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
   const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   // Collapsible non-row Direct-Cost sections (collapsed by default; show total on the right).
@@ -418,7 +420,14 @@ export function BidsLaborTab({
   }
 
   async function deleteLaborVersion(v: LaborBookVersion) {
-    if (!confirm(`Delete labor book "${v.name}"? This will delete all entries in this version.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete labor book "${v.name}"? This will delete all entries in this version.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
     if (err) setError(err.message)
     else {
@@ -526,7 +535,14 @@ export function BidsLaborTab({
   }
 
   async function deleteLaborEntry(entry: LaborBookEntryWithFixture) {
-    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this labor book?`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete "${entry.fixture_types?.name ?? ''}" from this labor book?`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('labor_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)
@@ -2125,7 +2141,14 @@ export function BidsLaborTab({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm(`Delete labor book "${editingLaborVersion.name}"? This will delete all entries in this version.`)) return
+                        if (
+                          !(await confirmDialog({
+                            message: `Delete labor book "${editingLaborVersion.name}"? This will delete all entries in this version.`,
+                            confirmLabel: 'Delete',
+                            danger: true,
+                          }))
+                        )
+                          return
                         await deleteLaborVersion(editingLaborVersion)
                         closeLaborVersionForm()
                       }}
@@ -2213,7 +2236,14 @@ export function BidsLaborTab({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm(`Delete "${editingLaborEntry.fixture_types?.name ?? ''}" from this labor book?`)) return
+                        if (
+                          !(await confirmDialog({
+                            message: `Delete "${editingLaborEntry.fixture_types?.name ?? ''}" from this labor book?`,
+                            confirmLabel: 'Delete',
+                            danger: true,
+                          }))
+                        )
+                          return
                         await deleteLaborEntry(editingLaborEntry)
                         closeLaborEntryForm()
                       }}
