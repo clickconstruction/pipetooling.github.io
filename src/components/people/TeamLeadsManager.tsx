@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useTeamLeaderAssignments } from '../../hooks/useTeamLeaderAssignments'
 import { supabase } from '../../lib/supabase'
 import {
@@ -32,6 +33,7 @@ const REMOVE_CONFIRM = 'Remove this team lead assignment?'
  */
 export default function TeamLeadsManager() {
   const { user: authUser, role: myRole } = useAuth()
+  const confirmDialog = useConfirmDialog()
   const canManage = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   const isDev = myRole === 'dev'
   const [error, setError] = useState<string | null>(null)
@@ -157,7 +159,7 @@ export default function TeamLeadsManager() {
   }
 
   const removeAssignment = async (assignmentId: string) => {
-    if (!confirm(REMOVE_CONFIRM)) return
+    if (!(await confirmDialog({ message: REMOVE_CONFIRM, confirmLabel: 'Remove', danger: true }))) return
     setTeamAssignSaving(true)
     try {
       await withSupabaseRetry(

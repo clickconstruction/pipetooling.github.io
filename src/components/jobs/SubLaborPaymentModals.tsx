@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useState, type ForwardedRef } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
 
 /** The payment/backcharge row being edited (single declaration — the form modal imports it from here). */
@@ -55,6 +56,7 @@ function SubLaborPaymentModalsInner(
   }: SubLaborPaymentModalsProps,
   ref: ForwardedRef<SubLaborPaymentModalsHandle>,
 ) {
+  const confirmDialog = useConfirmDialog()
   const [makePaymentLaborJob, setMakePaymentLaborJob] = useState<SubLaborPaymentTarget | null>(null)
   const [makePaymentAmount, setMakePaymentAmount] = useState('')
   const [makePaymentDate, setMakePaymentDate] = useState('')
@@ -210,7 +212,7 @@ function SubLaborPaymentModalsInner(
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !confirm('Remove this payment?')) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
+              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !(await confirmDialog({ message: 'Remove this payment?', confirmLabel: 'Remove', danger: true }))) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                 <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>

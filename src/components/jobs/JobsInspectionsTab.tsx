@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import AddInspectionModal from '../AddInspectionModal'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { cityMatchesQuery, filterPortalsByQuery, formatCitiesInput, matchPortalForInspectionAddress, parseCitiesInput } from '../../lib/inspectionPortalSearch'
 import type { Database } from '../../types/database'
 
@@ -18,6 +19,7 @@ export type JobsInspectionsTabProps = {
 }
 
 export default function JobsInspectionsTab({ authUserId, error, onError }: JobsInspectionsTabProps) {
+  const confirmDialog = useConfirmDialog()
   const [addInspectionModalOpen, setAddInspectionModalOpen] = useState(false)
   const [inspections, setInspections] = useState<InspectionRow[]>([])
   const [inspectionsLoading, setInspectionsLoading] = useState(false)
@@ -150,7 +152,14 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
   }
 
   async function deleteInspectionType(name: string) {
-    if (!confirm(`Delete inspection type "${name}"? This will fail if any inspections use it.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete inspection type "${name}"? This will fail if any inspections use it.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setInspectionTypeDeletingName(name)
     onError(null)
     const { error: err } = await supabase.from('inspection_types').delete().eq('name', name)
@@ -285,7 +294,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
   }
 
   async function deleteQuickLink(id: string) {
-    if (!confirm('Delete this quick link?')) return
+    if (!(await confirmDialog({ message: 'Delete this quick link?', confirmLabel: 'Delete', danger: true }))) return
     setQuickLinkDeletingId(id)
     onError(null)
     const { error: err } = await supabase.from('inspection_quick_links').delete().eq('id', id)

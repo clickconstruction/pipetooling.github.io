@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { CantReachProspect as Prospect } from '../../hooks/useQuickfillCantReachProspects'
 
 function formatDateTime(iso: string | null): string {
@@ -47,6 +48,7 @@ export function CantReachSection({
   refetch: () => Promise<void>
 }) {
   const navigate = useNavigate()
+  const confirmDialog = useConfirmDialog()
   const [saving, setSaving] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
 
@@ -74,7 +76,14 @@ export function CantReachSection({
 
   async function handleDeleteFromList(p: Prospect) {
     if (saving) return
-    if (!confirm(`Delete prospect "${p.company_name || 'Unknown'}"? This cannot be undone.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete prospect "${p.company_name || 'Unknown'}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setSaving(true)
     const { error } = await supabase.from('prospects').delete().eq('id', p.id)
     if (!error) await refetch()

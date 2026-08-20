@@ -4,6 +4,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { formatCompactNoteDateTime } from '../../utils/dateUtils'
 import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
 import { ContactMethodQuickPicks, contactMethodFieldInputStyle } from '../shared/ContactMethodQuickPicks'
 import {
@@ -126,6 +127,7 @@ function BidUnifiedEntryRow({
   isLastInList: boolean
 }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [contactMethod, setContactMethod] = useState(entry.contact_method ?? '')
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [occurredAt, setOccurredAt] = useState(toDatetimeLocal(entry.occurred_at))
@@ -160,7 +162,7 @@ function BidUnifiedEntryRow({
   }
 
   async function remove() {
-    if (!confirm('Remove this entry?')) return
+    if (!(await confirmDialog({ message: 'Remove this entry?', confirmLabel: 'Remove', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('bids_submission_entries').delete().eq('id', entry.id),
@@ -330,6 +332,7 @@ function CustomerUnifiedEntryRow({
   isLastInList: boolean
 }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [contactMethod, setContactMethod] = useState(entry.contact_method ?? '')
   const [details, setDetails] = useState(entry.details ?? '')
   const [contactAt, setContactAt] = useState(toDatetimeLocal(entry.contact_date))
@@ -362,7 +365,7 @@ function CustomerUnifiedEntryRow({
   }
 
   async function remove() {
-    if (!confirm('Remove this entry?')) return
+    if (!(await confirmDialog({ message: 'Remove this entry?', confirmLabel: 'Remove', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('customer_contacts').delete().eq('id', entry.id),

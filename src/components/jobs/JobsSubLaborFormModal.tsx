@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { assigneePersonIdsForNames } from '../../lib/people/assigneePersonIds'
 import { filterLaborCrewNames, formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -133,6 +134,7 @@ function JobsSubLaborFormModalInner(
   }: JobsSubLaborFormModalProps,
   ref: ForwardedRef<JobsSubLaborFormModalHandle>,
 ) {
+  const confirmDialog = useConfirmDialog()
   // Labor tab state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
@@ -537,7 +539,14 @@ function JobsSubLaborFormModalInner(
   }
 
   async function deleteLaborVersion(v: LaborBookVersion) {
-    if (!confirm(`Delete labor book "${v.name}"? This will delete all entries in this version.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete labor book "${v.name}"? This will delete all entries in this version.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
     if (err) setError(err.message)
     else {
@@ -640,7 +649,14 @@ function JobsSubLaborFormModalInner(
   }
 
   async function deleteLaborEntry(entry: LaborBookEntryWithFixture) {
-    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this labor book?`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete "${entry.fixture_types?.name ?? ''}" from this labor book?`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     const { error: err } = await supabase.from('labor_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)

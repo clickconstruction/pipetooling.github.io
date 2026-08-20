@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
@@ -29,6 +30,7 @@ export function useSettingsPeopleDirectory({
   setError: (message: string | null) => void
   onDataChanged: () => Promise<void> | void
 }) {
+  const confirmDialog = useConfirmDialog()
   const [myPeople, setMyPeople] = useState<PersonRow[]>([])
   const [nonUserPeople, setNonUserPeople] = useState<PersonRow[]>([])
   const [allPeopleCount, setAllPeopleCount] = useState<number>(0)
@@ -181,7 +183,14 @@ export function useSettingsPeopleDirectory({
   }
 
   async function deleteNonUserPerson(p: PersonRow) {
-    if (!confirm(`Delete "${p.name}"? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete "${p.name}"? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     setDeletingPersonId(p.id)
     setError(null)
     const { error: err } = await supabase.from('people').delete().eq('id', p.id)

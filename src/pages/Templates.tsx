@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 
 type Template = { id: string; name: string; description: string | null }
 type TemplateStep = { id: string; template_id: string; sequence_order: number; name: string }
@@ -8,6 +9,7 @@ type UserRole = 'dev' | 'master_technician' | 'assistant'
 
 export default function Templates() {
   const { user: authUser } = useAuth()
+  const confirmDialog = useConfirmDialog()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,7 +116,7 @@ export default function Templates() {
   }
 
   async function deleteTemplate(id: string) {
-    if (!confirm('Delete this template? Its steps will also be removed.')) return
+    if (!(await confirmDialog({ message: 'Delete this template? Its steps will also be removed.', confirmLabel: 'Delete', danger: true }))) return
     setDeletingId(id)
     setError(null)
     await supabase.from('workflow_template_steps').delete().eq('template_id', id)
@@ -159,7 +161,7 @@ export default function Templates() {
   }
 
   async function deleteWorkflowStep(stepId: string) {
-    if (!confirm('Remove this step from the template?')) return
+    if (!(await confirmDialog({ message: 'Remove this step from the template?', confirmLabel: 'Remove', danger: true }))) return
     setDeletingStepId(stepId)
     setError(null)
     const { error: err } = await supabase.from('workflow_template_steps').delete().eq('id', stepId)

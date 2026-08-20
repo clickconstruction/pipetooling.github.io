@@ -7,6 +7,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { mergeItemIntoDrafts, mergeTemplateItemDrafts, mergedPartQuantity } from '../../lib/bids/mergeTemplateItemDrafts'
 import { getTemplatePartsPreview } from '../../lib/materialPOUtils'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { RoughTakeoffMaterialPart } from './SortableRoughPartLineRow'
 import type { TakeoffPartPricesModalTarget } from './TakeoffPartPricesModal'
 import type { Database } from '../../types/database'
@@ -152,6 +153,7 @@ export function TakeoffAssemblyAuthoringModals({
   setEditTemplateNewItemPartId,
 }: TakeoffAssemblyAuthoringModalsProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
 
   // Add Assembly modal internals (cluster-owned; guaranteed default at open
   // because every close path runs closeTakeoffAddTemplateModal)
@@ -623,7 +625,7 @@ export function TakeoffAssemblyAuthoringModals({
   }, [editTemplateModalOpen, editTemplateNewItemPartId])
 
   async function removeEditTemplateItem(itemId: string) {
-    if (!confirm('Remove this item from the assembly?')) return
+    if (!(await confirmDialog({ message: 'Remove this item from the assembly?', confirmLabel: 'Remove', danger: true }))) return
     if (!editTemplateModalId) return
     setError(null)
     const { error: deleteError } = await supabase.from('material_template_items').delete().eq('id', itemId)

@@ -10,6 +10,7 @@ import {
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
 import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
 import { useAuth } from '../hooks/useAuth'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { Database } from '../types/database'
 import { PartFormModal } from '../components/PartFormModal'
@@ -54,6 +55,7 @@ const MATERIALS_TABS = ['parts-book', 'assembly-book', 'assemblies-po', 'purchas
 
 export default function Materials() {
   const { user: authUser } = useAuth()
+  const confirmDialog = useConfirmDialog()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -785,7 +787,7 @@ export default function Materials() {
       ? 'Delete this supply house? All prices associated with it will also be removed.'
       : 'Delete this supply house?'
     
-    if (!confirm(message)) return
+    if (!(await confirmDialog({ message, confirmLabel: 'Delete', danger: true }))) return
     
     setError(null)
     const { error } = await supabase.from('supply_houses').delete().eq('id', supplyHouseId)
@@ -866,7 +868,7 @@ export default function Materials() {
   }
 
   async function deleteTemplate(templateId: string) {
-    if (!confirm('Delete this assembly? All items will also be removed.')) return
+    if (!(await confirmDialog({ message: 'Delete this assembly? All items will also be removed.', confirmLabel: 'Delete', danger: true }))) return
     setError(null)
     const { error } = await supabase.from('material_template_items').delete().eq('template_id', templateId)
     if (error) {
@@ -1068,7 +1070,7 @@ export default function Materials() {
   }
 
   async function removeItemFromTemplate(itemId: string) {
-    if (!confirm('Remove this item from the assembly?')) return
+    if (!(await confirmDialog({ message: 'Remove this item from the assembly?', confirmLabel: 'Remove', danger: true }))) return
     setError(null)
     // Optimistic update: remove from UI immediately
     setTemplateItems(prev => prev.filter(i => i.id !== itemId))
@@ -1214,7 +1216,7 @@ export default function Materials() {
   }
 
   async function removePOItem(itemId: string) {
-    if (!confirm('Remove this item from the purchase order?')) return
+    if (!(await confirmDialog({ message: 'Remove this item from the purchase order?', confirmLabel: 'Remove', danger: true }))) return
     setError(null)
     const { error } = await supabase
       .from('purchase_order_items')

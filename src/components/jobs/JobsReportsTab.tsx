@@ -12,6 +12,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
 import type { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import type { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES =
@@ -77,6 +78,7 @@ export default function JobsReportsTab({
   error,
   onError,
 }: JobsReportsTabProps) {
+  const confirmDialog = useConfirmDialog()
   const [reportsList, setReportsList] = useState<ReportWithJob[]>([])
   const [reportsLoading, setReportsLoading] = useState(false)
   const [reportsSearch, setReportsSearch] = useState('')
@@ -132,7 +134,7 @@ export default function JobsReportsTab({
   }
 
   async function deleteReport(id: string) {
-    if (!confirm('Delete this report?')) return
+    if (!(await confirmDialog({ message: 'Delete this report?', confirmLabel: 'Delete', danger: true }))) return
     setReportsDeletingId(id)
     const { error: err } = await supabase.from('reports').delete().eq('id', id)
     if (err) onError(`Failed to delete report: ${err.message}`)
@@ -330,7 +332,7 @@ export default function JobsReportsTab({
       onError('Cannot delete: this template has reports.')
       return
     }
-    if (!confirm('Delete this template?')) return
+    if (!(await confirmDialog({ message: 'Delete this template?', confirmLabel: 'Delete', danger: true }))) return
     setTemplateDeletingId(id)
     const { error: err } = await supabase.from('report_templates').delete().eq('id', id)
     setTemplateDeletingId(null)

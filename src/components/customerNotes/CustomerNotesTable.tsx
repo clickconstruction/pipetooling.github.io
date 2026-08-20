@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useCustomerContactsForCustomer, type CustomerContactRow } from '../../hooks/useCustomerContactsForCustomer'
 import { ContactMethodQuickPicks, contactMethodFieldInputStyle } from '../shared/ContactMethodQuickPicks'
@@ -25,6 +26,7 @@ function CustomerNotesEntryRow({
   isLastInList: boolean
 }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [contactMethod, setContactMethod] = useState(entry.contact_method ?? '')
   const [details, setDetails] = useState(entry.details ?? '')
   const [contactAt, setContactAt] = useState(entry.contact_date ? entry.contact_date.slice(0, 16) : '')
@@ -57,7 +59,7 @@ function CustomerNotesEntryRow({
   }
 
   async function remove() {
-    if (!confirm('Remove this entry?')) return
+    if (!(await confirmDialog({ message: 'Remove this entry?', confirmLabel: 'Remove', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('customer_contacts').delete().eq('id', entry.id),

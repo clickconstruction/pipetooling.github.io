@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { buildInvoiceAmountMap, collectInvoiceJobIds } from '../lib/jobs/partsLedger'
 import type { TallyPartRow } from '../types/tallyPart'
 
@@ -26,6 +27,7 @@ export type PartsLedgerData = {
  * the Parts tab and the Job Summary tab. Self-manages the deferred load when `isActive` && a user is present.
  */
 export function usePartsLedgerData({ authUserId, isActive, onError }: UsePartsLedgerDataArgs): PartsLedgerData {
+  const confirmDialog = useConfirmDialog()
   const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
   const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
   const [invoiceAmountByJob, setInvoiceAmountByJob] = useState<Record<string, number>>({})
@@ -59,7 +61,7 @@ export function usePartsLedgerData({ authUserId, isActive, onError }: UsePartsLe
   }
 
   async function deleteTallyPart(id: string) {
-    if (!confirm('Remove this part from the tally?')) return
+    if (!(await confirmDialog({ message: 'Remove this part from the tally?', confirmLabel: 'Remove', danger: true }))) return
     setDeletingTallyPartId(id)
     onError(null)
     const { error: err } = await supabase.from('jobs_tally_parts').delete().eq('id', id)

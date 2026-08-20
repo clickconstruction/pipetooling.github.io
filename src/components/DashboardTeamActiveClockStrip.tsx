@@ -28,6 +28,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey, getDefaultWeekRange } from '../utils/dateUtils'
 import { useUserReviewModal } from '../contexts/UserReviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
@@ -847,6 +848,7 @@ export function DashboardTeamActiveClockStrip({
     }
   }, [enableCurrentlyInDispatchIcon, dispatchCountUserIdsKey, clockStripWorkDateResolved, dispatchCountsTick])
   const userReviewModal = useUserReviewModal()
+  const confirmDialog = useConfirmDialog()
   const openUserReview = useCallback(
     (userId: string, displayName: string) => {
       userReviewModal?.open({
@@ -1073,9 +1075,10 @@ export function DashboardTeamActiveClockStrip({
     async (sessionId: string): Promise<boolean> => {
       if (!sessionId) return false
       if (
-        !confirm(
-          'Revoke this session? It will move back to Pending and remove its hours from Hours.',
-        )
+        !(await confirmDialog({
+          message: 'Revoke this session? It will move back to Pending and remove its hours from Hours.',
+          confirmLabel: 'Revoke',
+        }))
       ) {
         return false
       }
@@ -1110,7 +1113,7 @@ export function DashboardTeamActiveClockStrip({
         })
       }
     },
-    [onClockSessionsMutated, onJobBidAssignError],
+    [confirmDialog, onClockSessionsMutated, onJobBidAssignError],
   )
 
   const requestStripSessionReject = useCallback((payload: StripRejectClockSessionPayload) => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { WriteupEditorModal, type WriteupListRow } from './WriteupEditorModal'
@@ -32,6 +33,7 @@ export function WriteupsContractsSubTab({
   authUserId,
   isDev,
 }: Props) {
+  const confirmDialog = useConfirmDialog()
   const [templates, setTemplates] = useState<WriteupTemplateRow[]>([])
   const [writeups, setWriteups] = useState<WriteupListRow[]>([])
   const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
@@ -193,7 +195,14 @@ export function WriteupsContractsSubTab({
       alert('Only a dev can delete a submitted writeup.')
       return
     }
-    if (!confirm(`Delete this ${r.status} writeup for ${r.subject_name}?`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete this ${r.status} writeup for ${r.subject_name}?`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     try {
       await withSupabaseRetry(async () => supabase.from('writeups').delete().eq('id', r.id), 'delete writeup')
       await loadWriteupsData()

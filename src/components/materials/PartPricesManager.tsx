@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 
@@ -22,6 +23,7 @@ export function PartPricesManager({
   onClose: () => void
   onPricesUpdated: (prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]) => void
 }) {
+  const confirmDialog = useConfirmDialog()
   const [prices, setPrices] = useState<(MaterialPartPrice & { supply_house: SupplyHouse })[]>([])
   const [loading, setLoading] = useState(true)
   const [editingPrice, setEditingPrice] = useState<MaterialPartPrice | null>(null)
@@ -114,7 +116,7 @@ export function PartPricesManager({
   }
 
   async function deletePrice(priceId: string) {
-    if (!confirm('Delete this price?')) return
+    if (!(await confirmDialog({ message: 'Delete this price?', confirmLabel: 'Delete', danger: true }))) return
     const { error } = await supabase.from('material_part_prices').delete().eq('id', priceId)
     if (error) {
       alert(`Failed to delete price: ${error.message}`)

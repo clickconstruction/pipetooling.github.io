@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { LaborJob, LaborJobPayment } from '../types/laborJob'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 
@@ -25,6 +26,7 @@ export function useSubLaborLedger({
   /** Called with the freshly mapped list after each successful reload (the page syncs its open Edit Sub Labor modal). */
   onLaborJobsReloaded?: (jobs: LaborJob[]) => void
 }) {
+  const confirmDialog = useConfirmDialog()
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
   const [laborJobNamesByHcp, setLaborJobNamesByHcp] = useState<Record<string, string>>({})
   const [laborJobAssigneesByJobId, setLaborJobAssigneesByJobId] = useState<Map<string, SubLaborSheetAssignee[]>>(new Map())
@@ -167,7 +169,7 @@ export function useSubLaborLedger({
   }
 
   async function deleteLaborJob(id: string): Promise<boolean> {
-    if (!confirm('Delete this job from the sub sheet ledger?')) return false
+    if (!(await confirmDialog({ message: 'Delete this job from the sub sheet ledger?', confirmLabel: 'Delete', danger: true }))) return false
     setLaborJobDeletingId(id)
     setError(null)
     const { error: err } = await supabase.from('people_labor_jobs').delete().eq('id', id)
