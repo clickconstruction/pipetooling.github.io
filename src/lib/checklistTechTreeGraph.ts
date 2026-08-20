@@ -96,3 +96,44 @@ export function completeGroupIdsFromTasks(
   }
   return s
 }
+
+/**
+ * Milestone-aware completion (v2.1913): stages WITH tasks complete when every
+ * task is done (unchanged); stages with NO tasks are milestones — they count
+ * complete once every predecessor is complete (vacuously true for empty roots).
+ * Fixpoint iteration lets chains of empty stages cascade. This is what keeps
+ * task-less goal stages from permanently locking everything behind them.
+ */
+export function computeCompleteGroupIdsWithMilestones(
+  allGroupIds: ReadonlySet<string> | ReadonlyArray<string>,
+  edges: ReadonlyArray<TechTreeEdge>,
+  tasksByGroup: ReadonlyMap<string, ReadonlyArray<{ completed_at: string | null }>>,
+): Set<string> {
+  const idList = Array.isArray(allGroupIds) ? allGroupIds : [...allGroupIds]
+  const complete = new Set<string>()
+  const empty: string[] = []
+  for (const gid of idList) {
+    const tasks = tasksByGroup.get(gid) ?? []
+    if (tasks.length === 0) empty.push(gid)
+    else if (tasks.every((t) => t.completed_at != null)) complete.add(gid)
+  }
+  const incoming = new Map<string, string[]>()
+  for (const e of edges) {
+    const list = incoming.get(e.toGroupId) ?? []
+    list.push(e.fromGroupId)
+    incoming.set(e.toGroupId, list)
+  }
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const gid of empty) {
+      if (complete.has(gid)) continue
+      const preds = incoming.get(gid) ?? []
+      if (preds.every((p) => complete.has(p))) {
+        complete.add(gid)
+        grew = true
+      }
+    }
+  }
+  return complete
+}
