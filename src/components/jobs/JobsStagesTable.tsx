@@ -279,7 +279,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
               <tr
                 data-stages-job-id={j.id}
                 style={{
-                  borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                  borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid var(--border-job-row)',
                   ...(stagesJobFlashId === j.id
                     ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
                     : {}),

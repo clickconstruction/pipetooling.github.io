@@ -415,7 +415,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
                     data-stages-job-id={j.id}
                     style={{
-                      borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                      borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid var(--border-job-row)',
                       ...(bundleInv != null ? flashRowStyle(bundleInv.id) : {}),
                       ...(stagesJobFlashId === j.id
                         ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
@@ -880,7 +880,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     data-stages-invoice-id={inv.id}
                     data-stages-job-id={job.id}
                     style={{
-                      borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
+                      borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid var(--border-job-row)',
                       ...stagesInvoiceRowAccentRowStyle,
                       ...flashRowStyle(inv.id),
                       ...(stagesJobFlashId === job.id

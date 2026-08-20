@@ -1223,7 +1223,7 @@ export function renderStagesProjectBannerRow(
 ): React.ReactElement | null {
   if (!projectId || !project) return null
   return (
-    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+    <tr style={{ borderBottom: '1px solid var(--border-job-row)' }}>
       <td
         colSpan={colSpan}
         style={{

@@ -238,6 +238,8 @@ button:focus-visible {
   --border-strong: #d1d5db;
   /* Section-separator rules (draft editor + customer document): visible on white. */
   --border-rule: #b8bec8;
+  /* Job-row separators (Jobs Pipeline board): mirrors dark mode's bright-line contrast. */
+  --border-job-row: #6b7280;
   --border-400: #9ca3af;
   --border-orange: #fdba74;
   --border-blue: #bfdbfe;
@@ -334,6 +336,8 @@ button:focus-visible {
   --border: #374151;
   --border-strong: #4b5563;
   --border-rule: #374151;
+  /* Keeps the pre-token hardcoded #e5e7eb look the Pipeline board always had in dark. */
+  --border-job-row: #e5e7eb;
   --border-400: #6b7280;
   --border-orange: #92400e;
   --border-blue: #1e40af;
