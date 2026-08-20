@@ -186,6 +186,29 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(plainCard.style.borderLeft).toBe('')
   })
 
+  it('renders the expected-payment chip on invoice-bearing rows (table + cards)', () => {
+    const billedJob = makeJob({ job_name: 'Chip Merged Job', status: 'billed' })
+    const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 900, status: 'billed' })
+    const floaterJob = makeJob({ job_name: 'Chip Floater Job', status: 'billed' })
+    const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
+    const bareJob = makeJob({ job_name: 'Chip Bare Job', status: 'billed' })
+    const rows: StageRow[] = [
+      { kind: 'job_with_merged_billed', job: billedJob, inv: billedInvoice },
+      { kind: 'invoice', inv: floaterInvoice, job: floaterJob },
+      { kind: 'job', job: bareJob },
+    ]
+    const chip = vi.fn((row: StageRow) =>
+      row.kind === 'job' ? null : <span data-testid="expected-pay-chip">Expect pay ~Sep 8</span>,
+    )
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, billedExpectedPayChip: chip })} />)
+    expect(screen.getAllByTestId('expected-pay-chip')).toHaveLength(2)
+    expect(chip).toHaveBeenCalledWith(rows[0])
+    expect(chip).toHaveBeenCalledWith(rows[1])
+    document.body.innerHTML = ''
+    renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows, billedExpectedPayChip: chip })} />)
+    expect(screen.getAllByTestId('expected-pay-chip')).toHaveLength(2)
+  })
+
   it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', () => {
     const withFee = makeJob({ job_name: 'Fee Job', status: 'ready_to_bill' })
     const without = makeJob({ job_name: 'Plain Job', status: 'ready_to_bill' })

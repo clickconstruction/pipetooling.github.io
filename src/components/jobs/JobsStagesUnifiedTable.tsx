@@ -103,6 +103,8 @@ export type JobsStagesUnifiedTableProps = {
   onJobMoveToCollections?: (j: JobWithDetails) => void
   /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
   jobNoteLine?: (j: JobWithDetails) => string | null
+  /** Billed Awaiting Payment: expected-payment chip for the row (bill date + customer pay speed). */
+  billedExpectedPayChip?: (row: StageRow) => React.ReactNode
   // --- captured page values (same names as in Jobs.tsx; step 9b's JobsStagesTab absorbs these) ---
   stagesJobFlashId: string | null
   stagesHamMode: boolean
@@ -722,6 +724,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             </button>
                           )}
                         </div>
+                        {props.billedExpectedPayChip?.(row)}
                         {/* marginTop tops the outer stack's 0.25rem gap up to the status
                             buttons' own 0.5rem rhythm — equal air above Edit Job (v2.1688). */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'stretch', marginTop: '0.25rem' }}>
@@ -1136,6 +1139,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             </button>
                           )}
                         </div>
+                        {props.billedExpectedPayChip?.(row)}
                         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                           {showClickTooling && (
                             <button

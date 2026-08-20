@@ -1051,6 +1051,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 onPctCommit={canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
               />
+              {props.billedExpectedPayChip?.(row)}
               {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
             </div>
             {cardFooterRow(ctx, j, () => setMoreActionsRow(row), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
