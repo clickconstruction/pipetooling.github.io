@@ -487,12 +487,14 @@ export default function PaidInFullEmailSettingsModal({
           {copy.description}
         </p>
 
-        <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
-        {isReadyToBill && (
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            📧 email | 🔔 push
-          </p>
-        )}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
+          <h3 style={{ margin: 0, fontSize: '0.9375rem' }}>Recipients ({selectedCount})</h3>
+          {isReadyToBill && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              📧 email | 🔔 push
+            </span>
+          )}
+        </div>
         {!canEditRecipients && (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Read-only — only devs can change the recipient list.

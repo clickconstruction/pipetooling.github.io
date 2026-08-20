@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1859)
+last_updated: 2026-08-19 (v2.1861)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1861)
+
+### Ready to Bill notifications: channel legend right-aligned (2026-08-19)
+Owner polish on v2.1856: the "📧 email | 🔔 push" legend moves out of its own left-aligned paragraph onto the Recipients heading row, flushed right ([`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx)) — it now sits directly above the per-row checkbox columns it labels. Client-only — no migration.
 
 ## Latest Updates (v2.1859)
 
