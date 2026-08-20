@@ -14,6 +14,8 @@ import {
 } from '../lib/partnerLedger/partnershipConfig'
 import type { Database, Json } from '../types/database'
 import { PartnershipJobReviewTab } from '../components/partnerships/PartnershipJobReviewTab'
+import { PartnershipStatementsTab } from '../components/partnerships/PartnershipStatementsTab'
+import { PartnershipLedgerTab } from '../components/partnerships/PartnershipLedgerTab'
 
 type PartnershipRow = Database['public']['Tables']['partnerships']['Row']
 type PersonOption = { id: string; name: string; kind: string | null }
@@ -32,7 +34,7 @@ type PersonOption = { id: string; name: string; kind: string | null }
  * deploy in either order.
  */
 
-const TAB_PLACEHOLDERS = ['Agreements', 'Statements', 'Ledger'] as const
+const TAB_PLACEHOLDERS = ['Agreements'] as const
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -131,7 +133,7 @@ export default function Partnerships() {
   const [rows, setRows] = useState<PartnershipRow[]>([])
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'deal' | 'review'>('deal')
+  const [activeTab, setActiveTab] = useState<'deal' | 'review' | 'stmts' | 'ledger'>('deal')
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [draft, setDraft] = useState<PartnershipConfig | null>(null)
@@ -477,6 +479,8 @@ export default function Partnerships() {
                   [
                     ['deal', 'Deal'],
                     ['review', 'Job review'],
+                    ['stmts', 'Statements'],
+                    ['ledger', 'Ledger'],
                   ] as const
                 ).map(([key, label]) => (
                   <button
@@ -507,6 +511,15 @@ export default function Partnerships() {
 
               {activeTab === 'review' ? (
                 <PartnershipJobReviewTab partnershipId={selected.id} partnerName={selected.display_name || 'the partner'} />
+              ) : activeTab === 'stmts' ? (
+                <PartnershipStatementsTab
+                  partnershipId={selected.id}
+                  personId={selected.person_id}
+                  personName={selected.display_name || 'the partner'}
+                  weeklyStatementOn={draft.modules.weekly_statement}
+                />
+              ) : activeTab === 'ledger' ? (
+                <PartnershipLedgerTab personId={selected.person_id} />
               ) : (
                 <>
               <div style={groupHeadStyle}>Status</div>

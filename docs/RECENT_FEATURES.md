@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1881)
+last_updated: 2026-08-20 (v2.1882)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1882)
+
+### Partnerships: weekly statements + the partner ledger spine (2026-08-20)
+Partnerships train PR 3 of 8. Migration `20260820160000_partner_statements.sql`: **(1)** `person_offsets` widens for partner postings — new types `profit_share` / `utility_overage`, a `job_id` anchor, a `reversal_of_offset_id` link, and a partial-unique index guaranteeing ONE live profit share per job+person (reposts no-op; reversals are explicit new rows). **(2)** `statement_acknowledgments` — the §9b mutual co-sign, unique per (stub, party). **(3)** `partnerships.farm_job_ledger_id` — the §1c farm job whose hours price at farm_rate ($0). **(4)** `generate_partner_statement(partnership, week_sunday, override)` (dev-gated SECURITY DEFINER): builds `pay_stubs` + per-day `pay_stub_days` from APPROVED sessions priced at the partnership's current rates (stamped into `rate_at_time` — later changes never reprice), field/office/farm bucketing (office = bid-tagged or unassigned), attaches pending offsets (profit shares/credits → `pay_stub_additional_lines`, charges → `pay_stub_deductions` up to gross — the DB enforcement triggers stay in charge; the rest stay pending), stamps the company acknowledgment, logs a `partnership_events` `statement_generated` row (override visible forever). Guarded on unapproved sessions + unreviewed worked jobs unless override; idempotent per person+week; Sun–Sat enforced. New tabs on `/partnerships`: **Statements** ([`PartnershipStatementsTab.tsx`](../src/components/partnerships/PartnershipStatementsTab.tsx) — close-week card with override checkbox, archive with company/partner ack chips + paid totals) and **Ledger** ([`PartnershipLedgerTab.tsx`](../src/components/partnerships/PartnershipLedgerTab.tsx) — the append-only journal with running balance + pending offsets, shaped by new kernel [`partnerLedgerJournal.ts`](../src/lib/partnerLedger/partnerLedgerJournal.ts), 6 tests). Office reads ride payroll-access RLS. **`supabase db push` after merge.**
 
 ## Latest Updates (v2.1881)
 

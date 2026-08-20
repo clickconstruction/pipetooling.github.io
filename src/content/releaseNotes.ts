@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1882',
+    date: '2026-08-20',
+    title: 'Partnerships: weekly statements arrive',
+    kind: 'feature',
+    highlights: [
+      'The Partnerships page can now close a week: one click builds the partner\u2019s statement from approved hours at their deal rates, pulls in any back-charges or credits, and stamps the company\u2019s acknowledgment.',
+      'Generation is guarded \u2014 unapproved hours or unreviewed jobs block it unless you explicitly override, and overrides are logged.',
+      'New Ledger tab: every posting and payout in one running-balance journal. Statements are windows over it.',
+    ],
+  },
+  {
     version: 'v2.1881',
     date: '2026-08-20',
     title: 'Partnerships: job check-offs decide what partners see',
