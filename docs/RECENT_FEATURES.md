@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1882)
+last_updated: 2026-08-20 (v2.1883)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1883)
+
+### Partners get their ledger — "Your ledger" on the Dashboard (2026-08-20)
+Partnerships train PR 4 of 8. Migration `20260820170000_partner_dashboard_rpcs.sql`: helper `my_partner_partnership_id()` (caller → live partnership via `people.account_user_id`) + three partner-scoped SECURITY DEFINER RPCs — `get_my_partner_summary()` (server-computed balance over the pay_stubs family, current Sun–Sat week so-far from approved sessions at deal rates, pending-session count, pending offsets, latest statement + both acks), `get_my_partner_ledger(p_weeks DEFAULT 8, cap 26)` (per-statement weeks with per-stamped-rate labor sums, additions, deductions, payments, acks), and `acknowledge_partner_statement(stub)` (partner half of the §9b co-sign; ownership checked; idempotent). Per the v2.1225 lesson, partner reads are RPCs — no junction RLS. New [`DashboardPartnerLedgerSection`](../src/components/dashboard/DashboardPartnerLedgerSection.tsx) mounts self-gating on the Dashboard (renders nothing for non-partners; fail-soft pre-push): ‹ › week navigation with the live week first (balance so far + pending-approval no-dollar lines), closed weeks with opening/closing chained backwards from the server balance (kernel [`partnerWeeks.ts`](../src/lib/partnerLedger/partnerWeeks.ts), 8 tests), Acknowledge button, light-pinned Print / save PDF, and an "awaiting your acknowledgment" nudge on the open week. Help guide `see-your-partner-ledger.md` (subcontractor role). **`supabase db push` after merge.**
 
 ## Latest Updates (v2.1882)
 
