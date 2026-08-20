@@ -17,6 +17,10 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Estimate draft steps kernel — step rail train PR 1 (2026-08-19)
 Owner-approved redesign (rail-v2 mockups reviewed as an artifact): the estimate/CO draft editor gets a numbered guide that is a map, a checklist, and the send-gate explainer — while the page keeps reading as the paper the customer receives. This PR is the brain: [`estimateDraftSteps.ts`](../src/lib/estimateDraftSteps.ts) (+12 tests) computes the step list per doc kind (estimate: Customer / Line items / Terms & attachments / Delivery; CO adds The change after Customer), each step's live status (`done` / `attention` / `optional`) with one-line sublabels ("no lines yet", "net −$390.00", "2 notified"), the paper-vs-backstage grouping (Delivery is the one step the customer never sees), and the send-gate ("2 steps left: cost lines · delivery"; `ready` mirrors TODAY'S hard rule — customer + deliverable email — the rail suggests, it never adds new blocks; `confirmZeroNet` asks before sending a $0 document instead of blocking). No UI yet — the paper regroup is PR 2, the rail PR 3, the Customer-view toggle PR 4. Client-only — no migration.
 
+## Latest Updates (v2.1864)
+
+### PLACEHOLDER v2.1864
+
 ## Latest Updates (v2.1863)
 
 ### DB freeze 2026-08-19 — Mode B incident logged; pooler-lags-Postgres lesson added to the runbook (2026-08-19)
