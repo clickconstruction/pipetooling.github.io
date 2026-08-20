@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1884)
+last_updated: 2026-08-20 (v2.1885)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1885)
+
+### Partnerships: §4h — estimating hours land on the awarded job (2026-08-20)
+Partnerships train PR 6 of 8. Migration `20260820190000_estimating_hours_transfer.sql`: `jobs_ledger_materials.source_bid_id` (→ bids, partial-UNIQUE — one transfer per bid, ever) + two dev-gated RPCs. `get_partner_bid_estimating_hours(job)`: the flagged partner's approved bid-tagged hours per bid, priced at the partnership's estimating rate, with each bid's already-applied location. `apply_bid_estimating_hours_to_job(job, bid)`: writes the sourced "Estimating at award — X h × $R (§4h, bid …)" row into the job's direct-expenses bucket (the §3 split reads it immediately); requires the majority flag + `modules.est_transfer`; idempotent — reapply returns the existing row; `estimating_transferred` event logged. The partner is paid once either way (bid hours ride the weekly statement as office pay) — the transfer moves the COST so a won job's profit carries the price of winning it; lost bids stay overhead under the company's 22%. UI: the [`PartnerJobSplitPanel`](../src/components/partnerships/PartnerJobSplitPanel.tsx) grows an "Estimating at award (§4h)" block — per-bid rows with Apply / on-this-job / applied-elsewhere states, disabled with a tooltip when the Deal-tab toggle is off. **`supabase db push` after merge.**
 
 ## Latest Updates (v2.1884)
 

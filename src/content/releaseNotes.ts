@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1885',
+    date: '2026-08-20',
+    title: 'Partnerships: estimating hours follow won bids',
+    kind: 'feature',
+    highlights: [
+      'On a partner job, the split panel now lists the estimating hours the partner clocked on bids \u2014 one click moves that cost onto the won job as a direct expense, so the profit split reflects what it took to win it.',
+      'Each bid can only ever transfer once, and lost bids stay company overhead like the deal says.',
+    ],
+  },
+  {
     version: 'v2.1884',
     date: '2026-08-20',
     title: 'Partnerships: profit splits post with one click',
