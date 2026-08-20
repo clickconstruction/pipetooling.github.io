@@ -57,6 +57,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'fix',
     highlights: [
       'New filter chips — Last 90 / 180 days, Last year (the default), All time — based on when the job was last paid.',
+      'An Account Man filter too: pick a person to grade just their book of jobs, or "No account man" to see the unassigned ones.',
       'The overhead Office job and pass-throughs with no tracked cost or hours no longer plot (they were faking the picture — 455 of the old 630 bubbles). The footer says how many were set aside.',
       'Square-root axes spread the working cluster so winners, losers, and the $/hr guides are readable instead of one blob in the corner.',
     ],

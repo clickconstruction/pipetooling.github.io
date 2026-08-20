@@ -18,6 +18,11 @@ import {
   type PaidProfitWindow,
 } from '../../lib/jobs/paidProfitChart'
 import { APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 } from '../../lib/appSettingsKeys'
+import {
+  accountManFilterOptionsFromJobs,
+  filterJobsByAccountMan,
+  STAGES_ACCOUNT_MAN_FILTER_NONE,
+} from '../../lib/jobsStagesBoard'
 
 /**
  * 📊 on the Paid in Full header (v2.1879, dev/controller): every paid job as a
@@ -50,6 +55,8 @@ export default function PaidProfitChartModal({
   const [hover, setHover] = useState<{ p: PaidProfitPoint; cx: number; cy: number } | null>(null)
   /** Time window over the job's latest payment date (v2.1889). Default: last year. */
   const [windowDays, setWindowDays] = useState<PaidProfitWindow>(365)
+  /** Account Man lens (v2.1889): '' = everyone, the board's sentinel = jobs with none, else user id. */
+  const [accountMan, setAccountMan] = useState('')
   /** The overhead "office job" — an expense bucket, excluded from the chart. */
   const [overheadJobId, setOverheadJobId] = useState<string | null>(null)
 
@@ -97,9 +104,14 @@ export default function PaidProfitChartModal({
   }, [showToast])
 
   const jobsById = useMemo(() => new Map(paidJobs.map((j) => [j.id, j])), [paidJobs])
+  const accountManOptions = useMemo(() => accountManFilterOptionsFromJobs(paidJobs), [paidJobs])
   const { points, stats } = useMemo(
-    () => buildPaidProfitChart(paidJobs, statsMap, { windowDays, excludeJobId: overheadJobId }),
-    [paidJobs, statsMap, windowDays, overheadJobId],
+    () =>
+      buildPaidProfitChart(filterJobsByAccountMan(paidJobs, accountMan || null), statsMap, {
+        windowDays,
+        excludeJobId: overheadJobId,
+      }),
+    [paidJobs, statsMap, windowDays, overheadJobId, accountMan],
   )
   const xMax = useMemo(() => paidProfitXDomainMax(points), [points])
   const yDom = useMemo(() => paidProfitYDomain(points), [points])
@@ -182,6 +194,30 @@ export default function PaidProfitChartModal({
               {w.label}
             </button>
           ))}
+          <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Account Man
+            <select
+              value={accountMan}
+              onChange={(e) => setAccountMan(e.target.value)}
+              style={{
+                height: 26,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: 'var(--surface)',
+                color: 'inherit',
+                fontSize: '0.75rem',
+                maxWidth: 170,
+              }}
+            >
+              <option value="">Everyone</option>
+              <option value={STAGES_ACCOUNT_MAN_FILTER_NONE}>No account man</option>
+              {accountManOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap', margin: '0.5rem 0 0.75rem' }}>
