@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -21,6 +22,7 @@ export function TemplatePricesManager({
   supplyHouses: SupplyHouse[]
 }) {
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
   const [prices, setPrices] = useState<(MaterialTemplatePrice & { supply_house: SupplyHouse | null })[]>([])
   const [loading, setLoading] = useState(true)
   const [editingPrice, setEditingPrice] = useState<MaterialTemplatePrice | null>(null)
@@ -66,7 +68,7 @@ export function TemplatePricesManager({
     if (!selectedSupplyHouse || !price) return
     const priceNum = parseFloat(price)
     if (isNaN(priceNum) || priceNum < 0) {
-      alert('Please enter a valid price')
+      showToast('Please enter a valid price', 'warning')
       return
     }
     setSaving(true)
@@ -75,7 +77,7 @@ export function TemplatePricesManager({
         .from('material_template_prices')
         .update({ price: priceNum })
         .eq('id', editingPrice.id)
-      if (error) alert(`Failed to update bundle price: ${error.message}`)
+      if (error) showToast(`Failed to update bundle price: ${error.message}`, 'error')
       else {
         await loadPrices()
         resetForm()
@@ -84,7 +86,7 @@ export function TemplatePricesManager({
       const { error } = await supabase
         .from('material_template_prices')
         .insert({ template_id: template.id, supply_house_id: selectedSupplyHouse, price: priceNum })
-      if (error) alert(`Failed to add bundle price: ${error.message}`)
+      if (error) showToast(`Failed to add bundle price: ${error.message}`, 'error')
       else {
         await loadPrices()
         resetForm()
@@ -96,7 +98,7 @@ export function TemplatePricesManager({
   async function deletePrice(id: string) {
     if (!(await confirmDialog({ message: 'Delete this bundle price?', confirmLabel: 'Delete', danger: true }))) return
     const { error } = await supabase.from('material_template_prices').delete().eq('id', id)
-    if (error) alert(`Failed to delete bundle price: ${error.message}`)
+    if (error) showToast(`Failed to delete bundle price: ${error.message}`, 'error')
     else await loadPrices()
   }
 
