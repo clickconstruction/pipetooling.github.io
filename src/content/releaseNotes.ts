@@ -22,6 +22,16 @@ export const RELEASE_NOTE_FRAGMENTS: Array<{ file: string; note: ReleaseNote }> 
   .sort((a, b) => (releaseNoteVersionNumber(b.note.version) ?? 0) - (releaseNoteVersionNumber(a.note.version) ?? 0))
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: 'v2.1900',
+    date: '2026-08-20',
+    title: 'Customer documents rule their sections',
+    kind: 'feature',
+    highlights: [
+      'The estimate and change-order document your customer reads — on the accept page and in previews — now has the same light section rules as the editor, so the description, the cost, and the terms read as distinct parts.',
+      'The copy-to-Google-Docs change order matches too.',
+    ],
+  },
   ...RELEASE_NOTE_FRAGMENTS.map((f) => f.note),
   ...RELEASE_NOTES_ARCHIVE,
 ]
