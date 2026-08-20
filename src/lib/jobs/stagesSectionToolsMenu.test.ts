@@ -32,8 +32,18 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-share-print',
       'billed-aging-chart',
       'paid-notifications',
+      'paid-profit-chart',
       'paid-in-full-notifications',
     ])
+  })
+
+  it('the paid profit Chart is dev/controller only — hidden for others', () => {
+    for (const authRole of ['dev', 'controller']) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('paid-profit-chart')
+    }
+    for (const authRole of ['master_technician', 'assistant', 'primary', 'superintendent', null]) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('paid-profit-chart')
+    }
   })
 
   it('the billed aging Chart is dev/controller only — hidden for others', () => {
@@ -70,7 +80,7 @@ describe('buildStagesSectionToolsMenu', () => {
   it('master_technician matches dev except the dev/controller-only tools', () => {
     expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'master_technician' }))).toEqual(
       keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'dev' })).filter(
-        (k) => k !== 'weekly-money' && k !== 'billed-aging-chart',
+        (k) => k !== 'weekly-money' && k !== 'billed-aging-chart' && k !== 'paid-profit-chart',
       ),
     )
   })
@@ -87,8 +97,11 @@ describe('buildStagesSectionToolsMenu', () => {
       'accounts-receivable',
       'billed-share-print',
       'billed-aging-chart',
+      'paid-profit-chart',
     ])
-    expect(controllerGroups.some((g) => g.section === 'Paid in Full')).toBe(false)
+    // Controller's Paid in Full group holds only the profit chart (no ⚙).
+    const paidGroup = controllerGroups.find((g) => g.section === 'Paid in Full')
+    expect(paidGroup?.items.map((i) => i.key)).toEqual(['paid-profit-chart'])
   })
 
   it('primary can open Accounts Receivable but sees no admin tools', () => {
