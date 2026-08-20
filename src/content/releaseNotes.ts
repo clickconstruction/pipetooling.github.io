@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1872',
+    date: '2026-08-19',
+    title: 'Checklist Review: a real team board',
+    kind: 'feature',
+    highlights: [
+      'The Review tab now opens with the numbers that matter: how many completions await sign-off, total outstanding, and misses this week.',
+      'Each person is a card showing their count and how old their oldest task is — expand for the list, remind with one tap.',
+      'The request inboxes tuck into collapsed rows with count badges, and the filter buttons got bigger and clearer (Non-repeating is now One-offs).',
+    ],
+  },
+  {
     version: 'v2.1870',
     date: '2026-08-19',
     title: 'Customer view: see exactly what they\'ll sign, as you type',

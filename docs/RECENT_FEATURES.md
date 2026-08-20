@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1870)
+last_updated: 2026-08-19 (v2.1872)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1872)
+
+### Review tab becomes a team board — summary tiles, folded inboxes, person cards with age (2026-08-19)
+Office half of the checklist polish (mockups approved in-session). [`Checklist.tsx`](../src/pages/Checklist.tsx) Review tab: **summary tiles** up top — To sign off (live count via new `onCountChange` prop on [`ChecklistReviewInboxSection`](../src/components/checklist/ChecklistReviewInboxSection.tsx)), Outstanding for the active filter, and Missed this week (new count-only HEAD query over Sun→today). The **inbox stacks fold** into badge-count header rows, collapsed by default (the sign-off queue first, then dispatch/estimator via new `hideChecklistReviewSection`/`onOpenRequestCount` props on [`ChecklistReviewInboxes`](../src/components/checklist/ChecklistReviewInboxes.tsx) — content stays mounted display-none so hooks/badges live while folded); they also move from below the person table to above it. The **person table becomes cards**: initials avatar, "4 outstanding · oldest 153 days" (red past 14 days — a bare count hid a six-month-old task behind a fresh one), 36px Remind, expand keeps the existing drag-reorder list and actions untouched; the dev Add-task button moves into the expanded body. Row dates become red **age chips** ("153d", title-attr keeps the date). The four tiny filter buttons become the standard segmented control and `Non repeating` is renamed **One-offs** (labels only — same queries). New kernel [`checklistTeamBoard.ts`](../src/lib/checklistTeamBoard.ts) (`initialsFor`, `oldestAgeDays`, `ageChipLabel`, range labels; 5 tests). Verified live: tiles 7/17/9 from prod data, folds badge 7 and 6 open, Michael's card expanding to 4 rows with 153d/150d/114d/20d chips. Client-only — no migration.
 
 ## Latest Updates (v2.1870)
 

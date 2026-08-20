@@ -22,7 +22,15 @@ import {
  * Dashboard/Dispatch-Mode Teams Inbox card and the Checklist Review tab.
  * Renders nothing while empty — it only appears when there is work to review.
  */
-export function ChecklistReviewInboxSection() {
+export function ChecklistReviewInboxSection({
+  onCountChange,
+  renderWhenEmpty = false,
+}: {
+  /** Reports the queue size upward (Review tab fold badge / summary tile). */
+  onCountChange?: (n: number) => void
+  /** Folded hosts want an explicit "nothing waiting" body instead of null. */
+  renderWhenEmpty?: boolean
+} = {}) {
   const { user: authUser, role } = useAuth()
   const isDev = role === 'dev'
   const [rows, setRows] = useState<ReviewQueueRow[]>([])
@@ -72,6 +80,7 @@ export function ChecklistReviewInboxSection() {
         isDev,
       })
       setRows(built)
+      onCountChange?.(built.length)
       setEventsByInstance(grouped)
       const personIds = new Set<string>()
       for (const r of built) if (r.completedByUserId) personIds.add(r.completedByUserId)
@@ -88,6 +97,7 @@ export function ChecklistReviewInboxSection() {
     } catch {
       // Queue is a convenience surface — fail quiet, the Checklist page still works.
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onCountChange is a stable-enough reporter; re-running load on its identity would refetch on every parent render
   }, [authUser?.id, isDev])
 
   useEffect(() => {
@@ -173,7 +183,15 @@ export function ChecklistReviewInboxSection() {
     }
   }
 
-  if (!authUser?.id || rows.length === 0) return null
+  if (!authUser?.id) return null
+  if (rows.length === 0) {
+    if (!renderWhenEmpty) return null
+    return (
+      <p style={{ margin: 0, padding: '0.75rem 0.9rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+        Nothing waiting on review.
+      </p>
+    )
+  }
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
@@ -15,7 +15,15 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
  * then closed), and the dev-only help-feedback card.
  * Hidden for assistant role (matches Dashboard).
  */
-export function ChecklistReviewInboxes() {
+export function ChecklistReviewInboxes({
+  hideChecklistReviewSection = false,
+  onOpenRequestCount,
+}: {
+  /** The Review tab renders the sign-off queue in its own fold — avoid doubling it. */
+  hideChecklistReviewSection?: boolean
+  /** Reports open dispatch+estimator request count upward (fold badge). */
+  onOpenRequestCount?: (n: number) => void
+} = {}) {
   const { role } = useAuth()
   const [dispatchSectionOpen, setDispatchSectionOpen] = useState(true)
   const [estimatorSectionOpen, setEstimatorSectionOpen] = useState(true)
@@ -61,8 +69,9 @@ export function ChecklistReviewInboxes() {
   // The checklist review queue shows for every role that has cards to review
   // (item creators / notify-targets) even where the dispatch/estimator cards
   // below stay hidden — it renders itself only when non-empty.
-  if (isAssistantLike(role)) return <ChecklistReviewInboxSection />
-  if (!dispatchInboxEligible && !estimatorInboxEligible && role !== 'dev') return <ChecklistReviewInboxSection />
+  if (isAssistantLike(role)) return hideChecklistReviewSection ? null : <ChecklistReviewInboxSection />
+  if (!dispatchInboxEligible && !estimatorInboxEligible && role !== 'dev')
+    return hideChecklistReviewSection ? null : <ChecklistReviewInboxSection />
 
   const dispatchOpenRows = dispatchRequests.filter((r) => r.status === 'open')
   const dispatchClosedRows = dispatchRequests.filter((r) => r.status === 'closed')
@@ -72,10 +81,15 @@ export function ChecklistReviewInboxes() {
   const estimatorClosedRows = estimatorRequests.filter((r) => r.status === 'closed')
   const estimatorRowsOrdered = [...estimatorOpenRows, ...estimatorClosedRows]
 
+  const openRequestCount =
+    (dispatchInboxEligible ? dispatchOpenRows.length : 0) +
+    (estimatorInboxEligible ? estimatorOpenRows.length : 0)
+
   return (
     <div style={{ marginBottom: '1.5rem' }}>
+      <OpenCountReporter count={openRequestCount} onOpenRequestCount={onOpenRequestCount} />
       <HelpFeedbackInboxSection />
-      <ChecklistReviewInboxSection />
+      {hideChecklistReviewSection ? null : <ChecklistReviewInboxSection />}
       {dispatchInboxEligible ? (
         <DispatchInboxSection
           variant="card"
@@ -136,4 +150,18 @@ export function ChecklistReviewInboxes() {
       ) : null}
     </div>
   )
+}
+
+/** Effect-only child: reports the open dispatch+estimator count to the host fold. */
+function OpenCountReporter({
+  count,
+  onOpenRequestCount,
+}: {
+  count: number
+  onOpenRequestCount?: (n: number) => void
+}) {
+  useEffect(() => {
+    onOpenRequestCount?.(count)
+  }, [count, onOpenRequestCount])
+  return null
 }

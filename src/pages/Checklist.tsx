@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, Fragment, type CSSProperties, type PointerEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type PointerEvent } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useSearchParams } from 'react-router-dom'
 import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -21,7 +21,9 @@ import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstance
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
-import { qualifiesOutstanding, sortOutstanding } from '../lib/checklistHistoryLedger'
+import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
+import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageChipLabel, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
+import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
 type UserRole =
@@ -1425,7 +1427,28 @@ function OutstandingByPersonSortableRow({
       )}
       <span style={{ flex: 1 }}>
         <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+        {(() => {
+          const chip = ageChipLabel(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))
+          return chip ? (
+            <span
+              title={inst.scheduled_date}
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                padding: '0.1rem 0.45rem',
+                borderRadius: 7,
+                background: 'var(--bg-red-100)',
+                border: '1px solid #dc2626',
+                color: 'var(--text-red-700)',
+                verticalAlign: 'middle',
+              }}
+            >
+              {chip}
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+          )
+        })()}
       </span>
     </li>
   )
@@ -1516,6 +1539,14 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
   const [reorderingUserId, setReorderingUserId] = useState<string | null>(null)
   const [outstandingDeletePending, setOutstandingDeletePending] = useState<OutstandingInstance | null>(null)
+  // Team-board chrome (v2.1872): summary tiles + folded inboxes.
+  const [reviewCount, setReviewCount] = useState<number | null>(null)
+  const [openReqCount, setOpenReqCount] = useState<number | null>(null)
+  const [foldReviewOpen, setFoldReviewOpen] = useState(false)
+  const [foldInboxOpen, setFoldInboxOpen] = useState(false)
+  const [missedWeekCount, setMissedWeekCount] = useState<number | null>(null)
+  const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
+  const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
   const fwdMissingFields: string[] = []
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
@@ -1770,6 +1801,18 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   async function loadOutstanding() {
     setLoading(true)
     setError(null)
+    // Summary tile: misses this company week (Sun -> today), independent of the
+    // range filter below. Count-only HEAD request — cheap.
+    void (async () => {
+      const todayStr = new Date().toLocaleDateString('en-CA')
+      const { count } = await supabase
+        .from('checklist_instances')
+        .select('id', { count: 'exact', head: true })
+        .is('completed_at', null)
+        .gte('scheduled_date', weekStartSunday(todayStr))
+        .lt('scheduled_date', todayStr)
+      setMissedWeekCount(count ?? 0)
+    })()
     const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString('en-CA')
     const weekEnd = new Date(Date.now() + 7 * 864e5).toLocaleDateString('en-CA')
 
@@ -1861,68 +1904,106 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
     setLoading(false)
   }
 
+  const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
+  const boardTile = (label: string, value: string, valueColor?: string) => (
+    <div style={{ flex: 1, background: 'var(--bg-muted)', borderRadius: 10, padding: '0.6rem 0.75rem', minWidth: 110 }}>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: '1.25rem', fontWeight: 600, color: valueColor ?? 'var(--text-strong)', marginTop: 2 }}>{value}</div>
+    </div>
+  )
+  const foldHeader = (
+    label: React.ReactNode,
+    badge: string | null,
+    badgeTone: 'blue' | 'red' | 'muted',
+    open: boolean,
+    onToggle: () => void,
+  ) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '0.5rem',
+        width: '100%',
+        minHeight: 44,
+        padding: '0.55rem 0.75rem',
+        background: 'var(--surface)',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: '0.9375rem',
+        fontWeight: 600,
+        color: 'var(--text-strong)',
+        textAlign: 'left',
+      }}
+    >
+      <span>{label}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+        {badge != null ? (
+          <span
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '0.1rem 0.55rem',
+              borderRadius: 999,
+              background:
+                badgeTone === 'blue' ? 'var(--bg-blue-tint)' : badgeTone === 'red' ? 'var(--bg-red-100)' : 'var(--bg-muted)',
+              color:
+                badgeTone === 'blue' ? 'var(--text-link)' : badgeTone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)',
+            }}
+          >
+            {badge}
+          </span>
+        ) : null}
+        <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{open ? '▾' : '▸'}</span>
+      </span>
+    </button>
+  )
+
   return (
     <div>
+      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        {boardTile('To sign off', reviewCount == null ? '—' : String(reviewCount), 'var(--text-link)')}
+        {boardTile(`Outstanding · ${BOARD_RANGE_LABELS[dateRange as BoardRange].toLowerCase()}`, loading ? '—' : String(outstandingTotal), 'var(--text-red-700)')}
+        {boardTile('Missed this week', missedWeekCount == null ? '—' : String(missedWeekCount))}
+      </div>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden' }}>
+        {foldHeader('Checklist review — sign off completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
+        <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
+          <ChecklistReviewInboxSection onCountChange={onReviewCount} renderWhenEmpty />
+        </div>
+      </div>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '1.25rem', overflow: 'hidden' }}>
+        {foldHeader('Dispatch & estimator inboxes', openReqCount == null ? null : `${openReqCount} open`, openReqCount ? 'red' : 'muted', foldInboxOpen, () => setFoldInboxOpen((o) => !o))}
+        <div style={{ display: foldInboxOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: '0.5rem 0.5rem 0' }}>
+          <ChecklistReviewInboxes hideChecklistReviewSection onOpenRequestCount={onOpenReqCount} />
+        </div>
+      </div>
       <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0 }}>Outstanding by person</h3>
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            <button
-              type="button"
-              onClick={() => setDateRange('non_repeating')}
-              style={{
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0.25rem',
-                background: dateRange === 'non_repeating' ? 'var(--bg-200)' : 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              Non repeating
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateRange('next_day')}
-              style={{
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0.25rem',
-                background: dateRange === 'next_day' ? 'var(--bg-200)' : 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              Next day
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateRange('next_week')}
-              style={{
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0.25rem',
-                background: dateRange === 'next_week' ? 'var(--bg-200)' : 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              Next week
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateRange('missed')}
-              style={{
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0.25rem',
-                background: dateRange === 'missed' ? 'var(--bg-200)' : 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              Missed
-            </button>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', marginLeft: 'auto' }}>
+            {BOARD_RANGE_ORDER.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setDateRange(r)}
+                aria-pressed={dateRange === r}
+                style={{
+                  padding: '0.45rem 0.8rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: dateRange === r ? 600 : 400,
+                  border: 'none',
+                  background: dateRange === r ? '#2563eb' : 'var(--surface)',
+                  color: dateRange === r ? 'white' : 'var(--text-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                {BOARD_RANGE_LABELS[r]}
+              </button>
+            ))}
           </div>
         </div>
         {loading ? (
@@ -1930,94 +2011,126 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
         ) : byUser.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>No outstanding checklist items.</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Name</th>
-                <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>Outstanding</th>
-                <th style={{ padding: '0.5rem 0.75rem', width: 40 }}></th>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Remind</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byUser.map(({ userId, name, count, instances }) => (
-                <Fragment key={userId}>
-                  <tr
-                    key={userId}
-                    style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+          <div>
+            {byUser.map(({ userId, name, count, instances }) => {
+              const todayLocal = new Date().toLocaleDateString('en-CA')
+              const oldest = oldestAgeDays(instances, todayLocal)
+              const expanded = expandedUserId === userId
+              return (
+                <div key={userId} style={{ border: '1px solid var(--border-strong)', borderRadius: 12, marginBottom: '0.6rem', overflow: 'hidden' }}>
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setExpandedUserId((prev) => (prev === userId ? null : userId))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setExpandedUserId((prev) => (prev === userId ? null : userId))
+                      }
+                    }}
+                    aria-expanded={expanded}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem 0.75rem', cursor: 'pointer' }}
                   >
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {name}
-                        {expandedUserId === userId && isDev && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); checklistAddModal?.openAddModal(userId) }}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.8125rem',
-                              border: '1px solid #3b82f6',
-                              borderRadius: 4,
-                              background: '#3b82f6',
-                              color: 'white',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Add task
-                          </button>
-                        )}
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 34,
+                        height: 34,
+                        flexShrink: 0,
+                        borderRadius: '50%',
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-800)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {initialsFor(name)}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>{name}</span>
+                      <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                        {count} outstanding
+                        {oldest > 0 ? (
+                          <>
+                            {' · '}
+                            <span style={{ color: oldest > 14 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                              oldest {oldest} {oldest === 1 ? 'day' : 'days'}
+                            </span>
+                          </>
+                        ) : null}
                       </span>
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>{count}</td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {expandedUserId === userId ? '▼' : '▶'}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        disabled={remindingUserId === userId}
-                        onClick={() => sendReminder(userId, instances)}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.875rem',
-                          border: '1px solid var(--border)',
-                          borderRadius: '0.25rem',
-                          background: 'transparent',
-                          cursor: remindingUserId === userId ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {remindingUserId === userId ? 'Sending…' : 'Remind'}
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedUserId === userId && (
-                    <tr key={`${userId}-detail`}>
-                      <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                        <OutstandingByPersonSortableList
-                          userId={userId}
-                          instances={instances}
-                          reorderingUserId={reorderingUserId}
-                          canManageChecklists={canManageChecklists}
-                          isDev={isDev}
-                          onDragEnd={onOutstandingDragEnd(userId, instances)}
-                          completingInstanceId={completingInstanceId}
-                          deletingInstanceId={deletingInstanceId}
-                          onMarkComplete={markComplete}
-                          onDeleteInstance={openOutstandingDeleteModal}
-                          onOpenFwd={openFwd}
-                          setEditItemId={setEditItemId}
-                        />
-                      </td>
-                    </tr>
+                    </span>
+                    <button
+                      type="button"
+                      disabled={remindingUserId === userId}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        sendReminder(userId, instances)
+                      }}
+                      style={{
+                        minHeight: 36,
+                        padding: '0 0.75rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 8,
+                        background: 'var(--surface)',
+                        color: 'var(--text-700)',
+                        cursor: remindingUserId === userId ? 'not-allowed' : 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {remindingUserId === userId ? 'Sending…' : '🔔 Remind'}
+                    </button>
+                    <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{expanded ? '▾' : '▸'}</span>
+                  </div>
+                  {expanded && (
+                    <div style={{ borderTop: '1px solid var(--border)', padding: '0.6rem 0.75rem', background: 'var(--bg-subtle)' }}>
+                      <OutstandingByPersonSortableList
+                        userId={userId}
+                        instances={instances}
+                        reorderingUserId={reorderingUserId}
+                        canManageChecklists={canManageChecklists}
+                        isDev={isDev}
+                        onDragEnd={onOutstandingDragEnd(userId, instances)}
+                        completingInstanceId={completingInstanceId}
+                        deletingInstanceId={deletingInstanceId}
+                        onMarkComplete={markComplete}
+                        onDeleteInstance={openOutstandingDeleteModal}
+                        onOpenFwd={openFwd}
+                        setEditItemId={setEditItemId}
+                      />
+                      {isDev && (
+                        <button
+                          type="button"
+                          onClick={() => checklistAddModal?.openAddModal(userId)}
+                          style={{
+                            marginTop: '0.4rem',
+                            minHeight: 36,
+                            padding: '0 0.8rem',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            border: 'none',
+                            borderRadius: 8,
+                            background: '#2563eb',
+                            color: 'white',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ＋ Add task for {name.split(' ')[0]}
+                        </button>
+                      )}
+                    </div>
                   )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
-      <ChecklistReviewInboxes />
       {outstandingDeletePending && (
         <div
           style={{
