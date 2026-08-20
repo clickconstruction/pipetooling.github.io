@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1878',
+    date: '2026-08-19',
+    title: 'Cover Letter: try the new studio layout',
+    kind: 'feature',
+    highlights: [
+      'The Cover Letter tab now has Old and New pills at the top. Old is exactly the layout you know; New is a two-pane studio — controls in steps on the left, the letter always visible on the right.',
+      'In the studio, the letter repaints live as you type, the amount reads as a headline with one-click Apply to Bid Value, and the send buttons sit right under the letter.',
+      'Flip between the two any time — they share the same data, and your choice sticks on this device. Old stays the default while the new layout is refined.',
+    ],
+  },
+  {
     version: 'v2.1875',
     date: '2026-08-19',
     title: 'Groundwork: roadmap goals feed real checklists',
