@@ -2839,6 +2839,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (railFlashTimerRef.current) clearTimeout(railFlashTimerRef.current)
     railFlashTimerRef.current = setTimeout(() => setRailFlashStep(null), 2600)
   }
+
+  /** Small numbered circle before a region's heading, synced to the rail. */
+  function railStepDot(key: EstimateDraftStepKey) {
+    const step = railData.steps.find((st) => st.key === key)
+    if (!step) return null
+    return (
+      <span className={`est-step-margin-dot ${step.status}`} aria-hidden>
+        {step.status === 'done' ? '✓' : step.number}
+      </span>
+    )
+  }
   const showSendEmailOverride = Boolean(isDraft && customerId && !crmEmailForSelected)
 
   function resolveCustomerEmailForPersist(): string | null {
@@ -3602,11 +3613,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             id="est-step-customer"
             ref={customerSearchSectionRef}
             className={
-              customerSearchHighlight || railFlashStep === 'customer' ? 'estimate-customer-search-highlight' : undefined
+              'est-region-tint' +
+              (customerSearchHighlight || railFlashStep === 'customer' ? ' estimate-customer-search-highlight' : '')
             }
             style={{ width: '100%', maxWidth: 480, textAlign: 'left' }}
           >
-            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>Customer</span>
+            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>{railStepDot('customer')}Customer</span>
             <CustomerSearchCombobox
               customers={filterActiveCustomersForPicker(customers, customerId)}
               loading={customersLoading}
@@ -4124,7 +4136,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             {isCO ? (
               <div
                 id="est-step-change"
-                className={railFlashStep === 'change' ? 'estimate-customer-search-highlight' : undefined}
+                className={'est-region-tint' + (railFlashStep === 'change' ? ' estimate-customer-search-highlight' : '')}
                 style={{
                   border: '1px solid #f59e0b',
                   borderRadius: 8,
@@ -4135,7 +4147,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   gap: '0.6rem',
                 }}
               >
-                <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Change order</h2>
+                <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{railStepDot('change')}Change order</h2>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
                   Description of change
                   <AutosizeTextarea
@@ -4180,7 +4192,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             ) : null}
             <div
               id="est-step-cost"
-              className={railFlashStep === 'cost' ? 'estimate-customer-search-highlight' : undefined}
+              className={'est-region-ruled' + (railFlashStep === 'cost' ? ' estimate-customer-search-highlight' : '')}
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -4189,7 +4201,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 marginBottom: '0.5rem',
               }}
             >
-              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{isCO ? 'Impact on cost' : 'Line items'}</h2>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>{railStepDot('cost')}{isCO ? 'Impact on cost' : 'Line items'}</h2>
               {lineItemRecentChips.map((c) => {
                 const primary = (c.line_item.trim() || c.description.trim() || '(line)').slice(0, 40)
                 const short = primary.length > 36 ? `${primary.slice(0, 35)}…` : primary
@@ -4939,7 +4951,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             )}
             <section
               id="est-step-paper_extras"
-              className={railFlashStep === 'paper_extras' ? 'estimate-customer-search-highlight' : undefined}
+              className={'est-region-ruled est-region-tint' + (railFlashStep === 'paper_extras' ? ' estimate-customer-search-highlight' : '')}
               style={{ marginTop: '1.5rem' }}
             >
               <h2
@@ -4950,6 +4962,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   transition: 'color 0.15s ease',
                 }}
               >
+                {railStepDot('paper_extras')}
                 {staffResolvedExperience?.docTermsHeading ?? 'Terms'}
               </h2>
               <AutosizeTextarea
@@ -5130,8 +5143,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </fieldset>
           <section
             id="est-step-delivery"
-            className={railFlashStep === 'delivery' ? 'estimate-customer-search-highlight' : undefined}
+            className={'est-backstage-card est-region-tint' + (railFlashStep === 'delivery' ? ' estimate-customer-search-highlight' : '')}
           >
+            <h2 className="est-backstage-head">
+              {railStepDot('delivery')}Delivery
+              <span className="est-backstage-sub">The customer never sees this section.</span>
+            </h2>
           <fieldset
             style={{
               marginTop: '1rem',

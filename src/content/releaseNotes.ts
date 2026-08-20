@@ -31,6 +31,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1892',
+    date: '2026-08-20',
+    title: 'Estimate sections you can see at a glance',
+    kind: 'feature',
+    highlights: [
+      'Each section of a draft now starts with its numbered step dot (matching the side guide), and light rules mark where one section ends and the next begins.',
+      'Delivery — who gets notified, the project link, internal notes — sits in its own card labeled "The customer never sees this section."',
+      'The section you\'re typing in gets a subtle highlight so you always know where you are.',
+    ],
+  },
+  {
     version: 'v2.1888',
     date: '2026-08-20',
     title: 'Partnerships: set the farm job without SQL',
