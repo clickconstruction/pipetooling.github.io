@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1868',
+    date: '2026-08-19',
+    title: 'Estimates and change orders: a numbered guide on every draft',
+    kind: 'feature',
+    highlights: [
+      'Drafts now show numbered steps — Customer, The change, Impact on cost, Terms & attachments, Delivery — beside the document on big screens and as a pinned row on phones.',
+      'Each step shows a green check or an amber "what\'s missing" note, and tapping one jumps straight to it.',
+      'The send button says exactly what\'s left ("2 steps left: cost lines · delivery"), and steps are grouped by what\'s on the customer\'s copy vs. behind the scenes.',
+      'Sending a $0 document now asks you to confirm first.',
+    ],
+  },
+  {
     version: 'v2.1867',
     date: '2026-08-19',
     title: 'Notification tests: real error messages',

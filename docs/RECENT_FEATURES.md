@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1867)
+last_updated: 2026-08-19 (v2.1868)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1868)
+
+### The draft editor's numbered guide — step rail train PR 2, train complete for now (2026-08-19)
+The v2.1865 kernel gets its UI, per the rail-v2 mockups (the paper stays the paper — the owner's WYSIWYG design is the spine). New [`EstimateDraftStepRail`](../src/components/estimates/EstimateDraftStepRail.tsx): on ≥1400px screens a fixed rail in the left gutter beside the centered document — steps grouped **On the customer's copy** / **Behind the scenes**, each with a live status glyph (✓ / amber number) and one-line sublabel from the kernel; below 1400px it collapses to a sticky horizontal pill strip above the content. Clicking a step scrolls to its region (`est-step-*` anchors on the customer block, the CO box, the line-items block, Terms, and a new section wrapping the delivery tail — notify recipients + project link + internal notes) and pulses it with the existing customer-search highlight animation; the customer step also focuses the search box. The rail carries its own Send button ("Send for signature" on COs) gated by the kernel's `ready` plus the live "N steps left: …" hint; the bottom Save/Send/Delete row is unchanged. New soft gate in `sendToCustomer` (owner decision 1): a $0 total/net-change draft sends only after a confirm. Deviation from the mockup, noted: the customer picker stays above the paper — it anchors the `EstimateDraftCustomerGate` interaction gate and must remain interactive while everything below is gated. Verified live on prod CO draft #61 (dark mode): three amber steps → description + $1,250 line flipped their steps and recounted the hint to "1 step left: customer", send stayed correctly disabled, flash-on-click worked, mobile strip rendered; draft deleted. Help guide `write-a-change-order` gains "The numbered guide". The Customer-view toggle (pixel-true `EstimateCustomerDocument` in place of the edit paper) is the train's next car. Client-only — no migration.
 
 ## Latest Updates (v2.1867)
 
