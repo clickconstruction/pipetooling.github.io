@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1883)
+last_updated: 2026-08-20 (v2.1884)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1884)
+
+### Partnerships: the §3 profit split posts to the ledger (2026-08-20)
+Partnerships train PR 5 of 8. Migration `20260820180000_partner_profit_share.sql`: internal `partner_job_cost_buckets(job)` computes ONE job's contract buckets from the SAME six verified cost streams as `get_billed_aging_costs` / the paid-email scoreboard (team labor × wages person-first, sub labor books + drive cost, mercury allocations, supply pct allocations, tally, other charges) — labor = team+subs, materials = mercury+supply+tally, direct = other charges (where the §4h transfer rows land in PR 6); profit = revenue − labor − direct − materials. `get_partner_job_split_preview(job)` (dev-gated) returns buckets + the split at the partnership's percentages + any live posting; `post_partner_profit_share(job)` writes the `profit_share` offset (idempotent via the PR 3 partial-unique index — reposts return the live posting; requires the majority flag, `modules.profit_shares`, positive share) and logs a `profit_share_posted` event; `reverse_partner_profit_share(job)` writes an explicit negating row (never edits) + event. `generate_partner_statement` re-created reversal-aware: negative-amount positive-type offsets now attach as deductions of ABS(amount) instead of tripping the additional-lines rate ≥ 0 CHECK. Client: [`PartnerJobSplitPanel`](../src/components/partnerships/PartnerJobSplitPanel.tsx) mounts under the job detail profit band (dev only, self-gating on the flag — renders nothing otherwise): revenue → buckets → profit → first-cut → 50/50 rows with Post / Reverse. Kernel [`splitPreview.ts`](../src/lib/partnerLedger/splitPreview.ts) pins the split formula to the contract's worked example ($2,695 → $592.90 / $2,102.10 / $1,051.05; 5 tests). **`supabase db push` after merge.**
 
 ## Latest Updates (v2.1883)
 

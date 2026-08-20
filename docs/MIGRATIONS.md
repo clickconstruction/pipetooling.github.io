@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "246 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "247 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820180000_partner_profit_share.sql`** _(apply via `supabase db push` after the v2.1884 merge — additive; the split panel renders nothing until applied)_
+- **Purpose**: Partnerships train PR 5 — the §3 split. `partner_job_cost_buckets(job)` (internal, EXECUTE revoked) reuses the six verified cost streams for one job; `get_partner_job_split_preview` / `post_partner_profit_share` (idempotent via the partial-unique index; events logged) / `reverse_partner_profit_share` (explicit negating rows). `generate_partner_statement` re-created reversal-aware (negative positive-type offsets attach as ABS deductions). `partnership_events` CHECK widened with `profit_share_posted`/`profit_share_reversed`.
+- **Category**: Partnerships / Jobs
 
 **`20260820170000_partner_dashboard_rpcs.sql`** _(apply via `supabase db push` after the v2.1883 merge — additive; the dashboard card renders nothing until applied)_
 - **Purpose**: Partnerships train PR 4 — partner-scoped reads. `my_partner_partnership_id()` helper (caller → draft/active partnership via people.account_user_id); `get_my_partner_summary()` (balance, current-week so-far at deal rates, pending sessions/offsets, latest statement + acks); `get_my_partner_ledger(p_weeks)` (recent statement weeks: per-rate labor sums, additions, deductions, payments, acks); `acknowledge_partner_statement(stub)` (§9b partner co-sign, ownership-checked, idempotent). All SECURITY DEFINER; partner reads via RPC per the v2.1225 recursion lesson.
