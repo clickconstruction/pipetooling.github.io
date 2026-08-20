@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1863',
+    date: '2026-08-19',
+    title: 'Tonight\'s outage: what happened',
+    kind: 'infra',
+    highlights: [
+      'The app was unreachable for about 75 minutes this evening due to a database platform stall (the second of its kind); a restart restored service.',
+      'No data was lost and no changes caused it — the investigation notes are logged so the next one is diagnosed faster.',
+    ],
+  },
+  {
     version: 'v2.1862',
     date: '2026-08-19',
     title: 'History grid: easier to read, harder to break',

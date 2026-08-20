@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1862)
+last_updated: 2026-08-19 (v2.1863)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1863)
+
+### DB freeze 2026-08-19 — Mode B incident logged; pooler-lags-Postgres lesson added to the runbook (2026-08-19)
+Prod froze 00:19–00:56 UTC (Aug 20); app dark ~76 minutes end to end; recovered by manual restart. `/db-freeze` triage per [`DB_FREEZE_RUNBOOK.md`](DB_FREEZE_RUNBOOK.md): Step 0 split cleanly (http-only 401 in 0.14s, db-touching → Cloudflare 522), pooler blind (`{:error, :timeout}`), post-mortem decisive for **Mode B** — every cron job 00:18–00:20 failed `job startup timeout` (hangs to 35m59s), zero `Lock` wait events in 3h, precursor of 21 idle-in-transaction conns at 00:13. **New runbook lesson**: Postgres self-recovered at 00:56 (sampler resumed) while Supavisor/PostgREST stayed wedged for ~40 more minutes — cron running again ≠ recovered; only Step 0 says that. Also logged: browser "CORS blocked" errors during a freeze are an artifact of responses never arriving. No DDL was in flight; the day's migrations applied hours earlier. Docs-only.
 
 ## Latest Updates (v2.1862)
 

@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-08-14
+last_updated: 2026-08-19
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -242,6 +242,32 @@ CPU peaked at 12% all day, RAM steady, DB ~245 MB, 99% cache hit, zero crash/OOM
 entries. `inspect db blocking` named the culprit each time. Full detail in
 `RECENT_FEATURES.md` v2.1136. Produced the `idle_in_transaction_session_timeout`
 migration.
+
+### 2026-08-19 — Mode B (37-minute stall, 00:19–00:56 UTC Aug 20; app dark ~76 min end to end)
+
+Ended by a manual restart at ~01:33 UTC. Second confirmed Mode B; adds one new
+lesson: **Postgres self-recovering does not bring the app back** (below).
+
+- **Step 0 read cleanly through a Cloudflare wrinkle**: `http-only` 401 in
+  0.14s, `db-touching` hung ~20s into a **522** (not a hang to timeout — the
+  edge gave up first). Browser consoles showed bogus "CORS blocked" errors —
+  responses never arrived, so no CORS headers; don't chase CORS during a freeze.
+- **Pooler was blind**: all three `inspect db` probes failed with
+  `FATAL: Failed to connect to database: {:error, :timeout}` (Supavisor →
+  Postgres), the `{:error, :timeout}` sibling of `EAUTHQUERY`.
+- **`cron.job_run_details`**: every job scheduled 00:18–00:20 failed with
+  `job startup timeout` after hangs up to **35m59s** — postmaster could not
+  fork workers for the whole window. Decisive.
+- **Zero** `wait_event_type = 'Lock'` rows across 3 hours. Not lock contention.
+- **Precursors**: sampler gaps of 180s at 21:46 (36 active conns,
+  `sample_duration_ms` 209), 120s at 22:09 and 22:37; **21 conns
+  `idle in transaction` at 00:13**, four minutes before onset.
+- **New lesson — the pooler can stay wedged after Postgres recovers**: the
+  per-minute sampler resumed at **00:56** and ran normally for ~40 minutes
+  while PostgREST/Supavisor kept returning 522/timeout the entire time. The
+  restart was still required to restore external access. Don't read "cron is
+  running again" as "we're back" — only Step 0 says that.
+- status.supabase.com showed only an unrelated minor incident throughout.
 
 ### 2026-07-31 — Mode B (8-minute stall, 17:26:01–17:34:06 UTC)
 
