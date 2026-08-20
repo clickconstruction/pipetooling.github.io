@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 20, 2026
 
+**`20260820120000_billed_aging_costs.sql`** _(apply via `supabase db push` after the v2.1871 merge, then `npm run gen-types:linked` — new function only; nothing calls it until the Chart modal ships)_
+- **Purpose**: Billed aging chart bubble sizes. New SECURITY DEFINER RPC `get_billed_aging_costs()` returning `{ "<jobs_ledger.id>": cost }` over every job with a billed invoice — the paid-email scoreboard's six cost streams (clock-session team labor × pay-config wage, sub-labor books + drive cost, mercury allocations, supply-house allocations, tally parts, other charges) computed set-based across the billed cohort. Wage-derived ⇒ returns NULL unless the caller is dev or controller (the Weekly Money Movement gate). EXECUTE granted to authenticated (gate inside), revoked from anon/PUBLIC.
+- **Category**: Jobs / function
+
 **`20260820041532_roadmap_checklist_bridge.sql`** _(apply via `supabase db push` after the v2.1875 merge — additive; nothing calls the RPC until the v2.1876 client ships)_
 - **Purpose**: Roadmap ⇄ checklist bridge, Phase R1. `checklist_items.roadmap_group_task_id` FK (+partial index); `sync_roadmap_to_checklist(p_roadmap_id)` RPC materializing assigned/incomplete tasks of UNLOCKED tech-tree groups as one-off checklist items + today instances (dev/editor-gated, idempotent); `sync_roadmap_task_from_instance_au` trigger syncing bridged instance completion/reopen back onto `checklist_tech_tree_group_tasks.completed_at`.
 - **Category**: Checklist / roadmap

@@ -11,6 +11,7 @@
  * - Accounts Receivable: rendered for everyone, disabled unless
  *   dev / master_technician / assistant-like / primary (same as the header).
  * - Share / Print: dev / master_technician / assistant-like only.
+ * - Chart (billed aging bubbles): dev / controller only (wage-derived costs).
  * - Ready to Bill notifications + Paid notifications + Paid In Full
  *   notifications: dev / master_technician only.
  */
@@ -24,6 +25,7 @@ export type StagesSectionToolKey =
   | 'gc-review'
   | 'accounts-receivable'
   | 'billed-share-print'
+  | 'billed-aging-chart'
   | 'paid-notifications'
   | 'paid-in-full-notifications'
 
@@ -133,6 +135,16 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       key: 'billed-share-print',
       label: 'Share / Print',
       title: 'Email this report to a teammate — now or scheduled — or print it',
+      disabled: false,
+    })
+  }
+  // Bubble sizes are wage-derived job costs — same dev/controller gate as
+  // Weekly money movement. Hidden, not disabled, for everyone else.
+  if (authRole === 'dev' || authRole === 'controller') {
+    billedItems.push({
+      key: 'billed-aging-chart',
+      label: 'Chart',
+      title: 'Aging bubble chart — open $ vs days waiting, bubble = our cost',
       disabled: false,
     })
   }
