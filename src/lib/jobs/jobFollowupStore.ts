@@ -147,7 +147,39 @@ export async function recordJobFollowupReview(
   )
 }
 
-export async function fetchJobFollowupCandidates(todayYmd: string): Promise<JobFollowupCandidate[]> {
+/**
+ * Candidates cache (v2.1920): the banner runs the candidates fetch (a
+ * jobs_ledger select + the list_job_followup_activity RPC) on EVERY office
+ * Dashboard mount, and clicking through to the deck immediately ran the same
+ * fetch again. Within the TTL, remounts and the banner→deck handoff reuse one
+ * result; the deck passes `force: true` so a deliberately opened deck is never
+ * stale. The in-flight promise is shared too, so concurrent callers coalesce.
+ */
+const CANDIDATES_CACHE_TTL_MS = 5 * 60_000
+let candidatesCache: { todayYmd: string; at: number; promise: Promise<JobFollowupCandidate[]> } | null = null
+
+export function invalidateJobFollowupCandidatesCache(): void {
+  candidatesCache = null
+}
+
+export async function fetchJobFollowupCandidates(
+  todayYmd: string,
+  options?: { force?: boolean },
+): Promise<JobFollowupCandidate[]> {
+  const cached = candidatesCache
+  if (!options?.force && cached && cached.todayYmd === todayYmd && Date.now() - cached.at < CANDIDATES_CACHE_TTL_MS) {
+    return cached.promise
+  }
+  const promise = fetchJobFollowupCandidatesUncached(todayYmd)
+  candidatesCache = { todayYmd, at: Date.now(), promise }
+  // A failed fetch must not poison the cache window with a rejected promise.
+  promise.catch(() => {
+    if (candidatesCache?.promise === promise) candidatesCache = null
+  })
+  return promise
+}
+
+async function fetchJobFollowupCandidatesUncached(todayYmd: string): Promise<JobFollowupCandidate[]> {
   const [jobsData, activityData] = await Promise.all([
     withSupabaseRetry(
       async () =>
