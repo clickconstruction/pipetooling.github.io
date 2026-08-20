@@ -12,9 +12,12 @@ import {
   paidProfitY,
   paidProfitYDomain,
   paidProfitYTicks,
+  sqrtSpacedTicks,
   type PaidProfitPoint,
   type PaidProfitStatsRow,
+  type PaidProfitWindow,
 } from '../../lib/jobs/paidProfitChart'
+import { APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 } from '../../lib/appSettingsKeys'
 
 /**
  * 📊 on the Paid in Full header (v2.1879, dev/controller): every paid job as a
@@ -45,6 +48,25 @@ export default function PaidProfitChartModal({
   const [statsMap, setStatsMap] = useState<Record<string, PaidProfitStatsRow> | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [hover, setHover] = useState<{ p: PaidProfitPoint; cx: number; cy: number } | null>(null)
+  /** Time window over the job's latest payment date (v2.1889). Default: last year. */
+  const [windowDays, setWindowDays] = useState<PaidProfitWindow>(365)
+  /** The overhead "office job" — an expense bucket, excluded from the chart. */
+  const [overheadJobId, setOverheadJobId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase
+      .from('app_settings')
+      .select('value_text')
+      .eq('key', APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setOverheadJobId((data?.value_text ?? '').trim() || null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -75,20 +97,29 @@ export default function PaidProfitChartModal({
   }, [showToast])
 
   const jobsById = useMemo(() => new Map(paidJobs.map((j) => [j.id, j])), [paidJobs])
-  const { points, stats } = useMemo(() => buildPaidProfitChart(paidJobs, statsMap), [paidJobs, statsMap])
+  const { points, stats } = useMemo(
+    () => buildPaidProfitChart(paidJobs, statsMap, { windowDays, excludeJobId: overheadJobId }),
+    [paidJobs, statsMap, windowDays, overheadJobId],
+  )
   const xMax = useMemo(() => paidProfitXDomainMax(points), [points])
   const yDom = useMemo(() => paidProfitYDomain(points), [points])
   const yTicks = useMemo(() => paidProfitYTicks(yDom), [yDom])
 
   const xd = (h: number) => paidProfitX(h, xMax, X0, X1)
   const yd = (v: number) => paidProfitY(v, yDom, Y_TOP, Y_BOTTOM)
-  const xTicks = useMemo(() => {
-    const step = xMax / 8
-    const nice = step <= 5 ? 5 : step <= 10 ? 10 : step <= 25 ? 25 : step <= 50 ? 50 : 100
-    const ticks: number[] = []
-    for (let h = 0; h <= xMax; h += nice) ticks.push(h)
-    return ticks
-  }, [xMax])
+  // sqrt-spaced so labels stay evenly readable under the sqrt axis.
+  const xTicks = useMemo(() => sqrtSpacedTicks(xMax, 5), [xMax])
+  /** $/hr guide as a sampled path — a curve under the sqrt scales, correct pointwise. */
+  const guidePath = (rate: number): string | null => {
+    const hEnd = Math.min(xMax, yDom.max / rate)
+    if (hEnd <= 0) return null
+    const parts: string[] = []
+    for (let i = 0; i <= 32; i++) {
+      const h = (hEnd * i) / 32
+      parts.push(`${i === 0 ? 'M' : 'L'}${xd(h).toFixed(1)},${yd(h * rate).toFixed(1)}`)
+    }
+    return parts.join(' ')
+  }
   // Direct labels: biggest win, biggest loss (everything else is hover).
   const labeledIds = useMemo(() => {
     const ids = new Set<string>()
@@ -120,6 +151,37 @@ export default function PaidProfitChartModal({
           >
             ×
           </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', margin: '0.5rem 0 0.25rem' }}>
+          {(
+            [
+              { v: 90 as const, label: 'Last 90 days' },
+              { v: 180 as const, label: 'Last 180 days' },
+              { v: 365 as const, label: 'Last year' },
+              { v: null, label: 'All time' },
+            ] as Array<{ v: PaidProfitWindow; label: string }>
+          ).map((w) => (
+            <button
+              key={w.label}
+              type="button"
+              onClick={() => setWindowDays(w.v)}
+              aria-pressed={windowDays === w.v}
+              style={{
+                height: 26,
+                padding: '0 10px',
+                borderRadius: 9999,
+                border: `1px solid ${windowDays === w.v ? 'var(--text-blue-700)' : 'var(--border-strong)'}`,
+                background: windowDays === w.v ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: windowDays === w.v ? 'var(--text-blue-700)' : 'var(--text-700)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {w.label}
+            </button>
+          ))}
         </div>
 
         <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap', margin: '0.5rem 0 0.75rem' }}>
@@ -164,13 +226,14 @@ export default function PaidProfitChartModal({
               profit ($)
             </text>
 
-            {/* $/hr guide lines through the origin */}
+            {/* $/hr guides through the origin — curves under the sqrt scales, correct pointwise */}
             {GUIDE_RATES.map((rate) => {
+              const d = guidePath(rate)
+              if (!d) return null
               const hEnd = Math.min(xMax, yDom.max / rate)
-              if (hEnd <= 0) return null
               return (
                 <g key={rate}>
-                  <line x1={xd(0)} y1={yd(0)} x2={xd(hEnd)} y2={yd(hEnd * rate)} stroke="var(--text-muted)" strokeWidth={1} strokeDasharray="5 4" opacity={0.5} />
+                  <path d={d} fill="none" stroke="var(--text-muted)" strokeWidth={1} strokeDasharray="5 4" opacity={0.5} />
                   <text x={xd(hEnd) - 4} y={yd(hEnd * rate) + (rate === GUIDE_RATES[0] ? -6 : 14)} fontSize={10} fill="var(--text-muted)" textAnchor="end">
                     ${rate}/hr
                   </text>
@@ -212,18 +275,22 @@ export default function PaidProfitChartModal({
             {/* direct labels: biggest win + biggest loss */}
             {points
               .filter((p) => labeledIds.has(p.jobId))
-              .map((p) => (
-                <text
-                  key={`lbl-${p.jobId}`}
-                  x={Math.min(xd(p.hours), X1 - 4)}
-                  y={Math.max(yd(p.profit) - paidProfitRadius(p.revenue) - 6, Y_TOP + 12)}
-                  fontSize={10.5}
-                  fill="var(--text-700)"
-                  textAnchor={xd(p.hours) > X1 - 90 ? 'end' : 'middle'}
-                >
-                  {p.label} · {paidProfitMoneyLabel(p.profit)}
-                </text>
-              ))}
+              .map((p) => {
+                const cx = Math.min(Math.max(xd(p.hours), X0 + 8), X1 - 4)
+                const anchor = cx < X0 + 100 ? 'start' : cx > X1 - 100 ? 'end' : 'middle'
+                return (
+                  <text
+                    key={`lbl-${p.jobId}`}
+                    x={cx}
+                    y={Math.max(yd(p.profit) - paidProfitRadius(p.revenue) - 6, Y_TOP + 12)}
+                    fontSize={10.5}
+                    fill="var(--text-700)"
+                    textAnchor={anchor}
+                  >
+                    {p.label} · {paidProfitMoneyLabel(p.profit)}
+                  </text>
+                )
+              })}
           </svg>
 
           {hover && (
@@ -270,7 +337,7 @@ export default function PaidProfitChartModal({
           {statsLoading && <span role="status">Computing costs…</span>}
           {stats.skippedNoStats > 0 && !statsLoading && (
             <span>
-              {stats.skippedNoStats} job{stats.skippedNoStats === 1 ? '' : 's'} without cost data not plotted
+              {stats.skippedNoStats} job{stats.skippedNoStats === 1 ? '' : 's'} with no tracked cost or hours not plotted
             </span>
           )}
         </div>
