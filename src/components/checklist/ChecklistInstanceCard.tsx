@@ -29,8 +29,8 @@ type ChecklistInstanceCardProps = {
 
 /**
  * The mobile-first checklist card (v2.1843, sunlight pass v2.1854): this
- * surface is used one-handed on dim phones outdoors, so the actions are a
- * full-width 48px split bar (Notes · count / Add note) with 2px
+ * surface is used one-handed on dim phones outdoors, so the note action is a
+ * single 48px right-half button (＋ Add a note → 💬 Notes N) with 2px
  * `--text-600` borders (the app has no dark border token) and near-black
  * text — border weight and type
  * size carry the design, not color tints, because tints are the first thing
@@ -213,11 +213,13 @@ export function ChecklistInstanceCard({
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
-        {/* The note action lives on the RIGHT half only (owner call, v2.1858):
-            the left half under the complete toggle stays dead space so a thumb
-            aiming for "Add a note" can't graze the checkbox. With comments the
-            Notes button fills the left slot; without, an inert spacer does. */}
-        {comments === 0 ? <span aria-hidden="true" style={{ flex: 1 }} /> : null}
+        {/* ONE note action, always on the RIGHT half (owner calls, v2.1858 +
+            v2.1864): the left half under the complete toggle stays dead space
+            so a thumb aiming at notes can't graze the checkbox. Zero notes →
+            "＋ Add a note" (opens the thread and focuses the composer); once a
+            note exists → "💬 Notes N" (the open thread carries the composer,
+            so a separate add button is redundant). */}
+        <span aria-hidden="true" style={{ flex: 1 }} />
         {comments > 0 ? (
           <button
             type="button"
@@ -247,22 +249,23 @@ export function ChecklistInstanceCard({
               {comments}
             </span>
           </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            if (threadOpen && comments === 0) {
-              setThreadOpen(false)
-              return
-            }
-            setThreadOpen(true)
-            setFocusComposerPending(true)
-          }}
-          aria-expanded={comments === 0 ? threadOpen : undefined}
-          style={actionBarButtonBase}
-        >
-          ＋ {comments > 0 ? 'Add note' : 'Add a note'}
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (threadOpen) {
+                setThreadOpen(false)
+                return
+              }
+              setThreadOpen(true)
+              setFocusComposerPending(true)
+            }}
+            aria-expanded={threadOpen}
+            style={actionBarButtonBase}
+          >
+            ＋ Add a note
+          </button>
+        )}
       </div>
       {threadOpen ? (
         <div style={{ marginTop: '0.65rem' }}>

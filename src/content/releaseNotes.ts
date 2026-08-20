@@ -31,6 +31,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1864',
+    date: '2026-08-19',
+    title: 'Outstanding tasks join the Today list',
+    kind: 'feature',
+    highlights: [
+      'Overdue one-off tasks now show in an Outstanding section at the bottom of Checklist → Today — with how-overdue labels and a checkbox to knock them out right there.',
+      'History is now a clean record of completed work; day-to-day misses of recurring tasks no longer pile up there as red rows.',
+      'Once a task has a note, the separate Add-note button goes away — open Notes to read and reply in one place.',
+    ],
+  },
+  {
     version: 'v2.1863',
     date: '2026-08-19',
     title: 'Tonight\'s outage: what happened',
