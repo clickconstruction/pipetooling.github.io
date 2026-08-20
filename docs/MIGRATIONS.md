@@ -1,5 +1,10 @@
 # Database Migrations Reference
 
+> **Per-migration changelog FROZEN (2026-08-20).** New migrations document
+> themselves as one `docs/migrations/<version>_<slug>.md` fragment each (see
+> `docs/migrations/README.md`) instead of appending here. Best-practices and
+> rollback sections below stay maintained in this file.
+
 ---
 file: MIGRATIONS.md
 type: Reference/Changelog

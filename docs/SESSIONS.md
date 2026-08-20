@@ -10,11 +10,11 @@ last_updated: 2026-08-03
 
 ## The problem this solves
 
-Every PR bumps the same two files (`docs/RECENT_FEATURES.md` + `src/content/releaseNotes.ts`), so two sessions working at once race for the next `v2.NNN`: renumber cascades mid-rebase, drift-test failures, and commit titles on `main` that permanently disagree with the file contents (it happened three PRs in a row on 2026-08-03). Migration timestamps have collided the same way.
+Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepends to two shared files; since then: one `docs/recent-features/v2.NNNN.md` + one `src/content/releaseNotes/v2.NNNN.ts` fragment each), so two sessions working at once race for the next `v2.NNN`: renumber cascades mid-rebase, drift-test failures, and commit titles on `main` that permanently disagree with the file contents (it happened three PRs in a row on 2026-08-03). Migration timestamps have collided the same way.
 
 **The fix is a shared ledger outside git.** All local sessions run on one machine against one repo, so claims live in the MAIN checkout's gitignored **`.claude/sessions/`** — visible to every session instantly, no commits, no merges, no conflicts on the ledger itself. Worktrees resolve to the same directory automatically (`git rev-parse --git-common-dir`).
 
-**Advisory, not enforced.** Nothing breaks if a session ignores the ledger — you just fall back to today's race. Claims fix the *renumbering*; the rebase conflict in the two docs files still happens under concurrency, but resolving it becomes mechanical: stack your already-correct entry above theirs, done.
+**Advisory, not enforced.** Nothing breaks if a session ignores the ledger — you just fall back to today's race. Claims fix the *renumbering*; since the fragments cutover each PR's entries are new files named by the claimed version, so the old always-conflicting docs rebase is gone entirely — two sessions only collide if they claim (or hand-pick) the same number.
 
 ## Quickstart for a session shipping a PR
 
@@ -24,7 +24,7 @@ Every PR bumps the same two files (`docs/RECENT_FEATURES.md` + `src/content/rele
    npm run claim
    ```
 
-   Prints and reserves the next free `v2.NNN` (atomic file creation — two sessions can never win the same number). Use that number in `RECENT_FEATURES.md` + `releaseNotes.ts` and your commit/PR title. Add a hint: `npm run claim -- dispatch schedule editing`.
+   Prints and reserves the next free `v2.NNN` (atomic file creation — two sessions can never win the same number). Use that number to name your two fragment files (`docs/recent-features/v2.NNNN.md` + `src/content/releaseNotes/v2.NNNN.ts`) and in your commit/PR title. Add a hint: `npm run claim -- dispatch schedule editing`.
 
 2. **Creating a migration?** Register the filename so parallel sessions dodge your stamp:
 

@@ -2,6 +2,9 @@ name: CI
 
 on:
   pull_request:
+  # Merge-queue builds: the queue re-runs "checks" on the speculative merge
+  # result before landing; without this trigger queued PRs would time out.
+  merge_group:
   push:
     branches:
       - main

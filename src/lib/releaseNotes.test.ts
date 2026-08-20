@@ -1,24 +1,39 @@
 /**
- * Release-notes conformance + drift test (v2.944). The drift test is the
- * convention's enforcement: every PR adds a docs/RECENT_FEATURES.md entry
- * (existing convention), and this test fails CI until a matching
- * src/content/releaseNotes.ts entry with the same v2.NNN exists.
+ * Release-notes conformance + drift test (v2.944; fragments cutover 2026-08-20).
+ * The drift test is the convention's enforcement: every PR adds a
+ * docs/recent-features/v2.NNNN.md fragment, and this test fails CI until a
+ * matching src/content/releaseNotes/v2.NNNN.ts fragment exists. The pre-cutover
+ * archives (docs/RECENT_FEATURES.md, src/content/releaseNotesArchive.ts) are
+ * frozen and still checked so historical damage cannot creep back in.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { RELEASE_NOTES } from '../content/releaseNotes'
+import { RELEASE_NOTES, RELEASE_NOTE_FRAGMENTS } from '../content/releaseNotes'
 import {
   duplicateRecentFeaturesVersions,
+  duplicateVersions,
   newestRecentFeaturesVersionNumber,
+  recentFeaturesFragmentProblems,
+  recentFeaturesFragmentVersionNumbers,
   recentFeaturesVersionNumbers,
   releaseNoteVersionNumber,
+  releaseNotesMissingFromDocumented,
   releaseNotesMissingFromRecentFeatures,
   validateReleaseNotes,
 } from './releaseNotes'
 import type { ReleaseNote } from './releaseNotes'
 
 const RECENT_FEATURES_PATH = join(__dirname, '../../docs/RECENT_FEATURES.md')
+const RECENT_FEATURES_DIR = join(__dirname, '../../docs/recent-features')
+
+const fragmentMdFiles = () => readdirSync(RECENT_FEATURES_DIR).filter((f) => f.endsWith('.md') && f !== 'README.md')
+
+/** Every documented version: frozen archive headings + fragment filenames. */
+const documentedVersions = () => [
+  ...recentFeaturesVersionNumbers(readFileSync(RECENT_FEATURES_PATH, 'utf8')),
+  ...recentFeaturesFragmentVersionNumbers(fragmentMdFiles()),
+]
 
 /**
  * Both guards enforce a hard zero (v2.1373). The historical damage they were
@@ -48,38 +63,52 @@ describe('release notes content', () => {
     expect(validateReleaseNotes(RELEASE_NOTES)).toEqual([])
   })
 
-  it('newest release note matches the newest RECENT_FEATURES.md version', () => {
+  it('newest release note matches the newest documented version (fragments + archive)', () => {
     const newestNote = RELEASE_NOTES[0]
-    const newestDocumented = newestRecentFeaturesVersionNumber(readFileSync(RECENT_FEATURES_PATH, 'utf8'))
-    expect(newestDocumented).not.toBeNull()
+    const newestDocumented = documentedVersions().reduce((a, b) => Math.max(a, b), 0)
+    expect(newestDocumented).toBeGreaterThan(0)
     expect(
       newestNote == null ? null : releaseNoteVersionNumber(newestNote.version),
-      'docs/RECENT_FEATURES.md has a newer version than src/content/releaseNotes.ts — every PR ships a ' +
-        'release note: add an entry for the new version (same v2.NNN) to src/content/releaseNotes.ts',
+      'docs/recent-features/ has a newer version than the release-note fragments — every PR ships a ' +
+        'release note: add src/content/releaseNotes/v2.NNNN.ts (same v2.NNNN as your docs fragment)',
     ).toBe(newestDocumented)
   })
 
-  it('no version is documented twice in RECENT_FEATURES.md', () => {
-    const dupes = duplicateRecentFeaturesVersions(readFileSync(RECENT_FEATURES_PATH, 'utf8')).filter(
+  it('no version is documented twice (across the archive and fragments)', () => {
+    const dupes = duplicateVersions(documentedVersions()).filter(
       (v) => !LEGACY_DUPLICATE_RECENT_FEATURES_VERSIONS.includes(v),
     )
     expect(
       dupes,
-      'docs/RECENT_FEATURES.md documents the same v2.NNN twice — two sessions claimed one number. ' +
-        'Claim with `npm run claim` and renumber the newer entry; do not delete either one.',
+      'the same v2.NNNN is documented twice (two fragment/archive entries) — two sessions claimed one ' +
+        'number. Claim with `npm run claim` and renumber the newer entry; do not delete either one.',
     ).toEqual([])
   })
 
-  it('every release note has a RECENT_FEATURES.md entry', () => {
-    const missing = releaseNotesMissingFromRecentFeatures(
-      RELEASE_NOTES,
-      readFileSync(RECENT_FEATURES_PATH, 'utf8'),
-    ).filter((v) => !LEGACY_UNDOCUMENTED_RELEASE_NOTES.includes(v))
+  it('every release note has a recent-features entry (fragment or archive heading)', () => {
+    const missing = releaseNotesMissingFromDocumented(RELEASE_NOTES, new Set(documentedVersions())).filter(
+      (v) => !LEGACY_UNDOCUMENTED_RELEASE_NOTES.includes(v),
+    )
     expect(
       missing,
-      'these versions are in src/content/releaseNotes.ts but have no docs/RECENT_FEATURES.md heading — ' +
+      'these release-note versions have no docs/recent-features/ fragment or archive heading — ' +
         'a merge or conflict resolution dropped one side of the pair',
     ).toEqual([])
+  })
+
+  it('every release-note fragment filename matches its version', () => {
+    for (const { file, note: fragNote } of RELEASE_NOTE_FRAGMENTS) {
+      expect(file, `fragment ${file} must be named after its version (${fragNote.version}.ts)`).toBe(
+        `${fragNote.version}.ts`,
+      )
+    }
+  })
+
+  it('every recent-features fragment starts with its own version heading', () => {
+    const problems = fragmentMdFiles().flatMap((f) =>
+      recentFeaturesFragmentProblems(f, readFileSync(join(RECENT_FEATURES_DIR, f), 'utf8')),
+    )
+    expect(problems).toEqual([])
   })
 })
 
@@ -152,6 +181,35 @@ describe('validateReleaseNotes', () => {
       validateReleaseNotes([note({ highlights: ['a', 'b', 'c', 'd', 'e'] })]).join(),
     ).toContain('needs 1–4 highlights')
     expect(validateReleaseNotes([note({ highlights: [' '] })]).join()).toContain('empty highlight')
+  })
+})
+
+describe('recentFeaturesFragmentVersionNumbers', () => {
+  it('parses v2.NNNN.md names and ignores everything else', () => {
+    expect(recentFeaturesFragmentVersionNumbers(['v2.1898.md', 'v2.1900.md', 'README.md', 'v2.1x.md'])).toEqual([
+      1898, 1900,
+    ])
+  })
+})
+
+describe('duplicateVersions', () => {
+  it('reports duplicates ascending, empty when clean', () => {
+    expect(duplicateVersions([9, 5, 9, 5, 3])).toEqual([5, 9])
+    expect(duplicateVersions([3, 2, 1])).toEqual([])
+  })
+})
+
+describe('recentFeaturesFragmentProblems', () => {
+  it('accepts a fragment whose first line names its own version', () => {
+    expect(recentFeaturesFragmentProblems('v2.1898.md', '# v2.1898 — Fragments cutover (2026-08-20)\n\nBody.\n')).toEqual([])
+  })
+
+  it('flags a bad filename and a mismatched or missing heading', () => {
+    expect(recentFeaturesFragmentProblems('notes.md', '# v2.1898 — x\n').join()).toContain('must be named')
+    expect(recentFeaturesFragmentProblems('v2.1898.md', '# v2.1899 — wrong (2026-08-20)\n').join()).toContain(
+      'first line',
+    )
+    expect(recentFeaturesFragmentProblems('v2.1898.md', '\n\n').join()).toContain('first line')
   })
 })
 

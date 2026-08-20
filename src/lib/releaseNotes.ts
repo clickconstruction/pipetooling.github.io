@@ -110,11 +110,55 @@ export function duplicateRecentFeaturesVersions(markdown: string): number[] {
  * anything below the newest entry can rot unnoticed.
  */
 export function releaseNotesMissingFromRecentFeatures(notes: ReleaseNote[], markdown: string): string[] {
-  const documented = new Set(recentFeaturesVersionNumbers(markdown))
+  return releaseNotesMissingFromDocumented(notes, new Set(recentFeaturesVersionNumbers(markdown)))
+}
+
+/** Same check against a precomputed documented-version set (archive + fragments). */
+export function releaseNotesMissingFromDocumented(notes: ReleaseNote[], documented: ReadonlySet<number>): string[] {
   return notes
     .filter((note) => {
       const num = releaseNoteVersionNumber(note.version)
       return num != null && !documented.has(num)
     })
     .map((note) => note.version)
+}
+
+/**
+ * Version numbers from recent-features fragment filenames (docs/recent-features/
+ * v2.NNNN.md). Non-matching names (README.md etc.) are ignored.
+ */
+export function recentFeaturesFragmentVersionNumbers(filenames: string[]): number[] {
+  const versions: number[] = []
+  for (const name of filenames) {
+    const m = /^v2\.(\d+)\.md$/.exec(name)
+    if (m?.[1] != null) versions.push(Number(m[1]))
+  }
+  return versions
+}
+
+/** Duplicates in a combined documented-version list (archive + fragments), ascending. */
+export function duplicateVersions(versions: number[]): number[] {
+  const seen = new Set<number>()
+  const dupes = new Set<number>()
+  for (const num of versions) {
+    if (seen.has(num)) dupes.add(num)
+    seen.add(num)
+  }
+  return [...dupes].sort((a, b) => a - b)
+}
+
+/**
+ * Problems with one recent-features fragment: its first non-empty line must be
+ * a heading that names the same version as the filename — the guard against
+ * pasting an entry into a wrongly-numbered file (the fragment-era shape of the
+ * duplicate-heading damage the 2026-08-03 races caused).
+ */
+export function recentFeaturesFragmentProblems(filename: string, content: string): string[] {
+  const m = /^v2\.(\d+)\.md$/.exec(filename)
+  if (!m) return [`${filename}: fragment files must be named v2.NNNN.md`]
+  const firstLine = content.split('\n').find((line) => line.trim() !== '')
+  if (!firstLine || !firstLine.startsWith(`# v2.${m[1]} `)) {
+    return [`${filename}: first line must be a "# v2.${m[1]} — <title> (<date>)" heading`]
+  }
+  return []
 }
