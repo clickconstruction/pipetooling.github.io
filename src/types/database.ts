@@ -13532,6 +13532,17 @@ export type Database = {
         Args: { p_mercury_debit_card_id: string }
         Returns: number
       }
+      bid_pricing_history: {
+        Args: { p_service_type_id: string }
+        Returns: {
+          bid_id: string
+          project_name: string | null
+          outcome: string
+          loss_reason: string | null
+          bid_value: number
+          est_cost: number
+        }[]
+      }
       bulk_apply_tally_payroll_rule_flags: {
         Args: { p_rows: Json }
         Returns: number
