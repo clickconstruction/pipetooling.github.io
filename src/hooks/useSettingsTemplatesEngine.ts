@@ -327,7 +327,7 @@ export function useSettingsTemplatesEngine({
       const recipientLabel = (targetUser.name || '').trim()
         ? `${targetUser.name} <${to}>`
         : to
-      showToast(`Test email sent to ${recipientLabel}!\n\nSubject: ${subject}\n\nBody:\n${body}`, 'success')
+      showToast(`Test email sent to ${recipientLabel}`, 'success')
       setTestingTemplate(null)
     }
   }
