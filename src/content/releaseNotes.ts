@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1865',
+    date: '2026-08-19',
+    title: 'Groundwork: the estimate editor learns its own checklist',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes, drafts can now report what\'s filled out and what\'s left — customer, the change, cost lines, delivery — per document type.',
+      'Nothing changes on screen yet: the numbered step rail that uses this ships next.',
+    ],
+  },
+  {
     version: 'v2.1863',
     date: '2026-08-19',
     title: 'Tonight\'s outage: what happened',
