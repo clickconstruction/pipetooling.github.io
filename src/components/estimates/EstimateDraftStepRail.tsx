@@ -30,7 +30,7 @@ const RAIL_CSS = `
   .est-step-margin-dot.done { border-color: var(--text-green-600); color: var(--text-green-600); }
   .est-step-margin-dot.attention { border-color: #f59e0b; color: var(--text-amber-800); }
   .est-region-ruled {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-rule);
     margin-top: 1.35rem;
     padding-top: 1.1rem;
   }

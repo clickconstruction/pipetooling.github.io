@@ -236,6 +236,8 @@ button:focus-visible {
   /* borders (border*/outline) */
   --border: #e5e7eb;
   --border-strong: #d1d5db;
+  /* Section-separator rules (draft editor + customer document): visible on white. */
+  --border-rule: #b8bec8;
   --border-400: #9ca3af;
   --border-orange: #fdba74;
   --border-blue: #bfdbfe;
@@ -331,6 +333,7 @@ button:focus-visible {
 
   --border: #374151;
   --border-strong: #4b5563;
+  --border-rule: #374151;
   --border-400: #6b7280;
   --border-orange: #92400e;
   --border-blue: #1e40af;

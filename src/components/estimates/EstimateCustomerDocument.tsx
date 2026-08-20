@@ -233,7 +233,7 @@ export default function EstimateCustomerDocument({
       ) : null}
 
       {changeOrder ? (
-        <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.1rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
+        <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
           <h2 style={{ fontSize: '1.1rem' }}>Change order</h2>
           <p style={{ margin: '0.25rem 0', whiteSpace: 'pre-wrap' }}>
             <strong>Description of change:</strong> {changeOrder.description_of_change.trim() || '—'}
@@ -252,7 +252,7 @@ export default function EstimateCustomerDocument({
         </section>
       ) : null}
 
-      <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.1rem' }}>
+      <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem' }}>
         <h2 style={{ fontSize: '1.1rem' }}>{lineItemsHeading}</h2>
         <EstimateLineItemsTable lines={lines} />
         <p style={{ fontWeight: 600, textAlign: 'right', width: '100%', marginTop: '0.75rem' }}>
@@ -261,7 +261,7 @@ export default function EstimateCustomerDocument({
       </section>
 
       {termsBody ? (
-        <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.1rem' }}>
+        <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem' }}>
           <h2 style={{ fontSize: '1.1rem' }}>{termsHeading}</h2>
           <div
             style={{
