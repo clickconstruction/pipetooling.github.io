@@ -41,6 +41,7 @@ import {
   type TechTreeEdge,
 } from '../../lib/checklistTechTreeGraph'
 import { computeRoadmapSearchMatches, type RoadmapSearchResult } from '../../lib/checklistTechTreeSearch'
+import { bridgeChipFor, type BridgeState } from '../../lib/roadmapBridge'
 import type { Database } from '../../types/database'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -118,6 +119,8 @@ function useTechTreeData(
   const [treeEdges, setTreeEdges] = useState<EdgeRow[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
+  /** taskId -> latest bridged instance state (checklist_items.roadmap_group_task_id). */
+  const [bridgeByTaskId, setBridgeByTaskId] = useState<Map<string, BridgeState>>(new Map())
   /** First fetch after each auth (or fresh hook) shows the full-page loader; refetches do not, so the graph is not unmounted. */
   const blockingLoadOverlayRef = useRef(true)
   useEffect(() => {
@@ -137,6 +140,14 @@ function useTechTreeData(
       setLoading(true)
     }
     try {
+      // Bridge sync (v2.1876): materialize newly-unlocked assigned tasks as
+      // checklist items BEFORE reading, so the canvas reflects fresh state.
+      // The RPC self-gates (dev/editor) — viewers just skip it.
+      try {
+        await supabase.rpc('sync_roadmap_to_checklist', { p_roadmap_id: roadmapId })
+      } catch {
+        // non-editors / offline: canvas still renders
+      }
       const gRes = await withSupabaseRetry(
         () =>
           supabase
@@ -181,6 +192,24 @@ function useTechTreeData(
       setGroups(gRes)
       setTreeEdges(eRes)
       setUsers(uRes)
+      {
+        const taskIds = (tRes as Array<{ id: string }>).map((t) => t.id)
+        if (taskIds.length > 0) {
+          const { data: bridgeRows } = await supabase
+            .from('checklist_items')
+            .select('roadmap_group_task_id, checklist_instances(completed_at, reviewed_at)')
+            .in('roadmap_group_task_id', taskIds)
+          const bmap = new Map<string, BridgeState>()
+          for (const row of (bridgeRows ?? []) as Array<{ roadmap_group_task_id: string | null; checklist_instances: Array<{ completed_at: string | null; reviewed_at: string | null }> | null }>) {
+            if (!row.roadmap_group_task_id) continue
+            const inst = (row.checklist_instances ?? [])[0]
+            if (inst) bmap.set(row.roadmap_group_task_id, { instanceCompletedAt: inst.completed_at, reviewedAt: inst.reviewed_at })
+          }
+          setBridgeByTaskId(bmap)
+        } else {
+          setBridgeByTaskId(new Map())
+        }
+      }
       setTasks(
         (tRes as unknown[]).map((row) => {
           const r = row as {
@@ -218,7 +247,7 @@ function useTechTreeData(
     void load()
   }, [load])
 
-  return { groups, tasks, treeEdges, users, loading, load }
+  return { groups, tasks, treeEdges, users, loading, load, bridgeByTaskId }
 }
 
 type GroupNodeData = {
@@ -234,6 +263,7 @@ type GroupNodeData = {
     completedAt: string | null
     assigneeLabel: string
     canAct: boolean
+    bridgeChip: 'in_review' | 'signed_off' | 'on_list' | null
   }>
   onToggle: (taskId: string) => void
   canEditStructure: boolean
@@ -442,6 +472,27 @@ function TechTreeDndTaskRow({
             </TechTreeEditableTaskTitle>
             {task.assigneeLabel ? (
               <span style={{ color: 'var(--text-slate-500)' }}> — {task.assigneeLabel}</span>
+            ) : null}
+            {task.bridgeChip ? (
+              <span
+                className="nodrag"
+                style={{
+                  marginLeft: 5,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: '1px 6px',
+                  borderRadius: 6,
+                  verticalAlign: 'middle',
+                  whiteSpace: 'nowrap',
+                  ...(task.bridgeChip === 'in_review'
+                    ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }
+                    : task.bridgeChip === 'signed_off'
+                      ? { background: '#16a34a', color: 'white' }
+                      : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
+                }}
+              >
+                {task.bridgeChip === 'in_review' ? 'in review' : task.bridgeChip === 'signed_off' ? 'signed off' : 'on list'}
+              </span>
             ) : null}
           </div>
         </div>
@@ -991,7 +1042,7 @@ export function ChecklistTechTreeTab({
   )
   const canEditStructure = canEditTechTree || myRoadmapMemberRole === 'editor'
 
-  const { groups, tasks, treeEdges, users, loading, load } = useTechTreeData(
+  const { groups, tasks, treeEdges, users, loading, load, bridgeByTaskId } = useTechTreeData(
     authUserId,
     effectiveRoadmapId,
     setError,
@@ -1334,6 +1385,7 @@ export function ChecklistTechTreeTab({
               completedAt: t.completed_at,
               assigneeLabel: names.length ? names.join(', ') : '',
               canAct: canActOnTask(t, gu),
+              bridgeChip: bridgeChipFor(t.completed_at, bridgeByTaskId.get(t.id)),
             }
           }),
           reorderMode: canEditStructure && reorderMode,
@@ -1347,6 +1399,7 @@ export function ChecklistTechTreeTab({
     layoutNodes,
     groups,
     tasksByGroup,
+    bridgeByTaskId,
     unlockedIds,
     canEditStructure,
     onToggleTask,

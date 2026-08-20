@@ -44,6 +44,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1876',
+    date: '2026-08-19',
+    title: 'Roadmap goals now run through real checklists',
+    kind: 'feature',
+    highlights: [
+      'When a roadmap stage unlocks, its assigned tasks land on each person\'s Today list automatically — with notes, reminders, and sign-off like any other task.',
+      'The roadmap canvas shows live status per task (on list, in review, signed off), and completing or reopening the real task moves the stage.',
+      'Roadmap-born tasks wear a purple goal chip everywhere, and the Review board gets a Goals strip with per-goal progress.',
+    ],
+  },
+  {
     version: 'v2.1875',
     date: '2026-08-19',
     title: 'Groundwork: roadmap goals feed real checklists',
