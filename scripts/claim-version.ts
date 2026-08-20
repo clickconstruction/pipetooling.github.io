@@ -12,9 +12,10 @@
  * version are auto-released on every run. Advisory only — nothing enforces it.
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import {
+  branchSlug,
   nextClaimCandidate,
   parseMigrationVersion,
   parseNewestChangelogVersion,
@@ -134,6 +135,15 @@ if (args[0] === '--release') {
     try {
       writeFileSync(join(claimsDir, `v2.${candidate}.json`), JSON.stringify(payload, null, 2), { flag: 'wx' })
       console.log(`claimed v2.${candidate} for ${branch} (main is at v2.${mainNewest})`)
+      // Version claims prevent number races; only session cards prevent two
+      // sessions reworking the same surface. Nag (advisory) when one is missing.
+      const cardPath = join(dir, 'active', `${branchSlug(branch)}.md`)
+      if (!existsSync(cardPath)) {
+        console.warn(
+          `note: no session card for this branch — drop .claude/sessions/active/${branchSlug(branch)}.md ` +
+            `(template in docs/SESSIONS.md) listing the surfaces you're touching, so parallel sessions can dodge you`,
+        )
+      }
       if (outstanding.length > 0) {
         console.log(
           `outstanding ahead of you: ${outstanding.map((c) => `v2.${c.version} (${c.branch})`).join(', ')}`,
