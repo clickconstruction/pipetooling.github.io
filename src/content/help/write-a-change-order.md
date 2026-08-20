@@ -15,6 +15,7 @@ Drafts now carry a numbered guide — on a wide screen it sits to the left of th
 - Steps under **On the customer's copy** are the parts of the document itself, in the order the customer reads them. **Behind the scenes** holds Delivery — who gets notified, the project link, internal notes — which the customer never sees.
 - Each step shows where it stands: a green check when done, an amber dot with a short reason ("no lines yet", "email needed for the accept link") when it wants attention, or "optional".
 - Tap any step to jump straight to it. The send button under the guide tells you what's left ("2 steps left: cost lines · delivery") and lights up when the draft is ready.
+- The **Editing / Customer view** switch under the guide flips the page to the exact document your customer will see — rendered by the same code as the signature page, live as you type. Switch back to Editing to change anything.
 - A $0 document can still be sent — schedule-only change orders are real — but it asks you to confirm first.
 
 ## Starting one

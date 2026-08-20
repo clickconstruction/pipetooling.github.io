@@ -2792,6 +2792,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   // Step rail (rail-v2): map + checklist + send-gate, all from the kernel.
   const [railFlashStep, setRailFlashStep] = useState<EstimateDraftStepKey | null>(null)
+  // Customer view (rail-v2): swap the edit paper for the pixel-true customer document.
+  const [customerViewOn, setCustomerViewOn] = useState(false)
   const railFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const railData = useMemo(
     () =>
@@ -3575,6 +3577,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           onSend={() => void sendToCustomer()}
           sending={sending}
           sendLabel={isCO ? 'Send for signature' : 'Send to customer'}
+          customerViewOn={customerViewOn}
+          onToggleCustomerView={() => setCustomerViewOn((p) => !p)}
         />
       ) : null}
       {isDraft && (
@@ -3886,6 +3890,51 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
       {isDraft && (
         <>
+          {customerViewOn && staffResolvedExperience ? (
+            <div
+              style={{
+                fontFamily: 'system-ui, sans-serif',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '1rem',
+                background: 'var(--surface)',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              <EstimateAcceptBody
+                variant="staffPreview"
+                previewBanner={
+                  <span>
+                    <strong>Customer view</strong> — the live document, rendered by the same code as the signature
+                    page. Switch back to Editing to change it.
+                  </span>
+                }
+                estimate={{
+                  title: title.trim() || '',
+                  for_line: acceptancePreviewForLine,
+                  valid_until: validUntil.trim() ? validUntil.trim() : null,
+                  line_items_snapshot: lines,
+                  terms_snapshot: terms,
+                  total_cents: totalCents,
+                  doc_kind: row.doc_kind,
+                  change_order_fields: coFields,
+                }}
+                experience={staffResolvedExperience}
+                printedName=""
+                agreed={false}
+                onPrintedNameChange={() => {}}
+                onAgreedChange={() => {}}
+                formError={null}
+                submitting={false}
+                onSubmit={() => undefined}
+                headerBrand={acceptanceDocHeaderBrand}
+                customerAttachment={customerAttachmentPreview}
+                staffAcceptedRecord={null}
+              />
+            </div>
+          ) : null}
+          <div style={customerViewOn && staffResolvedExperience ? { display: 'none' } : undefined}>
           <AcceptHeaderBrandPicker
             value={acceptHeaderBrand}
             onChange={setAcceptHeaderBrand}
@@ -4919,6 +4968,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </section>
             }
           />
+          </div>
           <fieldset
             style={{
               marginTop: '1rem',

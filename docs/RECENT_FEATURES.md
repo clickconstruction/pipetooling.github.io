@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1868)
+last_updated: 2026-08-19 (v2.1870)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1870)
+
+### Customer view — see exactly what they'll sign, live — step rail train complete (2026-08-19)
+The rail's Editing / **Customer view** toggle lands (the owner's original WYSIWYG intent, stated out loud): one click swaps the draft editor's paper for the document the customer actually receives — rendered by [`EstimateAcceptBody`](../src/components/estimates/EstimateAcceptBody.tsx) `variant="staffPreview"`, the same component the public accept page uses — live from the CURRENT edit state (title, lines, terms, totals, attachment, brand, and the CO narrative via `doc_kind`/`change_order_fields` on the preview estimate — the narrative was the one field the CX preview's assembly didn't need but this one does). A banner sets the contract ("the live document, rendered by the same code as the signature page"); the rail keeps working while previewing; the edit paper hides via `display:none` (state preserved — flipping back loses nothing). Toggle renders in both the desktop rail and the mobile strip. Verified live on prod CO draft #62: narrative + $980 line typed in Editing appeared instantly in Customer view with the Approve block and company footer; draft deleted. Help guide updated. Client-only — no migration.
 
 ## Latest Updates (v2.1868)
 
