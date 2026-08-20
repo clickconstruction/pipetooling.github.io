@@ -1616,8 +1616,8 @@ export type Database = {
           repeat_days_after: number | null
           repeat_days_of_week: number[] | null
           repeat_end_date: string | null
-          roadmap_group_task_id: string | null
           repeat_type: string
+          roadmap_group_task_id: string | null
           show_until_completed: boolean
           start_date: string
           title: string
@@ -1635,8 +1635,8 @@ export type Database = {
           repeat_days_after?: number | null
           repeat_days_of_week?: number[] | null
           repeat_end_date?: string | null
-          roadmap_group_task_id?: string | null
           repeat_type: string
+          roadmap_group_task_id?: string | null
           show_until_completed?: boolean
           start_date: string
           title: string
@@ -1654,8 +1654,8 @@ export type Database = {
           repeat_days_after?: number | null
           repeat_days_of_week?: number[] | null
           repeat_end_date?: string | null
-          roadmap_group_task_id?: string | null
           repeat_type?: string
+          roadmap_group_task_id?: string | null
           show_until_completed?: boolean
           start_date?: string
           title?: string
@@ -1674,6 +1674,13 @@ export type Database = {
             columns: ["notify_on_complete_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_roadmap_group_task_id_fkey"
+            columns: ["roadmap_group_task_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_group_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -13150,6 +13157,14 @@ export type Database = {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
         Returns: Json
       }
+      apply_estimate_to_job: {
+        Args: {
+          p_estimate_id: string
+          p_fixtures?: Json
+          p_job_ledger_id: string
+        }
+        Returns: string
+      }
       apply_mercury_bank_payment_allocations: {
         Args: {
           p_allocations: Json
@@ -13160,14 +13175,6 @@ export type Database = {
           p_payment_type: string
         }
         Returns: Json
-      }
-      apply_estimate_to_job: {
-        Args: {
-          p_estimate_id: string
-          p_fixtures?: Json
-          p_job_ledger_id: string
-        }
-        Returns: string
       }
       apply_read_only_stmt_blocks: { Args: never; Returns: number }
       apply_read_only_write_blocks: { Args: never; Returns: number }
@@ -15080,10 +15087,6 @@ export type Database = {
         }
         Returns: string
       }
-      sync_roadmap_to_checklist: {
-        Args: { p_roadmap_id: string }
-        Returns: Json
-      }
       split_job_ledger_fixtures_to_new_job: {
         Args: {
           p_clock_session_ids?: string[]
@@ -15155,6 +15158,10 @@ export type Database = {
       sync_crew_jobs_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
+      }
+      sync_roadmap_to_checklist: {
+        Args: { p_roadmap_id: string }
+        Returns: Json
       }
       sync_salary_clock_sessions_for_day: {
         Args: { p_work_date?: string }

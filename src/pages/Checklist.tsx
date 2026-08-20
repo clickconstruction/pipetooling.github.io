@@ -25,6 +25,7 @@ import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent 
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageChipLabel, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
+import { goalsStripRows, type GoalsStripRow } from '../lib/roadmapBridge'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
@@ -57,7 +58,39 @@ type ChecklistInstance = {
     created_by_user_id?: string | null
     show_until_completed?: boolean | null
     repeat_type?: string | null
+    roadmap_group_task_id?: string | null
+    checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
   } | null
+}
+
+type RoadmapTaskEmbed = {
+  group_id?: string
+  checklist_tech_tree_groups?: {
+    roadmap_id?: string
+    checklist_tech_tree_roadmaps?: { title?: string | null } | null
+  } | null
+}
+
+/** "⛰ <roadmap title>" chip for roadmap-born items; title falls back to "goal" when RLS hides the tree (field roles). */
+function roadmapGoalChip(item: { roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null | undefined) {
+  if (!item?.roadmap_group_task_id) return null
+  const title = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups?.checklist_tech_tree_roadmaps?.title?.trim()
+  return (
+    <span
+      style={{
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        padding: '0.12rem 0.5rem',
+        borderRadius: 7,
+        background: 'var(--bg-purple-tint, var(--bg-blue-tint))',
+        color: 'var(--text-purple-800, var(--text-blue-800))',
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+      }}
+    >
+      ⛰ {title || 'goal'}
+    </span>
+  )
 }
 
 const tabStyle = pageTabStyle
@@ -275,10 +308,10 @@ export default function Checklist() {
         </div>
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
-        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} />
+        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
       )}
       {editItemId && (
         <ChecklistItemEditModal
@@ -346,7 +379,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -361,7 +394,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     // client-side so the reopened check can share the same rows.
     const { data: pastData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, show_until_completed, repeat_type), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, show_until_completed, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .lt('scheduled_date', today)
@@ -458,7 +491,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
@@ -680,7 +713,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                 <ChecklistInstanceCard
                   key={inst.id}
                   instance={inst}
-                  title={<ChecklistTitleWithLinks title={title} links={links} />}
+                  title={<><ChecklistTitleWithLinks title={title} links={links} /> {roadmapGoalChip(inst.checklist_items)}</>}
                   events={eventsByInstance.get(inst.id) ?? []}
                   nameById={eventActorNameById}
                   currentUserId={authUserId}
@@ -742,8 +775,12 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         currentUserId={authUserId}
         todayStr={toLocalDateString(new Date())}
         titleFor={(inst) => {
-          const item = (inst as ChecklistInstance).checklist_items as { title: string; links?: string[] | null } | null
-          return <ChecklistTitleWithLinks title={item?.title ?? 'Untitled'} links={item?.links} />
+          const item = (inst as ChecklistInstance).checklist_items
+          return (
+            <>
+              <ChecklistTitleWithLinks title={item?.title ?? 'Untitled'} links={item?.links} /> {roadmapGoalChip(item)}
+            </>
+          )
         }}
         onToggleComplete={(inst) => void toggleComplete(inst as ChecklistInstance)}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
@@ -1257,7 +1294,7 @@ type OutstandingInstance = {
   id: string
   checklist_item_id: string
   scheduled_date: string
-  checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null } | null
+  checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null; roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null
 }
 
 function OutstandingByPersonSortableRow({
@@ -1433,6 +1470,7 @@ function OutstandingByPersonSortableRow({
       )}
       <span style={{ flex: 1 }}>
         <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
+        {roadmapGoalChip(inst.checklist_items)}{' '}
         {(() => {
           const chip = ageChipLabel(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))
           return chip ? (
@@ -1529,7 +1567,7 @@ function OutstandingByPersonSortableList({
   )
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1551,6 +1589,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [foldReviewOpen, setFoldReviewOpen] = useState(false)
   const [foldInboxOpen, setFoldInboxOpen] = useState(false)
   const [missedWeekCount, setMissedWeekCount] = useState<number | null>(null)
+  /** Goals strip (v2.1876): one progress row per roadmap the viewer can read. */
+  const [goalRows, setGoalRows] = useState<GoalsStripRow[]>([])
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
@@ -1562,6 +1602,39 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   useEffect(() => {
     loadOutstanding()
   }, [dateRange])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const [{ data: rms }, { data: grps }, { data: edgs }] = await Promise.all([
+        supabase.from('checklist_tech_tree_roadmaps').select('id, title').order('sort_index'),
+        supabase.from('checklist_tech_tree_groups').select('id, roadmap_id, title'),
+        supabase.from('checklist_tech_tree_edges').select('from_group_id, to_group_id'),
+      ])
+      if (cancelled || !rms || rms.length === 0 || !grps || grps.length === 0) return
+      const { data: tsks } = await supabase
+        .from('checklist_tech_tree_group_tasks')
+        .select('id, group_id, completed_at, checklist_tech_tree_task_assignees(user_id)')
+        .in('group_id', grps.map((g) => g.id))
+      if (cancelled) return
+      setGoalRows(
+        goalsStripRows({
+          roadmaps: rms,
+          groups: grps,
+          tasks: (tsks ?? []).map((t) => ({
+            id: t.id,
+            group_id: t.group_id,
+            completed_at: t.completed_at,
+            assigneeCount: ((t as { checklist_tech_tree_task_assignees?: Array<{ user_id: string }> | null }).checklist_tech_tree_task_assignees ?? []).length,
+          })),
+          edges: (edgs ?? []).map((e) => ({ fromGroupId: e.from_group_id, toGroupId: e.to_group_id })),
+        }),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const loadOutstandingRef = useRef(loadOutstanding)
   loadOutstandingRef.current = loadOutstanding
@@ -1824,7 +1897,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope), checklist_instance_assignees(user_id, users(name, email))')
+      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees(user_id, users(name, email))')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
@@ -1975,6 +2048,33 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
         {boardTile(`Outstanding · ${BOARD_RANGE_LABELS[dateRange as BoardRange].toLowerCase()}`, loading ? '—' : String(outstandingTotal), 'var(--text-red-700)')}
         {boardTile('Missed this week', missedWeekCount == null ? '—' : String(missedWeekCount))}
       </div>
+      {goalRows.length > 0 ? (
+        <div style={{ marginBottom: '1rem' }}>
+          <p style={{ margin: '0 0 0.4rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.03em', color: 'var(--text-muted)' }}>GOALS</p>
+          {goalRows.map((g) => (
+            <div
+              key={g.roadmapId}
+              role={onOpenRoadmap ? 'button' : undefined}
+              tabIndex={onOpenRoadmap ? 0 : undefined}
+              onClick={onOpenRoadmap ? () => onOpenRoadmap(g.roadmapId) : undefined}
+              onKeyDown={onOpenRoadmap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenRoadmap(g.roadmapId) } } : undefined}
+              style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem 0.75rem', marginBottom: '0.5rem', cursor: onOpenRoadmap ? 'pointer' : undefined }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>⛰ {g.title}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>stage {Math.min(g.stagesComplete + 1, g.stagesTotal)} of {g.stagesTotal}</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 4, background: 'var(--bg-muted)', overflow: 'hidden' }}>
+                <span style={{ display: 'block', width: `${g.pct}%`, height: '100%', background: '#2563eb' }} />
+              </div>
+              <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {g.currentStages.length > 0 ? <>now: {g.currentStages.join(', ')}</> : 'all stages complete 🎉'}
+                {g.openAssigned > 0 ? <> · {g.openAssigned} assigned task{g.openAssigned === 1 ? '' : 's'} open</> : null}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden' }}>
         {foldHeader('Checklist review — sign off completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
@@ -2324,10 +2424,12 @@ type ChecklistItem = {
   reminder_scope: string | null
   created_at: string | null
   updated_at: string | null
+  roadmap_group_task_id?: string | null
+  checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
   checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
 
-function ChecklistManageTab({ authUserId, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -2364,7 +2466,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId }: { authUserI
   }
 
   async function loadItems() {
-    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at'
+    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))'
     const { data, error } = filterUserId
       ? await supabase
           .from('checklist_items')
@@ -2480,6 +2582,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId }: { authUserI
             <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>
               {repeatChipLabel(item)}
             </span>
+            {roadmapGoalChip(item)}
             {openAge ? (
               <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>
                 {openAge}
@@ -2542,17 +2645,34 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId }: { authUserI
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpenMenuItemId(null)} />
             <div style={{ position: 'absolute', right: 8, top: '80%', zIndex: 41, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.15)', minWidth: 170, overflow: 'hidden' }}>
+              {item.roadmap_group_task_id && onOpenRoadmap ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuItemId(null)
+                    const rid = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups?.roadmap_id
+                    if (rid) onOpenRoadmap(rid)
+                  }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)' }}
+                >
+                  ⛰ Open in Roadmap
+                </button>
+              ) : null}
+              {!item.roadmap_group_task_id ? (
               <button type="button" onClick={() => { setOpenMenuItemId(null); setEditItemId(item.id) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)' }}>
                 Edit
               </button>
+              ) : null}
               {isNotificationRecipient(item) ? (
                 <button type="button" onClick={() => { setOpenMenuItemId(null); setMuteModalItemId(item.id); setMuteModalTitle(item.title) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)', borderTop: '1px solid var(--border)' }}>
                   Mute notifications
                 </button>
               ) : null}
+              {!item.roadmap_group_task_id ? (
               <button type="button" onClick={() => { setOpenMenuItemId(null); setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' }) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-red-700)', borderTop: '1px solid var(--border)' }}>
                 Delete
               </button>
+              ) : null}
             </div>
           </>
         ) : null}

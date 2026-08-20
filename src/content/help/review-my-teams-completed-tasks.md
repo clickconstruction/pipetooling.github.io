@@ -29,3 +29,7 @@ If it's not done right, type a comment — it's required, so the person always k
 - You review tasks you created or are set to be notified about; devs see everything. Your own completions never queue to you.
 - Quiet items age out on their own after 7 days — the queue doesn't pile up if you skip a few.
 - Anyone who can see a task can add notes on it, so the conversation can continue right on the card.
+
+## Goals on the board
+
+If you use Roadmaps, the Review board shows a **Goals** strip: each big goal with its stage progress and what's currently in motion. When a stage finishes, the next stage's tasks land on the assigned people's Today lists automatically — look for the purple {{chip:purple|⛰ goal}} chip on their tasks.
