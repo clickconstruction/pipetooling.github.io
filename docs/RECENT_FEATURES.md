@@ -13,10 +13,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1897)
+last_updated: 2026-08-20 (v2.1900)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1900)
+
+### The customer's document gets the section rules too (2026-08-20)
+Follow-through on v2.1892 (owner: yes to the document, yes to the email): [`EstimateCustomerDocument`](../src/components/estimates/EstimateCustomerDocument.tsx) — the accept page, sent view, staff preview, and the rail's Customer view all render it — gains the same hairline rules above its three sections (the CO narrative block, Impact on cost / Line items, Terms), `var(--border)` so the in-app sent view stays theme-correct while customer/print surfaces resolve light. Rules only — no editor chrome on the customer's copy. Investigated the email half: the estimate/CO email is a short plain-text message + logo + accept link ([`buildEstimateEmailHtml`](../supabase/functions/_shared/estimateEmailBrandImage.ts)) — there IS no sectioned document in it to rule, so it's untouched; the other document rendition, the Bids change-order clipboard/Google-Docs HTML ([`estimateChangeOrder.ts`](../src/lib/estimateChangeOrder.ts) `buildEstimateChangeOrderDocHtml`), gets matching literal light-gray rules above Description of change, Impact on cost, and Impact on schedule (email-client-safe inline styles; kernel tests still green). Every rendition of the document now rules its sections the same way. Client-only — no migration, no edge deploy.
 
 ## Latest Updates (v2.1897)
 
