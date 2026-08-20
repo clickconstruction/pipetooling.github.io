@@ -419,6 +419,7 @@ export function BidsLaborTab({
     setSavingLaborVersion(false)
   }
 
+  /** Returns false when the user cancels the confirm, true once they confirm (even if the delete errors). */
   async function deleteLaborVersion(v: LaborBookVersion) {
     if (
       !(await confirmDialog({
@@ -427,7 +428,7 @@ export function BidsLaborTab({
         danger: true,
       }))
     )
-      return
+      return false
     const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
     if (err) setError(err.message)
     else {
@@ -444,6 +445,7 @@ export function BidsLaborTab({
         }
       }
     }
+    return true
   }
 
   function openNewLaborEntry() {
@@ -534,6 +536,7 @@ export function BidsLaborTab({
     setSavingLaborEntry(false)
   }
 
+  /** Returns false when the user cancels the confirm, true once they confirm (even if the delete errors). */
   async function deleteLaborEntry(entry: LaborBookEntryWithFixture) {
     if (
       !(await confirmDialog({
@@ -542,10 +545,11 @@ export function BidsLaborTab({
         danger: true,
       }))
     )
-      return
+      return false
     const { error: err } = await supabase.from('labor_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)
+    return true
   }
 
   async function saveLaborRows() {
@@ -2141,16 +2145,7 @@ export function BidsLaborTab({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (
-                          !(await confirmDialog({
-                            message: `Delete labor book "${editingLaborVersion.name}"? This will delete all entries in this version.`,
-                            confirmLabel: 'Delete',
-                            danger: true,
-                          }))
-                        )
-                          return
-                        await deleteLaborVersion(editingLaborVersion)
-                        closeLaborVersionForm()
+                        if (await deleteLaborVersion(editingLaborVersion)) closeLaborVersionForm()
                       }}
                       style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                     >
@@ -2236,16 +2231,7 @@ export function BidsLaborTab({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (
-                          !(await confirmDialog({
-                            message: `Delete "${editingLaborEntry.fixture_types?.name ?? ''}" from this labor book?`,
-                            confirmLabel: 'Delete',
-                            danger: true,
-                          }))
-                        )
-                          return
-                        await deleteLaborEntry(editingLaborEntry)
-                        closeLaborEntryForm()
+                        if (await deleteLaborEntry(editingLaborEntry)) closeLaborEntryForm()
                       }}
                       style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                     >

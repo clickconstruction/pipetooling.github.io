@@ -882,6 +882,7 @@ export function BidsPricingTab({
     setSavingPricingEntry(false)
   }
 
+  /** Returns false when the user cancels the confirm, true once they confirm (even if the delete errors). */
   async function deletePricingEntry(entry: PriceBookEntryWithFixture) {
     if (
       !(await confirmDialog({
@@ -890,10 +891,11 @@ export function BidsPricingTab({
         danger: true,
       }))
     )
-      return
+      return false
     const { error: err } = await supabase.from('price_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else await reloadPanelEntries()
+    return true
   }
 
   async function handlePricingVersionChange(bidId: string, versionId: string) {
@@ -2815,16 +2817,7 @@ export function BidsPricingTab({
                       <button
                         type="button"
                         onClick={async () => {
-                          if (
-                            !(await confirmDialog({
-                              message: `Delete "${editingPricingEntry.fixture_types?.name ?? ''}" from this price book?`,
-                              confirmLabel: 'Delete',
-                              danger: true,
-                            }))
-                          )
-                            return
-                          await deletePricingEntry(editingPricingEntry)
-                          closePricingEntryForm()
+                          if (await deletePricingEntry(editingPricingEntry)) closePricingEntryForm()
                         }}
                         style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                       >

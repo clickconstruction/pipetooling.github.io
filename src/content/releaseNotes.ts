@@ -20,6 +20,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1896',
+    date: '2026-08-20',
+    title: 'Bids: one confirmation, not two',
+    kind: 'fix',
+    highlights: [
+      'Deleting a takeoff-book entry, price-book entry, or labor book version/entry from inside its edit window used to ask "are you sure?" twice. It now asks once.',
+      'Cancelling still keeps the edit window open with everything you typed.',
+    ],
+  },
+  {
     version: 'v2.1895',
     date: '2026-08-20',
     title: 'Cover Letter: the studio is the layout now',

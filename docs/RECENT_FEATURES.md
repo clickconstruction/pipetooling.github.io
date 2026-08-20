@@ -17,6 +17,11 @@ navigation: "No table of contents — find entries by grepping for the version (
 ### Partnerships: the Ledger reads newest-first (2026-08-20)
 Owner feedback from live testing the partner ledger with Bryan's real history: the journal opened oldest-first, putting March at the top and today below the fold. [`PartnershipLedgerTab`](../src/components/partnerships/PartnershipLedgerTab.tsx) now displays newest-first — the top row is the latest posting and its running balance matches the headline number; the balance math is unchanged (still computed oldest→newest under the hood), and the footer explains the convention. Client-only — no migration.
 
+## Latest Updates (v2.1896)
+
+### Bids edit modals stop asking twice before a delete (2026-08-20)
+Fix for a pre-existing double-confirm the v2.1893 sweep surfaced (it faithfully preserved wording and behavior, turning what had been two stacked native popups into two stacked modals): the Delete buttons inside the bids edit modals ran their own confirm and then called the shared delete function, which asked the identical question again. Four sites now confirm once — takeoff-book entry ([`TakeoffBookAdminSection`](../src/components/bids/TakeoffBookAdminSection.tsx)), price-book entry ([`BidsPricingTab`](../src/components/bids/BidsPricingTab.tsx)), and labor-book version + entry ([`BidsLaborTab`](../src/components/bids/BidsLaborTab.tsx)). The inline confirms are gone; the shared delete functions (`deleteTakeoffBookEntry`, `deletePricingEntry`, `deleteLaborVersion`, `deleteLaborEntry`) now return whether the user confirmed, and the modal buttons close the edit form only on confirm — cancelling keeps the form open with its state intact, exactly as before. List-row delete buttons (which always confirmed once) are untouched. Client-only — no migration.
+
 ## Latest Updates (v2.1895)
 
 ### Cover Letter: the studio is now the only layout (2026-08-20)
