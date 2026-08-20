@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "242 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "243 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820130000_partnerships.sql`** _(apply via `supabase db push` after the v2.1880 merge — additive; the new page fail-softs with a "run db push" banner until applied)_
+- **Purpose**: Partnerships train PR 1 ([`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md)) — `partnerships` (one deal row per partner person: `person_id` UNIQUE → people, status draft/active/paused/ended, field/estimating/farm rates, company-first + partner-remainder split percentages, utilities allowance, `modules` jsonb toggles with `auto_notice`/`cap`/`w2` defaulting false) and append-only `partnership_events` (created / config_changed / status_changed with changed-keys patch). Both dev-only RLS (`is_dev()`), narrow grants, both read-only sweeps. Dollars are numeric(10,2) per house convention. Partner-facing surfaces never read these tables directly — later PRs' SECURITY DEFINER RPCs consume config server-side.
+- **Category**: Partnerships / People
 
 **`20260820140000_paid_profit_stats.sql`** _(apply via `supabase db push` after the v2.1879 merge, then `npm run gen-types:linked` — new function only; nothing calls it until the profit chart ships)_
 - **Purpose**: Paid profit chart data. New SECURITY DEFINER RPC `get_paid_profit_stats()` returning `{ "<jobs_ledger.id>": { cost, hours } }` over every `status='paid'` job — the same six cost streams as `get_billed_aging_costs` plus total approved clock-session hours. Wage-derived ⇒ NULL unless dev/controller. EXECUTE to authenticated (gate inside), revoked from anon/PUBLIC.

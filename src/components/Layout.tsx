@@ -462,6 +462,12 @@ export default function Layout() {
       <path d="M96 128 L544 128 C579.3 128 608 156.7 608 192 L608 448 C608 483.3 579.3 512 544 512 L96 512 C60.7 512 32 483.3 32 448 L32 192 C32 156.7 60.7 128 96 128 Z M320 224 C267 224 224 267 224 320 C224 373 267 416 320 416 C373 416 416 373 416 320 C416 267 373 224 320 224 Z M128 296 C114.7 296 104 306.7 104 320 C104 333.3 114.7 344 128 344 C141.3 344 152 333.3 152 320 C152 306.7 141.3 296 128 296 Z M512 296 C498.7 296 488 306.7 488 320 C488 333.3 498.7 344 512 344 C525.3 344 536 333.3 536 320 C536 306.7 525.3 296 512 296 Z" />
     </svg>
   )
+  // Briefcase glyph (case body + handle, punched latch), same 640-grid style as the other nav icons.
+  const partnershipsIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" fillRule="evenodd" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M240 96 L400 96 C426.5 96 448 117.5 448 144 L448 160 L512 160 C547.3 160 576 188.7 576 224 L576 480 C576 515.3 547.3 544 512 544 L128 544 C92.7 544 64 515.3 64 480 L64 224 C64 188.7 92.7 160 128 160 L192 160 L192 144 C192 117.5 213.5 96 240 96 Z M240 144 L240 160 L400 160 L400 144 Z M288 320 L352 320 C365.3 320 376 330.7 376 344 L376 376 C376 389.3 365.3 400 352 400 L288 400 C274.7 400 264 389.3 264 376 L264 344 C264 330.7 274.7 320 288 320 Z" />
+    </svg>
+  )
   const reviewIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
       <path d="M262.8 65.8C271.8 62.1 282.1 64.1 289 71L345 127C354.4 136.4 354.4 151.6 345 160.9L289 216.9C282.1 223.8 271.8 225.8 262.8 222.1C253.8 218.4 248 209.7 248 200L248 176L224 176C206.3 176 192 190.3 192 208L192 422.7C220.3 435 240 463.2 240 496C240 540.2 204.2 576 160 576C115.8 576 80 540.2 80 496C80 463.2 99.7 435 128 422.7L128 208C128 155 171 112 224 112L248 112L248 88C248 78.3 253.8 69.5 262.8 65.8zM456 144C456 157.3 466.7 168 480 168C493.3 168 504 157.3 504 144C504 130.7 493.3 120 480 120C466.7 120 456 130.7 456 144zM448 217.3C419.7 205 400 176.8 400 144C400 99.8 435.8 64 480 64C524.2 64 560 99.8 560 144C560 176.8 540.3 205 512 217.3L512 432C512 485 469 528 416 528L392 528L392 552C392 561.7 386.2 570.5 377.2 574.2C368.2 577.9 357.9 575.9 351 569L295 513C285.6 503.6 285.6 488.4 295 479.1L351 423.1C357.9 416.2 368.2 414.2 377.2 417.9C386.2 421.6 392 430.3 392 440L392 464L416 464C433.7 464 448 449.7 448 432L448 217.3zM136 496C136 509.3 146.7 520 160 520C173.3 520 184 509.3 184 496C184 482.7 173.3 472 160 472C146.7 472 136 482.7 136 496z" />
@@ -531,6 +537,11 @@ export default function Layout() {
         {role === 'dev' && !isMobile && (
           <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
             {reviewIcon}
+          </NavLink>
+        )}
+        {role === 'dev' && !isMobile && (
+          <NavLink to="/partnerships" style={iconLinkStyle} title="Partnerships" aria-label="Partnerships">
+            {partnershipsIcon}
           </NavLink>
         )}
       </span>
@@ -636,6 +647,11 @@ export default function Layout() {
         {!excludeHeaderLinks && role === 'dev' && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
             {reviewIcon}
+          </NavLink>
+        )}
+        {!excludeHeaderLinks && role === 'dev' && (
+          <NavLink to="/partnerships" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Partnerships" aria-label="Partnerships">
+            {partnershipsIcon}
           </NavLink>
         )}
         {!excludeHeaderLinks && (
@@ -831,6 +847,26 @@ export default function Layout() {
                     >
                       {reviewIcon}
                       Review
+                    </NavLink>
+                  )}
+                  {role === 'dev' && (
+                    <NavLink
+                      to="/partnerships"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="Partnerships"
+                      aria-label="Partnerships"
+                    >
+                      {partnershipsIcon}
+                      Partnerships
                     </NavLink>
                   )}
                   {renderNavLinks(() => setMenuOpen(false), true)}
