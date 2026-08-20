@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1870',
+    date: '2026-08-19',
+    title: 'Customer view: see exactly what they\'ll sign, as you type',
+    kind: 'feature',
+    highlights: [
+      'A new Editing / Customer view switch on estimate and change-order drafts flips the page to the precise document your customer receives — same rendering as the signature page, live with every edit.',
+      'Switch back to Editing anytime; nothing is lost.',
+    ],
+  },
+  {
     version: 'v2.1868',
     date: '2026-08-19',
     title: 'Estimates and change orders: a numbered guide on every draft',

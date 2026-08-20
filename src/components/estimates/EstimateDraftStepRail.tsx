@@ -111,6 +111,25 @@ const RAIL_CSS = `
     max-width: 148px;
   }
   .est-step-rail .est-rail-lbl span.attention { color: var(--text-amber-800); font-weight: 600; }
+  .est-rail-view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .est-rail-view-toggle button {
+    border: none;
+    background: var(--surface);
+    color: var(--text-muted);
+    padding: 0.32rem 0.6rem;
+    font: inherit;
+    cursor: pointer;
+  }
+  .est-rail-view-toggle button.on { background: #3b82f6; color: white; }
+  .est-step-rail .est-rail-view-toggle { margin: 0.9rem 0 0 0.5rem; }
+  .est-step-strip .est-rail-view-toggle { flex: 0 0 auto; margin-left: auto; }
   .est-step-rail .est-rail-send {
     margin: 0.8rem 0 0 0.5rem;
     border: none;
@@ -140,13 +159,24 @@ type Props = {
   onSend: () => void
   sending: boolean
   sendLabel: string
+  customerViewOn: boolean
+  onToggleCustomerView: () => void
 }
 
 function StepGlyph({ step }: { step: EstimateDraftStep }) {
   return <span className={`est-rail-num ${step.status}`}>{step.status === 'done' ? '✓' : step.number}</span>
 }
 
-export default function EstimateDraftStepRail({ steps, sendGate, onStepClick, onSend, sending, sendLabel }: Props) {
+export default function EstimateDraftStepRail({
+  steps,
+  sendGate,
+  onStepClick,
+  onSend,
+  sending,
+  sendLabel,
+  customerViewOn,
+  onToggleCustomerView,
+}: Props) {
   const paperSteps = steps.filter((s) => s.group === 'paper')
   const backstageSteps = steps.filter((s) => s.group === 'backstage')
 
@@ -159,6 +189,14 @@ export default function EstimateDraftStepRail({ steps, sendGate, onStepClick, on
             {s.status === 'done' ? '✓' : s.status === 'attention' ? '●' : ''} {s.number} {s.label}
           </button>
         ))}
+        <span className="est-rail-view-toggle" role="group" aria-label="Editor view">
+          <button type="button" className={customerViewOn ? undefined : 'on'} onClick={() => customerViewOn && onToggleCustomerView()}>
+            Editing
+          </button>
+          <button type="button" className={customerViewOn ? 'on' : undefined} onClick={() => !customerViewOn && onToggleCustomerView()}>
+            Customer view
+          </button>
+        </span>
       </nav>
       <nav className="est-step-rail" aria-label="Draft steps">
         <p className="est-rail-group">On the customer's copy</p>
@@ -181,6 +219,15 @@ export default function EstimateDraftStepRail({ steps, sendGate, onStepClick, on
             </span>
           </button>
         ))}
+        <span className="est-rail-view-toggle" role="group" aria-label="Editor view">
+          <button type="button" className={customerViewOn ? undefined : 'on'} onClick={() => customerViewOn && onToggleCustomerView()}>
+            Editing
+          </button>
+          <button type="button" className={customerViewOn ? 'on' : undefined} onClick={() => !customerViewOn && onToggleCustomerView()}>
+            Customer view
+          </button>
+        </span>
+        <br />
         <button type="button" className="est-rail-send" onClick={onSend} disabled={!sendGate.ready || sending}>
           {sending ? 'Sending…' : sendLabel}
         </button>
