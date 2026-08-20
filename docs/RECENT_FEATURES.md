@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1863)
+last_updated: 2026-08-19 (v2.1865)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1865)
+
+### Estimate draft steps kernel — step rail train PR 1 (2026-08-19)
+Owner-approved redesign (rail-v2 mockups reviewed as an artifact): the estimate/CO draft editor gets a numbered guide that is a map, a checklist, and the send-gate explainer — while the page keeps reading as the paper the customer receives. This PR is the brain: [`estimateDraftSteps.ts`](../src/lib/estimateDraftSteps.ts) (+12 tests) computes the step list per doc kind (estimate: Customer / Line items / Terms & attachments / Delivery; CO adds The change after Customer), each step's live status (`done` / `attention` / `optional`) with one-line sublabels ("no lines yet", "net −$390.00", "2 notified"), the paper-vs-backstage grouping (Delivery is the one step the customer never sees), and the send-gate ("2 steps left: cost lines · delivery"; `ready` mirrors TODAY'S hard rule — customer + deliverable email — the rail suggests, it never adds new blocks; `confirmZeroNet` asks before sending a $0 document instead of blocking). No UI yet — the paper regroup is PR 2, the rail PR 3, the Customer-view toggle PR 4. Client-only — no migration.
 
 ## Latest Updates (v2.1863)
 
