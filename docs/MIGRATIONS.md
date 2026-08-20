@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "249 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "250 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820210000_partner_agreements.sql`** _(apply via `supabase db push` after the v2.1887 merge — additive; the Agreements tab fail-softs until applied)_
+- **Purpose**: Partnerships train PR 8 — agreements lens. `person_contract_documents.sign_by` + `.partnership_id`; new `partner_agreement_notices` (drafted §8a notices w/ manual delivery record; dev-only RLS; both read-only sweeps); `generate_agreement_notice(partnership)` (dev-gated draft + event; NO auto-serve, no cron — attorney sign-off gates automation); `partnership_events` CHECK + `notice_generated`.
+- **Category**: Partnerships / Contracts
 
 **`20260820200000_partner_costing_reads.sql`** _(apply via `supabase db push` after the v2.1886 merge — additive; the Your-jobs card renders nothing until applied)_
 - **Purpose**: Partnerships train PR 7 — the §5 window. `get_my_partner_jobs()` (checked-off jobs + live profit shares) and `get_my_partner_job_costing(job)` (hours per person WITHOUT wages, supply allocations pct→$, card-charge allocations, direct rows, as-of stamp). Both caller-resolved, hard-gated on the majority flag; costing additionally on `modules.costing`.
