@@ -21,6 +21,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1894',
+    date: '2026-08-20',
+    title: 'Roadmap: stages show their progress at a glance',
+    kind: 'feature',
+    highlights: [
+      'Every stage on the roadmap canvas now wears a badge: how many tasks are done, a green check when the stage is complete, and a lock on stages that aren’t open yet.',
+      'Locked stages tell you exactly which earlier stage opens them — and say when their tasks will land on people’s lists automatically.',
+      'Task status chips (on list / in review / signed off) now show for everyone, not just while reordering.',
+    ],
+  },
+  {
     version: 'v2.1893',
     date: '2026-08-20',
     title: 'The confirmation-dialog sweep is finished',

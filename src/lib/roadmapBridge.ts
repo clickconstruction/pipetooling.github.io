@@ -78,3 +78,56 @@ export function goalsStripRows(args: {
   }
   return rows
 }
+
+export type StageBadge = { kind: 'done' } | { kind: 'progress'; done: number; total: number } | null
+
+/**
+ * Header badge for a stage node (v2.1894 polish): green "✓ done" when every
+ * task is complete, "N of M" while in progress, nothing for empty stages.
+ */
+export function stageBadgeFor(tasks: Array<{ completedAt: string | null }>): StageBadge {
+  if (tasks.length === 0) return null
+  const done = tasks.filter((t) => t.completedAt != null).length
+  if (done === tasks.length) return { kind: 'done' }
+  return { kind: 'progress', done, total: tasks.length }
+}
+
+/**
+ * Incomplete predecessor stage titles for a locked stage — the stages that
+ * actually gate it right now (complete predecessors are no longer blockers).
+ */
+export function blockingStageTitles(args: {
+  groupId: string
+  edges: TechTreeEdge[]
+  completeGroupIds: Set<string>
+  titleByGroupId: Map<string, string>
+}): string[] {
+  const { groupId, edges, completeGroupIds, titleByGroupId } = args
+  const titles: string[] = []
+  for (const e of edges) {
+    if (e.toGroupId !== groupId) continue
+    if (completeGroupIds.has(e.fromGroupId)) continue
+    titles.push(titleByGroupId.get(e.fromGroupId) ?? 'a previous stage')
+  }
+  return titles
+}
+
+/**
+ * The one-line hint under a locked stage header. Stages with assigned tasks
+ * get the auto-assign wording — completing the blocker is what pushes those
+ * tasks onto people's Today lists via the bridge sync.
+ */
+export function lockedStageHint(blockingTitles: string[], hasAssignedTasks: boolean): string | null {
+  if (blockingTitles.length === 0) return null
+  const first = blockingTitles[0]!
+  const label =
+    blockingTitles.length === 1
+      ? `“${first}”`
+      : blockingTitles.length === 2
+        ? `“${first}” and “${blockingTitles[1]}”`
+        : `“${first}” + ${blockingTitles.length - 1} more`
+  const verb = blockingTitles.length > 1 ? 'are' : 'is'
+  return hasAssignedTasks
+    ? `Tasks auto-assign to lists when ${label} ${verb} done`
+    : `Unlocks when ${label} ${verb} done`
+}
