@@ -114,6 +114,7 @@ export default function Jobs() {
     runFetchJobs,
     runFetchScopes,
     refreshMergedScopes,
+    refreshHeaderStats,
     fetchPaidJobsIfNeeded,
   } = useJobsListCache()
   const jobDetailModal = useJobDetailModal()
@@ -200,6 +201,8 @@ export default function Jobs() {
       // reload they read from.
       if (activeTabRef.current === 'stages') void refreshMergedScopes(customerFilterForFetchRef.current ?? null)
       else void runFetchJobs(customerFilterForFetchRef.current ?? null)
+      // Data just moved — bypass the header-stats TTL so the chips update now (v2.1917).
+      void refreshHeaderStats(customerFilterForFetchRef.current ?? null, { force: true })
       if (activeTabRef.current === 'job-summary' || jobSummaryLedgerSnapshotLoadedRef.current) {
         void loadJobSummaryLedgerRef.current()
       }
