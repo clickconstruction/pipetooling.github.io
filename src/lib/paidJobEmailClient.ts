@@ -18,10 +18,27 @@ export function openHtmlInNewTab(html: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
-type FnResult = { data: unknown; error: { message?: string } | null }
+type FnResult = { data: unknown; error: { message?: string; context?: unknown } | null }
 
-function fnError(r: FnResult, fallback: string): string | null {
-  if (r.error) return r.error.message || fallback
+/**
+ * Extract the function's REAL error text (v2.1867). On a non-2xx response,
+ * supabase-js raises FunctionsHttpError whose .message is the useless generic
+ * "Edge Function returned a non-2xx status code" — the actual reason lives in
+ * the response body ({ error: "…" }), reachable via error.context (a Response).
+ */
+async function fnError(r: FnResult, fallback: string): Promise<string | null> {
+  if (r.error) {
+    const ctx = r.error.context
+    if (ctx instanceof Response) {
+      try {
+        const body = (await ctx.clone().json()) as { error?: string } | null
+        if (body && typeof body.error === 'string' && body.error) return body.error
+      } catch {
+        // unreadable body — fall through to the generic message
+      }
+    }
+    return r.error.message || fallback
+  }
   const d = r.data as { error?: string } | null
   if (d && typeof d.error === 'string' && d.error) return d.error
   return null
@@ -40,7 +57,7 @@ export async function fetchPaidJobEmailPreview(
   const r = (await supabase.functions.invoke('paid-job-email', {
     body: { mode: 'preview', job_id: jobId, variant, ...(kind ? { kind } : {}) },
   })) as FnResult
-  const err = fnError(r, 'Preview failed')
+  const err = await fnError(r, 'Preview failed')
   if (err) throw new Error(err)
   const html = (r.data as { html?: string } | null)?.html
   if (!html) throw new Error('Preview returned no HTML')
@@ -66,7 +83,7 @@ export async function sendPaidJobEmailTest(
       ...(recipientUserId ? { recipient_user_id: recipientUserId } : {}),
     },
   })) as FnResult
-  const err = fnError(r, 'Test send failed')
+  const err = await fnError(r, 'Test send failed')
   if (err) throw new Error(err)
 }
 
@@ -84,7 +101,7 @@ export async function sendReadyToBillPushTest(jobId: string, recipientUserId?: s
       ...(recipientUserId ? { recipient_user_id: recipientUserId } : {}),
     },
   })) as FnResult
-  const err = fnError(r, 'Test push failed')
+  const err = await fnError(r, 'Test push failed')
   if (err) throw new Error(err)
   const sent = (r.data as { push_sent?: number } | null)?.push_sent
   return typeof sent === 'number' ? sent : 0
@@ -95,7 +112,7 @@ export async function sendPaidJobEmailTo(jobId: string, recipientUserId: string)
   const r = (await supabase.functions.invoke('paid-job-email', {
     body: { mode: 'send_to', job_id: jobId, recipient_user_id: recipientUserId },
   })) as FnResult
-  const err = fnError(r, 'Send failed')
+  const err = await fnError(r, 'Send failed')
   if (err) throw new Error(err)
   return (r.data as { variant?: string } | null)?.variant === 'summary' ? 'summary' : 'detailed'
 }
