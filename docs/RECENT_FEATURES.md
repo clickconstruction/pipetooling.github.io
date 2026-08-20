@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1887)
+last_updated: 2026-08-20 (v2.1888)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1888)
+
+### Partnerships: pick the farm job on the Deal tab (2026-08-20)
+Follow-up to the partner train (owner question: "how would a user set the farm job?"). The `partnerships.farm_job_ledger_id` anchor (§1c) shipped in PR 3 with no picker — devs would have had to set it by SQL. The Deal tab now has a **Farm job** row under the farm rate: type-ahead search over jobs (HCP #, Click #, name; ilike, 8 results), pick to set, "clear" to unset; each change writes the usual `config_changed` event with a from/to patch. Hours clocked to the chosen job price at the farm rate ($0 for Bryan) on generated statements; unset = no farm bucket (farm-job hours would price as field). Client-only — no migration.
 
 ## Latest Updates (v2.1887)
 

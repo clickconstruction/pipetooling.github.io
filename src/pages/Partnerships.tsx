@@ -142,6 +142,10 @@ export default function Partnerships() {
   const [addOpen, setAddOpen] = useState(false)
   const [addPersonId, setAddPersonId] = useState('')
   const [addCompany, setAddCompany] = useState('')
+  const [farmJobLabel, setFarmJobLabel] = useState<string | null>(null)
+  const [farmSearch, setFarmSearch] = useState('')
+  const [farmResults, setFarmResults] = useState<{ id: string; label: string }[]>([])
+  const [farmBusy, setFarmBusy] = useState(false)
 
   const load = useCallback(async () => {
     const [pRes, peopleRes] = await Promise.all([
@@ -176,6 +180,23 @@ export default function Partnerships() {
     setDraft(selected ? rowToConfig(selected) : null)
     setSaveError(null)
     setSavedAt(null)
+    setFarmSearch('')
+    setFarmResults([])
+    // Resolve the farm job's display label (§1c anchor).
+    const farmId = selected?.farm_job_ledger_id ?? null
+    if (!farmId) {
+      setFarmJobLabel(null)
+    } else {
+      void supabase
+        .from('jobs_ledger')
+        .select('hcp_number, click_number, job_name')
+        .eq('id', farmId)
+        .single()
+        .then(({ data }) => {
+          const j = data as { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
+          setFarmJobLabel(j ? j.hcp_number?.trim() || j.click_number?.trim() || j.job_name?.trim() || farmId : farmId)
+        })
+    }
   }, [selected])
 
   const validationErrors = useMemo(() => (draft ? validatePartnershipConfig(draft) : []), [draft])
@@ -281,6 +302,51 @@ export default function Partnerships() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function searchFarmJobs(q: string) {
+    setFarmSearch(q)
+    const term = q.trim()
+    if (term.length < 2) {
+      setFarmResults([])
+      return
+    }
+    const { data } = await supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, click_number, job_name')
+      .or(`hcp_number.ilike.%${term}%,click_number.ilike.%${term}%,job_name.ilike.%${term}%`)
+      .limit(8)
+    setFarmResults(
+      ((data ?? []) as { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }[]).map((j) => ({
+        id: j.id,
+        label: [j.hcp_number?.trim() || j.click_number?.trim() || '', j.job_name?.trim() || ''].filter(Boolean).join(' — ') || j.id,
+      })),
+    )
+  }
+
+  async function setFarmJob(jobId: string | null, label: string | null) {
+    if (!selected) return
+    setFarmBusy(true)
+    setSaveError(null)
+    const { error } = await supabase
+      .from('partnerships')
+      .update({ farm_job_ledger_id: jobId, updated_at: new Date().toISOString(), updated_by: authUser?.id ?? null })
+      .eq('id', selected.id)
+    if (error) {
+      setSaveError(error.message)
+    } else {
+      await supabase.from('partnership_events').insert({
+        partnership_id: selected.id,
+        event_type: 'config_changed',
+        patch: { farm_job_ledger_id: { from: selected.farm_job_ledger_id ?? null, to: jobId } } as unknown as Json,
+        actor_user_id: authUser?.id ?? null,
+      })
+      setFarmJobLabel(label)
+      setFarmSearch('')
+      setFarmResults([])
+      await load()
+    }
+    setFarmBusy(false)
   }
 
   function setModule(key: keyof PartnershipModules, value: boolean) {
@@ -555,6 +621,50 @@ export default function Partnerships() {
               {cfgRow('Field work', 'customer jobs away from property (§1a)', numField(draft.field_rate, (n) => setDraft({ ...draft, field_rate: n }), { suffix: '/ hr' }))}
               {cfgRow('Estimating / office', 'bid-tagged hours (§1b)', numField(draft.estimating_rate, (n) => setDraft({ ...draft, estimating_rate: n }), { suffix: '/ hr' }))}
               {cfgRow('Farm work', 'logged, unpaid — farm food credit (§1c)', numField(draft.farm_rate, (n) => setDraft({ ...draft, farm_rate: n }), { suffix: '/ hr' }))}
+              {cfgRow(
+                'Farm job',
+                'hours clocked to this job price at the farm rate on statements; unset = no farm bucket',
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end', minWidth: 0 }}>
+                  {selected.farm_job_ledger_id ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
+                      {farmJobLabel ?? '…'}
+                      <button
+                        type="button"
+                        disabled={farmBusy}
+                        onClick={() => void setFarmJob(null, null)}
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 650, border: 'none', background: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}
+                      >
+                        clear
+                      </button>
+                    </span>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Search jobs (HCP #, Click #, name)…"
+                        value={farmSearch}
+                        onChange={(e) => void searchFarmJobs(e.target.value)}
+                        style={{ font: 'inherit', fontSize: '0.82rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', width: '15rem', maxWidth: '100%' }}
+                      />
+                      {farmResults.length > 0 ? (
+                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', width: '15rem', maxWidth: '100%' }}>
+                          {farmResults.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              disabled={farmBusy}
+                              onClick={() => void setFarmJob(r.id, r.label)}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit', cursor: 'pointer' }}
+                            >
+                              {r.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </div>,
+              )}
 
               <div style={groupHeadStyle}>Profit split (§3)</div>
               {cfgRow('Profit shares', 'post profit splits on close of checked-off jobs', <Toggle on={draft.modules.profit_shares} onClick={() => setModule('profit_shares', !draft.modules.profit_shares)} label="Profit shares" />)}
