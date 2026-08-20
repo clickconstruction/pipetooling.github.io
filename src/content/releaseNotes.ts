@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1887',
+    date: '2026-08-20',
+    title: 'Partnerships: agreements get deadlines and a paper trail',
+    kind: 'feature',
+    highlights: [
+      'The Partnerships page\u2019s last tab is live: every agreement version with its signature status and an editable sign-by date with a countdown.',
+      'If signing lapses, one click drafts the written 30-day notice \u2014 logged, printable, and never sent automatically. You review and deliver it yourself.',
+      'The whole Partnerships surface is now complete: Deal, Agreements, Job review, Statements, and Ledger.',
+    ],
+  },
+  {
     version: 'v2.1886',
     date: '2026-08-20',
     title: 'Partners: open the costs behind your jobs',

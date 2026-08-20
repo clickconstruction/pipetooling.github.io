@@ -16,6 +16,7 @@ import type { Database, Json } from '../types/database'
 import { PartnershipJobReviewTab } from '../components/partnerships/PartnershipJobReviewTab'
 import { PartnershipStatementsTab } from '../components/partnerships/PartnershipStatementsTab'
 import { PartnershipLedgerTab } from '../components/partnerships/PartnershipLedgerTab'
+import { PartnershipAgreementsTab } from '../components/partnerships/PartnershipAgreementsTab'
 
 type PartnershipRow = Database['public']['Tables']['partnerships']['Row']
 type PersonOption = { id: string; name: string; kind: string | null }
@@ -33,8 +34,6 @@ type PersonOption = { id: string; name: string; kind: string | null }
  * errors are swallowed into an explanatory banner — client and migration can
  * deploy in either order.
  */
-
-const TAB_PLACEHOLDERS = ['Agreements'] as const
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -133,7 +132,7 @@ export default function Partnerships() {
   const [rows, setRows] = useState<PartnershipRow[]>([])
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'deal' | 'review' | 'stmts' | 'ledger'>('deal')
+  const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'ledger'>('deal')
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [draft, setDraft] = useState<PartnershipConfig | null>(null)
@@ -473,11 +472,12 @@ export default function Partnerships() {
                 {statusChip(draft.status)}
               </div>
 
-              {/* Tab bar — Deal + Job review live; the rest ship later in this train */}
+              {/* Tab bar — all five tabs live (train complete) */}
               <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', margin: '0.75rem 0', flexWrap: 'wrap' }}>
                 {(
                   [
                     ['deal', 'Deal'],
+                    ['agr', 'Agreements'],
                     ['review', 'Job review'],
                     ['stmts', 'Statements'],
                     ['ledger', 'Ledger'],
@@ -502,14 +502,16 @@ export default function Partnerships() {
                     {label}
                   </button>
                 ))}
-                {TAB_PLACEHOLDERS.map((t) => (
-                  <span key={t} title="Ships later in this train" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', paddingBottom: '0.4rem', opacity: 0.6 }}>
-                    {t}
-                  </span>
-                ))}
               </div>
 
-              {activeTab === 'review' ? (
+              {activeTab === 'agr' ? (
+                <PartnershipAgreementsTab
+                  partnershipId={selected.id}
+                  personId={selected.person_id}
+                  personName={selected.display_name || 'the partner'}
+                  autoNoticeOn={draft.modules.auto_notice}
+                />
+              ) : activeTab === 'review' ? (
                 <PartnershipJobReviewTab partnershipId={selected.id} partnerName={selected.display_name || 'the partner'} />
               ) : activeTab === 'stmts' ? (
                 <PartnershipStatementsTab

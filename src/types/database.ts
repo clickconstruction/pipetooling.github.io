@@ -7494,6 +7494,53 @@ export type Database = {
           },
         ]
       }
+      partner_agreement_notices: {
+        Row: {
+          agreement_doc_id: string | null
+          delivered_at: string | null
+          delivered_via: string[]
+          generated_at: string
+          generated_by: string | null
+          id: string
+          notes: string | null
+          notice_html: string
+          partnership_id: string
+          sign_by_missed: string | null
+        }
+        Insert: {
+          agreement_doc_id?: string | null
+          delivered_at?: string | null
+          delivered_via?: string[]
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          notes?: string | null
+          notice_html: string
+          partnership_id: string
+          sign_by_missed?: string | null
+        }
+        Update: {
+          agreement_doc_id?: string | null
+          delivered_at?: string | null
+          delivered_via?: string[]
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          notes?: string | null
+          notice_html?: string
+          partnership_id?: string
+          sign_by_missed?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_agreement_notices_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partnership_events: {
         Row: {
           actor_user_id: string | null
@@ -8457,11 +8504,13 @@ export type Database = {
           id: string
           lineage_version: number
           note: string | null
+          partnership_id: string | null
           person_id: string | null
           person_name: string
           public_token_expires_at: string | null
           public_token_hash: string | null
           sent_at: string | null
+          sign_by: string | null
           signed_at: string | null
           signer_consented_at: string | null
           signer_ip: string | null
@@ -8489,11 +8538,13 @@ export type Database = {
           id?: string
           lineage_version?: number
           note?: string | null
+          partnership_id?: string | null
           person_id?: string | null
           person_name: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
           sent_at?: string | null
+          sign_by?: string | null
           signed_at?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
@@ -8521,11 +8572,13 @@ export type Database = {
           id?: string
           lineage_version?: number
           note?: string | null
+          partnership_id?: string | null
           person_id?: string | null
           person_name?: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
           sent_at?: string | null
+          sign_by?: string | null
           signed_at?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
@@ -13730,6 +13783,10 @@ export type Database = {
           days_apart: number
           manual_involved: boolean
         }[]
+      }
+      generate_agreement_notice: {
+        Args: { p_partnership_id: string }
+        Returns: Json
       }
       generate_partner_statement: {
         Args: { p_override?: boolean; p_partnership_id: string; p_week_start: string }
