@@ -50,10 +50,8 @@ export default function PaidProfitChartModal({
     let cancelled = false
     void (async () => {
       try {
-        // 'as never': the RPC ships in this PR's migration — regenerate types
-        // (npm run gen-types:linked) after db push to type it properly.
         const data = await withSupabaseRetry(
-          () => supabase.rpc('get_paid_profit_stats' as never),
+          () => supabase.rpc('get_paid_profit_stats'),
           'paid profit stats',
         )
         if (cancelled) return
