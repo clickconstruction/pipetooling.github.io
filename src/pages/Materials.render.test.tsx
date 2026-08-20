@@ -21,6 +21,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
+import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 
 // Mutable holder the hoisted vi.mock factory can close over: tests flip the
 // role between renders (vi.mock factories cannot reference other top-levels).
@@ -94,12 +95,14 @@ function renderMaterialsAt(url: string, role: string) {
   return render(<Materials /> as ReactElement, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <ToastProvider>
-        <MemoryRouter
-          initialEntries={[url]}
-          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        >
-          {children}
-        </MemoryRouter>
+        <ConfirmDialogProvider>
+          <MemoryRouter
+            initialEntries={[url]}
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+          >
+            {children}
+          </MemoryRouter>
+        </ConfirmDialogProvider>
       </ToastProvider>
     ),
   })

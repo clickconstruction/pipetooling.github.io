@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1893',
+    date: '2026-08-20',
+    title: 'The confirmation-dialog sweep is finished',
+    kind: 'feature',
+    highlights: [
+      'The v2.1877 sweep missed a batch of browser confirmation popups — 69 more, across bids books and versions, materials and purchase orders, supply houses, settings catalogs, clock sessions, prospects, jobs, writeups, and notes. All of them now use the in-app dialog.',
+      'Destructive confirmations (delete/remove) show a red button naming the action; non-destructive ones like Finalize, Force clock out, or Archive keep a neutral button.',
+    ],
+  },
+  {
     version: 'v2.1888',
     date: '2026-08-20',
     title: 'Partnerships: set the farm job without SQL',
