@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../contexts/ToastContext'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { WriteupEditorModal, type WriteupListRow } from './WriteupEditorModal'
@@ -34,6 +35,7 @@ export function WriteupsContractsSubTab({
   isDev,
 }: Props) {
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
   const [templates, setTemplates] = useState<WriteupTemplateRow[]>([])
   const [writeups, setWriteups] = useState<WriteupListRow[]>([])
   const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
@@ -192,7 +194,7 @@ export function WriteupsContractsSubTab({
 
   async function deleteWriteup(r: WriteupListRow) {
     if (r.status === 'submitted' && !isDev) {
-      alert('Only a dev can delete a submitted writeup.')
+      showToast('Only a dev can delete a submitted writeup.', 'warning')
       return
     }
     if (
@@ -207,7 +209,7 @@ export function WriteupsContractsSubTab({
       await withSupabaseRetry(async () => supabase.from('writeups').delete().eq('id', r.id), 'delete writeup')
       await loadWriteupsData()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Delete failed')
+      showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
     }
   }
 
