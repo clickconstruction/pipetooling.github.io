@@ -8,6 +8,15 @@ order: 87
 
 When the scope changes mid-job — owner directive, field condition, plan revision — a **change order** documents what changed, what it costs, and gets the customer's signature on it. Change orders live in **Estimates** and ride the same rails as an estimate: same send, same acceptance page, same typed signature, same paper trail.
 
+## The numbered guide
+
+Drafts now carry a numbered guide — on a wide screen it sits to the left of the document; on a phone it's the pinned row of pills up top. It answers the two questions that matter: *what do I fill out* and *why can't I send yet*.
+
+- Steps under **On the customer's copy** are the parts of the document itself, in the order the customer reads them. **Behind the scenes** holds Delivery — who gets notified, the project link, internal notes — which the customer never sees.
+- Each step shows where it stands: a green check when done, an amber dot with a short reason ("no lines yet", "email needed for the accept link") when it wants attention, or "optional".
+- Tap any step to jump straight to it. The send button under the guide tells you what's left ("2 steps left: cost lines · delivery") and lights up when the draft is ready.
+- A $0 document can still be sent — schedule-only change orders are real — but it asks you to confirm first.
+
 ## Starting one
 
 On **Estimates**, click {{button:outline|New change order}} (right next to {{button:blue|New estimate}}). You get a draft marked with an amber {{chip:yellow|Change order}} chip — that chip follows it everywhere: the Pipeline and Ledger lists, the detail header, and the customer's document.

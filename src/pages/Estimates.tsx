@@ -33,6 +33,8 @@ import {
   type CoCostPromptDraft,
   type CoCostPromptMode,
 } from '../lib/coCostLinePrompt'
+import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
+import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
@@ -2787,6 +2789,52 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     return { name: c.name ?? '', address: c.address ?? '' }
   }, [customerId, customers])
   const crmEmailForSelected = selectedCustomer ? extractContactFromCustomer(selectedCustomer).email.trim() : ''
+
+  // Step rail (rail-v2): map + checklist + send-gate, all from the kernel.
+  const [railFlashStep, setRailFlashStep] = useState<EstimateDraftStepKey | null>(null)
+  const railFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const railData = useMemo(
+    () =>
+      computeEstimateDraftSteps({
+        isCO,
+        customerSelected: customerId != null,
+        customerEmailPresent: Boolean(crmEmailForSelected || sendEmailOverride.trim()),
+        changeDescriptionFilled: coFields.description_of_change.trim() !== '',
+        lineCount: lines.length,
+        totalCents,
+        termsFilled: terms.trim() !== '',
+        attachmentFilled: Boolean(customerAttachmentUrl.trim() || customerAttachmentLabel.trim()),
+        notifyCount: acceptNotifyUserIds.length,
+      }),
+    [
+      isCO,
+      customerId,
+      crmEmailForSelected,
+      sendEmailOverride,
+      coFields.description_of_change,
+      lines.length,
+      totalCents,
+      terms,
+      customerAttachmentUrl,
+      customerAttachmentLabel,
+      acceptNotifyUserIds.length,
+    ],
+  )
+
+  function handleRailStepClick(key: EstimateDraftStepKey) {
+    const el = document.getElementById(`est-step-${key}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (key === 'customer') {
+      queueMicrotask(() => {
+        customerSearchSectionRef.current
+          ?.querySelector<HTMLInputElement>('.customer-search-combobox input')
+          ?.focus()
+      })
+    }
+    setRailFlashStep(key)
+    if (railFlashTimerRef.current) clearTimeout(railFlashTimerRef.current)
+    railFlashTimerRef.current = setTimeout(() => setRailFlashStep(null), 2600)
+  }
   const showSendEmailOverride = Boolean(isDraft && customerId && !crmEmailForSelected)
 
   function resolveCustomerEmailForPersist(): string | null {
@@ -3192,6 +3240,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       showToast('Choose a customer before sending.', 'error')
       return
     }
+    // Rail decision 1 (soft gate): a $0 document sends only after a confirm —
+    // schedule-only change orders are legitimate, silent $0 sends are not.
+    if (totalCents === 0 && !window.confirm(isCO ? 'Send with a $0.00 net change to contract?' : 'Send with a $0.00 total?')) {
+      return
+    }
     let sel = customers.find((c) => c.id === customerId)
     if (!sel) {
       try {
@@ -3514,6 +3567,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/estimates">← Estimates</Link>
       </div>
+      {isDraft ? (
+        <EstimateDraftStepRail
+          steps={railData.steps}
+          sendGate={railData.sendGate}
+          onStepClick={handleRailStepClick}
+          onSend={() => void sendToCustomer()}
+          sending={sending}
+          sendLabel={isCO ? 'Send for signature' : 'Send to customer'}
+        />
+      ) : null}
       {isDraft && (
         <div
           style={{
@@ -3524,8 +3587,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           }}
         >
           <div
+            id="est-step-customer"
             ref={customerSearchSectionRef}
-            className={customerSearchHighlight ? 'estimate-customer-search-highlight' : undefined}
+            className={
+              customerSearchHighlight || railFlashStep === 'customer' ? 'estimate-customer-search-highlight' : undefined
+            }
             style={{ width: '100%', maxWidth: 480, textAlign: 'left' }}
           >
             <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>Customer</span>
@@ -4000,6 +4066,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           <section style={{ marginTop: 0 }}>
             {isCO ? (
               <div
+                id="est-step-change"
+                className={railFlashStep === 'change' ? 'estimate-customer-search-highlight' : undefined}
                 style={{
                   border: '1px solid #f59e0b',
                   borderRadius: 8,
@@ -4054,6 +4122,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </div>
             ) : null}
             <div
+              id="est-step-cost"
+              className={railFlashStep === 'cost' ? 'estimate-customer-search-highlight' : undefined}
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -4810,7 +4880,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </div>
               </section>
             )}
-            <section style={{ marginTop: '1.5rem' }}>
+            <section
+              id="est-step-paper_extras"
+              className={railFlashStep === 'paper_extras' ? 'estimate-customer-search-highlight' : undefined}
+              style={{ marginTop: '1.5rem' }}
+            >
               <h2
                 style={{
                   fontSize: '1.1rem',
@@ -4996,6 +5070,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </div>
             </details>
           </fieldset>
+          <section
+            id="est-step-delivery"
+            className={railFlashStep === 'delivery' ? 'estimate-customer-search-highlight' : undefined}
+          >
           <fieldset
             style={{
               marginTop: '1rem',
@@ -5090,6 +5168,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               style={{ ...estInputBase, marginTop: '0.25rem', padding: '0.5rem', fontFamily: 'inherit' }}
             />
           </label>
+          </section>
           <div
             style={{
               display: 'flex',
