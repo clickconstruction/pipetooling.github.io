@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1895',
+    date: '2026-08-20',
+    title: 'Cover Letter: the studio is the layout now',
+    kind: 'feature',
+    highlights: [
+      'The Old/New pills are gone — the two-pane studio (controls in steps on the left, the letter always visible on the right) is now the Cover Letter, full stop.',
+      'Everything works exactly as it did in the New view: live letter preview, Apply to Bid Value, toggle pills, and the send buttons under the letter.',
+    ],
+  },
+  {
     version: 'v2.1893',
     date: '2026-08-20',
     title: 'The confirmation-dialog sweep is finished',
