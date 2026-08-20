@@ -42,6 +42,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1890',
+    date: '2026-08-20',
+    title: 'Under the hood: chart data calls fully typed',
+    kind: 'infra',
+    highlights: [
+      'The billed-aging and paid-profit chart modals now use the regenerated database types \u2014 no user-visible change.',
+    ],
+  },
+  {
     version: 'v2.1888',
     date: '2026-08-20',
     title: 'Partnerships: set the farm job without SQL',

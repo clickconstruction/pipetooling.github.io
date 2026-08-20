@@ -26,6 +26,11 @@ The v2.1877 sweep converted every `window.confirm(` call site, but its grep miss
 ### Draft editor: sections announce themselves — dots, rules, and the backstage card (2026-08-20)
 Owner feedback on the shipped rail (screenshot): the paper's regions ran together — only the amber CO box had visible edges. Now every region declares its boundary, without boxing the paper into a form: each section heading carries a small **numbered dot** synced to the rail's live state (green ✓ / amber number / gray — same kernel, so the rail and the page always agree); **hairline rules** (`est-region-ruled`) separate Impact on cost and Terms the way a printed contract rules its sections; regions get a whisper of `:focus-within` tint so you always know which section you're working in; and **Delivery becomes the backstage card** from the rail-v2 mockup — bordered, subtly tinted, headed "Delivery — The customer never sees this section." wrapping acceptance-notify, the project link, and internal notes. All in [`EstimateDraftStepRail`](../src/components/estimates/EstimateDraftStepRail.tsx) CSS + heading-level markup in [`Estimates.tsx`](../src/pages/Estimates.tsx); editing mode only — the customer's document is untouched. Verified live on prod CO draft #67 (deleted; its delete also live-verified the v2.1874 in-app confirm dialog). Client-only — no migration.
 
+## Latest Updates (v2.1890)
+
+### Chore: regenerated DB types — chart RPC casts removed (2026-08-20)
+`npm run gen-types:linked` rerun now that `20260820120000_billed_aging_costs.sql` and `20260820140000_paid_profit_stats.sql` are applied to prod: `src/types/database.ts` picks up `get_billed_aging_costs` / `get_paid_profit_stats` (plus the already-merged partner-train tables). The two temporary `'as never'` RPC-name casts in [`BilledAgingChartModal`](../src/components/jobs/BilledAgingChartModal.tsx) and [`PaidProfitChartModal`](../src/components/jobs/PaidProfitChartModal.tsx) are removed — the calls are now properly typed. No user-visible change, no migration.
+
 ## Latest Updates (v2.1888)
 
 ### Partnerships: pick the farm job on the Deal tab (2026-08-20)
