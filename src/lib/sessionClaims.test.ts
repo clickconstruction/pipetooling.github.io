@@ -5,6 +5,7 @@ import {
   nextClaimCandidate,
   parseMigrationVersion,
   parseNewestChangelogVersion,
+  parseNewestFragmentVersion,
   parseNewestReleaseNotesVersion,
   parseVersionNumber,
   partitionMergedClaims,
@@ -37,6 +38,18 @@ describe('parseNewestChangelogVersion', () => {
 describe('parseNewestReleaseNotesVersion', () => {
   it('reads the first version literal', () => {
     expect(parseNewestReleaseNotesVersion("x\n    version: 'v2.1344',\n    version: 'v2.1343',")).toBe(1344)
+  })
+})
+
+describe('parseNewestFragmentVersion', () => {
+  it('takes the max across .ts and .md fragment names in an ls-tree listing', () => {
+    const listing = 'src/content/releaseNotes/v2.1898.ts\ndocs/recent-features/v2.1900.md\ndocs/recent-features/v2.1899.md\n'
+    expect(parseNewestFragmentVersion(listing)).toBe(1900)
+  })
+
+  it('ignores non-fragment names and returns null when none match', () => {
+    expect(parseNewestFragmentVersion('docs/recent-features/README.md\nsrc/foo.ts')).toBeNull()
+    expect(parseNewestFragmentVersion('')).toBeNull()
   })
 })
 

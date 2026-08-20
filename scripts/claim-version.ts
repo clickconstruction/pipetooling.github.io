@@ -18,6 +18,7 @@ import {
   nextClaimCandidate,
   parseMigrationVersion,
   parseNewestChangelogVersion,
+  parseNewestFragmentVersion,
   parseNewestReleaseNotesVersion,
   partitionMergedClaims,
   parseVersionNumber,
@@ -44,9 +45,24 @@ function mainNewestVersion(): number {
   } catch {
     console.warn('warn: git fetch failed (offline?) — using the last-fetched origin/main')
   }
-  const changelog = parseNewestChangelogVersion(git('show', 'origin/main:docs/RECENT_FEATURES.md'))
-  const notes = parseNewestReleaseNotesVersion(git('show', 'origin/main:src/content/releaseNotes.ts'))
-  const newest = Math.max(changelog ?? 0, notes ?? 0)
+  // Tolerant of either side of the fragments cutover: the archive file only
+  // exists after it, the old monolithic releaseNotes.ts only parses before it,
+  // and ls-tree of a not-yet-existing fragments dir is just empty.
+  const showOrEmpty = (path: string): string => {
+    try {
+      return git('show', `origin/main:${path}`)
+    } catch {
+      return ''
+    }
+  }
+  const changelog = parseNewestChangelogVersion(showOrEmpty('docs/RECENT_FEATURES.md'))
+  const notes = parseNewestReleaseNotesVersion(
+    showOrEmpty('src/content/releaseNotesArchive.ts') || showOrEmpty('src/content/releaseNotes.ts'),
+  )
+  const fragments = parseNewestFragmentVersion(
+    git('ls-tree', '--name-only', 'origin/main', 'src/content/releaseNotes/', 'docs/recent-features/'),
+  )
+  const newest = Math.max(changelog ?? 0, notes ?? 0, fragments ?? 0)
   if (newest === 0) throw new Error('could not parse newest version from origin/main')
   return newest
 }

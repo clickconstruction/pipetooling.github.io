@@ -2,6 +2,12 @@
 
 This document summarizes all recent features and improvements added to PipeTooling.
 
+> **FROZEN (2026-08-20).** No new entries here — every PR now adds its own
+> `docs/recent-features/v2.NNNN.md` fragment instead (see
+> `docs/recent-features/README.md`). Per-version files end the changelog merge
+> conflicts every parallel PR used to hit. This file remains the searchable
+> archive of everything shipped up to the cutover.
+
 ---
 file: RECENT_FEATURES.md
 type: Changelog

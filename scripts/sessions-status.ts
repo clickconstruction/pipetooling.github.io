@@ -10,6 +10,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path'
 import {
   isClaimStale,
   parseNewestChangelogVersion,
+  parseNewestFragmentVersion,
   type SessionClaim,
 } from '../src/lib/sessionClaims'
 
@@ -26,7 +27,11 @@ const activeDir = join(dir, 'active')
 
 let mainNewest: number | null = null
 try {
-  mainNewest = parseNewestChangelogVersion(git('show', 'origin/main:docs/RECENT_FEATURES.md'))
+  const archive = parseNewestChangelogVersion(git('show', 'origin/main:docs/RECENT_FEATURES.md'))
+  const fragments = parseNewestFragmentVersion(
+    git('ls-tree', '--name-only', 'origin/main', 'src/content/releaseNotes/', 'docs/recent-features/'),
+  )
+  mainNewest = Math.max(archive ?? 0, fragments ?? 0) || null
 } catch {
   // offline / no origin — status still useful
 }

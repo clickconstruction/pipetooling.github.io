@@ -18,6 +18,21 @@ export function parseNewestReleaseNotesVersion(releaseNotesContent: string): num
   return m?.[1] ? Number(m[1]) : null
 }
 
+/**
+ * Newest version among per-version fragment filenames (v2.NNNN.ts release-note
+ * fragments and v2.NNNN.md recent-features fragments). Input is any text that
+ * contains the filenames — typically `git ls-tree --name-only` output over
+ * src/content/releaseNotes/ and docs/recent-features/. Null when none found.
+ */
+export function parseNewestFragmentVersion(listing: string): number | null {
+  let newest: number | null = null
+  for (const m of listing.matchAll(/v2\.(\d+)\.(?:ts|md)\b/g)) {
+    const num = Number(m[1])
+    if (newest == null || num > newest) newest = num
+  }
+  return newest
+}
+
 /** `v2.1344` → 1344; tolerant of a bare `1344`. Null when unparseable. */
 export function parseVersionNumber(label: string): number | null {
   const m = label.trim().match(/^(?:v2\.)?(\d+)$/)
