@@ -13536,11 +13536,11 @@ export type Database = {
         Args: { p_service_type_id: string }
         Returns: {
           bid_id: string
-          project_name: string | null
-          outcome: string
-          loss_reason: string | null
           bid_value: number
           est_cost: number
+          loss_reason: string
+          outcome: string
+          project_name: string
         }[]
       }
       bulk_apply_tally_payroll_rule_flags: {

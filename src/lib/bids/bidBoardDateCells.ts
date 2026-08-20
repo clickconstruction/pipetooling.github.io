@@ -52,19 +52,26 @@ function partsFromDate(d: Date, today: Date): BidBoardDateCellParts {
  * `outcome`: once a bid is decided (won / lost / started_or_complete) the
  * urgency colors would be false alarms — a Won bid is not "overdue" — so the
  * chip goes quiet: urgency 'normal' and `decided: true` (renderers drop the
- * day-count line). Red/amber stay exclusive to open bids.
+ * day-count line).
+ *
+ * `dateSent` (v2.1914): a sent-but-undecided bid (the Pending section) is past
+ * our action too — the deadline was met, we're waiting on the GC — so it also
+ * loses the urgency colors, but keeps its day count as waiting-time context.
+ * Red/amber stay exclusive to unsent bids.
  */
 export function bidBoardDueCellParts(
   dateStr: string | null | undefined,
   today: Date = new Date(),
   outcome?: string | null,
+  dateSent?: string | null,
 ): BidBoardDueCellParts | null {
   if (!dateStr || !dateStr.trim()) return null
   const d = new Date(dateStr.trim() + 'T12:00:00')
   if (isNaN(d.getTime())) return null
   const base = partsFromDate(d, today)
   const decided = outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete'
-  const urgency: BidBoardDueUrgency = decided
+  const sent = Boolean(dateSent && dateSent.trim())
+  const urgency: BidBoardDueUrgency = decided || sent
     ? 'normal'
     : base.deltaDays > 0
       ? 'overdue'

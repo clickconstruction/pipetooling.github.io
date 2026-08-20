@@ -27,6 +27,18 @@ describe('bidBoardDueCellParts', () => {
     expect(bidBoardDueCellParts('2026-08-04', TODAY, '')).toMatchObject({ urgency: 'soon', decided: false })
   })
 
+  it('goes quiet once sent, but keeps the day count (Pending section, v2.1914)', () => {
+    // Past due but already sent — waiting on the GC, not on us.
+    expect(bidBoardDueCellParts('2026-08-02', TODAY, null, '2026-08-01')).toMatchObject({
+      urgency: 'normal',
+      decided: false,
+      deltaLabel: '(+1)',
+    })
+    // Unsent stays red/amber: blank or missing dateSent changes nothing.
+    expect(bidBoardDueCellParts('2026-08-02', TODAY, null, '  ')).toMatchObject({ urgency: 'overdue', decided: false })
+    expect(bidBoardDueCellParts('2026-08-02', TODAY, null, null)).toMatchObject({ urgency: 'overdue', decided: false })
+  })
+
   it('marks due-today and the next 3 days as soon', () => {
     expect(bidBoardDueCellParts('2026-08-03', TODAY)).toMatchObject({ deltaLabel: '(+0)', urgency: 'soon' })
     expect(bidBoardDueCellParts('2026-08-05', TODAY)).toMatchObject({ dateLabel: 'Wed 8/5', deltaLabel: '(-2)', urgency: 'soon' })
