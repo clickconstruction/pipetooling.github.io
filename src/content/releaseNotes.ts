@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1884',
+    date: '2026-08-20',
+    title: 'Partnerships: profit splits post with one click',
+    kind: 'feature',
+    highlights: [
+      'Jobs confirmed as partner-majority now show the split right on the job: revenue, labor, materials, direct expenses, profit \u2014 then the company\u2019s first cut and the 50/50, using the same cost numbers as the profit reports.',
+      'One click posts the partner\u2019s share to their ledger; it can only post once per job, and undoing it writes a visible reversal instead of erasing history.',
+    ],
+  },
+  {
     version: 'v2.1883',
     date: '2026-08-20',
     title: 'Partners: your ledger, week by week',

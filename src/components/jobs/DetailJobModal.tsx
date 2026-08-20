@@ -57,6 +57,7 @@ import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
 import { JobDetailProfitSection } from './JobDetailProfitSection'
+import { PartnerJobSplitPanel } from '../partnerships/PartnerJobSplitPanel'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
@@ -2015,6 +2016,9 @@ export default function DetailJobModal({
                 summary={profitSummary}
               />
             ) : null}
+            {/* §3 partner split (PARTNERSHIPS_PLAN PR 5) — self-gating: renders
+                only for devs on partner-flagged jobs; fail-soft pre-push. */}
+            {authRole === 'dev' && jobId ? <PartnerJobSplitPanel jobId={jobId} /> : null}
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Specific Work (Fixtures / Tie-ins / Repair)</div>

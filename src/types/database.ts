@@ -13930,6 +13930,10 @@ export type Database = {
         Args: { p_partnership_id: string }
         Returns: Json
       }
+      get_partner_job_split_preview: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }
@@ -14949,6 +14953,10 @@ export type Database = {
         Args: { p_old_work_date?: string; p_session_id: string }
         Returns: undefined
       }
+      post_partner_profit_share: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       record_estimate_public_link_view: {
         Args: {
           p_client_ip?: string
@@ -15243,6 +15251,10 @@ export type Database = {
           p_note: string
           p_stripe_credit_note_id: string
         }
+        Returns: Json
+      }
+      reverse_partner_profit_share: {
+        Args: { p_job_id: string }
         Returns: Json
       }
       set_job_collections_flag: {
