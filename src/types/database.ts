@@ -13931,6 +13931,11 @@ export type Database = {
         Args: { p_weeks?: number }
         Returns: Json
       }
+      get_my_partner_job_costing: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
+      get_my_partner_jobs: { Args: never; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_partner_bid_estimating_hours: {

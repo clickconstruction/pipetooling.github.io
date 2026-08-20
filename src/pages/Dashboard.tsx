@@ -67,6 +67,7 @@ import { DashboardTeamsInboxCard } from '../components/dashboard/DashboardTeamsI
 import { DashboardProjectsCard } from '../components/dashboard/DashboardProjectsCard'
 import { DashboardSubMoneySection } from '../components/dashboard/DashboardSubMoneySection'
 import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
+import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
 import { DashboardMyInboxCard } from '../components/dashboard/DashboardMyInboxCard'
 import { type JobBillingContext } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
@@ -1533,6 +1534,10 @@ export default function Dashboard() {
       {/* Partner ledger (PARTNERSHIPS_PLAN PR 4) — self-gating: renders only
           when the caller has a live partnership; fail-soft pre-push. */}
       <DashboardPartnerLedgerSection />
+
+      {/* Partner jobs + §5 costing drill-in (PARTNERSHIPS_PLAN PR 7) —
+          checked-off jobs only; self-gating + fail-soft. */}
+      <DashboardPartnerJobsSection />
 
       {/* Sub money view (RUN_SUBS_PLAN PR 3.2) — renders only for sub-like
           roles with data; fail-soft before the 3.1 RLS push. */}
