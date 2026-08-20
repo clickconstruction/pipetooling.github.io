@@ -43,15 +43,50 @@ export type PaidProfitStats = {
 
 export type PaidProfitChartData = { points: PaidProfitPoint[]; stats: PaidProfitStats }
 
+export type PaidProfitWindow = 90 | 180 | 365 | null
+
+/** Latest payment date on the job (paid_on), for the time-window filter. Null = no dated payments. */
+export function jobLatestPaidOn(job: JobWithDetails): string | null {
+  let latest: string | null = null
+  for (const p of job.payments ?? []) {
+    const d = (p.paid_on ?? '').trim().slice(0, 10)
+    if (d && (latest == null || d > latest)) latest = d
+  }
+  return latest
+}
+
 export function buildPaidProfitChart(
   paidJobs: JobWithDetails[],
   statsByJobId: Record<string, PaidProfitStatsRow> | null,
+  options: {
+    /** Only jobs whose latest payment is within N days (null = all time). Undated jobs pass only on All. */
+    windowDays?: PaidProfitWindow
+    /** The configured overhead "office job" — an expense bucket, never a job. */
+    excludeJobId?: string | null
+    now?: Date
+  } = {},
 ): PaidProfitChartData {
+  const { windowDays = null, excludeJobId = null, now = new Date() } = options
+  const cutoffYmd =
+    windowDays == null
+      ? null
+      : new Date(now.getTime() - windowDays * 86_400_000).toISOString().slice(0, 10)
   const points: PaidProfitPoint[] = []
   let skippedNoStats = 0
   for (const job of paidJobs) {
+    if (excludeJobId != null && job.id === excludeJobId) continue
+    if (cutoffYmd != null) {
+      const paidOn = jobLatestPaidOn(job)
+      if (paidOn == null || paidOn < cutoffYmd) continue
+    }
     const row = statsByJobId?.[job.id]
     if (!row || typeof row.cost !== 'number' || typeof row.hours !== 'number') {
+      skippedNoStats++
+      continue
+    }
+    // Nothing tracked at all (no cost, no clocked time) ⇒ "profit" would just
+    // echo revenue — a pass-through, not a job we can grade. Count, don't plot.
+    if (row.cost <= 0 && row.hours < 0.5) {
       skippedNoStats++
       continue
     }
@@ -125,9 +160,20 @@ export function paidProfitYDomain(points: PaidProfitPoint[]): { min: number; max
   }
 }
 
+/**
+ * X: square-root scale (v2.1889) — job hours are heavily right-skewed (many
+ * 2–20h jobs, a few 300h+), and a linear axis mashes the mass into the left
+ * edge. sqrt spreads the cluster while keeping order; ticks stay labeled in
+ * real hours.
+ */
 export function paidProfitX(hours: number, domainMax: number, x0: number, x1: number): number {
   const clamped = Math.max(0, Math.min(hours, domainMax))
-  return x0 + (clamped / domainMax) * (x1 - x0)
+  return x0 + (Math.sqrt(clamped) / Math.sqrt(domainMax)) * (x1 - x0)
+}
+
+/** Signed sqrt: the Y transform (keeps the $0 line exact, spreads small profits). */
+function signedSqrt(v: number): number {
+  return Math.sign(v) * Math.sqrt(Math.abs(v))
 }
 
 export function paidProfitY(
@@ -137,23 +183,46 @@ export function paidProfitY(
   yBottom: number,
 ): number {
   const v = Math.max(domain.min, Math.min(profit, domain.max))
-  return yBottom - ((v - domain.min) / (domain.max - domain.min)) * (yBottom - yTop)
+  const t0 = signedSqrt(domain.min)
+  const t1 = signedSqrt(domain.max)
+  return yBottom - ((signedSqrt(v) - t0) / (t1 - t0)) * (yBottom - yTop)
 }
 
-/** Y ticks: ~6 nice steps spanning the domain, always including 0. */
+/** Nearest 1/2/5×10ⁿ to v (for tick rounding). */
+function niceRound(v: number): number {
+  if (v <= 0) return 0
+  const mag = Math.pow(10, Math.floor(Math.log10(v)))
+  let best = mag
+  for (const m of [1, 2, 5, 10]) {
+    if (Math.abs(mag * m - v) < Math.abs(best - v)) best = mag * m
+  }
+  return best
+}
+
+/** Ticks evenly spaced in sqrt space, rounded to nice values (0 + max always present). */
+export function sqrtSpacedTicks(max: number, count = 4): number[] {
+  const out = new Set<number>([0, max])
+  for (let i = 1; i < count; i++) {
+    const nice = niceRound(max * Math.pow(i / count, 2))
+    if (nice > 0 && nice < max) out.add(nice)
+  }
+  return [...out].sort((a, b) => a - b)
+}
+
+/** Y ticks under the signed-sqrt scale: sqrt-spaced positives + mirrored negatives + 0. */
 export function paidProfitYTicks(domain: { min: number; max: number }): number[] {
-  const span = domain.max - domain.min
-  const step = niceCeil(span / 6)
-  const ticks: number[] = []
-  for (let v = Math.ceil(domain.min / step) * step; v <= domain.max; v += step) ticks.push(v)
-  if (!ticks.includes(0)) ticks.push(0)
-  return ticks.sort((a, b) => a - b)
+  const ticks = new Set<number>(sqrtSpacedTicks(domain.max, 4))
+  if (domain.min < 0) {
+    for (const t of sqrtSpacedTicks(-domain.min, 2)) ticks.add(-t)
+  }
+  ticks.add(0)
+  return [...ticks].sort((a, b) => a - b)
 }
 
-/** Bubble radius: area ∝ revenue. $1k→~3.2px, $25k→~15.8px, $80k→~28px; min 3. */
+/** Bubble radius: area ∝ revenue, sized for a 600-job board. $1k→3px, $25k→~13px, capped 22px. */
 export function paidProfitRadius(revenue: number): number {
   if (revenue <= 0) return 3
-  return Math.max(3, Math.sqrt(revenue) / 10)
+  return Math.min(22, Math.max(3, Math.sqrt(revenue) / 12))
 }
 
 /** Signed compact money: -6800 → "−$6.8k". */
