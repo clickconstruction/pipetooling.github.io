@@ -1,0 +1,112 @@
+import { normalizeEstimateLineItemsFromJson } from './estimateLineItemNormalize'
+import { isChangeOrderDocKind, parseEstimateChangeOrderFields } from './estimateChangeOrder'
+import {
+  computeEstimateDraftSteps,
+  type EstimateDraftStepsResult,
+} from './estimateDraftSteps'
+
+/**
+ * Pipeline refresh kernel (owner-approved prototype): decides which drafts are
+ * empty debris (the clean-up sweep) and computes a list row's readiness from
+ * the same step kernel the draft editor's rail uses.
+ */
+
+/** The list query selects `*`, so rows carry everything we need. */
+export type EstimatePipelineRowLike = {
+  status: string
+  customer_id: string | null
+  customer_email?: string | null
+  title: string | null
+  line_items_snapshot: unknown
+  total_cents: number | null
+  doc_kind?: string | null
+  change_order_fields?: unknown
+  terms_snapshot?: string | null
+  customers?: { contact_info?: unknown } | null
+}
+
+const STUB_LABEL = 'custom service visit'
+
+function lineIsMeaningful(l: { line_item: string; description: string; amount_cents: number }): boolean {
+  const li = l.line_item.trim().toLowerCase()
+  const desc = l.description.trim().toLowerCase()
+  if (l.amount_cents !== 0) return true
+  // The historical seed stub in either shape (v2.1843 note), and fully blank rows.
+  if (li === STUB_LABEL && desc === '') return false
+  if (li === '' && desc === STUB_LABEL) return false
+  return li !== '' || desc !== ''
+}
+
+export function estimateDraftMeaningfulLineCount(raw: unknown, isCO: boolean): number {
+  return normalizeEstimateLineItemsFromJson(raw, { allowNegative: isCO }).filter(lineIsMeaningful).length
+}
+
+/**
+ * Empty debris: a draft with no customer, no title, no meaningful lines, no CO
+ * narrative, and no terms — nothing anyone would miss.
+ */
+export function isEmptyEstimateDraft(row: EstimatePipelineRowLike): boolean {
+  if (row.status !== 'draft') return false
+  if (row.customer_id) return false
+  if ((row.title ?? '').trim() !== '') return false
+  const isCO = isChangeOrderDocKind(row.doc_kind)
+  if (estimateDraftMeaningfulLineCount(row.line_items_snapshot, isCO) > 0) return false
+  const co = parseEstimateChangeOrderFields(row.change_order_fields)
+  if (co.description_of_change.trim() || co.reason_for_change.trim() || co.impact_on_schedule.trim()) return false
+  if ((row.terms_snapshot ?? '').trim() !== '') return false
+  return true
+}
+
+function customerEmailFromRow(row: EstimatePipelineRowLike): boolean {
+  if ((row.customer_email ?? '').trim() !== '') return true
+  const ci = row.customers?.contact_info
+  if (ci && typeof ci === 'object' && !Array.isArray(ci)) {
+    const email = (ci as Record<string, unknown>).email
+    return typeof email === 'string' && email.trim() !== ''
+  }
+  if (typeof ci === 'string') {
+    try {
+      const parsed = JSON.parse(ci) as Record<string, unknown>
+      return typeof parsed.email === 'string' && parsed.email.trim() !== ''
+    } catch {
+      return false
+    }
+  }
+  return false
+}
+
+/**
+ * Readiness for an unsent list row — same kernel as the editor's rail.
+ * Notify defaults to 1 (the editor checks "Notify me" by default) and
+ * attachments are treated as absent: the list can only understate readiness,
+ * never overstate it, and the editor remains the source of truth.
+ */
+export function computeEstimateListReadiness(row: EstimatePipelineRowLike): EstimateDraftStepsResult {
+  const isCO = isChangeOrderDocKind(row.doc_kind)
+  const co = parseEstimateChangeOrderFields(row.change_order_fields)
+  return computeEstimateDraftSteps({
+    isCO,
+    customerSelected: row.customer_id != null,
+    customerEmailPresent: customerEmailFromRow(row),
+    changeDescriptionFilled: co.description_of_change.trim() !== '',
+    lineCount: estimateDraftMeaningfulLineCount(row.line_items_snapshot, isCO),
+    totalCents: row.total_cents ?? 0,
+    termsFilled: (row.terms_snapshot ?? '').trim() !== '',
+    attachmentFilled: false,
+    notifyCount: 1,
+  })
+}
+
+/** "●●●○○" content split for rendering: done count vs remaining count. */
+export function readinessDots(r: EstimateDraftStepsResult): { done: number; todo: number; ready: boolean; label: string } {
+  const done = r.steps.filter((s) => s.status === 'done').length
+  const todo = r.steps.length - done
+  const attention = r.steps.filter((s) => s.status === 'attention')
+  const ready = attention.length === 0
+  return {
+    done,
+    todo,
+    ready,
+    label: ready ? 'ready to send' : r.sendGate.sentence.replace(/^\d+ steps? left: /, (m) => m.replace('steps left', 'left').replace('step left', 'left')),
+  }
+}
