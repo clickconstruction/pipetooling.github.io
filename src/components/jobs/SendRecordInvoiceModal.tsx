@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import {
   getBillingStripeModePref,
@@ -405,6 +406,7 @@ export default function SendRecordInvoiceModal({
   onAfterOobUnwindSuccessRef.current = onAfterOobUnwindSuccess
 
   const { role: authRole } = useAuth()
+  const { showToast } = useToastContext()
 
   const [tab, setTab] = useState<BillCustomerMainTab>('stripe')
   /**
@@ -1770,7 +1772,7 @@ export default function SendRecordInvoiceModal({
     if (!physicalDocPreview) return
     const win = window.open('', '_blank')
     if (!win) {
-      window.alert('Pop-up blocked. Allow pop-ups for this site to preview the PDF.')
+      showToast('Pop-up blocked. Allow pop-ups for this site to preview the PDF.', 'warning')
       return
     }
     setPhysicalPdfPreviewLoading(true)

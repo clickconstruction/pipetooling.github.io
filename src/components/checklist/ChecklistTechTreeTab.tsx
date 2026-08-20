@@ -68,6 +68,7 @@ import { ChecklistTechTreeMapActionIconButtons } from './ChecklistTechTreeMapAct
 import { ChecklistTechTreeRoadmapBar } from './ChecklistTechTreeRoadmapBar'
 import { ChecklistTechTreeRoadmapMembersModal } from './ChecklistTechTreeRoadmapMembersModal'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 
 type GroupRow = Database['public']['Tables']['checklist_tech_tree_groups']['Row']
 type TaskRow = Database['public']['Tables']['checklist_tech_tree_group_tasks']['Row']
@@ -959,6 +960,7 @@ export function ChecklistTechTreeTab({
   onRoadmapUrlParamChange: (roadmapId: string) => void
 }) {
   const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const [roadmaps, setRoadmaps] = useState<RoadmapRow[]>([])
   const [roadmapMembers, setRoadmapMembers] = useState<RoadmapMemberRow[]>([])
   const [membersModalOpen, setMembersModalOpen] = useState(false)
@@ -1865,7 +1867,7 @@ export function ChecklistTechTreeTab({
 
   const handleCreateRoadmap = useCallback(async () => {
     if (!authUserId || !canEditTechTree) return
-    const title = window.prompt('Name for the new roadmap?')
+    const title = await promptDialog({ message: 'Name for the new roadmap?', confirmLabel: 'Create' })
     if (!title?.trim()) return
     try {
       setError(null)
@@ -1897,7 +1899,7 @@ export function ChecklistTechTreeTab({
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create roadmap')
     }
-  }, [authUserId, canEditTechTree, loadRoadmaps, onRoadmapUrlParamChange, roadmaps, setError])
+  }, [authUserId, canEditTechTree, loadRoadmaps, onRoadmapUrlParamChange, roadmaps, setError, promptDialog])
 
   const fitViewRoadmapSearchMatches = useCallback(() => {
     const ids = roadmapSearch.groupIdsWithAnyMatch

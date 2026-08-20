@@ -6,7 +6,7 @@ import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectT
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useConfirmDialog, usePromptDialog } from '../contexts/ConfirmDialogContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 
@@ -230,6 +230,7 @@ export default function Prospects() {
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  const promptDialog = usePromptDialog()
   const [searchParams, setSearchParams] = useSearchParams()
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
@@ -1405,7 +1406,7 @@ export default function Prospects() {
 
   async function handleAddQuickNote() {
     if (!authUser?.id) return
-    const label = prompt('Quick note label:')
+    const label = await promptDialog({ message: 'Quick note label:', confirmLabel: 'Add' })
     if (!label?.trim()) return
     const { error } = await supabase.from('user_prospect_quick_notes').insert({
       user_id: authUser.id,

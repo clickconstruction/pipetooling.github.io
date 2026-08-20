@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 
@@ -24,6 +25,7 @@ export function PartPricesManager({
   onPricesUpdated: (prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]) => void
 }) {
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
   const [prices, setPrices] = useState<(MaterialPartPrice & { supply_house: SupplyHouse })[]>([])
   const [loading, setLoading] = useState(true)
   const [editingPrice, setEditingPrice] = useState<MaterialPartPrice | null>(null)
@@ -73,7 +75,7 @@ export function PartPricesManager({
     setSaving(true)
     const priceNum = parseFloat(price)
     if (isNaN(priceNum) || priceNum <= 0) {
-      alert('Please enter a valid price')
+      showToast('Please enter a valid price', 'warning')
       setSaving(false)
       return
     }
@@ -87,7 +89,7 @@ export function PartPricesManager({
         })
         .eq('id', editingPrice.id)
       if (error) {
-        alert(`Failed to update price: ${error.message}`)
+        showToast(`Failed to update price: ${error.message}`, 'error')
       } else {
         await loadPrices()
         setEditingPrice(null)
@@ -103,7 +105,7 @@ export function PartPricesManager({
           effective_date: effectiveDate || null,
         })
       if (error) {
-        alert(`Failed to add price: ${error.message}`)
+        showToast(`Failed to add price: ${error.message}`, 'error')
       } else {
         await loadPrices()
         setSelectedSupplyHouse('')
@@ -119,7 +121,7 @@ export function PartPricesManager({
     if (!(await confirmDialog({ message: 'Delete this price?', confirmLabel: 'Delete', danger: true }))) return
     const { error } = await supabase.from('material_part_prices').delete().eq('id', priceId)
     if (error) {
-      alert(`Failed to delete price: ${error.message}`)
+      showToast(`Failed to delete price: ${error.message}`, 'error')
     } else {
       await loadPrices()
       onClose()
@@ -138,7 +140,7 @@ export function PartPricesManager({
     
     if (error) {
       console.error('Error loading price history:', error)
-      alert(`Failed to load price history: ${error.message}`)
+      showToast(`Failed to load price history: ${error.message}`, 'error')
     } else {
       const historyList = (data as unknown as (Database['public']['Tables']['material_part_price_history']['Row'] & { supply_houses: SupplyHouse })[]) ?? []
       setPriceHistory(historyList.map(h => ({ ...h, supply_house: h.supply_houses })))

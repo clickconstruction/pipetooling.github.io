@@ -42,6 +42,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1891',
+    date: '2026-08-20',
+    title: 'The last browser popups are gone',
+    kind: 'feature',
+    highlights: [
+      'Naming a new roadmap and adding a prospect quick-note now use a proper in-app dialog with a text box, instead of the browser\'s bare prompt window.',
+      'Error and status messages that used to interrupt with a browser alert — price save errors, bid update errors, pop-up-blocked warnings, the test-email confirmation — now show as the app\'s normal toast notifications.',
+    ],
+  },
+  {
     version: 'v2.1890',
     date: '2026-08-20',
     title: 'Under the hood: chart data calls fully typed',
@@ -56,7 +66,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Partnerships: set the farm job without SQL',
     kind: 'feature',
     highlights: [
-      'The Deal tab now has a Farm job picker \u2014 search any job and set it as the partner\u2019s farm job, so hours clocked there price at the farm rate on statements.',
+      'The Deal tab now has a Farm job picker — search any job and set it as the partner’s farm job, so hours clocked there price at the farm rate on statements.',
       'Clear it any time; every change is logged like the rest of the deal.',
     ],
   },
