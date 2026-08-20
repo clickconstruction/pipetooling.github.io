@@ -104,12 +104,12 @@ export function buildEstimateChangeOrderDocHtml(a: EstimateChangeOrderDocArgs): 
     ...(a.fields.response_requested_by.trim()
       ? ['Response requested by ' + escapeHtml(a.fields.response_requested_by), '']
       : []),
-    '<div style="border-top: 1px solid #d1d5db; margin: 0.85em 0;"></div>',
+    '<div style="border-top: 1px solid #9ca3af; margin: 0.85em 0;"></div>',
     '<strong>Description of change</strong>' + br + escapeHtml(a.fields.description_of_change || '—').replace(/\n/g, br),
     '',
     '<strong>Reason for change</strong>' + br + escapeHtml(a.fields.reason_for_change || '—').replace(/\n/g, br),
     '',
-    '<div style="border-top: 1px solid #d1d5db; margin: 0.85em 0;"></div>',
+    '<div style="border-top: 1px solid #9ca3af; margin: 0.85em 0;"></div>',
     '<strong>Impact on cost</strong>',
   ]
   const costTable =
@@ -125,7 +125,7 @@ export function buildEstimateChangeOrderDocHtml(a: EstimateChangeOrderDocArgs): 
     '</strong></td></tr></table>'
   paragraphs.push(costTable)
   paragraphs.push('')
-  paragraphs.push('<div style="border-top: 1px solid #d1d5db; margin: 0.85em 0;"></div>')
+  paragraphs.push('<div style="border-top: 1px solid #9ca3af; margin: 0.85em 0;"></div>')
   paragraphs.push('<strong>Impact on schedule</strong>' + br + escapeHtml(a.fields.impact_on_schedule || '—').replace(/\n/g, br))
   if (a.companyName?.trim()) {
     paragraphs.push('')
