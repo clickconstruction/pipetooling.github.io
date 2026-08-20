@@ -7541,6 +7541,7 @@ export type Database = {
           created_by: string | null
           display_name: string
           estimating_rate: number
+          farm_job_ledger_id: string | null
           farm_rate: number
           field_rate: number
           id: string
@@ -7560,6 +7561,7 @@ export type Database = {
           created_by?: string | null
           display_name?: string
           estimating_rate?: number
+          farm_job_ledger_id?: string | null
           farm_rate?: number
           field_rate?: number
           id?: string
@@ -7579,6 +7581,7 @@ export type Database = {
           created_by?: string | null
           display_name?: string
           estimating_rate?: number
+          farm_job_ledger_id?: string | null
           farm_rate?: number
           field_rate?: number
           id?: string
@@ -8629,10 +8632,12 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          job_id: string | null
           occurred_date: string
           pay_stub_id: string | null
           person_id: string | null
           person_name: string
+          reversal_of_offset_id: string | null
           type: string
         }
         Insert: {
@@ -8640,10 +8645,12 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          job_id?: string | null
           occurred_date: string
           pay_stub_id?: string | null
           person_id?: string | null
           person_name: string
+          reversal_of_offset_id?: string | null
           type: string
         }
         Update: {
@@ -8651,10 +8658,12 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          job_id?: string | null
           occurred_date?: string
           pay_stub_id?: string | null
           person_id?: string | null
           person_name?: string
+          reversal_of_offset_id?: string | null
           type?: string
         }
         Relationships: [
@@ -10570,6 +10579,38 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      statement_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          id: string
+          party: string
+          pay_stub_id: string
+          user_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string
+          id?: string
+          party: string
+          pay_stub_id: string
+          user_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string
+          id?: string
+          party?: string
+          pay_stub_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_acknowledgments_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       step_commitments: {
         Row: {
@@ -13678,6 +13719,10 @@ export type Database = {
           days_apart: number
           manual_involved: boolean
         }[]
+      }
+      generate_partner_statement: {
+        Args: { p_override?: boolean; p_partnership_id: string; p_week_start: string }
+        Returns: Json
       }
       get_archived_user_names: { Args: never; Returns: string[] }
       get_assigned_steps_for_dashboard: {
