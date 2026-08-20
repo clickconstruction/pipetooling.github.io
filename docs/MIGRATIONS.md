@@ -105,6 +105,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 20, 2026
 
+**`20260820140000_paid_profit_stats.sql`** _(apply via `supabase db push` after the v2.1879 merge, then `npm run gen-types:linked` — new function only; nothing calls it until the profit chart ships)_
+- **Purpose**: Paid profit chart data. New SECURITY DEFINER RPC `get_paid_profit_stats()` returning `{ "<jobs_ledger.id>": { cost, hours } }` over every `status='paid'` job — the same six cost streams as `get_billed_aging_costs` plus total approved clock-session hours. Wage-derived ⇒ NULL unless dev/controller. EXECUTE to authenticated (gate inside), revoked from anon/PUBLIC.
+- **Category**: Jobs / function
+
 **`20260820120000_billed_aging_costs.sql`** _(apply via `supabase db push` after the v2.1871 merge, then `npm run gen-types:linked` — new function only; nothing calls it until the Chart modal ships)_
 - **Purpose**: Billed aging chart bubble sizes. New SECURITY DEFINER RPC `get_billed_aging_costs()` returning `{ "<jobs_ledger.id>": cost }` over every job with a billed invoice — the paid-email scoreboard's six cost streams (clock-session team labor × pay-config wage, sub-labor books + drive cost, mercury allocations, supply-house allocations, tally parts, other charges) computed set-based across the billed cohort. Wage-derived ⇒ returns NULL unless the caller is dev or controller (the Weekly Money Movement gate). EXECUTE granted to authenticated (gate inside), revoked from anon/PUBLIC.
 - **Category**: Jobs / function

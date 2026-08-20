@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1879',
+    date: '2026-08-19',
+    title: 'Paid in Full: the profit-per-hour chart',
+    kind: 'feature',
+    highlights: [
+      'New 📊 Chart on the Paid in Full section: every paid job as a bubble — profit up the side (losses below the $0 line, in red), clocked hours along the bottom, bubble size = revenue.',
+      'Dashed $50/hr and $150/hr guide lines make the real question visible: what did an hour of our time earn on this job?',
+      'Hover for revenue, cost, profit, and $-per-hour; click a bubble to open the job.',
+      'Devs and controllers only — profit uses wage-derived cost data.',
+    ],
+  },
+  {
     version: 'v2.1878',
     date: '2026-08-19',
     title: 'Cover Letter: try the new studio layout',

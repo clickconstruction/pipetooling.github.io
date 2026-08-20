@@ -27,6 +27,7 @@ export type StagesSectionToolKey =
   | 'billed-share-print'
   | 'billed-aging-chart'
   | 'paid-notifications'
+  | 'paid-profit-chart'
   | 'paid-in-full-notifications'
 
 export type StagesSectionToolItem = {
@@ -158,18 +159,26 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })
 
-  if (isDevOrMaster) {
-    groups.push({
-      section: 'Paid in Full',
-      items: [
-        {
-          key: 'paid-in-full-notifications',
-          label: 'Paid In Full notifications',
-          title: 'Paid in Full email settings',
-          disabled: false,
-        },
-      ],
+  const paidItems: StagesSectionToolItem[] = []
+  // Profit chart is wage-derived (dev/controller, like the billed aging chart).
+  if (authRole === 'dev' || authRole === 'controller') {
+    paidItems.push({
+      key: 'paid-profit-chart',
+      label: 'Chart',
+      title: 'Profit vs clocked hours — bubble = revenue, losses below the $0 line',
+      disabled: false,
     })
+  }
+  if (isDevOrMaster) {
+    paidItems.push({
+      key: 'paid-in-full-notifications',
+      label: 'Paid In Full notifications',
+      title: 'Paid in Full email settings',
+      disabled: false,
+    })
+  }
+  if (paidItems.length > 0) {
+    groups.push({ section: 'Paid in Full', items: paidItems })
   }
 
   return groups

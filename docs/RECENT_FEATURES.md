@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1878)
+last_updated: 2026-08-19 (v2.1879)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1879)
+
+### Paid in Full gets a profit-per-hour bubble chart (2026-08-19)
+Sibling of the v2.1871 aging chart (owner ask, mockup approved as an artifact): every PAID job as a bubble — **x = approved clock-session hours, y = profit** (revenue − the six-stream cost, losses below a bold $0 line on a linear axis), **bubble area = revenue**; dashed $50/$150-per-hour guide lines through the origin make the chart's real question explicit. New 📊 **Chart** on the Paid in Full header + Section tools item (**dev/controller**; the Paid group now renders for controllers too, chart-only), opening [`PaidProfitChartModal`](../src/components/jobs/PaidProfitChartModal.tsx). Pure kernel [`paidProfitChart.ts`](../src/lib/jobs/paidProfitChart.ts) (+8 tests): nice 1/2/5 domains always spanning $0, median $/hr, loser totals; jobs missing a stats row are **counted, never plotted as fake pure profit**. Data: new set-based RPC **`get_paid_profit_stats()`** (migration [`20260820140000_paid_profit_stats.sql`](../supabase/migrations/20260820140000_paid_profit_stats.sql)) — the six cost streams + summed clock-session hours per paid job, NULL for non-dev/controller. The paid scope lazy-loads; the open chart keeps kicking its fetch until merged (the v2.1871 pattern). Direct labels on the biggest win and biggest loss; hover card with revenue/cost/profit/$-per-hour; **click a bubble → the job's Detail modal**. Help guide updated. **`supabase db push` after merge**, then `npm run gen-types:linked`.
 
 ## Latest Updates (v2.1878)
 

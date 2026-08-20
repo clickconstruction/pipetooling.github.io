@@ -64,6 +64,7 @@ import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import BilledAgingChartModal from './BilledAgingChartModal'
+import PaidProfitChartModal from './PaidProfitChartModal'
 import BilledReportShareModal from './BilledReportShareModal'
 import JobBookModal from './JobBookModal'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
@@ -626,6 +627,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!billedAgingChartOpen) return
     void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
   }, [billedAgingChartOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
+  // Same retry-until-merged shape for the paid profit chart (v2.1879).
+  const [paidProfitChartOpen, setPaidProfitChartOpen] = useState(false)
+  useEffect(() => {
+    if (!paidProfitChartOpen) return
+    void cacheFetchScopeIfNeeded(scopeForStagesSection('paid'), customerFilterForFetch)
+  }, [paidProfitChartOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
   // narrows the section list to rows the matching chip counts.
   const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | null>(null)
@@ -2505,6 +2512,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             'billed-share-print': () => setBilledShareModalOpen(true),
                             'billed-aging-chart': () => setBilledAgingChartOpen(true),
                             'paid-notifications': () => setPaymentEmailSettingsOpen(true),
+                            'paid-profit-chart': () => setPaidProfitChartOpen(true),
                             'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
                           }
                           return (
@@ -3637,6 +3645,32 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     return `Paid in Full (${countPart})${suffix}`
                   })()}
                 </button>
+                {(authRole === 'dev' || authRole === 'controller') && (
+                  <button
+                    type="button"
+                    onClick={() => setPaidProfitChartOpen(true)}
+                    title="Profit vs clocked hours — bubble = revenue, losses below the $0 line"
+                    aria-label="Paid profit chart"
+                    style={{
+                      flexShrink: 0,
+                      height: 32,
+                      padding: '0 0.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 4,
+                      background: 'var(--surface)',
+                      cursor: 'pointer',
+                      color: 'var(--text-700)',
+                      fontSize: '1rem',
+                    }}
+                  >
+                    <span aria-hidden>{'📊'}</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Chart</span>
+                  </button>
+                )}
                 {(authRole === 'dev' || authRole === 'master_technician') && (
                   <button
                     type="button"
@@ -4270,6 +4304,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onOpenInvoice={(invoiceId) => {
             setBilledAgingChartOpen(false)
             applyStagesInvoiceFocus(invoiceId)
+          }}
+        />
+      )}
+      {paidProfitChartOpen && (
+        <PaidProfitChartModal
+          paidJobs={stagesBoardLists.paid}
+          onClose={() => setPaidProfitChartOpen(false)}
+          onOpenJob={(job) => {
+            setPaidProfitChartOpen(false)
+            openStagesDetailJobModal(job)
           }}
         />
       )}

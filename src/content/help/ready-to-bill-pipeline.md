@@ -191,6 +191,8 @@ If several moves happen back-to-back on the same job, they collapse into one not
 
 The **📊 Chart** button on the Billed Awaiting Payment header (devs and controllers) turns the whole section into one picture: every open bill is a bubble — the further **right**, the longer it's been waiting (same clock as the 30+/90+ chips, with matching shaded bands); the **higher**, the more money is still open on it; and the **bigger the bubble**, the more the job cost *us* — so a big bubble far right is your own cash tied up, not just revenue on paper. Bills where our cost has already passed the job's revenue show as red dashed bubbles ("underwater" — waiting on those hurts twice). A stat strip on top gives the totals, median age, the 90+ figure, and the underwater sum; hover any bubble for the job's numbers, and **click it to jump straight to that bill on the board**.
 
+The Paid in Full header has its own **📊 Chart** (same devs-and-controllers rule): every paid job as a bubble — **profit** up the side (jobs that lost money sit below a bold $0 line, tinted red), **clocked hours** along the bottom, bubble size = the job's revenue. The dashed guide lines through the corner read as profit per hour of our time — a bubble under the $50/hr line earned less than that for every clocked hour. Hover for revenue / cost / profit / $-per-hour; click to open the job.
+
 ## Sharing the Billed report
 
 The **Share / Print** button in the same header (devs, masters, controllers, and assistants) emails the Billed Awaiting Payment report to an office teammate — the same customer-grouped report the old Print button made, upgraded for email: phone numbers and emails are tap-to-call / tap-to-write, and **clicking any job opens its Job Detail right in the app**.
