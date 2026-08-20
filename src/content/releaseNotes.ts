@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1888',
+    date: '2026-08-20',
+    title: 'Partnerships: set the farm job without SQL',
+    kind: 'feature',
+    highlights: [
+      'The Deal tab now has a Farm job picker \u2014 search any job and set it as the partner\u2019s farm job, so hours clocked there price at the farm rate on statements.',
+      'Clear it any time; every change is logged like the rest of the deal.',
+    ],
+  },
+  {
     version: 'v2.1887',
     date: '2026-08-20',
     title: 'Partnerships: agreements get deadlines and a paper trail',
