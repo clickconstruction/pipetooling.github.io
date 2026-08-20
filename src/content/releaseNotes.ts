@@ -21,6 +21,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1873',
+    date: '2026-08-19',
+    title: 'Checklist Manage: a cleaner task library',
+    kind: 'feature',
+    highlights: [
+      'Tasks are grouped the way you think about them: open one-offs (with how long each has been open), repeating tasks with plain-English schedule chips, and completed one-offs tucked into a fold.',
+      'Assignees show as initials, actions live in a tidy ⋮ menu, and a big ＋ New task button sits right in the toolbar.',
+    ],
+  },
+  {
     version: 'v2.1872',
     date: '2026-08-19',
     title: 'Checklist Review: a real team board',

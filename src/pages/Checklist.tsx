@@ -23,6 +23,7 @@ import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageChipLabel, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
+import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
@@ -2321,7 +2322,7 @@ type ChecklistItem = {
   checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
 
-function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function ChecklistManageTab({ authUserId, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -2334,6 +2335,9 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
   const [manageDeleteSubmitting, setManageDeleteSubmitting] = useState(false)
   // Per-item instance completion (Manage items are templates; completion lives on instances).
   const [itemCompletion, setItemCompletion] = useState<Map<string, { total: number; hasIncomplete: boolean }>>(new Map())
+  /** Oldest incomplete instance date per item — powers the "open N days" chip (v2.1873). */
+  const [oldestOpenByItem, setOldestOpenByItem] = useState<Map<string, string>>(new Map())
+  const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
 
   useEffect(() => {
@@ -2380,16 +2384,22 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
     }
     const { data: instData } = await supabase
       .from('checklist_instances')
-      .select('checklist_item_id, completed_at')
+      .select('checklist_item_id, completed_at, scheduled_date')
       .in('checklist_item_id', ids)
     const completion = new Map<string, { total: number; hasIncomplete: boolean }>()
-    for (const inst of (instData ?? []) as Array<{ checklist_item_id: string; completed_at: string | null }>) {
+    const oldestOpen = new Map<string, string>()
+    for (const inst of (instData ?? []) as Array<{ checklist_item_id: string; completed_at: string | null; scheduled_date: string }>) {
       const cur = completion.get(inst.checklist_item_id) ?? { total: 0, hasIncomplete: false }
       cur.total += 1
-      if (!inst.completed_at) cur.hasIncomplete = true
+      if (!inst.completed_at) {
+        cur.hasIncomplete = true
+        const prev = oldestOpen.get(inst.checklist_item_id)
+        if (!prev || inst.scheduled_date < prev) oldestOpen.set(inst.checklist_item_id, inst.scheduled_date)
+      }
       completion.set(inst.checklist_item_id, cur)
     }
     setItemCompletion(completion)
+    setOldestOpenByItem(oldestOpen)
   }
 
   async function performDeleteChecklistItem(id: string) {
@@ -2407,8 +2417,6 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
       setManageDeleteSubmitting(false)
     }
   }
-
-  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   const filteredItems = useMemo(() => {
     const q = manageSearchQuery.trim().toLowerCase()
@@ -2449,228 +2457,206 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
   const repeatingItems = filteredItems.filter((i) => isRepeating(i)).sort(byCreatedDesc)
   const completeItems = filteredItems.filter((i) => !isRepeating(i) && isItemComplete(i)).sort(byCreatedDesc)
 
-  const colCount = 7 + (role === 'dev' ? 1 : 0)
+  const todayLocalStr = new Date().toLocaleDateString('en-CA')
 
-  type ManageRowEntry =
-    | { kind: 'header'; key: string; title: string; count: number; collapsible: boolean; color: string }
-    | { kind: 'none'; key: string }
-    | { kind: 'item'; item: ChecklistItem }
-
-  const orderedEntries: ManageRowEntry[] = []
-  if (filteredItems.length > 0) {
-    orderedEntries.push({ kind: 'header', key: 'sec-incomplete', title: 'Incomplete', count: incompleteItems.length, collapsible: false, color: 'var(--text-amber-700)' })
-    if (incompleteItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-incomplete' })
-    else for (const item of incompleteItems) orderedEntries.push({ kind: 'item', item })
-
-    orderedEntries.push({ kind: 'header', key: 'sec-repeating', title: 'Repeating', count: repeatingItems.length, collapsible: false, color: 'var(--text-blue-700)' })
-    if (repeatingItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-repeating' })
-    else for (const item of repeatingItems) orderedEntries.push({ kind: 'item', item })
-
-    orderedEntries.push({ kind: 'header', key: 'sec-complete', title: 'Complete', count: completeItems.length, collapsible: true, color: '#15803d' })
-    if (completedOpen) {
-      if (completeItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-complete' })
-      else for (const item of completeItems) orderedEntries.push({ kind: 'item', item })
-    }
-  }
-
-  const renderSectionHeaderRow = (entry: { key: string; title: string; count: number; collapsible: boolean; color: string }) => {
-    const label = (
-      <>
-        {entry.collapsible && <span aria-hidden style={{ marginRight: 6 }}>{completedOpen ? '▼' : '▶'}</span>}
-        {entry.title} <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>({entry.count})</span>
-      </>
-    )
-    const cellStyle = {
-      padding: '0.5rem 0.75rem',
-      background: 'var(--bg-subtle)',
-      borderTop: '1px solid var(--border)',
-      borderBottom: '1px solid var(--border)',
-      fontWeight: 700,
-      fontSize: '0.8125rem',
-      color: entry.color,
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.03em',
-    }
+  const renderLibraryRow = (item: ChecklistItem, showOpenAge: boolean) => {
+    const assignees = (item.checklist_item_assignees ?? [])
+      .map((a) => a.users?.name || a.users?.email || '')
+      .filter(Boolean)
+    const openAge = showOpenAge ? openAgeLabel(oldestOpenByItem.get(item.id), todayLocalStr) : ''
+    const menuOpen = openMenuItemId === item.id
     return (
-      <tr key={entry.key}>
-        <td colSpan={colCount} style={cellStyle}>
-          {entry.collapsible ? (
-            <button
-              type="button"
-              onClick={() => setCompletedOpen((o) => !o)}
-              aria-expanded={completedOpen}
-              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', textTransform: 'inherit', letterSpacing: 'inherit' }}
+      <li key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.75rem', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+            <ChecklistTitleWithLinks title={item.title} links={item.links} />
+          </div>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>
+              {repeatChipLabel(item)}
+            </span>
+            {openAge ? (
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>
+                {openAge}
+              </span>
+            ) : null}
+            {item.reminder_time ? (
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-muted)', border: '1px solid var(--border)', color: 'var(--text-700)' }}>
+                🔔 {item.reminder_time.slice(0, 5)}
+              </span>
+            ) : null}
+            {(item.notify_creator_on_complete || item.notify_on_complete_user_id) ? (
+              <span style={{ fontSize: '0.72rem', padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>
+                notifies on done
+              </span>
+            ) : null}
+            {item.created_at ? (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>created {compactTimeAgo(item.created_at)}</span>
+            ) : null}
+          </div>
+        </div>
+        <span style={{ display: 'inline-flex', flexShrink: 0 }} title={assignees.join(', ') || 'Unassigned'}>
+          {assignees.slice(0, 3).map((n, i) => (
+            <span
+              key={i}
+              aria-hidden="true"
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                background: 'var(--bg-blue-tint)',
+                color: 'var(--text-blue-800)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                marginLeft: i > 0 ? -8 : 0,
+                border: '2px solid var(--surface)',
+                boxSizing: 'content-box',
+              }}
             >
-              {label}
-            </button>
-          ) : (
-            label
-          )}
-        </td>
-      </tr>
+              {initialsFor(n)}
+            </span>
+          ))}
+          {assignees.length > 3 ? (
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', alignSelf: 'center', marginLeft: 3 }}>+{assignees.length - 3}</span>
+          ) : null}
+          {assignees.length === 0 ? <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', alignSelf: 'center' }}>unassigned</span> : null}
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpenMenuItemId(menuOpen ? null : item.id)}
+          aria-label={`Actions for ${item.title}`}
+          aria-expanded={menuOpen}
+          style={{ width: 36, height: 36, flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.1rem', borderRadius: 8 }}
+        >
+          ⋮
+        </button>
+        {menuOpen ? (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpenMenuItemId(null)} />
+            <div style={{ position: 'absolute', right: 8, top: '80%', zIndex: 41, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.15)', minWidth: 170, overflow: 'hidden' }}>
+              <button type="button" onClick={() => { setOpenMenuItemId(null); setEditItemId(item.id) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)' }}>
+                Edit
+              </button>
+              {isNotificationRecipient(item) ? (
+                <button type="button" onClick={() => { setOpenMenuItemId(null); setMuteModalItemId(item.id); setMuteModalTitle(item.title) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)', borderTop: '1px solid var(--border)' }}>
+                  Mute notifications
+                </button>
+              ) : null}
+              <button type="button" onClick={() => { setOpenMenuItemId(null); setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' }) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-red-700)', borderTop: '1px solid var(--border)' }}>
+                Delete
+              </button>
+            </div>
+          </>
+        ) : null}
+      </li>
     )
   }
 
-  const renderNoneRow = (key: string) => (
-    <tr key={key}>
-      <td colSpan={colCount} style={{ padding: '0.5rem 0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</td>
-    </tr>
+  const librarySection = (label: string, rows: ChecklistItem[], showOpenAge: boolean) => (
+    <div style={{ marginBottom: '1rem' }}>
+      <p style={{ margin: '0 0 0.35rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.03em', color: 'var(--text-muted)' }}>{label}</p>
+      {rows.length === 0 ? (
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>None</p>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, border: '1px solid var(--border-strong)', borderRadius: 12, overflow: 'hidden' }}>
+          {rows.map((item) => renderLibraryRow(item, showOpenAge))}
+        </ul>
+      )}
+    </div>
   )
 
   if (loading) return <p>Loading…</p>
 
   return (
     <div>
-      <div style={{ width: '100%', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           id="checklist-manage-search"
           type="search"
-          placeholder="Search by title or assignee"
+          placeholder="Search tasks or people…"
           value={manageSearchQuery}
           onChange={(e) => setManageSearchQuery(e.target.value)}
-          aria-label="Search by title or assignee"
+          aria-label="Search tasks or people"
           style={{
-            width: '100%',
+            flex: '2 1 200px',
+            minWidth: 0,
             boxSizing: 'border-box',
-            padding: '0.5rem 0.75rem',
+            height: 42,
+            padding: '0 0.75rem',
             border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            fontSize: '1rem',
+            borderRadius: 8,
+            fontSize: '0.9375rem',
           }}
         />
-      </div>
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" onClick={() => checklistAddModal?.openAddModal()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-          Add checklist item
+        <select
+          value={filterUserId}
+          onChange={(e) => setFilterUserId(e.target.value)}
+          aria-label="Filter by assignee"
+          style={{ flex: '1 1 130px', height: 42, padding: '0 0.5rem', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: '0.9375rem' }}
+        >
+          <option value="">Everyone</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{u.name || u.email}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => checklistAddModal?.openAddModal(filterUserId || undefined)}
+          style={{ height: 42, padding: '0 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.9375rem', fontWeight: 600, flexShrink: 0 }}
+        >
+          ＋ New task
         </button>
-        <label>
-          <span style={{ marginRight: '0.5rem' }}>Filter by assignee:</span>
-          <select
-            value={filterUserId}
-            onChange={(e) => setFilterUserId(e.target.value)}
-            style={{ padding: '0.35rem 0.5rem' }}
-          >
-            <option value="">All</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name || u.email}</option>
-            ))}
-          </select>
-        </label>
       </div>
-
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', width: '1%' }}></th>
-            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Title</th>
-            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Assigned to</th>
-            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Repeat</th>
-            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Start</th>
-            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Created</th>
-            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Notify</th>
-            {role === 'dev' && <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Remind</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {orderedEntries.map((entry) => {
-            if (entry.kind === 'header') return renderSectionHeaderRow(entry)
-            if (entry.kind === 'none') return renderNoneRow(entry.key)
-            const item = entry.item
-            return (
-            <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-              <td
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  verticalAlign: 'middle',
-                  whiteSpace: 'nowrap',
-                  width: '1%',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    gap: '0.25rem',
-                    flexWrap: 'nowrap',
-                  }}
-                >
-                  {isNotificationRecipient(item) && (
-                    <button
-                      type="button"
-                      onClick={() => { setMuteModalItemId(item.id); setMuteModalTitle(item.title) }}
-                      title="Mute notifications for this task"
-                      aria-label="Mute notifications for this task"
-                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}
-                    >
-                      🔕
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setEditItemId(item.id)}
-                    title="Edit"
-                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                      <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' })}
-                    title="Delete"
-                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                      <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={item.title} links={item.links} /></td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                {(item.checklist_item_assignees ?? []).map((a) => a.users?.name || a.users?.email || 'Unknown').filter(Boolean).join(', ') || '—'}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                {item.show_until_completed
-                  ? 'Until completed'
-                  : item.repeat_type === 'day_of_week'
-                    ? `Weekly: ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d]?.slice(0, 3) ?? '').filter(Boolean).join(', ') : '—'}`
-                    : item.repeat_type === 'days_after_completion'
-                      ? `${item.repeat_days_after} days after completion`
-                      : 'Once'}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                {(() => {
-                  const d = new Date(item.start_date + 'T12:00:00')
-                  const oneYearAgo = new Date()
-                  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-                  return d >= oneYearAgo
-                    ? `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                    : String(d.getFullYear())
-                })()}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {item.created_at ? compactTimeAgo(item.created_at) : '—'}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                {item.notify_creator_on_complete && 'Creator '}
-                {item.notify_on_complete_user_id && '+1 user'}
-              </td>
-              {role === 'dev' && (
-                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                  {item.reminder_time
-                    ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'due date + daily until done' : 'due date'})`
-                    : '—'}
-                </td>
-              )}
-            </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      {filteredItems.length > 0 ? (
+        <>
+          {librarySection(`ONE-OFFS · ${incompleteItems.length} open`, incompleteItems, true)}
+          {librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)}
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '1rem', overflow: 'hidden' }}>
+            <button
+              type="button"
+              onClick={() => setCompletedOpen((o) => !o)}
+              aria-expanded={completedOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                minHeight: 44,
+                padding: '0.55rem 0.75rem',
+                background: 'var(--surface)',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--text-700)',
+                textAlign: 'left',
+              }}
+            >
+              <span>✓ Completed one-offs</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>
+                  {completeItems.length}
+                </span>
+                <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{completedOpen ? '▾' : '▸'}</span>
+              </span>
+            </button>
+            {completedOpen ? (
+              <div style={{ borderTop: '1px solid var(--border)' }}>
+                {completeItems.length === 0 ? (
+                  <p style={{ margin: 0, padding: '0.6rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-faint)' }}>None</p>
+                ) : (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                    {completeItems.map((item) => renderLibraryRow(item, false))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </>
+      ) : null}
       {items.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist items yet.</p>}
       {items.length > 0 && filteredItems.length === 0 && (
         <p style={{ color: 'var(--text-muted)' }}>No items match your search.</p>
