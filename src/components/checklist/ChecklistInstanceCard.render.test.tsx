@@ -47,6 +47,17 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     expect(screen.queryByText(/^💬 Notes$/)).toBeNull()
   })
 
+  it('no comments: Add a note sits on the right half behind a spacer (mis-tap buffer)', () => {
+    renderCard()
+    const btn = screen.getByText(/Add a note/).closest('button') as HTMLButtonElement
+    const row = btn.parentElement as HTMLElement
+    expect(row.children.length).toBe(2)
+    const spacer = row.children[0] as HTMLElement
+    expect(spacer.tagName).toBe('SPAN')
+    expect(spacer.getAttribute('aria-hidden')).toBe('true')
+    expect(row.children[1]).toBe(btn)
+  })
+
   it('with comments: split bar shows Notes with the count badge', () => {
     renderCard({
       events: [

@@ -213,6 +213,11 @@ export function ChecklistInstanceCard({
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
+        {/* The note action lives on the RIGHT half only (owner call, v2.1858):
+            the left half under the complete toggle stays dead space so a thumb
+            aiming for "Add a note" can't graze the checkbox. With comments the
+            Notes button fills the left slot; without, an inert spacer does. */}
+        {comments === 0 ? <span aria-hidden="true" style={{ flex: 1 }} /> : null}
         {comments > 0 ? (
           <button
             type="button"

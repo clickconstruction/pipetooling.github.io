@@ -32,6 +32,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1858',
+    date: '2026-08-19',
+    title: 'Harder to fat-finger the checklist',
+    kind: 'fix',
+    highlights: [
+      'On checklist cards, the Add a note button now stays on the right side, away from the complete checkbox — so reaching for one can\'t accidentally hit the other.',
+    ],
+  },
+  {
     version: 'v2.1857',
     date: '2026-08-19',
     title: 'Bid Board: due-date colors mean something again',
