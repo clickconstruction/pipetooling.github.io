@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1879)
+last_updated: 2026-08-20 (v2.1880)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1880)
+
+### Partnerships page — the deal as data (2026-08-20)
+Partnerships train PR 1 of 8 ([`docs/PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md), owner-approved 2026-08-19 with all default decisions; UX reference is the "Partnerships Prototype" artifact). New dev-only page [`Partnerships.tsx`](../src/pages/Partnerships.tsx) at `/partnerships` (lazy route in ErrorBoundary; nav icon + dropdown entries in `Layout.tsx`, all `role === 'dev'`): a roster of partner deals and the **Deal tab** — status/started-on, the three pay rates (field/estimating/farm), profit-split percentages (company first cut + partner share of remainder), utilities allowance, and eight module toggles (`profit_shares`, `est_transfer`, `weekly_statement`, `costing`, `require_sign`, plus default-off `auto_notice`/`cap`/`w2` — the last two are modeled with nothing built behind them, per plan). Migration `20260820130000_partnerships.sql`: `partnerships` (one row per partner person, `person_id` UNIQUE → people, dev-only RLS via `is_dev()`, both read-only sweeps) + append-only `partnership_events` change log — every Deal-tab save writes a changed-keys patch (`modules.costing: true → false` style) via the new pure kernel [`partnershipConfig.ts`](../src/lib/partnerLedger/partnershipConfig.ts) (`normalizeModules` / `validatePartnershipConfig` / `buildConfigPatch`, 10 unit tests). Rate/split changes apply from the next generated statement week — statements stamp the rates they were priced at (the pay_stub_days `rate_at_time` convention). Fail-soft before push: the page shows a "run supabase db push" banner instead of erroring. Tabs bar shows Agreements / Job review / Statements / Ledger as placeholders — they ship as PRs 2–8 of this train.
 ## Latest Updates (v2.1879)
 
 ### Paid in Full gets a profit-per-hour bubble chart (2026-08-19)

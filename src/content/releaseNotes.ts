@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1880',
+    date: '2026-08-20',
+    title: 'Partnerships page (dev): partner deals as settings',
+    kind: 'feature',
+    highlights: [
+      'New dev-only Partnerships page: each partner deal is a row with its own pay rates, profit-split percentages, and feature toggles.',
+      'Every change is logged, and rate changes only apply from the next weekly statement — never retroactively.',
+      'First piece of the partner ledger: job check-offs, weekly statements, and profit shares ship next.',
+    ],
+  },
+  {
     version: 'v2.1879',
     date: '2026-08-19',
     title: 'Paid in Full: the profit-per-hour chart',

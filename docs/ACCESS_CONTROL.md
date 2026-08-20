@@ -614,6 +614,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Prospects** (`/prospects`) | ✅ | ✅ | ✅ | ❌ | ✅ if `estimator_prospects_access` granted | ❌ | ❌ |
 | **Quickfill** (`/quickfill`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Moneyfill** (`/moneyfill`, v2.1378 — **dev + controller only**; the one surface where controller does **not** read the assistant column: assistants and masters are excluded, `Moneyfill.tsx` redirects them to `/dashboard`) | ✅ | ❌ | ❌ (controller ✅) | ❌ | ❌ | ❌ | ❌ |
+| **Partnerships** (`/partnerships`, v2.1880 — **dev only**; partner deal config per [`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md); `Partnerships.tsx` redirects every other role to `/dashboard`; tables are dev-only RLS — partner-facing surfaces read config via SECURITY DEFINER RPCs, never directly) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |

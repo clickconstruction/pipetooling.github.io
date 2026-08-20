@@ -7482,6 +7482,130 @@ export type Database = {
           },
         ]
       }
+      partnership_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          partnership_id: string
+          patch: Json
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          partnership_id: string
+          patch?: Json
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          partnership_id?: string
+          patch?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_events_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partnership_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partnerships: {
+        Row: {
+          company_first_pct: number
+          company_name: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          estimating_rate: number
+          farm_rate: number
+          field_rate: number
+          id: string
+          modules: Json
+          partner_remainder_pct: number
+          person_id: string
+          started_on: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          utilities_allowance: number
+        }
+        Insert: {
+          company_first_pct?: number
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          estimating_rate?: number
+          farm_rate?: number
+          field_rate?: number
+          id?: string
+          modules?: Json
+          partner_remainder_pct?: number
+          person_id: string
+          started_on?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          utilities_allowance?: number
+        }
+        Update: {
+          company_first_pct?: number
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          estimating_rate?: number
+          farm_rate?: number
+          field_rate?: number
+          id?: string
+          modules?: Json
+          partner_remainder_pct?: number
+          person_id?: string
+          started_on?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          utilities_allowance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnerships_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partnerships_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partnerships_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pay_stub_additional_lines: {
         Row: {
           created_at: string | null
