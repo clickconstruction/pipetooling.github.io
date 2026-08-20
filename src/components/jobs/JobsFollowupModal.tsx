@@ -233,7 +233,9 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     void (async () => {
       try {
         const [cands, revs, sets] = await Promise.all([
-          fetchJobFollowupCandidates(todayYmd),
+          // force: the deck is a deliberate review session — never serve it the
+          // banner's cached candidates (v2.1920).
+          fetchJobFollowupCandidates(todayYmd, { force: true }),
           fetchJobFollowupReviews(),
           fetchJobFollowupSettings(),
         ])
