@@ -1,19 +1,19 @@
 import type { StageRow } from '../jobsStagesBoard'
-import { stageRowBilledAgeDays, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
  * Billed Awaiting Payment aging chart (v2.1871) — pure kernel.
  *
  * One bubble per billed board row that has an aging date and money still open:
- * x = days in Billed (the SAME clock as the header's 30+/90+ chips —
- * stageRowBilledAgeDays), y = open dollars on the row (same as the chips'
- * sums — stageRowBilledRemainingAmount) on a log scale, bubble area = the
- * JOB's lifetime cost (six streams, from get_billed_aging_costs — wage-derived,
- * so the whole chart is dev/controller-gated). A job whose cost exceeds its
- * revenue is flagged "underwater". Rows the chips don't age (no invoice date,
- * nothing left to pay) are skipped and counted so the chart never silently
- * hides money.
+ * x = days since the bill went out (billed_at, falling back to the est. bill
+ * date — the print report's exact clock, printBilledRowReferenceDate),
+ * y = open dollars on the row (same rule as the header chips' sums —
+ * stageRowBilledRemainingAmount) on a log scale, bubble area = the JOB's
+ * lifetime cost (six streams, from get_billed_aging_costs — wage-derived, so
+ * the whole chart is dev/controller-gated). A job whose cost exceeds its
+ * revenue is flagged "underwater". Rows with no billed/est date are skipped
+ * and counted so the chart never silently hides money.
  */
 
 export type BilledAgingPoint = {
@@ -55,7 +55,7 @@ export function buildBilledAgingChart(
   for (const r of rows) {
     const open = stageRowBilledRemainingAmount(r)
     if (open <= 0) continue
-    const days = stageRowBilledAgeDays(r, now)
+    const days = printBilledRowReferenceDate(r, now).ageDays
     if (r.kind === 'job' || days == null) {
       skippedNoDate++
       continue

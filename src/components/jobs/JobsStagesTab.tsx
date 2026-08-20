@@ -618,6 +618,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [readyToBillNotifySettingsOpen, setReadyToBillNotifySettingsOpen] = useState(false)
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
+  // Chart works from a collapsed section too: while it's open, keep kicking the
+  // billed scope fetch until it merges — a one-shot call no-ops when the base
+  // board fetch is still in flight (fetchScopeIfNeeded's loadInFlight guard),
+  // so this mirrors the fetch-on-expand effect's retry-on-cache-change shape.
+  useEffect(() => {
+    if (!billedAgingChartOpen) return
+    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
+  }, [billedAgingChartOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
   // narrows the section list to rows the matching chip counts.
   const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | null>(null)

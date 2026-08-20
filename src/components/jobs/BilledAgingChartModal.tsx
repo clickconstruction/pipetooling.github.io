@@ -269,6 +269,7 @@ export default function BilledAgingChartModal({
             <svg width="14" height="14" aria-hidden><circle cx="7" cy="7" r="5" fill="var(--bg-red-tint)" stroke="var(--text-red-600)" strokeWidth="1.5" strokeDasharray="3 2" /></svg>
             underwater — our cost exceeds the job's revenue
           </span>
+          {rows.length === 0 && <span role="status">Loading billed rows…</span>}
           {costsLoading && <span role="status">Sizing bubbles…</span>}
           {stats.skippedNoDate > 0 && (
             <span>
