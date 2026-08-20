@@ -186,6 +186,17 @@ export default function Checklist() {
     [setSearchParams],
   )
 
+  /** Roadmap task card → "Open on the checklist" (v2.1901). */
+  const onOpenTodayTab = useCallback(() => {
+    setActiveTab('today')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'today')
+      next.delete('roadmap')
+      return next
+    })
+  }, [setSearchParams])
+
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
   return (
@@ -304,6 +315,7 @@ export default function Checklist() {
             setError={setError}
             roadmapIdFromUrl={searchParams.get('roadmap')}
             onRoadmapUrlParamChange={onRoadmapUrlParamChange}
+            onOpenTodayTab={onOpenTodayTab}
           />
         </div>
       )}
