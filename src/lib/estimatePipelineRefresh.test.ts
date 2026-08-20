@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   computeEstimateListReadiness,
   computeSentWait,
+  computeLedgerTotals,
+  ledgerRowPasses,
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
@@ -124,5 +126,32 @@ describe('computeSentWait', () => {
       now,
     )
     expect(r?.level).toBe('ok')
+  })
+})
+
+describe('ledger money view', () => {
+  const now = Date.parse('2026-08-20T18:00:00Z')
+  const L = [
+    { status: 'customer_accepted', doc_kind: 'estimate', total_cents: 678000, job_ledger_id: 'j1', acceptor_consented_at: '2026-08-12T10:00:00Z', updated_at: '2026-08-12T10:00:00Z' },
+    { status: 'customer_accepted', doc_kind: 'change_order', total_cents: 245000, job_ledger_id: null, acceptor_consented_at: '2026-08-19T10:00:00Z', updated_at: '2026-08-19T10:00:00Z' },
+    { status: 'customer_accepted', doc_kind: 'estimate', total_cents: 100000, job_ledger_id: 'j2', acceptor_consented_at: '2026-07-02T10:00:00Z', updated_at: '2026-07-02T10:00:00Z' },
+    { status: 'sent', doc_kind: 'estimate', total_cents: 460000, job_ledger_id: null, acceptor_consented_at: null, updated_at: '2026-08-18T10:00:00Z' },
+    { status: 'declined', doc_kind: 'change_order', total_cents: 98000, job_ledger_id: null, acceptor_consented_at: null, updated_at: '2026-08-01T10:00:00Z' },
+  ]
+
+  it('totals: accepted-this-month, outstanding sent, accepted-unlinked', () => {
+    expect(computeLedgerTotals(L, now)).toEqual({
+      acceptedThisMonthCents: 678000 + 245000,
+      outstandingSentCents: 460000,
+      acceptedUnlinkedCents: 245000,
+    })
+  })
+
+  it('filters: closed toggle, kind, and date window', () => {
+    const base = { kind: 'all' as const, includeClosed: false, withinDays: 0 }
+    expect(L.filter((r) => ledgerRowPasses(r, base, now))).toHaveLength(4)
+    expect(L.filter((r) => ledgerRowPasses(r, { ...base, includeClosed: true }, now))).toHaveLength(5)
+    expect(L.filter((r) => ledgerRowPasses(r, { ...base, kind: 'change_order' }, now))).toHaveLength(1)
+    expect(L.filter((r) => ledgerRowPasses(r, { ...base, withinDays: 30 }, now))).toHaveLength(3)
   })
 })

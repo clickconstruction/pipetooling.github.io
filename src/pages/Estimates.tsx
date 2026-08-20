@@ -38,6 +38,9 @@ import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import {
   computeEstimateListReadiness,
   computeSentWait,
+  computeLedgerTotals,
+  ledgerRowPasses,
+  type LedgerKindFilter,
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
@@ -1710,6 +1713,10 @@ function EstimateList() {
   /** `load()` only filters by this URL param; matches Jobs `?customer=`. */
   const customerParamForEstimatesReload = searchParams.get('customer')
   const [listTab, setListTab] = useState<EstimateListTab>('followup')
+  // Ledger money view (pipeline refresh part 3)
+  const [ledgerKind, setLedgerKind] = useState<LedgerKindFilter>('all')
+  const [ledgerDays, setLedgerDays] = useState(90)
+  const [ledgerIncludeClosed, setLedgerIncludeClosed] = useState(false)
   /** ⚙ next to New estimate: org-wide "who gets emailed when an estimate is accepted". */
   const [acceptNotifySettingsOpen, setAcceptNotifySettingsOpen] = useState(false)
   const [listSearch, setListSearch] = useState('')
@@ -1784,6 +1791,14 @@ function EstimateList() {
     [followupBuckets.unsent],
   )
   const [cleaningEmpties, setCleaningEmpties] = useState(false)
+
+  const ledgerRows = useMemo(() => {
+    const nowMs = Date.now()
+    return filteredRows.filter((r) =>
+      ledgerRowPasses(r, { kind: ledgerKind, includeClosed: ledgerIncludeClosed, withinDays: ledgerDays }, nowMs),
+    )
+  }, [filteredRows, ledgerKind, ledgerIncludeClosed, ledgerDays])
+  const ledgerTotals = useMemo(() => computeLedgerTotals(ledgerRows, Date.now()), [ledgerRows])
 
   async function cleanUpEmptyDrafts() {
     if (cleaningEmpties || emptyDraftIds.length === 0) return
@@ -2034,17 +2049,34 @@ function EstimateList() {
               style={{ ...estInputBase, width: '100%', padding: '0.5rem' }}
             />
           </div>
+          <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+            <button type="button" onClick={() => setLedgerKind('all')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'all' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'all' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'all' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>All kinds</button>
+            <button type="button" onClick={() => setLedgerKind('estimate')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'estimate' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'estimate' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'estimate' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Estimates</button>
+            <button type="button" onClick={() => setLedgerKind('change_order')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'change_order' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'change_order' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'change_order' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Change orders</button>
+            <select
+              value={ledgerDays}
+              onChange={(e) => setLedgerDays(Number(e.target.value))}
+              aria-label="Date range"
+              style={{ ...estInputBase, padding: '0.22rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, width: 'auto' }}
+            >
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+              <option value={365}>Last year</option>
+              <option value={0}>All time</option>
+            </select>
+            <button type="button" onClick={() => setLedgerIncludeClosed((p) => !p)} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerIncludeClosed ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerIncludeClosed ? '#3b82f6' : 'var(--surface)', color: ledgerIncludeClosed ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Include superseded & declined</button>
+          </div>
           {loading ? (
             <p>Loading…</p>
           ) : rows.length === 0 ? (
             <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>{estimatesListEmptyLabel}</p>
-          ) : filteredRows.length === 0 ? (
+          ) : ledgerRows.length === 0 ? (
             <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No estimates match your search.</p>
           ) : (
             <div style={{ ...estimateListTableScrollWrapStyle, marginTop: '1rem' }}>
               {narrowViewport640 ? (
                 <EstimateListCards
-                  rows={filteredRows}
+                  rows={ledgerRows}
                   setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
                   setCreateJobFromListRow={setCreateJobFromListRow}
                   showCustomerColumn
@@ -2052,7 +2084,7 @@ function EstimateList() {
                 />
               ) : (
                 <EstimateListTable
-                  rows={filteredRows}
+                  rows={ledgerRows}
                   setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
                   setCreateJobFromListRow={setCreateJobFromListRow}
                   showCustomerColumn
@@ -2061,6 +2093,11 @@ function EstimateList() {
               )}
             </div>
           )}
+          <div style={{ display: 'flex', gap: '1.6rem', flexWrap: 'wrap', borderTop: '2px solid var(--border-strong)', marginTop: '0.9rem', paddingTop: '0.6rem', fontSize: '0.85rem' }}>
+            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Accepted this month</span><strong style={{ color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(ledgerTotals.acceptedThisMonthCents)}</strong></span>
+            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Outstanding sent</span><strong style={{ color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(ledgerTotals.outstandingSentCents)}</strong></span>
+            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Accepted, not on a job</span><strong style={{ color: ledgerTotals.acceptedUnlinkedCents > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(ledgerTotals.acceptedUnlinkedCents)}</strong></span>
+          </div>
         </div>
       ) : (
         <div role="tabpanel" aria-labelledby="estimates-tab-stages" style={{ marginTop: '0.75rem' }}>

@@ -145,3 +145,60 @@ export function computeSentWait(
   if (days >= SENT_WARN_DAYS) return { level: 'warn', days, label: `sent ${days}d ago — nudge?` }
   return { level: 'ok', days, label: days === 0 ? 'sent today' : `sent ${days}d ago` }
 }
+
+export type LedgerRowLike = {
+  status: string
+  doc_kind?: string | null
+  total_cents: number | null
+  job_ledger_id?: string | null
+  acceptor_consented_at?: string | null
+  updated_at?: string | null
+}
+
+export type LedgerTotals = {
+  acceptedThisMonthCents: number
+  outstandingSentCents: number
+  acceptedUnlinkedCents: number
+}
+
+/** Month key (UTC) for "accepted this month" — day precision is plenty here. */
+function monthKey(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()}`
+}
+
+/** The Ledger footer math, over the currently filtered rows. */
+export function computeLedgerTotals(rows: LedgerRowLike[], nowMs: number): LedgerTotals {
+  const nowMonth = monthKey(nowMs)
+  let acceptedThisMonthCents = 0
+  let outstandingSentCents = 0
+  let acceptedUnlinkedCents = 0
+  for (const r of rows) {
+    const cents = r.total_cents ?? 0
+    if (r.status === 'sent') outstandingSentCents += cents
+    if (r.status === 'customer_accepted') {
+      if (!r.job_ledger_id) acceptedUnlinkedCents += cents
+      const at = r.acceptor_consented_at ? Date.parse(r.acceptor_consented_at) : NaN
+      if (Number.isFinite(at) && monthKey(at) === nowMonth) acceptedThisMonthCents += cents
+    }
+  }
+  return { acceptedThisMonthCents, outstandingSentCents, acceptedUnlinkedCents }
+}
+
+export type LedgerKindFilter = 'all' | 'estimate' | 'change_order'
+
+/** Ledger row filter: kind, closed-row toggle, and an updated-within window. */
+export function ledgerRowPasses(
+  r: LedgerRowLike,
+  f: { kind: LedgerKindFilter; includeClosed: boolean; withinDays: number },
+  nowMs: number,
+): boolean {
+  if (!f.includeClosed && (r.status === 'superseded' || r.status === 'declined')) return false
+  if (f.kind === 'change_order' && !isChangeOrderDocKind(r.doc_kind)) return false
+  if (f.kind === 'estimate' && isChangeOrderDocKind(r.doc_kind)) return false
+  if (f.withinDays > 0) {
+    const u = r.updated_at ? Date.parse(r.updated_at) : NaN
+    if (!Number.isFinite(u) || nowMs - u > f.withinDays * 86_400_000) return false
+  }
+  return true
+}
