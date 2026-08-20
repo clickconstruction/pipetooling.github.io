@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   completeGroupIdsFromTasks,
+  computeCompleteGroupIdsWithMilestones,
   computeUnlockedGroupIds,
   isGroupComplete,
   wouldAddEdgeCreateCycle,
@@ -65,5 +66,52 @@ describe('completeGroupIdsFromTasks', () => {
     const s = completeGroupIdsFromTasks(m)
     expect(s.has('a')).toBe(true)
     expect(s.has('b')).toBe(false)
+  })
+})
+
+describe('computeCompleteGroupIdsWithMilestones', () => {
+  const edges = [
+    { fromGroupId: 'doing1', toGroupId: 'goal' },
+    { fromGroupId: 'doing2', toGroupId: 'goal' },
+    { fromGroupId: 'goal', toGroupId: 'final' },
+  ]
+  const ids = ['doing1', 'doing2', 'goal', 'final']
+  it('empty stage completes when all predecessors complete (the lock-trap fix)', () => {
+    const tasks = new Map([
+      ['doing1', [{ completed_at: 'x' }]],
+      ['doing2', [{ completed_at: 'x' }]],
+      ['final', [{ completed_at: null }]],
+    ])
+    const s = computeCompleteGroupIdsWithMilestones(ids, edges, tasks)
+    expect(s.has('goal')).toBe(true)
+    expect(s.has('final')).toBe(false)
+    expect(computeUnlockedGroupIds(ids, edges, s).has('final')).toBe(true)
+  })
+  it('empty stage stays incomplete while a predecessor is open', () => {
+    const tasks = new Map([
+      ['doing1', [{ completed_at: 'x' }]],
+      ['doing2', [{ completed_at: null }]],
+    ])
+    const s = computeCompleteGroupIdsWithMilestones(ids, edges, tasks)
+    expect(s.has('goal')).toBe(false)
+  })
+  it('chains of empty stages cascade in one pass', () => {
+    const chainEdges = [
+      { fromGroupId: 'a', toGroupId: 'm1' },
+      { fromGroupId: 'm1', toGroupId: 'm2' },
+    ]
+    const tasks = new Map([['a', [{ completed_at: 'x' }]]])
+    const s = computeCompleteGroupIdsWithMilestones(['a', 'm1', 'm2'], chainEdges, tasks)
+    expect(s.has('m1')).toBe(true)
+    expect(s.has('m2')).toBe(true)
+  })
+  it('empty root is vacuously complete; stages with tasks still need every task done', () => {
+    const s = computeCompleteGroupIdsWithMilestones(
+      ['lonely', 'working'],
+      [],
+      new Map([['working', [{ completed_at: 'x' }, { completed_at: null }]]]),
+    )
+    expect(s.has('lonely')).toBe(true)
+    expect(s.has('working')).toBe(false)
   })
 })

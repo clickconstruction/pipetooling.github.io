@@ -35,7 +35,7 @@ import {
   techTreeNodeWidth,
 } from '../../lib/checklistTechTreeLayout'
 import {
-  completeGroupIdsFromTasks,
+  computeCompleteGroupIdsWithMilestones,
   computeUnlockedGroupIds,
   wouldAddEdgeCreateCycle,
   type TechTreeEdge,
@@ -68,6 +68,7 @@ import {
 import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
+import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { ChecklistTechTreeAddGroupModal } from './ChecklistTechTreeAddGroupModal'
 import { ChecklistTechTreeLineUpModal } from './ChecklistTechTreeLineUpModal'
@@ -1141,17 +1142,20 @@ export function ChecklistTechTreeTab({
     return m
   }, [tasks])
 
-  const completeGroupIds = useMemo(
-    () => completeGroupIdsFromTasks(tasksByGroup),
-    [tasksByGroup],
-  )
-
   const graphEdges = useMemo<TechTreeEdge[]>(
     () => treeEdges.map((e) => ({ fromGroupId: e.from_group_id, toGroupId: e.to_group_id })),
     [treeEdges],
   )
 
   const allGroupIds = useMemo(() => new Set(groups.map((g) => g.id)), [groups])
+
+  // Milestone-aware (v2.1913): task-less goal stages count complete once their
+  // predecessors are, so they stop permanently locking everything behind them.
+  // Mirrors the SQL in sync_roadmap_to_checklist — keep the two in sync.
+  const completeGroupIds = useMemo(
+    () => computeCompleteGroupIdsWithMilestones(allGroupIds, graphEdges, tasksByGroup),
+    [allGroupIds, graphEdges, tasksByGroup],
+  )
   const unlockedIds = useMemo(
     () => computeUnlockedGroupIds(allGroupIds, graphEdges, completeGroupIds),
     [allGroupIds, graphEdges, completeGroupIds],
@@ -1256,6 +1260,23 @@ export function ChecklistTechTreeTab({
   )
   const [organizeVersion, setOrganizeVersion] = useState(0)
   const [reorderMode, setReorderMode] = useState(false)
+  // Map = the canvas; Plan = the flat work-front list (v2.1913). Remembered
+  // per device — field crews live in Plan, structure edits happen in Map.
+  const [viewMode, setViewMode] = useState<'map' | 'plan'>(() => {
+    try {
+      return localStorage.getItem('roadmap_view_v1') === 'plan' ? 'plan' : 'map'
+    } catch {
+      return 'map'
+    }
+  })
+  const setViewModePersisted = useCallback((mode: 'map' | 'plan') => {
+    setViewMode(mode)
+    try {
+      localStorage.setItem('roadmap_view_v1', mode)
+    } catch {
+      // private mode: toggle still works for the session
+    }
+  }, [])
   const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   /** Re-layout the graph in dagre only when group set, links, or collapse changes — not on task add/complete. */
@@ -1598,6 +1619,26 @@ export function ChecklistTechTreeTab({
       return true
     },
     [authUserId, setError],
+  )
+
+  /** Plan-view staffing: add one assignee, then reload (the load re-runs the sync RPC). */
+  const assignTaskToUser = useCallback(
+    async (taskId: string, userId: string): Promise<boolean> => {
+      if (!canEditStructure) return false
+      try {
+        setError(null)
+        await withSupabaseRetry(
+          () => supabase.from('checklist_tech_tree_task_assignees').insert({ task_id: taskId, user_id: userId }),
+          'assign tech tree task',
+        )
+        await load()
+        return true
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not assign task')
+        return false
+      }
+    },
+    [canEditStructure, load, setError],
   )
 
   const [linksModalOpen, setLinksModalOpen] = useState(false)
@@ -2141,7 +2182,44 @@ export function ChecklistTechTreeTab({
         canOpenMembers={Boolean(effectiveRoadmapId)}
         onOpenMembers={() => setMembersModalOpen(true)}
       />
-      {canEditStructure ? (
+      <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', alignSelf: 'flex-start' }}>
+        {(['map', 'plan'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setViewModePersisted(mode)}
+            aria-pressed={viewMode === mode}
+            style={{
+              border: 'none',
+              padding: '6px 16px',
+              fontSize: '0.8125rem',
+              fontWeight: viewMode === mode ? 600 : 400,
+              background: viewMode === mode ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: viewMode === mode ? 'var(--text-blue-800)' : 'var(--text-700)',
+              cursor: 'pointer',
+            }}
+          >
+            {mode === 'map' ? 'Map' : 'Plan'}
+          </button>
+        ))}
+      </div>
+      {viewMode === 'plan' ? (
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <ChecklistRoadmapPlanView
+            groups={groups.map((g) => ({ id: g.id, title: g.title }))}
+            tasks={tasks}
+            edges={graphEdges}
+            unlockedIds={unlockedIds}
+            completeIds={completeGroupIds}
+            users={users}
+            currentUserId={authUserId}
+            canEditStructure={canEditStructure}
+            onAssign={assignTaskToUser}
+            onOpenTask={openEditTask}
+          />
+        </div>
+      ) : null}
+      {viewMode === 'map' && canEditStructure ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
           <div
             style={{
@@ -2166,6 +2244,7 @@ export function ChecklistTechTreeTab({
         </div>
       ) : null}
 
+      {viewMode === 'map' ? (
       <div
         style={{
           width: '100%',
@@ -2402,6 +2481,7 @@ export function ChecklistTechTreeTab({
           </div>
         </div>
       </div>
+      ) : null}
 
       <ChecklistTechTreeRoadmapMembersModal
         open={membersModalOpen}

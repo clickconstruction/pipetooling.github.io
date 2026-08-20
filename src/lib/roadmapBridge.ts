@@ -5,8 +5,8 @@
  */
 
 import {
+  computeCompleteGroupIdsWithMilestones,
   computeUnlockedGroupIds,
-  isGroupComplete,
   type TechTreeEdge,
 } from './checklistTechTreeGraph'
 
@@ -63,11 +63,13 @@ export function goalsStripRows(args: {
     const groupIds = new Set(rmGroups.map((g) => g.id))
     const rmEdges = edges.filter((e) => groupIds.has(e.fromGroupId) && groupIds.has(e.toGroupId))
     const rmTasks = tasks.filter((t) => groupIds.has(t.group_id))
-    const completeIds = new Set(
-      rmGroups
-        .filter((g) => isGroupComplete(rmTasks.filter((t) => t.group_id === g.id).map((t) => ({ completedAt: t.completed_at }))))
-        .map((g) => g.id),
-    )
+    const tasksByGroup = new Map<string, Array<{ completed_at: string | null }>>()
+    for (const t of rmTasks) {
+      tasksByGroup.set(t.group_id, [...(tasksByGroup.get(t.group_id) ?? []), { completed_at: t.completed_at }])
+    }
+    // Milestone-aware (v2.1913): task-less goal stages count complete once
+    // their predecessors are — matches the canvas and the sync RPC.
+    const completeIds = computeCompleteGroupIdsWithMilestones(groupIds, rmEdges, tasksByGroup)
     const unlocked = computeUnlockedGroupIds(groupIds, rmEdges, completeIds)
     const current = rmGroups.filter((g) => unlocked.has(g.id) && !completeIds.has(g.id))
     const doneTasks = rmTasks.filter((t) => t.completed_at != null).length
@@ -103,9 +105,9 @@ export function stageBadgeFor(tasks: Array<{ completedAt: string | null }>): Sta
  */
 export function blockingStageTitles(args: {
   groupId: string
-  edges: TechTreeEdge[]
-  completeGroupIds: Set<string>
-  titleByGroupId: Map<string, string>
+  edges: ReadonlyArray<TechTreeEdge>
+  completeGroupIds: ReadonlySet<string>
+  titleByGroupId: ReadonlyMap<string, string>
 }): string[] {
   const { groupId, edges, completeGroupIds, titleByGroupId } = args
   const titles: string[] = []
