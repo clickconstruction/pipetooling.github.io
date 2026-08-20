@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-19 (v2.1875)
+last_updated: 2026-08-19 (v2.1878)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1878)
+
+### Cover Letter gets Old/New views — the studio layout arrives behind a toggle (2026-08-19)
+Owner-approved mockup, shipped as a safe parallel rollout: the Cover Letter tab's selected-bid card now opens with **Old / New** pills. **Old** is the classic single-column layout, byte-for-byte untouched. **New** is the two-pane **studio**: left rail of numbered step cards — **1 Scope & pricing** (recipient/project line, versions-in-submission with reorder, the amount as a green stat card with source label + Apply-to-Bid-Value / "✓ matches Bid Value", custom-amount fold) and **2 Letter content** (the four include-checkboxes become **toggle pills** — Plan date, Fixtures per plan, Signature, Payment schedule — plus the Schedule-of-Values editor and the three textareas, Terms always expanded); right column is a **sticky paper-white letter preview** (pinned light via `data-theme="light"` — it's the customer's document) with the **send bar** beneath it (Copy & open in Google Docs, Print, paste-the-Proposal-link quick-add). Both views share every handler and per-bid state map in [`BidsCoverLetterTab`](../src/components/bids/BidsCoverLetterTab.tsx) — typing in one shows in the other, verified live; the multi-GC packet picker renders as pills above the sheet. View choice persists per device (`bids_cover_letter_view_v1`, default Old) so crews keep the familiar layout while the studio is refined. Client-only — no migration.
 ## Latest Updates (v2.1875)
 
 ### Roadmap ⇄ checklist bridge — stages feed people's real task lists (2026-08-19)

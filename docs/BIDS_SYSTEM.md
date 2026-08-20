@@ -1232,6 +1232,9 @@ A bid can hold multiple named **Versions** (variants) — e.g. "Plans" vs "Value
 ### Purpose
 Generate professional bid proposal documents with project details, scope, terms, and warranty information.
 
+### Old / New views (v2.1878)
+The selected-bid card opens with two pills at the top: **Old** (the classic single-column layout, unchanged) and **New** (the two-pane **studio**: numbered step cards — Scope & pricing, Letter content — on the left; a sticky paper-white letter preview with the send bar under it on the right). Both views read and write the **same state and handlers** — flip mid-edit and nothing is lost; the letter preview repaints live. The choice persists per device (`localStorage` `bids_cover_letter_view_v1`, default **Old**) while the studio is refined; everything documented below applies to both views.
+
 ### Default Values
 
 The Cover Letter provides sensible defaults that can be customized per bid. Defaults are **org-editable** via `app_settings` — a dev edits them in **Settings** through [`BidCoverLetterDefaultsSettingsBlock.tsx`](../src/components/settings/BidCoverLetterDefaultsSettingsBlock.tsx); all authenticated users read them. Keys (in [`src/lib/appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts)):

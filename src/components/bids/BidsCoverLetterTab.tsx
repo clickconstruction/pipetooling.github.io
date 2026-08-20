@@ -49,6 +49,17 @@ import type { BidCountRow } from '../../types/bids'
 
 const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
+/** Old/New layout toggle (per device). Old = the classic single column; New = the two-pane studio being refined. */
+const COVER_LETTER_VIEW_STORAGE_KEY = 'bids_cover_letter_view_v1'
+type CoverLetterView = 'old' | 'new'
+function readStoredCoverLetterView(): CoverLetterView {
+  try {
+    return localStorage.getItem(COVER_LETTER_VIEW_STORAGE_KEY) === 'new' ? 'new' : 'old'
+  } catch {
+    return 'old'
+  }
+}
+
 type BidsCoverLetterTabProps = {
   bids: BidWithBuilder[]
   selectedBidForPricing: BidWithBuilder | null
@@ -140,6 +151,7 @@ export function BidsCoverLetterTab({
   isMyBid,
 }: BidsCoverLetterTabProps) {
   // Cover-letter-only UI state
+  const [coverLetterView, setCoverLetterView] = useState<CoverLetterView>(readStoredCoverLetterView)
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterTermsCollapsed, setCoverLetterTermsCollapsed] = useState(true)
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
@@ -424,6 +436,71 @@ export function BidsCoverLetterTab({
     setCoverLetterBidSubmissionQuickAddValue('')
   }
 
+  function switchCoverLetterView(next: CoverLetterView) {
+    setCoverLetterView(next)
+    try {
+      localStorage.setItem(COVER_LETTER_VIEW_STORAGE_KEY, next)
+    } catch {
+      // per-device preference only; losing it is harmless
+    }
+  }
+
+  const viewPillStyle = (active: boolean): React.CSSProperties => ({
+    padding: '0.3rem 0.85rem',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 999,
+    cursor: 'pointer',
+    background: active ? '#2563eb' : 'transparent',
+    color: active ? '#fff' : 'var(--text-muted)',
+  })
+
+  // New-view (studio) building blocks
+  const studioStepCardStyle: React.CSSProperties = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    padding: '0.9rem 1rem 1rem',
+  }
+  const studioStepHeadStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.55rem',
+    marginBottom: '0.7rem',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+  }
+  const studioStepNumStyle: React.CSSProperties = {
+    width: '1.35rem',
+    height: '1.35rem',
+    borderRadius: 999,
+    flexShrink: 0,
+    background: '#3b82f6',
+    color: '#fff',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
+  const studioTogStyle = (on: boolean): React.CSSProperties => ({
+    fontSize: '0.78rem',
+    padding: '0.3rem 0.6rem',
+    borderRadius: 999,
+    cursor: 'pointer',
+    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+    background: on ? '#3b82f6' : 'var(--surface)',
+    color: on ? '#fff' : 'var(--text-muted)',
+  })
+  const studioFieldLabelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: 'var(--text-700)',
+    marginBottom: '0.25rem',
+  }
+
   const coverLetterVisibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
     const q = coverLetterSearchQuery.toLowerCase()
     if (!q) return true
@@ -638,6 +715,19 @@ export function BidsCoverLetterTab({
                 ) : null}
               </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1rem' }}>
+              <button type="button" role="tab" aria-selected={coverLetterView === 'old'} onClick={() => switchCoverLetterView('old')} style={viewPillStyle(coverLetterView === 'old')}>
+                Old
+              </button>
+              <button type="button" role="tab" aria-selected={coverLetterView === 'new'} onClick={() => switchCoverLetterView('new')} style={viewPillStyle(coverLetterView === 'new')}>
+                New
+              </button>
+              {coverLetterView === 'new' ? (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the studio layout being refined — same data as Old</span>
+              ) : null}
+            </div>
+            {coverLetterView === 'old' ? (
+              <>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Customer</div>
               {/* The letter's actual recipient (version GC when overridden), not the bid default (v2.1762). */}
@@ -1034,6 +1124,335 @@ export function BidsCoverLetterTab({
                 )}
               </div>
             </div>
+              </>
+            ) : (
+              <>
+                <style>{`
+                  .cover-letter-studio { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+                  .cover-letter-studio-preview { position: sticky; top: 0.5rem; }
+                  @media (max-width: 900px) {
+                    .cover-letter-studio { grid-template-columns: 1fr; }
+                    .cover-letter-studio-preview { position: static; }
+                  }
+                `}</style>
+                <div className="cover-letter-studio">
+                  <div style={{ display: 'grid', gap: '0.9rem' }}>
+                    <div style={studioStepCardStyle}>
+                      <div style={studioStepHeadStyle}>
+                        <span style={studioStepNumStyle}>1</span> Scope &amp; pricing
+                      </div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                        To <strong style={{ color: 'var(--text-strong)' }}>{letterCustomerName}</strong>
+                        {letterGcIsNotBidGc ? <> (this version's GC — bid default is {customerName})</> : null}
+                        {' · '}
+                        {projectNameVal}
+                      </div>
+                      {bidPricings.length > 1 ? (
+                        <div style={{ marginBottom: '0.7rem' }}>
+                          <span style={studioFieldLabelStyle}>Versions in this submission</span>
+                          {[...bidPricings].sort((a, b) => a.sort_order - b.sort_order).map((p, i, arr) => (
+                            <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.15rem 0', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={p.include_in_submission} onChange={() => void toggleSubmissionInclude(p)} style={{ cursor: 'pointer', margin: 0 }} />
+                              <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{p.name}</span>
+                              <button type="button" onClick={() => void reorderSubmission(p, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▲</button>
+                              <button type="button" onClick={() => void reorderSubmission(p, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▼</button>
+                            </label>
+                          ))}
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Checked versions bundle into the submission — one letter each, in this order.</div>
+                        </div>
+                      ) : null}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{revenueNumber}</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {useCustomAmount ? 'custom amount' : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                        </span>
+                        {isBidValueSynced ? (
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>✓ matches Bid Value</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => applyProposedAmountToBidValue(bid.id, effectiveRevenue)}
+                            disabled={applyingBidValue || effectiveRevenue === 0}
+                            title="Apply this amount to Bid Value"
+                            style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: applyingBidValue || effectiveRevenue === 0 ? 'not-allowed' : 'pointer' }}
+                          >
+                            {applyingBidValue ? 'Applying…' : 'Apply to Bid Value'}
+                          </button>
+                        )}
+                      </div>
+                      {bidValueAppliedSuccess ? (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-green-600)', fontWeight: 500, marginTop: '0.3rem' }}>✓ Applied successfully</div>
+                      ) : null}
+                      <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={coverLetterUseCustomAmountByBid[bid.id] === true}
+                            onChange={() => setCoverLetterUseCustomAmountByBid((prev) => ({ ...prev, [bid.id]: !prev[bid.id] }))}
+                          />
+                          Custom amount
+                        </label>
+                        {coverLetterUseCustomAmountByBid[bid.id] === true && (
+                          <input
+                            type="text"
+                            value={coverLetterCustomAmountByBid[bid.id] ?? ''}
+                            onChange={(e) => setCoverLetterCustomAmountByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                            placeholder="e.g. 1359800"
+                            style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
+                          />
+                        )}
+                        {bid.bid_value != null && bid.bid_value !== coverLetterRevenue && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Current Bid Value: ${formatCurrency(bid.bid_value)}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={studioStepCardStyle}>
+                      <div style={studioStepHeadStyle}>
+                        <span style={studioStepNumStyle}>2</span> Letter content
+                      </div>
+                      <div style={{ marginBottom: '0.7rem' }}>
+                        <span style={studioFieldLabelStyle}>Include in the letter</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => setCoverLetterIncludeDesignDrawingPlanDateByBid((prev) => ({ ...prev, [bid.id]: prev[bid.id] === false }))}
+                            title={bid.design_drawing_plan_date ? `Design Drawings Plan Date [${formatDesignDrawingPlanDateLabel(bid.design_drawing_plan_date)}]` : 'Design Drawings Plan Date: [not set]'}
+                            style={studioTogStyle(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false)}
+                          >
+                            Plan date
+                          </button>
+                          {pricingCountRows.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setCoverLetterIncludeFixturesPerPlanByBid((prev) => ({ ...prev, [bid.id]: prev[bid.id] === false }))}
+                              title="Include Fixtures provided and installed by us per plan"
+                              style={studioTogStyle(coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false)}
+                            >
+                              Fixtures per plan
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setCoverLetterIncludeSignatureByBid((prev) => ({ ...prev, [bid.id]: !prev[bid.id] }))}
+                            title="Include Signature block in Cover Letter and Approval PDF"
+                            style={studioTogStyle(coverLetterIncludeSignatureByBid[bid.id] === true)}
+                          >
+                            Signature block
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void togglePaymentScheduleEnabled(bid)}
+                            title="Include Schedule of Values (payment schedule) in document"
+                            style={studioTogStyle(paymentScheduleEnabled)}
+                          >
+                            Payment schedule
+                          </button>
+                        </div>
+                      </div>
+                      {paymentScheduleEnabled && (
+                        <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.7rem', marginBottom: '0.7rem' }}>
+                          <span style={studioFieldLabelStyle}>Schedule of Values</span>
+                          {paymentScheduleSorted.map((row, i, arr) => {
+                            const knownTiming = (PAYMENT_SCHEDULE_TIMINGS as string[]).includes(row.timing)
+                            const rowPercent = paymentSchedulePercentDrafts[row.id] != null
+                              ? parseFloat(paymentSchedulePercentDrafts[row.id]?.replace(/,/g, '').trim() ?? '')
+                              : Number(row.percent)
+                            const rowDollars = Number.isFinite(rowPercent) ? (effectiveRevenue * rowPercent) / 100 : null
+                            return (
+                              <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.15rem 0', flexWrap: 'wrap' }}>
+                                <select
+                                  value={row.timing}
+                                  onChange={(e) => void updatePaymentScheduleTiming(bid.id, row.id, e.target.value)}
+                                  aria-label="Payment timing"
+                                  style={{ padding: '0.3rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', flex: 1, minWidth: '9rem' }}
+                                >
+                                  {!knownTiming && <option value={row.timing}>{row.timing}</option>}
+                                  {PAYMENT_SCHEDULE_TIMINGS.map((t: PaymentScheduleTiming) => (
+                                    <option key={t} value={t}>
+                                      {PAYMENT_SCHEDULE_TIMING_LABELS[t].charAt(0).toUpperCase() + PAYMENT_SCHEDULE_TIMING_LABELS[t].slice(1)}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={paymentSchedulePercentDrafts[row.id] ?? String(Number(row.percent))}
+                                  onChange={(e) => setPaymentSchedulePercentDrafts((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                                  onBlur={() => void commitPaymentSchedulePercent(bid.id, row)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      e.currentTarget.blur()
+                                    }
+                                  }}
+                                  aria-label="Percent of contract amount"
+                                  style={{ width: '3.6rem', padding: '0.3rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', textAlign: 'right', boxSizing: 'border-box' }}
+                                />
+                                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>%</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '5.5rem' }}>
+                                  {rowDollars != null ? `= $${formatCurrency(rowDollars)}` : ''}
+                                </span>
+                                <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: 0 }}>▲</button>
+                                <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: 0 }}>▼</button>
+                                <button type="button" onClick={() => void removePaymentScheduleRow(bid.id, row.id)} title="Remove row" aria-label="Remove row" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-600)', fontSize: '0.95rem', padding: 0 }}>×</button>
+                              </div>
+                            )
+                          })}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => void addPaymentScheduleRow(bid.id)}
+                              style={{ padding: '0.2rem 0.6rem', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 4, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
+                            >
+                              + Add row
+                            </button>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>Total: {formatPaymentSchedulePercent(paymentSchedulePercentSum)}</span>
+                          </div>
+                          {paymentScheduleSorted.length > 0 && Math.abs(paymentSchedulePercentSum - 100) > 0.001 && (
+                            <div style={{ marginTop: '0.4rem', padding: '0.3rem 0.45rem', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', borderRadius: 4, color: 'var(--text-amber-700)', fontSize: '0.75rem' }}>
+                              ⚠ Percents sum to {formatPaymentSchedulePercent(paymentSchedulePercentSum)}, not 100%.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ marginBottom: '0.7rem' }}>
+                        <label style={studioFieldLabelStyle}>Additional inclusions (one per line → bullets)</label>
+                        <textarea
+                          value={inclusionsDisplay}
+                          onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                          rows={3}
+                          placeholder={COVER_LETTER_INCLUSIONS_PLACEHOLDER}
+                          style={{ width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '0.7rem' }}>
+                        <label style={studioFieldLabelStyle}>Exclusions and scope</label>
+                        <textarea
+                          value={exclusionsDisplay}
+                          onChange={(e) => setCoverLetterExclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                          rows={3}
+                          placeholder="e.g. Owner-supplied fixtures"
+                          style={{ width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={studioFieldLabelStyle}>Terms and warranty</label>
+                        <textarea
+                          value={termsDisplay}
+                          onChange={(e) => setCoverLetterTermsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                          rows={3}
+                          placeholder="e.g. 1-year warranty on labor"
+                          style={{ width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="cover-letter-studio-preview" style={{ display: 'grid', gap: '0.7rem' }}>
+                    {multiGc ? (
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {gcPackets.map((pk) => {
+                          const active = pk.key === selectedGcPacket?.key
+                          return (
+                            <button
+                              key={pk.key}
+                              type="button"
+                              onClick={() => setSelectedGcPacketKey(pk.key)}
+                              style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                padding: '0.35rem 0.75rem',
+                                borderRadius: 999,
+                                border: active ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                                background: active ? '#3b82f6' : 'var(--surface)',
+                                color: active ? '#fff' : 'var(--text-700)',
+                                cursor: 'pointer',
+                              }}
+                              title={`${pk.sections.map((s) => s.name).join(' · ')} — ${pk.sections.length} letter${pk.sections.length !== 1 ? 's' : ''}`}
+                            >
+                              {pk.customer.name}
+                            </button>
+                          )
+                        })}
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>Each GC gets their own letter with only their pricing.</span>
+                      </div>
+                    ) : bundlePricings.length > 1 ? (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)' }}>
+                        Bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')} — one letter each.
+                      </div>
+                    ) : null}
+                    <div
+                      data-theme="light"
+                      key={`studio-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}-${paymentScheduleEnabled}-${paymentScheduleSorted.map((r) => `${r.timing}:${r.percent}`).join(',')}`}
+                      style={{
+                        background: 'var(--surface)',
+                        color: 'var(--text-strong)',
+                        borderRadius: 6,
+                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.18)',
+                        border: '1px solid var(--border)',
+                        padding: '2rem 2.2rem',
+                        minHeight: 360,
+                        fontSize: '0.875rem',
+                        whiteSpace: 'pre-wrap',
+                        overflowX: 'auto',
+                      }}
+                      // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested coverLetter builder
+                      dangerouslySetInnerHTML={{ __html: finalCoverLetterHtml }}
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          copyToClipboard()
+                          openInExternalBrowser(googleDocsCopyUrl)
+                          setCoverLetterBidSubmissionQuickAddBidId(bid.id)
+                          setCoverLetterBidSubmissionQuickAddValue(bid.bid_submission_link ?? '')
+                        }}
+                        style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Copy &amp; open in Google Docs
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
+                        title="Print combined document"
+                        style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Print
+                      </button>
+                      {coverLetterBidSubmissionQuickAddBidId === bid.id && (
+                        <>
+                          <input
+                            type="url"
+                            value={coverLetterBidSubmissionQuickAddValue}
+                            onChange={(e) => setCoverLetterBidSubmissionQuickAddValue(e.target.value)}
+                            placeholder="Paste the shared Proposal link to attach it to the bid…"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                void handleSaveBidSubmissionQuickAdd(bid.id, coverLetterBidSubmissionQuickAddValue)
+                              }
+                            }}
+                            style={{ flex: 1, minWidth: 200, padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.8rem' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveBidSubmissionQuickAdd(bid.id, coverLetterBidSubmissionQuickAddValue)}
+                            style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            Add
+                          </button>
+                        </>
+                      )}
+                      {bidSubmissionQuickAddSuccess === bid.id && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-green-600)', fontWeight: 500 }}>✓ Link added</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )
       })()}
