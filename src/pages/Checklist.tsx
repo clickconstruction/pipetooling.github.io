@@ -20,8 +20,8 @@ import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeT
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { groupEventsByInstance, type ChecklistCardEvent } from '../lib/checklistCardEvents'
-import { sortOutstanding } from '../lib/checklistHistoryLedger'
+import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { qualifiesOutstanding, sortOutstanding } from '../lib/checklistHistoryLedger'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
 type UserRole =
@@ -51,6 +51,8 @@ type ChecklistInstance = {
     notify_on_complete_user_id?: string | null
     notify_creator_on_complete?: boolean
     created_by_user_id?: string | null
+    show_until_completed?: boolean | null
+    repeat_type?: string | null
   } | null
 }
 
@@ -348,27 +350,34 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       setError(e1.message)
       return
     }
-    // Outstanding (v2.1864): overdue instances whose work is still wanted —
-    // one-off tasks OR show-until-completed items. They render in their own
-    // section below Today's list (they used to be merged invisibly into it,
-    // and one-offs used to vanish entirely).
-    const { data: itemsData } = await supabase
-      .from('checklist_items')
-      .select('id')
-      .or('show_until_completed.eq.true,repeat_type.eq.once')
-    const itemIds = (itemsData ?? []).map((i) => i.id)
-    let overdueData: ChecklistInstance[] = []
-    if (itemIds.length > 0) {
-      const { data } = await supabase
-        .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
-        .eq('checklist_instance_assignees.user_id', authUserId)
-        .is('completed_at', null)
-        .lt('scheduled_date', today)
-        .in('checklist_item_id', itemIds)
-        .order('scheduled_date', { ascending: false })
-      overdueData = (data ?? []) as ChecklistInstance[]
+    // Outstanding (v2.1864, widened v2.1869): overdue instances whose work is
+    // still wanted — one-off tasks, show-until-completed items, OR anything a
+    // human deliberately reopened (last transition = reopened outranks the
+    // recurrings-don't-carry-over rule). One capped query, qualified
+    // client-side so the reopened check can share the same rows.
+    const { data: pastData } = await supabase
+      .from('checklist_instances')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, show_until_completed, repeat_type), checklist_instance_assignees!inner(user_id)')
+      .eq('checklist_instance_assignees.user_id', authUserId)
+      .is('completed_at', null)
+      .lt('scheduled_date', today)
+      .order('scheduled_date', { ascending: false })
+      .limit(300)
+    const pastIncomplete = (pastData ?? []) as ChecklistInstance[]
+    const qualifying = pastIncomplete.filter((i) => qualifiesOutstanding(i.checklist_items))
+    const rest = pastIncomplete.filter((i) => !qualifiesOutstanding(i.checklist_items))
+    let reopenedOnes: ChecklistInstance[] = []
+    if (rest.length > 0) {
+      const { data: transData } = await supabase
+        .from('checklist_instance_events')
+        .select('id, instance_id, event_type, actor_user_id, body, created_at')
+        .in('instance_id', rest.map((r) => r.id))
+        .in('event_type', ['completed', 'reopened'])
+        .order('created_at', { ascending: true })
+      const grouped = groupEventsByInstance((transData ?? []) as ChecklistCardEvent[])
+      reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
     }
+    const overdueData = [...qualifying, ...reopenedOnes]
     setOutstandingInstances(sortOutstanding(overdueData))
     const merged = [...(todayData ?? [])] as ChecklistInstance[]
     const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
@@ -1142,6 +1151,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           currentUserId={authUserId}
           todayStr={toLocalDateString(new Date())}
           setError={setError}
+          onAfterReopen={() => void loadHistory()}
         />
       ) : (
       <div style={{ overflowX: 'auto' }}>

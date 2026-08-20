@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   cardStatus,
+  lastTransitionIsReopen,
   commentCount,
   groupEventsByInstance,
   stripStamp,
@@ -116,5 +117,32 @@ describe('stripStamp', () => {
   })
   it('garbage passes through', () => {
     expect(stripStamp('not-a-date', now)).toBe('not-a-date')
+  })
+})
+
+describe('lastTransitionIsReopen (v2.1869)', () => {
+  it('true when reopened after the last completion', () => {
+    expect(
+      lastTransitionIsReopen([
+        ev({ event_type: 'completed', created_at: '1' }),
+        ev({ event_type: 'reopened', created_at: '2' }),
+        ev({ event_type: 'comment', created_at: '3' }),
+      ]),
+    ).toBe(true)
+  })
+
+  it('false when re-completed after a reopen', () => {
+    expect(
+      lastTransitionIsReopen([
+        ev({ event_type: 'completed', created_at: '1' }),
+        ev({ event_type: 'reopened', created_at: '2' }),
+        ev({ event_type: 'completed', created_at: '3' }),
+      ]),
+    ).toBe(false)
+  })
+
+  it('false with no transitions at all', () => {
+    expect(lastTransitionIsReopen([ev({ event_type: 'comment', created_at: '1' })])).toBe(false)
+    expect(lastTransitionIsReopen([])).toBe(false)
   })
 })

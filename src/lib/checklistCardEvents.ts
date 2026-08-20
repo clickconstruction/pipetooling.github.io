@@ -112,3 +112,19 @@ export function stripStamp(iso: string, now: Date = new Date()): string {
   }
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
+
+/**
+ * True when the card's most recent completion transition is a reopen — i.e. a
+ * human explicitly said "this still needs doing" and nobody has re-completed
+ * it since. Powers the Outstanding qualifier for reopened recurring tasks
+ * (v2.1869): a deliberate reopen outranks the recurrings-don't-carry-over rule.
+ */
+export function lastTransitionIsReopen(events: ChecklistCardEvent[]): boolean {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    if (!e) continue
+    if (e.event_type === 'reopened') return true
+    if (e.event_type === 'completed') return false
+  }
+  return false
+}

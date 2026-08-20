@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useToastContext } from '../../contexts/ToastContext'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import {
   completedDayGroups,
@@ -25,13 +26,18 @@ export function ChecklistHistoryLedger({
   currentUserId,
   todayStr,
   setError,
+  onAfterReopen,
 }: {
   instances: LedgerInstance[]
   selectedUserId: string
   currentUserId: string | null
   todayStr: string
   setError: (s: string | null) => void
+  /** Called after a successful reopen so the tab reloads its instance list. */
+  onAfterReopen?: () => void
 }) {
+  const { showToast } = useToastContext()
+  const [reopening, setReopening] = useState(false)
   const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
   const [nameById, setNameById] = useState<Record<string, string>>({})
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -96,6 +102,75 @@ export function ChecklistHistoryLedger({
     if (!id) return 'Someone'
     if (id === currentUserId) return 'You'
     return nameById[id] ?? 'Someone'
+  }
+
+  /**
+   * Assignee reopen (v2.1869): note required — it becomes the reason the other
+   * assignees see. Clears the completion (trigger logs `reopened` + clears
+   * review stamps); the card lands on Today's Outstanding via the
+   * reopened-last qualifier. RLS limits this to assignees + office.
+   */
+  async function reopenWithNote(inst: { id: string }) {
+    const body = draft.trim()
+    if (!body) {
+      setError('Add a note first — whoever completed it should know why it came back.')
+      return
+    }
+    if (reopening || !currentUserId) return
+    setReopening(true)
+    setError(null)
+    try {
+      const { error: ce } = await supabase.from('checklist_instance_events').insert({
+        instance_id: inst.id,
+        event_type: 'comment',
+        actor_user_id: currentUserId,
+        body,
+      })
+      if (ce) throw ce
+      const { error: ue } = await supabase
+        .from('checklist_instances')
+        .update({ completed_at: null, completed_by_user_id: null })
+        .eq('id', inst.id)
+      if (ue) throw ue
+      setDraft('')
+      setExpandedId(null)
+      void notifyReopen(inst.id, body)
+      showToast('Reopened — it\u2019s back on Today\u2019s Outstanding list.', 'success')
+      onAfterReopen?.()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not reopen this task.')
+    } finally {
+      setReopening(false)
+    }
+  }
+
+  async function notifyReopen(instanceId: string, reason: string) {
+    try {
+      const inst = instances.find((i) => i.id === instanceId)
+      const title = inst?.checklist_items?.title ?? 'Checklist task'
+      const { data } = await supabase
+        .from('checklist_instance_assignees')
+        .select('user_id')
+        .eq('checklist_instance_id', instanceId)
+      for (const r of (data ?? []) as Array<{ user_id: string }>) {
+        if (r.user_id === currentUserId) continue
+        try {
+          await supabase.functions.invoke('send-checklist-notification', {
+            body: {
+              recipient_user_id: r.user_id,
+              push_title: 'Task reopened',
+              push_body: `${title} — "${reason}"`,
+              push_url: '/checklist?tab=today',
+              tag: `checklist-reopen-${instanceId}`,
+            },
+          })
+        } catch {
+          // best-effort
+        }
+      }
+    } catch {
+      // best-effort
+    }
   }
 
   async function postComment(instanceId: string) {
@@ -318,22 +393,47 @@ export function ChecklistHistoryLedger({
                             <button
                               type="button"
                               onClick={() => void postComment(inst.id)}
-                              disabled={posting || !draft.trim()}
+                              disabled={posting || reopening || !draft.trim()}
                               style={{
                                 height: 44,
                                 padding: '0 1rem',
                                 borderRadius: 10,
                                 border: 'none',
-                                background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
+                                background: posting || reopening || !draft.trim() ? '#9ca3af' : '#2563eb',
                                 color: 'white',
                                 fontSize: '0.9375rem',
                                 fontWeight: 600,
-                                cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',
+                                cursor: posting || reopening || !draft.trim() ? 'not-allowed' : 'pointer',
                               }}
                             >
                               {posting ? '…' : 'Post'}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => void reopenWithNote(inst)}
+                              disabled={posting || reopening || !draft.trim()}
+                              title="Reopen this task — your note becomes the reason"
+                              style={{
+                                height: 44,
+                                padding: '0 1rem',
+                                borderRadius: 10,
+                                border: 'none',
+                                background: posting || reopening || !draft.trim() ? '#9ca3af' : '#d97706',
+                                color: 'white',
+                                fontSize: '0.9375rem',
+                                fontWeight: 600,
+                                cursor: posting || reopening || !draft.trim() ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {reopening ? '…' : 'Reopen'}
+                            </button>
                           </div>
+                        ) : null}
+                        {currentUserId ? (
+                          <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                            Reopen posts your note, puts this back on Today → Outstanding, and notifies the assignees.
+                          </p>
                         ) : null}
                       </div>
                     ) : null}

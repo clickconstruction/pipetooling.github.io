@@ -21,6 +21,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1869',
+    date: '2026-08-19',
+    title: 'Reopen a task a teammate marked done',
+    kind: 'feature',
+    highlights: [
+      'If you\'re assigned to a task someone else completed, you can now reopen it from Checklist → History — open the row, write why, and tap Reopen.',
+      'Your note becomes the reason on the card, the other assignees get notified, and the task lands back in Today\'s Outstanding list until it\'s truly done.',
+    ],
+  },
+  {
     version: 'v2.1868',
     date: '2026-08-19',
     title: 'Estimates and change orders: a numbered guide on every draft',
