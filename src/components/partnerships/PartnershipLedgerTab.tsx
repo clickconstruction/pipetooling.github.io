@@ -111,7 +111,9 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
+              {/* Balance is computed oldest→newest; display newest-first so the
+                  top row is today and its balance equals the headline. */}
+              {[...rows].reverse().map((r, i) => (
                 <tr key={i}>
                   <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
                   <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
@@ -131,7 +133,8 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
         </div>
       )}
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Append-only: reversals are new rows, never edits. The weekly statement is a window over this journal.
+        Newest first; each row’s balance is the running balance after that posting. Append-only: reversals are new
+        rows, never edits. The weekly statement is a window over this journal.
       </p>
     </div>
   )

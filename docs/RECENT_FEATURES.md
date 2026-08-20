@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1895)
+last_updated: 2026-08-20 (v2.1897)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1897)
+
+### Partnerships: the Ledger reads newest-first (2026-08-20)
+Owner feedback from live testing the partner ledger with Bryan's real history: the journal opened oldest-first, putting March at the top and today below the fold. [`PartnershipLedgerTab`](../src/components/partnerships/PartnershipLedgerTab.tsx) now displays newest-first — the top row is the latest posting and its running balance matches the headline number; the balance math is unchanged (still computed oldest→newest under the hood), and the footer explains the convention. Client-only — no migration.
 
 ## Latest Updates (v2.1895)
 
