@@ -4,6 +4,7 @@ import { fetchUserDisplayNames, missingUserIds, userDisplayLabel } from '../../l
 import { formatCurrency } from '../../lib/format'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import {
   buildVehicleLedger,
   currentInsurancePeriod,
@@ -109,6 +110,7 @@ function formatYmdShort(ymd: string): string {
 
 export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const { user: authUser } = useAuth()
+  const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(false)
@@ -547,7 +549,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   }
 
   async function deleteVehicle(v: Vehicle) {
-    if (!window.confirm(`Delete ${vehicleDisplayName(v)}? Its readings and history delete with it.`)) return
+    if (!(await confirmDialog({ message: `Delete ${vehicleDisplayName(v)}? Its readings and history delete with it.`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('vehicles').delete().eq('id', v.id)
     if (err) {
       setError(err.message)
@@ -665,7 +667,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   }
 
   async function deletePlan(p: FleetInsurancePlan) {
-    if (!window.confirm(`Delete plan "${p.name}"? Its coverage history deletes with it.`)) return
+    if (!(await confirmDialog({ message: `Delete plan "${p.name}"? Its coverage history deletes with it.`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('vehicle_insurance_plans').delete().eq('id', p.id)
     if (err) {
       setError(err.message)
@@ -776,7 +778,14 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   }
 
   async function deleteMaintenanceTask(t: VehicleMaintenanceTask) {
-    if (!window.confirm(`Delete task "${t.title}"?${t.checklist_instance_id ? ' It also comes off the assignee’s checklist.' : ''}`)) return
+    if (
+      !(await confirmDialog({
+        message: `Delete task "${t.title}"?${t.checklist_instance_id ? ' It also comes off the assignee’s checklist.' : ''}`,
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return
     // Best-effort cleanup of the linked checklist rows first.
     if (t.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', t.checklist_instance_id)
     if (t.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', t.checklist_item_id)

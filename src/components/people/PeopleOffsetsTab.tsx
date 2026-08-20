@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../pay/PersonOffsetFormModal'
 import { buildSettleUpBoard, type StubPaymentLike } from '../../lib/people/personMoneyLedger'
@@ -27,6 +28,7 @@ export type PeopleOffsetsTabProps = {
 }
 
 export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs, archivedUserNames, archivedPeople }: PeopleOffsetsTabProps) {
+  const confirmDialog = useConfirmDialog()
   const [offsets, setOffsets] = useState<PersonOffset[]>([])
   const [offsetsLoading, setOffsetsLoading] = useState(false)
   const [offsetsError, setOffsetsError] = useState<string | null>(null)
@@ -122,7 +124,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
   async function deleteOffset(o: PersonOffset) {
     const delTypeLabel =
       o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
-    if (!window.confirm(`Delete ${delTypeLabel} $${formatCurrency(o.amount)} for ${o.person_name}?`)) return
+    if (!(await confirmDialog({ message: `Delete ${delTypeLabel} $${formatCurrency(o.amount)} for ${o.person_name}?`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('person_offsets').delete().eq('id', o.id)
     if (err) setOffsetsError(err.message)
     else loadOffsets()

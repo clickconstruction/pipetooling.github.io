@@ -3,6 +3,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import { buildSalariedWorkdayPickerRows, type SalariedWorkdayPickerRow } from '../../lib/buildSalariedWorkdayPickerRows'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { payStaffBulkInsertUserTimeOff, type PayStaffBulkTimeOffResult } from '../../lib/payStaffBulkTimeOff'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
 
@@ -18,6 +19,7 @@ export type SalariedWorkdaysBulkModalProps = {
 export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: SalariedWorkdaysBulkModalProps) {
   const narrowViewport = useNarrowViewport640()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [bulkStartDate, setBulkStartDate] = useState('')
   const [bulkEndDate, setBulkEndDate] = useState('')
@@ -86,9 +88,10 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
       return
     }
     if (
-      !window.confirm(
-        `Add unpaid time off ${bulkStartDate} → ${bulkEndDate} for ${bulkCheckedIds.length} people?`,
-      )
+      !(await confirmDialog({
+        message: `Add unpaid time off ${bulkStartDate} → ${bulkEndDate} for ${bulkCheckedIds.length} people?`,
+        confirmLabel: 'Add',
+      }))
     ) {
       return
     }

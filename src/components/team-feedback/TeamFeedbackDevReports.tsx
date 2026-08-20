@@ -13,6 +13,7 @@ import {
 import { fetchTeamFeedbackSettings, type TeamFeedbackSettingsRow } from '../../lib/teamFeedback'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 
 type SubmissionRow = Database['public']['Tables']['team_feedback_submissions']['Row']
@@ -291,6 +292,7 @@ function TeamFeedbackSubmissionDetailModal({
 
 export default function TeamFeedbackDevReports() {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<SubmissionRowWithUsers[]>([])
   const [includeReviewerInExport, setIncludeReviewerInExport] = useState(false)
@@ -395,9 +397,12 @@ export default function TeamFeedbackDevReports() {
 
   async function deleteSubmission(id: string) {
     if (
-      !window.confirm(
-        'Delete this team feedback submission permanently? Linked peer rating rows are removed automatically. This cannot be undone.'
-      )
+      !(await confirmDialog({
+        message:
+          'Delete this team feedback submission permanently? Linked peer rating rows are removed automatically. This cannot be undone.',
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
     ) {
       return
     }

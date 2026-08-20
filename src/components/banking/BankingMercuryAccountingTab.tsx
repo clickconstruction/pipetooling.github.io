@@ -3,6 +3,7 @@ import type { Database, Json } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
 import {
   buildMercuryTxSearchHaystackWithJobPerson,
@@ -331,6 +332,7 @@ export function BankingMercuryAccountingTab({
   attributionOptions,
 }: BankingMercuryAccountingTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [accountingSearchText, setAccountingSearchText] = useState('')
   // When the parent has already narrowed `filteredTransactions` to the
   // unlabeled set (Hide labeled = on, Accounting tab), the per-row
@@ -1341,13 +1343,16 @@ export function BankingMercuryAccountingTab({
       if (items.length === 0) return
       if (
         items.length > GROUP_BULK_CONFIRM_THRESHOLD &&
-        !window.confirm(`Approve ${items.length.toLocaleString()} suggestions to "${items[0]?.suggestedLabelName}"?`)
+        !(await confirmDialog({
+          message: `Approve ${items.length.toLocaleString()} suggestions to "${items[0]?.suggestedLabelName}"?`,
+          confirmLabel: 'Approve',
+        }))
       ) {
         return
       }
       await approvePendingItems(items)
     },
-    [approvePendingItems, conflictSuggestionIds, pendingFilteredApprovals],
+    [approvePendingItems, conflictSuggestionIds, pendingFilteredApprovals, confirmDialog],
   )
 
   const handleRejectGroup = useCallback(
@@ -1356,7 +1361,10 @@ export function BankingMercuryAccountingTab({
       if (items.length === 0) return
       if (
         items.length > GROUP_BULK_CONFIRM_THRESHOLD &&
-        !window.confirm(`Dismiss all ${items.length.toLocaleString()} suggestions in "${items[0]?.suggestedLabelName}"?`)
+        !(await confirmDialog({
+          message: `Dismiss all ${items.length.toLocaleString()} suggestions in "${items[0]?.suggestedLabelName}"?`,
+          confirmLabel: 'Dismiss',
+        }))
       ) {
         return
       }
@@ -1367,7 +1375,7 @@ export function BankingMercuryAccountingTab({
         setApproveAllBusy(false)
       }
     },
-    [pendingFilteredApprovals, rejectPendingItems],
+    [pendingFilteredApprovals, rejectPendingItems, confirmDialog],
   )
 
   // Stable callbacks for AccountingApprovalCard. These look up the current
@@ -1866,14 +1874,21 @@ export function BankingMercuryAccountingTab({
 
   const deleteRule = useCallback(
     async (rule: RuleRow) => {
-      if (!window.confirm(`Delete rule "${rule.name}"? Pending suggestions for this rule will be removed.`)) return
+      if (
+        !(await confirmDialog({
+          message: `Delete rule "${rule.name}"? Pending suggestions for this rule will be removed.`,
+          confirmLabel: 'Delete',
+          danger: true,
+        }))
+      )
+        return
       try {
         await deleteRuleCore(rule)
       } catch {
         // toast already shown
       }
     },
-    [deleteRuleCore],
+    [deleteRuleCore, confirmDialog],
   )
 
   const ledgerShowDrag = false

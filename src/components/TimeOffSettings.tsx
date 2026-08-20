@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
@@ -11,6 +12,7 @@ type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
 export function TimeOffSettings({ userId }: { userId: string }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [rows, setRows] = useState<TimeOffRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -85,9 +87,10 @@ export function TimeOffSettings({ userId }: { userId: string }) {
 
   async function handleNotComingInToday() {
     if (
-      !window.confirm(
-        'Mark yourself as not coming in today? This adds personal (unpaid) time off on the calendar. You can still clock in if plans change.',
-      )
+      !(await confirmDialog({
+        message:
+          'Mark yourself as not coming in today? This adds personal (unpaid) time off on the calendar. You can still clock in if plans change.',
+      }))
     )
       return
     setSaving(true)
@@ -112,7 +115,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm('Remove this personal time off entry?')) return
+    if (!(await confirmDialog({ message: 'Remove this personal time off entry?', confirmLabel: 'Remove', danger: true }))) return
     try {
       await withSupabaseRetry(
         async () => supabase.from('user_time_off').delete().eq('id', id).eq('user_id', userId),

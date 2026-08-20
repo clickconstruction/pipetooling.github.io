@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -156,6 +157,7 @@ export default function RecurringEmailReportsModal({
   scopeMasterChoices,
 }: Props) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [loading, setLoading] = useState(false)
   const [schedules, setSchedules] = useState<ScheduleRow[]>([])
   const [recipientsBySchedule, setRecipientsBySchedule] = useState<Map<string, RecipientRow[]>>(
@@ -405,11 +407,11 @@ export default function RecurringEmailReportsModal({
   }
 
   async function deleteSchedule(id: string) {
-    const okDel =
-      typeof window !== 'undefined' &&
-      window.confirm(
-        `Delete this schedule?\n\nThis removes all recipients tied to it.`,
-      )
+    const okDel = await confirmDialog({
+      message: `Delete this schedule?\n\nThis removes all recipients tied to it.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
     if (!okDel) return
     try {
       const { error } = await supabase.from('recurring_job_report_schedules').delete().eq('id', id)

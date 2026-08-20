@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
 import {
   type PayStubDeductionRow,
@@ -68,6 +69,7 @@ export function PayStubLessModal({
   onSaved,
   showToast,
 }: PayStubLessModalProps) {
+  const confirmDialog = useConfirmDialog()
   const manualAmountInputRef = useRef<HTMLInputElement>(null)
   const [pendingOffsets, setPendingOffsets] = useState<PendingOffsetRow[]>([])
   const [pendingLoading, setPendingLoading] = useState(false)
@@ -221,7 +223,7 @@ export function PayStubLessModal({
   }
 
   async function removeDeduction(row: PayStubDeductionRow) {
-    if (!window.confirm('Remove this charge from this pay report?')) return
+    if (!(await confirmDialog({ message: 'Remove this charge from this pay report?', confirmLabel: 'Remove', danger: true }))) return
     setDeletingDeductionId(row.id)
     try {
       const { error: delErr } = await supabase.from('pay_stub_deductions').delete().eq('id', row.id)
