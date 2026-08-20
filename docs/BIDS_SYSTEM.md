@@ -1232,8 +1232,8 @@ A bid can hold multiple named **Versions** (variants) — e.g. "Plans" vs "Value
 ### Purpose
 Generate professional bid proposal documents with project details, scope, terms, and warranty information.
 
-### Old / New views (v2.1878)
-The selected-bid card opens with two pills at the top: **Old** (the classic single-column layout, unchanged) and **New** (the two-pane **studio**: numbered step cards — Scope & pricing, Letter content — on the left; a sticky paper-white letter preview with the send bar under it on the right). Both views read and write the **same state and handlers** — flip mid-edit and nothing is lost; the letter preview repaints live. The choice persists per device (`localStorage` `bids_cover_letter_view_v1`, default **Old**) while the studio is refined; everything documented below applies to both views.
+### The studio layout (v2.1878, sole layout since v2.1895)
+The selected-bid card is a two-pane **studio**: numbered step cards — **1 Scope & pricing** (recipient line, versions-in-submission, the amount as a green stat card with Apply-to-Bid-Value), **2 Letter content** (include-toggles as pills, Schedule-of-Values editor, inclusions/exclusions/terms) — on the left; a **sticky paper-white letter preview** (pinned light via `data-theme="light"`) with the send bar (Copy & open in Google Docs, Print, Proposal-link quick-add) on the right. The letter repaints live as controls change; multi-GC packets render as pills above the sheet. (The classic single-column layout shipped alongside as "Old" in v2.1878 and was retired in v2.1895.)
 
 ### Default Values
 

@@ -7,11 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-20 (v2.1893)
+last_updated: 2026-08-20 (v2.1895)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
 
+## Latest Updates (v2.1895)
+
+### Cover Letter: the studio is now the only layout (2026-08-20)
+Owner call one day after v2.1878 shipped the studio behind Old/New pills: "I like the new so much we can just get rid of the old view." The pills, the per-device `bids_cover_letter_view_v1` preference, and the entire classic single-column branch are removed from [`BidsCoverLetterTab`](../src/components/bids/BidsCoverLetterTab.tsx) (~400 lines of duplicate layout gone before it could drift); the two-pane studio — step cards left, sticky paper letter + send bar right — renders directly on bid selection. All handlers, per-bid state maps, letter builders, multi-GC packets, and the Schedule-of-Values editor are unchanged (they were shared by both views). Verified from a worktree dev server: no pills, studio renders directly, letter paints. Client-only — no migration.
 ## Latest Updates (v2.1893)
 
 ### Bare confirm() sweep — the last 69 native confirmation popups become in-app modals (2026-08-20)
