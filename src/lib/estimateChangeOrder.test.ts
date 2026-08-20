@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildEstimateChangeOrderDocHtml,
   buildEstimateChangeOrderDocText,
+  changeOrderDocDisplayTitle,
   changeOrderNetChangeCents,
   EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
   formatSignedCentsUsd,
@@ -49,6 +50,27 @@ describe('doc kind + money', () => {
   it('formatSignedCentsUsd renders credits with a minus sign', () => {
     expect(formatSignedCentsUsd(245000)).toBe('$2,450.00')
     expect(formatSignedCentsUsd(-39000)).toBe('−$390.00')
+  })
+})
+
+describe('changeOrderDocDisplayTitle', () => {
+  it('rewrites the "Estimate for" default to "Change Order for"', () => {
+    expect(changeOrderDocDisplayTitle('Estimate for Knight Contracting')).toBe('Change Order for Knight Contracting')
+    expect(changeOrderDocDisplayTitle('  estimate for Knight Contracting  ')).toBe('Change Order for Knight Contracting')
+    expect(changeOrderDocDisplayTitle('Estimate for customer')).toBe('Change Order for customer')
+  })
+
+  it('rewrites bare generic estimate titles to "Change order"', () => {
+    expect(changeOrderDocDisplayTitle('Estimate')).toBe('Change order')
+    expect(changeOrderDocDisplayTitle('New estimate')).toBe('Change order')
+  })
+
+  it('leaves hand-written titles and empties alone', () => {
+    expect(changeOrderDocDisplayTitle('Deep cleaning of AC units')).toBe('Deep cleaning of AC units')
+    expect(changeOrderDocDisplayTitle('Change Order for Knight Contracting')).toBe('Change Order for Knight Contracting')
+    expect(changeOrderDocDisplayTitle('Revised estimate for review')).toBe('Revised estimate for review')
+    expect(changeOrderDocDisplayTitle('')).toBe('')
+    expect(changeOrderDocDisplayTitle('Estimate for ')).toBe('Estimate for')
   })
 })
 

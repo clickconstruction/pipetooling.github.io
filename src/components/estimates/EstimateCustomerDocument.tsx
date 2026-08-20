@@ -6,7 +6,11 @@ import {
   normalizeEstimateLineItemsFromJson,
   type EstimateLineItemNormalized,
 } from '../../lib/estimateLineItemNormalize'
-import { formatSignedCentsUsd, type EstimateChangeOrderFields } from '../../lib/estimateChangeOrder'
+import {
+  changeOrderDocDisplayTitle,
+  formatSignedCentsUsd,
+  type EstimateChangeOrderFields,
+} from '../../lib/estimateChangeOrder'
 
 export type EstimatePublicLineItem = EstimateLineItemNormalized
 
@@ -156,6 +160,7 @@ export default function EstimateCustomerDocument({
   headerBrand = null,
   changeOrder = null,
 }: EstimateCustomerDocumentProps) {
+  const displayTitle = changeOrder ? changeOrderDocDisplayTitle(title) : title
   const lines = normalizeEstimateLineItemsFromJson(lineItemsSnapshot, { allowNegative: changeOrder != null })
   const termsBody = (termsSnapshot ?? '').trim()
   const docMetaRowStyle = {
@@ -184,7 +189,7 @@ export default function EstimateCustomerDocument({
           marginTop: 0,
         }}
       >
-        <h1 style={{ margin: 0, flex: '1 1 12rem', minWidth: 0 }}>{title || titleFallback}</h1>
+        <h1 style={{ margin: 0, flex: '1 1 12rem', minWidth: 0 }}>{displayTitle || titleFallback}</h1>
         {headerBrand ? (
           <div
             style={{

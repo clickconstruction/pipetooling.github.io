@@ -767,15 +767,23 @@ function EstimateDraftCustomerGate({ active, onBlockedInteraction, children }: E
   )
 }
 
-function defaultEstimateTitle(customerName: string): string {
+function defaultEstimateTitle(customerName: string, isChangeOrder = false): string {
   const n = customerName.trim()
-  if (!n) return 'Estimate for customer'
-  return `Estimate for ${n}`
+  const prefix = isChangeOrder ? 'Change Order for' : 'Estimate for'
+  if (!n) return `${prefix} customer`
+  return `${prefix} ${n}`
 }
 
 function isGenericEstimateTitle(t: string): boolean {
   const s = t.trim()
-  return s === '' || s === 'New estimate' || s === 'Estimate' || s === 'Change order'
+  return (
+    s === '' ||
+    s === 'New estimate' ||
+    s === 'Estimate' ||
+    s === 'Change order' ||
+    s === 'Estimate for customer' ||
+    s === 'Change Order for customer'
+  )
 }
 
 function estimateListCustomerSubline(r: EstimateListRow): string {
@@ -2752,7 +2760,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           isGenericEstimateTitle(initialTitle)
         ) {
           const matchCust = list.find((x) => x.id === r.customer_id)
-          if (matchCust?.name?.trim()) initialTitle = defaultEstimateTitle(matchCust.name)
+          if (matchCust?.name?.trim()) initialTitle = defaultEstimateTitle(matchCust.name, isChangeOrderDocKind(r.doc_kind))
         }
         setTitle(initialTitle)
         setCustomers(list)
@@ -3344,8 +3352,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (row?.status !== 'draft') return
     const shouldSetTitle =
       isGenericEstimateTitle(title) ||
-      (prevName.length > 0 && title.trim() === defaultEstimateTitle(prevName))
-    if (shouldSetTitle) setTitle(defaultEstimateTitle(c.name ?? ''))
+      (prevName.length > 0 &&
+        (title.trim() === defaultEstimateTitle(prevName) ||
+          title.trim() === defaultEstimateTitle(prevName, true)))
+    if (shouldSetTitle) setTitle(defaultEstimateTitle(c.name ?? '', isCO))
   }
 
   function handleCustomerSearchChange(value: string) {
