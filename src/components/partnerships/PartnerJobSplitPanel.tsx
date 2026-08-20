@@ -13,12 +13,24 @@ import { parsePartnerSplitPreview, type PartnerSplitPreview } from '../../lib/pa
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const signed = (n: number) => `${n < 0 ? '−' : ''}${money(n)}`
 
+type EstTransferRow = {
+  bid_id: string
+  bid_name: string
+  hours: number
+  rate: number
+  amount: number
+  applied_job_id: string | null
+  applied_here: boolean
+}
+
 export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
   const [preview, setPreview] = useState<PartnerSplitPreview | null>(null)
   const [hidden, setHidden] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [estRows, setEstRows] = useState<EstTransferRow[]>([])
+  const [estOn, setEstOn] = useState(true)
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('get_partner_job_split_preview', { p_job_id: jobId })
@@ -33,6 +45,29 @@ export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
     }
     setHidden(false)
     setPreview(p)
+    // §4h picker (PR 6) — fail-soft: pre-push or non-flagged just hides the block.
+    const est = await supabase.rpc('get_partner_bid_estimating_hours', { p_job_id: jobId })
+    if (!est.error && est.data && typeof est.data === 'object' && (est.data as Record<string, unknown>).exists === true) {
+      const d = est.data as Record<string, unknown>
+      setEstOn(d.est_transfer_on === true)
+      setEstRows(
+        Array.isArray(d.rows)
+          ? (d.rows as Record<string, unknown>[])
+              .filter((r) => typeof r.bid_id === 'string')
+              .map((r) => ({
+                bid_id: String(r.bid_id),
+                bid_name: String(r.bid_name ?? ''),
+                hours: Number(r.hours) || 0,
+                rate: Number(r.rate) || 0,
+                amount: Number(r.amount) || 0,
+                applied_job_id: typeof r.applied_job_id === 'string' ? r.applied_job_id : null,
+                applied_here: r.applied_here === true,
+              }))
+          : [],
+      )
+    } else {
+      setEstRows([])
+    }
   }, [jobId])
 
   useEffect(() => {
@@ -140,6 +175,54 @@ export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
       </div>
       {msg ? <p style={{ fontSize: '0.75rem', color: '#16a34a', margin: '0.4rem 0 0' }}>{msg}</p> : null}
       {err ? <p style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', margin: '0.4rem 0 0' }}>{err}</p> : null}
+
+      {estRows.length > 0 ? (
+        <div style={{ marginTop: '0.7rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+            Estimating at award (§4h)
+          </div>
+          {estRows.map((r) => (
+            <div key={r.bid_id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.4rem 0.6rem', padding: '0.3rem 0', fontSize: '0.78rem', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ flex: '1 1 200px', minWidth: 0, color: 'var(--text-700)' }}>
+                {r.bid_name} · {r.hours.toFixed(1)} h × ${r.rate}
+              </span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{money(r.amount)}</span>
+              {r.applied_here ? (
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#16a34a' }}>on this job</span>
+              ) : r.applied_job_id ? (
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)' }}>applied to another job</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy || !estOn}
+                  title={!estOn ? 'Estimate-hours transfer is off for this partnership (Deal tab)' : undefined}
+                  onClick={() => {
+                    void (async () => {
+                      setBusy(true)
+                      setErr(null)
+                      const { data, error } = await supabase.rpc('apply_bid_estimating_hours_to_job', { p_job_id: jobId, p_bid_id: r.bid_id })
+                      if (error) setErr(error.message)
+                      else {
+                        const d = (data ?? {}) as Record<string, unknown>
+                        setMsg(d.already === true ? 'That bid’s transfer already exists.' : `Moved ${money(Number(d.amount ?? 0))} of estimating onto this job (direct expenses).`)
+                        await load()
+                      }
+                      setBusy(false)
+                    })()
+                  }}
+                  style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 650, padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', opacity: busy || !estOn ? 0.55 : 1 }}
+                >
+                  Apply to this job
+                </button>
+              )}
+            </div>
+          ))}
+          <p style={{ fontSize: '0.66rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
+            The partner was already paid these hours as estimating pay — applying moves the COST onto the job’s direct
+            expenses so the split carries the price of winning it. One transfer per bid, ever.
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }

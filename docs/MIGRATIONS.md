@@ -9,7 +9,7 @@ last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "247 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "248 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through August 20, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### August 2026
 
 #### August 20, 2026
+
+**`20260820190000_estimating_hours_transfer.sql`** _(apply via `supabase db push` after the v2.1885 merge — additive; the §4h block hides until applied)_
+- **Purpose**: Partnerships train PR 6 — §4h. `jobs_ledger_materials.source_bid_id` (partial-UNIQUE: one transfer per bid) + `get_partner_bid_estimating_hours(job)` (per-bid approved estimating hours × partnership rate + applied state) + `apply_bid_estimating_hours_to_job(job, bid)` (sourced direct-expense row; flag + module gated; idempotent; event logged).
+- **Category**: Partnerships / Jobs
 
 **`20260820180000_partner_profit_share.sql`** _(apply via `supabase db push` after the v2.1884 merge — additive; the split panel renders nothing until applied)_
 - **Purpose**: Partnerships train PR 5 — the §3 split. `partner_job_cost_buckets(job)` (internal, EXECUTE revoked) reuses the six verified cost streams for one job; `get_partner_job_split_preview` / `post_partner_profit_share` (idempotent via the partial-unique index; events logged) / `reverse_partner_profit_share` (explicit negating rows). `generate_partner_statement` re-created reversal-aware (negative positive-type offsets attach as ABS deductions). `partnership_events` CHECK widened with `profit_share_posted`/`profit_share_reversed`.

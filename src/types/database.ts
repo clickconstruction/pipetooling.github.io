@@ -5545,6 +5545,7 @@ export type Database = {
           id: string
           job_id: string
           sequence_order: number
+          source_bid_id: string | null
         }
         Insert: {
           amount?: number
@@ -5553,6 +5554,7 @@ export type Database = {
           id?: string
           job_id: string
           sequence_order?: number
+          source_bid_id?: string | null
         }
         Update: {
           amount?: number
@@ -5561,6 +5563,7 @@ export type Database = {
           id?: string
           job_id?: string
           sequence_order?: number
+          source_bid_id?: string | null
         }
         Relationships: [
           {
@@ -13335,6 +13338,10 @@ export type Database = {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
         Returns: Json
       }
+      apply_bid_estimating_hours_to_job: {
+        Args: { p_bid_id: string; p_job_id: string }
+        Returns: Json
+      }
       apply_estimate_to_job: {
         Args: {
           p_estimate_id: string
@@ -13926,6 +13933,10 @@ export type Database = {
       }
       get_my_partner_summary: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
+      get_partner_bid_estimating_hours: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       get_partner_job_review_queue: {
         Args: { p_partnership_id: string }
         Returns: Json
