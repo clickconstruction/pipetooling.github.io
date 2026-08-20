@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  completedDayGroups,
   groupByDayDesc,
+  overdueAgeLabel,
+  qualifiesOutstanding,
+  sortOutstanding,
   ledgerChip,
   ledgerDayLabel,
   ledgerStats,
@@ -104,5 +108,35 @@ describe('labels', () => {
   it('week starts sunday', () => {
     expect(weekStartSunday('2026-08-19')).toBe('2026-08-16')
     expect(weekStartSunday('2026-08-16')).toBe('2026-08-16')
+  })
+})
+
+describe('outstanding (v2.1864)', () => {
+  it('qualifies one-offs and show-until-completed, not plain recurring', () => {
+    expect(qualifiesOutstanding({ repeat_type: 'once', show_until_completed: false })).toBe(true)
+    expect(qualifiesOutstanding({ repeat_type: 'day_of_week', show_until_completed: true })).toBe(true)
+    expect(qualifiesOutstanding({ repeat_type: 'day_of_week', show_until_completed: false })).toBe(false)
+    expect(qualifiesOutstanding(null)).toBe(false)
+  })
+
+  it('overdueAgeLabel formats due day and age', () => {
+    expect(overdueAgeLabel('2026-07-30', '2026-08-19')).toMatch(/^due Thu, Jul 30 · 20 days ago$/)
+    expect(overdueAgeLabel('2026-08-18', '2026-08-19')).toMatch(/1 day ago$/)
+    expect(overdueAgeLabel('garbage', '2026-08-19')).toBe('due garbage')
+  })
+
+  it('sortOutstanding is most-recently-due first', () => {
+    const rows = sortOutstanding([{ scheduled_date: '2026-03-19' }, { scheduled_date: '2026-07-30' }])
+    expect(rows.map((r) => r.scheduled_date)).toEqual(['2026-07-30', '2026-03-19'])
+  })
+
+  it('completedDayGroups drops incomplete rows and empty days', () => {
+    const days = completedDayGroups([
+      inst({ id: 'a', scheduled_date: '2026-08-18', completed_at: 'x' }),
+      inst({ id: 'b', scheduled_date: '2026-08-18' }),
+      inst({ id: 'c', scheduled_date: '2026-08-17' }),
+    ])
+    expect(days).toHaveLength(1)
+    expect(days[0]).toMatchObject({ date: '2026-08-18', dueCount: 1, doneCount: 1 })
   })
 })

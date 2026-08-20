@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import {
+  completedDayGroups,
   groupByDayDesc,
   ledgerChip,
   ledgerDayLabel,
@@ -37,8 +38,11 @@ export function ChecklistHistoryLedger({
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
 
-  const days = useMemo(() => groupByDayDesc(instances), [instances])
-  const stats = useMemo(() => ledgerStats(days, todayStr, weekStartSunday(todayStr)), [days, todayStr])
+  // Stats read the FULL set (misses still count); the rendered groups are the
+  // completed record only — misses live on Today's Outstanding section (v2.1864).
+  const allDays = useMemo(() => groupByDayDesc(instances), [instances])
+  const days = useMemo(() => completedDayGroups(instances), [instances])
+  const stats = useMemo(() => ledgerStats(allDays, todayStr, weekStartSunday(todayStr)), [allDays, todayStr])
 
   useEffect(() => {
     let cancelled = false
@@ -190,9 +194,7 @@ export function ChecklistHistoryLedger({
           <div key={day.date} style={{ marginBottom: '0.9rem' }}>
             <p style={{ margin: '0 0 0.35rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>
               {ledgerDayLabel(day.date, todayStr)} ·{' '}
-              <span style={{ color: day.doneCount === day.dueCount ? 'var(--text-strong)' : 'var(--text-red-700)' }}>
-                {day.doneCount} of {day.dueCount} done
-              </span>
+              <span style={{ color: 'var(--text-strong)' }}>{day.doneCount} done</span>
             </p>
             <ul
               style={{

@@ -38,6 +38,10 @@ Fix it up, reply on the thread if useful, and check it off again.
 
 Your finished task may show **waiting on review** — that just means the person who assigned it hasn't looked yet. When they sign off it reads **signed off**, and nothing more is needed from you.
 
+## Outstanding: overdue work that still needs doing
+
+Below your Today list you may see a red-framed **Outstanding** section: one-off tasks whose day came and went without getting done. Each row shows how overdue it is ("due Thu, Jul 30 · 20 days ago"). Check it off right there when you knock it out, or tap the row to read its notes first. Daily and weekly tasks never pile up here — only work that's still genuinely waiting.
+
 ## Looking back: the History tab
 
 On your phone, **Checklist → History** shows your days newest-first — each day says how many you finished, and every task carries a chip: {{chip:green|✓ 7:58 AM}} done, {{chip:yellow|✓ by Maria}} someone covered it, {{chip:red|✗ Missed}}, or {{chip:yellow|Reopened}}. The strip up top shows your week percentage and streak. Tap any task to read its whole story and add a note.

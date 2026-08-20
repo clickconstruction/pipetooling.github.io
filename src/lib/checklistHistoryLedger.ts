@@ -139,3 +139,48 @@ export function weekStartSunday(todayStr: string): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
+// ---------------------------------------------------------------------------
+// Outstanding (v2.1864): overdue tasks that still need doing, shown at the
+// bottom of the Today tab. A missed instance qualifies when the work itself is
+// still wanted — one-off tasks (repeat_type 'once') and anything the office
+// flagged show_until_completed. Missed instances of recurring tasks do NOT
+// qualify (yesterday's "clean office" isn't actionable; today's instance is)
+// — those remain History's record and the review queue's business.
+// ---------------------------------------------------------------------------
+
+export type OutstandingQualifier = {
+  repeat_type?: string | null
+  show_until_completed?: boolean | null
+}
+
+export function qualifiesOutstanding(item: OutstandingQualifier | null | undefined): boolean {
+  if (!item) return false
+  return item.repeat_type === 'once' || !!item.show_until_completed
+}
+
+/** "due Thu, Jul 30 · 20 days ago" (— "due today" never appears; Outstanding is strictly past-due). */
+export function overdueAgeLabel(dateStr: string, todayStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const t = new Date(todayStr + 'T00:00:00')
+  if (isNaN(d.getTime()) || isNaN(t.getTime())) return `due ${dateStr}`
+  const due = `due ${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`
+  const days = Math.round((t.getTime() - d.getTime()) / 86_400_000)
+  if (days <= 0) return due
+  return `${due} · ${days === 1 ? '1 day' : `${days} days`} ago`
+}
+
+/** Sort for the Outstanding list: most recently due first. */
+export function sortOutstanding<T extends { scheduled_date: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date))
+}
+
+/**
+ * History-as-record (v2.1864): day groups containing ONLY completed rows —
+ * misses live on Today's Outstanding (when they qualify) or just age out.
+ * Days where nothing was completed disappear. Stats still come from the full
+ * instance set via ledgerStats; only the rendered rows are filtered.
+ */
+export function completedDayGroups(instances: LedgerInstance[]): LedgerDay[] {
+  return groupByDayDesc(instances.filter((i) => !!i.completed_at))
+}
