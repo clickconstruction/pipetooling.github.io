@@ -105,7 +105,7 @@ export function buildCoverLetterHtml(
   const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
   const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
   const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
-  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(revenueWords) + '</strong>' + br + '<strong>' + escapeHtml(`(${revenueNumber})`) + '</strong>')
+  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(`${revenueWords} (${revenueNumber})`) + '</strong>')
   const exclusionsContent = exclusions.trim()
     ? exclusionLines.join('\n')
     : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n')
@@ -133,6 +133,16 @@ export function buildCoverLetterHtml(
     html += br2 + escapeHtml('Date: ____________________________________')
   }
   return '<p style="margin:0;line-height:1;white-space:pre-wrap">' + html + '</p>'
+}
+
+/**
+ * Preview-only display transform: break after "in the amount of:" so the full
+ * amount (words + figure) sits on its own line for the estimator scanning the
+ * on-screen preview. The document that ships (copy/print/PDF) keeps the
+ * single-line sentence — never run this on HTML headed to the clipboard.
+ */
+export function breakAmountOntoOwnLineForPreview(html: string): string {
+  return html.replace(/in the amount of: <strong>/g, 'in the amount of:<br/><strong>')
 }
 
 export function buildCoverLetterText(
@@ -172,8 +182,7 @@ export function buildCoverLetterText(
     projectName,
     ...addressLines(projectAddress),
     '',
-    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords}`,
-    `(${revenueNumber})`,
+    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`,
     '',
     ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
     'Inclusions:',
