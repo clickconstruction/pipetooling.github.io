@@ -2054,7 +2054,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   )
 
   return (
-    <div>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         {boardTile('To sign off', reviewCount == null ? '—' : String(reviewCount), 'var(--text-link)')}
         {boardTile(`Outstanding · ${BOARD_RANGE_LABELS[dateRange as BoardRange].toLowerCase()}`, loading ? '—' : String(outstandingTotal), 'var(--text-red-700)')}
