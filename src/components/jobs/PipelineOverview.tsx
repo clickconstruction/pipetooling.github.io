@@ -199,44 +199,64 @@ export function PipelineOverview({
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>nothing needs a move right now — the pipeline is clean ✅</span>
           )}
         </div>
-        {moves.map((m, i) => (
+        {/* Card grid (v2.1966): moves tile across the width on big screens
+            (the story cards' auto-fit pattern) and stack one-per-row on
+            phones — full-width rows left a desert of empty space between
+            claim and button on desktop. min(300px, 100%) guards ultra-narrow
+            containers from horizontal overflow. */}
+        {moves.length > 0 && (
           <div
-            key={m.key}
             style={{
-              display: 'flex',
-              gap: '0.6rem',
-              alignItems: 'center',
-              padding: '0.5rem 0.85rem',
-              borderBottom: i < moves.length - 1 ? '1px solid var(--border)' : 'none',
-              background: m.key === 'chase-90' ? 'var(--bg-red-tint)' : 'transparent',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
+              gap: '0.55rem',
+              padding: '0.6rem 0.85rem',
             }}
           >
-            <span aria-hidden style={{ fontSize: '0.95rem' }}>{m.icon}</span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: '0.83rem', fontWeight: 600 }}>{m.claim}</span>
-              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.why}</span>
-            </span>
-            <button
-              type="button"
-              onClick={moveAction[m.key]}
-              style={{
-                height: 26,
-                padding: '0 0.65rem',
-                border: '1px solid var(--border-400)',
-                borderRadius: 9999,
-                background: 'var(--surface)',
-                color: 'var(--text-blue-700)',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {m.actionLabel}
-            </button>
+            {moves.map((m) => (
+              <div
+                key={m.key}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.3rem',
+                  minWidth: 0,
+                  padding: '0.55rem 0.7rem',
+                  border: '1px solid var(--border)',
+                  borderLeft: m.key === 'chase-90' ? '3px solid var(--text-red-600)' : '1px solid var(--border)',
+                  borderRadius: 8,
+                  background: m.key === 'chase-90' ? 'var(--bg-red-tint)' : 'var(--surface)',
+                }}
+              >
+                <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                  <span aria-hidden style={{ fontSize: '0.95rem' }}>{m.icon}</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>{m.claim}</span>
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>{m.why}</span>
+                <button
+                  type="button"
+                  onClick={moveAction[m.key]}
+                  style={{
+                    alignSelf: 'flex-end',
+                    height: 26,
+                    padding: '0 0.65rem',
+                    border: '1px solid var(--border-400)',
+                    borderRadius: 9999,
+                    background: 'var(--surface)',
+                    color: 'var(--text-blue-700)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {m.actionLabel}
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
         {fixups.length > 0 && (
           <div
             style={{
