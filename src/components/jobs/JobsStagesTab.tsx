@@ -2596,16 +2596,30 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               canSeeCharts={authRole === 'dev' || authRole === 'controller'}
               canSeeCollected={authRole === 'dev' || authRole === 'master_technician'}
               arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
-              onOpenCapable={() => setCapableToBillModalOpen(true)}
-              onOpenBilledBreakdown={() => setBilledBreakdownOpen(true)}
+              // Money-move buttons clear a live search first (v2.1960, owner
+              // request) — a leftover query would narrow the very list each
+              // button promises to show.
+              onOpenCapable={() => {
+                setStagesSearchQuery('')
+                setCapableToBillModalOpen(true)
+              }}
+              onOpenBilledBreakdown={() => {
+                setStagesSearchQuery('')
+                setBilledBreakdownOpen(true)
+              }}
               onOpenProfitChart={() => setPaidProfitChartOpen(true)}
-              onOpenAr={() => setBankPaymentsModalOpen(true)}
+              onOpenAr={() => {
+                setStagesSearchQuery('')
+                setBankPaymentsModalOpen(true)
+              }}
               onFocusSection={focusStagesSection}
               onChase90={() => {
+                setStagesSearchQuery('')
                 setBilledAgingFilter('90')
                 focusStagesSection('billed')
               }}
               onFixDates={() => {
+                setStagesSearchQuery('')
                 setBilledAgingFilter('no_line')
                 focusStagesSection('billed')
               }}
@@ -3606,7 +3620,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </div>
                 </div>
                 {billedAgingFilter && (
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status">
+                  // Filter-active banner (v2.1960, owner request): a full-width
+                  // centered orange bar so a narrowed list can't read as the
+                  // whole section. Saturated status orange stays literal.
+                  <p
+                    role="status"
+                    style={{
+                      margin: '0 0 0.5rem',
+                      padding: '0.45rem 1rem',
+                      width: '100%',
+                      textAlign: 'center',
+                      background: '#f59e0b',
+                      color: 'var(--text-on-amber-solid)',
+                      borderRadius: 8,
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                    }}
+                  >
                     {billedAgingFilter === 'no_line'
                       ? 'Showing only jobs with no bill line — Bill Customer or Edit Job creates the line their money should ride on'
                       : `Showing only ${billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows`}{' '}
@@ -3616,7 +3646,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         <button
                           type="button"
                           onClick={() => setFixBillLinesOpen(true)}
-                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: 'inherit', fontWeight: 600 }}
+                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontSize: 'inherit', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '2px' }}
                         >
                           Fix bill lines…
                         </button>
@@ -3626,7 +3656,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <button
                       type="button"
                       onClick={() => setBilledAgingFilter(null)}
-                      style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: 'inherit' }}
+                      style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontSize: 'inherit', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: '2px' }}
                     >
                       Show all
                     </button>
