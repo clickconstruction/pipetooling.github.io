@@ -9,7 +9,7 @@
  * their payouts move it). Also home of partnerStubsToJournal — the partner's
  * "Full ledger" journal built from the same payload.
  */
-import { buildPartnerJournal, type JournalRow } from './partnerLedgerJournal'
+import { POSITIVE_OFFSET_TYPES, buildPartnerJournal, pendingOffsetSignedAmount, type JournalRow } from './partnerLedgerJournal'
 
 export type PartnerSummary = {
   exists: boolean
@@ -46,8 +46,17 @@ export type PartnerLedgerStub = {
   partner_ack_at: string | null
   day_rates: { rate: number; hours: number; amount: number }[]
   additional: { description: string; amount: number }[]
-  deductions: { description: string; amount: number }[]
+  deductions: { description: string; amount: number; person_offset_id?: string | null }[]
   payments: { amount: number; paid_at: string; memo: string | null }[]
+}
+
+/** One person_offsets row from the ledger payload — the partner's own charges/credits. */
+export type PartnerLedgerOffset = {
+  id: string
+  type: string
+  amount: number
+  occurred_date: string
+  description: string | null
 }
 
 export type WeekCardLine = { label: string; sub?: string; amount: number | null; cls: 'pos' | 'neg' | 'zero' }
@@ -68,11 +77,21 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
 /**
- * The partner's "Full ledger": shape the RPC stub payload into the same dated
- * journal (with running balance) the office Ledger tab shows — posted rows
- * only, wage-free by construction since it is all the partner's own money.
+ * The partner's "Full ledger": shape the RPC payload into the same dated
+ * journal (with running balance) the office Ledger tab shows — wage-free by
+ * construction since it is all the partner's own money. Charges-at-date:
+ * charge-type offsets (back-charges, damages, utility overages) book at their
+ * occurred_date whether or not a statement has attached them; statement
+ * deductions that mirror one of those offsets are skipped so nothing counts
+ * twice. Deductions from positive-type offsets and manual deductions keep
+ * booking on the statement week.
  */
-export function partnerStubsToJournal(stubs: PartnerLedgerStub[]): { rows: JournalRow[]; balance: number } {
+export function partnerStubsToJournal(
+  stubs: PartnerLedgerStub[],
+  offsets: PartnerLedgerOffset[] = [],
+): { rows: JournalRow[]; balance: number } {
+  const chargeOffsets = offsets.filter((o) => !POSITIVE_OFFSET_TYPES.has(o.type))
+  const chargeOffsetIds = new Set(chargeOffsets.map((o) => o.id))
   return buildPartnerJournal({
     stubs: stubs.map((s) => ({
       id: s.id,
@@ -82,9 +101,38 @@ export function partnerStubsToJournal(stubs: PartnerLedgerStub[]): { rows: Journ
       gross_pay: s.gross_pay,
     })),
     additional: stubs.flatMap((s) => s.additional.map((a) => ({ pay_stub_id: s.id, description: a.description, line_total: a.amount }))),
-    deductions: stubs.flatMap((s) => s.deductions.map((d) => ({ pay_stub_id: s.id, description: d.description, amount: d.amount }))),
+    deductions: stubs.flatMap((s) =>
+      s.deductions
+        .filter((d) => d.person_offset_id == null || !chargeOffsetIds.has(d.person_offset_id))
+        .map((d) => ({ pay_stub_id: s.id, description: d.description, amount: d.amount })),
+    ),
     payments: stubs.flatMap((s) => s.payments.map((p) => ({ pay_stub_id: s.id, amount: p.amount, paid_at: p.paid_at, memo: p.memo }))),
+    charges: chargeOffsets.map((o) => ({
+      date: o.occurred_date,
+      label: o.description || o.type,
+      amount: pendingOffsetSignedAmount(o),
+    })),
   })
+}
+
+export function parsePartnerLedgerOffsets(payload: unknown): PartnerLedgerOffset[] {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return []
+  const o = payload as Record<string, unknown>
+  if (o.exists !== true || !Array.isArray(o.offsets)) return []
+  const out: PartnerLedgerOffset[] = []
+  for (const raw of o.offsets) {
+    if (!raw || typeof raw !== 'object') continue
+    const r = raw as Record<string, unknown>
+    if (typeof r.id !== 'string') continue
+    out.push({
+      id: r.id,
+      type: String(r.type ?? ''),
+      amount: num(r.amount),
+      occurred_date: String(r.occurred_date ?? ''),
+      description: typeof r.description === 'string' ? r.description : null,
+    })
+  }
+  return out
 }
 
 export function parsePartnerSummary(payload: unknown): PartnerSummary | null {
@@ -153,7 +201,11 @@ export function parsePartnerLedgerStubs(payload: unknown): PartnerLedgerStub[] {
         ? (s.additional as Record<string, unknown>[]).map((a) => ({ description: String(a.description ?? ''), amount: num(a.amount) }))
         : [],
       deductions: Array.isArray(s.deductions)
-        ? (s.deductions as Record<string, unknown>[]).map((d) => ({ description: String(d.description ?? ''), amount: num(d.amount) }))
+        ? (s.deductions as Record<string, unknown>[]).map((d) => ({
+            description: String(d.description ?? ''),
+            amount: num(d.amount),
+            person_offset_id: typeof d.person_offset_id === 'string' ? d.person_offset_id : null,
+          }))
         : [],
       payments: Array.isArray(s.payments)
         ? (s.payments as Record<string, unknown>[]).map((p) => ({ amount: num(p.amount), paid_at: String(p.paid_at ?? ''), memo: typeof p.memo === 'string' ? p.memo : null }))

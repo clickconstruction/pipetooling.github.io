@@ -4,6 +4,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { netPosition, type JournalRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import {
   buildWeekCards,
+  parsePartnerLedgerOffsets,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
   partnerStubsToJournal,
@@ -84,7 +85,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         ? await supabase.rpc('get_partner_ledger_as', { p_partnership_id: asPartnershipId, p_weeks: 520 })
         : await supabase.rpc('get_my_partner_ledger', { p_weeks: 520 })
       const stubs = res.error ? [] : parsePartnerLedgerStubs(res.data)
-      setFullRows(partnerStubsToJournal(stubs).rows)
+      const offsets = res.error ? [] : parsePartnerLedgerOffsets(res.data)
+      setFullRows(partnerStubsToJournal(stubs, offsets).rows)
       setFullLoading(false)
     }
   }
@@ -267,8 +269,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
                 </tbody>
               </table>
               <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
-                Every statement posting and payout, newest first. Charges reach this ledger through your weekly
-                statements.
+                Every posting, payout, and charge, newest first — charges count on the date they happened; your weekly
+                statements list them as the paper record.
               </p>
             </div>
           )

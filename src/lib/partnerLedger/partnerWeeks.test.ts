@@ -3,6 +3,7 @@ import {
   buildWeekCards,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
+  parsePartnerLedgerOffsets,
   partnerStubsToJournal,
   type PartnerLedgerStub,
   type PartnerSummary,
@@ -132,5 +133,53 @@ describe('partnerStubsToJournal', () => {
 
   it('handles the empty payload', () => {
     expect(partnerStubsToJournal([])).toEqual({ rows: [], balance: 0 })
+  })
+
+  it('books charge offsets at their date and skips the mirroring statement deduction', () => {
+    const s = stub({
+      deductions: [
+        { description: 'Back-charge — return trip', amount: 150, person_offset_id: 'off1' },
+        { description: 'Manual deduction', amount: 20, person_offset_id: null },
+      ],
+    })
+    const offsets = [
+      { id: 'off1', type: 'backcharge', amount: 150, occurred_date: '2026-08-01', description: 'Back-charge — return trip' },
+      { id: 'off2', type: 'damage', amount: 60, occurred_date: '2026-08-20', description: 'Broken glass' },
+    ]
+    const { rows, balance } = partnerStubsToJournal([s], offsets)
+    const labels = rows.map((r) => [r.date, r.label])
+    expect(labels).toContainEqual(['2026-08-01', 'Back-charge — return trip'])
+    expect(labels).toContainEqual(['2026-08-20', 'Broken glass'])
+    // mirrored deduction excluded; manual one stays on the statement week
+    expect(rows.filter((r) => r.label === 'Back-charge — return trip')).toHaveLength(1)
+    expect(labels).toContainEqual(['2026-08-15', 'Manual deduction'])
+    // 1755 + 1051.05 − 20 − 1625 − 150 − 60
+    expect(balance).toBe(951.05)
+  })
+
+  it('positive-type offset deductions (reversals) keep booking on the statement week', () => {
+    const s = stub({
+      additional: [],
+      payments: [],
+      deductions: [{ description: 'Reversal — Job 781', amount: 100, person_offset_id: 'rev1' }],
+    })
+    const offsets = [{ id: 'rev1', type: 'profit_share', amount: -100, occurred_date: '2026-08-10', description: 'Reversal — Job 781' }]
+    const { rows } = partnerStubsToJournal([s], offsets)
+    expect(rows.map((r) => [r.date, r.kind])).toEqual([
+      ['2026-08-15', 'labor'],
+      ['2026-08-15', 'deduction'],
+    ])
+  })
+})
+
+describe('parsePartnerLedgerOffsets', () => {
+  it('parses defensively and returns [] for old payloads', () => {
+    expect(parsePartnerLedgerOffsets({ exists: true, stubs: [] })).toEqual([])
+    const out = parsePartnerLedgerOffsets({
+      exists: true,
+      offsets: [{ id: 'o1', type: 'backcharge', amount: '49.79', occurred_date: '2026-05-23', description: null }, { bad: true }],
+    })
+    expect(out).toHaveLength(1)
+    expect(out[0]?.amount).toBe(49.79)
   })
 })
