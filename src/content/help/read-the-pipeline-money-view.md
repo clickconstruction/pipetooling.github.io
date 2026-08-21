@@ -25,7 +25,13 @@ Below the cards, the system writes your to-do list from the live numbers — eac
 **65 billed jobs have no bill line** → {{button:outline-blue|Show them}} (opens Billed filtered to just those rows) — money on no bill line can't age, be chased, or be forecast
 :::
 
-The no-bill-line rows are also always reachable from the Billed header's {{chip:gray|No line · 65 · $48k}} chip, next to the 30+/90+ aging chips. Each filtered row wears a {{chip:yellow|No bill line}} tag — the fix is creating the job's bill line ({{button:blue|Bill Customer}} or Edit Job), not just setting a date.
+The no-bill-line rows are also always reachable from the Billed header's {{chip:gray|No line · 65 · $48k}} chip, next to the 30+/90+ aging chips. Each filtered row wears a {{chip:yellow|No bill line}} tag — the fix is creating the job's bill line, not just setting a date.
+
+While that filter is on, {{button:outline-blue|Fix bill lines…}} opens the one-sitting repair (same idea as the customer classifier): every job listed biggest dollars first, each with a date input for when the bill *actually* went out. {{button:blue|Create line}} puts the full open amount on a backdated bill line, and the job immediately starts aging, chasing, and showing up in the payment forecast. Work down the list; the counter tracks "N of M fixed."
+
+:::example Why the date matters
+A job billed in May that gets its line created today with a May date shows up instantly in the 90+ chip where it belongs — backdating keeps the aging honest instead of making 64 old bills look brand new.
+:::
 
 When there's nothing to do, the queue says so — an empty list means the pipeline is clean.
 
