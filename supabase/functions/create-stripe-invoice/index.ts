@@ -54,6 +54,14 @@ interface CreateStripeInvoiceBody {
    * numbers). Ignored unless within ±48h of server now; omit for `Date.now()`.
    */
   issued_at_ms?: number
+  /**
+   * Convert an already-BILLED non-Stripe line to a Stripe bill (v2.2045):
+   * relaxes the ready_to_bill gate for a billed row with no Stripe invoice
+   * and no payments applied. Everything else is the normal create path — the
+   * DB patch never writes billed_at (and the trigger COALESCEs), so the
+   * original billed date is preserved by construction.
+   */
+  convert_billed?: boolean
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -140,6 +148,7 @@ serve(async (req) => {
       line_description: lineDescriptionRaw,
       stripe_mode: stripeModeRaw,
       issued_at_ms: issuedAtMsRaw,
+      convert_billed: convertBilledRaw,
     } = body
 
     const footerStr = typeof footerRaw === 'string' ? footerRaw : ''
@@ -235,7 +244,30 @@ serve(async (req) => {
     }
 
     if (invRow.status !== 'ready_to_bill') {
-      return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
+      if (convertBilledRaw !== true || invRow.status !== 'billed') {
+        return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
+      }
+      // Conversion path (v2.2045): a billed line recorded outside Stripe gets
+      // the real hosted invoice. Rows with a Stripe id but no hosted URL are
+      // half-created — never double-create on top of one.
+      if (invRow.stripe_invoice_id) {
+        return jsonResponse({ error: 'This bill is already backed by a Stripe invoice.' }, 400)
+      }
+      // Stripe would demand the full amount from a customer who already paid
+      // part of it outside — block until payments are unlinked.
+      const { count: paymentCount, error: payErr } = await userClient
+        .from('jobs_ledger_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('invoice_id', invRow.id)
+      if (payErr) {
+        return jsonResponse({ error: 'Could not check payments on this bill — try again.' }, 400)
+      }
+      if ((paymentCount ?? 0) > 0) {
+        return jsonResponse(
+          { error: 'Payments are applied to this bill — unlink them before converting it to Stripe.' },
+          400,
+        )
+      }
     }
 
     const admin = createClient(supabaseUrl, serviceKey)

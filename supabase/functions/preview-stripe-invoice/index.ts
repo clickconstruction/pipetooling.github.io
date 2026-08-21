@@ -34,6 +34,8 @@ interface PreviewStripeInvoiceBody {
   /** Optional labeled add-on lines (hazmat fees / roll-ins) — mirrors create-stripe-invoice (v2.1034):
    * fixtures allocate to `amount_dollars − extras`, each extra renders as its own line. */
   extra_line_items?: Array<{ amount_cents: number; description: string }>
+  /** Preview a BILLED non-Stripe row for the convert flow (v2.2045) — mirrors create-stripe-invoice. */
+  convert_billed?: boolean
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -93,6 +95,7 @@ serve(async (req) => {
       due_date,
       line_description: lineDescriptionRaw,
       stripe_mode: stripeModeRaw,
+      convert_billed: convertBilledRaw,
     } = body
 
     if (
@@ -129,7 +132,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, bill_to_name, bill_to_email, bill_to_stripe_customer_id')
+      .select('id, job_id, amount, status, stripe_invoice_id, bill_to_name, bill_to_email, bill_to_stripe_customer_id')
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -138,7 +141,11 @@ serve(async (req) => {
     }
 
     if (invRow.status !== 'ready_to_bill') {
-      return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
+      // Convert flow (v2.2045): previewing a billed non-Stripe row is
+      // read-only — allow it; create-stripe-invoice enforces the real guards.
+      if (!(convertBilledRaw === true && invRow.status === 'billed' && !invRow.stripe_invoice_id)) {
+        return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
+      }
     }
 
     const admin = createClient(supabaseUrl, serviceKey)

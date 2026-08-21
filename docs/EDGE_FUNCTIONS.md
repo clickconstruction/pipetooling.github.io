@@ -2046,6 +2046,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.2045 — convert a billed non-Stripe line** (`convert_billed: true`): relaxes the ready_to_bill gate for a row already `billed` with no `stripe_invoice_id` and **zero payments applied** (checked via the caller's RLS client) — the one-button "Make Stripe bill" on Edit Job → Bill. `billed_at` is never written by this function (and the DB trigger COALESCEs), so the original billed date survives conversion by construction. Full flow: `docs/BILLING_FLOWS.md` → "Converting a non-Stripe bill to Stripe". Redeploy required.
+
 > **v2.1133 — segment invoices bill only their own line items**: the fixtures query now selects `invoice_id` and both this function and `preview-stripe-invoice` pass the rows through `scopeFixturesToInvoice` ([`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)): rows linked to the invoice when any exist (an invoice created from selected segments lists exactly those lines at their real amounts), else all rows (dollar break-off invoices keep the historical whole-job proration). Before this, a $454 change-order invoice rendered with every job stage on it, each carrying a prorated sliver. Client mirror: `src/lib/invoiceScopedFixtures.ts` (physical PDFs + previews + line-edit refs). Redeploy both functions.
 
 > **v2.1117 — per-mode customer ids (A4)**: the non-bill-to path reads/clears/persists the **mode-appropriate** `customers` column (`stripe_customer_id` for live, `stripe_customer_id_test` for test; helper `stripeCustomerIdColumnForMode`) — a cross-mode stale id no longer wipes the other mode's link. `preview-stripe-invoice` reads the same per-mode column. Redeploy both.
