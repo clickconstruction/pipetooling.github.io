@@ -608,7 +608,11 @@ export default function Partnerships() {
               </div>
 
               {lensOn ? (
-                <div style={{ marginTop: '0.75rem' }}>
+                // Muted ground behind the lens — the dashboard cards are white
+                // surfaces that vanish against this page's white detail card in
+                // light mode; this recreates the dashboard's page background so
+                // their borders read in both themes.
+                <div style={{ marginTop: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.1rem 0.85rem' }}>
                   <DashboardPartnerLedgerSection asPartnershipId={selected.id} />
                   <DashboardPartnerJobsSection asPartnershipId={selected.id} />
                 </div>
