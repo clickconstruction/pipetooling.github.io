@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       address_geocodes: {
@@ -356,6 +331,55 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_gc_recipients: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          bid_id: string
+          customer_id: string
+          id: string
+          source: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          bid_id: string
+          customer_id: string
+          id?: string
+          source?: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          bid_id?: string
+          customer_id?: string
+          id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_gc_recipients_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_gc_recipients_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_gc_recipients_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -2763,6 +2787,54 @@ export type Database = {
             columns: ["snoozed_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_links: {
+        Row: {
+          audience: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          revoked_at: string | null
+          token: string | null
+          token_hash: string | null
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_portal_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_portal_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -15160,6 +15232,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mint_customer_portal_link: {
+        Args: { p_audience?: string; p_customer_id: string; p_rotate?: boolean }
+        Returns: Json
+      }
       move_job_schedule_block_group: {
         Args: {
           p_job_id: string
@@ -15408,6 +15484,10 @@ export type Database = {
           error_message: string
           revoked_count: number
         }[]
+      }
+      revoke_customer_portal_link: {
+        Args: { p_audience?: string; p_customer_id: string }
+        Returns: Json
       }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
@@ -15978,9 +16058,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       estimate_status: [

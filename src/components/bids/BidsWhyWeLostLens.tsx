@@ -20,7 +20,7 @@ import {
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
-import { expandLensBidByRecipients, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
+import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
@@ -358,6 +358,21 @@ export function BidsWhyWeLostLens({
               </span>
             </div>
 
+            {looksLikeCombinedGcName(selectedGroup.builderName) ? (
+              <p
+                style={{
+                  margin: '0 0 0.6rem',
+                  padding: '0.4rem 0.6rem',
+                  borderRadius: 6,
+                  background: 'var(--bg-amber-100)',
+                  color: 'var(--text-amber-800)',
+                  fontSize: '0.8125rem',
+                }}
+              >
+                {'⚠'} This looks like a combined-GC name from before recipients existed. Open <strong>Edit Bid</strong>, set the real
+                primary GC, and add the others under <strong>Also sent to</strong> — then each real GC gets its own queue entry.
+              </p>
+            ) : null}
             <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="This builder's lost bids">
               {selectedBids.map((b) => {
                 const done = isBidLossCategoryKey(b.category)

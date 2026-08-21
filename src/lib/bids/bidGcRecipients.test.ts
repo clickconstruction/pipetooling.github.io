@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { expandLensBidByRecipients, type BidGcRecipient } from './bidGcRecipients'
+import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipient } from './bidGcRecipients'
 
 const structura: BidGcRecipient = { customerId: 'gc-structura', name: 'Structura', phone: '512-555-0100' }
 const joeris: BidGcRecipient = { customerId: 'gc-joeris', name: 'Joeris', phone: null }
@@ -33,5 +33,21 @@ describe('expandLensBidByRecipients', () => {
     const rich = { ...entry, value: 5, category: null }
     const out = expandLensBidByRecipients(rich, [structura])
     expect(out[1]).toMatchObject({ value: 5, category: null })
+  })
+})
+
+describe('looksLikeCombinedGcName', () => {
+  it('flags the known combined-name shapes', () => {
+    expect(looksLikeCombinedGcName("Multiple GC's")).toBe(true)
+    expect(looksLikeCombinedGcName('Multiple GCs')).toBe(true)
+    expect(looksLikeCombinedGcName('Banyan Construction / 20 Twenty Construction / Fairbanks')).toBe(true)
+  })
+
+  it('leaves real company names alone', () => {
+    expect(looksLikeCombinedGcName('H & I Construction')).toBe(false)
+    expect(looksLikeCombinedGcName('RMC- Dudley Mason')).toBe(false)
+    expect(looksLikeCombinedGcName('H&I Construction')).toBe(false)
+    expect(looksLikeCombinedGcName('')).toBe(false)
+    expect(looksLikeCombinedGcName(null)).toBe(false)
   })
 })
