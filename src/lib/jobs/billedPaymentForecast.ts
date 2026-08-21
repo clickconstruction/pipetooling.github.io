@@ -5,6 +5,7 @@ import {
   billedExpectedPayModel,
   daysBetweenYmd,
   formatYmdMonthDay,
+  type CustomerSegment,
   type ExpectedPayModel,
   type PaySpeedData,
   type PromisedPayDate,
@@ -28,6 +29,8 @@ export type ForecastRow = {
   /** "964 PLUM · Pondhill demo" */
   label: string
   customerName: string | null
+  /** The customer's Res/Comm classification (customers.customer_type via the pay-speeds RPC). */
+  segment: CustomerSegment | null
   /** Open dollars on the row (the header chips' sum rule). */
   open: number
   /** Null only in the 'unknown' bucket (no reference date or no pay-speed data). */
@@ -130,6 +133,7 @@ export function buildBilledPaymentForecast(
       jobId: job.id,
       label: name ? `${number} · ${name}` : number,
       customerName: (job.customer_name ?? '').trim() || null,
+      segment: (job.customer_id && paySpeeds?.customerTypes[job.customer_id]) || null,
       open,
       model,
     }

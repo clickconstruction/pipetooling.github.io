@@ -39,6 +39,8 @@ The {{button:outline|Payment forecast}} button on the Billed Awaiting Payment he
 
 Bills whose customers have no measurable history sit in **No pay history** at the end, so no money ever hides from the total.
 
+The **Pay speeds** strip under the buckets gives the averages at a glance: the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} averages, each with how many payments it's based on. Every row also wears its customer's Res/Comm tag — commercial GCs usually pay on check runs while homeowners pay on the spot, so the same "late by 10 days" reads very differently between the two.
+
 ## Where the speed number comes from
 
 It's the same "pays in ~N days" stat the customer profile shows: only payments that are linked to a billed invoice count (a payment with no bill date can't be measured), and only the last 12 months, so a customer who cleaned up their act isn't haunted by old habits.

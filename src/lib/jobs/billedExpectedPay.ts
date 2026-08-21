@@ -16,9 +16,15 @@
 
 export type PaySpeedStat = { medianDays: number; samples: number }
 
+export type CustomerSegment = 'residential' | 'commercial'
+
 export type PaySpeedData = {
   company: PaySpeedStat | null
   customers: Record<string, PaySpeedStat>
+  /** Residential/commercial medians over the same samples (v2 RPC; null pre-v2 or when a segment has no samples). */
+  segments: { residential: PaySpeedStat | null; commercial: PaySpeedStat | null }
+  /** Every typed customer's classification (v2 RPC) — forecast rows wear the Res/Comm tag from this. */
+  customerTypes: Record<string, CustomerSegment>
 }
 
 /** Below this many samples a customer's own median is ignored for the company fallback. */
@@ -33,7 +39,7 @@ function asStat(v: unknown): PaySpeedStat | null {
   return { medianDays: Math.max(0, Math.round(m)), samples: Math.round(s) }
 }
 
-/** Defensive parse of the RPC's jsonb (null on gate-refused or malformed payloads). */
+/** Defensive parse of the RPC's jsonb (null on gate-refused or malformed payloads; v1 payloads get empty segments/types). */
 export function parsePaySpeedsRpc(raw: unknown): PaySpeedData | null {
   if (raw == null || typeof raw !== 'object') return null
   const company = asStat((raw as { company?: unknown }).company)
@@ -45,7 +51,25 @@ export function parsePaySpeedsRpc(raw: unknown): PaySpeedData | null {
       if (stat) customers[id] = stat
     }
   }
-  return { company, customers }
+  const segmentsRaw = (raw as { segments?: unknown }).segments
+  const segments = {
+    residential:
+      segmentsRaw != null && typeof segmentsRaw === 'object'
+        ? asStat((segmentsRaw as { residential?: unknown }).residential)
+        : null,
+    commercial:
+      segmentsRaw != null && typeof segmentsRaw === 'object'
+        ? asStat((segmentsRaw as { commercial?: unknown }).commercial)
+        : null,
+  }
+  const typesRaw = (raw as { customerTypes?: unknown }).customerTypes
+  const customerTypes: Record<string, CustomerSegment> = {}
+  if (typesRaw != null && typeof typesRaw === 'object') {
+    for (const [id, v] of Object.entries(typesRaw as Record<string, unknown>)) {
+      if (v === 'residential' || v === 'commercial') customerTypes[id] = v
+    }
+  }
+  return { company, customers, segments, customerTypes }
 }
 
 /** A customer-promised payment date on a job (list_job_promised_pay_dates). */
