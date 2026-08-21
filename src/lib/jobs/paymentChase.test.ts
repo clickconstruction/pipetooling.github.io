@@ -3,6 +3,7 @@ import {
   BROKEN_PROMISE_GRACE_DAYS,
   buildPaymentChaseQueue,
   parseChaseTouchesRpc,
+  resolvePromiseDates,
   summarizePaymentChase,
   type ChaseTouch,
 } from './paymentChase'
@@ -181,6 +182,64 @@ describe('buildPaymentChaseQueue', () => {
       TODAY,
     )
     expect(q.due[0]?.brokenPromiseTouches).toBe(2)
+  })
+})
+
+describe('resolvePromiseDates', () => {
+  const bills = [
+    { invoiceId: 'i1', jobId: 'j1', billedYmd: '2026-07-31' },
+    { invoiceId: 'i2', jobId: 'j2', billedYmd: '2026-07-24' },
+    { invoiceId: 'i3', jobId: 'j3', billedYmd: '2026-08-09' },
+  ]
+
+  it("mode 'date': the named date lands on every bill", () => {
+    const r = resolvePromiseDates({ mode: 'date', ymd: '2026-08-28', bills, todayYmd: TODAY })!
+    expect(r.uniqueYmds).toEqual(['2026-08-28'])
+    expect(r.byJob.get('j2')).toBe('2026-08-28')
+  })
+
+  it("mode 'today': today + N, same for every bill", () => {
+    const r = resolvePromiseDates({ mode: 'today', days: 14, bills, todayYmd: TODAY })!
+    expect(r.uniqueYmds).toEqual(['2026-09-04'])
+  })
+
+  it("mode 'billed': each bill's own bill date + N — dates diverge honestly", () => {
+    const r = resolvePromiseDates({ mode: 'billed', days: 45, bills, todayYmd: TODAY })!
+    expect(r.byInvoice.get('i1')).toBe('2026-09-14')
+    expect(r.byInvoice.get('i2')).toBe('2026-09-07')
+    expect(r.byInvoice.get('i3')).toBe('2026-09-23')
+    expect(r.uniqueYmds).toEqual(['2026-09-07', '2026-09-14', '2026-09-23'])
+  })
+
+  it("mode 'billed': a bill with no bill date falls back to today + N instead of dropping", () => {
+    const r = resolvePromiseDates({
+      mode: 'billed',
+      days: 30,
+      bills: [{ invoiceId: 'ix', jobId: 'jx', billedYmd: null }],
+      todayYmd: TODAY,
+    })!
+    expect(r.byInvoice.get('ix')).toBe('2026-09-20')
+  })
+
+  it('two bills on one job → the job takes the EARLIEST resolved date', () => {
+    const r = resolvePromiseDates({
+      mode: 'billed',
+      days: 30,
+      bills: [
+        { invoiceId: 'a', jobId: 'j1', billedYmd: '2026-08-01' },
+        { invoiceId: 'b', jobId: 'j1', billedYmd: '2026-07-01' },
+      ],
+      todayYmd: TODAY,
+    })!
+    expect(r.byJob.get('j1')).toBe('2026-07-31')
+    expect(r.byInvoice.get('a')).toBe('2026-08-31')
+  })
+
+  it('incomplete input resolves to null (no date, zero/negative days, no bills)', () => {
+    expect(resolvePromiseDates({ mode: 'date', ymd: '', bills, todayYmd: TODAY })).toBeNull()
+    expect(resolvePromiseDates({ mode: 'today', days: 0, bills, todayYmd: TODAY })).toBeNull()
+    expect(resolvePromiseDates({ mode: 'billed', days: null, bills, todayYmd: TODAY })).toBeNull()
+    expect(resolvePromiseDates({ mode: 'today', days: 14, bills: [], todayYmd: TODAY })).toBeNull()
   })
 })
 

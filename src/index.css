@@ -177,6 +177,9 @@ button:focus-visible {
   --text-red-700: #b91c1c;
   --text-red-800: #991b1b;
   --text-green-600: #059669;
+  /* v2.2044: ten files already referenced this token before it existed —
+     texts silently inherited and backgrounds went transparent. */
+  --text-green-700: #15803d;
   --text-amber-700: #b45309;
   --text-amber-800: #92400e;
   --text-amber-900: #78350f;
@@ -282,6 +285,7 @@ button:focus-visible {
   --text-red-700: #f87171;
   --text-red-800: #fca5a5;
   --text-green-600: #34d399;
+  --text-green-700: #4ade80;
   --text-amber-700: #fbbf24;
   --text-amber-800: #fcd34d;
   --text-amber-900: #fcd34d;
