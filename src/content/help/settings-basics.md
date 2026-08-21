@@ -51,7 +51,7 @@ Under **Dashboard & alerts → Report notifications** (office roles), pick which
 
 ## Pinned pages
 
-Pages you pin appear in a quick bar for fast navigation, and pins sync across your devices. Manage (remove/clear) your pins from Settings.
+Pages you pin appear in a quick bar for fast navigation, and pins sync across your devices. Manage (remove/clear) your pins from Settings. The pin footer at the bottom of pages only shows while **Pin Mode** is on (gear menu) — see the "How do I turn on Pin Mode to pin pages?" guide.
 
 **Pin a specific bid**: with a bid open on any Bids tab (say BP352 on Pricing), the {{button:outline|Pin bid}} button at the bottom of the page pins *that bid's tab* — the Dashboard chip reads like **BP352 · pricing** and takes you straight back to the exact bid. Pin as many bids as you like; unpin from the same button (or Settings) when you're done with one.
 

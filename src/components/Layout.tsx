@@ -52,6 +52,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
   showEstimatorInboxButton,
   showHeaderTaskChecklistButton,
@@ -121,6 +122,9 @@ export default function Layout() {
   // shells while on; their toggles keep their stored state for when it's off.
   const [farmModeEnabled, setFarmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
   const farmModeActive = farmModeEnabled && !!authUser?.id
+  // Pin Mode (v2.1972): whether the page-bottom pin footer renders. Existing
+  // pins (Dashboard quick bar, Settings management) work regardless.
+  const [pinModeEnabled, setPinModeEnabled] = usePinModeEnabled(authUser?.id ?? null)
   // Assistants and masters get Dispatch Mode ON by default (until they explicitly turn it off).
   const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(
     authUser?.id ?? null,
@@ -1344,6 +1348,55 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
+                {authUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinModeEnabled(!pinModeEnabled)
+                      setGearOpen(false)
+                    }}
+                    title={pinModeEnabled ? 'Turn Pin Mode off' : 'Turn Pin Mode on — show the pin footer on pages'}
+                    aria-label="Toggle Pin Mode"
+                    aria-pressed={pinModeEnabled}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: pinModeEnabled ? 600 : 400,
+                    }}
+                  >
+                    <span>Pin Mode</span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: pinModeEnabled ? '#6366f1' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {pinModeEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setThemeOverride(theme === 'dark' ? 'light' : 'dark')}
@@ -1725,7 +1778,7 @@ export default function Layout() {
             </Suspense>
           </RouteChunkBoundary>
         </div>
-        {authUser?.id && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
+        {authUser?.id && pinModeEnabled && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
           <div
             style={{
               padding: '0.5rem 1rem',
