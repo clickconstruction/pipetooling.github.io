@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeStageOrderUpdates, stageNumbersByGroupId } from './roadmapStageNumbers'
+import { computeStageOrderUpdates, computeTaskOrderUpdates, stageNumbersByGroupId, taskNumbersByTaskId } from './roadmapStageNumbers'
 
 describe('stageNumbersByGroupId', () => {
   it('numbers stages 1..N in list order', () => {
@@ -11,6 +11,60 @@ describe('stageNumbersByGroupId', () => {
   })
   it('empty list -> empty map', () => {
     expect(stageNumbersByGroupId([]).size).toBe(0)
+  })
+})
+
+describe('taskNumbersByTaskId', () => {
+  const stageNumbers = new Map([
+    ['g1', 1],
+    ['g2', 2],
+  ])
+  it('numbers tasks N.M within their stage', () => {
+    const m = taskNumbersByTaskId(
+      stageNumbers,
+      new Map([
+        ['g1', [{ id: 'a' }, { id: 'b' }]],
+        ['g2', [{ id: 'c' }]],
+      ]),
+    )
+    expect(m.get('a')).toBe('1.1')
+    expect(m.get('b')).toBe('1.2')
+    expect(m.get('c')).toBe('2.1')
+  })
+  it('skips tasks in groups without a stage number', () => {
+    const m = taskNumbersByTaskId(stageNumbers, new Map([['ghost', [{ id: 'x' }]]]))
+    expect(m.size).toBe(0)
+  })
+})
+
+describe('computeTaskOrderUpdates', () => {
+  const tasks = [
+    { id: 'a', group_id: 'g1', sort_index: 1 },
+    { id: 'b', group_id: 'g1', sort_index: 2 },
+    { id: 'c', group_id: 'g1', sort_index: 3 },
+    { id: 'd', group_id: 'g2', sort_index: 1 },
+  ]
+  it('unchanged orders -> no updates', () => {
+    expect(
+      computeTaskOrderUpdates(
+        new Map([
+          ['g1', ['a', 'b', 'c']],
+          ['g2', ['d']],
+        ]),
+        tasks,
+      ),
+    ).toEqual([])
+  })
+  it('within-group move updates only the shifted rows', () => {
+    expect(computeTaskOrderUpdates(new Map([['g1', ['b', 'a', 'c']]]), tasks)).toEqual([
+      { id: 'b', sort_index: 1 },
+      { id: 'a', sort_index: 2 },
+    ])
+  })
+  it('skips deleted ids and group mismatches', () => {
+    expect(computeTaskOrderUpdates(new Map([['g1', ['ghost', 'd', 'a']]]), tasks)).toEqual([
+      { id: 'a', sort_index: 3 },
+    ])
   })
 })
 
