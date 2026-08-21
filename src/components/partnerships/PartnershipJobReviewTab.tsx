@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import {
   isConfirmedForPartner,
   parseReviewQueue,
@@ -32,6 +33,7 @@ export function PartnershipJobReviewTab({
   const [rpcMissing, setRpcMissing] = useState(false)
   const [busyJobId, setBusyJobId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const jobFormModal = useJobFormModal()
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('get_partner_job_review_queue', {
@@ -109,8 +111,24 @@ export function PartnershipJobReviewTab({
               key={r.job_id}
               style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}
             >
-              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+              <div
+                role={jobFormModal ? 'button' : undefined}
+                tabIndex={jobFormModal ? 0 : undefined}
+                aria-label={jobFormModal ? `Open job ${r.label}` : undefined}
+                onClick={jobFormModal ? () => jobFormModal.openEditJob(r.job_id, { onSaved: () => void load() }) : undefined}
+                onKeyDown={
+                  jobFormModal
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          jobFormModal.openEditJob(r.job_id, { onSaved: () => void load() })
+                        }
+                      }
+                    : undefined
+                }
+                style={{ flex: '1 1 240px', minWidth: 0, cursor: jobFormModal ? 'pointer' : undefined }}
+              >
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: jobFormModal ? 'var(--text-link)' : undefined }}>
                   #{r.label}
                   {r.job_name && r.job_name.trim() !== '' && r.job_name !== r.label ? ` — ${r.job_name}` : ''}
                 </div>
