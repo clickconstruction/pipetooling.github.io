@@ -23,6 +23,7 @@ import { BID_LOSS_CATEGORIES, type BidLossCategoryKey } from '../../lib/bidLossC
 import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
 import {
   type LedgerPrefixMap,
+  bidNumberMatchesQuery,
   formatBidLedgerNumberLabel,
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
@@ -109,6 +110,7 @@ export function BidsWaitingToHearLens({
   onOpenBuilderCard,
 }: BidsWaitingToHearLensProps) {
   const [windowKey, setWindowKey] = useState<PendingChaseWindowKey>(PENDING_CHASE_DEFAULT_WINDOW_KEY)
+  const [chaseSearchQuery, setChaseSearchQuery] = useState('')
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
@@ -162,11 +164,27 @@ export function BidsWaitingToHearLens({
     [allPendingLensBids, windowDays, nowIso],
   )
 
+  // Search narrows the queue (sidebar + bids), never the rollup headline —
+  // "N to chase" stays a status of the window, not of the query.
+  const searchedLensBids = useMemo(() => {
+    const q = chaseSearchQuery.trim().toLowerCase()
+    if (!q) return lensBids
+    return lensBids.filter(
+      (b) =>
+        b.project.toLowerCase().includes(q) ||
+        b.builderName.toLowerCase().includes(q) ||
+        b.label.toLowerCase().includes(q) ||
+        (b.address ?? '').toLowerCase().includes(q) ||
+        (b.estimatorName ?? '').toLowerCase().includes(q) ||
+        bidNumberMatchesQuery(b.raw, chaseSearchQuery, ledgerPrefixMap),
+    )
+  }, [lensBids, chaseSearchQuery, ledgerPrefixMap])
+
   // Per-GC copies: a bid sent to three GCs is three chances at a bid tab.
   // Contact stamps are per-bid, so a touch under any GC freshens every copy.
   const expandedLensBids = useMemo<RecipientExpanded<LensBid>[]>(
-    () => lensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
-    [lensBids, recipientsByBidId],
+    () => searchedLensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
+    [searchedLensBids, recipientsByBidId],
   )
 
   const groups = useMemo(() => groupPendingChaseByBuilder(expandedLensBids, nowIso), [expandedLensBids, nowIso])
@@ -354,6 +372,18 @@ export function BidsWaitingToHearLens({
             : 'Every recent sent bid has a fresh touch'}
         </span>
         {windowPills}
+        <input
+          type="text"
+          value={chaseSearchQuery}
+          onChange={(e) => {
+            setChaseSearchQuery(e.target.value)
+            setSelectedBuilderKey(null)
+            setSelectedBidId(null)
+          }}
+          placeholder="Search bids (bid #, project name, or GC/Builder)…"
+          aria-label="Search bids to chase"
+          style={{ flex: '1 1 14rem', minWidth: '12rem', maxWidth: '22rem', font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+        />
         {chasedThisSession > 0 ? (
           <span
             style={{
@@ -375,6 +405,10 @@ export function BidsWaitingToHearLens({
       {lensBids.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
           Nothing sent in the last {windowDays} days is still open — widen the window to see older pending bids.
+        </p>
+      ) : searchedLensBids.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+          No bids match “{chaseSearchQuery.trim()}” in this window — clear the search or widen the window.
         </p>
       ) : (
         <div
