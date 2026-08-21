@@ -407,6 +407,21 @@ export default function Bids() {
     checklistAddModal.openAddModal({ preset: { title, links: [url] } })
   }, [selectedBidForSubmission, checklistAddModal, authUser?.id, ledgerPrefixMap])
 
+  /**
+   * One-shot deep links (v2.2043): once a `?bidId=` jump has been applied
+   * (scroll + highlight), drop the param — so revisiting the tab, reloading,
+   * or clicking around never replays an old jump. The scroll happens exactly
+   * once, on the click that asked for it.
+   */
+  const consumeBidIdParam = useCallback(() => {
+    setSearchParams((p) => {
+      if (!p.has('bidId')) return p
+      const next = new URLSearchParams(p)
+      next.delete('bidId')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
   const applyBidBoardDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     bidBoardPendingScrollBidIdRef.current = null
     setActiveTab('bid-board')
@@ -434,7 +449,8 @@ export default function Bids() {
     window.setTimeout(() => {
       document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 150)
-  }, [])
+    consumeBidIdParam()
+  }, [consumeBidIdParam])
 
   const applySubmissionFollowupDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     submissionFollowupPendingDeepLinkBidIdRef.current = null
@@ -454,7 +470,8 @@ export default function Bids() {
     setTimeout(() => {
       submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 150)
-  }, [])
+    consumeBidIdParam()
+  }, [consumeBidIdParam])
 
   const [builderReviewDeepLinkHighlightCustomerId, setBuilderReviewDeepLinkHighlightCustomerId] = useState<string | null>(null)
   const [builderReviewDeepLinkHighlightGen, setBuilderReviewDeepLinkHighlightGen] = useState(0)
@@ -490,6 +507,8 @@ export default function Bids() {
     (bid: BidWithBuilder) => {
       builderReviewPendingDeepLinkBidIdRef.current = null
       setActiveTab('builder-review')
+      // Consume up front so the no-customer and already-applied branches never replay either.
+      consumeBidIdParam()
       if (builderReviewDeepLinkAppliedBidIdRef.current === bid.id) {
         return
       }
@@ -512,7 +531,7 @@ export default function Bids() {
       }, 2500)
       builderReviewDeepLinkAppliedBidIdRef.current = bid.id
     },
-    [showToast]
+    [showToast, consumeBidIdParam]
   )
 
   const [workingBoardDeepLinkBidId, setWorkingBoardDeepLinkBidId] = useState<string | null>(null)
@@ -1276,6 +1295,7 @@ export default function Bids() {
         return
       }
       workingBoardPendingDeepLinkBidIdRef.current = null
+      consumeBidIdParam()
       if (wBid.working_board_archived_at) {
         if (workingDeepLinkAppliedBidIdRef.current !== bidId) {
           showToast(
@@ -2317,6 +2337,9 @@ export default function Bids() {
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.set('tab', tab)
+      // Clicking a tab yourself means "take me to the page", never "replay my
+      // old deep-link jump" (v2.2043) — drop any lingering bidId.
+      next.delete('bidId')
       return next
     })
   }

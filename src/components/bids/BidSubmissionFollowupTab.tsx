@@ -9,6 +9,8 @@ import { loadJsPDF } from '../../lib/loadJsPDF'
 import { formatCompactNoteDateTime } from '../../utils/dateUtils'
 import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { BID_LOSS_CATEGORIES, isBidLossCategoryKey } from '../../lib/bidLossCategories'
+import { BidLostQuickPopover } from './BidLostQuickPopover'
 import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } from '../../lib/submissionFollowupStale'
 import { submissionFollowupBidShareUrl } from '../../lib/submissionFollowupBidShareUrl'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
@@ -111,6 +113,8 @@ export function BidSubmissionFollowupTab({
   const { showToast } = useToastContext()
 
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
+  /** Lost-table row whose quick reason panel is open (v2.2043). */
+  const [lostReasonPanelBidId, setLostReasonPanelBidId] = useState<string | null>(null)
   // Shared with the By-builder lens (v2.1387): both lenses read/persist the
   // same "stale after N days" value so they can never disagree.
   const [submissionFollowupStaleDaysInput, setSubmissionFollowupStaleDaysInput] = useState<string>(() => {
@@ -2078,7 +2082,10 @@ export function BidSubmissionFollowupTab({
             {submissionLost.length === 0 ? (
               <tr><td colSpan={4} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
             ) : (
-              submissionLost.map((bid) => (
+              submissionLost.flatMap((bid) => {
+                const lostCategory = isBidLossCategoryKey(bid.loss_category) ? bid.loss_category : null
+                const lostChip = BID_LOSS_CATEGORIES.find((c) => c.key === lostCategory) ?? null
+                return [
                 <tr
                   key={bid.id}
                   id={`submission-row-${bid.id}`}
@@ -2096,7 +2103,32 @@ export function BidSubmissionFollowupTab({
                       <span style={{ color: 'var(--text-muted)' }}>{` ${formatBidDueTime(bid.bid_due_time)}`}</span>
                     ) : null}
                   </td>
-                  <td style={{ padding: '0.75rem' }}>{(bid as { loss_reason?: string | null }).loss_reason?.trim() || '—'}</td>
+                  <td style={{ padding: '0.75rem' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {lostChip ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLostReasonPanelBidId((prev) => (prev === bid.id ? null : bid.id)) }}
+                          title="Change the loss reason"
+                          style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 700, padding: '0.08rem 0.5rem', borderRadius: 999, border: 'none', cursor: 'pointer', background: lostChip.chipBg, color: lostChip.chipFg, whiteSpace: 'nowrap' }}
+                        >
+                          {lostChip.label}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLostReasonPanelBidId((prev) => (prev === bid.id ? null : bid.id)) }}
+                          title="Record why this bid was lost"
+                          style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', whiteSpace: 'nowrap' }}
+                        >
+                          why? →
+                        </button>
+                      )}
+                      {(bid as { loss_reason?: string | null }).loss_reason?.trim() ? (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>“{(bid as { loss_reason?: string | null }).loss_reason?.trim()}”</span>
+                      ) : null}
+                    </span>
+                  </td>
                   <td style={{ padding: '0.75rem', width: 44 }}>
                     {selectedBid?.id === bid.id && (
                         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -2128,8 +2160,22 @@ export function BidSubmissionFollowupTab({
                         </div>
                     )}
                   </td>
-                </tr>
-              ))
+                </tr>,
+                ...(lostReasonPanelBidId === bid.id
+                  ? [
+                      <tr key={`${bid.id}-reason-panel`}>
+                        <td colSpan={4} style={{ padding: '0 0.75rem 0.5rem' }}>
+                          <BidLostQuickPopover
+                            bid={bid}
+                            onSaved={onReloadBids}
+                            onClose={() => setLostReasonPanelBidId(null)}
+                          />
+                        </td>
+                      </tr>,
+                    ]
+                  : []),
+                ]
+              })
             )}
           </tbody>
         </table>
