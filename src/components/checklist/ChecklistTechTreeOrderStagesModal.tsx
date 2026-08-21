@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -163,21 +163,34 @@ function OrderTaskRow({ id, label, title, done, disabled }: { id: string; label:
  * lists v2.1964): drag stage rows as before, expand a stage to drag its
  * tasks. Numbers renumber live — top stage is #1, its top task is #N.1.
  * Task moves stay within their stage; cross-stage moves live on the Map's
- * Edit-Tasks drag. Save persists both sort_index orders and every badge on
- * Map and Plan follows.
+ * Edit-Tasks drag. Autosave (v2.1996): every drop persists both sort_index
+ * orders immediately (serialized last-write-wins via refs) and every badge
+ * on Map and Plan follows — the footer is just Done.
  */
 export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSave, portalContainer }: Props) {
   const [orderIds, setOrderIds] = useState<string[]>([])
   const [taskOrders, setTaskOrders] = useState<Map<string, string[]>>(new Map())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [saving, setSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  // Latest orders + in-flight flag for the serialized autosave: a drag during
+  // a save marks pending, and the finishing save immediately runs another
+  // with whatever the refs hold — last write always wins, never interleaved.
+  const orderIdsRef = useRef<string[]>([])
+  const taskOrdersRef = useRef<Map<string, string[]>>(new Map())
+  const savingRef = useRef(false)
+  const pendingRef = useRef(false)
 
   useEffect(() => {
     if (open) {
-      setOrderIds(groups.map((g) => g.id))
-      setTaskOrders(new Map(groups.map((g) => [g.id, g.tasks.map((t) => t.id)])))
+      const ids = groups.map((g) => g.id)
+      const orders = new Map(groups.map((g) => [g.id, g.tasks.map((t) => t.id)]))
+      setOrderIds(ids)
+      setTaskOrders(orders)
+      orderIdsRef.current = ids
+      taskOrdersRef.current = orders
       setExpanded(new Set())
+      setSaveState('idle')
     }
     // re-seed only when (re)opened; mid-edit external reloads shouldn't stomp the drag
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,6 +203,27 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
     return m
   }, [groups])
 
+  const persist = useCallback(async () => {
+    if (savingRef.current) {
+      pendingRef.current = true
+      return
+    }
+    savingRef.current = true
+    setSaveState('saving')
+    let ok = false
+    try {
+      ok = await onSave(orderIdsRef.current, taskOrdersRef.current)
+    } finally {
+      savingRef.current = false
+      if (pendingRef.current) {
+        pendingRef.current = false
+        void persist()
+      } else {
+        setSaveState(ok ? 'saved' : 'error')
+      }
+    }
+  }, [onSave])
+
   if (!open) return null
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -198,12 +232,14 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
     const a = String(active.id)
     const o = String(over.id)
     if (a.startsWith('g:') && o.startsWith('g:')) {
-      setOrderIds((ids) => {
-        const from = ids.indexOf(stripDndId(a))
-        const to = ids.indexOf(stripDndId(o))
-        if (from < 0 || to < 0) return ids
-        return arrayMove(ids, from, to)
-      })
+      const ids = orderIdsRef.current
+      const from = ids.indexOf(stripDndId(a))
+      const to = ids.indexOf(stripDndId(o))
+      if (from < 0 || to < 0) return
+      const next = arrayMove(ids, from, to)
+      orderIdsRef.current = next
+      setOrderIds(next)
+      void persist()
       return
     }
     if (a.startsWith('t:') && o.startsWith('t:')) {
@@ -211,26 +247,15 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
       const oTask = taskById.get(stripDndId(o))
       if (!aTask || !oTask || aTask.groupId !== oTask.groupId) return
       const gid = aTask.groupId
-      setTaskOrders((prev) => {
-        const ids = prev.get(gid) ?? []
-        const from = ids.indexOf(stripDndId(a))
-        const to = ids.indexOf(stripDndId(o))
-        if (from < 0 || to < 0) return prev
-        const next = new Map(prev)
-        next.set(gid, arrayMove(ids, from, to))
-        return next
-      })
-    }
-  }
-
-  const handleSave = async () => {
-    if (saving) return
-    setSaving(true)
-    try {
-      const ok = await onSave(orderIds, taskOrders)
-      if (ok) onClose()
-    } finally {
-      setSaving(false)
+      const ids = taskOrdersRef.current.get(gid) ?? []
+      const from = ids.indexOf(stripDndId(a))
+      const to = ids.indexOf(stripDndId(o))
+      if (from < 0 || to < 0) return
+      const next = new Map(taskOrdersRef.current)
+      next.set(gid, arrayMove(ids, from, to))
+      taskOrdersRef.current = next
+      setTaskOrders(next)
+      void persist()
     }
   }
 
@@ -250,7 +275,7 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
         padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))',
       }}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !saving) onClose()
+        if (e.target === e.currentTarget) onClose()
       }}
     >
       <div
@@ -273,7 +298,7 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
           Order stages &amp; tasks
         </h2>
         <p style={{ margin: '0 0 1rem', fontSize: 12, color: 'var(--text-slate-500)' }}>
-          Drag to reorder — the top stage is #1, its top task is #1.1. Expand a stage (▸) to order its tasks.
+          Drag to reorder — changes save as you go. The top stage is #1, its top task is #1.1; expand a stage (▸) to order its tasks.
         </p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={orderIds.map(stageDndId)} strategy={verticalListSortingStrategy}>
@@ -301,7 +326,7 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
                             return next
                           })
                         }
-                        disabled={saving}
+                        disabled={false}
                       />
                     </ul>
                     {isOpen ? (
@@ -310,7 +335,7 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
                           {taskIds.map((tid, ti) => {
                             const t = taskById.get(tid)
                             if (!t) return null
-                            return <OrderTaskRow key={tid} id={tid} label={`${i + 1}.${ti + 1}`} title={t.title} done={t.done} disabled={saving} />
+                            return <OrderTaskRow key={tid} id={tid} label={`${i + 1}.${ti + 1}`} title={t.title} done={t.done} disabled={false} />
                           })}
                         </ul>
                       </SortableContext>
@@ -321,12 +346,18 @@ export function ChecklistTechTreeOrderStagesModal({ open, onClose, groups, onSav
             </ul>
           </SortableContext>
         </DndContext>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-          <button type="button" onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving…' : 'Save order'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            aria-live="polite"
+            style={{
+              fontSize: 12,
+              color: saveState === 'error' ? 'var(--text-red-700)' : saveState === 'saved' ? 'var(--text-green-600)' : 'var(--text-muted)',
+            }}
+          >
+            {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? '✓ Saved' : saveState === 'error' ? 'Couldn’t save — drag again to retry' : ''}
+          </span>
+          <button type="button" onClick={onClose} style={{ marginLeft: 'auto' }}>
+            Done
           </button>
         </div>
       </div>
