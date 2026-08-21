@@ -7,6 +7,8 @@ import {
   formatPortalUsd,
   parsePortalPayload,
   portalDaysSinceBilled,
+  PORTAL_TRADE_COLORS,
+  splitPortalAddress,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
@@ -199,7 +201,31 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
                   })()}
                 </span>
                 <span style={{ minWidth: 0 }}>
-                  <span style={{ fontWeight: 600 }}>{b.jobLabel}</span>
+                  {/* Trade-first job line (v2.2041): TRADE in its company color,
+                      number in ink, street on the headline; city drops to the
+                      quiet line. A job with no address falls back to its name. */}
+                  {(() => {
+                    const addr = splitPortalAddress(b.jobAddress)
+                    const headline = addr?.street ?? b.jobName ?? b.jobLabel
+                    return (
+                      <>
+                        {b.serviceTag && (
+                          <>
+                            <span style={{ fontWeight: 800, letterSpacing: '0.04em', color: PORTAL_TRADE_COLORS[b.serviceTag] }}>
+                              {b.serviceTag.toUpperCase()}
+                            </span>{' '}
+                          </>
+                        )}
+                        {b.jobNumber && (
+                          <>
+                            <span style={{ fontWeight: 700 }}>{b.jobNumber}</span>
+                            <span style={{ color: FAINT, padding: '0 2px' }}>&nbsp;•&nbsp;</span>
+                          </>
+                        )}
+                        <span style={{ fontWeight: 600 }}>{headline}</span>
+                      </>
+                    )
+                  })()}
                   {b.asGc && (
                     <span
                       style={{
@@ -219,16 +245,17 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
                       As GC
                     </span>
                   )}
-                  {(b.jobAddress || (b.asGc && b.ownerName)) && (
-                    <>
-                      <br />
-                      <span style={{ fontSize: 11.5, color: FAINT }}>
-                        {[b.jobAddress, b.asGc && b.ownerName ? `owner: ${b.ownerName}` : null]
-                          .filter(Boolean)
-                          .join(' — ')}
-                      </span>
-                    </>
-                  )}
+                  {(() => {
+                    const rest = splitPortalAddress(b.jobAddress)?.rest ?? null
+                    const owner = b.asGc && b.ownerName ? `owner: ${b.ownerName}` : null
+                    if (!rest && !owner) return null
+                    return (
+                      <>
+                        <br />
+                        <span style={{ fontSize: 11.5, color: FAINT }}>{[rest, owner].filter(Boolean).join(' — ')}</span>
+                      </>
+                    )
+                  })()}
                 </span>
                 <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(b.amount)}</span>
                 {b.payUrl ? (

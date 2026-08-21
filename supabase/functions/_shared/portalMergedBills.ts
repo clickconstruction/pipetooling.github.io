@@ -17,6 +17,8 @@ export type PortalJobRow = {
   status: string | null
   revenue: number | null
   payments_made: number | null
+  /** Embedded service type (`service_types:service_type_id(name)`), for the statement's trade tag. */
+  service_types?: { name: string | null } | null
   customer_id?: string | null
   gc_customer_id?: string | null
 }
@@ -36,6 +38,10 @@ export type PortalPaymentRow = { invoice_id: string | null; amount: number | nul
 export type PortalBillOut = {
   jobLabel: string
   jobNumber: string
+  /** Bare job name (no number suffix) — the statement's fallback identity when a job has no address. */
+  jobName: string | null
+  /** 'plum' | 'elec' | 'hvac' — the trade tag the statement colors; null when the job has no (known) service type. */
+  serviceTag: string | null
   jobAddress: string | null
   amount: number
   billedOn: string | null
@@ -47,6 +53,18 @@ export type PortalBillOut = {
 
 export function jobNumber(j: PortalJobRow): string {
   return (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || ''
+}
+
+/** Mirrors the board's trade pills (BID_SERVICE_TYPE_TAGS in src/utils/unifiedJobBidSearch.ts). */
+const PORTAL_TRADE_TAGS: Record<string, string> = {
+  Plumbing: 'plum',
+  Electrical: 'elec',
+  HVAC: 'hvac',
+}
+
+export function jobTradeTag(j: PortalJobRow): string | null {
+  const name = (j.service_types?.name ?? '').trim()
+  return PORTAL_TRADE_TAGS[name] ?? null
 }
 
 export function jobLabel(j: PortalJobRow): string {
@@ -120,6 +138,8 @@ export function buildPortalBills(args: {
     bills.push({
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
+      jobName: (job.job_name ?? '').trim() || null,
+      serviceTag: jobTradeTag(job),
       jobAddress: (job.job_address ?? '').trim() || null,
       amount: open,
       billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
@@ -135,6 +155,8 @@ export function buildPortalBills(args: {
     bills.push({
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
+      jobName: (job.job_name ?? '').trim() || null,
+      serviceTag: jobTradeTag(job),
       jobAddress: (job.job_address ?? '').trim() || null,
       amount: open,
       billedOn: null,

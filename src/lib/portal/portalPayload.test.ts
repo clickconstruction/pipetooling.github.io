@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPortalDate, formatPortalUsd, parsePortalPayload, portalDaysSinceBilled } from './portalPayload'
+import { formatPortalDate, formatPortalUsd, parsePortalPayload, portalDaysSinceBilled, splitPortalAddress } from './portalPayload'
 
 const good = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
@@ -109,6 +109,20 @@ describe('formatters', () => {
   it('always shows cents', () => {
     expect(formatPortalUsd(1700)).toBe('$1,700.00')
     expect(formatPortalUsd(249.6)).toBe('$249.60')
+  })
+
+  it('splits addresses street-first for the trade-first job line', () => {
+    expect(splitPortalAddress('415 Springtown Way, San Marcos, TX 78666')).toEqual({
+      street: '415 Springtown Way',
+      rest: 'San Marcos, TX 78666',
+    })
+    expect(splitPortalAddress('1200 Kenney Fort Blvd Round Rock, TX 78665')).toEqual({
+      street: '1200 Kenney Fort Blvd Round Rock',
+      rest: 'TX 78665',
+    })
+    expect(splitPortalAddress('415 Springtown Way')).toEqual({ street: '415 Springtown Way', rest: null })
+    expect(splitPortalAddress('   ')).toBeNull()
+    expect(splitPortalAddress(null)).toBeNull()
   })
 
   it('ages the Billed column: today/yesterday/N days, copper at 30', () => {

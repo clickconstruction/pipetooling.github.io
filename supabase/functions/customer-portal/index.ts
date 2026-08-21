@@ -124,7 +124,8 @@ serve(async (req) => {
       .maybeSingle()
     if (!customer) return jsonResponse({ error: 'Not found' }, 404)
 
-    const jobSelect = 'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id'
+    const jobSelect =
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
