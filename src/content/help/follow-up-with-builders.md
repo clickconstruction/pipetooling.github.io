@@ -28,6 +28,8 @@ Open **By builder**, and start at the top — that's whoever waited longest. Tap
 
 At the bottom of each card's bid list is a one-line composer: pick **Phone / Text / Email**, type what they said, and hit {{button:blue|Log for builder + 2 bids}}. One click writes the builder's contact log **and** stamps every check-marked bid above (pending bids are pre-checked). No more logging the same call three times.
 
+When the news is about **one bid, not the relationship** — a GC email about a single project, say — use the quiet {{button:outline|bids only}} button instead: it notes the checked bids and freshens their clocks **without** logging builder contact, so the builder doesn't move down the call queue. And the fastest aim: tap the **📝** on any bid row to check just that bid and land in the note box — 📝, type, "this bid only", done.
+
 ## Snooze, PIA, and quiet builders
 
 - {{button:outline|Snooze ▾}} on a card hides the builder from the queue until a wake date, with an optional note ("awarding after board mtg"). **The whole team sees it**, and the builder returns automatically. Snoozed builders wait in a block below the queue with a **Wake now** button.

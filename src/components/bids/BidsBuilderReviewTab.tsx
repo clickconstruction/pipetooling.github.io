@@ -288,8 +288,9 @@ export function BidsBuilderReviewTab({
     }
   }
 
-  async function submitQuickLog(customer: Customer, checkedBidIds: string[]) {
+  async function submitQuickLog(customer: Customer, checkedBidIds: string[], opts?: { builderLog?: boolean }) {
     if (!authUser?.id) return
+    const builderLog = opts?.builderLog !== false
     setSavingQuickLogCustomerId(customer.id)
     try {
       const writes = buildBuilderQuickLogWrites({
@@ -299,11 +300,15 @@ export function BidsBuilderReviewTab({
         note: quickLogNote[customer.id] ?? '',
         nowIso: new Date().toISOString(),
         userId: authUser.id,
+        includeBuilderLog: builderLog,
       })
-      await withSupabaseRetry(
-        async () => supabase.from('customer_contacts').insert(writes.customerContact),
-        'quick log: customer contact',
-      )
+      const contactRow = writes.customerContact
+      if (contactRow) {
+        await withSupabaseRetry(
+          async () => supabase.from('customer_contacts').insert(contactRow),
+          'quick log: customer contact',
+        )
+      }
       if (writes.bidEntries.length > 0) {
         await withSupabaseRetry(
           async () => supabase.from('bids_submission_entries').insert(writes.bidEntries),
@@ -322,7 +327,7 @@ export function BidsBuilderReviewTab({
       // builder stops pinning to the queue top; a future promise stays put —
       // a text today doesn't cancel "call them Tuesday about the award".
       const promise = nextFollowupByCustomer[customer.id]
-      if (promise && new Date(promise).getTime() <= Date.now()) {
+      if (builderLog && promise && new Date(promise).getTime() <= Date.now()) {
         try {
           await withSupabaseRetry(
             async () =>
@@ -606,6 +611,11 @@ export function BidsBuilderReviewTab({
         <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           Sorted by last contact. Add outreach not tied to bids via General contact. PIA = ignore when Oldest first.
         </p>
+        <style>{`
+          .br-bid-note-aim { opacity: 0.35; transition: opacity 0.12s; }
+          li:hover > .br-bid-note-aim, .br-bid-note-aim:focus-visible { opacity: 1; }
+          @media (hover: none) { .br-bid-note-aim { opacity: 0.8; } }
+        `}</style>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {builderReviewCustomersFiltered.map((customer) => {
             const customerBids = bids.filter((b) => b.customer_id === customer.id)
@@ -685,6 +695,21 @@ export function BidsBuilderReviewTab({
                                 <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
                               </svg>
                             </button>
+                            {isOpenSection && (
+                              <button
+                                type="button"
+                                className="br-bid-note-aim"
+                                onClick={() => {
+                                  setQuickLogChecked((prev) => ({ ...prev, [customer.id]: new Set([bid.id]) }))
+                                  document.getElementById(`quick-log-note-${customer.id}`)?.focus()
+                                }}
+                                title="Note just this bid — checks only it in the log bar below"
+                                aria-label={`Note just ${bid.project_name ?? 'this bid'}`}
+                                style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', lineHeight: 1 }}
+                              >
+                                📝
+                              </button>
+                            )}
                             {' — '}
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
@@ -777,12 +802,13 @@ export function BidsBuilderReviewTab({
                     })}
                     <input
                       type="text"
+                      id={`quick-log-note-${customer.id}`}
                       value={quickLogNote[customer.id] ?? ''}
                       onChange={(e) => setQuickLogNote((prev) => ({ ...prev, [customer.id]: e.target.value }))}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && savingQuickLogCustomerId !== customer.id) void submitQuickLog(customer, [...checkedSet])
                       }}
-                      placeholder="What did they say? Logs for the builder + every checked bid above…"
+                      placeholder="What did they say? Saved by whichever button you pick →"
                       aria-label={`Quick contact log for ${customer.name}`}
                       style={{ flex: 1, minWidth: 180, padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.84rem' }}
                     />
@@ -796,6 +822,20 @@ export function BidsBuilderReviewTab({
                         ? 'Logging…'
                         : `Log for builder${checkedSet.size > 0 ? ` + ${checkedSet.size} bid${checkedSet.size === 1 ? '' : 's'}` : ''}`}
                     </button>
+                    <button
+                      type="button"
+                      disabled={savingQuickLogCustomerId === customer.id || checkedSet.size === 0}
+                      onClick={() => void submitQuickLog(customer, [...checkedSet], { builderLog: false })}
+                      title="Notes the checked bids without logging builder contact — the call queue doesn't move"
+                      style={{ padding: '0.4rem 0.7rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem', cursor: checkedSet.size === 0 ? 'not-allowed' : 'pointer', opacity: savingQuickLogCustomerId === customer.id || checkedSet.size === 0 ? 0.55 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {checkedSet.size === 1 ? 'this bid only' : `${checkedSet.size || ''} bids only`.trim()}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem', textAlign: 'right' }}>
+                    {checkedSet.size === 1
+                      ? '“this bid only” notes the checked bid and freshens its clock — the builder’s last contact doesn’t change'
+                      : '“bids only” notes the checked bids without logging builder contact — the call queue doesn’t move'}
                   </div>
                 </div>
               </div>
