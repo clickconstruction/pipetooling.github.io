@@ -211,9 +211,19 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 bottom: 6,
                 left: pct(slot.left),
                 width: pct(slot.width),
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
                 ...slotStyle(r, done, i === nextUp),
               }}
-            />
+            >
+              {slot.width >= 0.035 && taskNumbers.has(t.id) ? (
+                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: done ? DONE : 'var(--text-muted)', pointerEvents: 'none' }}>
+                  {taskNumbers.get(t.id)}
+                </span>
+              ) : null}
+            </span>
           )
         })}
       </>
@@ -322,43 +332,54 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                         {stageTasks.map((t, i) => {
                           const slot = slots[i]
                           const done = t.completed_at != null
+                          const num = taskNumbers.get(t.id)
+                          // Title runs from the rail up to its own bar (owner draft,
+                          // v2.2049): anchored in the lane, reaching back into the
+                          // rail via calc so every row's title starts at the same x
+                          // and can never collide with its bar.
+                          const titleWidth = `calc(var(--roadmap-timeline-rail-w) - 64px + ${pct(Math.max((slot?.left ?? 0) - 0.006, 0))})`
                           return (
                             <div key={t.id} style={{ display: 'flex', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
-                              <div className="roadmap-timeline-rail" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, padding: '0.18rem 0.6rem 0.18rem 1.5rem', minWidth: 0 }}>
-                                {taskNumbers.has(t.id) ? <RoadmapTaskNumber label={taskNumbers.get(t.id)!} /> : null}
+                              <div className="roadmap-timeline-rail" style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '0.18rem 0.6rem 0.18rem 1.5rem', minWidth: 0 }}>
+                                {num ? <RoadmapTaskNumber label={num} /> : null}
+                              </div>
+                              <div style={{ flex: 1, position: 'relative', minHeight: 24 }}>
+                                {laneVlines}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     onOpenTask(t.id)
                                   }}
-                                  className="roadmap-timeline-rail-title"
+                                  title={`${num ?? ''} ${t.title}`}
                                   style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    bottom: 0,
+                                    left: 'calc(64px - var(--roadmap-timeline-rail-w))',
+                                    width: titleWidth,
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
                                     textAlign: 'left',
-                                    flex: 1,
-                                    minWidth: 0,
                                     cursor: 'pointer',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
                                     fontSize: '0.72rem',
                                     color: done ? 'var(--text-muted)' : 'var(--text-700)',
-                                    textDecoration: done ? 'line-through' : undefined,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  {t.title}
-                                </button>
-                                {t.assigneeIds.length > 0 ? (
-                                  <span className="roadmap-timeline-rail-title" style={{ flex: 'none', fontSize: '0.64rem', color: 'var(--text-muted)', maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {t.assigneeIds.map((id) => nameById.get(id) ?? '…').join(', ')}
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: done ? 'line-through' : undefined }}>
+                                    {t.title}
                                   </span>
-                                ) : null}
-                              </div>
-                              <div style={{ flex: 1, position: 'relative', minHeight: 24 }}>
-                                {laneVlines}
+                                  {t.assigneeIds.length > 0 ? (
+                                    <span style={{ flex: 'none', marginLeft: 6, fontSize: '0.64rem', color: 'var(--text-faint)' }}>
+                                      · {t.assigneeIds.map((id) => nameById.get(id) ?? '…').join(', ')}
+                                    </span>
+                                  ) : null}
+                                </button>
                                 {slot ? (
                                   <button
                                     type="button"
@@ -366,7 +387,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                                       e.stopPropagation()
                                       onOpenTask(t.id)
                                     }}
-                                    title={`${taskNumbers.get(t.id) ?? ''} ${t.title}`}
+                                    title={`${num ?? ''} ${t.title}`}
                                     aria-label={`Open task ${t.title}`}
                                     style={{
                                       position: 'absolute',
@@ -379,10 +400,13 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
+                                      overflow: 'hidden',
                                       ...slotStyle(r, done, i === nextUp),
                                     }}
                                   >
-                                    {done ? <span style={{ fontSize: '0.6rem', color: DONE, fontWeight: 700 }}>✓</span> : null}
+                                    <span style={{ fontSize: '0.6rem', fontWeight: 700, color: done ? DONE : 'var(--text-muted)', pointerEvents: 'none' }}>
+                                      {done ? '✓' : num ?? ''}
+                                    </span>
                                   </button>
                                 ) : null}
                                 <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: pct(frontX), borderLeft: `2px solid ${FRONT}`, opacity: 0.55, pointerEvents: 'none' }} />
