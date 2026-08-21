@@ -106,7 +106,7 @@ function StoryCardBody({ card }: { card: PipelineStoryCard }) {
             )}
           </span>
           {card.ageBarLabels && (
-            <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.64rem', color: 'var(--text-faint)' }}>
+            <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.15rem 0.5rem', flexWrap: 'wrap', fontSize: '0.64rem', color: 'var(--text-faint)' }}>
               <span>{card.ageBarLabels.left}</span>
               <span style={{ color: 'var(--text-red-600)' }}>{card.ageBarLabels.right}</span>
             </span>
@@ -165,7 +165,9 @@ export function PipelineOverview({
   }
   return (
     <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(215px, 1fr))', gap: '0.55rem' }}>
+      {/* min 160px (v2.1971): lets phones show the story 2×2 instead of a
+          full-width stack; auto-fit still caps at 4-across on wide screens. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: '0.55rem' }}>
         {cards.map((card) => {
           const action = cardAction[card.key]
           const redEdge = card.tone === 'red-edge' ? { borderLeft: '3px solid var(--text-red-600)' } : undefined
