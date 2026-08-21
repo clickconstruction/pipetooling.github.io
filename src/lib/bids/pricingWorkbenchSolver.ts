@@ -4,6 +4,8 @@
  * total price — spreading revenue across rows in proportion to their cost
  * (overhead allocated pro-rata), holding locked rows, and never pricing
  * uncosted rows (mirrors `applyMarginPricing`'s rule: no cost basis → skip).
+ * Held rows AND already-priced uncosted rows keep their revenue, and the
+ * solver targets around both — the target is always the whole-bid total.
  *
  * Blended margin matches the grid's Total margin: (revenue − totalCost) ÷
  * revenue, where totalCost includes overhead.
@@ -75,13 +77,20 @@ export function solveWorkbenchPrices(
   if (free.length === 0) return null
 
   const heldRevenue = held.reduce((s, r) => s + (r.unitPrice ?? 0) * r.count, 0)
+  // Priced uncosted rows are never re-solved but their revenue is part of the
+  // bid total, so it must come out of the target too — else the bid overshoots
+  // by exactly that amount (target 150k landing at 240k on no-cost-row-heavy bids).
+  const uncostedRevenue = rows.reduce(
+    (s, r) => s + (!(r.rowCost > 0) && r.unitPrice != null ? r.unitPrice * r.count : 0),
+    0,
+  )
   // Pro-rata overhead rides each row's cost basis so a solved-alone subset
   // still carries its share of the bid's overhead.
   const basisOf = (r: WorkbenchSolverRow) => r.rowCost * (1 + (fixtureCost > 0 ? Math.max(overhead, 0) / fixtureCost : 0))
   const freeBasis = free.reduce((s, r) => s + basisOf(r), 0)
   // Never solve below 20% of the free rows' basis — a floor against absurd
   // targets (e.g. target total less than held revenue).
-  const needed = Math.max(targetRevenue - heldRevenue, freeBasis * 0.2)
+  const needed = Math.max(targetRevenue - heldRevenue - uncostedRevenue, freeBasis * 0.2)
   const k = needed / freeBasis
 
   const prices = new Map<string, number>()

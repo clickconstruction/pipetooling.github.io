@@ -935,6 +935,9 @@ export function BidsPricingTab({
   }
 
   async function handlePricingVersionChange(bidId: string, versionId: string) {
+    // A solver preview belongs to the scenario it was solved on — counts are
+    // shared across scenarios, so a stale preview would Apply onto the new one.
+    setWbPreview(null)
     setSelectedPricingVersionId(versionId)
     await loadPriceBookEntries(versionId)
     await saveBidSelectedPriceBookVersion(bidId, versionId)
@@ -1186,8 +1189,11 @@ export function BidsPricingTab({
       return
     }
     setWbPreview((prev) => ({ ...(prev ?? {}), ...Object.fromEntries(sol.prices) }))
-    if (opts.targetTotal != null && sol.resultingMargin != null) {
-      setWbMarginPct(Math.min(95, Math.max(1, Math.round(sol.resultingMargin * 100))))
+    if (opts.targetTotal != null) {
+      if (sol.resultingMargin != null) {
+        setWbMarginPct(Math.min(95, Math.max(1, Math.round(sol.resultingMargin * 100))))
+      }
+      showToast(`Preview lands at $${formatCurrency(sol.resultingRevenue)} total.`, 'success')
     }
     if (sol.uncostedIds.length > 0) {
       showToast(`${sol.uncostedIds.length} row(s) skipped — no cost basis (enter Takeoffs costs first).`, 'error')
@@ -2434,7 +2440,6 @@ export function BidsPricingTab({
                               return
                             }
                             runWorkbenchSolve({ targetTotal: v })
-                            setWbTargetTotalInput('')
                           }}
                           style={{ width: '100%', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
                         />
