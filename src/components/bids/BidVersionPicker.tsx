@@ -170,6 +170,26 @@ export function BidVersionPicker({
         setBusy(false)
         return
       }
+      // Best-effort: a version pointed at a GC records that GC as a bid
+      // recipient (bid_gc_recipients, source 'version') so the followup
+      // surfaces can queue a call to every GC the bid actually went to.
+      if (renameGcCustomerId) {
+        try {
+          const { data: bidRow } = await supabase.from('bids').select('customer_id').eq('id', bidId).single()
+          if ((bidRow?.customer_id ?? null) !== renameGcCustomerId) {
+            await (supabase as never as {
+              from: (t: string) => { upsert: (v: object, o: object) => Promise<{ error: { message: string } | null }> }
+            })
+              .from('bid_gc_recipients')
+              .upsert(
+                { bid_id: bidId, customer_id: renameGcCustomerId, source: 'version' },
+                { onConflict: 'bid_id,customer_id', ignoreDuplicates: true },
+              )
+          }
+        } catch {
+          // Table may not be deployed yet — the migration's backfill covers these rows.
+        }
+      }
       await reloadVersions()
       setRenaming(null)
     } finally {

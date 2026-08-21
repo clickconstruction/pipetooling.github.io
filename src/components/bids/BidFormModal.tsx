@@ -19,6 +19,8 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
+import { BidGcRecipientsRow } from './BidGcRecipientsRow'
+
 type Customer = Database['public']['Tables']['customers']['Row']
 
 type BidFormUserRole =
@@ -970,6 +972,13 @@ export function BidFormModal(props: BidFormModalProps) {
                     </div>
                   )
                 })()}
+              <BidGcRecipientsRow
+                bidId={editingBid?.id ?? null}
+                bidCustomerId={gcCustomerId || editingBid?.customer_id || null}
+                customers={customers}
+                canEdit={myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator'}
+                getCustomerDisplay={getCustomerDisplay}
+              />
               <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
                 <div>
                 <button
