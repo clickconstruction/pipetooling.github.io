@@ -37,6 +37,19 @@ export function ageChipLabel(dateStr: string, todayStr: string): string {
   return `${days}d`
 }
 
+/**
+ * Three-temperature age scale (v2.2012): under a week is routine, up to a
+ * month is aging, past a month is late. Before this, every age chip was red,
+ * so a 116-day task looked no different from yesterday's.
+ */
+export type AgeSeverity = 'ok' | 'warn' | 'late'
+
+export function ageSeverity(days: number): AgeSeverity {
+  if (days > 30) return 'late'
+  if (days >= 7) return 'warn'
+  return 'ok'
+}
+
 export type BoardRange = 'next_day' | 'next_week' | 'non_repeating' | 'missed'
 
 /** Honest, human labels — 'non_repeating' has always meant one-off tasks. */

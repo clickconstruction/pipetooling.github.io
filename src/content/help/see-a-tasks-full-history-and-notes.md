@@ -2,10 +2,10 @@
 title: see a task's full history and notes
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: checklist manage, task history, notes, comments, activity, who completed, when
+keywords: checklist manage, review, outstanding, task history, notes, comments, activity, who completed, when, age
 order: 42
 ---
-Every checklist task keeps a running record — who created it, each time it was completed, reopened, or signed off, and every note anyone added. On **Checklist → Manage**, that record is one tap away.
+Every checklist task keeps a running record — who created it, each time it was completed, reopened, or signed off, and every note anyone added. On **Checklist → Manage** and on **Review → Outstanding by person**, that record is one tap away.
 
 ## Opening a card's activity
 
@@ -25,3 +25,12 @@ Tap the card again to close it. For repeating tasks, an event shows which day it
 Type in the **Add a note…** box at the bottom of the expanded card and tap {{button:blue|Post}}. The note lands on the task's current occurrence, so it also shows up wherever else the task's activity appears — the History ledger and the Review sign-off cards.
 
 Notes are a paper trail, not a chat: they can't be edited or deleted once posted.
+
+## On the Review tab
+
+Inside a person's card on **Review → Outstanding by person**, tap a task row the same way — the row expands with the task's history, the note box, and (for devs) **Edit** and **Forward** links. The quick actions up front stay lean: complete and delete on the left of the row, everything else inside the panel.
+
+Rows also read at a glance now:
+
+- A {{chip:gray|3d}} age chip means the task is under a week old, {{chip:yellow|21d}} means it's aging (a week to a month), and {{chip:red|116d}} means it's more than a month overdue.
+- {{chip:blue|💬 2}} shows how many notes a task has; the person's header adds them up so you can see whose lists have discussion waiting.
