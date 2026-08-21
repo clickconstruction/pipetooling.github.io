@@ -97,7 +97,6 @@ export function buildCoverLetterHtml(
       ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
-  const amountBold = `${revenueWords} (${revenueNumber})`
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
   const revenueLinePrefix = `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: `
   const br = '<br/>'
@@ -106,7 +105,7 @@ export function buildCoverLetterHtml(
   const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
   const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
   const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
-  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(amountBold) + '</strong>')
+  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(revenueWords) + '</strong>' + br + '<strong>' + escapeHtml(`(${revenueNumber})`) + '</strong>')
   const exclusionsContent = exclusions.trim()
     ? exclusionLines.join('\n')
     : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n')
@@ -173,7 +172,8 @@ export function buildCoverLetterText(
     projectName,
     ...addressLines(projectAddress),
     '',
-    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`,
+    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords}`,
+    `(${revenueNumber})`,
     '',
     ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
     'Inclusions:',
