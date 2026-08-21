@@ -193,3 +193,22 @@ export interface BilledCustomerPaySpeedsResult {
   company: { medianDays: number; samples: number } | null
   customers: Record<string, { medianDays: number; samples: number }>
 }
+
+/**
+ * Params for set_job_promised_pay_date (NULL p_date clears the promise).
+ * Dev/master/assistant-like only; stamps marked_by = auth.uid().
+ */
+export interface SetJobPromisedPayDateParams {
+  p_job_id: string
+  p_date: string | null
+}
+
+/**
+ * Result shape of list_job_promised_pay_dates (jsonb keyed by job id; null
+ * when the caller is outside the dev/master/assistant-like/primary gate).
+ * Parse with `parsePromisedPayDatesRpc` in `src/lib/jobs/billedExpectedPay.ts`.
+ */
+export type JobPromisedPayDatesResult = Record<
+  string,
+  { promisedYmd: string; markedByName: string; markedAt: string }
+>

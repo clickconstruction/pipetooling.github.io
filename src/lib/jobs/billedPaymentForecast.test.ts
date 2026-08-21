@@ -119,6 +119,18 @@ describe('buildBilledPaymentForecast', () => {
     expect(f.openTotal).toBe(500)
   })
 
+  it('a promised date overrides the estimate and buckets by the promise', () => {
+    // knight would estimate Sep 8 (following); the promise says Aug 21 (this week).
+    const r = invRow({ id: 'a', amount: 3013, billed_at: '2026-08-04T15:00:00Z' })
+    const f = buildBilledPaymentForecast([r], speeds, TODAY, {
+      j1: { promisedYmd: '2026-08-21', markedByName: 'Malachi' },
+    })
+    const by = Object.fromEntries(f.buckets.map((b) => [b.key, b]))
+    expect(by.thisWeek!.rows.map((x) => x.invoiceId)).toEqual(['a'])
+    expect(by.thisWeek!.rows[0]!.model?.source).toBe('promised')
+    expect(by.following!.rows).toHaveLength(0)
+  })
+
   it('bare job rows are ignored (no invoice to anchor a forecast)', () => {
     const bare = { kind: 'job', job: job({}) } as unknown as StageRow
     const f = buildBilledPaymentForecast([bare], speeds, TODAY)

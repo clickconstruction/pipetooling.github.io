@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
-import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import type { PaySpeedData, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
@@ -29,6 +29,11 @@ function bucketTileColors(b: ForecastBucket): { bg: string; fg: string; border: 
 
 function rowDateLabel(r: ForecastRow): { text: string; color: string } {
   if (!r.model) return { text: 'no history', color: 'var(--text-muted)' }
+  if (r.model.source === 'promised') {
+    return r.model.state === 'late'
+      ? { text: `${r.model.daysLate}d past promise`, color: 'var(--text-red-600)' }
+      : { text: `✓ ${formatYmdMonthDay(r.model.expectedYmd)}`, color: 'var(--text-green-800)' }
+  }
   if (r.model.state === 'late') return { text: `${r.model.daysLate}d late`, color: 'var(--text-red-600)' }
   return { text: `~${formatYmdMonthDay(r.model.expectedYmd)}`, color: 'var(--text-blue-800)' }
 }
@@ -36,17 +41,22 @@ function rowDateLabel(r: ForecastRow): { text: string; color: string } {
 export default function BilledPaymentForecastModal({
   rows,
   paySpeeds,
+  promises,
   todayYmd,
   onClose,
   onOpenInvoice,
 }: {
   rows: StageRow[]
   paySpeeds: PaySpeedData | null
+  promises?: Record<string, PromisedPayDate> | null
   todayYmd: string
   onClose: () => void
   onOpenInvoice: (invoiceId: string) => void
 }) {
-  const forecast = useMemo(() => buildBilledPaymentForecast(rows, paySpeeds, todayYmd), [rows, paySpeeds, todayYmd])
+  const forecast = useMemo(
+    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises),
+    [rows, paySpeeds, todayYmd, promises],
+  )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
 
   return (
@@ -131,6 +141,8 @@ export default function BilledPaymentForecastModal({
                       {r.customerName ? <span style={{ color: 'var(--text-muted)' }}> · {r.customerName}</span> : null}
                       {r.model?.source === 'customer' ? (
                         <span style={{ color: 'var(--text-muted)' }}> · pays in ~{r.model.medianDays}d</span>
+                      ) : r.model?.source === 'promised' ? (
+                        <span style={{ color: 'var(--text-muted)' }}> · promised</span>
                       ) : r.model ? (
                         <span style={{ color: 'var(--text-muted)' }}> · company avg</span>
                       ) : null}

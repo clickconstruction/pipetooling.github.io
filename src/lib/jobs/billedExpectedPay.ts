@@ -48,6 +48,23 @@ export function parsePaySpeedsRpc(raw: unknown): PaySpeedData | null {
   return { company, customers }
 }
 
+/** A customer-promised payment date on a job (list_job_promised_pay_dates). */
+export type PromisedPayDate = { promisedYmd: string; markedByName: string }
+
+/** Defensive parse of list_job_promised_pay_dates' jsonb (job id → promise). */
+export function parsePromisedPayDatesRpc(raw: unknown): Record<string, PromisedPayDate> | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const out: Record<string, PromisedPayDate> = {}
+  for (const [jobId, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v == null || typeof v !== 'object') continue
+    const ymd = (v as { promisedYmd?: unknown }).promisedYmd
+    const name = (v as { markedByName?: unknown }).markedByName
+    if (typeof ymd !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue
+    out[jobId] = { promisedYmd: ymd, markedByName: typeof name === 'string' && name.trim() ? name.trim() : 'office' }
+  }
+  return out
+}
+
 const MS_PER_DAY = 86_400_000
 
 function ymdToUtcMs(ymd: string): number | null {
@@ -82,8 +99,12 @@ export function formatYmdMonthDay(ymd: string): string {
 export type ExpectedPayModel = {
   expectedYmd: string
   state: 'upcoming' | 'late'
-  /** 'customer' = this customer's own median; 'company' = low-history fallback. */
-  source: 'customer' | 'company'
+  /**
+   * 'customer' = this customer's own median; 'company' = low-history
+   * fallback; 'promised' = a real date the customer named (overrides the
+   * statistical estimate entirely).
+   */
+  source: 'customer' | 'company' | 'promised'
   medianDays: number
   /** Calendar days past the expected date (0 while upcoming). */
   daysLate: number
@@ -114,7 +135,25 @@ export function billedExpectedPayModel(
   input: ExpectedPayRowInput,
   data: PaySpeedData | null,
   todayYmd: string,
+  promise?: PromisedPayDate | null,
 ): ExpectedPayModel | null {
+  if (promise) {
+    const sincePromise = daysBetweenYmd(promise.promisedYmd, todayYmd)
+    if (sincePromise == null) return null
+    const late = sincePromise > 0
+    const daysLate = Math.max(0, sincePromise)
+    return {
+      expectedYmd: promise.promisedYmd,
+      state: late ? 'late' : 'upcoming',
+      source: 'promised',
+      medianDays: 0,
+      daysLate,
+      label: late
+        ? `${daysLate}d past promise · ${promise.markedByName}`
+        : `✓ Promised ${formatYmdMonthDay(promise.promisedYmd)} · ${promise.markedByName}`,
+      title: `Customer promised payment by ${formatYmdMonthDay(promise.promisedYmd)} (marked by ${promise.markedByName}) — overrides the statistical estimate`,
+    }
+  }
   if (!data) return null
   const refYmd = billedReferenceYmd(input)
   if (!refYmd) return null

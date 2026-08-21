@@ -7,6 +7,7 @@ import {
   formatYmdMonthDay,
   type ExpectedPayModel,
   type PaySpeedData,
+  type PromisedPayDate,
 } from './billedExpectedPay'
 
 /**
@@ -93,6 +94,7 @@ export function buildBilledPaymentForecast(
   rows: StageRow[],
   paySpeeds: PaySpeedData | null,
   todayYmd: string,
+  promises?: Record<string, PromisedPayDate> | null,
 ): PaymentForecast {
   const byKey: Record<ForecastBucketKey, ForecastRow[]> = {
     past: [],
@@ -121,6 +123,7 @@ export function buildBilledPaymentForecast(
       },
       paySpeeds,
       todayYmd,
+      promises?.[job.id] ?? null,
     )
     const row: ForecastRow = {
       invoiceId: r.inv.id,

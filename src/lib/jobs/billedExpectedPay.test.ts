@@ -6,6 +6,7 @@ import {
   daysBetweenYmd,
   formatYmdMonthDay,
   parsePaySpeedsRpc,
+  parsePromisedPayDatesRpc,
   type PaySpeedData,
 } from './billedExpectedPay'
 
@@ -114,5 +115,42 @@ describe('billedExpectedPayModel', () => {
   it('no data / no reference date → no chip', () => {
     expect(billedExpectedPayModel(row, null, '2026-08-20')).toBeNull()
     expect(billedExpectedPayModel({ billedAtIso: null, estBillYmd: null, customerId: 'knight' }, data, '2026-08-20')).toBeNull()
+  })
+
+  it('a promise overrides the estimate — even with no pay-speed data or bill date', () => {
+    const promise = { promisedYmd: '2026-09-25', markedByName: 'Malachi' }
+    const m = billedExpectedPayModel({ billedAtIso: null, estBillYmd: null, customerId: null }, null, '2026-08-20', promise)!
+    expect(m.source).toBe('promised')
+    expect(m.state).toBe('upcoming')
+    expect(m.expectedYmd).toBe('2026-09-25')
+    expect(m.label).toBe('✓ Promised Sep 25 · Malachi')
+  })
+
+  it('a blown promise goes late against the promised date', () => {
+    const promise = { promisedYmd: '2026-08-15', markedByName: 'Malachi' }
+    const m = billedExpectedPayModel(row, data, '2026-08-20', promise)!
+    expect(m.source).toBe('promised')
+    expect(m.state).toBe('late')
+    expect(m.daysLate).toBe(5)
+    expect(m.label).toBe('5d past promise · Malachi')
+  })
+})
+
+describe('parsePromisedPayDatesRpc', () => {
+  it('parses the map and drops malformed entries', () => {
+    expect(
+      parsePromisedPayDatesRpc({
+        j1: { promisedYmd: '2026-09-25', markedByName: 'Malachi', markedAt: 'x' },
+        j2: { promisedYmd: 'soon', markedByName: 'A' },
+        j3: { promisedYmd: '2026-09-01', markedByName: '  ' },
+      }),
+    ).toEqual({
+      j1: { promisedYmd: '2026-09-25', markedByName: 'Malachi' },
+      j3: { promisedYmd: '2026-09-01', markedByName: 'office' },
+    })
+  })
+
+  it('null for gate-refused payloads', () => {
+    expect(parsePromisedPayDatesRpc(null)).toBeNull()
   })
 })
