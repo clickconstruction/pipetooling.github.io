@@ -1466,6 +1466,13 @@ export function ChecklistTechTreeTab({
   // groups arrive sort_index-ordered from the loader, so this is the stage order
   const stageNumbers = useMemo(() => stageNumbersByGroupId(groups), [groups])
 
+  // people already staffed somewhere on this roadmap — the task card's "likely names" picker tier
+  const roadmapAssigneeIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const t of tasks) for (const id of t.assigneeIds) ids.add(id)
+    return [...ids]
+  }, [tasks])
+
   const flowNodes: Node[] = useMemo(() => {
     return layoutNodes.map((n) => {
       const gid = n.data.groupId as string
@@ -1721,31 +1728,46 @@ export function ChecklistTechTreeTab({
   const updateTaskInGroup = useCallback(
     async (taskId: string, title: string, assigneeUserIds: string[]): Promise<boolean> => {
       if (!canEditStructure || !title.trim()) return false
+      // Skip untouched halves: the task card saves per interaction (an
+      // assignee tap sends the unchanged title and vice versa), and the
+      // title UPDATE also trips the tasks↔assignees policy recursion
+      // (42P17, pre-existing) until its migration fix lands.
+      const current = tasks.find((t) => t.id === taskId)
+      const trimmed = title.trim()
+      const titleChanged = !current || current.title !== trimmed
+      const assigneesChanged =
+        !current ||
+        current.assigneeIds.length !== assigneeUserIds.length ||
+        !assigneeUserIds.every((id) => current.assigneeIds.includes(id))
       try {
         setError(null)
-        await withSupabaseRetry(
-          () =>
-            supabase.from('checklist_tech_tree_group_tasks').update({ title: title.trim() }).eq('id', taskId),
-          'update tech tree task title',
-        )
-        await withSupabaseRetry(
-          () => supabase.from('checklist_tech_tree_task_assignees').delete().eq('task_id', taskId),
-          'clear tech tree task assignees',
-        )
-        for (const uid of assigneeUserIds) {
+        if (titleChanged) {
           await withSupabaseRetry(
-            () => supabase.from('checklist_tech_tree_task_assignees').insert({ task_id: taskId, user_id: uid }),
-            'insert tech tree task assignee',
+            () =>
+              supabase.from('checklist_tech_tree_group_tasks').update({ title: trimmed }).eq('id', taskId),
+            'update tech tree task title',
           )
         }
-        await load()
+        if (assigneesChanged) {
+          await withSupabaseRetry(
+            () => supabase.from('checklist_tech_tree_task_assignees').delete().eq('task_id', taskId),
+            'clear tech tree task assignees',
+          )
+          for (const uid of assigneeUserIds) {
+            await withSupabaseRetry(
+              () => supabase.from('checklist_tech_tree_task_assignees').insert({ task_id: taskId, user_id: uid }),
+              'insert tech tree task assignee',
+            )
+          }
+        }
+        if (titleChanged || assigneesChanged) await load()
         return true
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not update task')
         return false
       }
     },
-    [canEditStructure, load, setError],
+    [canEditStructure, tasks, load, setError],
   )
 
   const insertNewGroup = useCallback(
@@ -2590,9 +2612,11 @@ export function ChecklistTechTreeTab({
         open={editTaskId !== null}
         task={editTaskForModal ? { id: editTaskForModal.id, title: editTaskForModal.title, assigneeIds: editTaskForModal.assigneeIds } : null}
         groupTitle={editTaskModalGroup?.title ?? ''}
+        stageNumber={editTaskModalGroup ? stageNumbers.get(editTaskModalGroup.id) : undefined}
         bridge={editTaskForModal ? bridgeByTaskId.get(editTaskForModal.id) : undefined}
         chip={editTaskForModal ? bridgeChipFor(editTaskForModal.completed_at, bridgeByTaskId.get(editTaskForModal.id)) : null}
         users={users}
+        suggestedUserIds={roadmapAssigneeIds}
         currentUserId={authUserId}
         canEditStructure={canEditStructure}
         loadEvents={loadInstanceEvents}
