@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildStagesSectionToolsMenu } from './stagesSectionToolsMenu'
 
 const base = {
+  recentViewOpen: false,
   billedRowCount: 5,
   collectionsRowCount: 1,
   arBankTxUnallocatedCount: 16,
@@ -23,6 +24,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'Paid in Full',
     ])
     expect(keysOf(groups)).toEqual([
+      'recently-added',
       'weekly-movement',
       'weekly-money',
       'capable-to-bill',
@@ -87,9 +89,10 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
-    expect(assistantKeys).toEqual(['weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
+    expect(assistantKeys).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
     expect(keysOf(controllerGroups)).toEqual([
+      'recently-added',
       'weekly-movement',
       'weekly-money',
       'capable-to-bill',
@@ -106,7 +109,7 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('primary can open Accounts Receivable but sees no admin tools', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'primary' })
-    expect(keysOf(groups)).toEqual(['weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable'])
+    expect(keysOf(groups)).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable'])
     const ar = groups.flatMap((g) => g.items).find((i) => i.key === 'accounts-receivable')
     expect(ar?.disabled).toBe(false)
   })
@@ -152,5 +155,20 @@ describe('buildStagesSectionToolsMenu', () => {
     expect(groups.flatMap((g) => g.items).find((i) => i.key === 'capable-to-bill')?.label).toBe(
       'Capable of Being Billed: $12,345',
     )
+  })
+})
+
+describe('recently-added menu item (v2.1973)', () => {
+  it('every role gets it, first in the Pipeline group', () => {
+    for (const authRole of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', null]) {
+      const groups = buildStagesSectionToolsMenu({ ...base, authRole })
+      expect(groups[0]!.items[0]!.key).toBe('recently-added')
+      expect(groups[0]!.items[0]!.label).toBe('Recently added')
+    }
+  })
+
+  it('label flips to the exit while the flat view is open', () => {
+    const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'dev', recentViewOpen: true })
+    expect(groups[0]!.items[0]!.label).toBe('Back to board')
   })
 })
