@@ -47,13 +47,13 @@ The Dashboard's **Billing Pipeline** card has a round **i** button next to its t
 
 ## Section tools in one dropdown
 
-The stage headers down the board carry their own buttons — Capable of Being Billed on Working, Ready to Bill notifications on Ready to Bill, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid In Full notifications on Paid in Full. The **hamburger menu icon just left of Waiting** in the stage strip (Waiting → Working → …) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
+The stage headers down the board carry their own buttons — Capable of Being Billed on Working, Ready to Bill notifications on Ready to Bill, GC Review / Accounts Receivable / Share / Print / Paid notifications on Billed Awaiting Payment, Paid in Full notifications on Paid in Full. The **hamburger menu icon just left of Waiting** in the stage strip (Waiting → Working → …) collects all of them in one dropdown, grouped by section, so you can open any of these without scrolling the board.
 
 :::example Section tools
 **Working** &nbsp; Capable of Being Billed: $48,450
 **Ready to Bill** &nbsp; Ready to Bill notifications
 **Billed Awaiting Payment** &nbsp; GC Review &nbsp;·&nbsp; Accounts Receivable {{chip:yellow|16}} &nbsp;·&nbsp; Share / Print &nbsp;·&nbsp; Paid notifications
-**Paid in Full** &nbsp; Paid In Full notifications
+**Paid in Full** &nbsp; Paid in Full notifications
 :::
 
 The amber count on Accounts Receivable is the same unallocated-bank-deposits badge the header button wears, and every item follows the same permissions as the button it mirrors — if you can't use it on the header, it's disabled or hidden here too.
@@ -145,7 +145,7 @@ Jobs that are billed but proving hard to collect can be flagged for **Collection
 
 The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and masters on the list get the **detailed review** — a {{chip:green|PAID IN FULL}} banner, job start and last-work dates, then the full scoreboard: revenue, every payment with its date, team labor person by person (hours × wage), sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary** — same banner and dates, the payment amount and time but no cost or profit figures anywhere.
 
-Who gets it lives behind the {{icon:gear}} **Paid In Full notifications** button across from the **Paid in Full** section header on Jobs → Pipeline (devs and masters can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
+Who gets it lives behind the {{icon:gear}} **Paid in Full notifications** button across from the **Paid in Full** section header on Jobs → Pipeline (devs and masters can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
 
 :::example Preview & test
 Selected: **J512** · Smith House Repipe

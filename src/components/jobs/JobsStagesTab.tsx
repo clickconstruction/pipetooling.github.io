@@ -3294,24 +3294,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       onClick={() => setReadyToBillNotifySettingsOpen(true)}
                       title="Ready to Bill notification settings (email + push)"
                       aria-label="Ready to Bill notification settings"
-                      style={{
-                        flexShrink: 0,
-                        height: 32,
-                        padding: '0 0.6rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: 'var(--surface)',
-                        cursor: 'pointer',
-                        color: 'var(--text-700)',
-                        fontSize: '1rem',
-                      }}
+                      style={billedHeaderActionStyle(false)}
                     >
                       <span aria-hidden>{'\u2699'}</span>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Ready to Bill notifications</span>
+                      Ready to Bill notifications
                     </button>
                   )}
                 </div>
@@ -3885,24 +3871,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onClick={() => setPaidProfitChartOpen(true)}
                     title="Profit vs clocked hours — bubble = revenue, losses below the $0 line"
                     aria-label="Paid profit chart"
-                    style={{
-                      flexShrink: 0,
-                      height: 32,
-                      padding: '0 0.6rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.35rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                      color: 'var(--text-700)',
-                      fontSize: '1rem',
-                    }}
+                    style={billedHeaderActionStyle(false)}
                   >
                     <span aria-hidden>{'📊'}</span>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Chart</span>
+                    Chart
                   </button>
                 )}
                 {(authRole === 'dev' || authRole === 'master_technician') && (
@@ -3911,24 +3883,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onClick={() => setPaidEmailSettingsOpen(true)}
                     title="Paid in Full email settings"
                     aria-label="Paid in Full email settings"
-                    style={{
-                      flexShrink: 0,
-                      height: 32,
-                      padding: '0 0.6rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.35rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                      color: 'var(--text-700)',
-                      fontSize: '1rem',
-                    }}
+                    style={billedHeaderActionStyle(false)}
                   >
                     <span aria-hidden>⚙</span>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Paid In Full notifications</span>
+                    Paid in Full notifications
                   </button>
                 )}
                 </div>

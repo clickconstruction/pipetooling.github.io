@@ -386,7 +386,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         onToggle={() => toggleCard('paid')}
         title="Paid in Full notifications"
         cadence="event — job reaches Paid in Full"
-        manage="full manager → Jobs → Pipeline ⚙ Paid In Full notifications"
+        manage="full manager → Jobs → Pipeline ⚙ Paid in Full notifications"
       >
         {data.paid_recipients.length === 0
           ? none
