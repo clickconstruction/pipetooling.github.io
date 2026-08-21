@@ -331,6 +331,7 @@ export default function Bids() {
     submittedTo,
     outcome,
     lossReason,
+    lossCategory,
     bidValue,
     agreedValue,
     profit,
@@ -2028,6 +2029,8 @@ export default function Bids() {
       submitted_to: submittedTo.trim() || null,
       outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
       loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
+      // v2.2030: structured category rides along; un-losting clears it like the note.
+      loss_category: outcome === 'lost' ? lossCategory : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
@@ -2134,6 +2137,8 @@ export default function Bids() {
       submitted_to: submittedTo.trim() || null,
       outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
       loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
+      // v2.2030: structured category rides along; un-losting clears it like the note.
+      loss_category: outcome === 'lost' ? lossCategory : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,

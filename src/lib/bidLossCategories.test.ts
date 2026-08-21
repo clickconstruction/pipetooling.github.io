@@ -6,6 +6,7 @@ import {
   groupLossTriageByBuilder,
   isBidLossCategoryKey,
   nextLossTriageBidIndex,
+  suggestLossCategoryFromNote,
   type LossTriageBid,
 } from './bidLossCategories'
 
@@ -139,5 +140,29 @@ describe('nextLossTriageBidIndex', () => {
     expect(
       nextLossTriageBidIndex({ bids: [bid({ category: 'price' }), bid({ category: 'no_answer' })] }, 0),
     ).toBeNull()
+  })
+})
+
+describe('suggestLossCategoryFromNote', () => {
+  it("maps Wendi's exact case: 'gc not awarded' → gc_lost", () => {
+    expect(suggestLossCategoryFromNote('gc not awarded')).toBe('gc_lost')
+  })
+
+  it('maps common phrasings to their categories', () => {
+    expect(suggestLossCategoryFromNote('Price too high for them')).toBe('price')
+    expect(suggestLossCategoryFromNote('went with another sub')).toBe('other_sub')
+    expect(suggestLossCategoryFromNote('project is ON HOLD until spring')).toBe('project_died')
+    expect(suggestLossCategoryFromNote('never finished the bid')).toBe('no_bid')
+    expect(suggestLossCategoryFromNote('no response after 3 calls')).toBe('no_answer')
+  })
+
+  it('suggests nothing on an ambiguous note (matches two categories)', () => {
+    expect(suggestLossCategoryFromNote('not awarded but they liked our price')).toBeNull()
+  })
+
+  it('suggests nothing on empty or unmapped notes', () => {
+    expect(suggestLossCategoryFromNote(null)).toBeNull()
+    expect(suggestLossCategoryFromNote('')).toBeNull()
+    expect(suggestLossCategoryFromNote('longshot in the dark')).toBeNull()
   })
 })

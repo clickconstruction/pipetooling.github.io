@@ -56,6 +56,10 @@ The left rail is a call queue: builders with unexplained lost bids first, bigges
 
 Tap one (or press keys **1–6**) and the bid is recorded and the next unexplained one opens — a builder's whole list clears in the length of the call. Type what they said in the note box first and it saves with the tap ("about 6 grand over the winner"). {{button:outline|Skip →}} moves on without recording; arrow keys move between bids; explained pills turn green.
 
+Bids that already have a written note — say you typed "gc not awarded" while marking it lost in Edit Bid — come **pre-suggested**: the matching chip gets an amber ring and **Enter** confirms it, so already-explained bids clear as fast as you can press Enter. (A note that could mean two different reasons suggests nothing — you decide.)
+
+The same six chips now live everywhere a bid gets marked lost — **Edit Bid**, the call-mode Lost flow, and the Bid Board's lost summary — so recording the reason once, anywhere, clears it here too.
+
 :::example a Friday morning
 Dale from Knight picks up. Six pills. "1, 1, 2" — with "6k over" typed before the 2 — "1, skip, 1". Knight's row goes green and the next builder is already open.
 :::

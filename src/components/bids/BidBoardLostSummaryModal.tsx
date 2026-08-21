@@ -6,7 +6,8 @@ import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { buildHourlyWageLookupByNormalizedName } from '../../lib/bidBoardWeeklyEstimatorLaborCost'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
-import { BID_LOSS_CATEGORIES, bidLossCategoryLabel, isBidLossCategoryKey, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { BID_LOSS_CATEGORIES, bidLossCategoryLabel, isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { BidLossCategoryChips } from './BidLossCategoryChips'
 import {
   aggregateLostBidLaborUsd,
   getLaborUsdForBid,
@@ -556,31 +557,15 @@ export function BidBoardLostSummaryModal({
                       <td style={tdRow}>
                         {isEditingLoss ? (
                           <div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.35rem' }} aria-label="Loss category">
-                              {BID_LOSS_CATEGORIES.map((c) => {
-                                const selected = lossCategoryDraft === c.key
-                                return (
-                                  <button
-                                    key={c.key}
-                                    type="button"
-                                    disabled={isSavingLoss}
-                                    onClick={() => setLossCategoryDraft(selected ? null : c.key)}
-                                    aria-pressed={selected}
-                                    style={{
-                                      fontSize: '0.72rem',
-                                      padding: '0.18rem 0.5rem',
-                                      borderRadius: 999,
-                                      cursor: 'pointer',
-                                      background: c.chipBg,
-                                      color: c.chipFg,
-                                      border: `1.5px solid ${selected ? c.chipFg : 'transparent'}`,
-                                      fontWeight: selected ? 700 : 400,
-                                    }}
-                                  >
-                                    {c.label}
-                                  </button>
-                                )
-                              })}
+                            <div style={{ marginBottom: '0.35rem' }} aria-label="Loss category">
+                              <BidLossCategoryChips
+                                value={lossCategoryDraft}
+                                onSelect={(key) => setLossCategoryDraft(lossCategoryDraft === key ? null : key)}
+                                suggestedKey={lossCategoryDraft == null ? suggestLossCategoryFromNote(lossDraft) : null}
+                                suggestedHint="suggested from the note — click to confirm"
+                                size="sm"
+                                disabled={isSavingLoss}
+                              />
                             </div>
                             <textarea
                               aria-label={lossReasonAriaLabel}
