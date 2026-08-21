@@ -138,7 +138,8 @@ export default function Partnerships() {
   const [rows, setRows] = useState<PartnershipRow[]>([])
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'timeline' | 'ledger'>('deal')
+  // Ledger is the landing tab — the money story is what the page opens on.
+  const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'timeline' | 'ledger'>('ledger')
   const [lensOn, setLensOn] = useState(false)
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
