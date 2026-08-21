@@ -14,6 +14,8 @@ The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}}
 
 ## Add counts heads-down
 
+Quick add starts tucked away — click {{button:outline|+ Quick add}} to open the panel (the count box is focused and ready), and **Hide** to put it away when you're done.
+
 Tap a fixture chip (from your service type's fixture list), set the count, press **Enter** — the row is added and the count box is focused for the next one. No mouse needed between rows.
 
 If you type a fixture that's already on the bid, Add pauses and offers **Merge into existing (+N)** — one fixture name, one row, so the takeoff assignment never forks.

@@ -91,6 +91,7 @@ export function BidsCountsTab({
   // Count Sheet (New view) state
   const [sheetMode, setSheetMode] = useState<'list' | 'pages'>('list')
   const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
+  const [qaOpen, setQaOpen] = useState(false)
   const [qaCount, setQaCount] = useState('1')
   const [qaFixture, setQaFixture] = useState('')
   const [qaPage, setQaPage] = useState('')
@@ -596,9 +597,26 @@ export function BidsCountsTab({
                   ) : null}
                 </div>
 
+                {!qaOpen ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQaOpen(true)
+                    requestAnimationFrame(() => qaCountRef.current?.focus())
+                  }}
+                  style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.45rem 0.85rem', marginBottom: '0.9rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 8, cursor: 'pointer' }}
+                >
+                  + Quick add
+                </button>
+                ) : (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem' }}>
-                  <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                    Quick add — tap a fixture, set the count, Enter adds and keeps going
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                      Quick add — tap a fixture, set the count, Enter adds and keeps going
+                    </div>
+                    <button type="button" onClick={() => setQaOpen(false)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.1rem 0.45rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Hide
+                    </button>
                   </div>
                   {sheetChips.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.55rem' }}>
@@ -662,6 +680,7 @@ export function BidsCountsTab({
                     </div>
                   ) : null}
                 </div>
+                )}
 
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem', minWidth: 560 }}>
