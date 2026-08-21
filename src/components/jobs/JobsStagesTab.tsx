@@ -78,6 +78,8 @@ import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
+import FixBillLinesModal from './FixBillLinesModal'
+import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import BilledByCustomerBreakdownModal from './BilledByCustomerBreakdownModal'
 import PaidProfitChartModal from './PaidProfitChartModal'
 import BilledReportShareModal from './BilledReportShareModal'
@@ -666,6 +668,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // (v2.1931) = open rows with no bill line to age by — the shells the
   // Pipeline New view's "no bill line" money move points at.
   const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | 'no_line' | null>(null)
+  // "Fix bill lines" one-sitting modal (v2.1933): creates each shell's
+  // missing billed line via create_billed_shell_invoice, backdated.
+  const [fixBillLinesOpen, setFixBillLinesOpen] = useState(false)
   // Old/New pills (v2.1910, Counts precedent): Old = the classic board alone;
   // New = the money story strip + Today's money moves above the same board.
   // Per-device, default Old.
@@ -3620,6 +3625,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       ? 'Showing only jobs with no bill line — Bill Customer or Edit Job creates the line their money should ride on'
                       : `Showing only ${billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows`}{' '}
                     ({billedListRows.length} of {billedActiveRows.length}) ·{' '}
+                    {billedAgingFilter === 'no_line' && canMarkPromisedPay && billedListRows.length > 0 ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setFixBillLinesOpen(true)}
+                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: 'inherit', fontWeight: 600 }}
+                        >
+                          Fix bill lines…
+                        </button>
+                        {' · '}
+                      </>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => setBilledAgingFilter(null)}
@@ -4567,6 +4584,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setBilledPaymentForecastOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
+        />
+      )}
+      {fixBillLinesOpen && (
+        <FixBillLinesModal
+          items={buildFixBillLineItems(stagesBoardLists.billedActiveRows)}
+          onClose={() => setFixBillLinesOpen(false)}
+          onAnyFixed={() => void loadJobs()}
         />
       )}
       {promisedPayModalJob && (

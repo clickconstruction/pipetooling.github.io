@@ -212,3 +212,13 @@ export type JobPromisedPayDatesResult = Record<
   string,
   { promisedYmd: string; markedByName: string; markedAt: string }
 >
+
+/**
+ * Params for create_billed_shell_invoice — materialize the missing billed
+ * line (full open remainder, backdated) for a Billed no-bill-line shell.
+ * Dev/master/assistant-like only. Returns { invoiceId, amount }.
+ */
+export interface CreateBilledShellInvoiceParams {
+  p_job_id: string
+  p_billed_on: string
+}
