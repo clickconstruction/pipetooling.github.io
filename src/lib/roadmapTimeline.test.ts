@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { approxDateLabel, paceProjection, timelineRows, timelineWaves } from './roadmapTimeline'
+import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, timelineWaves } from './roadmapTimeline'
 
 const t = (done: boolean) => ({ completed_at: done ? '2026-08-20T00:00:00Z' : null })
 
@@ -74,5 +74,27 @@ describe('approxDateLabel', () => {
   it('same year: month only; later: month + year', () => {
     expect(approxDateLabel(new Date('2026-11-10T00:00:00Z'), now)).toBe('≈ Nov')
     expect(approxDateLabel(new Date('2027-02-10T00:00:00Z'), now)).toBe("≈ Feb '27")
+  })
+})
+
+describe('taskSlotRects', () => {
+  it('divides the bar into equal successive slots with gaps', () => {
+    const rects = taskSlotRects(0.1, 0.5, 4, 0.004)
+    expect(rects).toHaveLength(4)
+    expect(rects[0]!.left).toBeCloseTo(0.1, 6)
+    // slots + gaps span the bar width
+    const last = rects[3]!
+    expect(last.left + last.width).toBeCloseTo(0.6, 6)
+    // successive: each starts where the previous ends + gap
+    expect(rects[1]!.left).toBeCloseTo(rects[0]!.left + rects[0]!.width + 0.004, 6)
+  })
+
+  it('floors slot width so a crowded stage stays visible', () => {
+    const rects = taskSlotRects(0, 0.05, 20)
+    expect(rects.every((r) => r.width >= 0.008)).toBe(true)
+  })
+
+  it('zero tasks → no slots', () => {
+    expect(taskSlotRects(0, 0.5, 0)).toEqual([])
   })
 })

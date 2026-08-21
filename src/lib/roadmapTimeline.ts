@@ -122,6 +122,32 @@ export function paceProjection(rows: ReadonlyArray<TimelineRow>, tasksPerWeek: n
   return out
 }
 
+export type TaskSlotRect = { left: number; width: number }
+
+/**
+ * Successive equal slots of a stage's bar for its tasks (v2.2042): task k
+ * occupies slot k of the bar span, in task order — the per-task bars the
+ * segmented stage bar and the expansion waterfall both render. All values
+ * are lane fractions. Slots keep a minimum width so a many-task stage in a
+ * narrow wave stays visible (the row may then overrun its bar slightly —
+ * sequence, not calendar).
+ */
+export function taskSlotRects(
+  barLeft: number,
+  barWidth: number,
+  count: number,
+  gap = 0.004,
+  minWidth = 0.008,
+): TaskSlotRect[] {
+  if (count <= 0) return []
+  const width = Math.max((barWidth - gap * (count - 1)) / count, minWidth)
+  const rects: TaskSlotRect[] = []
+  for (let i = 0; i < count; i++) {
+    rects.push({ left: barLeft + i * (width + gap), width })
+  }
+  return rects
+}
+
 /** "≈ Nov" this year, "≈ Feb '27" beyond it. */
 export function approxDateLabel(d: Date, now: Date): string {
   const month = d.toLocaleString('en-US', { month: 'short' })
