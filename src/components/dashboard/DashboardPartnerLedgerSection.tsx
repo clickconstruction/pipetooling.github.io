@@ -162,9 +162,7 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
       })()}
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '-0.15rem' }}>
         {card?.open
-          ? summary.pending_offsets.count > 0
-            ? `balance so far · includes ${summary.pending_offsets.count} charge(s) waiting for the next statement · updates as hours approve`
-            : `balance so far · updates as hours approve`
+          ? `balance so far · updates as hours approve`
           : `closing balance · week opened at ${card && card.opening != null ? money(card.opening) : '—'}`}
       </div>
 
