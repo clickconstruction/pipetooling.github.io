@@ -1,3 +1,4 @@
+import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
@@ -12,6 +13,7 @@ import {
   groupLossTriageByBuilder,
   isBidLossCategoryKey,
   nextLossTriageBidIndex,
+  suggestLossCategoryFromNote,
   type BidLossCategoryKey,
 } from '../../lib/bidLossCategories'
 import {
@@ -232,6 +234,15 @@ export function BidsWhyWeLostLens({
         e.preventDefault()
         return
       }
+      // Enter confirms the note-derived suggestion (never auto-applied — this IS the tap).
+      if (e.key === 'Enter' && !isBidLossCategoryKey(selectedBid.category)) {
+        const suggested = suggestLossCategoryFromNote(selectedBid.legacyReason)
+        if (suggested) {
+          saveCategory(selectedBid, suggested)
+          e.preventDefault()
+          return
+        }
+      }
       const idx = selectedBids.findIndex((b) => b.id === selectedBid.id)
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         const next = selectedBids[Math.min(selectedBids.length - 1, idx + 1)]
@@ -289,7 +300,7 @@ export function BidsWhyWeLostLens({
           </span>
         ) : null}
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          Keys 1–{BID_LOSS_CATEGORIES.length} tap a reason · arrows move between bids
+          Keys 1–{BID_LOSS_CATEGORIES.length} tap a reason · Enter takes a suggestion · arrows move between bids
         </span>
       </div>
 
@@ -468,28 +479,14 @@ export function BidsWhyWeLostLens({
               ) : null}
             </div>
 
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="Loss reasons">
-              {BID_LOSS_CATEGORIES.map((c, i) => {
-                const active = selectedBid.category === c.key
-                return (
-                  <button
-                    key={c.key}
-                    type="button"
-                    onClick={() => saveCategory(selectedBid, c.key)}
-                    style={{
-                      fontSize: '0.8125rem',
-                      padding: '0.3rem 0.7rem',
-                      borderRadius: 999,
-                      cursor: 'pointer',
-                      background: c.chipBg,
-                      color: c.chipFg,
-                      border: `1.5px solid ${active ? c.chipFg : 'transparent'}`,
-                    }}
-                  >
-                    <span style={{ opacity: 0.65 }}>{i + 1}</span> {c.label}
-                  </button>
-                )
-              })}
+            <div style={{ marginBottom: '0.6rem' }}>
+              <BidLossCategoryChips
+                value={isBidLossCategoryKey(selectedBid.category) ? selectedBid.category : null}
+                onSelect={(key) => saveCategory(selectedBid, key)}
+                showKeyNumbers
+                suggestedKey={suggestLossCategoryFromNote(selectedBid.legacyReason)}
+                suggestedHint="suggested from the note — Enter confirms"
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

@@ -179,6 +179,8 @@ export interface BidPricingHistoryRow {
   project_name: string | null
   outcome: 'won' | 'lost'
   loss_reason: string | null
+  /** Structured six-bucket loss reason (since 20260822003000); optional so an un-migrated RPC still parses. */
+  loss_category?: string | null
   bid_value: number
   est_cost: number
 }

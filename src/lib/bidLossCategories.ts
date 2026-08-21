@@ -41,6 +41,33 @@ export function bidLossCategoryLabel(key: string | null | undefined): string | n
   return BID_LOSS_CATEGORIES.find((c) => c.key === key)?.label ?? null
 }
 
+/**
+ * Synonym map for {@link suggestLossCategoryFromNote}. Phrases are matched
+ * case-insensitively as substrings of the free-text note. Order within a
+ * category doesn't matter; keep phrases specific enough not to cross-match.
+ */
+const LOSS_NOTE_SYNONYMS: readonly { key: BidLossCategoryKey; phrases: readonly string[] }[] = [
+  { key: 'gc_lost', phrases: ['not awarded', 'gc lost', 'gc didn', 'lost the project', 'lost the job', 'gc was not', 'wasn’t awarded', "wasn't awarded"] },
+  { key: 'price', phrases: ['price', 'expensive', 'too high', 'cheaper', 'cost too', 'over budget', 'beat us on'] },
+  { key: 'other_sub', phrases: ['another sub', 'other sub', 'another plumber', 'other plumber', 'competitor', 'went with someone', 'in-house', 'inhouse'] },
+  { key: 'project_died', phrases: ['died', 'on hold', 'cancel', 'shelved', 'postponed', 'not moving forward', 'fell through'] },
+  { key: 'no_bid', phrases: ['never finished', 'did not finish', "didn't finish", 'no bid', 'never sent', 'ran out of time', 'missed the deadline'] },
+  { key: 'no_answer', phrases: ['no answer', 'no response', 'never heard', 'ghost', 'not responding', "won't return", 'wont return', 'no reply'] },
+]
+
+/**
+ * Suggest a loss category from a free-text note ("gc not awarded" → gc_lost).
+ * Returns a key ONLY when the note matches exactly one category — an ambiguous
+ * note ("not awarded but they liked our price") suggests nothing, and callers
+ * must never auto-apply a suggestion without a human tap.
+ */
+export function suggestLossCategoryFromNote(note: string | null | undefined): BidLossCategoryKey | null {
+  const haystack = (note ?? '').trim().toLowerCase()
+  if (!haystack) return null
+  const matched = LOSS_NOTE_SYNONYMS.filter((s) => s.phrases.some((p) => haystack.includes(p)))
+  return matched.length === 1 ? matched[0]!.key : null
+}
+
 /** Minimal lost-bid shape the call-mode grouping needs; the lens maps BidWithBuilder rows into this. */
 export type LossTriageBid = {
   id: string

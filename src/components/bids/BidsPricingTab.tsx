@@ -2725,7 +2725,9 @@ export function BidsPricingTab({
                         .map((h) => ({ ...h, m: marginOfRow(h) }))
                         .filter((h): h is BidPricingHistoryRow & { m: number } => h.m != null && h.m > -0.2 && h.m < 0.95)
                       const won = usable.filter((h) => h.outcome === 'won')
-                      const lostPrice = usable.filter((h) => h.outcome === 'lost' && /price/i.test(h.loss_reason ?? ''))
+                      // Structured category first (any surface's tapped reason counts); the
+                      // free-text regex stays as the pre-category-era fallback.
+                      const lostPrice = usable.filter((h) => h.outcome === 'lost' && ((h.loss_category ?? null) === 'price' || /price/i.test(h.loss_reason ?? '')))
                       if (won.length + lostPrice.length < 3) return null
                       const MIN = 20, MAX = 65
                       const x = (mPct: number) => `${((Math.min(MAX, Math.max(MIN, mPct)) - MIN) / (MAX - MIN)) * 100}%`

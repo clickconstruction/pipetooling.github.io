@@ -7,6 +7,8 @@ import { parseItbLinks } from '../itbLinks'
 export type BidEditOutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
 /** The bid-edit form's editable data fields (parent-owned bidDateSent/attestation are excluded). */
+import { isBidLossCategoryKey, type BidLossCategoryKey } from '../bidLossCategories'
+
 export type BidEditFormValues = {
   driveLink: string
   plansLink: string
@@ -34,6 +36,8 @@ export type BidEditFormValues = {
   submittedTo: string
   outcome: BidEditOutcomeOption
   lossReason: string
+  /** Structured six-bucket loss reason (bids.loss_category); lossReason stays the free-text note. */
+  lossCategory: BidLossCategoryKey | null
   bidValue: string
   agreedValue: string
   profit: string
@@ -68,6 +72,7 @@ export type BidEditFormSetters = {
   setSubmittedTo: Dispatch<SetStateAction<string>>
   setOutcome: Dispatch<SetStateAction<BidEditOutcomeOption>>
   setLossReason: Dispatch<SetStateAction<string>>
+  setLossCategory: Dispatch<SetStateAction<BidLossCategoryKey | null>>
   setBidValue: Dispatch<SetStateAction<string>>
   setAgreedValue: Dispatch<SetStateAction<string>>
   setProfit: Dispatch<SetStateAction<string>>
@@ -140,6 +145,7 @@ export function useBidEditForm(): BidEditForm {
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<BidEditOutcomeOption>('')
   const [lossReason, setLossReason] = useState('')
+  const [lossCategory, setLossCategory] = useState<BidLossCategoryKey | null>(null)
   const [bidValue, setBidValue] = useState('')
   const [agreedValue, setAgreedValue] = useState('')
   const [profit, setProfit] = useState('')
@@ -173,6 +179,7 @@ export function useBidEditForm(): BidEditForm {
     setSubmittedTo('')
     setOutcome('')
     setLossReason('')
+    setLossCategory(null)
     setBidValue('')
     setAgreedValue('')
     setProfit('')
@@ -208,6 +215,8 @@ export function useBidEditForm(): BidEditForm {
     setSubmittedTo((bid as { submitted_to?: string | null }).submitted_to ?? '')
     setOutcome((bid.outcome ?? '') as BidEditOutcomeOption)
     setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
+    const savedLossCategory = (bid as { loss_category?: string | null }).loss_category ?? null
+    setLossCategory(isBidLossCategoryKey(savedLossCategory) ? savedLossCategory : null)
     setBidValue(bid.bid_value != null ? String(bid.bid_value) : '')
     setAgreedValue(bid.agreed_value != null ? String(bid.agreed_value) : '')
     setProfit(bid.profit != null ? String(bid.profit) : '')
@@ -250,6 +259,7 @@ export function useBidEditForm(): BidEditForm {
     submittedTo,
     outcome,
     lossReason,
+    lossCategory,
     bidValue,
     agreedValue,
     profit,
@@ -284,6 +294,7 @@ export function useBidEditForm(): BidEditForm {
     setSubmittedTo,
     setOutcome,
     setLossReason,
+    setLossCategory,
     setBidValue,
     setAgreedValue,
     setProfit,

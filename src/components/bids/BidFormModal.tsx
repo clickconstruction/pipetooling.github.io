@@ -1,4 +1,6 @@
 import type { ChangeEvent, CSSProperties, Dispatch, FocusEvent, FormEvent, SetStateAction } from 'react'
+import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
+import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { useEffect, useState } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -235,6 +237,7 @@ export function BidFormModal(props: BidFormModalProps) {
     submittedTo,
     outcome,
     lossReason,
+    lossCategory,
     bidValue,
     agreedValue,
     profit,
@@ -268,6 +271,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setSubmittedTo,
     setOutcome,
     setLossReason,
+    setLossCategory,
     setBidValue,
     setAgreedValue,
     setProfit,
@@ -701,15 +705,27 @@ export function BidFormModal(props: BidFormModalProps) {
                     </div>
                   </div>
                   {outcome === 'lost' && (
-                    <div style={{ flex: 1, minWidth: '12rem' }}>
+                    <div style={{ flexBasis: '100%', minWidth: '16rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Why did we lose?</label>
+                      <BidLossCategoryChips
+                        value={lossCategory}
+                        onSelect={(key) => setLossCategory((prev) => (prev === key ? null : key))}
+                        suggestedKey={suggestLossCategoryFromNote(lossReason)}
+                        suggestedHint="suggested from your note — click to confirm"
+                      />
                       <input
                         type="text"
                         value={lossReason}
                         onChange={(e) => setLossReason(e.target.value)}
-                        placeholder="e.g. Price, schedule, competitor, no response…"
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                        placeholder="what they said (optional)"
+                        aria-label="What they said"
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginTop: '0.5rem' }}
                       />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                        {lossCategory != null
+                          ? 'Recorded — this bid won’t wait in Followup → Why we lost.'
+                          : 'Don’t know yet? Leave it — the bid waits in Followup → Why we lost for the GC calls.'}
+                      </div>
                     </div>
                   )}
                   {outcome === 'won' && (
