@@ -1,5 +1,5 @@
 /**
- * "Who owes what" breakdown behind the Pipeline New view's WAITING ON
+ * "Who owes what" breakdown behind the Pipeline money card's WAITING ON
  * CUSTOMERS card (v2.1929): the Billed Awaiting Payment rows regrouped by
  * customer so the card's total answers its own question. Pure reshaping of
  * the board's `billedActiveRows` — amounts are the same per-row open

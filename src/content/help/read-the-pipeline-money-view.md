@@ -1,11 +1,11 @@
 ---
-title: read the Pipeline's new money view
+title: read the Pipeline's money view
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: pipeline, money story, money opportunities, money moves, aging, capable, collected, old new, billed, 90 days
+keywords: pipeline, money story, money opportunities, money moves, aging, capable, collected, billed, 90 days
 order: 96
 ---
-The **Jobs → Pipeline** tab has two views, switched with the {{chip:gray|Old}} / {{chip:gray|New}} pills at the top. Old is the classic board alone; **New** puts the money story above the same board. Your choice sticks on this device.
+The **Jobs → Pipeline** tab opens with the money story: four answer cards and a to-do queue above the board, so the money questions are answered before you scroll.
 
 ## The four answer cards
 

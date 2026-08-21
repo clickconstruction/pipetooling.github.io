@@ -1,9 +1,9 @@
 /**
- * Pipeline "New" view models (money story strip + Today's money moves).
+ * Pipeline money-card view models (money story strip + Today's money moves).
  *
  * Pure builders over the lean StagesHeaderStats spine (v2.1821) plus the AR
  * unallocated count — every figure shown already exists in the header stats,
- * so the New view costs no extra fetches. The component stays thin: it renders
+ * so the money card costs no extra fetches. The component stays thin: it renders
  * whatever these return and wires each card/move key to an existing surface.
  */
 import { formatUsdNoCents } from './jobFormatting'
@@ -164,8 +164,9 @@ export type PipelineFixup = {
 
 /**
  * Data-gap chips docked at the foot of Today's Money Opportunities (v2.1961):
- * the strip-row alert buttons ("No customer" / "No customer pictures" /
- * "No email"), rebuilt as quiet pills inside the money card on the New view.
+ * the toolbar alert buttons ("No customer" / "No customer pictures" /
+ * "No email"), rebuilt as quiet pills inside the money card (the toolbar
+ * strip itself retired with the Old view, v2.2012).
  * Zero-count chips are dropped; an empty list hides the whole strip.
  */
 export function buildPipelineFixups(counts: {

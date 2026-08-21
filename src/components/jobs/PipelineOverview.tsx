@@ -1,9 +1,10 @@
 /**
- * Pipeline "New" view money layers (v2.1910): the money story strip (four
+ * The Pipeline's money layers (v2.1915): the money story strip (four
  * clickable answer cards) and the Today's Money Opportunities queue, rendered above
- * the classic jump strip + board. Every figure comes from the lean
+ * the jump strip + board. Every figure comes from the lean
  * StagesHeaderStats spine plus the AR unallocated count — no extra fetches.
- * Old view renders none of this; the board below is identical in both views.
+ * Shipped behind Old/New pills; the pills retired in v2.2012 and this is
+ * now the Pipeline's only view.
  */
 import type { CSSProperties } from 'react'
 import {
@@ -34,7 +35,7 @@ type PipelineOverviewProps = {
   onChase90: () => void
   /** "no bill line" money move: filter the Billed section to the shells (v2.1931). */
   onFixDates: () => void
-  /** Fix-ups strip (v2.1961): the strip-row data-gap alert counts, docked at the card's foot on the New view. */
+  /** Fix-ups strip (v2.1961): the data-gap alert counts, docked at the card's foot. */
   fixupCounts: { noCustomer: number; noPictures: number; noEmail: number }
   /** Opens the matching StagesAlertJobListModal (same modals the strip-row buttons open). */
   onFixup: (key: PipelineFixupKey) => void
