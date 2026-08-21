@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import {
   buildPartnerJournal,
+  netPosition,
+  pendingOffsetSignedAmount,
   summarizePendingOffsets,
   type JournalAdditionalLine,
   type JournalDeduction,
@@ -25,6 +27,7 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
   const [rows, setRows] = useState<JournalRow[] | null>(null)
   const [balance, setBalance] = useState(0)
   const [pending, setPending] = useState<{ count: number; net: number }>({ count: 0, net: 0 })
+  const [pendingRows, setPendingRows] = useState<JournalPendingOffset[]>([])
   const [failed, setFailed] = useState(false)
 
   const load = useCallback(async () => {
@@ -62,7 +65,9 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
     const journal = buildPartnerJournal({ stubs, additional, deductions, payments })
     setRows(journal.rows)
     setBalance(journal.balance)
-    setPending(summarizePendingOffsets(((pendRes.data ?? []) as JournalPendingOffset[]) || []))
+    const pendList = ((pendRes.data ?? []) as JournalPendingOffset[]) || []
+    setPending(summarizePendingOffsets(pendList))
+    setPendingRows([...pendList].sort((a, b) => b.occurred_date.localeCompare(a.occurred_date)))
   }, [personId])
 
   useEffect(() => {
@@ -81,19 +86,48 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
     )
   }
 
+  const net = netPosition(balance, pending.net)
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', margin: '0.25rem 0 0.5rem' }}>
-        <span style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>
-          {balance < 0 ? '−' : ''}{money(balance)}
+        <span style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: net < 0 ? 'var(--text-red-600)' : undefined }}>
+          {net < 0 ? '−' : ''}{money(net)}
         </span>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>current balance (all postings − payouts)</span>
         {pending.count > 0 ? (
-          <span style={{ fontSize: '0.72rem', fontWeight: 650, color: 'var(--text-amber-700)' }}>
-            {pending.count} pending offset(s), net {pending.net < 0 ? '−' : '+'}{money(pending.net)} — attach on the next statement
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            what settling up today means · posted {balance < 0 ? '−' : '+'}{money(balance)} · pending{' '}
+            {pending.net < 0 ? '−' : '+'}{money(pending.net)}
           </span>
-        ) : null}
+        ) : (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>current balance (all postings − payouts)</span>
+        )}
       </div>
+
+      {pendingRows.length > 0 ? (
+        <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.8rem', margin: '0 0 0.8rem' }}>
+          <div style={{ fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-amber-700)', marginBottom: '0.35rem' }}>
+            Pending — not yet on a statement
+          </div>
+          {pendingRows.map((o, i) => {
+            const amt = pendingOffsetSignedAmount(o)
+            return (
+              <div key={i} style={{ display: 'flex', gap: '0.6rem', justifyContent: 'space-between', padding: '0.22rem 0', fontSize: '0.8rem', borderBottom: i < pendingRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ minWidth: 0 }}>
+                  {o.description || o.type}
+                  <span style={{ color: 'var(--text-muted)' }}> · {o.occurred_date}</span>
+                </span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650, whiteSpace: 'nowrap', color: amt < 0 ? 'var(--text-red-600)' : '#16a34a' }}>
+                  {amt < 0 ? '−' : '+'}{money(amt)}
+                </span>
+              </div>
+            )
+          })}
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+            These attach to the next generated statement and only then enter the journal below.
+          </div>
+        </div>
+      ) : null}
       {rows.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
           Nothing posted yet — generate the first statement from the Statements tab.

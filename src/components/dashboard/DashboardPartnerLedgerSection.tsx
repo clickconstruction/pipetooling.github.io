@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { netPosition } from '../../lib/partnerLedger/partnerLedgerJournal'
 import {
   buildWeekCards,
   parsePartnerLedgerStubs,
@@ -127,6 +128,13 @@ export function DashboardPartnerLedgerSection() {
           ? `balance so far · updates as hours approve`
           : `closing balance · week opened at ${card && card.opening != null ? money(card.opening) : '—'}`}
       </div>
+      {card?.open && summary.pending_offsets.count > 0 ? (
+        <div style={{ fontSize: '0.72rem', fontWeight: 650, color: 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums' }}>
+          with pending charges: {netPosition(card.closing, summary.pending_offsets.net) < 0 ? '−' : ''}
+          {money(netPosition(card.closing, summary.pending_offsets.net))} · {summary.pending_offsets.count} charge(s)
+          waiting for the next statement
+        </div>
+      ) : null}
 
       <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
         {card?.lines.length === 0 ? (
