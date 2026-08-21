@@ -4055,6 +4055,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   collectionsRows={collectionsRows}
                   users={users}
                   isDev={authRole === 'dev'}
+                  onOpenJob={(jobId) => {
+                    // Edit Job stacks above (z 1010 vs 60); saving refetches, and the
+                    // fresh rows re-derive the rollup with GC Review still open.
+                    tryOpenEditJob(jobId, {
+                      onSaved: () => {
+                        void loadJobs()
+                        refreshCustomersAfterJobFormSave()
+                      },
+                    })
+                  }}
                   onPrint={(groups, groupBy) => {
                     if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups, { groupBy }))) {
                       showToast('Allow pop-ups to print the report.', 'error')

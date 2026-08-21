@@ -27,7 +27,7 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 
 ## GC Review — outstanding money by GC
 
-On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on.
+On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on: **click any job** in the report to open Edit Job right on top, set the GC (or fix anything else), and the report refreshes itself when you save.
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
 - Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Email…**, **Copy**, and **Print**.
