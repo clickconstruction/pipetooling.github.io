@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { approxDateLabel, paceProjection, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
+import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import type { PlanTask } from '../../lib/roadmapPlanView'
@@ -29,9 +29,11 @@ function waveName(index: number, count: number): string {
 }
 
 /**
- * The roadmap Timeline view (v2.1979): a Gantt whose x-axis is dependency
- * sequence. Rows staircase by (wave, stage order); bar width = remaining
- * tasks; task-less stages render as ◆ milestones; the amber FRONT line marks
+ * The roadmap Timeline view (v2.1979; per-task slots v2.2042): a Gantt whose
+ * x-axis is dependency sequence. Rows staircase by (wave, stage order); each
+ * stage bar is one successive slot per task (done green in true position,
+ * next up amber-ringed); expanding a stage unfolds a waterfall — one lane
+ * per task with its slot bar. Task-less stages render as ◆ milestones; the amber FRONT line marks
  * live progress through the current wave; the pace slider projects ≈dates
  * (remaining ÷ tasks-per-week, wave by wave) without storing a single date.
  * Tapping a row unfolds its N.M tasks; tapping a task opens the task card.
@@ -119,9 +121,28 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     </>
   )
 
-  const barFor = (r: TimelineRow) => {
+  const rectFor = (r: TimelineRow) => {
     const waveStart = geometry.starts.get(r.wave) ?? 0
     const waveWidth = geometry.widths.get(r.wave) ?? 0.1
+    const maxStage = geometry.maxStage.get(r.wave) ?? 1
+    const share = r.done ? 0.14 : Math.max(r.remainingTasks / maxStage, 0.2)
+    const width = Math.max(waveWidth * share - 0.008, 0.05)
+    return { left: waveStart + 0.004, width }
+  }
+
+  /** First not-done task in stage order — the amber "next up" slot. */
+  const nextUpIndexFor = (r: TimelineRow, stageTasks: PlanTask[]) =>
+    r.locked || r.done ? -1 : stageTasks.findIndex((t) => !t.completed_at)
+
+  const slotStyle = (r: TimelineRow, done: boolean, isNextUp: boolean) => ({
+    borderRadius: 4,
+    border: done ? `1px solid ${DONE}` : r.locked ? '1px dashed var(--border-strong)' : '1px solid var(--text-link)',
+    background: done ? 'var(--bg-green-100)' : r.locked ? 'var(--bg-muted)' : 'var(--surface)',
+    ...(isNextUp ? { outline: `1.5px solid ${FRONT}`, outlineOffset: 1 } : {}),
+  })
+
+  const barFor = (r: TimelineRow, stageTasks: PlanTask[]) => {
+    const waveStart = geometry.starts.get(r.wave) ?? 0
     if (r.isMilestone) {
       return (
         <>
@@ -144,38 +165,58 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
         </>
       )
     }
-    const maxStage = geometry.maxStage.get(r.wave) ?? 1
-    const share = r.done ? 0.14 : Math.max(r.remainingTasks / maxStage, 0.2)
-    const width = Math.max(waveWidth * share - 0.008, 0.05)
-    const fillPct = r.totalTasks === 0 ? 0 : (r.doneTasks / r.totalTasks) * 100
+    const rect = rectFor(r)
+    if (r.done) {
+      return (
+        <div
+          style={{
+            position: 'absolute',
+            top: 5,
+            bottom: 5,
+            left: pct(rect.left),
+            width: pct(rect.width),
+            borderRadius: 6,
+            border: `1px solid ${DONE}`,
+            background: 'var(--bg-green-100)',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 7px',
+            fontSize: '0.66rem',
+            color: DONE,
+            fontWeight: 700,
+          }}
+        >
+          ✓
+        </div>
+      )
+    }
+    // Segmented (v2.2042): one successive slot per task, in task order — done
+    // green in true position, the next task amber-ringed, the rest outlined.
+    const slots = taskSlotRects(rect.left, rect.width, stageTasks.length)
+    const nextUp = nextUpIndexFor(r, stageTasks)
     return (
-      <div
-        style={{
-          position: 'absolute',
-          top: 5,
-          bottom: 5,
-          left: pct(waveStart + 0.004),
-          width: pct(width),
-          borderRadius: 6,
-          border: r.done ? `1px solid ${DONE}` : r.locked ? '1px dashed var(--border-strong)' : '1px solid var(--text-link)',
-          background: r.done ? 'var(--bg-green-100)' : r.locked ? 'var(--bg-muted)' : 'var(--surface)',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 7px',
-          fontSize: '0.66rem',
-          color: r.done ? DONE : 'var(--text-muted)',
-          fontWeight: r.done ? 700 : 400,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {!r.done && fillPct > 0 ? (
-          <span style={{ position: 'absolute', inset: 0, width: `${fillPct}%`, background: 'var(--bg-green-100)', borderRight: `2px solid ${DONE}` }} />
-        ) : null}
-        <span style={{ position: 'relative' }}>
-          {r.done ? '✓' : r.locked ? `🔒 ${r.totalTasks} task${r.totalTasks === 1 ? '' : 's'}` : `${r.doneTasks} of ${r.totalTasks}`}
-        </span>
-      </div>
+      <>
+        {stageTasks.map((t, i) => {
+          const slot = slots[i]
+          if (!slot) return null
+          const done = t.completed_at != null
+          const state = done ? 'done' : i === nextUp ? 'next up' : r.locked ? 'locked' : 'remaining'
+          return (
+            <span
+              key={t.id}
+              title={`${taskNumbers.get(t.id) ?? ''} ${t.title} — ${state}`}
+              style={{
+                position: 'absolute',
+                top: 6,
+                bottom: 6,
+                left: pct(slot.left),
+                width: pct(slot.width),
+                ...slotStyle(r, done, i === nextUp),
+              }}
+            />
+          )
+        })}
+      </>
     )
   }
 
@@ -259,47 +300,99 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                     <span className="roadmap-timeline-rail-title" style={{ fontSize: '0.76rem', fontWeight: 600, color: r.locked ? 'var(--text-muted)' : 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.title}
                     </span>
+                    {!r.isMilestone ? (
+                      <span className="roadmap-timeline-rail-title" style={{ flex: 'none', marginLeft: 'auto', fontSize: '0.64rem', color: r.done ? DONE : 'var(--text-muted)', fontWeight: r.done ? 700 : 400, fontVariantNumeric: 'tabular-nums' }}>
+                        {r.locked ? '🔒 ' : ''}{r.doneTasks}/{r.totalTasks}
+                      </span>
+                    ) : null}
                   </div>
                   <div style={{ flex: 1, position: 'relative', minHeight: 32 }}>
                     {laneVlines}
-                    {barFor(r)}
+                    {barFor(r, stageTasks)}
                     <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: pct(frontX), borderLeft: `2px solid ${FRONT}`, opacity: 0.55, pointerEvents: 'none' }} />
                   </div>
                 </div>
                 {expanded && stageTasks.length > 0 ? (
-                  <ul style={{ listStyle: 'none', margin: 0, padding: '0.35rem 0.8rem 0.5rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-slate-tint)' }}>
-                    {stageTasks.map((t) => (
-                      <li key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.18rem 0', fontSize: '0.76rem' }}>
-                        {taskNumbers.has(t.id) ? <RoadmapTaskNumber label={taskNumbers.get(t.id)!} /> : null}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onOpenTask(t.id)
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            textAlign: 'left',
-                            flex: 1,
-                            minWidth: 0,
-                            cursor: 'pointer',
-                            fontSize: '0.76rem',
-                            color: t.completed_at ? 'var(--text-muted)' : 'var(--text-700)',
-                            textDecoration: t.completed_at ? 'line-through' : undefined,
-                          }}
-                        >
-                          {t.title}
-                        </button>
-                        {t.assigneeIds.length > 0 ? (
-                          <span style={{ flex: 'none', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                            {t.assigneeIds.map((id) => nameById.get(id) ?? '…').join(', ')}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
+                  (() => {
+                    const rect = rectFor(r)
+                    const slots = taskSlotRects(rect.left, rect.width, stageTasks.length)
+                    const nextUp = nextUpIndexFor(r, stageTasks)
+                    return (
+                      <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-slate-tint)' }}>
+                        {stageTasks.map((t, i) => {
+                          const slot = slots[i]
+                          const done = t.completed_at != null
+                          return (
+                            <div key={t.id} style={{ display: 'flex', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                              <div className="roadmap-timeline-rail" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, padding: '0.18rem 0.6rem 0.18rem 1.5rem', minWidth: 0 }}>
+                                {taskNumbers.has(t.id) ? <RoadmapTaskNumber label={taskNumbers.get(t.id)!} /> : null}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onOpenTask(t.id)
+                                  }}
+                                  className="roadmap-timeline-rail-title"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    textAlign: 'left',
+                                    flex: 1,
+                                    minWidth: 0,
+                                    cursor: 'pointer',
+                                    fontSize: '0.72rem',
+                                    color: done ? 'var(--text-muted)' : 'var(--text-700)',
+                                    textDecoration: done ? 'line-through' : undefined,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {t.title}
+                                </button>
+                                {t.assigneeIds.length > 0 ? (
+                                  <span className="roadmap-timeline-rail-title" style={{ flex: 'none', fontSize: '0.64rem', color: 'var(--text-muted)', maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {t.assigneeIds.map((id) => nameById.get(id) ?? '…').join(', ')}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div style={{ flex: 1, position: 'relative', minHeight: 24 }}>
+                                {laneVlines}
+                                {slot ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      onOpenTask(t.id)
+                                    }}
+                                    title={`${taskNumbers.get(t.id) ?? ''} ${t.title}`}
+                                    aria-label={`Open task ${t.title}`}
+                                    style={{
+                                      position: 'absolute',
+                                      top: 4,
+                                      bottom: 4,
+                                      left: pct(slot.left),
+                                      width: pct(slot.width),
+                                      padding: 0,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      ...slotStyle(r, done, i === nextUp),
+                                    }}
+                                  >
+                                    {done ? <span style={{ fontSize: '0.6rem', color: DONE, fontWeight: 700 }}>✓</span> : null}
+                                  </button>
+                                ) : null}
+                                <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: pct(frontX), borderLeft: `2px solid ${FRONT}`, opacity: 0.55, pointerEvents: 'none' }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()
                 ) : null}
               </div>
             )
@@ -307,7 +400,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
         </div>
       </div>
       <p style={{ margin: 0, padding: '0.45rem 0.8rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-        Sequence, not calendar: columns are dependency waves from the Map's arrows; dates are what-ifs from the pace slider. Bar width = remaining work · ◆ = milestone stage · the amber line is the work front.
+        Sequence, not calendar: columns are dependency waves from the Map's arrows; dates are what-ifs from the pace slider. Each slot ≈ one task, in stage order — green done, amber ring next up · ◆ = milestone stage · the amber line is the work front.
       </p>
     </div>
   )

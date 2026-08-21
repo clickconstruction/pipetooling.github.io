@@ -10,10 +10,10 @@ order: 45
 ## How to read it
 
 - **Rows** cascade by wave, then your stage order — same number badges as everywhere else.
-- **Bar width = remaining work.** A fat bar is a heavy stage; the green fill grows as tasks complete.
+- **Bar width = remaining work**, and each bar is **one slot per task**, laid end to end in task order: green slots are done (in their true position), the amber-ringed one is next up, outlined ones remain. Hover a slot for the task's name; the done/total count sits next to the stage title.
 - **◆ diamonds** are milestone stages (stages with no tasks of their own — they're reached, not worked).
 - The **amber line** is the work front: how far the roadmap has actually moved.
-- **Tap a row** to unfold its numbered tasks; tap a task to open its card.
+- **Tap a row** to unfold its tasks as a waterfall — each task on its own line with its bar in its slot, stepping across the stage's span in the order the work will burn down. Tap a task's title or bar to open its card.
 
 ## The pace slider
 
