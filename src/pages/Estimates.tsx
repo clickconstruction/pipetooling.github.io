@@ -26,13 +26,7 @@ import {
   parseEstimateChangeOrderFields,
   type EstimateChangeOrderFields,
 } from '../lib/estimateChangeOrder'
-import {
-  coCostPromptConsequence,
-  emptyCoCostPromptDraft,
-  validateCoCostPromptDraft,
-  type CoCostPromptDraft,
-  type CoCostPromptMode,
-} from '../lib/coCostLinePrompt'
+import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import {
@@ -2848,26 +2842,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   /** CO train (v2.1832): change orders reuse this whole page in CO mode. */
   const isCO = isChangeOrderDocKind(row?.doc_kind)
   const [coFields, setCoFields] = useState<EstimateChangeOrderFields>(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
-  // Guided cost-impact entry (CO money train PR 2): every new CO line starts
-  // from the "added work" / "credit" prompt instead of a blank row.
-  const [coPromptDraft, setCoPromptDraft] = useState<CoCostPromptDraft | null>(null)
-  const [coPromptError, setCoPromptError] = useState('')
+  // Guided cost-impact entry (v2.1944): the "added work" / "credit" chips
+  // append an inline-editable line directly — a line exists per chip click.
+  const coFocusLineIndexRef = useRef<number | null>(null)
 
-  function openCoPrompt(mode: CoCostPromptMode) {
-    setCoPromptDraft(emptyCoCostPromptDraft(mode))
-    setCoPromptError('')
-  }
-
-  function submitCoPrompt() {
-    if (!coPromptDraft) return
-    const v = validateCoCostPromptDraft(coPromptDraft)
-    if (!v.ok) {
-      setCoPromptError(v.error)
-      return
-    }
-    setLines((p) => [...p, v.line])
-    setCoPromptDraft(null)
-    setCoPromptError('')
+  function addCoLine(mode: CoCostPromptMode) {
+    setLines((p) => {
+      coFocusLineIndexRef.current = p.length
+      const line = emptyDraftLine()
+      if (mode === 'credit') line.line_item = CO_CREDIT_LABEL_PREFIX
+      return [...p, line]
+    })
   }
   const draftNeedsCustomer = isDraft && !customerId
 
@@ -4795,17 +4780,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </div>
               </div>
             ) : null}
-            {isCO && lines.length === 0 && coPromptDraft == null ? (
+            {isCO && lines.length === 0 ? (
               <div style={{ ...coPromptPanelStyle, textAlign: 'center', marginBottom: '0.75rem' }}>
                 <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>What does this change include?</p>
                 <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   Each line becomes part of the signed contract change.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => openCoPrompt('add')} style={coPromptChipStyle('add')}>
+                  <button type="button" onClick={() => addCoLine('add')} style={coPromptChipStyle('add')}>
                     + Added work
                   </button>
-                  <button type="button" onClick={() => openCoPrompt('credit')} style={coPromptChipStyle('credit')}>
+                  <button type="button" onClick={() => addCoLine('credit')} style={coPromptChipStyle('credit')}>
                     − Credit / removed work
                   </button>
                 </div>
@@ -4838,7 +4823,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 listStylePosition: 'outside',
               }}
             >
-              {lines.map((ln, i) => (
+              {lines.map((ln, i) => {
+                const coCredit = isCO && isCoCreditLine(ln.line_item, ln.unit_price_cents)
+                return (
                 <li key={i} style={{ marginBottom: '0.35rem' }}>
                   <div
                     style={{
@@ -4850,6 +4837,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     <div className="estimate-detail-line-item-block">
                       <div className="estimate-detail-line-item-line">
                         <input
+                          ref={(el) => {
+                            if (el && coFocusLineIndexRef.current === i) {
+                              coFocusLineIndexRef.current = null
+                              el.focus()
+                            }
+                          }}
                           placeholder="Line item"
                           value={ln.line_item}
                           onChange={(e) => updateLine(i, { line_item: e.target.value })}
@@ -4878,12 +4871,28 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           min={isCO ? undefined : 0}
                           step="0.01"
                           placeholder="Unit ($)"
-                          title={isCO ? 'Negative unit price = credit line' : undefined}
-                          value={ln.unit_price_cents ? ln.unit_price_cents / 100 : ''}
-                          onChange={(e) =>
-                            updateLine(i, { unit_price_cents: Math.round(Number(e.target.value || '0') * 100) })
+                          title={
+                            coCredit
+                              ? 'Credit line — this amount is credited back to the customer'
+                              : isCO
+                                ? 'Negative unit price = credit line'
+                                : undefined
                           }
-                          style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
+                          value={
+                            ln.unit_price_cents
+                              ? (coCredit ? Math.abs(ln.unit_price_cents) : ln.unit_price_cents) / 100
+                              : ''
+                          }
+                          onChange={(e) => {
+                            const cents = Math.round(Number(e.target.value || '0') * 100)
+                            updateLine(i, { unit_price_cents: coCredit ? -Math.abs(cents) : cents })
+                          }}
+                          style={{
+                            ...estInputBase,
+                            width: 100,
+                            padding: '0.5rem',
+                            ...(coCredit ? { color: 'var(--text-red-700)' } : {}),
+                          }}
                         />
                         <button
                           type="button"
@@ -4928,8 +4937,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     />
                   </div>
                 </li>
-              ))}
-              {isCO && (lines.length === 0 || coPromptDraft != null) ? null : (
+                )
+              })}
+              {isCO && lines.length === 0 ? null : (
               <li style={{ marginBottom: '0.35rem' }}>
                 <div
                   style={{
@@ -4942,10 +4952,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 >
                   {isCO ? (
                     <>
-                      <button type="button" onClick={() => openCoPrompt('add')} style={coPromptChipStyle('add')}>
+                      <button type="button" onClick={() => addCoLine('add')} style={coPromptChipStyle('add')}>
                         + Added work
                       </button>
-                      <button type="button" onClick={() => openCoPrompt('credit')} style={coPromptChipStyle('credit')}>
+                      <button type="button" onClick={() => addCoLine('credit')} style={coPromptChipStyle('credit')}>
                         − Credit / removed work
                       </button>
                     </>
@@ -5021,79 +5031,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </li>
               )}
             </ul>
-            {isCO && coPromptDraft != null ? (
-              <div style={{ ...coPromptPanelStyle, margin: '0.35rem 0 0.5rem' }}>
-                <p style={{ margin: '0 0 0.55rem', fontWeight: 600 }}>
-                  {coPromptDraft.mode === 'add' ? 'New line — added work' : 'New line — credit / removed work'}
-                </p>
-                <input
-                  autoFocus
-                  value={coPromptDraft.label}
-                  onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, label: e.target.value } : p))}
-                  placeholder={
-                    coPromptDraft.mode === 'add' ? 'What work is being added?' : 'What work is being credited or removed?'
-                  }
-                  aria-label={
-                    coPromptDraft.mode === 'add' ? 'What work is being added?' : 'What work is being credited or removed?'
-                  }
-                  style={{ ...estInputBase, width: '100%', boxSizing: 'border-box', padding: '0.5rem', marginBottom: '0.5rem' }}
-                />
-                <input
-                  value={coPromptDraft.description}
-                  onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, description: e.target.value } : p))}
-                  placeholder="What's included — fixtures, materials, labor… (optional)"
-                  aria-label="What's included (optional)"
-                  style={{ ...estInputBase, width: '100%', boxSizing: 'border-box', padding: '0.5rem', marginBottom: '0.5rem' }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input
-                    value={coPromptDraft.quantityText}
-                    onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, quantityText: e.target.value } : p))}
-                    inputMode="decimal"
-                    aria-label="Qty"
-                    title="Qty"
-                    style={{ ...estInputBase, width: '4.5rem', textAlign: 'center', padding: '0.5rem' }}
-                  />
-                  <input
-                    value={coPromptDraft.unitPriceText}
-                    onChange={(e) => setCoPromptDraft((p) => (p ? { ...p, unitPriceText: e.target.value } : p))}
-                    inputMode="decimal"
-                    placeholder="Unit ($)"
-                    aria-label="Unit price ($)"
-                    style={{ ...estInputBase, width: '7rem', textAlign: 'center', padding: '0.5rem' }}
-                  />
-                  <span
-                    aria-live="polite"
-                    style={{
-                      flex: '1 1 auto',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: coPromptDraft.mode === 'credit' ? 'var(--text-red-700)' : 'var(--text-green-600)',
-                    }}
-                  >
-                    {coCostPromptConsequence(coPromptDraft)}
-                  </span>
-                  <button type="button" onClick={submitCoPrompt} style={estPrimaryButton(false)}>
-                    Add line
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCoPromptDraft(null)
-                      setCoPromptError('')
-                    }}
-                    style={estSecondaryButton()}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {coPromptError ? (
-                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
-                    {coPromptError}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
             <p style={{ fontWeight: 600, textAlign: 'right' }}>
               {isCO ? <>Net change to contract: {formatSignedCentsUsd(totalCents)}</> : <>Total: {formatMoney(totalCents)}</>}
             </p>

@@ -35,10 +35,10 @@ The editor asks for the change-order story:
 
 **Impact on cost is real line items**, not a typed total. A new change order opens the section with one question — *What does this change include?* — and two ways to answer:
 
-- {{button:outline|+ Added work}} — work going **into** the contract. Name the work, note what's included (fixtures, materials, labor…), set quantity and unit price.
-- {{button:outline-amber|− Credit / removed work}} — work coming **out**. Same short form; the price you enter is credited back, and the line is labeled "Credit — " automatically.
+- {{button:outline|+ Added work}} — work going **into** the contract. One tap adds the line; name the work, note what's included (fixtures, materials, labor…), set quantity and unit price right on it.
+- {{button:outline-amber|− Credit / removed work}} — work coming **out**. One tap adds a line labeled "Credit — "; the price you enter is credited back automatically.
 
-As you type, the form shows the math live — *= $2,840.00 added to contract* or *= −$390.00 credited back* — so a wrong sign is caught before it becomes a line. Repeat-priced work is still one tap away in the **line-item catalog**.
+Each tap on a button is one line — the buttons stay below the list so the next line is always one tap away. Repeat-priced work is still one tap away in the **line-item catalog**.
 
 :::example Impact on cost
 Reroute condensate line — labor + materials — **$2,840.00**
