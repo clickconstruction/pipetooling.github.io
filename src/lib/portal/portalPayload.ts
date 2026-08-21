@@ -16,6 +16,10 @@ export type PortalCompany = {
 export type PortalBill = {
   jobLabel: string
   jobNumber: string
+  /** Bare job name — the line-one fallback when a job has no address. */
+  jobName: string | null
+  /** 'plum' | 'elec' | 'hvac' (the board's trade tags); null = no tag rendered. */
+  serviceTag: PortalTradeTag | null
   jobAddress: string | null
   amount: number
   billedOn: string | null
@@ -64,6 +68,8 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       bills.push({
         jobLabel: str(b.jobLabel, 'Job'),
         jobNumber: str(b.jobNumber),
+        jobName: typeof b.jobName === 'string' && b.jobName.trim() ? b.jobName : null,
+        serviceTag: b.serviceTag === 'plum' || b.serviceTag === 'elec' || b.serviceTag === 'hvac' ? b.serviceTag : null,
         jobAddress: typeof b.jobAddress === 'string' && b.jobAddress.trim() ? b.jobAddress : null,
         amount,
         billedOn: typeof b.billedOn === 'string' && /^\d{4}-\d{2}-\d{2}/.test(b.billedOn) ? b.billedOn.slice(0, 10) : null,
@@ -144,6 +150,36 @@ export function portalDaysSinceBilled(
   if (days === 0) return { label: 'today', aging: false }
   if (days === 1) return { label: 'yesterday', aging: false }
   return { label: `${days} days ago`, aging: days >= 30 }
+}
+
+export type PortalTradeTag = 'plum' | 'elec' | 'hvac'
+
+/**
+ * The company's trade colors (source of truth: BID_SERVICE_TYPE_TAGS in
+ * src/utils/unifiedJobBidSearch.ts — duplicated here so the customer-facing
+ * portal bundle stays lean). Colored TEXT on the statement, never a pill.
+ */
+export const PORTAL_TRADE_COLORS: Record<PortalTradeTag, string> = {
+  plum: '#e17235',
+  elec: '#EE9310',
+  hvac: '#06b6d4',
+}
+
+/**
+ * Statement line split (v2.2041 trade-first job lines): street rides the
+ * headline, city/state drop to the quiet line. Split at the FIRST comma —
+ * "415 Springtown Way, San Marcos, TX 78666" → street + "San Marcos, TX
+ * 78666"; a comma-less address stays whole with no second line.
+ */
+export function splitPortalAddress(address: string | null): { street: string; rest: string | null } | null {
+  const a = (address ?? '').trim()
+  if (!a) return null
+  const i = a.indexOf(',')
+  if (i < 0) return { street: a, rest: null }
+  const street = a.slice(0, i).trim()
+  const rest = a.slice(i + 1).trim()
+  if (!street) return { street: a, rest: null }
+  return { street, rest: rest || null }
 }
 
 /** "$1,700.00" — the portal always shows cents (it is a statement). */

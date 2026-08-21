@@ -5,6 +5,7 @@ import {
   dedupeJobsById,
   jobIsAsGc,
   jobLabel,
+  jobTradeTag,
   type PortalJobRow,
 } from '../../../supabase/functions/_shared/portalMergedBills'
 
@@ -122,5 +123,27 @@ describe('jobLabel', () => {
     expect(jobLabel(job({ id: 'j', job_name: 'Vet clinic', hcp_number: '963' }))).toBe('Vet clinic · Job 963')
     expect(jobLabel(job({ id: 'j', job_name: '', hcp_number: '12' }))).toBe('Job 12')
     expect(jobLabel(job({ id: 'j' }))).toBe('Job')
+  })
+})
+
+describe('jobTradeTag', () => {
+  it('maps the embedded service type to the board trade tags; unknown/absent → null', () => {
+    expect(jobTradeTag(job({ id: 'j', service_types: { name: 'Plumbing' } }))).toBe('plum')
+    expect(jobTradeTag(job({ id: 'j', service_types: { name: 'Electrical' } }))).toBe('elec')
+    expect(jobTradeTag(job({ id: 'j', service_types: { name: 'HVAC' } }))).toBe('hvac')
+    expect(jobTradeTag(job({ id: 'j', service_types: { name: 'Landscaping' } }))).toBeNull()
+    expect(jobTradeTag(job({ id: 'j' }))).toBeNull()
+  })
+
+  it('bills carry serviceTag + bare jobName for the trade-first statement line', () => {
+    const bills = buildPortalBills({
+      jobs: [job({ id: 'j1', job_name: 'Vet clinic', hcp_number: '963', revenue: 100, payments_made: 0, service_types: { name: 'HVAC' } })],
+      invoices: [],
+      payments: [],
+      viewerCustomerId: VIEWER,
+      markGcRows: false,
+      ownerNames: {},
+    })
+    expect(bills[0]).toMatchObject({ serviceTag: 'hvac', jobName: 'Vet clinic' })
   })
 })
