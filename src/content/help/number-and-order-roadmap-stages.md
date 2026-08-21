@@ -14,7 +14,7 @@ The numbers follow the roadmap's **stage order**: the top stage is always **#1**
 Numbers are *wayfinding, not sequence* — a stage's number doesn't lock or unlock anything. What must happen before what is still set by the prerequisite arrows on the Map ({{button:outline|Link Groups}}).
 
 :::example Reading the Plan view with numbers
-The **Now** list sorts by momentum (most-progressed stage first), so you might see stage **6** above stage **3**. That's the point: the number tells you *which* stage it is, and its position in the list tells you where the momentum is.
+The Plan lists — **Now**, **Up next**, and **Goals** — follow the same stage order, so the numbers count upward as you read down each list. A gap (say #2 straight to #5) just means the stages between are done, locked, or living in another section.
 :::
 
 ## Reorder the stages

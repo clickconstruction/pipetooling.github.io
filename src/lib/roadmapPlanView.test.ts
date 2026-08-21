@@ -43,10 +43,17 @@ describe('planHeaderStats', () => {
 })
 
 describe('planNowStages', () => {
-  it('lists unlocked task-bearing stages, momentum first, with feeds', () => {
+  it('lists unlocked task-bearing stages in stage order, with feeds', () => {
     const rows = planNowStages({ groups, tasksByGroup, unlockedIds, completeIds, edges })
     expect(rows.map((r) => r.title)).toEqual(['Cut trail', 'Pull trees'])
     expect(rows[0]).toMatchObject({ done: 1, total: 2, feeds: ['Full Use of Land'] })
+  })
+  it('keeps stage order even when a later stage has more momentum (v2.1946)', () => {
+    // Pull trees (0/1 done) ordered above Cut trail (1/2 done): stage order
+    // wins — the old momentum sort would have flipped them.
+    const reordered = [groups[1]!, groups[0]!, groups[2]!, groups[3]!]
+    const rows = planNowStages({ groups: reordered, tasksByGroup, unlockedIds, completeIds, edges })
+    expect(rows.map((r) => r.title)).toEqual(['Pull trees', 'Cut trail'])
   })
   it('excludes locked and empty stages', () => {
     const rows = planNowStages({ groups, tasksByGroup, unlockedIds, completeIds, edges })

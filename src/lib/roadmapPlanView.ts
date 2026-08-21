@@ -1,8 +1,10 @@
 /**
  * Roadmap Plan view kernels (v2.1913): the flat "work front" lens over the
- * tech tree — header stats, the Now list (unlocked stages sorted by momentum),
- * Up next (locked stages with their blockers), and Goals (task-less milestone
- * stages measured by their transitive feeder tasks).
+ * tech tree — header stats, the Now list, Up next (locked stages with their
+ * blockers), and Goals (task-less milestone stages measured by their
+ * transitive feeder tasks). Since v2.1946 every list keeps the caller's
+ * `groups` order — the roadmap's stage order (sort_index, user-draggable via
+ * Order stages) — so rows read #1, #2, #3… matching the stage-number badges.
  */
 
 import { blockingStageTitles } from './roadmapBridge'
@@ -44,9 +46,8 @@ export type PlanNowStage = {
 }
 
 /**
- * Unlocked, incomplete stages that have tasks — the work front. Sorted by
- * momentum: stages with progress first (higher done-fraction wins), then by
- * title for stability.
+ * Unlocked, incomplete stages that have tasks — the work front, in the
+ * roadmap's stage order (so rows read #1, #2, #3… like their badges).
  */
 export function planNowStages(args: {
   groups: ReadonlyArray<PlanGroup>
@@ -69,12 +70,6 @@ export function planNowStages(args: {
       .filter((t): t is string => !!t)
     rows.push({ groupId: g.id, title: g.title, done, total: tasks.length, feeds })
   }
-  rows.sort((a, b) => {
-    const fa = a.done / a.total
-    const fb = b.done / b.total
-    if (fb !== fa) return fb - fa
-    return a.title.localeCompare(b.title)
-  })
   return rows
 }
 
@@ -107,7 +102,6 @@ export function planUpNextStages(args: {
       blockingTitles: blockingStageTitles({ groupId: g.id, edges, completeGroupIds: completeIds, titleByGroupId }),
     })
   }
-  rows.sort((a, b) => a.title.localeCompare(b.title))
   return rows
 }
 
@@ -165,11 +159,5 @@ export function goalMilestones(args: {
       complete: completeIds.has(g.id),
     })
   }
-  rows.sort((a, b) => {
-    const fa = a.feederTotal === 0 ? 0 : a.feederDone / a.feederTotal
-    const fb = b.feederTotal === 0 ? 0 : b.feederDone / b.feederTotal
-    if (fb !== fa) return fb - fa
-    return a.title.localeCompare(b.title)
-  })
   return rows
 }
