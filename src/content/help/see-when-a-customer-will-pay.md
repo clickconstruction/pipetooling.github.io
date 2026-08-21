@@ -20,6 +20,15 @@ Hover any chip and it spells out the math.
 Find the row on Billed Awaiting Payment — the chip says {{chip:blue|Expect pay ~Sep 8 · pays in ~35d}}. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
 :::
 
+## The payment forecast
+
+The {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header rolls every chip up into one view: open dollars bucketed by expected payment date — **Past expected** (your follow-up queue, listed first in red), **This week**, **Next week**, and beyond. It reads two ways:
+
+- **As a cash forecast** — "about $35k should land this week, $47k next week."
+- **As a work list** — everything in Past expected is a customer running slower than their own norm; click any row to jump straight to that bill on the board.
+
+Bills whose customers have no measurable history sit in **No pay history** at the end, so no money ever hides from the total.
+
 ## Where the speed number comes from
 
 It's the same "pays in ~N days" stat the customer profile shows: only payments that are linked to a billed invoice count (a payment with no bill date can't be measured), and only the last 12 months, so a customer who cleaned up their act isn't haunted by old habits.
