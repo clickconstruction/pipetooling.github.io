@@ -15,6 +15,57 @@ import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
 
 type UserRow = { id: string; name: string; email: string }
 
+/**
+ * One successive slot per task in task order (v2.2046 — the Timeline's
+ * per-task bars, Plan edition): done green in true position, the first open
+ * task amber-ringed ("next up"), the rest outlined; locked stages dashed.
+ * Tapping a slot opens the task card; the tooltip names the task.
+ */
+function PlanTaskSlotBar({
+  tasks,
+  locked,
+  taskNumbers,
+  onOpenTask,
+}: {
+  tasks: PlanTask[]
+  locked?: boolean
+  taskNumbers: Map<string, string>
+  onOpenTask: (taskId: string) => void
+}) {
+  if (tasks.length === 0) return null
+  const nextUp = locked ? -1 : tasks.findIndex((t) => !t.completed_at)
+  return (
+    <div style={{ display: 'flex', gap: 2, height: 9 }}>
+      {tasks.map((t, i) => {
+        const done = t.completed_at != null
+        const state = done ? 'done' : i === nextUp ? 'next up' : locked ? 'locked' : 'remaining'
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenTask(t.id)
+            }}
+            title={`${taskNumbers.get(t.id) ?? ''} ${t.title} — ${state}`}
+            aria-label={`Open task ${t.title}`}
+            style={{
+              flex: 1,
+              minWidth: 4,
+              padding: 0,
+              borderRadius: 3,
+              cursor: 'pointer',
+              border: done ? '1px solid #16a34a' : locked ? '1px dashed var(--border-strong)' : '1px solid var(--text-link)',
+              background: done ? 'var(--bg-green-100)' : locked ? 'var(--bg-muted)' : 'var(--surface)',
+              ...(i === nextUp ? { outline: '1.5px solid #f59e0b', outlineOffset: 1 } : {}),
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 type Props = {
   groups: Array<{ id: string; title: string }>
   tasks: PlanTask[]
@@ -318,6 +369,13 @@ export function ChecklistRoadmapPlanView({
                 </button>
               ) : null}
             </div>
+            {!focus ? (
+              // Truth bar uses the FULL stage task list — a lens-filtered bar
+              // would misstate progress while the focus banner is up.
+              <div style={{ margin: '0.5rem 0 0.1rem' }}>
+                <PlanTaskSlotBar tasks={tasksByGroup.get(s.groupId) ?? []} taskNumbers={taskNumbers} onOpenTask={onOpenTask} />
+              </div>
+            ) : null}
             {s.feeds.length > 0 ? (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>feeds {s.feeds.join(', ')}</div>
             ) : null}
@@ -430,6 +488,9 @@ export function ChecklistRoadmapPlanView({
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {s.total} task{s.total === 1 ? '' : 's'} · {lockedStageHint(s.blockingTitles, false) ?? 'blocked'}
               </span>
+              <div style={{ width: '100%' }}>
+                <PlanTaskSlotBar tasks={tasksByGroup.get(s.groupId) ?? []} locked taskNumbers={taskNumbers} onOpenTask={onOpenTask} />
+              </div>
             </div>
           ))}
         </>
