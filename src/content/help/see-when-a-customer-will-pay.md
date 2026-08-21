@@ -41,6 +41,19 @@ Bills whose customers have no measurable history sit in **No pay history** at th
 
 The **Pay speeds** strip under the buckets gives the averages at a glance: the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} averages, each with how many payments it's based on. Every row also wears its customer's Res/Comm tag — commercial GCs usually pay on check runs while homeowners pay on the spot, so the same "late by 10 days" reads very differently between the two.
 
+## The pay-speeds breakdown
+
+The strip is a door: click anywhere on it (**See the breakdown ›**) and a second view opens showing *who* is behind those averages.
+
+- **Three tiles** echo the strip — Company, Res, Comm.
+- **Where customers land** — a chart of every customer with open billed money and enough history. Two ways to look at it, switched with pills: **Every customer a dot** puts each customer on a days axis (bigger dot = more open dollars, so a slow customer holding big money jumps out; the dashed line is the company median), and **Count by speed bucket** counts how many customers pay at each speed.
+- **By customer — slowest first** — every customer ranked by their median, with their payment count and the open dollars riding on their speed. The top of this list is your follow-up list.
+- **Thin history** — customers with under 3 measured payments sit in their own muted tier, because their forecasts run on the company median; the breakdown says so instead of showing a made-up number.
+
+:::example Who's actually slow?
+The Comm average says ~25d — but the breakdown shows that's Knight Contracting at ~25d with $16,893 open, while TF Harper runs ~44d with $2,918 open. One number was hiding two very different customers.
+:::
+
 ## Where the speed number comes from
 
 It's the same "pays in ~N days" stat the customer profile shows: only payments that are linked to a billed invoice count (a payment with no bill date can't be measured), and only the last 12 months, so a customer who cleaned up their act isn't haunted by old habits.

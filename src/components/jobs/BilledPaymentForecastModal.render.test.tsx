@@ -93,6 +93,31 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(container.textContent).not.toContain('Showing only')
   })
 
+  it('clicking the pay-speeds strip opens the per-customer breakdown modal (v2.2022)', () => {
+    render(
+      <BilledPaymentForecastModal
+        rows={[billedRow()]}
+        paySpeeds={speeds}
+        todayYmd="2026-08-20"
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByTitle(/Open the pay-speeds breakdown/))
+    const dialog = screen.getByRole('dialog', { name: 'Pay speeds breakdown' })
+    expect(dialog.textContent).toContain('By customer — slowest first')
+    // Knight Contracting has its own median (35d, 12 payments) and $3,013 open.
+    expect(dialog.textContent).toContain('Knight Contracting')
+    expect(dialog.textContent).toContain('~35d')
+    expect(dialog.textContent).toContain('12 pmts')
+    expect(dialog.textContent).toContain('$3,013')
+    // Chart variant pills flip between the dot view and the bucket view.
+    fireEvent.click(screen.getByRole('button', { name: 'Count by speed bucket' }))
+    expect(screen.getByRole('img', { name: /Customer count by pay-speed bucket/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close pay speeds breakdown' }))
+    expect(screen.queryByRole('dialog', { name: 'Pay speeds breakdown' })).toBeNull()
+  })
+
   it('hides the strip (but still lists rows) when pay speeds are unavailable', () => {
     render(
       <BilledPaymentForecastModal
