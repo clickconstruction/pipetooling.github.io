@@ -1997,7 +1997,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
   const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
   const boardTile = (label: string, value: string, valueColor?: string) => (
-    <div style={{ flex: '0 1 220px', background: 'var(--bg-muted)', borderRadius: 10, padding: '0.6rem 0.75rem', minWidth: 110 }}>
+    <div style={{ flex: '1 1 96px', maxWidth: 220, background: 'var(--bg-muted)', borderRadius: 10, padding: '0.6rem 0.75rem', minWidth: 0 }}>
       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label}</div>
       <div style={{ fontSize: '1.25rem', fontWeight: 600, color: valueColor ?? 'var(--text-strong)', marginTop: 2 }}>{value}</div>
     </div>
