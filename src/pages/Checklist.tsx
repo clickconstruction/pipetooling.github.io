@@ -1997,7 +1997,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
   const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
   const boardTile = (label: string, value: string, valueColor?: string) => (
-    <div style={{ flex: 1, background: 'var(--bg-muted)', borderRadius: 10, padding: '0.6rem 0.75rem', minWidth: 110 }}>
+    <div style={{ flex: '0 1 220px', background: 'var(--bg-muted)', borderRadius: 10, padding: '0.6rem 0.75rem', minWidth: 110 }}>
       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label}</div>
       <div style={{ fontSize: '1.25rem', fontWeight: 600, color: valueColor ?? 'var(--text-strong)', marginTop: 2 }}>{value}</div>
     </div>
@@ -2055,7 +2055,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
         {boardTile('To sign off', reviewCount == null ? '—' : String(reviewCount), 'var(--text-link)')}
         {boardTile(`Outstanding · ${BOARD_RANGE_LABELS[dateRange as BoardRange].toLowerCase()}`, loading ? '—' : String(outstandingTotal), 'var(--text-red-700)')}
         {boardTile('Missed this week', missedWeekCount == null ? '—' : String(missedWeekCount))}
