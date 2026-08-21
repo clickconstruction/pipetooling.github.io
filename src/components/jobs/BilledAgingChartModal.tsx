@@ -33,10 +33,13 @@ const Y_BOTTOM = 420
 
 export default function BilledAgingChartModal({
   rows,
+  loading,
   onClose,
   onOpenInvoice,
 }: {
   rows: StageRow[]
+  /** True while any non-paid scope is still fetching — bubbles can still appear. */
+  loading?: boolean
   onClose: () => void
   onOpenInvoice: (invoiceId: string) => void
 }) {
@@ -117,6 +120,12 @@ export default function BilledAgingChartModal({
             ×
           </button>
         </div>
+
+        {loading ? (
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status" aria-busy>
+            Loading the whole board — bubbles and totals can still grow…
+          </p>
+        ) : null}
 
         <div style={{ display: 'flex', gap: '1.75rem', flexWrap: 'wrap', margin: '0.5rem 0 0.75rem' }}>
           <Stat v={billedAgingMoneyLabel(stats.openTotal)} k={`open · ${stats.plottedCount} bills`} />

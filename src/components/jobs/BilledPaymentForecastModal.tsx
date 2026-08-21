@@ -83,6 +83,7 @@ function rowDateLabel(r: ForecastRow): { text: string; color: string } {
 
 export default function BilledPaymentForecastModal({
   rows,
+  loading,
   paySpeeds,
   promises,
   todayYmd,
@@ -90,6 +91,8 @@ export default function BilledPaymentForecastModal({
   onOpenInvoice,
 }: {
   rows: StageRow[]
+  /** True while any non-paid scope is still fetching — the totals can still grow. */
+  loading?: boolean
   paySpeeds: PaySpeedData | null
   promises?: Record<string, PromisedPayDate> | null
   todayYmd: string
@@ -139,6 +142,11 @@ export default function BilledPaymentForecastModal({
           Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
           months). Click a tile to see just its bills; click a row to jump to that bill on the board.
         </p>
+        {loading ? (
+          <p style={{ margin: '0 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status" aria-busy>
+            Loading the whole board — totals can still grow…
+          </p>
+        ) : null}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))', gap: '0.6rem' }}>
           {visibleBuckets.map((b) => {

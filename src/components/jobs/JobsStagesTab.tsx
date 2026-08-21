@@ -638,27 +638,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [readyToBillNotifySettingsOpen, setReadyToBillNotifySettingsOpen] = useState(false)
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
-  // Chart works from a collapsed section too: while it's open, keep kicking the
-  // billed scope fetch until it merges — a one-shot call no-ops when the base
+  const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
+  // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
+  const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
+  // The three billed money modals (aging chart / payment forecast / who owes
+  // what) work from a collapsed section too: while any is open, keep kicking
+  // the scope fetches until they merge — a one-shot call no-ops when the base
   // board fetch is still in flight (fetchScopeIfNeeded's loadInFlight guard),
   // so this mirrors the fetch-on-expand effect's retry-on-cache-change shape.
+  // ALL non-paid scopes, not just billed (v2.2035's chase-queue fix): billed
+  // invoices hang on working/waiting jobs too (a part-billed Working job is
+  // exactly the bill that falls through cracks), and the board kernel routes
+  // them into the billed section only when their job's scope is loaded.
+  const billedMoneyModalOpen = billedAgingChartOpen || billedPaymentForecastOpen || billedBreakdownOpen
   useEffect(() => {
-    if (!billedAgingChartOpen) return
-    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
-  }, [billedAgingChartOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
-  // Same retry-until-merged shape for the payment forecast (expected-pay dates).
-  const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
-  useEffect(() => {
-    if (!billedPaymentForecastOpen) return
-    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
-  }, [billedPaymentForecastOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
-  // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929); same
-  // retry-until-merged billed-scope shape as the aging chart above.
-  const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
-  useEffect(() => {
-    if (!billedBreakdownOpen) return
-    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
-  }, [billedBreakdownOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
+    if (!billedMoneyModalOpen) return
+    for (const scope of NON_PAID_SCOPES) {
+      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
+    }
+  }, [billedMoneyModalOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Same retry-until-merged shape for the paid profit chart (v2.1879).
   const [paidProfitChartOpen, setPaidProfitChartOpen] = useState(false)
   useEffect(() => {
@@ -1078,21 +1076,26 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd),
     )
   }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
-  const chaseBilledMerged = NON_PAID_SCOPES.every((s) => cacheMergedScopes.has(s))
+  const nonPaidScopesMerged = NON_PAID_SCOPES.every((s) => cacheMergedScopes.has(s))
+  // UNFILTERED billed rows for the money modals (chase queue v2.2035, and the
+  // aging chart / payment forecast / who-owes-what breakdown): money must not
+  // fall out of these totals because a board group is cosmetically hidden, a
+  // GC/development/account-man filter is set, or a search is live. Same
+  // money-never-hides rule as the story cards (v2.1915).
+  const billedMoneyModalRows = useMemo(() => {
+    if (!billedMoneyModalOpen && !chaseModalOpen) return null
+    return buildJobsStagesBoardLists(jobs, '').billedActiveRows
+  }, [billedMoneyModalOpen, chaseModalOpen, jobs])
   const chaseFullQueue = useMemo(() => {
-    if (!chaseModalOpen || !chaseBilledMerged) return null
-    // UNFILTERED billed rows — the queue must match the card (lean spine),
-    // and money must not fall out of the loop because a board group is
-    // cosmetically hidden or a search is live. Same money-never-hides rule
-    // as the story cards (v2.1915).
+    if (!chaseModalOpen || !nonPaidScopesMerged || !billedMoneyModalRows) return null
     return buildPaymentChaseQueue(
-      buildJobsStagesBoardLists(jobs, '').billedActiveRows,
+      billedMoneyModalRows,
       billedPaySpeeds,
       promisedPayDates,
       chaseTouches,
       chaseTodayYmd,
     )
-  }, [chaseModalOpen, chaseBilledMerged, jobs, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
+  }, [chaseModalOpen, nonPaidScopesMerged, billedMoneyModalRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
@@ -4543,7 +4546,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {billedBreakdownOpen && (
         <BilledByCustomerBreakdownModal
-          rows={stagesBoardLists.billedActiveRows}
+          rows={billedMoneyModalRows ?? []}
+          loading={!nonPaidScopesMerged}
           canSeeCharts={authRole === 'dev' || authRole === 'controller'}
           onClose={() => setBilledBreakdownOpen(false)}
           onOpenBill={(bill) => {
@@ -4573,7 +4577,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {billedAgingChartOpen && (
         <BilledAgingChartModal
-          rows={stagesBoardLists.billedActiveRows}
+          rows={billedMoneyModalRows ?? []}
+          loading={!nonPaidScopesMerged}
           onClose={() => setBilledAgingChartOpen(false)}
           onOpenInvoice={(invoiceId) => {
             setBilledAgingChartOpen(false)
@@ -4583,7 +4588,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {billedPaymentForecastOpen && (
         <BilledPaymentForecastModal
-          rows={stagesBoardLists.billedActiveRows}
+          rows={billedMoneyModalRows ?? []}
+          loading={!nonPaidScopesMerged}
           paySpeeds={billedPaySpeeds}
           promises={promisedPayDates}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
@@ -4597,7 +4603,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       {chaseModalOpen && (
         <PaymentChaseModal
           queue={chaseFullQueue}
-          loading={!chaseBilledMerged}
+          loading={!nonPaidScopesMerged}
           paySpeeds={billedPaySpeeds}
           todayYmd={chaseTodayYmd}
           authRole={authRole}
