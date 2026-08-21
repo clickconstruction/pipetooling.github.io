@@ -23,6 +23,10 @@ The **Activity** section is the task's conversation — notes as message bubbles
 A note posted from the roadmap card ("flag the wet section, we'll culvert later") shows up on the same task in the assignee's **Checklist → Today** — one conversation, two doors.
 :::
 
+## Focus on what needs names
+
+In the **Plan** view's header, **N assigned** and **N unstaffed** are tappable. Tap one and the Plan temporarily shows only those tasks under an amber banner — *Showing only unstaffed tasks (84) — a limited view* — with {{button:outline|✕ Show everything}} as the exit. The unstaffed lens is a staffing worklist: each visible stage keeps its {{button:outline|Staff this stage}} button, rows leave the lens as they gain names, and clearing the last one closes the lens itself. The lens is never saved — leave the tab and the full Plan is back.
+
 ## Rename a task
 
 Tap the **✎** next to the title, type, and press **Enter** (Esc cancels). Editors only.

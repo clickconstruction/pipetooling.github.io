@@ -105,6 +105,39 @@ export function planUpNextStages(args: {
   return rows
 }
 
+export type PlanFocus = 'assigned' | 'unstaffed'
+
+export type PlanFocusRow = { groupId: string; tasks: PlanTask[] }
+
+/**
+ * The temporary focus lens (v2.1999): tapping "N assigned" / "N unstaffed"
+ * in the header narrows the Now list to open tasks matching the lens.
+ * Stages with no surviving tasks are dropped (their count feeds the
+ * "hidden" note); done tasks and task-less milestone stages never survive.
+ */
+export function planFocusRows(args: {
+  nowStages: ReadonlyArray<PlanNowStage>
+  tasksByGroup: ReadonlyMap<string, ReadonlyArray<PlanTask>>
+  focus: PlanFocus
+}): { rows: PlanFocusRow[]; hiddenStages: number; taskCount: number } {
+  const { nowStages, tasksByGroup, focus } = args
+  const rows: PlanFocusRow[] = []
+  let hiddenStages = 0
+  let taskCount = 0
+  for (const s of nowStages) {
+    const tasks = (tasksByGroup.get(s.groupId) ?? []).filter(
+      (t) => t.completed_at == null && (focus === 'assigned' ? t.assigneeIds.length > 0 : t.assigneeIds.length === 0),
+    )
+    if (tasks.length === 0) {
+      hiddenStages += 1
+      continue
+    }
+    taskCount += tasks.length
+    rows.push({ groupId: s.groupId, tasks: [...tasks] })
+  }
+  return { rows, hiddenStages, taskCount }
+}
+
 export type GoalMilestone = {
   groupId: string
   title: string

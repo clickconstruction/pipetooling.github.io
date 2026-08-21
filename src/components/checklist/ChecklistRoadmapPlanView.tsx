@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   goalMilestones,
+  planFocusRows,
   planHeaderStats,
   planNowStages,
   planUpNextStages,
+  type PlanFocus,
   type PlanTask,
 } from '../../lib/roadmapPlanView'
 import { lockedStageHint } from '../../lib/roadmapBridge'
@@ -51,6 +53,8 @@ export function ChecklistRoadmapPlanView({
   const [staffingGroupId, setStaffingGroupId] = useState<string | null>(null)
   const [pickedUserId, setPickedUserId] = useState<string | null>(null)
   const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null)
+  /** Temporary lens from the header stats — component state only, never persisted. */
+  const [focus, setFocus] = useState<PlanFocus | null>(null)
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>()
@@ -92,6 +96,21 @@ export function ChecklistRoadmapPlanView({
     () => goalMilestones({ groups, tasksByGroup, completeIds, edges }),
     [groups, tasksByGroup, completeIds, edges],
   )
+
+  const focusData = useMemo(
+    () => (focus ? planFocusRows({ nowStages, tasksByGroup, focus }) : null),
+    [focus, nowStages, tasksByGroup],
+  )
+  const focusTasksByGroup = useMemo(
+    () => new Map((focusData?.rows ?? []).map((r) => [r.groupId, r.tasks])),
+    [focusData],
+  )
+
+  // staffing the last unstaffed task (or unassigning the last assigned one)
+  // empties the lens — close it rather than showing a blank page
+  useEffect(() => {
+    if (focus && focusData && focusData.taskCount === 0) setFocus(null)
+  }, [focus, focusData])
 
   async function assign(taskId: string) {
     if (!pickedUserId || assigningTaskId) return
@@ -137,10 +156,47 @@ export function ChecklistRoadmapPlanView({
             <strong style={{ color: 'var(--text-strong)' }}>{stats.done}</strong> of {stats.total} tasks done
           </span>
           <span>
-            {stats.assigned} assigned ·{' '}
-            <span style={{ color: stats.unstaffed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontWeight: stats.unstaffed > 0 ? 600 : 400 }}>
+            <button
+              type="button"
+              onClick={() => setFocus(focus === 'assigned' ? null : 'assigned')}
+              aria-pressed={focus === 'assigned'}
+              title="Show only assigned tasks"
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                font: 'inherit',
+                cursor: 'pointer',
+                color: 'var(--text-blue-800)',
+                fontWeight: 600,
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted',
+                textUnderlineOffset: 3,
+              }}
+            >
+              {stats.assigned} assigned
+            </button>{' '}
+            ·{' '}
+            <button
+              type="button"
+              onClick={() => setFocus(focus === 'unstaffed' ? null : 'unstaffed')}
+              aria-pressed={focus === 'unstaffed'}
+              title="Show only unstaffed tasks"
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                font: 'inherit',
+                cursor: 'pointer',
+                color: stats.unstaffed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)',
+                fontWeight: stats.unstaffed > 0 ? 700 : 400,
+                textDecoration: 'underline',
+                textDecorationStyle: 'dotted',
+                textUnderlineOffset: 3,
+              }}
+            >
               {stats.unstaffed} unstaffed
-            </span>
+            </button>
           </span>
         </div>
         <div style={{ height: 8, background: 'var(--bg-muted)', borderRadius: 999, overflow: 'hidden' }}>
@@ -148,11 +204,54 @@ export function ChecklistRoadmapPlanView({
         </div>
       </div>
 
-      <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
-        Now — {nowStages.length} stage{nowStages.length === 1 ? '' : 's'} open
-      </h3>
+      {focus && focusData ? (
+        <div
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
+            border: '1px solid var(--border-amber)',
+            background: 'var(--bg-amber-100)',
+            color: 'var(--text-amber-800)',
+            borderRadius: 10,
+            padding: '0.55rem 0.8rem',
+            marginBottom: '0.8rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+          }}
+        >
+          <span>
+            ⚠ Showing only <b>{focus} tasks ({focusData.taskCount})</b> — a limited view
+          </span>
+          <button
+            type="button"
+            onClick={() => setFocus(null)}
+            style={{
+              marginLeft: 'auto',
+              border: '1px solid var(--border-amber)',
+              background: 'transparent',
+              color: 'inherit',
+              font: 'inherit',
+              fontWeight: 700,
+              borderRadius: 8,
+              padding: '4px 12px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ✕ Show everything
+          </button>
+        </div>
+      ) : (
+        <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
+          Now — {nowStages.length} stage{nowStages.length === 1 ? '' : 's'} open
+        </h3>
+      )}
       {nowStages.map((s) => {
-        const stageTasks = tasksByGroup.get(s.groupId) ?? []
+        if (focus && !focusTasksByGroup.has(s.groupId)) return null
+        const stageTasks = focus ? (focusTasksByGroup.get(s.groupId) ?? []) : (tasksByGroup.get(s.groupId) ?? [])
         const staffing = staffingGroupId === s.groupId
         return (
           <div
@@ -167,19 +266,35 @@ export function ChecklistRoadmapPlanView({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {numberFor(s.groupId)}
               <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{s.title}</span>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  ...(s.done > 0
-                    ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }
-                    : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
-                }}
-              >
-                {s.done} of {s.total} done
-              </span>
+              {focus === 'unstaffed' ? (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: 'var(--bg-amber-100)',
+                    border: '1px solid var(--border-amber)',
+                    color: 'var(--text-amber-800)',
+                  }}
+                >
+                  {stageTasks.length} unstaffed
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    ...(s.done > 0
+                      ? { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }
+                      : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
+                  }}
+                >
+                  {s.done} of {s.total} done
+                </span>
+              )}
               {canEditStructure ? (
                 <button
                   type="button"
@@ -282,11 +397,16 @@ export function ChecklistRoadmapPlanView({
           </div>
         )
       })}
-      {nowStages.length === 0 ? (
+      {!focus && nowStages.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Nothing open — add tasks or unlock a stage.</p>
       ) : null}
+      {focus && focusData && focusData.hiddenStages > 0 ? (
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', margin: '0.4rem 0 0' }}>
+          {focusData.hiddenStages} stage{focusData.hiddenStages === 1 ? '' : 's'} hidden — no {focus} tasks · milestones &amp; done tasks hidden too
+        </p>
+      ) : null}
 
-      {upNext.length > 0 ? (
+      {!focus && upNext.length > 0 ? (
         <>
           <h3 style={{ margin: '1.2rem 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
             Up next — locked until the front moves
@@ -315,7 +435,7 @@ export function ChecklistRoadmapPlanView({
         </>
       ) : null}
 
-      {goals.length > 0 ? (
+      {!focus && goals.length > 0 ? (
         <>
           <h3 style={{ margin: '1.2rem 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
             Goals — milestones, measured by their feeders
