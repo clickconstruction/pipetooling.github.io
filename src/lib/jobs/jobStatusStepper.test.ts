@@ -32,3 +32,14 @@ describe('jobStepperMoveDisabledReason', () => {
     expect(jobStepperMoveDisabledReason('billed', 'billed')).toContain('current stage')
   })
 })
+
+import { billedMoveNeedsShellGuard } from './jobStatusStepper'
+
+describe('billedMoveNeedsShellGuard', () => {
+  it('fires only for a to-Billed move with open money and no billed line', () => {
+    expect(billedMoveNeedsShellGuard({ to: 'billed', openAmount: 500, hasBilledLine: false })).toBe(true)
+    expect(billedMoveNeedsShellGuard({ to: 'billed', openAmount: 500, hasBilledLine: true })).toBe(false)
+    expect(billedMoveNeedsShellGuard({ to: 'billed', openAmount: 0, hasBilledLine: false })).toBe(false)
+    expect(billedMoveNeedsShellGuard({ to: 'working', openAmount: 500, hasBilledLine: false })).toBe(false)
+  })
+})

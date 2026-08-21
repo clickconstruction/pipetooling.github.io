@@ -8,9 +8,12 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import {
   JOB_STEPPER_LABELS,
   JOB_STEPPER_ORDER,
+  billedMoveNeedsShellGuard,
   jobStepperMoveDisabledReason,
   type JobStepperStatus,
 } from '../../lib/jobs/jobStatusStepper'
+import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Tappable status strip for the Edit tab (v2.1773, mockup-approved): the Job
@@ -49,6 +52,8 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
   const [paidModalOpen, setPaidModalOpen] = useState(false)
   const [collectionsConfirm, setCollectionsConfirm] = useState<null | 'to' | 'from'>(null)
   const [collectionsNote, setCollectionsNote] = useState('')
+  /** Shell guard (v2.1935): open dollars that would land on no bill line if the to-Billed flip proceeds. */
+  const [shellGuardOpen, setShellGuardOpen] = useState<number | null>(null)
 
   // Re-sync when the parent hands us a fresh job (window refresh after saves).
   useEffect(() => {
@@ -65,6 +70,31 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
       setPaidModalOpen(true)
       return
     }
+    if (to === 'billed' && shellGuardOpen == null) {
+      // Shell guard (v2.1935): a raw flip to Billed with open money and no
+      // billed line mints a row that can't age, be chased, or be forecast.
+      // Cheap existence probe; a probe failure falls through to the plain flip.
+      const open = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+      setBusy(true)
+      let guard = false
+      try {
+        const { count, error } = await supabase
+          .from('jobs_ledger_invoices')
+          .select('id', { count: 'exact', head: true })
+          .eq('job_id', job.id)
+          .eq('status', 'billed')
+        if (!error) guard = billedMoveNeedsShellGuard({ to, openAmount: open, hasBilledLine: (count ?? 0) > 0 })
+      } catch {
+        // fail open — server rules still apply to the flip itself
+      } finally {
+        setBusy(false)
+      }
+      if (guard) {
+        setShellGuardOpen(open)
+        return
+      }
+    }
+    setShellGuardOpen(null)
     setBusy(true)
     try {
       const data = await withSupabaseRetry(
@@ -79,6 +109,45 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
       setStatus(to)
       if (to !== 'billed') setInCollections(false)
       showToast(`Moved to ${JOB_STEPPER_LABELS[to]}.`, 'success')
+      onChanged()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not move the job', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Guard's primary path: flip to Billed, then materialize the bill line dated today. */
+  async function billWithLine() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
+        'stepper update_job_status',
+      )
+      const result = data as { error?: string } | null
+      if (result?.error) {
+        showToast(result.error, 'error')
+        return
+      }
+      setStatus('billed')
+      setShellGuardOpen(null)
+      try {
+        const { error } = await supabase.rpc('create_billed_shell_invoice' as never, {
+          p_job_id: job.id,
+          p_billed_on: calendarYmdInAppTzFromIso(new Date().toISOString()),
+        } as never)
+        if (error) throw error
+        showToast('Marked Billed — bill line created, dated today.', 'success')
+      } catch (e) {
+        showToast(
+          e instanceof Error
+            ? `Marked Billed, but the bill line failed: ${e.message}`
+            : 'Marked Billed, but the bill line could not be created',
+          'error',
+        )
+      }
       onChanged()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not move the job', 'error')
@@ -170,6 +239,38 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
           {inCollections ? 'In Collections' : 'Collections'}
         </button>
       </div>
+
+      {shellGuardOpen != null ? (
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+            No bill line — {formatUsdNoCents(shellGuardOpen)} open would not age, be chased, or show in the payment
+            forecast.
+          </span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void billWithLine()}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+          >
+            {busy ? '…' : 'Create line & mark Billed'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void moveTo('billed')}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+          >
+            Mark Billed only
+          </button>
+          <button
+            type="button"
+            onClick={() => setShellGuardOpen(null)}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
 
       {collectionsConfirm ? (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
