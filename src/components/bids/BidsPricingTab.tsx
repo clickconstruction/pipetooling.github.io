@@ -59,6 +59,7 @@ import type {
   BidPricingAssignment,
   BidCountRowCustomPrice,
   BidCountRowSubmissionHide,
+  BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
 
 type BidsPricingTabProps = {
@@ -87,6 +88,8 @@ type BidsPricingTabProps = {
   bidCountRowSubmissionHides: BidCountRowSubmissionHide[]
   /** Active bid Version (null = unsplit Base) — stamps takeoff writes from the margin column. */
   selectedBidVersionId: string | null
+  /** All the bid's Versions — the Workbench structure bar names the active one. */
+  bidVersions: BidVersion[]
   selectedPricingVersionId: string | null
   setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
   pricingCountRows: BidCountRow[]
@@ -190,6 +193,7 @@ export function BidsPricingTab({
   bidCountRowCustomPrices,
   bidCountRowSubmissionHides,
   selectedBidVersionId,
+  bidVersions,
   selectedPricingVersionId,
   setSelectedPricingVersionId,
   pricingCountRows,
@@ -290,8 +294,12 @@ export function BidsPricingTab({
   const [wbMarginPct, setWbMarginPct] = useState(45)
   const [wbRound5, setWbRound5] = useState(true)
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
+  /** Last target-total solve: what was asked vs where it landed (cleared on input edit). */
+  const [wbTargetSolveResult, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
+  const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
+  const [wbCopyingPrices, setWbCopyingPrices] = useState(false)
   // Iteration 2 — scenarios: revenue per bid-owned Pricing (the cover-letter
   // bundle computation, one per scenario card). Keyed by pricing version id.
   const [wbScenarioRevenue, setWbScenarioRevenue] = useState<Record<string, number>>({})
@@ -1142,7 +1150,93 @@ export function BidsPricingTab({
     }
   }, [pricingView, selectedServiceTypeId])
 
-  /** Iteration 2 — duplicate the active Pricing as a fresh scenario and switch to it. */
+  /**
+   * Workbench view/★ split (v2.2013): the bid's saved `selected_price_book_version_id` is the
+   * ★ customer-facing scenario (Cover Letter, Share, bid value); `selectedPricingVersionId` is
+   * merely the scenario open on the Workbench. Card clicks only view; the star action persists.
+   */
+  const customerFacingPricingId = selectedBidForPricing?.selected_price_book_version_id ?? null
+
+  /** View a scenario without touching what the customer sees. Discards any solver preview. */
+  function viewWorkbenchScenario(versionId: string) {
+    if (wbPreview && Object.keys(wbPreview).length > 0) {
+      showToast('Solver preview discarded — previews don’t follow you between scenarios.', 'info')
+    }
+    setWbPreview(null)
+    setSelectedPricingVersionId(versionId)
+    void loadPriceBookEntries(versionId)
+  }
+
+  /** The deliberate ★ action: confirm, then persist the scenario the customer sees. */
+  async function makeScenarioCustomerFacing(v: { id: string; name: string }, revenue: number | null) {
+    const bid = selectedBidForPricing
+    if (!bid) return
+    const amount = revenue != null ? `$${formatCurrency(revenue)}` : 'its current total'
+    const ok = await confirmDialog({
+      title: `Make "${v.name}" the customer-facing scenario?`,
+      message: `The Cover Letter, Share, and the bid value will show ${amount}.`,
+      confirmLabel: 'Make customer-facing',
+    })
+    if (!ok) return
+    if (v.id !== selectedPricingVersionId) viewWorkbenchScenario(v.id)
+    await saveBidSelectedPriceBookVersion(bid.id, v.id)
+    showToast(`"${v.name}" is now what the customer sees.`, 'success')
+  }
+
+  /**
+   * Fill the VIEWED (empty) scenario with another scenario's effective prices. Computes the
+   * source's per-row prices with the shared calc kernel, then writes them through the same
+   * per-row override path as hand-typing each one.
+   */
+  async function copyPricesIntoViewedScenario(sourceId: string) {
+    const bid = selectedBidForPricing
+    const targetId = selectedPricingVersionId
+    if (!bid || !targetId || targetId === sourceId) return
+    setWbCopyingPrices(true)
+    try {
+      const [entriesRes, assignRes, customRes] = await Promise.all([
+        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', sourceId),
+        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).eq('price_book_version_id', sourceId),
+        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).eq('price_book_version_id', sourceId),
+      ])
+      const customMap = new Map<string, number>()
+      for (const c of (customRes.data as BidCountRowCustomPrice[]) ?? []) customMap.set(c.count_row_id, Number(c.unit_price))
+      const result = computeBidPricingRows({
+        countRows: pricingCountRows,
+        assignments: ((assignRes.data as BidPricingAssignment[]) ?? []).map((a) => ({
+          count_row_id: a.count_row_id,
+          price_book_entry_id: a.price_book_entry_id,
+          is_fixed_price: a.is_fixed_price ?? false,
+          unit_price_override: a.unit_price_override,
+        })),
+        entries: (entriesRes.data as PriceBookEntryWithFixture[]) ?? [],
+        customUnitPriceByCountRowId: customMap,
+        laborRows: [],
+        totalMaterials: 0,
+        laborRate: 0,
+        taxPercent: 0,
+        materialsFromTakeoffByCountRowId: {},
+        hiddenSubmissionCountRowIds: new Set<string>(),
+      })
+      let copied = 0
+      for (const row of result.rows) {
+        if (!(row.unitPrice > 0)) continue
+        const err = await writeUnitPriceOverrideRow(row.countRow.id, row.unitPrice)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        copied++
+      }
+      await loadBidPricingAssignments(bid.id, targetId)
+      const sourceName = priceBookVersions.find((p) => p.id === sourceId)?.name ?? 'the other scenario'
+      showToast(copied > 0 ? `Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}".` : `"${sourceName}" has no prices to copy.`, copied > 0 ? 'success' : 'error')
+    } finally {
+      setWbCopyingPrices(false)
+    }
+  }
+
+  /** Iteration 2 — duplicate a Pricing as a fresh scenario and VIEW it (the ★ stays put). */
   async function duplicateWorkbenchScenario() {
     const bid = selectedBidForPricing
     const source = priceBookVersions.find((v) => v.id === selectedPricingVersionId)
@@ -1159,8 +1253,12 @@ export function BidsPricingTab({
         return
       }
       const newId = (data as string) ?? null
-      await attachAndActivateNewBidPricing(bid.id, newId)
-      showToast(`Scenario "${source.name} copy" created — edits here leave the original untouched.`, 'success')
+      if (newId && selectedBidVersionId) {
+        await supabase.from('price_book_versions').update({ bid_version_id: selectedBidVersionId }).eq('id', newId)
+      }
+      await loadBidPricings(bid.id)
+      if (newId) viewWorkbenchScenario(newId)
+      showToast(`Scenario "${source.name} copy" created — you’re viewing it. Star it when it should be what the customer sees.`, 'success')
     } finally {
       setWbCloning(false)
     }
@@ -1190,13 +1288,12 @@ export function BidsPricingTab({
     }
     setWbPreview((prev) => ({ ...(prev ?? {}), ...Object.fromEntries(sol.prices) }))
     if (opts.targetTotal != null) {
+      setWbTargetSolveResult({ target: opts.targetTotal, landed: sol.resultingRevenue })
+      // The solver targets the whole-bid blended margin (v2.2011), so the
+      // slider syncs straight to where the solve landed.
       if (sol.resultingMargin != null) {
         setWbMarginPct(Math.min(95, Math.max(1, Math.round(sol.resultingMargin * 100))))
       }
-      showToast(`Preview lands at $${formatCurrency(sol.resultingRevenue)} total.`, 'success')
-    }
-    if (sol.uncostedIds.length > 0) {
-      showToast(`${sol.uncostedIds.length} row(s) skipped — no cost basis (enter Takeoffs costs first).`, 'error')
     }
   }
 
@@ -2307,7 +2404,11 @@ export function BidsPricingTab({
                 )
                 const concColors = ['#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6', '#f59e0b', '#84cc16', '#ec4899', '#64748b', '#eab308']
                 const mColor = (m: number | null) => (m == null ? 'var(--text-muted)' : m >= 0.42 ? 'var(--text-green-600)' : m >= 0.28 ? 'var(--text-amber-700)' : 'var(--text-red-700)')
-                const visibleEff = wbShowUnpricedOnly ? eff.filter((r) => r.effUnit == null && r.cost > 0) : eff
+                const visibleEff = wbShowNoCostOnly
+                  ? eff.filter((r) => !(r.cost > 0))
+                  : wbShowUnpricedOnly
+                    ? eff.filter((r) => r.effUnit == null && r.cost > 0)
+                    : eff
                 const fmtM = (n: number) => `$${formatCurrency(n)}`
                 return (
                   <>
@@ -2322,52 +2423,118 @@ export function BidsPricingTab({
                           ? [{ id: selectedPricingVersionId, name: 'Current pricing (shared)', sort_order: 0 } as (typeof owned)[number]]
                           : []
                       if (scenarios.length === 0) return null
+                      const activeVersionName = bidVersions.find((b) => b.id === selectedBidVersionId)?.name ?? null
+                      const revOf = (id: string) => (id === selectedPricingVersionId ? effRevenue : (wbScenarioRevenue[id] ?? null))
+                      const starred = scenarios.find((s) => s.id === customerFacingPricingId) ?? null
+                      // "Copy prices from …" source for an empty viewed scenario: the ★ if priced, else any priced one.
+                      const copySource =
+                        starred && (revOf(starred.id) ?? 0) > 0 && starred.id !== selectedPricingVersionId
+                          ? starred
+                          : scenarios.find((s) => s.id !== selectedPricingVersionId && (revOf(s.id) ?? 0) > 0) ?? null
+                      const labelStyle: React.CSSProperties = { fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }
+                      const cardBtnStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.72rem', padding: '0.18rem 0.5rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', cursor: 'pointer' }
                       return (
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
-                          {scenarios.map((v) => {
-                            const active = v.id === selectedPricingVersionId
-                            const rev = active ? effRevenue : (wbScenarioRevenue[v.id] ?? null)
-                            const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
-                            return (
-                              <button
-                                key={v.id}
-                                type="button"
-                                onClick={() => { if (!active && selectedBidForPricing) void handlePricingVersionChange(selectedBidForPricing.id, v.id) }}
-                                title={active ? 'The active scenario — Cover Letter and Share use this one' : 'Switch to this scenario'}
-                                style={{
-                                  flex: '1 1 170px', minWidth: 150, textAlign: 'left', font: 'inherit',
-                                  background: 'var(--surface)', border: active ? '1px solid #3b82f6' : '1px solid var(--border)',
-                                  boxShadow: active ? '0 0 0 1px #3b82f6' : 'none',
-                                  borderRadius: 10, padding: '0.5rem 0.75rem', cursor: active ? 'default' : 'pointer', position: 'relative',
-                                }}
-                              >
-                                {active ? (
-                                  <span style={{ position: 'absolute', top: '0.45rem', right: '0.6rem', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-green-600)' }}>Active</span>
-                                ) : null}
-                                <div style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</div>
-                                <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{rev != null ? fmtM(rev) : '…'}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                                  {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', flexWrap: 'wrap' }}>
+                            <div style={{ padding: '0.5rem 0.9rem', borderRight: '1px solid var(--border)', minWidth: '13rem' }}>
+                              <div style={labelStyle}>Version — its own takeoff &amp; counts</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
+                                <span style={{ border: '1px solid #3b82f6', background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 5, padding: '0.08rem 0.55rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                                  {activeVersionName ?? 'Current'}
+                                </span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeVersionName ? 'switch at the top of the page' : 'this bid has one takeoff'}</span>
+                              </div>
+                            </div>
+                            <div style={{ padding: '0.5rem 0.9rem', flex: 1, minWidth: '18rem' }}>
+                              <div style={labelStyle}>Price scenarios in this version — same counts, different sell prices</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                The <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★ starred</span> scenario is what the customer sees — Cover Letter, Share, and the bid value all use it.
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+                            {scenarios.map((v) => {
+                              const viewing = v.id === selectedPricingVersionId
+                              const isCustomerFacing = v.id === customerFacingPricingId
+                              const rev = revOf(v.id)
+                              const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
+                              const unpriced = rev === 0
+                              return (
+                                <div
+                                  key={v.id}
+                                  onClick={() => { if (!viewing) viewWorkbenchScenario(v.id) }}
+                                  title={viewing ? 'The scenario open on this Workbench' : 'View this scenario (doesn’t change what the customer sees)'}
+                                  style={{
+                                    flex: '1 1 190px', minWidth: 170, textAlign: 'left', font: 'inherit',
+                                    background: 'var(--surface)', border: viewing ? '1px solid #3b82f6' : '1px solid var(--border)',
+                                    boxShadow: viewing ? '0 0 0 1px #3b82f6' : 'none',
+                                    borderRadius: 10, padding: '0.5rem 0.75rem', cursor: viewing ? 'default' : 'pointer', position: 'relative',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</div>
+                                    {isCustomerFacing ? (
+                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-green-600)', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>★ Customer sees this</span>
+                                    ) : unpriced ? (
+                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
+                                    ) : null}
+                                  </div>
+                                  <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>{rev != null ? fmtM(rev) : '…'}</div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
+                                  </div>
+                                  {unpriced && viewing && copySource ? (
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', marginTop: '0.25rem' }}>
+                                      Start pricing:{' '}
+                                      <button
+                                        type="button"
+                                        disabled={wbCopyingPrices}
+                                        onClick={(e) => { e.stopPropagation(); void copyPricesIntoViewedScenario(copySource.id) }}
+                                        style={{ font: 'inherit', fontSize: '0.7rem', padding: 0, border: 'none', background: 'none', color: 'var(--text-amber-700)', textDecoration: 'underline', cursor: wbCopyingPrices ? 'wait' : 'pointer' }}
+                                      >
+                                        {wbCopyingPrices ? 'copying…' : `copy prices from ${copySource.name}`}
+                                      </button>{' '}
+                                      or use the solver below.
+                                    </div>
+                                  ) : unpriced && !viewing ? (
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', marginTop: '0.25rem' }}>View it to start pricing.</div>
+                                  ) : null}
+                                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', alignItems: 'center' }}>
+                                    {viewing ? (
+                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>Viewing</span>
+                                    ) : (
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); viewWorkbenchScenario(v.id) }} style={cardBtnStyle}>
+                                        View
+                                      </button>
+                                    )}
+                                    {!isCustomerFacing ? (
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev) }} style={cardBtnStyle}>
+                                        ☆ Make customer-facing…
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 </div>
-                              </button>
-                            )
-                          })}
-                          <button
-                            type="button"
-                            onClick={() => void duplicateWorkbenchScenario()}
-                            disabled={wbCloning}
-                            style={{ flex: '0 0 auto', alignSelf: 'center', font: 'inherit', fontSize: '0.8rem', padding: '0.45rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: wbCloning ? 'wait' : 'pointer' }}
-                          >
-                            {wbCloning ? 'Duplicating…' : '+ Duplicate as new scenario'}
-                          </button>
-                        </div>
+                              )
+                            })}
+                            <button
+                              type="button"
+                              onClick={() => void duplicateWorkbenchScenario()}
+                              disabled={wbCloning}
+                              style={{ flex: '0 0 auto', alignSelf: 'center', font: 'inherit', fontSize: '0.8rem', padding: '0.45rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: wbCloning ? 'wait' : 'pointer' }}
+                            >
+                              {wbCloning ? 'Duplicating…' : '+ Duplicate scenario'}
+                            </button>
+                          </div>
+                        </>
                       )
                     })()}
                     <div
                       style={{
                         position: 'sticky', top: 0, zIndex: 20,
                         display: 'flex', flexWrap: 'wrap', alignItems: 'stretch',
-                        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+                        background: 'var(--surface)',
+                        border: wbPreview && previewCount > 0 ? '1px dashed var(--text-amber-700)' : '1px solid var(--border)',
+                        borderRadius: 10,
                         boxShadow: '0 4px 14px rgba(0,0,0,0.08)', marginBottom: '0.9rem', overflow: 'hidden',
                       }}
                     >
@@ -2386,7 +2553,8 @@ export function BidsPricingTab({
                         {wbPreview && previewCount > 0 ? (
                           <>
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                              Previewing {previewCount} changed price{previewCount !== 1 ? 's' : ''} — nothing saved yet
+                              Previewing {previewCount} changed price{previewCount !== 1 ? 's' : ''} on{' '}
+                              <u>{priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this scenario'}</u> — nothing saved yet
                             </span>
                             <button
                               type="button"
@@ -2394,7 +2562,7 @@ export function BidsPricingTab({
                               disabled={wbApplying}
                               style={{ padding: '0.42rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
                             >
-                              {wbApplying ? 'Applying…' : 'Apply prices'}
+                              {wbApplying ? 'Applying…' : `Apply to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'scenario'}`}
                             </button>
                             <button
                               type="button"
@@ -2413,7 +2581,9 @@ export function BidsPricingTab({
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.3fr) minmax(150px, 1fr) auto auto', gap: '0.8rem', alignItems: 'end', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem', flexWrap: 'wrap' }} className="bid-form-grid-2">
                       <div>
-                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Blended margin — solve unlocked rows</span>
+                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                          Blended margin — whole bid (solver moves the {costed.length} costed row{costed.length !== 1 ? 's' : ''})
+                        </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
                           <input
                             type="range" min={20} max={65} step={1} value={Math.min(65, Math.max(20, wbMarginPct))}
@@ -2421,28 +2591,47 @@ export function BidsPricingTab({
                             onMouseUp={() => runWorkbenchSolve({})}
                             onTouchEnd={() => runWorkbenchSolve({})}
                             style={{ flex: 1, accentColor: '#3b82f6' }}
-                            aria-label="Target blended margin"
+                            aria-label="Solve margin on costed rows"
                           />
                           <span style={{ fontSize: '1rem', fontWeight: 700, width: '2.9rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{wbMarginPct}%</span>
                         </div>
                       </div>
                       <div>
-                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>…or target total</span>
-                        <input
-                          type="text" inputMode="decimal" placeholder="e.g. 42,000" value={wbTargetTotalInput}
-                          onChange={(e) => setWbTargetTotalInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return
-                            e.preventDefault()
+                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>…or target bid total (whole bid)</span>
+                        {(() => {
+                          const solveToTarget = () => {
                             const v = parseFloat(wbTargetTotalInput.replace(/[$,]/g, ''))
                             if (!Number.isFinite(v) || v <= totalCost) {
                               showToast(`Target must beat our cost ($${formatCurrency(totalCost)}).`, 'error')
                               return
                             }
                             runWorkbenchSolve({ targetTotal: v })
-                          }}
-                          style={{ width: '100%', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
-                        />
+                          }
+                          return (
+                            <div style={{ display: 'flex', gap: '0.35rem' }}>
+                              <input
+                                type="text" inputMode="decimal" placeholder="e.g. 42,000" value={wbTargetTotalInput}
+                                onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== 'Enter') return
+                                  e.preventDefault()
+                                  solveToTarget()
+                                }}
+                                style={{ width: '100%', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                              />
+                              <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>
+                                Solve
+                              </button>
+                            </div>
+                          )
+                        })()}
+                        <div style={{ fontSize: '0.68rem', color: wbTargetSolveResult ? 'var(--text-green-600)' : 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          {wbTargetSolveResult
+                            ? `Target $${formatCurrency(wbTargetSolveResult.target)} → previewing $${formatCurrency(wbTargetSolveResult.landed)}`
+                            : uncostedRevenue > 0
+                              ? `Counts the $${formatCurrency(uncostedRevenue)} already on no-cost rows.`
+                              : null}
+                        </div>
                       </div>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
                         <input type="checkbox" checked={wbRound5} onChange={() => setWbRound5((v) => !v)} /> round up to $5
@@ -2454,6 +2643,20 @@ export function BidsPricingTab({
                       >
                         Price unpriced only
                       </button>
+                      {uncostedRevenue > 0 ? (
+                        <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 7, padding: '0.45rem 0.7rem' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)' }}>
+                            <strong>⚠ {eff.length - costed.length} of {eff.length} rows have no Takeoffs cost</strong> — their ${formatCurrency(uncostedRevenue)} of revenue counts as pure margin. The solver never re-prices them (their revenue still counts toward targets); price them by hand.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { setWbShowNoCostOnly((v) => !v); setWbShowUnpricedOnly(false) }}
+                            style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', whiteSpace: 'nowrap', background: wbShowNoCostOnly ? '#3b82f6' : 'var(--surface)', color: wbShowNoCostOnly ? '#fff' : 'var(--text-700)' }}
+                          >
+                            {wbShowNoCostOnly ? 'Showing no-cost rows — show all' : `Show these ${eff.length - costed.length} rows`}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
 
                     {(() => {
@@ -2524,14 +2727,11 @@ export function BidsPricingTab({
                       </div>
                       <button
                         type="button"
-                        onClick={() => setWbShowUnpricedOnly((v) => !v)}
+                        onClick={() => { setWbShowUnpricedOnly((v) => !v); setWbShowNoCostOnly(false) }}
                         style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.26rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', background: wbShowUnpricedOnly ? '#3b82f6' : 'var(--surface)', color: wbShowUnpricedOnly ? '#fff' : 'var(--text-700)' }}
                       >
                         {wbShowUnpricedOnly ? 'Showing unpriced — show all' : 'Show unpriced only'}
                       </button>
-                      {uncostedRevenue > 0 ? (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>⚠ ${formatCurrency(uncostedRevenue)} of revenue has no Takeoffs cost — margins overstated.</span>
-                      ) : null}
                     </div>
 
                     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>

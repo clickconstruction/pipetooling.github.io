@@ -7,15 +7,21 @@ order: 94
 ---
 The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target.
 
+## Versions, scenarios, and the star
+
+The structure bar spells out the two levels: a **Version** has its own takeoff and counts (switch at the top of the page), and **price scenarios** inside it are different sell prices over the same counts. Clicking a scenario card just **views** it — the {{chip:green|★ Customer sees this}} scenario is what the Cover Letter, Share, and the bid value use, and it only changes when you press {{button:outline|☆ Make customer-facing…}} and confirm.
+
+A scenario showing {{chip:yellow|No prices yet}} offers a one-click **copy prices from** your priced scenario, or price it with the solver. {{button:outline|+ Duplicate scenario}} clones the one you're viewing (the star stays put).
+
 ## Price to a number
 
 1. Your **Revenue, Our cost, Profit, and Margin** stay pinned at the top — they move as you work.
-2. Drag the **blended-margin slider** (or type a **target total** and press Enter) — the Workbench prices every row to hit it, spreading revenue in proportion to each row's cost.
-3. **📌 pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held, and rows with no Takeoffs cost are never auto-priced.
+2. Drag the **blended-margin slider** or type a **target bid total** and press Enter — both are for the whole bid, so revenue already sitting on no-cost rows counts toward them, and the note under the box shows exactly where the solve landed.
+3. **📌 pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held, and rows with no Takeoffs cost are never auto-priced — when they carry revenue anyway, an amber banner totals it and can filter to just those rows.
 
 ## Preview first, then Apply
 
-Solver results (and your own typed prices) land as amber **preview** values — nothing is saved until you hit {{button:blue|Apply prices}}. **Discard** throws the preview away.
+Solver results (and your own typed prices) land as amber **preview** values — the summary bar names the scenario they belong to, and nothing is saved until you hit {{button:blue|Apply prices}}. **Discard** throws the preview away, and so does switching to another scenario — previews never follow you across.
 
 ## Know where you stand
 

@@ -33,6 +33,27 @@ describe('deriveActivePricingId', () => {
     expect(deriveActivePricingId({ activeVersionId: 'vB', bidPricings: pricings, legacyFallbackPricingId: null })).toBe('pB')
   })
 
+  it('prefers the saved (★ customer-facing) scenario among a version’s several pricings', () => {
+    const multi = [
+      { id: 'p1', bid_version_id: 'vA' },
+      { id: 'p2', bid_version_id: 'vA' },
+      { id: 'p3', bid_version_id: 'vA' },
+    ]
+    // Without the preference the star silently reverted to p1 on every reload.
+    expect(deriveActivePricingId({ activeVersionId: 'vA', bidPricings: multi, legacyFallbackPricingId: 'p2' })).toBe('p2')
+    // A saved id from another version (stale) falls back to the version's first pricing.
+    expect(deriveActivePricingId({ activeVersionId: 'vA', bidPricings: multi, legacyFallbackPricingId: 'pB' })).toBe('p1')
+  })
+
+  it('prefers the saved scenario among several unsplit pricing copies', () => {
+    const multiUnsplit = [
+      { id: 'u1', bid_version_id: null },
+      { id: 'u2', bid_version_id: null },
+    ]
+    expect(deriveActivePricingId({ activeVersionId: null, bidPricings: multiUnsplit, legacyFallbackPricingId: 'u2' })).toBe('u2')
+    expect(deriveActivePricingId({ activeVersionId: null, bidPricings: multiUnsplit, legacyFallbackPricingId: null })).toBe('u1')
+  })
+
   it('returns null when the active version has no pricing facet', () => {
     expect(deriveActivePricingId({ activeVersionId: 'vNoPricing', bidPricings: pricings, legacyFallbackPricingId: 'x' })).toBeNull()
   })

@@ -21,13 +21,16 @@ export function pickActiveVersion(input: {
 /**
  * The pricing facet for the active Version. A bid's pricing copies each carry the
  * `bid_version_id` of the Version they belong to.
- *  - Split bid (activeVersionId set): the pricing whose `bid_version_id` matches, else none
- *    (no template fallback — a version legitimately may have no pricing yet).
- *  - Unsplit bid (activeVersionId null): an unsplit pricing copy (bid_version_id null) if one
- *    exists, else the bid's saved `selected_price_book_version_id`, else the service type's
- *    "Default" template. That last fallback preserves the long-standing behavior where bids that
- *    never explicitly picked a price book price against "Default" — without it, those bids show
- *    no pricing at all.
+ *  - Split bid (activeVersionId set): the bid's saved `selected_price_book_version_id` when it
+ *    belongs to this version (the Workbench's ★ customer-facing scenario — without this
+ *    preference the star silently reverted to the first scenario on every reload), else the
+ *    version's first pricing, else none (no template fallback — a version legitimately may have
+ *    no pricing yet).
+ *  - Unsplit bid (activeVersionId null): the saved id when it's one of the bid's unsplit pricing
+ *    copies, else any unsplit copy, else the saved id as-is (a shared/template pricing), else the
+ *    service type's "Default" template. That last fallback preserves the long-standing behavior
+ *    where bids that never explicitly picked a price book price against "Default" — without it,
+ *    those bids show no pricing at all.
  */
 export function deriveActivePricingId(input: {
   activeVersionId: string | null
@@ -37,10 +40,13 @@ export function deriveActivePricingId(input: {
 }): string | null {
   const { activeVersionId, bidPricings, legacyFallbackPricingId, defaultTemplatePricingId } = input
   if (activeVersionId != null) {
-    return bidPricings.find((p) => p.bid_version_id === activeVersionId)?.id ?? null
+    const versionPricings = bidPricings.filter((p) => p.bid_version_id === activeVersionId)
+    const saved = versionPricings.find((p) => p.id === legacyFallbackPricingId)
+    return saved?.id ?? versionPricings[0]?.id ?? null
   }
-  const unsplit = bidPricings.find((p) => p.bid_version_id == null)
-  return unsplit?.id ?? legacyFallbackPricingId ?? defaultTemplatePricingId ?? null
+  const unsplitPricings = bidPricings.filter((p) => p.bid_version_id == null)
+  const savedUnsplit = unsplitPricings.find((p) => p.id === legacyFallbackPricingId)
+  return savedUnsplit?.id ?? unsplitPricings[0]?.id ?? legacyFallbackPricingId ?? defaultTemplatePricingId ?? null
 }
 
 /**

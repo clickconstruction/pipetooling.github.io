@@ -27,6 +27,21 @@ describe('solveWorkbenchPrices', () => {
     expect(s.resultingRevenue).toBeLessThan(12150)
   })
 
+  it('target total counts existing revenue on uncosted rows — the bid lands AT the target', () => {
+    // The $58k-typed-becomes-$240k trap: uncosted rows carrying prices used to
+    // ride on top of the target instead of counting toward it.
+    const withPricedUncosted: WorkbenchSolverRow[] = [
+      ...rows,
+      { id: 'u1', count: 2, rowCost: 0, unitPrice: 2000, locked: false }, // 4000 fixed revenue
+      { id: 'u2', count: 1, rowCost: 0, unitPrice: 1000, locked: false }, // 1000 fixed revenue
+    ]
+    const s = solveWorkbenchPrices(withPricedUncosted, 1000, { targetTotal: 12000 })!
+    expect(s.uncostedFixedRevenue).toBe(5000)
+    // resultingRevenue includes the 5000 fixed — total lands at ~12000, not ~17000
+    expect(s.resultingRevenue).toBeGreaterThan(11900)
+    expect(s.resultingRevenue).toBeLessThan(12150)
+  })
+
   it('holds locked rows and prices around them', () => {
     const withLock: WorkbenchSolverRow[] = [
       { ...rows[0]!, unitPrice: 500, locked: true }, // held revenue 5000

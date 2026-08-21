@@ -26,7 +26,11 @@ export type WorkbenchSolverRow = {
 export type WorkbenchSolveOptions = {
   /** Target blended margin as a whole percent (1–95). Ignored when targetTotal set. */
   targetMarginPct?: number
-  /** Target total revenue in dollars; wins over targetMarginPct. */
+  /**
+   * Target total revenue in dollars for the WHOLE bid; wins over targetMarginPct.
+   * Existing revenue on uncosted rows counts toward it (held, like locked rows),
+   * so the bid lands at the number typed rather than that much above it.
+   */
   targetTotal?: number
   /** Only fill rows whose unitPrice is null; priced rows are held like locks. */
   onlyUnpriced?: boolean
@@ -43,6 +47,8 @@ export type WorkbenchSolution = {
   resultingMargin: number | null
   /** Total revenue after applying the solution to the input rows. */
   resultingRevenue: number
+  /** Revenue already sitting on uncosted rows (held as-is by the solver). */
+  uncostedFixedRevenue: number
 }
 
 function roundUnit(price: number, roundTo5: boolean): number {
@@ -80,7 +86,7 @@ export function solveWorkbenchPrices(
   // Priced uncosted rows are never re-solved but their revenue is part of the
   // bid total, so it must come out of the target too — else the bid overshoots
   // by exactly that amount (target 150k landing at 240k on no-cost-row-heavy bids).
-  const uncostedRevenue = rows.reduce(
+  const uncostedFixedRevenue = rows.reduce(
     (s, r) => s + (!(r.rowCost > 0) && r.unitPrice != null ? r.unitPrice * r.count : 0),
     0,
   )
@@ -90,7 +96,7 @@ export function solveWorkbenchPrices(
   const freeBasis = free.reduce((s, r) => s + basisOf(r), 0)
   // Never solve below 20% of the free rows' basis — a floor against absurd
   // targets (e.g. target total less than held revenue).
-  const needed = Math.max(targetRevenue - heldRevenue - uncostedRevenue, freeBasis * 0.2)
+  const needed = Math.max(targetRevenue - heldRevenue - uncostedFixedRevenue, freeBasis * 0.2)
   const k = needed / freeBasis
 
   const prices = new Map<string, number>()
@@ -99,7 +105,7 @@ export function solveWorkbenchPrices(
     prices.set(r.id, unit)
   }
 
-  let resultingRevenue = heldRevenue
+  let resultingRevenue = held.reduce((s, r) => s + (r.unitPrice ?? 0) * r.count, 0)
   for (const r of rows) {
     if (prices.has(r.id)) resultingRevenue += (prices.get(r.id) ?? 0) * r.count
     else if (!held.includes(r) && r.unitPrice != null && r.rowCost > 0) resultingRevenue += r.unitPrice * r.count
@@ -107,7 +113,7 @@ export function solveWorkbenchPrices(
   }
   const resultingMargin = resultingRevenue > 0 ? (resultingRevenue - totalCost) / resultingRevenue : null
 
-  return { prices, uncostedIds, resultingMargin, resultingRevenue }
+  return { prices, uncostedIds, resultingMargin, resultingRevenue, uncostedFixedRevenue }
 }
 
 export type ProfitSegment = { id: string; label: string; profit: number; share: number }
