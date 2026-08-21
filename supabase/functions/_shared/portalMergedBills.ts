@@ -1,0 +1,148 @@
+/**
+ * Pure bill-list builder for the customer portal (portal custom-links train).
+ * Shared by the customer-portal edge function and unit-tested from vitest
+ * (src/lib/portal/portalMergedBills.test.ts) — keep it dependency-free.
+ *
+ * Audience 'all' merges jobs where the company is the customer with jobs
+ * where it is the GC, deduped by job id; rows on someone else's property get
+ * asGc=true plus the owner's name for the statement's AS GC tag.
+ */
+
+export type PortalJobRow = {
+  id: string
+  hcp_number: string | null
+  click_number: string | null
+  job_name: string | null
+  job_address: string | null
+  status: string | null
+  revenue: number | null
+  payments_made: number | null
+  customer_id?: string | null
+  gc_customer_id?: string | null
+}
+
+export type PortalInvoiceRow = {
+  id: string
+  job_id: string
+  amount: number | null
+  status: string
+  billed_at: string | null
+  sequence_order: number | null
+  hosted_invoice_url: string | null
+}
+
+export type PortalPaymentRow = { invoice_id: string | null; amount: number | null }
+
+export type PortalBillOut = {
+  jobLabel: string
+  jobNumber: string
+  jobAddress: string | null
+  amount: number
+  billedOn: string | null
+  payUrl: string | null
+  checkRef: string
+  asGc: boolean
+  ownerName: string | null
+}
+
+export function jobNumber(j: PortalJobRow): string {
+  return (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || ''
+}
+
+export function jobLabel(j: PortalJobRow): string {
+  const n = jobNumber(j)
+  const name = (j.job_name ?? '').trim()
+  if (n && name) return `${name} · Job ${n}`
+  return name || (n ? `Job ${n}` : 'Job')
+}
+
+/** Union of the customer-side and GC-side queries, first occurrence wins. */
+export function dedupeJobsById<T extends { id: string }>(jobs: T[]): T[] {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const j of jobs) {
+    if (seen.has(j.id)) continue
+    seen.add(j.id)
+    out.push(j)
+  }
+  return out
+}
+
+/** A merged-view row is "as GC" when the job belongs to someone else's account. */
+export function jobIsAsGc(job: PortalJobRow, viewerCustomerId: string): boolean {
+  return typeof job.customer_id === 'string' && job.customer_id !== viewerCustomerId
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
+/**
+ * Open-bill rows for the statement: one row per billed invoice with a
+ * remaining balance, plus a job-level remainder row for billed jobs that have
+ * no billed line (rare shells). Sorted newest billed first.
+ */
+export function buildPortalBills(args: {
+  jobs: PortalJobRow[]
+  invoices: PortalInvoiceRow[]
+  payments: PortalPaymentRow[]
+  viewerCustomerId: string
+  /** Only the merged 'all' audience tags rows; scoped views never do. */
+  markGcRows: boolean
+  /** customer_id → display name, for AS GC owner labels. */
+  ownerNames?: Record<string, string>
+}): PortalBillOut[] {
+  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {} } = args
+
+  const billedJobs = jobs.filter((j) => j.status === 'billed')
+  const jobById = new Map(billedJobs.map((j) => [j.id, j]))
+
+  const paymentsByInvoice = new Map<string, number>()
+  for (const p of payments) {
+    if (!p.invoice_id) continue
+    paymentsByInvoice.set(p.invoice_id, (paymentsByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+  }
+
+  const asGcFields = (job: PortalJobRow): Pick<PortalBillOut, 'asGc' | 'ownerName'> => {
+    const asGc = markGcRows && jobIsAsGc(job, viewerCustomerId)
+    const owner = asGc && job.customer_id ? (ownerNames[job.customer_id] ?? '').trim() : ''
+    return { asGc, ownerName: asGc && owner ? owner : null }
+  }
+
+  const bills: PortalBillOut[] = []
+  const jobsWithLines = new Set<string>()
+  for (const inv of invoices) {
+    const job = jobById.get(inv.job_id)
+    if (!job) continue
+    jobsWithLines.add(inv.job_id)
+    const open = round2(Number(inv.amount ?? 0) - (paymentsByInvoice.get(inv.id) ?? 0))
+    if (open <= 0) continue
+    bills.push({
+      jobLabel: jobLabel(job),
+      jobNumber: jobNumber(job),
+      jobAddress: (job.job_address ?? '').trim() || null,
+      amount: open,
+      billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
+      payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
+      checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
+      ...asGcFields(job),
+    })
+  }
+  for (const job of billedJobs) {
+    if (jobsWithLines.has(job.id)) continue
+    const open = round2(Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+    if (open <= 0) continue
+    bills.push({
+      jobLabel: jobLabel(job),
+      jobNumber: jobNumber(job),
+      jobAddress: (job.job_address ?? '').trim() || null,
+      amount: open,
+      billedOn: null,
+      payUrl: null,
+      checkRef: jobNumber(job),
+      ...asGcFields(job),
+    })
+  }
+  bills.sort((a, b) => (b.billedOn ?? '9999').localeCompare(a.billedOn ?? '9999'))
+  return bills
+}

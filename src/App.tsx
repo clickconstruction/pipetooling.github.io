@@ -208,6 +208,7 @@ function AppContent() {
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
         <Route path="/portal" element={<CustomerPortal />} />
+        <Route path="/p/:slug" element={<CustomerPortal />} />
         <Route
           path="/estimate/customer-accept-preview/:id"
           element={

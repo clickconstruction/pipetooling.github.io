@@ -1,12 +1,29 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import {
+  buildPortalBills,
+  dedupeJobsById,
+  jobLabel,
+  type PortalInvoiceRow,
+  type PortalJobRow,
+  type PortalPaymentRow,
+} from '../_shared/portalMergedBills.ts'
 
 /**
- * Customer portal payload (portal train PR 1): resolves a portal link token
- * (sha256 hash lookup, same model as the estimate customer view) and returns
- * ONLY that customer's/GC's data — open billed lines with pay links, and the
- * jobs a visit request may reference. No auth: the token is the capability.
+ * Customer portal payload (portal train PR 1; merged view + slugs in the
+ * custom-links train): resolves a portal link token OR a custom address slug
+ * and returns ONLY that company's data — open billed lines with pay links,
+ * and the jobs a visit request may reference. No auth: the link is the
+ * capability.
+ *
+ * Audiences: 'all' (default since the custom-links train) merges jobs where
+ * the company is the customer with jobs where it is the GC (asGc/ownerName
+ * mark the GC rows); 'customer' / 'gc' remain the scoped "Separate views".
+ *
+ * ?slug= resolves my.clickplumbing.com/<slug> → customer_portal_slugs → the
+ * active 'all' link. First public resolve locks the slug (belt and
+ * suspenders with the modal's Copy — catches links shared by screenshot).
  */
 
 const corsHeaders = {
@@ -14,6 +31,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact our office for a new one.'
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
@@ -29,34 +48,13 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
-type JobRow = {
-  id: string
-  hcp_number: string | null
-  click_number: string | null
-  job_name: string | null
-  job_address: string | null
-  status: string | null
-  revenue: number | null
-  payments_made: number | null
-}
-
-function jobNumber(j: JobRow): string {
-  return (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || ''
-}
-
-function jobLabel(j: JobRow): string {
-  const n = jobNumber(j)
-  const name = (j.job_name ?? '').trim()
-  if (n && name) return `${name} · Job ${n}`
-  return name || (n ? `Job ${n}` : 'Job')
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
     const url = new URL(req.url)
-    const raw = url.searchParams.get('token')?.trim()
-    if (!raw || raw.length < 16 || raw.length > 128) {
+    const rawToken = url.searchParams.get('token')?.trim()
+    const rawSlug = url.searchParams.get('slug')?.trim().toLowerCase()
+    if ((!rawToken || rawToken.length < 16 || rawToken.length > 128) && !rawSlug) {
       return jsonResponse({ error: 'Missing token' }, 400)
     }
 
@@ -64,24 +62,59 @@ serve(async (req) => {
       auth: { persistSession: false },
     })
 
-    // v2 rows store the raw token; v1 hash-only rows were revoked at the v2
-    // migration, but keep the hash fallback for any in-flight transition.
-    let { data: link } = await admin
-      .from('customer_portal_links')
-      .select('customer_id, audience, revoked_at')
-      .eq('token', raw)
-      .maybeSingle()
-    if (!link) {
-      const tokenHash = await sha256Hex(raw)
+    let link: { customer_id: string; audience: string; revoked_at: string | null; token?: string | null } | null = null
+
+    if (rawToken) {
+      // v2 rows store the raw token; v1 hash-only rows were revoked at the v2
+      // migration, but keep the hash fallback for any in-flight transition.
       link = (await admin
         .from('customer_portal_links')
-        .select('customer_id, audience, revoked_at')
-        .eq('token_hash', tokenHash)
+        .select('customer_id, audience, revoked_at, token')
+        .eq('token', rawToken)
         .maybeSingle()).data
+      if (!link) {
+        const tokenHash = await sha256Hex(rawToken)
+        link = (await admin
+          .from('customer_portal_links')
+          .select('customer_id, audience, revoked_at, token')
+          .eq('token_hash', tokenHash)
+          .maybeSingle()).data
+      }
+      if (!link || link.revoked_at) {
+        return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+      }
+    } else if (rawSlug) {
+      if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(rawSlug)) {
+        return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+      }
+      const { data: slugRow } = await admin
+        .from('customer_portal_slugs')
+        .select('customer_id, slug, locked_at')
+        .eq('slug', rawSlug)
+        .maybeSingle()
+      if (!slugRow) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+      // The slug resolves ONLY to the merged 'all' link; no mint-on-demand —
+      // a turned-off portal stays off no matter how it is addressed.
+      link = (await admin
+        .from('customer_portal_links')
+        .select('customer_id, audience, revoked_at, token')
+        .eq('customer_id', slugRow.customer_id)
+        .eq('audience', 'all')
+        .is('revoked_at', null)
+        .maybeSingle()).data
+      if (!link) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+      if (!slugRow.locked_at) {
+        await admin
+          .from('customer_portal_slugs')
+          .update({ locked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('customer_id', slugRow.customer_id)
+          .is('locked_at', null)
+        await admin
+          .from('customer_portal_slug_events')
+          .insert({ customer_id: slugRow.customer_id, event: 'locked', slug: slugRow.slug })
+      }
     }
-    if (!link || link.revoked_at) {
-      return jsonResponse({ error: 'This link is no longer active. Please contact our office for a new one.' }, 404)
-    }
+    if (!link) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
     const { data: customer } = await admin
       .from('customers')
@@ -90,87 +123,72 @@ serve(async (req) => {
       .maybeSingle()
     if (!customer) return jsonResponse({ error: 'Not found' }, 404)
 
-    const jobFilterColumn = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
-    const { data: jobsRaw } = await admin
-      .from('jobs_ledger')
-      .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made')
-      .eq(jobFilterColumn, link.customer_id)
-      .limit(500)
-    const jobs = (jobsRaw ?? []) as JobRow[]
+    const jobSelect = 'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id'
+    let jobs: PortalJobRow[]
+    if (link.audience === 'all') {
+      const { data: jobsRaw } = await admin
+        .from('jobs_ledger')
+        .select(jobSelect)
+        .or(`customer_id.eq.${link.customer_id},gc_customer_id.eq.${link.customer_id}`)
+        .limit(500)
+      jobs = dedupeJobsById((jobsRaw ?? []) as PortalJobRow[])
+    } else {
+      const jobFilterColumn = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
+      const { data: jobsRaw } = await admin
+        .from('jobs_ledger')
+        .select(jobSelect)
+        .eq(jobFilterColumn, link.customer_id)
+        .limit(500)
+      jobs = (jobsRaw ?? []) as PortalJobRow[]
+    }
 
-    const billedJobs = jobs.filter((j) => j.status === 'billed')
-    const billedJobIds = billedJobs.map((j) => j.id)
+    const billedJobIds = jobs.filter((j) => j.status === 'billed').map((j) => j.id)
 
-    let invoices: Array<{
-      id: string
-      job_id: string
-      amount: number | null
-      status: string
-      billed_at: string | null
-      sequence_order: number | null
-      hosted_invoice_url: string | null
-    }> = []
-    let paymentsByInvoice = new Map<string, number>()
+    let invoices: PortalInvoiceRow[] = []
+    let payments: PortalPaymentRow[] = []
     if (billedJobIds.length > 0) {
       const { data: invRaw } = await admin
         .from('jobs_ledger_invoices')
         .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url')
         .in('job_id', billedJobIds)
         .eq('status', 'billed')
-      invoices = (invRaw ?? []) as typeof invoices
+      invoices = (invRaw ?? []) as PortalInvoiceRow[]
       if (invoices.length > 0) {
         const { data: payRaw } = await admin
           .from('jobs_ledger_payments')
           .select('invoice_id, amount')
           .in('invoice_id', invoices.map((i) => i.id))
-        for (const p of (payRaw ?? []) as Array<{ invoice_id: string | null; amount: number | null }>) {
-          if (!p.invoice_id) continue
-          paymentsByInvoice.set(p.invoice_id, (paymentsByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+        payments = (payRaw ?? []) as PortalPaymentRow[]
+      }
+    }
+
+    // Owner names for AS GC rows (merged view only): one lookup for the
+    // distinct customer ids that differ from the viewer.
+    const ownerNames: Record<string, string> = {}
+    if (link.audience === 'all') {
+      const ownerIds = [
+        ...new Set(
+          jobs
+            .map((j) => j.customer_id)
+            .filter((id): id is string => typeof id === 'string' && id !== link.customer_id),
+        ),
+      ]
+      if (ownerIds.length > 0) {
+        const { data: owners } = await admin.from('customers').select('id, name').in('id', ownerIds)
+        for (const o of (owners ?? []) as Array<{ id: string; name: string | null }>) {
+          if (o.name) ownerNames[o.id] = o.name
         }
       }
     }
 
-    const bills: Array<{
-      jobLabel: string
-      jobNumber: string
-      jobAddress: string | null
-      amount: number
-      billedOn: string | null
-      payUrl: string | null
-      checkRef: string
-    }> = []
-    const jobsWithLines = new Set(invoices.map((i) => i.job_id))
-    for (const inv of invoices) {
-      const open = Math.round((Number(inv.amount ?? 0) - (paymentsByInvoice.get(inv.id) ?? 0)) * 100) / 100
-      if (open <= 0) continue
-      const job = billedJobs.find((j) => j.id === inv.job_id)
-      if (!job) continue
-      bills.push({
-        jobLabel: jobLabel(job),
-        jobNumber: jobNumber(job),
-        jobAddress: (job.job_address ?? '').trim() || null,
-        amount: open,
-        billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
-        payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
-        checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
-      })
-    }
-    // Billed jobs with no billed line (rare shells): show the job-level remainder.
-    for (const job of billedJobs) {
-      if (jobsWithLines.has(job.id)) continue
-      const open = Math.round((Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)) * 100) / 100
-      if (open <= 0) continue
-      bills.push({
-        jobLabel: jobLabel(job),
-        jobNumber: jobNumber(job),
-        jobAddress: (job.job_address ?? '').trim() || null,
-        amount: open,
-        billedOn: null,
-        payUrl: null,
-        checkRef: jobNumber(job),
-      })
-    }
-    bills.sort((a, b) => (b.billedOn ?? '9999').localeCompare(a.billedOn ?? '9999'))
+    const bills = buildPortalBills({
+      jobs,
+      invoices,
+      payments,
+      viewerCustomerId: link.customer_id,
+      markGcRows: link.audience === 'all',
+      ownerNames,
+    })
 
     const requestableJobs = jobs
       .filter((j) => j.status !== 'paid')
@@ -184,6 +202,9 @@ serve(async (req) => {
       bills,
       totalDue: Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
       requestableJobs,
+      // Lets the slug-resolved page submit request forms (the slug and the
+      // token are the same capability — both open this exact statement).
+      requestToken: link.token ?? null,
     })
   } catch (e) {
     console.error('customer-portal error', e)
