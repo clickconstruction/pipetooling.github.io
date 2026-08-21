@@ -1051,31 +1051,97 @@ describe('jobBillingUnallocatedDollars / clampPartialInvoiceCentsToUnallocated (
 })
 
 describe('capable-to-bill kernel (quirk #8 consolidation)', () => {
+  const bare = { invoices: [], payments: [] } as unknown as Pick<JobWithDetails, 'invoices' | 'payments'>
+
   it('computes valueCreated from pct and toBill net of amounts already off the job', () => {
     // 1000 bid, 50% done, 200 paid: 500 created − (1000 − 800 remaining) = 300 to bill
-    expect(jobCapableToBillAmounts({ revenue: 1000, payments_made: 200, pct_complete: 50 })).toEqual({
+    expect(jobCapableToBillAmounts({ ...bare, revenue: 1000, payments_made: 200, pct_complete: 50 })).toEqual({
       toBill: 300,
       valueCreated: 500,
+      openBilling: 0,
     })
   })
 
   it('treats null pct as zero value created (toBill 0 when nothing paid — remaining equals the bid)', () => {
-    const r = jobCapableToBillAmounts({ revenue: 1000, payments_made: 0, pct_complete: null })
+    const r = jobCapableToBillAmounts({ ...bare, revenue: 1000, payments_made: 0, pct_complete: null })
     expect(r.valueCreated).toBe(0)
     expect(r.toBill).toBe(0)
   })
 
   it('clamps remaining at zero for overpaid jobs (toBill goes fully negative)', () => {
-    const r = jobCapableToBillAmounts({ revenue: 1000, payments_made: 1200, pct_complete: 50 })
+    const r = jobCapableToBillAmounts({ ...bare, revenue: 1000, payments_made: 1200, pct_complete: 50 })
     expect(r.toBill).toBe(-500)
   })
 
+  it('subtracts billed-unpaid remainders — a billed job is no longer "capable" (v2.1927)', () => {
+    // The prod shape that surfaced the bug: 40k bid, 80% done, $0 paid, full
+    // 32k already sent as a bill → nothing left to ask for.
+    const inv = rtbInvoiceStub({ id: 'inv-b', job_id: 'j', amount: 32_000, status: 'billed' })
+    const r = jobCapableToBillAmounts({
+      invoices: [inv],
+      payments: [],
+      revenue: 40_000,
+      payments_made: 0,
+      pct_complete: 80,
+    } as unknown as Parameters<typeof jobCapableToBillAmounts>[0])
+    expect(r.openBilling).toBe(32_000)
+    expect(r.toBill).toBe(0)
+  })
+
+  it('subtracts ready-to-bill drafts too (already counted by the RTB exposure term of "ready to ask for")', () => {
+    const draft = rtbInvoiceStub({ id: 'inv-r', job_id: 'j', amount: 300 })
+    const r = jobCapableToBillAmounts({
+      invoices: [draft],
+      payments: [],
+      revenue: 1000,
+      payments_made: 200,
+      pct_complete: 50,
+    } as unknown as Parameters<typeof jobCapableToBillAmounts>[0])
+    expect(r.openBilling).toBe(300)
+    expect(r.toBill).toBe(0) // 500 created − 200 paid − 300 queued
+  })
+
+  it('open remainder nets payments applied to that invoice (no double subtraction with payments_made)', () => {
+    // 3000 billed, 2000 applied to it: asked-for = 2000 paid + 1000 open = 3000 → 5000 done leaves 2000.
+    const inv = rtbInvoiceStub({ id: 'inv-p', job_id: 'j', amount: 3000, status: 'billed' })
+    const r = jobCapableToBillAmounts({
+      invoices: [inv],
+      payments: [{ invoice_id: 'inv-p', amount: 2000 }],
+      revenue: 10_000,
+      payments_made: 2000,
+      pct_complete: 50,
+    } as unknown as Parameters<typeof jobCapableToBillAmounts>[0])
+    expect(r.openBilling).toBe(1000)
+    expect(r.toBill).toBe(2000)
+  })
+
+  it('paid invoices do not reduce toBill (their money already lives in payments_made)', () => {
+    const inv = rtbInvoiceStub({ id: 'inv-d', job_id: 'j', amount: 200, status: 'paid' })
+    const r = jobCapableToBillAmounts({
+      invoices: [inv],
+      payments: [{ invoice_id: 'inv-d', amount: 200 }],
+      revenue: 1000,
+      payments_made: 200,
+      pct_complete: 50,
+    } as unknown as Parameters<typeof jobCapableToBillAmounts>[0])
+    expect(r.openBilling).toBe(0)
+    expect(r.toBill).toBe(300)
+  })
+
   it('total clamps negatives per job; breakdown filters them and sorts descending', () => {
-    const a = { revenue: 1000, payments_made: 200, pct_complete: 50 } // 300
-    const b = { revenue: 2000, payments_made: 0, pct_complete: 40 }  // 800
-    const c = { revenue: 1000, payments_made: 0, pct_complete: null } // -1000
-    expect(capableToBillTotalFromWorking([a, b, c])).toBe(1100)
-    const rows = buildCapableToBillBreakdownRows([a, b, c])
+    const overbilled = rtbInvoiceStub({ id: 'inv-o', job_id: 'j', amount: 900, status: 'billed' })
+    const a = { ...bare, revenue: 1000, payments_made: 200, pct_complete: 50 } // 300
+    const b = { ...bare, revenue: 2000, payments_made: 0, pct_complete: 40 } // 800
+    const c = { ...bare, revenue: 1000, payments_made: 0, pct_complete: null } // -1000
+    const d = {
+      invoices: [overbilled],
+      payments: [],
+      revenue: 1000,
+      payments_made: 0,
+      pct_complete: 60,
+    } as unknown as typeof a // 600 created − 900 open = -300
+    expect(capableToBillTotalFromWorking([a, b, c, d])).toBe(1100)
+    const rows = buildCapableToBillBreakdownRows([a, b, c, d])
     expect(rows.map((r) => r.toBill)).toEqual([800, 300])
     expect(rows[0]!.job).toBe(b)
   })
