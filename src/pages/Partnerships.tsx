@@ -562,12 +562,6 @@ export default function Partnerships() {
                   </div>
                   <DashboardPartnerLedgerSection asPartnershipId={selected.id} />
                   <DashboardPartnerJobsSection asPartnershipId={selected.id} />
-                  <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.55rem 0.8rem', marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    <b style={{ color: 'var(--text-700)' }}>Hidden with the lens on</b> — the Deal config, Agreements
-                    admin, the Job review gate, the Timeline’s infractions and pending-charge details, and the raw
-                    journal. {selected.display_name || 'The partner'} gets weekly statement cards, never the journal
-                    table.
-                  </div>
                 </div>
               ) : (
                 <>
