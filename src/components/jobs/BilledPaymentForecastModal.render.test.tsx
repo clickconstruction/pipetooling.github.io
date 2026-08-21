@@ -5,7 +5,7 @@
  * Res/Comm row tags (v2.1930).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
@@ -69,6 +69,28 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(screen.getAllByText('Comm')).toHaveLength(2)
     expect(screen.getAllByText('Res')).toHaveLength(1)
     expect(screen.getByText(/964 · Pondhill demo/)).toBeTruthy()
+  })
+
+  it('clicking a bucket tile filters the lists to that bucket; clicking again restores all', () => {
+    const { container } = render(
+      <BilledPaymentForecastModal
+        rows={[billedRow()]}
+        paySpeeds={speeds}
+        todayYmd="2026-08-20"
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+      />,
+    )
+    // The row lands in the following-two-weeks bucket ("Aug 30 – Sep 12").
+    fireEvent.click(screen.getByTitle('Show only the Aug 30 – Sep 12 bills'))
+    expect(screen.getByRole('status').textContent).toContain('Showing only Aug 30 – Sep 12')
+    expect(screen.getByText(/964 · Pondhill demo/)).toBeTruthy()
+    // Empty buckets' tiles are disabled while inactive.
+    const emptyTiles = screen.getAllByTitle('No bills in this bucket')
+    expect(emptyTiles.length).toBeGreaterThan(0)
+    expect((emptyTiles[0] as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }))
+    expect(container.textContent).not.toContain('Showing only')
   })
 
   it('hides the strip (but still lists rows) when pay speeds are unavailable', () => {

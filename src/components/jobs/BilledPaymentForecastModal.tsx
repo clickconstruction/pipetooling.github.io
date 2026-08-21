@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
   type ForecastBucket,
+  type ForecastBucketKey,
   type ForecastRow,
 } from '../../lib/jobs/billedPaymentForecast'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -99,6 +100,13 @@ export default function BilledPaymentForecastModal({
     [rows, paySpeeds, todayYmd, promises],
   )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
+  // Tile click-to-filter (v2.1943): a tile narrows the lists to just its
+  // bucket; clicking it again (or Show all) restores every bucket.
+  const [bucketFilter, setBucketFilter] = useState<ForecastBucketKey | null>(null)
+  const listedBuckets = visibleBuckets.filter(
+    (b) => b.rows.length > 0 && (bucketFilter == null || b.key === bucketFilter),
+  )
+  const filteredTitle = bucketFilter ? visibleBuckets.find((b) => b.key === bucketFilter)?.title : null
 
   return (
     <div
@@ -125,14 +133,40 @@ export default function BilledPaymentForecastModal({
         </div>
         <p style={{ margin: '0.25rem 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
-          months). Click a row to jump to its bill on the board.
+          months). Click a tile to see just its bills; click a row to jump to that bill on the board.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))', gap: '0.6rem' }}>
           {visibleBuckets.map((b) => {
             const c = bucketTileColors(b)
+            const active = bucketFilter === b.key
+            const empty = b.rows.length === 0
             return (
-              <div key={b.key} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: '0.6rem 0.75rem', opacity: b.rows.length === 0 ? 0.55 : 1 }}>
+              <button
+                key={b.key}
+                type="button"
+                disabled={empty && !active}
+                aria-pressed={active}
+                title={
+                  empty
+                    ? 'No bills in this bucket'
+                    : active
+                      ? 'Show every bucket again'
+                      : `Show only the ${b.title} bills`
+                }
+                onClick={() => setBucketFilter(active ? null : b.key)}
+                style={{
+                  background: c.bg,
+                  border: `1px solid ${c.border}`,
+                  outline: active ? '2px solid var(--text-link)' : 'none',
+                  outlineOffset: -1,
+                  borderRadius: 8,
+                  padding: '0.6rem 0.75rem',
+                  opacity: empty && !active ? 0.55 : 1,
+                  textAlign: 'left',
+                  cursor: empty && !active ? 'default' : 'pointer',
+                }}
+              >
                 <div style={{ fontSize: '0.75rem', color: c.fg }}>{b.title}</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 650, color: c.fg, fontVariantNumeric: 'tabular-nums' }}>
                   {formatUsdNoCents(b.sum)}
@@ -141,7 +175,7 @@ export default function BilledPaymentForecastModal({
                   {b.rows.length} {b.rows.length === 1 ? 'bill' : 'bills'}
                   {b.key === 'past' && b.rows.length > 0 ? ' · follow up' : ''}
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -169,8 +203,20 @@ export default function BilledPaymentForecastModal({
           </div>
         ) : null}
 
-        {visibleBuckets
-          .filter((b) => b.rows.length > 0)
+        {filteredTitle ? (
+          <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status">
+            Showing only {filteredTitle} ·{' '}
+            <button
+              type="button"
+              onClick={() => setBucketFilter(null)}
+              style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: 'inherit' }}
+            >
+              Show all
+            </button>
+          </p>
+        ) : null}
+
+        {listedBuckets
           .map((b) => (
             <div key={b.key} style={{ marginTop: '1rem' }}>
               <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem' }}>
