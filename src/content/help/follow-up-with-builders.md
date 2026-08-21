@@ -10,7 +10,7 @@ The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has th
 - **By builder** — the call queue. One card per builder, sorted so the builder you've ignored longest is on top. This is the lens for phone mornings: call one GC, walk through all their bids at once.
 - **By status** — the outcome tables (Unsent, Not yet won or lost, Won, Started or Complete, Lost) with the per-person followup sheets, {{button:outline|Print}}/{{button:outline|PDF}}, and call scripts.
 - **Why we lost** — record and review loss reasons, one GC call at a time (below).
-- **Waiting to hear** — chase your recently sent bids for answers and bid tabs, newest first (below).
+- **Waiting to hear** — chase your recently sent bids for answers and bid tabs, newest first (below). Search by bid #, project name, GC/Builder, or address to jump straight to one — the "N to chase" chip keeps counting the whole window while you search.
 
 Flip between them with the {{button:blue|By builder}} / {{button:outline|By status}} / {{button:outline|Why we lost}} / {{button:outline|Waiting to hear}} toggle at the top. The **Stale after N days** box is shared between the first two — set it once and both lenses highlight the same bids in red.
 
