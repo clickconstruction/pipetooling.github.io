@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartnerJournal, mergeNotesIntoDisplay, mergePendingIntoJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets } from './partnerLedgerJournal'
+import { DRAFT_NOTE_PREVIEW_ID, buildPartnerJournal, mergeNotesIntoDisplay, mergePendingIntoJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets, withDraftNotePreview } from './partnerLedgerJournal'
 
 describe('buildPartnerJournal', () => {
   it('books labor, additions, deductions on period end and payouts on their dates, with a running balance', () => {
@@ -131,6 +131,46 @@ describe('mergeNotesIntoDisplay', () => {
 
   it('empty notes list is a no-op', () => {
     expect(mergeNotesIntoDisplay(rows, [])).toHaveLength(rows.length)
+  })
+})
+
+describe('withDraftNotePreview', () => {
+  const saved = [
+    { id: 'n1', note_date: '2026-08-10', memo: 'Existing note', partner_visible: false },
+    { id: 'n2', note_date: '2026-08-14', memo: 'Another note', partner_visible: true },
+  ]
+
+  it('no open draft returns the notes untouched', () => {
+    expect(withDraftNotePreview(saved, null, null)).toBe(saved)
+    expect(withDraftNotePreview(saved, 'new', null)).toBe(saved)
+  })
+
+  it('a new draft appends a preview note carrying the draft fields', () => {
+    const out = withDraftNotePreview(saved, 'new', { note_date: '2026-08-12', memo: 'Typing…', partner_visible: true })
+    expect(out).toHaveLength(3)
+    expect(out[2]).toEqual({ id: DRAFT_NOTE_PREVIEW_ID, note_date: '2026-08-12', memo: 'Typing…', partner_visible: true })
+    expect(out.slice(0, 2)).toEqual(saved)
+  })
+
+  it('editing replaces the original note so the ghost moves with the draft date', () => {
+    const out = withDraftNotePreview(saved, 'n1', { note_date: '2026-08-15', memo: 'Moved', partner_visible: false })
+    expect(out.map((n) => n.id)).toEqual(['n2', DRAFT_NOTE_PREVIEW_ID])
+    expect(out[1]?.note_date).toBe('2026-08-15')
+  })
+
+  it('the preview lands in display position for its draft date', () => {
+    const journal = buildPartnerJournal({
+      stubs: [{ id: 's1', period_start: '2026-08-09', period_end: '2026-08-15', hours_total: 12.8, gross_pay: 450.1 }],
+      additional: [],
+      deductions: [],
+      payments: [{ pay_stub_id: 's1', amount: 200, paid_at: '2026-08-13T18:00:00Z', memo: null }],
+    }).rows
+    const merged = mergeNotesIntoDisplay(journal, withDraftNotePreview([], 'new', { note_date: '2026-08-13', memo: '', partner_visible: false }))
+    expect(merged.map((r) => [r.date, r.kind])).toEqual([
+      ['2026-08-13', 'payout'],
+      ['2026-08-13', 'note'],
+      ['2026-08-15', 'labor'],
+    ])
   })
 })
 
