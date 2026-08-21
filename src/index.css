@@ -2131,12 +2131,16 @@ body.my-time-boundary-dragging {
 }
 
 /* Roadmap Timeline (v2.1979): stage rail shrinks to badges on phones */
+:root {
+  /* Shared with the task-title overlay's calc (v2.2049) — keep rule + var in sync. */
+  --roadmap-timeline-rail-w: 200px;
+}
 .roadmap-timeline-rail {
-  width: 200px;
+  width: var(--roadmap-timeline-rail-w);
 }
 @media (max-width: 640px) {
-  .roadmap-timeline-rail {
-    width: 52px;
+  :root {
+    --roadmap-timeline-rail-w: 52px;
   }
   .roadmap-timeline-rail-title {
     display: none;
