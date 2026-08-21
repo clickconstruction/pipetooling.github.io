@@ -2242,7 +2242,7 @@ export function ChecklistTechTreeTab({
         canOpenMembers={Boolean(effectiveRoadmapId)}
         onOpenMembers={() => setMembersModalOpen(true)}
         trailing={
-          <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
             <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
               {(['map', 'plan'] as const).map((mode) => (
                 <button
@@ -2264,7 +2264,9 @@ export function ChecklistTechTreeTab({
                 </button>
               ))}
             </div>
-            {viewMode === 'map' && canEditStructure ? (
+            {canEditStructure ? (
+              // both views: Order stages (and the empty-graph starters) work
+              // from Plan just as well as from Map
               <TechTreeRoadmapToolbarActions
                 sections="editor"
                 canEditTechTree={canEditStructure}
@@ -2277,7 +2279,7 @@ export function ChecklistTechTreeTab({
                 onToggleReorder={() => setReorderMode((o) => !o)}
               />
             ) : null}
-          </>
+          </div>
         }
       />
       {viewMode === 'plan' ? (

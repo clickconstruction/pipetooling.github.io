@@ -19,8 +19,8 @@ The Plan lists — **Now**, **Up next**, and **Goals** — follow the same stage
 
 ## Reorder the stages
 
-1. Open **Checklist → Roadmap** and switch to the **Map** view.
-2. Press {{button:outline|Order stages}} in the toolbar (it appears once the roadmap has at least two stages).
+1. Open **Checklist → Roadmap** — either view works.
+2. Press {{button:outline|Order stages}} on the right side of the toolbar (it appears once the roadmap has at least two stages).
 3. **Drag any row** up or down — the numbers renumber live as you drag, and the top row is always #1.
 4. Press {{button:blue|Save order}}. The badges on the Map clusters and the Plan rows update right away.
 
