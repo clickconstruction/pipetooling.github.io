@@ -131,3 +131,40 @@ export function pendingOffsetSignedAmount(o: JournalPendingOffset): number {
 export function netPosition(postedBalance: number, pendingNet: number): number {
   return round2(postedBalance + pendingNet)
 }
+
+/** A pending offset rendered inline in the journal: dated, signed, but with no
+ * running balance — it moves nothing until a statement attaches it. */
+export type PendingJournalRow = {
+  date: string
+  label: string
+  detail: string | null
+  amount: number
+  balance: null
+  kind: 'pending'
+  pay_stub_id: null
+}
+
+export type JournalDisplayRow = JournalRow | PendingJournalRow
+
+/**
+ * Interleave pending offsets into the posted journal by occurred_date,
+ * oldest first (same order convention as buildPartnerJournal). Ties on a
+ * date put posted rows first, pending after — the balance column stays a
+ * contiguous posted-only chain to the eye.
+ */
+export function mergePendingIntoJournal(rows: JournalRow[], pending: JournalPendingOffset[]): JournalDisplayRow[] {
+  const pendingRows: PendingJournalRow[] = pending
+    .filter((o) => Number.isFinite(o.amount))
+    .map((o) => ({
+      date: o.occurred_date,
+      label: o.description || o.type,
+      detail: null,
+      amount: pendingOffsetSignedAmount(o),
+      balance: null,
+      kind: 'pending',
+      pay_stub_id: null,
+    }))
+  const merged: JournalDisplayRow[] = [...rows, ...pendingRows]
+  const tier = (r: JournalDisplayRow) => (r.kind === 'pending' ? 1 : 0)
+  return merged.sort((a, b) => a.date.localeCompare(b.date) || tier(a) - tier(b))
+}
