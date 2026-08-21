@@ -6,6 +6,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
+  APP_SETTINGS_KEY_PORTAL_REQUEST_EMAIL_RECIPIENTS,
   APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS_V2,
 } from '../../lib/appSettingsKeys'
 import { parsePaidJobEmailRecipients, serializePaidJobEmailRecipients } from '../../lib/paidJobEmail'
@@ -212,6 +213,55 @@ export default function SettingsEmailStreamsSection({ focus }: {
     return () => window.clearTimeout(t)
   }, [focus, data])
 
+  // Portal requests stream (v2.1988): self-contained — recipients live in an
+  // app_settings JSON id-list (paid-stream v1 format) and this card is the
+  // stream's ONLY manager, so it loads its own user roster for the add picker.
+  const [portalRecipients, setPortalRecipients] = useState<Array<{ user_id: string; name: string }>>([])
+  const [portalPickerUsers, setPortalPickerUsers] = useState<Array<{ id: string; name: string }>>([])
+  const [portalAddId, setPortalAddId] = useState('')
+
+  const loadPortalStream = useCallback(async () => {
+    const [{ data: row }, { data: usersRaw }] = await Promise.all([
+      supabase.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_PORTAL_REQUEST_EMAIL_RECIPIENTS).maybeSingle(),
+      supabase
+        .from('users')
+        .select('id, name, role')
+        .in('role', ['dev', 'master_technician', 'assistant', 'controller', 'primary'])
+        .order('name'),
+    ])
+    const users = ((usersRaw ?? []) as Array<{ id: string; name: string | null }>).map((u) => ({
+      id: u.id,
+      name: (u.name ?? '').trim() || '—',
+    }))
+    const ids = parsePaidJobEmailRecipients((row as { value_text: string | null } | null)?.value_text)
+    setPortalPickerUsers(users)
+    setPortalRecipients(ids.map((id) => ({ user_id: id, name: users.find((u) => u.id === id)?.name ?? '—' })))
+  }, [])
+
+  async function addPortalRecipient() {
+    if (!portalAddId) return
+    const { data: row, error: readErr } = await supabase
+      .from('app_settings')
+      .select('value_text')
+      .eq('key', APP_SETTINGS_KEY_PORTAL_REQUEST_EMAIL_RECIPIENTS)
+      .maybeSingle()
+    if (readErr) {
+      showToast(formatErrorMessage(readErr, 'Could not load recipients'), 'error')
+      return
+    }
+    const ids = parsePaidJobEmailRecipients((row as { value_text: string | null } | null)?.value_text)
+    if (!ids.includes(portalAddId)) ids.push(portalAddId)
+    const { error: e } = await supabase
+      .from('app_settings')
+      .upsert({ key: APP_SETTINGS_KEY_PORTAL_REQUEST_EMAIL_RECIPIENTS, value_text: serializePaidJobEmailRecipients(ids) }, { onConflict: 'key' })
+    if (e) showToast(formatErrorMessage(e, 'Could not add recipient'), 'error')
+    else {
+      showToast('Recipient added.', 'success')
+      setPortalAddId('')
+      await loadPortalStream()
+    }
+  }
+
   const load = useCallback(async () => {
     const { data: d, error: e } = await supabase.rpc('get_global_email_schedule')
     if (e) setError(e.message)
@@ -220,8 +270,9 @@ export default function SettingsEmailStreamsSection({ focus }: {
       setData(d as unknown as GlobalEmailSchedule)
       setError(null)
     }
+    void loadPortalStream()
     setLoading(false)
-  }, [])
+  }, [loadPortalStream])
 
   useEffect(() => {
     void load()
@@ -393,6 +444,57 @@ export default function SettingsEmailStreamsSection({ focus }: {
           : data.paid_recipients.map((r) => (
               <RecipientChip key={r.user_id} label={r.name} onRemove={() => void removeSettingRecipient(APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS, r.user_id, r.name)} />
             ))}
+      </StreamCard>
+
+      <StreamCard
+        count={portalRecipients.length}
+        noun="recipient"
+        open={!!openCards['portal_requests']}
+        onToggle={() => toggleCard('portal_requests')}
+        title="Portal requests"
+        cadence="event — a customer submits a visit or bid request from their portal"
+        manage="this card is the manager — add or remove recipients right here"
+      >
+        {portalRecipients.length === 0 ? (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+            No email recipients — dispatch-group push still fires; add people to also email them.
+          </span>
+        ) : (
+          portalRecipients.map((r) => (
+            <RecipientChip
+              key={r.user_id}
+              label={r.name}
+              onRemove={() => {
+                void removeSettingRecipient(APP_SETTINGS_KEY_PORTAL_REQUEST_EMAIL_RECIPIENTS, r.user_id, r.name).then(loadPortalStream)
+              }}
+            />
+          ))
+        )}
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+          <select
+            value={portalAddId}
+            onChange={(e) => setPortalAddId(e.target.value)}
+            aria-label="Add a portal-request email recipient"
+            style={{ height: 24, fontSize: '0.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit' }}
+          >
+            <option value="">Add someone…</option>
+            {portalPickerUsers
+              .filter((u) => !portalRecipients.some((r) => r.user_id === u.id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => void addPortalRecipient()}
+            disabled={!portalAddId}
+            style={{ height: 24, padding: '0 10px', fontSize: '0.75rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-link)', cursor: portalAddId ? 'pointer' : 'not-allowed' }}
+          >
+            Add
+          </button>
+        </span>
       </StreamCard>
 
       <StreamCard

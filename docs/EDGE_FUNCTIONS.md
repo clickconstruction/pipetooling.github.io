@@ -859,7 +859,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-portal-request
 
-**Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request`.
+**Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request` and (v2.1988) emails the `portal_request_email_recipients_v1` app_settings list via Resend, best-effort.
 
 **Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid', jobId?, description, availability?, phone?, plansLink?, website }` (`website` is the honeypot).
 
