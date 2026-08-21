@@ -646,10 +646,6 @@ export function JobsGcReviewModal({
                     {g.gcName}
                   </span>
                 )}
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {g.jobCount} job{g.jobCount === 1 ? '' : 's'} · ${formatCurrency(g.subtotal)} outstanding
-                  {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
-                </span>
                 {!g.isNoGc && g.gcId && lastSentByGcId[g.gcId] ? (
                   gcReviewSentThisWeek(lastSentByGcId[g.gcId], certWeekStart) && !byDevelopment ? (
                     <span
@@ -813,6 +809,12 @@ export function JobsGcReviewModal({
                     <span aria-hidden>🖨</span>
                   </button>
                 )}
+                {/* Stats on their own second line (owner call, v2.2047) — the
+                    GC name stays clean on line 1 with the chips/actions. */}
+                <span style={{ flexBasis: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {g.jobCount} job{g.jobCount === 1 ? '' : 's'} · ${formatCurrency(g.subtotal)} outstanding
+                  {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
+                </span>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>

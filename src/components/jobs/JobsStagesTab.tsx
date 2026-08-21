@@ -1063,6 +1063,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
 
   /**
+   * UNFILTERED board lists — the single "what's true" derivation, as opposed
+   * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
+   * chase queue, the aging chart / payment forecast / who-owes-what modals,
+   * GC Review) all read from THIS list: money must never fall out of a total
+   * because a board group is cosmetically hidden, a GC/development/account-man
+   * filter is set, or a search is live (money-never-hides, v2.1915). Any new
+   * money surface consumes this, never stagesBoardLists.
+   */
+  const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+
+  /**
    * Payment chase queue (v2.2025). The CARD derives from the lean stats
    * spine (available on first paint, no names); call mode re-derives from
    * the full billed rows once the scope merges. Same kernel both times.
@@ -1077,25 +1088,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     )
   }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
   const nonPaidScopesMerged = NON_PAID_SCOPES.every((s) => cacheMergedScopes.has(s))
-  // UNFILTERED billed rows for the money modals (chase queue v2.2035, and the
-  // aging chart / payment forecast / who-owes-what breakdown): money must not
-  // fall out of these totals because a board group is cosmetically hidden, a
-  // GC/development/account-man filter is set, or a search is live. Same
-  // money-never-hides rule as the story cards (v2.1915).
-  const billedMoneyModalRows = useMemo(() => {
-    if (!billedMoneyModalOpen && !chaseModalOpen) return null
-    return buildJobsStagesBoardLists(jobs, '').billedActiveRows
-  }, [billedMoneyModalOpen, chaseModalOpen, jobs])
   const chaseFullQueue = useMemo(() => {
-    if (!chaseModalOpen || !nonPaidScopesMerged || !billedMoneyModalRows) return null
+    if (!chaseModalOpen || !nonPaidScopesMerged) return null
     return buildPaymentChaseQueue(
-      billedMoneyModalRows,
+      unfilteredBoardLists.billedActiveRows,
       billedPaySpeeds,
       promisedPayDates,
       chaseTouches,
       chaseTodayYmd,
     )
-  }, [chaseModalOpen, nonPaidScopesMerged, billedMoneyModalRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
+  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
@@ -1776,7 +1778,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * jobList/rows narrowed to the one job. Board lists are rebuilt without the
    * page's search/exclusion filters so a filtered-out job still gets its row.
    */
-  const followupBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
     const job = jobs.find((x) => x.id === jobId)
     if (!job) return null
@@ -1895,7 +1896,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ) }
     }
     if (status === 'ready_to_bill') {
-      const rows = followupBoardLists.readyToBillRows.filter((r) => r.job.id === jobId)
+      const rows = unfilteredBoardLists.readyToBillRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
       return { stage: 'ready_to_bill', ...rowExtras, node: (
         <StagesUnifiedSectionList
@@ -1969,7 +1970,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ) }
     }
     if (status === 'billed' && jobInCollections(job)) {
-      const rows = followupBoardLists.collectionsRows.filter((r) => r.job.id === jobId)
+      const rows = unfilteredBoardLists.collectionsRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
       return { stage: 'collections', ...rowExtras, node: (
         <StagesUnifiedSectionList
@@ -1997,7 +1998,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ) }
     }
     if (status === 'billed') {
-      const rows = followupBoardLists.billedActiveRows.filter((r) => r.job.id === jobId)
+      const rows = unfilteredBoardLists.billedActiveRows.filter((r) => r.job.id === jobId)
       if (rows.length === 0) return null
       return { stage: 'billed', ...rowExtras, node: (
         <StagesUnifiedSectionList
@@ -2783,8 +2784,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   >
                     {buildStagesSectionToolsMenu({
                       authRole,
-                      billedRowCount: stagesBoardLists.billedActiveRows.length,
-                      collectionsRowCount: stagesBoardLists.collectionsRows.length,
+                      // Unfiltered counts — GC Review must stay reachable even
+                      // when a search/filter empties the visible billed group.
+                      billedRowCount: unfilteredBoardLists.billedActiveRows.length,
+                      collectionsRowCount: unfilteredBoardLists.collectionsRows.length,
                       arBankTxUnallocatedCount:
                         typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null,
                       capableToBillTotalFormatted: formatCurrencyNoCents(
@@ -4017,8 +4020,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <JobsGcReviewModal
                   open={gcReviewModalOpen}
                   onClose={() => setGcReviewModalOpen(false)}
-                  billedActiveRows={billedActiveRows}
-                  collectionsRows={collectionsRows}
+                  billedActiveRows={unfilteredBoardLists.billedActiveRows}
+                  collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
                   isDev={authRole === 'dev'}
                   canCertify={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
@@ -4546,7 +4549,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {billedBreakdownOpen && (
         <BilledByCustomerBreakdownModal
-          rows={billedMoneyModalRows ?? []}
+          rows={unfilteredBoardLists.billedActiveRows}
           loading={!nonPaidScopesMerged}
           canSeeCharts={authRole === 'dev' || authRole === 'controller'}
           onClose={() => setBilledBreakdownOpen(false)}
@@ -4577,7 +4580,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {billedAgingChartOpen && (
         <BilledAgingChartModal
-          rows={billedMoneyModalRows ?? []}
+          rows={unfilteredBoardLists.billedActiveRows}
           loading={!nonPaidScopesMerged}
           onClose={() => setBilledAgingChartOpen(false)}
           onOpenInvoice={(invoiceId) => {
@@ -4588,7 +4591,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {billedPaymentForecastOpen && (
         <BilledPaymentForecastModal
-          rows={billedMoneyModalRows ?? []}
+          rows={unfilteredBoardLists.billedActiveRows}
           loading={!nonPaidScopesMerged}
           paySpeeds={billedPaySpeeds}
           promises={promisedPayDates}
