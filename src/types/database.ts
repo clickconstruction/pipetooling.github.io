@@ -13871,6 +13871,7 @@ export type Database = {
       }
       generate_partner_statement: {
         Args: {
+          p_offset_ids?: string[]
           p_override?: boolean
           p_partnership_id: string
           p_week_start: string
