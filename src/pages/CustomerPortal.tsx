@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties, FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   formatPortalDate,
@@ -114,7 +115,18 @@ export default function CustomerPortal() {
         )}
 
         {state.kind === 'ready' && (
-          <PortalStatement payload={state.payload} today={today} />
+          <>
+            <PortalStatement payload={state.payload} today={today} />
+            <PortalRequestForms token={token} payload={state.payload} />
+            <div style={{ padding: '2rem 0 0', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 12, color: MUTED }}>
+                Thank you for your business — <i>the Click team</i>
+              </span>
+              <span style={{ fontSize: 10.5, color: FAINT }}>
+                This link is private to you · requests go straight to our dispatch desk
+              </span>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -200,13 +212,207 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
         </div>
       )}
 
-      {/* Sign-off */}
-      <div style={{ padding: '2rem 0 0', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
-        <span style={{ fontSize: 12, color: MUTED }}>
-          Thank you for your business — <i>the Click team</i>
-        </span>
-        <span style={{ fontSize: 10.5, color: FAINT }}>This link is private to you</span>
+    </>
+  )
+}
+
+const fieldStyle: CSSProperties = {
+  border: 'none',
+  borderBottom: '1px solid #b9c2cc',
+  background: 'transparent',
+  padding: '4px 1px',
+  fontSize: 13,
+  color: INK,
+  fontFamily: 'inherit',
+  outline: 'none',
+  width: '100%',
+  borderRadius: 0,
+}
+
+function PortalRequestForms({ token, payload }: { token: string; payload: PortalPayload }) {
+  return (
+    <>
+      {/* Tear-off divider (portal train PR 2) */}
+      <div style={{ margin: '1.9rem 0 0', display: 'flex', alignItems: 'center', gap: 10, color: FAINT }}>
+        <span aria-hidden style={{ fontSize: 13 }}>✂</span>
+        <span style={{ flex: 1, borderTop: '2px dashed #c4bfb2' }} />
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Send us work</span>
+        <span style={{ flex: 1, borderTop: '2px dashed #c4bfb2' }} />
+      </div>
+      <div style={{ padding: '1.3rem 0 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 22 }}>
+        <RequestCard
+          token={token}
+          kind="visit"
+          title="Request a visit"
+          sub="We'll call to confirm a time."
+          submitLabel="Send request"
+          jobs={payload.requestableJobs}
+        />
+        <RequestCard
+          token={token}
+          kind="bid"
+          title="Ask us to bid your work"
+          sub="Remodels, additions, new construction."
+          submitLabel="Request a bid"
+          jobs={[]}
+        />
       </div>
     </>
+  )
+}
+
+function RequestCard({
+  token,
+  kind,
+  title,
+  sub,
+  submitLabel,
+  jobs,
+}: {
+  token: string
+  kind: 'visit' | 'bid'
+  title: string
+  sub: string
+  submitLabel: string
+  jobs: PortalPayload['requestableJobs']
+}) {
+  const [jobId, setJobId] = useState('')
+  const [description, setDescription] = useState('')
+  const [availability, setAvailability] = useState('')
+  const [phone, setPhone] = useState('')
+  const [plansLink, setPlansLink] = useState('')
+  const [honeypot, setHoneypot] = useState('')
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (description.trim().length < 5) {
+      setStatus('error')
+      setErrorMessage('Please tell us a little more about what you need (a sentence or two).')
+      return
+    }
+    setStatus('sending')
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          kind,
+          jobId: jobId || undefined,
+          description: description.trim(),
+          availability: availability.trim() || undefined,
+          phone: phone.trim() || undefined,
+          plansLink: plansLink.trim() || undefined,
+          website: honeypot,
+        }),
+      })
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (res.ok && body?.ok) {
+        setStatus('sent')
+      } else {
+        setStatus('error')
+        setErrorMessage(body?.error ?? 'We could not send that. Please try again, or call our office.')
+      }
+    } catch {
+      setStatus('error')
+      setErrorMessage('We could not send that. Please check your connection and try again.')
+    }
+  }
+
+  if (status === 'sent') {
+    return (
+      <div style={{ background: CARD, border: `1px solid ${HAIR}`, padding: '18px 20px' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>{title}</div>
+        <p style={{ marginTop: 12, fontSize: 13.5, lineHeight: 1.6 }}>
+          <b>Got it — thank you.</b>{' '}
+          <span style={{ color: MUTED }}>
+            Your request went straight to our dispatch desk; we&#8217;ll reach out
+            {phone.trim() ? ` at ${phone.trim()}` : ''} shortly.
+          </span>
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} style={{ background: CARD, border: `1px solid ${HAIR}`, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div>
+        <div style={{ fontSize: 13.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>{title}</div>
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>{sub}</div>
+      </div>
+      {kind === 'visit' && jobs.length > 0 && (
+        <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          For
+          <select value={jobId} onChange={(e) => setJobId(e.target.value)} style={{ ...fieldStyle, appearance: 'auto' }}>
+            <option value="">Something new</option>
+            {jobs.map((j) => (
+              <option key={j.id} value={j.id}>
+                {j.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {kind === 'visit' ? "What's going on?" : 'Describe the project'}
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          maxLength={2000}
+          required
+          style={{ ...fieldStyle, resize: 'vertical' }}
+        />
+      </label>
+      {kind === 'visit' ? (
+        <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          Best days &amp; times
+          <input value={availability} onChange={(e) => setAvailability(e.target.value)} maxLength={300} style={fieldStyle} />
+        </label>
+      ) : (
+        <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          Link to plans (optional)
+          <input value={plansLink} onChange={(e) => setPlansLink(e.target.value)} maxLength={500} placeholder="https://…" style={fieldStyle} />
+        </label>
+      )}
+      <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        Best number to reach you
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} type="tel" style={fieldStyle} />
+      </label>
+      {/* Honeypot: hidden from people, tempting to bots. */}
+      <input
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden
+        style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
+      />
+      {status === 'error' && (
+        <div style={{ fontSize: 12.5, color: '#a02c2c' }}>{errorMessage}</div>
+      )}
+      <button
+        type="submit"
+        disabled={status === 'sending'}
+        style={{
+          alignSelf: 'flex-end',
+          background: COPPER,
+          color: CARD,
+          border: 'none',
+          padding: '8px 20px',
+          fontSize: 12.5,
+          fontWeight: 700,
+          letterSpacing: '0.03em',
+          textTransform: 'uppercase',
+          cursor: status === 'sending' ? 'wait' : 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        {status === 'sending' ? 'Sending…' : submitLabel}
+      </button>
+    </form>
   )
 }

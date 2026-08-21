@@ -59,6 +59,28 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByText(/no longer active/)).toBeTruthy())
   })
 
+  it('request forms render and a visit submission posts + confirms', async () => {
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(url).includes('submit-portal-request')) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ ...payload, requestableJobs: [{ id: 'j1', label: 'Service call · Job 655' }] }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Request a visit')).toBeTruthy())
+    expect(screen.getByText('Ask us to bid your work')).toBeTruthy()
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.change(screen.getByLabelText(/What's going on/), { target: { value: 'Water heater is leaking again' } })
+    fireEvent.click(screen.getByText('Send request'))
+    await waitFor(() => expect(screen.getByText(/Got it — thank you/)).toBeTruthy())
+    const submitCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('submit-portal-request'))!
+    const sent = JSON.parse((submitCall[1] as RequestInit).body as string)
+    expect(sent.kind).toBe('visit')
+    expect(sent.description).toBe('Water heater is leaking again')
+    expect(sent.website).toBe('')
+  })
+
   it('missing token never fetches', () => {
     const f = vi.fn()
     vi.stubGlobal('fetch', f)
