@@ -27,6 +27,12 @@ Typical setup: one version per GC (e.g. "Turner" and "DPR"), each with its own p
 
 Each GC's document contains **only that GC's versions and pricing**, headed with their name and address. Documents never mix GCs, so one builder can't see what another was quoted.
 
+## The bid remembers everyone you sent it to
+
+Open **Edit Bid** and look under the GC/Builder picker: the **Also sent to** row lists every other GC this bid went out to. GCs you point a Version at land here automatically; use {{button:outline|+ Add GC}} to record the rest — the GCs who got the same letter without their own version. The × removes one.
+
+This list is what keeps multi-GC bids honest in follow-up: instead of a made-up "Multiple GC's" customer, the bid keeps its real primary GC and the recipients carry the others — so each real GC can be called for a bid tab.
+
 ## Tips
 
 - A version left on **Use bid default** still generates — grouped under the bid's own GC.
