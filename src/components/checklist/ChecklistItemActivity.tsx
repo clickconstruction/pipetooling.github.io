@@ -15,7 +15,8 @@ export type ChecklistItemActivityItem = {
 
 /**
  * The expandable task activity panel (shipped on Manage in v2.2010, shared
- * with Review since v2.2012): the item's full event history across its
+ * with Review since v2.2016 and Today since v2.2017): the item's full event
+ * history across its
  * instances (creation → completed/reopened/signed-off → notes) plus a
  * composer. Notes attach to the instance picked by `commentTargetInstance`
  * (events live on instances, not the item template).
@@ -28,6 +29,7 @@ export function ChecklistItemActivity({
   footerActions,
   commentInstanceId,
   onPosted,
+  onComplete,
 }: {
   item: ChecklistItemActivityItem
   authUserId: string | null
@@ -44,6 +46,13 @@ export function ChecklistItemActivity({
   commentInstanceId?: string
   /** Called after a note lands, so the parent can refresh its 💬 counts. */
   onPosted?: (instanceId: string, body: string) => void
+  /**
+   * ✓ Complete / ✓ Post & complete (v2.2039): completes the target occurrence
+   * (posting the draft first when one is typed). The host supplies the actual
+   * completion so each tab's side effects and refreshes stay in charge.
+   * Resolve true on success. Available to everyone who can post.
+   */
+  onComplete?: (inst: { id: string; scheduledDate: string }) => Promise<boolean>
 }) {
   const [loading, setLoading] = useState(true)
   const [instances, setInstances] = useState<ManageInstanceLite[]>([])
@@ -51,6 +60,7 @@ export function ChecklistItemActivity({
   const [nameById, setNameById] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
+  const [completing, setCompleting] = useState(false)
   const [cappedPast, setCappedPast] = useState(false)
 
   useEffect(() => {
@@ -138,10 +148,12 @@ export function ChecklistItemActivity({
     [instances],
   )
   const postTargetId = commentInstanceId ?? commentTarget?.id ?? null
+  const targetInstance = postTargetId ? instances.find((i) => i.id === postTargetId) ?? null : null
+  const canComplete = !!onComplete && !!authUserId && !!targetInstance && !targetInstance.completed_at
 
-  async function postComment() {
+  async function postComment(): Promise<boolean> {
     const body = draft.trim()
-    if (!body || posting || !authUserId || !postTargetId) return
+    if (!body || posting || !authUserId || !postTargetId) return false
     setPosting(true)
     try {
       const { error: e } = await supabase.from('checklist_instance_events').insert({
@@ -152,7 +164,7 @@ export function ChecklistItemActivity({
       })
       if (e) {
         setError(e.message)
-        return
+        return false
       }
       setDraft('')
       setEvents((prev) => [
@@ -167,8 +179,38 @@ export function ChecklistItemActivity({
         },
       ])
       onPosted?.(postTargetId, body)
+      return true
     } finally {
       setPosting(false)
+    }
+  }
+
+  /** ✓ Complete / ✓ Post & complete: draft (if any) posts first so the thread reads in order. */
+  async function completeTarget() {
+    if (!onComplete || !targetInstance || !authUserId || posting || completing) return
+    setCompleting(true)
+    try {
+      if (draft.trim()) {
+        const posted = await postComment()
+        if (!posted) return
+      }
+      const ok = await onComplete({ id: targetInstance.id, scheduledDate: targetInstance.scheduled_date })
+      if (!ok) return
+      const nowIso = new Date().toISOString()
+      setInstances((prev) => prev.map((i) => (i.id === targetInstance.id ? { ...i, completed_at: nowIso } : i)))
+      setEvents((prev) => [
+        ...prev,
+        {
+          id: `local-completed-${Date.now()}`,
+          instance_id: targetInstance.id,
+          event_type: 'completed',
+          actor_user_id: authUserId,
+          body: '',
+          created_at: nowIso,
+        },
+      ])
+    } finally {
+      setCompleting(false)
     }
   }
 
@@ -264,21 +306,43 @@ export function ChecklistItemActivity({
           <button
             type="button"
             onClick={() => void postComment()}
-            disabled={posting || !draft.trim()}
+            disabled={posting || completing || !draft.trim()}
             style={{
               height: 44,
               padding: '0 1rem',
               borderRadius: 10,
               border: 'none',
-              background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
+              background: posting || completing || !draft.trim() ? '#9ca3af' : '#2563eb',
               color: 'white',
               fontSize: '0.9375rem',
               fontWeight: 600,
-              cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',
+              cursor: posting || completing || !draft.trim() ? 'not-allowed' : 'pointer',
             }}
           >
             {posting ? '…' : 'Post'}
           </button>
+          {canComplete ? (
+            <button
+              type="button"
+              onClick={() => void completeTarget()}
+              disabled={posting || completing}
+              title={draft.trim() ? 'Post the note, then mark this task complete' : 'Mark this task complete'}
+              style={{
+                height: 44,
+                padding: '0 1rem',
+                borderRadius: 10,
+                border: 'none',
+                background: posting || completing ? '#9ca3af' : '#16a34a',
+                color: 'white',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                cursor: posting || completing ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {completing ? '…' : draft.trim() ? '✓ Post & complete' : '✓ Complete'}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {footerActions ? (

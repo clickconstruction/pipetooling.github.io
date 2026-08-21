@@ -26,6 +26,15 @@ Type in the **Add a note…** box at the bottom of the expanded card and tap {{b
 
 Notes are a paper trail, not a chat: they can't be edited or deleted once posted.
 
+## Completing from the panel
+
+Next to {{button:blue|Post}} there's a green button that finishes the task without leaving the card:
+
+- Nothing typed → {{button:green|✓ Complete}} marks the current occurrence done.
+- Note typed → {{button:green|✓ Post & complete}} posts the note first, then completes — so the record reads in the order it happened.
+
+It works exactly like checking the box on Today: whoever the task notifies on done gets told, and repeat-after-completion tasks schedule their next occurrence. Once the occurrence is complete the button steps aside, but you can keep adding notes.
+
 ## On the Today tab
 
 Tap a task's **title** on your Today list (or a row in the Outstanding section below it) and the same record opens right on the card. Notes you add there attach to the day you're looking at, so "waiting on parts" lands next to the occurrence it explains.

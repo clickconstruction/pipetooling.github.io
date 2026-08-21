@@ -23,6 +23,7 @@ import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistory
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
+import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
@@ -782,6 +783,11 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                     showInstanceDays: (inst.checklist_items?.repeat_type ?? 'once') !== 'once',
                     setError,
                     onPosted: appendLocalCardComment,
+                    // Today's own toggle keeps its optimistic updates + side effects.
+                    onComplete: async () => {
+                      await toggleComplete(inst)
+                      return true
+                    },
                   }}
                   actions={
                     <>
@@ -859,6 +865,10 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         }}
         onToggleComplete={(inst) => void toggleComplete(inst as ChecklistInstance)}
         onPosted={appendLocalCardComment}
+        onCompleteForActivity={async (inst) => {
+          await toggleComplete(inst as ChecklistInstance)
+          return true
+        }}
         setError={setError}
       />
 
@@ -1419,6 +1429,7 @@ function OutstandingByPersonSortableRow({
   onMarkComplete,
   onDeleteInstance,
   onOpenFwd,
+  onCompleteFromPanel,
   setEditItemId,
   setError,
 }: {
@@ -1436,6 +1447,7 @@ function OutstandingByPersonSortableRow({
   onMarkComplete: (inst: OutstandingInstance) => void
   onDeleteInstance: (inst: OutstandingInstance) => void
   onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
+  onCompleteFromPanel: (args: { instanceId: string; checklistItemId: string; scheduledDate: string }) => Promise<boolean>
   setEditItemId: (id: string) => void
   setError: (s: string | null) => void
 }) {
@@ -1624,6 +1636,13 @@ function OutstandingByPersonSortableRow({
             authUserId={authUserId}
             showInstanceDays={(inst.checklist_items?.repeat_type ?? 'once') !== 'once'}
             setError={setError}
+            onComplete={(activityInst) =>
+              onCompleteFromPanel({
+                instanceId: activityInst.id,
+                checklistItemId: inst.checklist_item_id,
+                scheduledDate: activityInst.scheduledDate,
+              })
+            }
             footerActions={
               isDev ? (
                 <>
@@ -1655,6 +1674,7 @@ function OutstandingByPersonSortableList({
   onMarkComplete,
   onDeleteInstance,
   onOpenFwd,
+  onCompleteFromPanel,
   setEditItemId,
   setError,
 }: {
@@ -1669,6 +1689,7 @@ function OutstandingByPersonSortableList({
   onMarkComplete: (inst: OutstandingInstance) => void
   onDeleteInstance: (inst: OutstandingInstance) => void
   onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
+  onCompleteFromPanel: (args: { instanceId: string; checklistItemId: string; scheduledDate: string }) => Promise<boolean>
   setEditItemId: (id: string) => void
   authUserId: string | null
   expandedInstanceId: string | null
@@ -1713,6 +1734,7 @@ function OutstandingByPersonSortableList({
               onMarkComplete={onMarkComplete}
               onDeleteInstance={onDeleteInstance}
               onOpenFwd={onOpenFwd}
+              onCompleteFromPanel={onCompleteFromPanel}
               setEditItemId={setEditItemId}
               setError={setError}
             />
@@ -1848,6 +1870,18 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
     } finally {
       setDeletingInstanceId(null)
     }
+  }
+
+  /** ✓ Complete from a row's activity panel (v2.2039) — shared side effects, then refresh. */
+  async function completePanelInstance(args: { instanceId: string; checklistItemId: string; scheduledDate: string }): Promise<boolean> {
+    if (!authUserId) return false
+    const res = await completeChecklistInstance({ ...args, authUserId })
+    if (!res.ok) {
+      setError(res.error ?? 'Failed to complete this task.')
+      return false
+    }
+    await loadOutstanding()
+    return true
   }
 
   async function markComplete(inst: OutstandingInstance) {
@@ -2530,6 +2564,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                         onMarkComplete={markComplete}
                         onDeleteInstance={openOutstandingDeleteModal}
                         onOpenFwd={openFwd}
+                        onCompleteFromPanel={completePanelInstance}
                         setEditItemId={setEditItemId}
                         setError={setError}
                       />
@@ -3024,7 +3059,27 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
         </div>
         {expanded ? (
           <div style={{ padding: '0 0.75rem 0.7rem', background: 'var(--bg-muted)' }}>
-            <ChecklistItemActivity item={item} authUserId={authUserId} showInstanceDays={isRepeating(item)} setError={setError} />
+            <ChecklistItemActivity
+              item={item}
+              authUserId={authUserId}
+              showInstanceDays={isRepeating(item)}
+              setError={setError}
+              onComplete={async (activityInst) => {
+                if (!authUserId) return false
+                const res = await completeChecklistInstance({
+                  instanceId: activityInst.id,
+                  checklistItemId: item.id,
+                  scheduledDate: activityInst.scheduledDate,
+                  authUserId,
+                })
+                if (!res.ok) {
+                  setError(res.error ?? 'Failed to complete this task.')
+                  return false
+                }
+                await loadItems()
+                return true
+              }}
+            />
           </div>
         ) : null}
       </li>
