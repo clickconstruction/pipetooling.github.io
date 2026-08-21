@@ -19,4 +19,6 @@ Turn it off the same way when you're done arranging shortcuts — the footer dis
 Your pinned pages keep working: the Dashboard quick bar still shows them, tapping them still jumps straight there, and Settings still manages (removes/clears) them. Pin Mode only controls whether the pin **footer** shows on pages.
 :::
 
+Pin Mode works inside Dispatch Mode too — the footer shows on the dispatch Dashboard, Schedule, Inbox, Customers, and PO pages, and those pins read like **Dispatch Schedule** on the quick bar.
+
 The toggle is per device — turning it on at the office doesn't show the footer on your phone.
