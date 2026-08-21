@@ -73,6 +73,12 @@ describe('parsePortalPayload', () => {
     expect(parsePortalPayload({ ...good, requestToken: '  ' })!.requestToken).toBeNull()
     expect(parsePortalPayload({ ...good, requestToken: 'abc123' })!.requestToken).toBe('abc123')
   })
+
+  it('parses the short-address slug for the footer QR, null when absent or blank', () => {
+    expect(parsePortalPayload(good)!.slug).toBeNull()
+    expect(parsePortalPayload({ ...good, slug: '   ' })!.slug).toBeNull()
+    expect(parsePortalPayload({ ...good, slug: 'knight-contracting' })!.slug).toBe('knight-contracting')
+  })
 })
 
 describe('formatters', () => {
