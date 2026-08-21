@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import {
   DEFAULT_PARTNERSHIP_MODULES,
@@ -133,6 +134,7 @@ function Toggle({ on, disabled, onClick, label }: { on: boolean; disabled?: bool
 
 export default function Partnerships() {
   const { role, user: authUser } = useAuth()
+  const isMobile = useIsMobile()
   const [rows, setRows] = useState<PartnershipRow[]>([])
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -414,6 +416,39 @@ export default function Partnerships() {
     </span>
   )
 
+  const addForm = addOpen ? (
+    <div style={{ padding: '0.35rem 0.6rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      <select
+        value={addPersonId}
+        onChange={(e) => setAddPersonId(e.target.value)}
+        style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+      >
+        <option value="">Pick a person…</option>
+        {availablePeople.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+            {p.kind === 'sub' ? ' (sub)' : ''}
+          </option>
+        ))}
+      </select>
+      <input
+        type="text"
+        placeholder="Company name (optional)"
+        value={addCompany}
+        onChange={(e) => setAddCompany(e.target.value)}
+        style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+      />
+      <button
+        type="button"
+        onClick={() => void addPartnership()}
+        disabled={!addPersonId || saving}
+        style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 650, padding: '0.35rem 0.6rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', opacity: !addPersonId || saving ? 0.6 : 1 }}
+      >
+        Create draft partnership
+      </button>
+    </div>
+  ) : null
+
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
@@ -438,90 +473,104 @@ export default function Partnerships() {
         </div>
       ) : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 220px) minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
-        {/* Roster */}
-        <div style={{ ...cardStyle, padding: '0.6rem' }}>
-          {rows.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setSelectedId(r.id)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                font: 'inherit',
-                color: 'inherit',
-                background: selected?.id === r.id ? 'var(--bg-blue-tint)' : 'transparent',
-                border: '1px solid',
-                borderColor: selected?.id === r.id ? 'var(--border-strong)' : 'transparent',
-                borderRadius: 6,
-                padding: '0.5rem 0.6rem',
-                marginBottom: '0.25rem',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ fontWeight: 650, fontSize: '0.875rem' }}>{r.display_name || '(unnamed)'}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                {r.company_name || '—'} {statusChip(r.status)}
-              </div>
-            </button>
-          ))}
-          {rows.length === 0 && loaded && !tableMissing ? (
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0.35rem 0.5rem' }}>
-              No partnerships yet.
-            </p>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setAddOpen((v) => !v)}
-            disabled={tableMissing}
-            style={{
-              font: 'inherit',
-              fontSize: '0.85rem',
-              fontWeight: 650,
-              color: 'var(--text-link)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0.35rem 0.6rem',
-            }}
-          >
-            + New partnership
-          </button>
-          {addOpen ? (
-            <div style={{ padding: '0.35rem 0.6rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <select
-                value={addPersonId}
-                onChange={(e) => setAddPersonId(e.target.value)}
-                style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
-              >
-                <option value="">Pick a person…</option>
-                {availablePeople.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.kind === 'sub' ? ' (sub)' : ''}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Company name (optional)"
-                value={addCompany}
-                onChange={(e) => setAddCompany(e.target.value)}
-                style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
-              />
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(180px, 220px) minmax(0, 1fr)', gap: isMobile ? '0.75rem' : '1rem', alignItems: 'start' }}>
+        {/* Roster — desktop side card; mobile horizontal chip strip */}
+        {isMobile ? (
+          <div>
+            <div style={{ display: 'flex', gap: '0.45rem', overflowX: 'auto', paddingBottom: '0.25rem', scrollbarWidth: 'none' }}>
+              {rows.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setSelectedId(r.id)}
+                  style={{
+                    flex: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    font: 'inherit',
+                    fontSize: '0.85rem',
+                    fontWeight: 650,
+                    color: 'inherit',
+                    background: selected?.id === r.id ? 'var(--bg-blue-tint)' : 'transparent',
+                    border: '1px solid',
+                    borderColor: selected?.id === r.id ? 'var(--border-strong)' : 'var(--border)',
+                    borderRadius: 999,
+                    padding: '0.4rem 0.85rem',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {r.display_name || '(unnamed)'} {statusChip(r.status)}
+                </button>
+              ))}
               <button
                 type="button"
-                onClick={() => void addPartnership()}
-                disabled={!addPersonId || saving}
-                style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 650, padding: '0.35rem 0.6rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', opacity: !addPersonId || saving ? 0.6 : 1 }}
+                onClick={() => setAddOpen((v) => !v)}
+                disabled={tableMissing}
+                style={{ flex: 'none', font: 'inherit', fontSize: '0.85rem', fontWeight: 650, color: 'var(--text-link)', background: 'transparent', border: '1px dashed var(--border)', borderRadius: 999, padding: '0.4rem 0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
               >
-                Create draft partnership
+                + New
               </button>
             </div>
-          ) : null}
-        </div>
+            {rows.length === 0 && loaded && !tableMissing ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>No partnerships yet.</p>
+            ) : null}
+            {addForm}
+          </div>
+        ) : (
+          <div style={{ ...cardStyle, padding: '0.6rem' }}>
+            {rows.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setSelectedId(r.id)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  color: 'inherit',
+                  background: selected?.id === r.id ? 'var(--bg-blue-tint)' : 'transparent',
+                  border: '1px solid',
+                  borderColor: selected?.id === r.id ? 'var(--border-strong)' : 'transparent',
+                  borderRadius: 6,
+                  padding: '0.5rem 0.6rem',
+                  marginBottom: '0.25rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontWeight: 650, fontSize: '0.875rem' }}>{r.display_name || '(unnamed)'}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  {r.company_name || '—'} {statusChip(r.status)}
+                </div>
+              </button>
+            ))}
+            {rows.length === 0 && loaded && !tableMissing ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0.35rem 0.5rem' }}>
+                No partnerships yet.
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setAddOpen((v) => !v)}
+              disabled={tableMissing}
+              style={{
+                font: 'inherit',
+                fontSize: '0.85rem',
+                fontWeight: 650,
+                color: 'var(--text-link)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.35rem 0.6rem',
+              }}
+            >
+              + New partnership
+            </button>
+            {addForm}
+          </div>
+        )}
 
         {/* Detail */}
         <div style={cardStyle}>
@@ -531,7 +580,7 @@ export default function Partnerships() {
             </p>
           ) : (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>
                     {selected.display_name}
@@ -565,8 +614,8 @@ export default function Partnerships() {
                 </div>
               ) : (
                 <>
-              {/* Tab bar — all five tabs live (train complete) */}
-              <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', margin: '0.75rem 0', flexWrap: 'wrap' }}>
+              {/* Tab bar — one line always; scrolls sideways on narrow screens */}
+              <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', margin: '0.75rem 0', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none' }}>
                 {(
                   [
                     ['deal', 'Deal'],
@@ -582,6 +631,8 @@ export default function Partnerships() {
                     type="button"
                     onClick={() => setActiveTab(key)}
                     style={{
+                      flex: 'none',
+                      whiteSpace: 'nowrap',
                       font: 'inherit',
                       fontSize: '0.85rem',
                       fontWeight: 650,
