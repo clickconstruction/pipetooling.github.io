@@ -36,6 +36,8 @@ export type PortalPayload = {
   requestableJobs: Array<{ id: string; label: string }>
   /** Token for form submits when the page was opened by slug (same capability). */
   requestToken: string | null
+  /** The company's short portal address (merged view only) — powers the footer QR. */
+  slug: string | null
 }
 
 function str(v: unknown, fallback = ''): string {
@@ -91,6 +93,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
     requestableJobs,
     requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
+    slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
   }
 }
 

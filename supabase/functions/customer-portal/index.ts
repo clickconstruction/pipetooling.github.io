@@ -162,6 +162,19 @@ serve(async (req) => {
       }
     }
 
+    // The customer's short address (footer QR + "Your account, any time").
+    // Merged view only — scoped "Separate views" links exist to show a split,
+    // so they never advertise the merged address.
+    let slug: string | null = null
+    if (link.audience === 'all') {
+      const { data: slugRow } = await admin
+        .from('customer_portal_slugs')
+        .select('slug')
+        .eq('customer_id', link.customer_id)
+        .maybeSingle()
+      slug = (slugRow?.slug ?? '').trim() || null
+    }
+
     // Owner names for AS GC rows (merged view only): one lookup for the
     // distinct customer ids that differ from the viewer.
     const ownerNames: Record<string, string> = {}
@@ -205,6 +218,7 @@ serve(async (req) => {
       // Lets the slug-resolved page submit request forms (the slug and the
       // token are the same capability — both open this exact statement).
       requestToken: link.token ?? null,
+      slug,
     })
   } catch (e) {
     console.error('customer-portal error', e)

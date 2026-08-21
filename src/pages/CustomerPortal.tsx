@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   formatPortalDate,
   formatPortalUsd,
   parsePortalPayload,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
+import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
 
 /**
  * Customer / GC portal (portal train PR 1): the no-login "account statement"
@@ -121,6 +123,7 @@ export default function CustomerPortal() {
           <>
             <PortalStatement payload={state.payload} today={today} />
             <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
+            {state.payload.slug && <PortalShortAddressCard slug={state.payload.slug} />}
             <div style={{ padding: '2rem 0 0', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span style={{ fontSize: 12, color: MUTED }}>
                 Thank you for your business — <i>the Click team</i>
@@ -239,6 +242,44 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
       )}
 
     </>
+  )
+}
+
+/**
+ * "Your account, any time" — the short address + QR at the foot of the
+ * statement (portal custom-links train PR C). Renders only when the company
+ * has a custom address, so paper copies and screenshots always carry a way
+ * back in. Print keeps it: the page pins light and the QR is inline SVG.
+ */
+function PortalShortAddressCard({ slug }: { slug: string }) {
+  const url = portalShortUrl(slug)
+  return (
+    <div
+      style={{
+        marginTop: '1.9rem',
+        background: CARD,
+        border: `1px solid ${HAIR}`,
+        padding: '16px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        flexWrap: 'wrap',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
+          Your account, any time
+        </div>
+        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 3, lineHeight: 1.55 }}>
+          See open bills, pay online, or request a visit — no login needed.
+        </div>
+        <div style={{ marginTop: 8, fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>
+          <span style={{ color: FAINT }}>{PORTAL_SHORT_ORIGIN.replace(/^https:\/\//, '')}</span>
+          <span style={{ fontWeight: 700 }}>{slug}</span>
+        </div>
+      </div>
+      <QRCodeSVG value={url} size={84} level="M" bgColor={CARD} fgColor={INK} aria-label={`QR code for ${url}`} />
+    </div>
   )
 }
 
