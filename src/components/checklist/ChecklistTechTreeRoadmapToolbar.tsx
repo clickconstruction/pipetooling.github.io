@@ -11,6 +11,7 @@ type TechTreeRoadmapToolbarActionsProps = {
   reorderMode: boolean
   onAddGroup: () => void
   onLineUp: () => void
+  onOrderStages: () => void
   onToggleReorder: () => void
   /** When false, Link Groups is omitted (e.g. shown in the Links card header instead). Default true. */
   showLineUpInToolbar?: boolean
@@ -32,6 +33,7 @@ export function TechTreeRoadmapToolbarActions({
   reorderMode,
   onAddGroup,
   onLineUp,
+  onOrderStages,
   onToggleReorder,
   showLineUpInToolbar = true,
   className,
@@ -63,6 +65,17 @@ export function TechTreeRoadmapToolbarActions({
               title={groupCount < 2 ? 'Add at least two groups to add a link' : undefined}
             >
               Link Groups
+            </button>
+          ) : null}
+          {groupCount >= 2 ? (
+            <button
+              type="button"
+              className={buttonClassName}
+              onPointerDown={stopP}
+              onClick={onOrderStages}
+              title="Drag stages into order — the top stage is #1; the numbers on Map and Plan follow"
+            >
+              Order stages
             </button>
           ) : null}
           {groupCount === 0 ? (

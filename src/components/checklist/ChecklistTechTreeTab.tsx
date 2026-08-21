@@ -70,7 +70,8 @@ import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
 import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
-import { stageNumbersByGroupId } from '../../lib/roadmapStageNumbers'
+import { ChecklistTechTreeOrderStagesModal } from './ChecklistTechTreeOrderStagesModal'
+import { computeStageOrderUpdates, stageNumbersByGroupId } from '../../lib/roadmapStageNumbers'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { ChecklistTechTreeAddGroupModal } from './ChecklistTechTreeAddGroupModal'
 import { ChecklistTechTreeLineUpModal } from './ChecklistTechTreeLineUpModal'
@@ -1593,6 +1594,7 @@ export function ChecklistTechTreeTab({
 
   const [addGroupModal, setAddGroupModal] = useState<AddGroupModalState>(null)
   const [lineUpModalOpen, setLineUpModalOpen] = useState(false)
+  const [orderStagesModalOpen, setOrderStagesModalOpen] = useState(false)
   const editingGroup = editingGroupId ? groups.find((g) => g.id === editingGroupId) : null
   const addTaskModalGroup = addTaskModalGroupId ? groups.find((g) => g.id === addTaskModalGroupId) : null
   const editTaskForModal = useMemo(
@@ -1945,6 +1947,32 @@ export function ChecklistTechTreeTab({
     [reorderMode, canEditStructure, tasks, groups, load, setError],
   )
 
+  const saveStageOrder = useCallback(
+    async (orderedIds: string[]): Promise<boolean> => {
+      if (!canEditStructure) return false
+      const updates = computeStageOrderUpdates(orderedIds, groups)
+      if (updates.length === 0) return true
+      setError(null)
+      try {
+        await Promise.all(
+          updates.map((u) =>
+            withSupabaseRetry(
+              () => supabase.from('checklist_tech_tree_groups').update({ sort_index: u.sort_index }).eq('id', u.id),
+              'reorder tech tree stage',
+            ),
+          ),
+        )
+        await load()
+        return true
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not save the stage order')
+        await load()
+        return false
+      }
+    },
+    [canEditStructure, groups, load, setError],
+  )
+
   const triggerCanvasResize = useCallback(() => {
     // React Flow v12 has no instance.resize(); a host resize makes the flow re-measure the pane.
     requestAnimationFrame(() => {
@@ -2248,6 +2276,7 @@ export function ChecklistTechTreeTab({
               showLineUpInToolbar={!(canEditStructure && treeEdges.length > 0)}
               onAddGroup={() => setAddGroupModal({ kind: 'toolbar' })}
               onLineUp={() => setLineUpModalOpen(true)}
+              onOrderStages={() => setOrderStagesModalOpen(true)}
               onToggleReorder={() => setReorderMode((o) => !o)}
             />
           </div>
@@ -2426,6 +2455,7 @@ export function ChecklistTechTreeTab({
                       showLineUpInToolbar={!(canEditStructure && treeEdges.length > 0)}
                       onAddGroup={() => setAddGroupModal({ kind: 'toolbar' })}
                       onLineUp={() => setLineUpModalOpen(true)}
+                      onOrderStages={() => setOrderStagesModalOpen(true)}
                       onToggleReorder={() => setReorderMode((o) => !o)}
                     />
                     <div
@@ -2530,6 +2560,24 @@ export function ChecklistTechTreeTab({
         onClose={() => setLineUpModalOpen(false)}
         groups={groups.map((g) => ({ id: g.id, title: g.title }))}
         onAddLink={addPrereqLink}
+        portalContainer={roadmapModalPortalHost ?? undefined}
+      />
+      <ChecklistTechTreeOrderStagesModal
+        open={orderStagesModalOpen}
+        onClose={() => setOrderStagesModalOpen(false)}
+        groups={groups.map((g) => {
+          const tlist = tasksByGroup.get(g.id) ?? []
+          const done = tlist.filter((t) => t.completed_at != null).length
+          const meta = completeGroupIds.has(g.id)
+            ? '✓ done'
+            : !unlockedIds.has(g.id)
+              ? '🔒'
+              : tlist.length > 0
+                ? `${done} of ${tlist.length}`
+                : null
+          return { id: g.id, title: g.title, meta }
+        })}
+        onSave={saveStageOrder}
         portalContainer={roadmapModalPortalHost ?? undefined}
       />
       <ChecklistTechTreeAddTaskModal
