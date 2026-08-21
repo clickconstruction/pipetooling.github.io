@@ -13,6 +13,9 @@ import {
   type PartnershipModules,
 } from '../lib/partnerLedger/partnershipConfig'
 import type { Database, Json } from '../types/database'
+import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
+import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
+import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 import { PartnershipJobReviewTab } from '../components/partnerships/PartnershipJobReviewTab'
 import { PartnershipStatementsTab } from '../components/partnerships/PartnershipStatementsTab'
 import { PartnershipLedgerTab } from '../components/partnerships/PartnershipLedgerTab'
@@ -134,6 +137,7 @@ export default function Partnerships() {
   const [people, setPeople] = useState<PersonOption[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'timeline' | 'ledger'>('deal')
+  const [lensOn, setLensOn] = useState(false)
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [draft, setDraft] = useState<PartnershipConfig | null>(null)
@@ -181,6 +185,7 @@ export default function Partnerships() {
     setDraft(selected ? rowToConfig(selected) : null)
     setSaveError(null)
     setSavedAt(null)
+    setLensOn(false)
     setFarmSearch('')
     setFarmResults([])
     // Resolve the farm job's display label (§1c anchor).
@@ -536,9 +541,36 @@ export default function Partnerships() {
                     linked to people record ✓ · created {new Date(selected.created_at).toLocaleDateString()}
                   </div>
                 </div>
-                {statusChip(draft.status)}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {statusChip(draft.status)}
+                  <button
+                    type="button"
+                    onClick={() => setLensOn((v) => !v)}
+                    style={{ ...IMPERSONATION_CHROME_BUTTON_STYLE, font: 'inherit', fontSize: '0.78rem', cursor: 'pointer' }}
+                  >
+                    {lensOn ? '✕ Exit partner view' : `👁 View as ${selected.display_name || 'partner'}`}
+                  </button>
+                </span>
               </div>
 
+              {lensOn ? (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{ background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 8, padding: '0.5rem 0.8rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
+                    <b>Partner view.</b> Only what {selected.display_name || 'the partner'} can see, through the same
+                    server gates — read-only. If nothing renders below, their account currently sees nothing (deal
+                    paused/ended, or the weekly statement module is off).
+                  </div>
+                  <DashboardPartnerLedgerSection asPartnershipId={selected.id} />
+                  <DashboardPartnerJobsSection asPartnershipId={selected.id} />
+                  <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.55rem 0.8rem', marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <b style={{ color: 'var(--text-700)' }}>Hidden with the lens on</b> — the Deal config, Agreements
+                    admin, the Job review gate, the Timeline’s infractions and pending-charge details, and the raw
+                    journal. {selected.display_name || 'The partner'} gets weekly statement cards, never the journal
+                    table.
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* Tab bar — all five tabs live (train complete) */}
               <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', margin: '0.75rem 0', flexWrap: 'wrap' }}>
                 {(
@@ -725,6 +757,8 @@ export default function Partnerships() {
                 {savedAt ? <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Saved {savedAt}</span> : null}
                 {dirty && !savedAt ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Unsaved changes</span> : null}
               </div>
+                </>
+              )}
                 </>
               )}
             </>

@@ -25,7 +25,7 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const signedMoney = (n: number) => `${n < 0 ? '−' : '+'}${money(n)}`
 
-export function DashboardPartnerLedgerSection() {
+export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnershipId?: string } = {}) {
   const [summary, setSummary] = useState<PartnerSummary | null>(null)
   const [cards, setCards] = useState<WeekCard[]>([])
   const [idx, setIdx] = useState(0)
@@ -33,7 +33,11 @@ export function DashboardPartnerLedgerSection() {
   const [loaded, setLoaded] = useState(false)
 
   const load = useCallback(async () => {
-    const sumRes = await supabase.rpc('get_my_partner_summary')
+    // Lens mode (asPartnershipId): dev-only *_as RPCs share the exact inner
+    // body and status gate with the partner's own calls — same truth.
+    const sumRes = asPartnershipId
+      ? await supabase.rpc('get_partner_summary_as', { p_partnership_id: asPartnershipId })
+      : await supabase.rpc('get_my_partner_summary')
     if (sumRes.error) {
       setSummary(null)
       setLoaded(true)
@@ -42,12 +46,14 @@ export function DashboardPartnerLedgerSection() {
     const s = parsePartnerSummary(sumRes.data)
     setSummary(s)
     if (s) {
-      const ledRes = await supabase.rpc('get_my_partner_ledger', { p_weeks: 8 })
+      const ledRes = asPartnershipId
+        ? await supabase.rpc('get_partner_ledger_as', { p_partnership_id: asPartnershipId, p_weeks: 8 })
+        : await supabase.rpc('get_my_partner_ledger', { p_weeks: 8 })
       const stubs = ledRes.error ? [] : parsePartnerLedgerStubs(ledRes.data)
       setCards(buildWeekCards(s, stubs))
     }
     setLoaded(true)
-  }, [])
+  }, [asPartnershipId])
 
   useEffect(() => {
     void load()
@@ -160,6 +166,19 @@ export function DashboardPartnerLedgerSection() {
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a' }}>
                 acknowledged {new Date(card.partnerAckAt).toLocaleDateString()}
               </span>
+            ) : card.stubId && asPartnershipId ? (
+              <>
+                <button
+                  type="button"
+                  disabled
+                  style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'var(--bg-muted)', color: 'var(--text-muted)', cursor: 'not-allowed' }}
+                >
+                  Acknowledge statement
+                </button>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-amber-700)' }}>
+                  the partner sees this button — only they can press it
+                </span>
+              </>
             ) : card.stubId ? (
               <button
                 type="button"
