@@ -95,14 +95,9 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
         <span style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: net < 0 ? 'var(--text-red-600)' : undefined }}>
           {net < 0 ? '−' : ''}{money(net)}
         </span>
-        {pending.count > 0 ? (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-            what settling up today means · posted {balance < 0 ? '−' : '+'}{money(balance)} · pending{' '}
-            {pending.net < 0 ? '−' : '+'}{money(pending.net)}
-          </span>
-        ) : (
+        {pending.count === 0 ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>current balance (all postings − payouts)</span>
-        )}
+        ) : null}
       </div>
 
       {displayRows.length === 0 ? (
