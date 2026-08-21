@@ -34,7 +34,9 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import AccountManIcon from '../icons/AccountManIcon'
 import {
   billedStageRowAgingBucket,
+  billedStageRowHasNoBillLine,
   buildBilledAgingBuckets,
+  buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
@@ -660,8 +662,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     void cacheFetchScopeIfNeeded(scopeForStagesSection('paid'), customerFilterForFetch)
   }, [paidProfitChartOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
-  // narrows the section list to rows the matching chip counts.
-  const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | null>(null)
+  // narrows the section list to rows the matching chip counts. 'no_line'
+  // (v2.1931) = open rows with no bill line to age by — the shells the
+  // Pipeline New view's "no bill line" money move points at.
+  const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | 'no_line' | null>(null)
   // Old/New pills (v2.1910, Counts precedent): Old = the classic board alone;
   // New = the money story strip + Today's money moves above the same board.
   // Per-device, default Old.
@@ -771,23 +775,35 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   } | null>(null)
   const billedExpectedPayChipRenderer = useCallback(
     (row: StageRow) => {
-      if (row.kind === 'job') return null
+      // Job-shell rows (no bill line at all) can't have an expected date; wear
+      // the "No bill line" hint the no_line chip filters by instead (v2.1931).
+      const shell = row.kind === 'job'
       const promise = promisedPayDates?.[row.job.id] ?? null
       const model = billedExpectedPayModel(
-        {
-          billedAtIso: row.inv.billed_at,
-          estBillYmd: effectiveInvoiceEstBillDate(row.inv),
-          customerId: row.job.customer_id,
-        },
+        shell
+          ? { billedAtIso: null, estBillYmd: null, customerId: row.job.customer_id }
+          : {
+              billedAtIso: row.inv.billed_at,
+              estBillYmd: effectiveInvoiceEstBillDate(row.inv),
+              customerId: row.job.customer_id,
+            },
         billedPaySpeeds,
         calendarYmdInAppTzFromIso(new Date().toISOString()),
         promise,
       )
-      if (!model && !canMarkPromisedPay) return null
+      if (!shell && !model && !canMarkPromisedPay) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
       return (
         <>
+          {shell ? (
+            <span
+              title="This billed job's open money is on no bill line, so it can't age, be chased, or be forecast — Bill Customer or Edit Job creates the line"
+              style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
+            >
+              No bill line
+            </span>
+          ) : null}
           {model ? <BilledExpectedPayChip model={model} /> : null}
           {canMarkPromisedPay ? (
             <button
@@ -2584,6 +2600,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 setBilledAgingFilter('90')
                 focusStagesSection('billed')
               }}
+              onFixDates={() => {
+                setBilledAgingFilter('no_line')
+                focusStagesSection('billed')
+              }}
             />
           )}
           <div
@@ -3034,8 +3054,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const billedTotal = billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
             // and the chips themselves always describe the whole section.
+            const billedNoLineBucket = buildBilledNoLineBucket(billedActiveRows)
             const billedListRows = billedAgingFilter
-              ? billedActiveRows.filter((r) => billedStageRowAgingBucket(r) === billedAgingFilter)
+              ? billedActiveRows.filter((r) =>
+                  billedAgingFilter === 'no_line'
+                    ? stageRowBilledRemainingAmount(r) > 0 && billedStageRowHasNoBillLine(r)
+                    : billedStageRowAgingBucket(r) === billedAgingFilter,
+                )
               : billedActiveRows
             const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             // v2.1824: sections whose scope isn't fetched render header numbers
@@ -3428,6 +3453,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     {([
                       { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by est. bill date) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
                       { key: '90' as const, label: `90+ · ${billedAgingBuckets.count90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum90)}`, title: 'Billed over 90 days ago (by est. bill date) with money still owed — click to show only these rows', bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)', count: billedAgingBuckets.count90 },
+                      { key: 'no_line' as const, label: `No line · ${billedNoLineBucket.count} · $${formatCurrencyAbbrevTruncated(billedNoLineBucket.sum)}`, title: "Billed jobs whose open money is on no bill line — it can't age, be chased, or be forecast. Click to show only these rows", bg: 'var(--bg-subtle)', fg: 'var(--text-700)', count: billedNoLineBucket.count },
                     ]).map((chip) => {
                       const active = billedAgingFilter === chip.key
                       const empty = chip.count === 0
@@ -3590,7 +3616,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </div>
                 {billedAgingFilter && (
                   <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status">
-                    Showing only {billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows ({billedListRows.length} of {billedActiveRows.length}) ·{' '}
+                    {billedAgingFilter === 'no_line'
+                      ? 'Showing only jobs with no bill line — Bill Customer or Edit Job creates the line their money should ride on'
+                      : `Showing only ${billedAgingFilter === '90' ? '90+ day' : '30–90 day'} rows`}{' '}
+                    ({billedListRows.length} of {billedActiveRows.length}) ·{' '}
                     <button
                       type="button"
                       onClick={() => setBilledAgingFilter(null)}
