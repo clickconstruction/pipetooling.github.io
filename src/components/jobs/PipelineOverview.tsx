@@ -197,7 +197,7 @@ export function PipelineOverview({
           <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
             Today&#8217;s Money Opportunities:
           </span>
-          {moves.length === 0 && (
+          {moves.length === 0 && fixups.length === 0 && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>nothing needs a move right now — the pipeline is clean ✅</span>
           )}
         </div>
@@ -206,7 +206,7 @@ export function PipelineOverview({
             phones — full-width rows left a desert of empty space between
             claim and button on desktop. min(300px, 100%) guards ultra-narrow
             containers from horizontal overflow. */}
-        {moves.length > 0 && (
+        {(moves.length > 0 || fixups.length > 0) && (
           <div
             style={{
               display: 'grid',
@@ -232,7 +232,26 @@ export function PipelineOverview({
               >
                 <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
                   <span aria-hidden style={{ fontSize: '0.95rem' }}>{m.icon}</span>
-                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>{m.claim}</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0, color: m.idle ? 'var(--text-muted)' : 'inherit' }}>{m.claim}</span>
+                  {m.badgeCount ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 16,
+                        height: 16,
+                        padding: '0 4px',
+                        borderRadius: 9999,
+                        background: '#f59e0b',
+                        color: '#1c1917',
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {m.badgeCount}
+                    </span>
+                  ) : null}
                 </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>{m.why}</span>
                 <button
@@ -257,48 +276,56 @@ export function PipelineOverview({
                 </button>
               </div>
             ))}
-          </div>
-        )}
-        {fixups.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-              padding: '0.45rem 0.85rem',
-              background: 'var(--bg-subtle)',
-              borderTop: moves.length > 0 ? '1px solid var(--border)' : 'none',
-            }}
-          >
-            <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-              Fix-ups
-            </span>
-            {fixups.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => onFixup(f.key)}
-                title={f.title}
+            {/* Fix-ups joined the grid as a card (v2.1977; was a footer strip,
+                v2.1961) — amber-edged, chips inside, gone when the data is
+                clean. Each chip keeps its own action, so no card button. */}
+            {fixups.length > 0 && (
+              <div
                 style={{
-                  padding: '0.15rem 0.65rem',
-                  borderRadius: 9999,
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  background: f.tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)',
-                  color: f.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)',
-                  border: `1px solid ${f.tone === 'red' ? '#fecaca' : '#fcd34d'}`,
-                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                  minWidth: 0,
+                  padding: '0.55rem 0.7rem',
+                  border: '1px solid var(--border)',
+                  borderLeft: '3px solid #d97706',
+                  borderRadius: 8,
+                  background: 'var(--surface)',
                 }}
               >
-                {f.label}
-              </button>
-            ))}
-            <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              missing data blocks billing — click to fix
-            </span>
+                <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                  <span aria-hidden style={{ fontSize: '0.95rem' }}>🔎</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>Fix-ups — missing data blocks billing</span>
+                </span>
+                <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
+                  {fixups.map((f) => (
+                    <button
+                      key={f.key}
+                      type="button"
+                      onClick={() => onFixup(f.key)}
+                      title={f.title}
+                      style={{
+                        padding: '0.15rem 0.65rem',
+                        borderRadius: 9999,
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        background: f.tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)',
+                        color: f.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)',
+                        border: `1px solid ${f.tone === 'red' ? '#fecaca' : '#fcd34d'}`,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  each chip opens its fix-it list — this card disappears when the data is clean
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
