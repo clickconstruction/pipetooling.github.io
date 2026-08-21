@@ -19,7 +19,8 @@ type PipelineOverviewProps = {
   canSeeCollected: boolean
   arUnallocatedCount: number | null
   onOpenCapable: () => void
-  onOpenAgingChart: () => void
+  /** WAITING ON CUSTOMERS card → the per-customer "who owes what" breakdown (v2.1929). */
+  onOpenBilledBreakdown: () => void
   onOpenProfitChart: () => void
   onOpenAr: () => void
   onFocusSection: (key: SectionKey) => void
@@ -112,7 +113,7 @@ export function PipelineOverview({
   canSeeCollected,
   arUnallocatedCount,
   onOpenCapable,
-  onOpenAgingChart,
+  onOpenBilledBreakdown,
   onOpenProfitChart,
   onOpenAr,
   onFocusSection,
@@ -129,13 +130,13 @@ export function PipelineOverview({
   const moves = buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr })
   const cardAction: Record<PipelineStoryCard['key'], (() => void) | undefined> = {
     'ready-to-ask': onOpenCapable,
-    'waiting-on-customers': canSeeCharts ? onOpenAgingChart : () => onFocusSection('billed'),
+    'waiting-on-customers': onOpenBilledBreakdown,
     'in-collections': () => onFocusSection('collections'),
     collected: canSeeCharts ? onOpenProfitChart : undefined,
   }
   const cardTitle: Record<PipelineStoryCard['key'], string> = {
     'ready-to-ask': 'Finished work not yet billed — open the Capable of Being Billed list',
-    'waiting-on-customers': canSeeCharts ? 'Open bills by age — open the aging chart' : 'Jump to Billed Awaiting Payment',
+    'waiting-on-customers': 'See who owes what — open the per-customer breakdown',
     'in-collections': 'Jump to Collections',
     collected: canSeeCharts ? 'Open the paid profit chart' : 'Payments recorded in the last 8 weeks',
   }

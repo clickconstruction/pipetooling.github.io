@@ -10,7 +10,7 @@ The **Jobs → Pipeline** tab has two views, switched with the {{chip:gray|Old}}
 ## The four answer cards
 
 - **Ready to ask for** — finished work you haven't asked to be paid for yet: what's capable of being billed in Working plus what's staged in Ready to Bill. Work already covered by a sent bill or a queued draft doesn't count — the moment you bill a job, that money moves from here to **Waiting on customers**. Click it to open the Capable of Being Billed list.
-- **Waiting on customers** — everything open in Billed Awaiting Payment, with an age bar: fresh on the left, 30–90 days in amber, **90+ in red**. Click for the aging chart (or to jump to the section).
+- **Waiting on customers** — everything open in Billed Awaiting Payment, with an age bar: fresh on the left, 30–90 days in amber, **90+ in red**. Click it for **Who owes what**: every customer with open bills ranked by total owed, each with a bill count and an oldest-bill age chip. Click a customer to see their bills (oldest first) and {{button:outline-blue|View}} jumps straight to that bill on the board; the aging chart and a 90+-only view are one click away in the footer.
 - **In collections** — the difficult money. Click to jump to Collections.
 - **Collected · last 8 wks** — payments recorded each week, with a trend line. Devs and master technicians only; other roles see three cards.
 
