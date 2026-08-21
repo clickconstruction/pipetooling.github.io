@@ -148,22 +148,25 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         </button>
       </div>
 
-      <div style={{ fontSize: '1.6rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>
-        {card && card.closing < 0 ? '−' : ''}
-        {card ? money(card.closing) : ''}
-      </div>
+      {/* The live week's one headline number is the settle-up position —
+          posted balance plus charges still waiting for a statement. The
+          posted-only figure never shows on its own (owner call, v2.2009);
+          closed weeks keep their statement's closing balance. */}
+      {(() => {
+        const headline = card ? (card.open ? netPosition(card.closing, summary.pending_offsets.net) : card.closing) : null
+        return (
+          <div style={{ fontSize: '1.6rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>
+            {headline != null ? `${headline < 0 ? '−' : ''}${money(headline)}` : ''}
+          </div>
+        )
+      })()}
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '-0.15rem' }}>
         {card?.open
-          ? `balance so far · updates as hours approve`
+          ? summary.pending_offsets.count > 0
+            ? `balance so far · includes ${summary.pending_offsets.count} charge(s) waiting for the next statement · updates as hours approve`
+            : `balance so far · updates as hours approve`
           : `closing balance · week opened at ${card && card.opening != null ? money(card.opening) : '—'}`}
       </div>
-      {card?.open && summary.pending_offsets.count > 0 ? (
-        <div style={{ fontSize: '0.72rem', fontWeight: 650, color: 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums' }}>
-          with pending charges: {netPosition(card.closing, summary.pending_offsets.net) < 0 ? '−' : ''}
-          {money(netPosition(card.closing, summary.pending_offsets.net))} · {summary.pending_offsets.count} charge(s)
-          waiting for the next statement
-        </div>
-      ) : null}
 
       <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
         {card?.lines.length === 0 ? (
