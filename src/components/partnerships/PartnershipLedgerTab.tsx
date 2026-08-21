@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import {
+  DRAFT_NOTE_PREVIEW_ID,
   POSITIVE_OFFSET_TYPES,
   buildPartnerJournal,
   mergeNotesIntoDisplay,
@@ -9,6 +10,7 @@ import {
   netPosition,
   pendingOffsetSignedAmount,
   summarizePendingOffsets,
+  withDraftNotePreview,
   type JournalAdditionalLine,
   type JournalDeduction,
   type JournalPayment,
@@ -43,6 +45,8 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
   const [noteBusy, setNoteBusy] = useState(false)
   const [noteError, setNoteError] = useState<string | null>(null)
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+  const [hoverDate, setHoverDate] = useState<string | null>(null)
+  const memoInputRef = useRef<HTMLInputElement | null>(null)
 
   const load = useCallback(async () => {
     const stubsRes = await supabase
@@ -191,7 +195,13 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
   }
 
   const net = netPosition(balance, pending.net)
-  const displayRows = mergeNotesIntoDisplay(mergePendingIntoJournal(rows, pendingRows), notes)
+  // While the composer is open, a ghost preview of the draft rides along in
+  // the display list — it sits exactly where the note will land and moves as
+  // the draft's date changes.
+  const displayRows = mergeNotesIntoDisplay(
+    mergePendingIntoJournal(rows, pendingRows),
+    withDraftNotePreview(notes, editingNote, noteDraft),
+  )
 
   const dropDateHandlers = (date: string) => ({
     onDragOver: (e: React.DragEvent) => {
@@ -206,6 +216,22 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
       if (noteDraft) setNoteDraft({ ...noteDraft, note_date: date })
     },
   })
+
+  // Click-to-place: with the composer open, posting/pending rows double as
+  // date targets — click one to load its date and keep typing.
+  const pickDateHandlers = (date: string) =>
+    noteDraft
+      ? {
+          onClick: () => {
+            setNoteDraft({ ...noteDraft, note_date: date })
+            memoInputRef.current?.focus()
+          },
+          onMouseEnter: () => setHoverDate(date),
+          onMouseLeave: () => setHoverDate((d) => (d === date ? null : d)),
+          title: 'click to place your note above this date',
+          style: { cursor: 'copy' },
+        }
+      : {}
 
   return (
     <div>
@@ -236,6 +262,8 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
             style={{ font: 'inherit', fontSize: '0.82rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
           />
           <input
+            ref={memoInputRef}
+            autoFocus
             type="text"
             placeholder="Memo — what happened?"
             value={noteDraft.memo}
@@ -272,7 +300,7 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
             </button>
           ) : null}
           <span style={{ flexBasis: '100%', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-            Tip: drag a note’s grey triangle onto a ledger row to load that row’s date here.
+            Tip: click any ledger row to place your note above that date — the dashed draft row shows where it lands. Dragging a note’s grey triangle onto a row works too.
           </span>
           {noteError ? <span style={{ flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-red-600)' }}>{noteError}</span> : null}
         </div>
@@ -299,7 +327,36 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
                   top row is today and its balance equals the headline. Pending
                   rows interleave by date but never carry a balance. */}
               {[...displayRows].reverse().map((r, i) => {
-                const dropStyle = dragOverDate === r.date && noteDraft ? { borderTop: '2px solid var(--text-amber-700)' } : {}
+                const dropStyle =
+                  (dragOverDate === r.date || hoverDate === r.date) && noteDraft
+                    ? { borderTop: '2px solid var(--text-amber-700)' }
+                    : {}
+                if (r.kind === 'note' && r.note.id === DRAFT_NOTE_PREVIEW_ID) {
+                  // Ghost preview of the open draft — shows where the note
+                  // will land; nothing exists in the database until Save.
+                  return (
+                    <tr
+                      key="draft-preview"
+                      onClick={() => memoInputRef.current?.focus()}
+                      title="your note will land here — Save to keep it"
+                      style={{ cursor: 'text', opacity: 0.75 }}
+                    >
+                      <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px dashed var(--border-strong)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
+                      <td colSpan={2} style={{ padding: '0.4rem 0.5rem', borderBottom: '1px dashed var(--border-strong)', fontStyle: 'italic', color: r.label ? 'var(--text-700)' : 'var(--text-muted)' }}>
+                        {r.label || '(your note)'}
+                        {r.note.partner_visible ? (
+                          <span style={{ marginLeft: '0.5rem', fontStyle: 'normal', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', color: '#16a34a', border: '1px solid var(--border)', borderRadius: 999, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }}>
+                            partner sees
+                          </span>
+                        ) : null}
+                        <span style={{ marginLeft: '0.5rem', fontStyle: 'normal', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', borderRadius: 999, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }}>
+                          draft
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px dashed var(--border-strong)' }} />
+                    </tr>
+                  )
+                }
                 if (r.kind === 'note') {
                   return (
                     <tr
@@ -338,7 +395,7 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
                 }
                 if (r.kind === 'pending') {
                   return (
-                    <tr key={i} {...dropDateHandlers(r.date)}>
+                    <tr key={i} {...dropDateHandlers(r.date)} {...pickDateHandlers(r.date)}>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>{r.label}</td>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap', opacity: 0.85 }}>
@@ -349,7 +406,7 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
                   )
                 }
                 return (
-                  <tr key={i} {...dropDateHandlers(r.date)}>
+                  <tr key={i} {...dropDateHandlers(r.date)} {...pickDateHandlers(r.date)}>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
                       {r.label}

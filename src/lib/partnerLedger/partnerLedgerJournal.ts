@@ -192,6 +192,30 @@ export type LedgerDisplayRow = JournalDisplayRow | NoteJournalRow
  * ascending — i.e. it renders on top of that date's rows once the component
  * reverses to newest-first.
  */
+/** Reserved id marking the composer's live draft in a display list — never a
+ * real database row; the component styles it as a ghost and keeps it out of
+ * edit/save flows. */
+export const DRAFT_NOTE_PREVIEW_ID = '__draft_note_preview__'
+
+/**
+ * Substitute the open composer draft into the notes list so the ledger shows
+ * a live ghost row where the note will land: a new note appends a preview,
+ * editing an existing note replaces that note's row (the ghost moves as the
+ * draft's date changes). No draft → the list is returned untouched.
+ */
+export function withDraftNotePreview(
+  notes: LedgerNote[],
+  editingNoteId: string | 'new' | null,
+  draft: { note_date: string; memo: string; partner_visible: boolean } | null,
+): LedgerNote[] {
+  if (!draft || !editingNoteId) return notes
+  const rest = editingNoteId === 'new' ? notes : notes.filter((n) => n.id !== editingNoteId)
+  return [
+    ...rest,
+    { id: DRAFT_NOTE_PREVIEW_ID, note_date: draft.note_date, memo: draft.memo, partner_visible: draft.partner_visible },
+  ]
+}
+
 export function mergeNotesIntoDisplay(rows: JournalDisplayRow[], notes: LedgerNote[]): LedgerDisplayRow[] {
   const noteRows: NoteJournalRow[] = notes.map((n) => ({
     date: n.note_date,
