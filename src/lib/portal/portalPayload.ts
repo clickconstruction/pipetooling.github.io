@@ -34,6 +34,8 @@ export type PortalPayload = {
   bills: PortalBill[]
   totalDue: number
   requestableJobs: Array<{ id: string; label: string }>
+  /** Visit-picker rows (v2.2037): one per address, street + city only. */
+  requestableProperties: Array<{ jobId: string; street: string; city: string | null }>
   /** Token for form submits when the page was opened by slug (same capability). */
   requestToken: string | null
   /** The company's short portal address (merged view only) — powers the footer QR. */
@@ -79,6 +81,17 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       requestableJobs.push({ id: j.id, label: j.label })
     }
   }
+  const requestableProperties: PortalPayload['requestableProperties'] = []
+  if (Array.isArray(r.requestableProperties)) {
+    for (const p of r.requestableProperties as Array<Record<string, unknown>>) {
+      if (p == null || typeof p.jobId !== 'string' || typeof p.street !== 'string' || !p.street.trim()) continue
+      requestableProperties.push({
+        jobId: p.jobId,
+        street: p.street.trim(),
+        city: typeof p.city === 'string' && p.city.trim() ? p.city.trim() : null,
+      })
+    }
+  }
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
@@ -92,6 +105,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     bills,
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
     requestableJobs,
+    requestableProperties,
     requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
   }

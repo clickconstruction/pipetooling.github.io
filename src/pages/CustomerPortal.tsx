@@ -283,6 +283,57 @@ function PortalShortAddressCard({ slug }: { slug: string }) {
   )
 }
 
+/** One ruled row of the visit picker: hidden radio + copper pip + address. */
+function PropertyRow({
+  name,
+  selected,
+  onSelect,
+  street,
+  city,
+  italic = false,
+}: {
+  name: string
+  selected: boolean
+  onSelect: () => void
+  street: string
+  city: string | null
+  italic?: boolean
+}) {
+  return (
+    <label
+      className="portal-pickrow"
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 2px', borderBottom: `1px solid ${HAIR}`, cursor: 'pointer', fontSize: 13.5, position: 'relative' }}
+    >
+      <input
+        type="radio"
+        name={name}
+        checked={selected}
+        onChange={onSelect}
+        style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
+      />
+      <span
+        aria-hidden
+        data-pip
+        style={{
+          width: 15,
+          height: 15,
+          borderRadius: '50%',
+          border: `1.5px solid ${selected ? COPPER : FAINT}`,
+          flex: 'none',
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: COPPER, transform: selected ? 'scale(1)' : 'scale(0)', transition: 'transform 0.12s' }} />
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ fontWeight: 600, fontStyle: italic ? 'italic' : 'normal' }}>{street}</span>
+        {city && <span style={{ fontSize: 11.5, color: FAINT, marginLeft: 7 }}>{city}</span>}
+      </span>
+    </label>
+  )
+}
+
 const fieldStyle: CSSProperties = {
   border: 'none',
   borderBottom: '1px solid #b9c2cc',
@@ -313,7 +364,7 @@ function PortalRequestForms({ token, payload }: { token: string; payload: Portal
           title="Request a visit"
           sub="We'll call to confirm a time."
           submitLabel="Send request"
-          jobs={payload.requestableJobs}
+          properties={payload.requestableProperties}
         />
         <RequestCard
           token={token}
@@ -321,7 +372,7 @@ function PortalRequestForms({ token, payload }: { token: string; payload: Portal
           title="Ask us to bid your work"
           sub="Remodels, additions, new construction."
           submitLabel="Request a bid"
-          jobs={[]}
+          properties={[]}
         />
       </div>
     </>
@@ -334,16 +385,17 @@ function RequestCard({
   title,
   sub,
   submitLabel,
-  jobs,
+  properties,
 }: {
   token: string
   kind: 'visit' | 'bid'
   title: string
   sub: string
   submitLabel: string
-  jobs: PortalPayload['requestableJobs']
+  properties: PortalPayload['requestableProperties']
 }) {
   const [jobId, setJobId] = useState('')
+  const [showAllProperties, setShowAllProperties] = useState(false)
   const [description, setDescription] = useState('')
   const [availability, setAvailability] = useState('')
   const [phone, setPhone] = useState('')
@@ -409,18 +461,36 @@ function RequestCard({
         <div style={{ fontSize: 13.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>{title}</div>
         <div style={{ fontSize: 12, color: FAINT, marginTop: 2 }}>{sub}</div>
       </div>
-      {kind === 'visit' && jobs.length > 0 && (
-        <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          For
-          <select value={jobId} onChange={(e) => setJobId(e.target.value)} style={{ ...fieldStyle, appearance: 'auto' }}>
-            <option value="">Something new</option>
-            {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.label}
-              </option>
+      {kind === 'visit' && properties.length > 0 && (
+        <div>
+          {/* Address picker (v2.2037): the customer picks the PROPERTY — ruled
+              rows like the ledger, never a job number or internal job name.
+              Real radios underneath: keyboard + VoiceOver come free. */}
+          <style>{`.portal-pickrow:focus-within [data-pip]{outline:2px solid ${COPPER};outline-offset:2px;border-radius:50%}`}</style>
+          <div style={{ fontSize: 12.5, color: MUTED, marginBottom: 4 }}>For</div>
+          <div role="radiogroup" aria-label="Which property is this for?" style={{ borderTop: `1px solid ${HAIR}` }}>
+            <PropertyRow name={`for-${kind}`} selected={jobId === ''} onSelect={() => setJobId('')} street="Something new" city={null} italic />
+            {(showAllProperties ? properties : properties.slice(0, 5)).map((p) => (
+              <PropertyRow
+                key={p.jobId}
+                name={`for-${kind}`}
+                selected={jobId === p.jobId}
+                onSelect={() => setJobId(p.jobId)}
+                street={p.street}
+                city={p.city}
+              />
             ))}
-          </select>
-        </label>
+          </div>
+          {!showAllProperties && properties.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllProperties(true)}
+              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '9px 2px 0', textAlign: 'left' }}
+            >
+              Show all {properties.length} properties
+            </button>
+          )}
+        </div>
       )}
       <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {kind === 'visit' ? "What's going on?" : 'Describe the project'}

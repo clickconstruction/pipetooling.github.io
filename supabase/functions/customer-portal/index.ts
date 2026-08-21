@@ -9,6 +9,7 @@ import {
   type PortalJobRow,
   type PortalPaymentRow,
 } from '../_shared/portalMergedBills.ts'
+import { buildPortalProperties } from '../_shared/portalProperties.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -208,6 +209,19 @@ serve(async (req) => {
       .slice(0, 100)
       .map((j) => ({ id: j.id, label: jobLabel(j) }))
 
+    // Property rows for the visit picker (v2.2037): one row per address,
+    // street + city only — customers never see job numbers or internal
+    // names. requestableJobs stays alongside for stale-bundle clients.
+    const requestableProperties = buildPortalProperties(
+      jobs.map((j) => ({
+        id: j.id,
+        status: j.status,
+        job_address: j.job_address,
+        hcp_number: j.hcp_number,
+        click_number: j.click_number,
+      })),
+    ).slice(0, 50)
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       customerName: (customer as { name: string | null }).name ?? 'Customer',
@@ -215,6 +229,7 @@ serve(async (req) => {
       bills,
       totalDue: Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
       requestableJobs,
+      requestableProperties,
       // Lets the slug-resolved page submit request forms (the slug and the
       // token are the same capability — both open this exact statement).
       requestToken: link.token ?? null,
