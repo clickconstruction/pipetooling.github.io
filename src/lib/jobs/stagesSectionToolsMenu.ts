@@ -12,7 +12,7 @@
  *   dev / master_technician / assistant-like / primary (same as the header).
  * - Share / Print: dev / master_technician / assistant-like only.
  * - Chart (billed aging bubbles): dev / controller only (wage-derived costs).
- * - Ready to Bill notifications + Paid notifications + Paid In Full
+ * - Ready to Bill notifications + Paid notifications + Paid in Full
  *   notifications: dev / master_technician only.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
@@ -172,7 +172,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   if (isDevOrMaster) {
     paidItems.push({
       key: 'paid-in-full-notifications',
-      label: 'Paid In Full notifications',
+      label: 'Paid in Full notifications',
       title: 'Paid in Full email settings',
       disabled: false,
     })
