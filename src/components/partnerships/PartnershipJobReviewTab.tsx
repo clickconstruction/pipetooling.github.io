@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import {
   isConfirmedForPartner,
   parseReviewQueue,
@@ -33,6 +34,7 @@ export function PartnershipJobReviewTab({
   const [rpcMissing, setRpcMissing] = useState(false)
   const [busyJobId, setBusyJobId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [tradeByJobId, setTradeByJobId] = useState<Record<string, string>>({})
   const jobFormModal = useJobFormModal()
 
   const load = useCallback(async () => {
@@ -45,7 +47,22 @@ export function PartnershipJobReviewTab({
       return
     }
     setRpcMissing(false)
-    setQueue(parseReviewQueue(data))
+    const parsed = parseReviewQueue(data)
+    setQueue(parsed)
+    // Trade pills (PLUM / ELEC) beside the job number — the queue RPC doesn't
+    // carry service types, so resolve them office-side. Fail-soft: no map, no
+    // pill, the row falls back to the plain #number.
+    const ids = (parsed?.rows ?? []).map((r) => r.job_id)
+    if (ids.length > 0) {
+      const stRes = await supabase.from('jobs_ledger').select('id, service_types(name)').in('id', ids)
+      const map: Record<string, string> = {}
+      for (const j of (stRes.data ?? []) as { id: string; service_types: { name: string } | null }[]) {
+        if (j.service_types?.name) map[j.id] = j.service_types.name
+      }
+      setTradeByJobId(map)
+    } else {
+      setTradeByJobId({})
+    }
   }, [partnershipId])
 
   useEffect(() => {
@@ -106,6 +123,7 @@ export function PartnershipJobReviewTab({
           const confirmed = isConfirmedForPartner(r, queue.partner_person_id)
           const otherPartner = !confirmed && r.partner_person_id != null
           const pct = shareOfHours(r.partner_hours, r.total_hours)
+          const pill = buildServiceTypeTradePill(tradeByJobId[r.job_id])
           return (
             <div
               key={r.job_id}
@@ -129,7 +147,10 @@ export function PartnershipJobReviewTab({
                 style={{ flex: '1 1 240px', minWidth: 0, cursor: jobFormModal ? 'pointer' : undefined }}
               >
                 <div style={{ fontWeight: 600, fontSize: '0.875rem', color: jobFormModal ? 'var(--text-link)' : undefined }}>
-                  #{r.label}
+                  {pill ? (
+                    <span style={{ ...pill.style, marginTop: 0, marginRight: '0.4rem', verticalAlign: '1px' }}>{pill.label}</span>
+                  ) : null}
+                  {pill ? r.label : `#${r.label}`}
                   {r.job_name && r.job_name.trim() !== '' && r.job_name !== r.label ? ` — ${r.job_name}` : ''}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
