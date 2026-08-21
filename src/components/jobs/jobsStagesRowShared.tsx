@@ -599,7 +599,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
               <span><StagesSearchMark text={gcName} /></span>
               {job.gcCustomer?.id ? (
-                <CustomerPortalGlobeButton customerId={job.gcCustomer.id} customerName={gcName} defaultAudience="gc" size={13} />
+                <CustomerPortalGlobeButton customerId={job.gcCustomer.id} customerName={gcName} size={13} />
               ) : null}
             </span>
           ) : null}

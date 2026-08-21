@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildPortalLinkHistory, computePortalOffKeys, portalOffKey } from './portalLinkState'
+import {
+  buildPortalLinkHistory,
+  buildPortalTimeline,
+  computePortalMainOffCustomerIds,
+  computePortalOffKeys,
+  portalOffKey,
+} from './portalLinkState'
 
 describe('computePortalOffKeys', () => {
   it('marks a pair off only when rows exist and none are active', () => {
@@ -66,5 +72,56 @@ describe('buildPortalLinkHistory', () => {
       { audience: 'customer', created_at: '2026-08-01T00:00:00Z', revoked_at: null, created_by: 'u1' },
     ])
     expect(h[0]!.createdBy).toBe('u1')
+  })
+})
+
+
+describe('computePortalMainOffCustomerIds (merged-audience red globe)', () => {
+  it("'all' rows are authoritative: off only when every 'all' row is revoked", () => {
+    expect(
+      computePortalMainOffCustomerIds([
+        { customer_id: 'a', audience: 'all', revoked_at: '2026-08-02T00:00:00Z' },
+        { customer_id: 'a', audience: 'customer', revoked_at: null }, // active scoped link does not save it
+        { customer_id: 'b', audience: 'all', revoked_at: null },
+        { customer_id: 'b', audience: 'gc', revoked_at: '2026-08-02T00:00:00Z' }, // scoped off never paints red
+      ]),
+    ).toEqual(['a'])
+  })
+
+  it('legacy-only customers are off when every row is revoked', () => {
+    expect(
+      computePortalMainOffCustomerIds([
+        { customer_id: 'c', audience: 'customer', revoked_at: '2026-08-01T00:00:00Z' },
+        { customer_id: 'c', audience: 'gc', revoked_at: '2026-08-01T00:00:00Z' },
+        { customer_id: 'd', audience: 'customer', revoked_at: null },
+      ]),
+    ).toEqual(['c'])
+  })
+
+  it('never-minted customers are absent', () => {
+    expect(computePortalMainOffCustomerIds([])).toEqual([])
+  })
+})
+
+describe('buildPortalTimeline', () => {
+  it('merges link lifecycles (per-audience rotation inference) with slug events, newest first', () => {
+    const timeline = buildPortalTimeline(
+      [
+        // 'customer' scoped link revoked with an 'all' mint moments later —
+        // must stay turned-off, not read as a rotation across audiences.
+        { audience: 'customer', created_at: '2026-08-01T00:00:00Z', revoked_at: '2026-08-21T10:00:00Z', created_by: 'u1' },
+        { audience: 'all', created_at: '2026-08-21T10:00:05Z', revoked_at: null, created_by: 'u1' },
+      ],
+      [
+        { event: 'created', slug: 'knight-contracting', created_at: '2026-08-21T11:00:00Z', created_by: 'u1' },
+        { event: 'bogus', slug: null, created_at: '2026-08-21T11:30:00Z', created_by: null },
+      ],
+    )
+    expect(timeline.map((e) => e.kind)).toEqual(['slug', 'link', 'link'])
+    const scoped = timeline[2]!
+    expect(scoped.kind === 'link' && scoped.outcome).toBe('turned-off')
+    const all = timeline[1]!
+    expect(all.kind === 'link' && all.audience).toBe('all')
+    expect(all.kind === 'link' && all.outcome).toBe('active')
   })
 })

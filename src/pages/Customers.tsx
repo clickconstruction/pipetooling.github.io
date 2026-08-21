@@ -837,7 +837,6 @@ export default function Customers() {
                   <CustomerPortalGlobeButton
                     customerId={c.id}
                     customerName={(c.name ?? 'Customer').trim() || 'Customer'}
-                    defaultAudience={isCustomerCommercialDefaultType(c) ? 'gc' : 'customer'}
                   />
                   <button
                     type="button"

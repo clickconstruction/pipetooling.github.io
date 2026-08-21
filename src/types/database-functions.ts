@@ -231,8 +231,26 @@ export interface CreateBilledShellInvoiceParams {
  */
 export interface MintCustomerPortalLinkResult {
   token?: string
-  audience?: 'customer' | 'gc'
+  audience?: 'customer' | 'gc' | 'all'
   exists?: boolean
   activeSince?: string
+  error?: string
+}
+
+/**
+ * Result of set_customer_portal_slug (portal custom-links train): the saved
+ * address, or a friendly error string ("That address is taken — try
+ * another." / format guidance). `unchanged` when the slug already matched.
+ */
+export interface SetCustomerPortalSlugResult {
+  slug?: string
+  unchanged?: boolean
+  error?: string
+}
+
+/** Result of mark_customer_portal_slug_shared: locked=true on the first-share transition. */
+export interface MarkCustomerPortalSlugSharedResult {
+  locked?: boolean
+  slug?: string
   error?: string
 }
