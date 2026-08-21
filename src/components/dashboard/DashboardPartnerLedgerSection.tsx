@@ -110,7 +110,7 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
       .join('')
     openHtmlPrintWindow(
       `<div data-theme="light" style="font-family:system-ui,sans-serif;color:#211d16;max-width:640px;margin:0 auto;padding:24px;">
-        <div style="font-weight:800;font-size:13px;">CLICK PLUMBING &amp; ELECTRICAL</div>
+        <div style="font-weight:800;font-size:13px;">CLICK PLUMBING, ELECTRICAL, AND HVAC</div>
         <div style="font-size:19px;font-weight:700;">Partner weekly statement</div>
         <div style="color:#6d6759;font-size:12px;margin:2px 0 14px;">${summary?.display_name ?? ''} · Week of ${c.weekStart}${c.weekEnd ? ` – ${c.weekEnd}` : ' (in progress)'}</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">

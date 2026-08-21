@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPortalDate, formatPortalUsd, parsePortalPayload } from './portalPayload'
+import { formatPortalDate, formatPortalUsd, parsePortalPayload, portalDaysSinceBilled } from './portalPayload'
 
 const good = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
@@ -91,5 +91,14 @@ describe('formatters', () => {
   it('always shows cents', () => {
     expect(formatPortalUsd(1700)).toBe('$1,700.00')
     expect(formatPortalUsd(249.6)).toBe('$249.60')
+  })
+
+  it('ages the Billed column: today/yesterday/N days, copper at 30', () => {
+    expect(portalDaysSinceBilled('2026-08-21', '2026-08-21')).toEqual({ label: 'today', aging: false })
+    expect(portalDaysSinceBilled('2026-08-20', '2026-08-21')).toEqual({ label: 'yesterday', aging: false })
+    expect(portalDaysSinceBilled('2026-08-06', '2026-08-21')).toEqual({ label: '15 days ago', aging: false })
+    expect(portalDaysSinceBilled('2026-07-06', '2026-08-21')).toEqual({ label: '46 days ago', aging: true })
+    expect(portalDaysSinceBilled(null, '2026-08-21')).toBeNull()
+    expect(portalDaysSinceBilled('2026-09-01', '2026-08-21')).toBeNull() // future dates stay silent
   })
 })
