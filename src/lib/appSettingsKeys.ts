@@ -157,6 +157,14 @@ export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_compo
 export const APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS = 'paid_job_email_recipients_v1' as const
 
 /**
+ * JSON array of `users.id` uuid strings in `value_text`: who receives an email when a customer
+ * submits a portal visit/bid request (portal train PR 3, v2.1988). Same v1 id-array format as the
+ * paid stream (`parsePaidJobEmailRecipients`); read by the `submit-portal-request` edge function.
+ * Push already reaches the dispatch group via `notify-dispatch-request` regardless of this list.
+ */
+export const APP_SETTINGS_KEY_PORTAL_REQUEST_EMAIL_RECIPIENTS = 'portal_request_email_recipients_v1' as const
+
+/**
  * JSON array of `users.id` uuid strings in `value_text`: who receives the "Payment made" email
  * whenever ANY payment lands on a job (Mark Paid, Mercury AR allocation, Stripe webhook, manual
  * Edit Job row) — the v2.1310 stream, separate from the Paid-in-Full list above. Same variant

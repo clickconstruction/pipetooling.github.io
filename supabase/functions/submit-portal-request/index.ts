@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
 /**
  * Portal request intake (portal train PR 2): a customer/GC submits a
@@ -147,6 +148,52 @@ serve(async (req) => {
       })
     } catch (e) {
       console.error('notify-dispatch-request call failed', e)
+    }
+
+    // Email the configured "Portal requests" stream (portal train PR 3):
+    // app_settings.portal_request_email_recipients_v1 = JSON array of user
+    // ids (the paid-stream v1 format). Best-effort — the request is already
+    // safely in the dispatch inbox.
+    try {
+      const resendApiKey = Deno.env.get('RESEND_API_KEY')
+      if (resendApiKey) {
+        const { data: recRow } = await admin
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', 'portal_request_email_recipients_v1')
+          .maybeSingle()
+        let recipientIds: string[] = []
+        try {
+          const parsed = JSON.parse(((recRow as { value_text?: string | null } | null)?.value_text ?? '[]'))
+          if (Array.isArray(parsed)) recipientIds = parsed.filter((x): x is string => typeof x === 'string')
+        } catch {
+          recipientIds = []
+        }
+        if (recipientIds.length > 0) {
+          const { data: usersRaw } = await admin.from('users').select('id, email').in('id', recipientIds)
+          const emails = ((usersRaw ?? []) as Array<{ email: string | null }>)
+            .map((u) => (u.email ?? '').trim())
+            .filter((e) => e.includes('@'))
+          const lines = [
+            `${customerName} sent a ${kindLabel} from their portal.`,
+            '',
+            `What they wrote: ${description}`,
+            availability ? `Best days & times: ${availability}` : null,
+            phone ? `Phone: ${phone}` : null,
+            plansLink ? `Plans: ${plansLink}` : null,
+            jobLedgerId ? 'Linked to one of their jobs (see the dispatch item).' : null,
+            '',
+            'The request is in the dispatch inbox in PipeTooling.',
+          ].filter((l): l is string => l != null)
+          const subject = `Portal ${kindLabel} — ${customerName}`
+          const html = `<p>${lines.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('</p><p>')}</p>`
+          for (const to of emails) {
+            await sendEmailViaResend(to, subject, lines.join('\n'), html, resendApiKey)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('portal request email failed', e)
     }
 
     return jsonResponse({ ok: true })
