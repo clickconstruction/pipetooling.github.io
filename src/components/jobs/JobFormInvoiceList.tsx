@@ -26,6 +26,8 @@ import { useAuth } from '../../hooks/useAuth'
 import type { JobBillingContext } from '../../lib/jobBillingContext'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
+import { convertToStripeEligibility } from '../../lib/jobs/convertBillToStripe'
+import { ConvertBillToStripeModal } from './ConvertBillToStripeModal'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -82,6 +84,7 @@ export function JobFormInvoiceList({
   const [confirmSendBackInvoice, setConfirmSendBackInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
   const [sendBackAcknowledged, setSendBackAcknowledged] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
+  const [convertInvoice, setConvertInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
   const invoices = editing.invoices ?? []
   if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed')) return null
 
@@ -412,6 +415,28 @@ export function JobFormInvoiceList({
                               Add discount
                             </button>
                           ) : null}
+                          {!isDraft && !inv.stripe_invoice_id && inv.external_send_channel !== 'stripe' && inv.status === 'billed' ? (
+                            (() => {
+                              // v2.2045: one button turns a non-Stripe bill into a hosted
+                              // Stripe invoice — billed date preserved by construction.
+                              const elig = convertToStripeEligibility(inv, payments, editing)
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={!elig.ok}
+                                  title={
+                                    elig.ok
+                                      ? 'Create the hosted Stripe invoice for this bill — pay link, card payment. Billed date stays put; nothing is emailed.'
+                                      : elig.reason
+                                  }
+                                  onClick={() => setConvertInvoice(inv)}
+                                  style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', background: '#635bff', border: 'none', borderRadius: 4, cursor: elig.ok ? 'pointer' : 'not-allowed', color: '#ffffff', fontWeight: 600, opacity: elig.ok ? 1 : 0.55 }}
+                                >
+                                  ⚡ Make Stripe bill
+                                </button>
+                              )
+                            })()
+                          ) : null}
                           {!isDraft ? (
                             (() => {
                               const blocked = sendBackBlockedByPayments(inv.id, payments)
@@ -655,6 +680,22 @@ export function JobFormInvoiceList({
             </div>
           </div>
         </div>
+      ) : null}
+      {convertInvoice ? (
+        <ConvertBillToStripeModal
+          invoice={convertInvoice}
+          job={editing}
+          zIndex={nestedOverlayZIndex}
+          onClose={() => setConvertInvoice(null)}
+          onConverted={() => {
+            setConvertInvoice(null)
+            void (async () => {
+              const found = await fetchJobWithDetailsById(editing.id)
+              if (found) setEditing(found)
+              onSavedRef.current?.()
+            })()
+          }}
+        />
       ) : null}
     </div>
   )
