@@ -155,3 +155,71 @@ export function customerDaysToPay(jobs: ProfileJob[], todayYmd: string): DaysToP
   const median = gaps.length % 2 === 1 ? gaps[mid]! : Math.round((gaps[mid - 1]! + gaps[mid]!) / 2)
   return { medianDays: median, samples: gaps.length }
 }
+
+export type ProfileJobRowMoney = {
+  /** Billed-open remainder on this job — same basis as openBalance, so listed rows reconcile with the money strip. */
+  openBilled: number
+  /** Unbilled work value (revenue − payments) for jobs with no billed-open money; 0 for paid jobs. */
+  unbilled: number
+  /** Days since the OLDEST open bill's date (est. bill date, else billed_at); null when undated. */
+  ageDays: number | null
+  /** The date the age reads from (YYYY-MM-DD), for the row's date label. */
+  oldestOpenBillYmd: string | null
+  /** Open billed money with no date anywhere (no est. date, no billed_at) — can't age. */
+  noBillDate: boolean
+}
+
+/**
+ * One job's money for the profile jobs list (v2.1985). Rules mirror
+ * customerMoneyStats exactly: billed-invoice remainders (net of linked
+ * payments) plus the billed job-shell fallback; every other non-paid job
+ * shows its unbilled value instead.
+ */
+export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJobRowMoney {
+  const status = (job.status ?? 'working') as string
+  const out: ProfileJobRowMoney = { openBilled: 0, unbilled: 0, ageDays: null, oldestOpenBillYmd: null, noBillDate: false }
+  if (status === 'paid') return out
+  const appliedByInvoice = new Map<string, number>()
+  for (const p of job.payments) {
+    if (p.invoice_id) appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+  }
+  const billed = job.invoices.filter((i) => i.status === 'billed')
+  if (billed.length === 0 && status === 'billed') {
+    out.openBilled = Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)
+    out.noBillDate = out.openBilled > 0.005
+    return out
+  }
+  let sawUndated = false
+  for (const inv of billed) {
+    const remaining = Math.max(0, Number(inv.amount ?? 0) - (appliedByInvoice.get(inv.id) ?? 0))
+    out.openBilled += remaining
+    if (remaining <= 0.005) continue
+    const dateSource = inv.estimated_bill_date ?? inv.billed_at
+    if (!dateSource) {
+      sawUndated = true
+      continue
+    }
+    const ymd = ymdOf(dateSource)
+    if (out.oldestOpenBillYmd == null || ymd < out.oldestOpenBillYmd) out.oldestOpenBillYmd = ymd
+  }
+  if (out.oldestOpenBillYmd != null) out.ageDays = Math.max(0, daysBetweenYmdUtc(out.oldestOpenBillYmd, todayYmd))
+  out.noBillDate = out.openBilled > 0.005 && out.oldestOpenBillYmd == null && sawUndated
+  if (out.openBilled <= 0.005) out.unbilled = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  return out
+}
+
+/**
+ * List order for the profile jobs list: money the customer owes first
+ * (billed-open desc, oldest-age tiebreak), then unbilled work value desc,
+ * then everything else (paid last, newest first is fine as-is).
+ */
+export function sortProfileJobsForList<T extends ProfileJob>(jobs: T[], todayYmd: string): T[] {
+  const money = new Map(jobs.map((j) => [j.id, profileJobRowMoney(j, todayYmd)]))
+  return [...jobs].sort((a, b) => {
+    const ma = money.get(a.id)!
+    const mb = money.get(b.id)!
+    if (ma.openBilled !== mb.openBilled) return mb.openBilled - ma.openBilled
+    if (ma.openBilled > 0 && (ma.ageDays ?? -1) !== (mb.ageDays ?? -1)) return (mb.ageDays ?? -1) - (ma.ageDays ?? -1)
+    return mb.unbilled - ma.unbilled
+  })
+}

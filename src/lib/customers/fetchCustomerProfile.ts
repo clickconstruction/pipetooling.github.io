@@ -38,10 +38,14 @@ export type CustomerProfileData = {
     sent_at: string | null
     updated_at: string | null
   }>
+  /** Jobs where this customer is the GC/Builder (v2.1985 header chip); 0 = not a GC. */
+  gcJobCount: number
+  /** Latest GC statement email to this customer (gc_statement_emails audit); null = never / not visible. */
+  gcLastStatementSentAt: string | null
 }
 
 export async function fetchCustomerProfile(customerId: string): Promise<CustomerProfileData> {
-  const [customerRes, contactsRes, jobsRes, projectsRes, bidsRes, estimatesRes, addressesRes] = await Promise.all([
+  const [customerRes, contactsRes, jobsRes, projectsRes, bidsRes, estimatesRes, addressesRes, gcCountRes, gcSentRes] = await Promise.all([
     withSupabaseRetry(
       () => supabase.from('customers').select('*').eq('id', customerId).single(),
       'customer profile: customer',
@@ -82,6 +86,13 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
       .select('id, address, note')
       .eq('customer_id', customerId)
       .order('sequence_order', { ascending: true }),
+    supabase.from('jobs_ledger').select('id', { count: 'exact', head: true }).eq('gc_customer_id', customerId),
+    supabase
+      .from('gc_statement_emails')
+      .select('sent_at')
+      .eq('gc_customer_id', customerId)
+      .order('sent_at', { ascending: false })
+      .limit(1),
   ])
 
   const customer = customerRes as unknown as CustomerRow | null
@@ -113,5 +124,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
     projects,
     bids: ((bidsRes.data ?? []) as CustomerProfileData['bids']),
     estimates: ((estimatesRes.data ?? []) as CustomerProfileData['estimates']),
+    gcJobCount: gcCountRes.count ?? 0,
+    gcLastStatementSentAt: ((gcSentRes.data ?? []) as Array<{ sent_at: string }>)[0]?.sent_at ?? null,
   }
 }
