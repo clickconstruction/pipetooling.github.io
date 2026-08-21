@@ -2923,6 +2923,9 @@ export default function Bids() {
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastContactFromEntries}
           narrowViewport640={narrowViewport640}
+          authUserId={authUser?.id ?? null}
+          onError={setError}
+          onReloadBids={() => { void loadBids() }}
           onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
         />
       )}

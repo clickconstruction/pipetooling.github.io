@@ -74,6 +74,8 @@ The left rail lists builders holding your open bids, most recently sent on top. 
 "Morning — we sent our number on Saginaw two weeks ago. Did it land? Are we in the hunt? Can I get the bid tab when it's out?" Tap through their pills with the arrow keys; {{button:outline|Skip →}} moves on.
 :::
 
+Log the answer without leaving the card — one tap per bid: **Left message** · **Still pending** · **Bid tab received** · **Rebid / RFQ** · **Won** · **Lost…**. Every tap writes a bid note and stamps **Last Contact** (the pill goes green and the next bid opens), so the Bid Board and By builder queue stay current for free. **Lost…** reveals the same six reason chips as the Why we lost lens — a loss you learn about on the chase call gets its reason recorded on the spot and never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
+
 Below the queue, the **Waiting to hear** rollup keeps you honest: how much sent work is still open, how many bids were **never chased since sending** (count and dollars), and the age of the oldest untouched one.
 
 ## Print a call sheet

@@ -9,6 +9,9 @@
  * deterministic.
  */
 
+import { callSessionOutcomeLabel } from './bids/builderCallSession'
+import type { BidLossCategoryKey } from './bidLossCategories'
+
 export type PendingChaseWindowKey = '30' | '60' | '90' | 'all'
 
 export type PendingChaseWindow = {
@@ -144,6 +147,96 @@ export function nextPendingChaseBidIndex(
   if (later >= 0) return later
   const any = group.bids.findIndex((b) => bidNeedsChase(b, nowIso, staleDays))
   return any >= 0 ? any : null
+}
+
+// --- One-tap chase actions (PR 2 of the pending-chase train) -----------------
+
+export type PendingChaseActionKey = 'left_message' | 'still_pending' | 'bid_tab' | 'rebid' | 'won' | 'lost'
+
+export type PendingChaseAction = {
+  key: PendingChaseActionKey
+  label: string
+}
+
+export const PENDING_CHASE_ACTIONS: readonly PendingChaseAction[] = [
+  { key: 'left_message', label: 'Left message' },
+  { key: 'still_pending', label: 'Still pending' },
+  { key: 'bid_tab', label: 'Bid tab received' },
+  { key: 'rebid', label: 'Rebid / RFQ' },
+  { key: 'won', label: 'Won' },
+  { key: 'lost', label: 'Lost…' },
+]
+
+/** The submission-entry note line for one chase action (mirrors the call-session labels). */
+export function pendingChaseActionNote(
+  action: PendingChaseActionKey,
+  note: string,
+  lossCategory: BidLossCategoryKey | null,
+): string {
+  const trimmed = note.trim()
+  let label: string
+  switch (action) {
+    case 'left_message':
+      label = 'Chased — left a message / no answer'
+      break
+    case 'bid_tab':
+      label = 'Bid tab received'
+      break
+    default:
+      label = callSessionOutcomeLabel({
+        outcome: action,
+        lossReason: action === 'lost' ? trimmed : '',
+        lossCategory: action === 'lost' ? lossCategory : null,
+      })
+  }
+  if (action === 'lost') return label // note already folded into the lost label
+  return trimmed ? `${label}. ${trimmed}` : label
+}
+
+export type PendingChaseActionWrites = {
+  entry: {
+    bid_id: string
+    contact_method: string
+    notes: string
+    occurred_at: string
+    created_by: string
+  }
+  /** New `bids.last_contact` value. */
+  lastContact: string
+  /** Outcome patch for won/lost taps; null for contact-only actions. */
+  outcomeUpdate: { outcome: 'won' | 'lost'; loss_reason: string | null; loss_category: string | null } | null
+}
+
+/**
+ * Build the rows one chase tap writes: a submission entry, the last_contact
+ * stamp, and (for Won / Lost) the outcome patch — same shape the builder call
+ * session writes, so the bid's history reads identically either way.
+ */
+export function buildPendingChaseActionWrites(args: {
+  bidId: string
+  userId: string
+  nowIso: string
+  action: PendingChaseActionKey
+  note: string
+  lossCategory: BidLossCategoryKey | null
+}): PendingChaseActionWrites {
+  const { bidId, userId, nowIso, action, note, lossCategory } = args
+  return {
+    entry: {
+      bid_id: bidId,
+      contact_method: 'Phone',
+      notes: pendingChaseActionNote(action, note, lossCategory),
+      occurred_at: nowIso,
+      created_by: userId,
+    },
+    lastContact: nowIso,
+    outcomeUpdate:
+      action === 'won'
+        ? { outcome: 'won', loss_reason: null, loss_category: null }
+        : action === 'lost'
+          ? { outcome: 'lost', loss_reason: note.trim() || null, loss_category: lossCategory }
+          : null,
+  }
 }
 
 export type PendingChaseRollup = {

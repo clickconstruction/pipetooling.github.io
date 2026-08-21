@@ -4,9 +4,11 @@ import {
   PENDING_CHASE_STALE_CONTACT_DAYS,
   bidNeedsChase,
   bidSentWithinWindow,
+  buildPendingChaseActionWrites,
   buildPendingChaseRollup,
   groupPendingChaseByBuilder,
   nextPendingChaseBidIndex,
+  pendingChaseActionNote,
   pendingChaseDaysBetween,
   type PendingChaseBid,
 } from './bidPendingChase'
@@ -162,5 +164,52 @@ describe('buildPendingChaseRollup', () => {
     const rollup = buildPendingChaseRollup([bid({ id: 'nan', value: Number.NaN })], NOW)
     expect(rollup.pendingValue).toBe(0)
     expect(rollup.needsCount).toBe(1)
+  })
+})
+
+describe('pendingChaseActionNote', () => {
+  it('labels contact-only actions and appends the note', () => {
+    expect(pendingChaseActionNote('left_message', '', null)).toBe('Chased — left a message / no answer')
+    expect(pendingChaseActionNote('bid_tab', 'numbers look close', null)).toBe('Bid tab received. numbers look close')
+    expect(pendingChaseActionNote('still_pending', 'decision next week', null)).toBe('Still pending. decision next week')
+    expect(pendingChaseActionNote('rebid', '', null)).toBe('Rebid / RFQ requested')
+  })
+
+  it('folds category + note into the lost label like the call session', () => {
+    expect(pendingChaseActionNote('lost', '6 grand over', 'price')).toBe('Marked lost on call — Price too high: 6 grand over')
+    expect(pendingChaseActionNote('lost', '', 'gc_lost')).toBe('Marked lost on call — GC lost the project')
+  })
+})
+
+describe('buildPendingChaseActionWrites', () => {
+  const base = { bidId: 'bid-1', userId: 'user-1', nowIso: NOW }
+
+  it('contact-only actions write an entry + last_contact and no outcome', () => {
+    const w = buildPendingChaseActionWrites({ ...base, action: 'bid_tab', note: '', lossCategory: null })
+    expect(w.entry).toEqual({
+      bid_id: 'bid-1',
+      contact_method: 'Phone',
+      notes: 'Bid tab received',
+      occurred_at: NOW,
+      created_by: 'user-1',
+    })
+    expect(w.lastContact).toBe(NOW)
+    expect(w.outcomeUpdate).toBeNull()
+  })
+
+  it('won writes the outcome and clears stale loss fields', () => {
+    const w = buildPendingChaseActionWrites({ ...base, action: 'won', note: '', lossCategory: null })
+    expect(w.outcomeUpdate).toEqual({ outcome: 'won', loss_reason: null, loss_category: null })
+  })
+
+  it('lost carries the category and the note as the loss reason', () => {
+    const w = buildPendingChaseActionWrites({ ...base, action: 'lost', note: ' 6 grand over ', lossCategory: 'price' })
+    expect(w.outcomeUpdate).toEqual({ outcome: 'lost', loss_reason: '6 grand over', loss_category: 'price' })
+    expect(w.entry.notes).toBe('Marked lost on call — Price too high: 6 grand over')
+  })
+
+  it('lost with no note stores a null loss_reason', () => {
+    const w = buildPendingChaseActionWrites({ ...base, action: 'lost', note: '', lossCategory: 'no_answer' })
+    expect(w.outcomeUpdate?.loss_reason).toBeNull()
   })
 })
