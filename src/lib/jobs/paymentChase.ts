@@ -316,6 +316,73 @@ function addDays(ymd: string, days: number): string | null {
   return d.toISOString().slice(0, 10)
 }
 
+/**
+ * Promise builder (owner-approved "Promise Date Builder" mockup, v2.2044):
+ * resolve the date(s) a promise lands on, three ways —
+ *   'date'   → the exact date the customer named, same for every bill;
+ *   'today'  → today + N days ("give us two weeks");
+ *   'billed' → each bill's OWN bill date + N days ("we pay net 45") — dates
+ *              diverge per bill, honestly. A bill with no bill date falls
+ *              back to today + N rather than silently dropping.
+ * The store keeps ONE promise per job, so when two bills on the same job
+ * resolve differently the job takes the EARLIEST date (first money landing
+ * is when the job stops being late — the conservative read).
+ */
+export type PromiseDateMode = 'date' | 'today' | 'billed'
+
+export type ResolvedPromiseDates = {
+  /** invoiceId → resolved ymd (what the bill rows preview). */
+  byInvoice: Map<string, string>
+  /** jobId → the ymd actually written (earliest of the job's bills). */
+  byJob: Map<string, string>
+  /** Distinct resolved ymds, ascending — one entry = every bill agrees. */
+  uniqueYmds: string[]
+}
+
+export function resolvePromiseDates(args: {
+  mode: PromiseDateMode
+  /** mode 'date': the picked YYYY-MM-DD. */
+  ymd?: string | null
+  /** modes 'today' / 'billed': the day count (positive integer). */
+  days?: number | null
+  bills: Array<Pick<ChaseBill, 'invoiceId' | 'jobId' | 'billedYmd'>>
+  todayYmd: string
+}): ResolvedPromiseDates | null {
+  const { mode, bills, todayYmd } = args
+  if (bills.length === 0) return null
+  const byInvoice = new Map<string, string>()
+  if (mode === 'date') {
+    const ymd = (args.ymd ?? '').trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+    for (const b of bills) byInvoice.set(b.invoiceId, ymd)
+  } else {
+    const days = args.days
+    if (days == null || !Number.isFinite(days) || days <= 0) return null
+    const n = Math.round(days)
+    for (const b of bills) {
+      const base = mode === 'billed' && b.billedYmd ? b.billedYmd : todayYmd
+      const resolved = addDays(base, n)
+      if (!resolved) return null
+      byInvoice.set(b.invoiceId, resolved)
+    }
+  }
+  const byJob = new Map<string, string>()
+  for (const b of bills) {
+    const ymd = byInvoice.get(b.invoiceId)
+    if (!ymd) continue
+    const prev = byJob.get(b.jobId)
+    if (!prev || ymd < prev) byJob.set(b.jobId, ymd)
+  }
+  const uniqueYmds = [...new Set(byInvoice.values())].sort()
+  return { byInvoice, byJob, uniqueYmds }
+}
+
+/** Quick-pick day counts: plain waits for 'today', net terms for 'billed'. */
+export const PROMISE_DAY_CHIPS: Record<'today' | 'billed', readonly number[]> = {
+  today: [7, 14, 21, 30],
+  billed: [15, 30, 45, 60],
+}
+
 export type PaymentChaseSummary = {
   dueCustomers: number
   dueDollars: number

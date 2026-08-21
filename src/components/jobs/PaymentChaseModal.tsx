@@ -8,11 +8,14 @@ import { formatYmdMonthDay, type PaySpeedData } from '../../lib/jobs/billedExpec
 import {
   CHASE_COLLECTIONS_SUGGESTION_THRESHOLD,
   DEFAULT_SNOOZE_DAYS,
+  PROMISE_DAY_CHIPS,
+  resolvePromiseDates,
   TOUCH_QUIET_DAYS,
   type ChaseBill,
   type ChaseCustomer,
   type ChaseDispute,
   type PaymentChaseQueue,
+  type PromiseDateMode,
 } from '../../lib/jobs/paymentChase'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
@@ -34,15 +37,6 @@ type SessionOutcome = {
   kind: 'promised' | 'cant_reach' | 'dispute' | 'note' | 'skipped'
   detail: string
   dollars: number
-}
-
-function fridayOnOrAfter(ymd: string, weeksAhead: 0 | 1): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
-  if (!m) return null
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12))
-  const toFriday = (5 - d.getUTCDay() + 7) % 7 || 7 // always a FUTURE Friday
-  d.setUTCDate(d.getUTCDate() + toFriday + weeksAhead * 7)
-  return d.toISOString().slice(0, 10)
 }
 
 const chipBtn: CSSProperties = {
@@ -95,6 +89,11 @@ export default function PaymentChaseModal({
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [note, setNote] = useState('')
   const [customDate, setCustomDate] = useState('')
+  // Promise builder (v2.2044): how the customer said the date. Mode is
+  // sticky across the session (a net-terms morning stays in net terms);
+  // the day count and picked date clear per customer.
+  const [promiseMode, setPromiseMode] = useState<PromiseDateMode>('today')
+  const [promiseDays, setPromiseDays] = useState<number | null>(null)
   const [snoozeDays, setSnoozeDays] = useState(DEFAULT_SNOOZE_DAYS)
   const [saving, setSaving] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -149,6 +148,7 @@ export default function PaymentChaseModal({
     setDoneIds((prev) => new Set([...prev, fromCustomerId]))
     setNote('')
     setCustomDate('')
+    setPromiseDays(null)
     setSelectedId(null)
     setSelectedDispute(null)
     const next = due.find((c) => c.customerId !== fromCustomerId && !doneIds.has(c.customerId))
@@ -172,17 +172,27 @@ export default function PaymentChaseModal({
     if (error) throw error
   }
 
-  const applyPromise = async (ymd: string) => {
+  const applyPromise = async () => {
     if (!current || saving) return
     const bills = current.bills.filter((b) => checked[b.invoiceId] && !billState[b.invoiceId])
     if (bills.length === 0) {
       showToast('Check at least one bill for the promise.', 'error')
       return
     }
+    const resolved = resolvePromiseDates({
+      mode: promiseMode,
+      ymd: customDate,
+      days: promiseDays,
+      bills,
+      todayYmd,
+    })
+    if (!resolved) {
+      showToast(promiseMode === 'date' ? 'Pick the date they named first.' : 'Tap a chip or type the days first.', 'error')
+      return
+    }
     setSaving(true)
     try {
-      const jobIds = [...new Set(bills.map((b) => b.jobId))]
-      for (const jobId of jobIds) {
+      for (const [jobId, ymd] of resolved.byJob) {
         const { error } = await supabase.rpc('set_job_promised_pay_date' as never, {
           p_job_id: jobId,
           p_date: ymd,
@@ -190,20 +200,28 @@ export default function PaymentChaseModal({
         if (error) throw error
         await recordTouch(current.customerId, jobId, 'promised', { promisedYmd: ymd })
       }
-      const label = `✓ promised ${formatYmdMonthDay(ymd)}`
       setBillState((prev) => {
         const next = { ...prev }
-        for (const b of bills) next[b.invoiceId] = label
+        for (const b of bills) {
+          const ymd = resolved.byInvoice.get(b.invoiceId)
+          if (ymd) next[b.invoiceId] = `✓ promised ${formatYmdMonthDay(ymd)}`
+        }
         return next
       })
       const dollars = bills.reduce((s, b) => s + b.open, 0)
+      const first = resolved.uniqueYmds[0]
+      const last = resolved.uniqueYmds[resolved.uniqueYmds.length - 1]
+      const dateWord =
+        resolved.uniqueYmds.length === 1 && first
+          ? formatYmdMonthDay(first)
+          : `${first ? formatYmdMonthDay(first) : ''} – ${last ? formatYmdMonthDay(last) : ''}${promiseMode === 'billed' && promiseDays ? ` (billed + ${promiseDays}d)` : ''}`
       setOutcomes((prev) => [
         ...prev,
         {
           customerId: current.customerId,
           name: current.name,
           kind: 'promised',
-          detail: `${bills.length} bill${bills.length === 1 ? '' : 's'} promised ${formatYmdMonthDay(ymd)}${note.trim() ? ` · "${note.trim()}"` : ''}`,
+          detail: `${bills.length} bill${bills.length === 1 ? '' : 's'} promised ${dateWord}${note.trim() ? ` · "${note.trim()}"` : ''}`,
           dollars,
         },
       ])
@@ -211,7 +229,11 @@ export default function PaymentChaseModal({
       showToast(`Promise marked — ${formatUsdNoCents(dollars)} now has a date.`, 'success')
       const remaining = current.bills.filter((b) => !billState[b.invoiceId] && !bills.some((x) => x.invoiceId === b.invoiceId))
       if (remaining.length === 0) advance(current.customerId)
-      else setNote('')
+      else {
+        setNote('')
+        setPromiseDays(null)
+        setCustomDate('')
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not mark the promise'), 'error')
     } finally {
@@ -332,9 +354,77 @@ export default function PaymentChaseModal({
     advance(current.customerId)
   }
 
-  const friday0 = fridayOnOrAfter(todayYmd, 0)
-  const friday1 = fridayOnOrAfter(todayYmd, 1)
   const promisedDollars = outcomes.filter((o) => o.kind === 'promised').reduce((s, o) => s + o.dollars, 0)
+  // Live preview of where the promise would land (per bill) — the confidence
+  // check before committing. Null until the input resolves.
+  const pendingBills = current ? current.bills.filter((b) => checked[b.invoiceId] && !billState[b.invoiceId]) : []
+  const promisePreview =
+    current && pendingBills.length > 0
+      ? resolvePromiseDates({ mode: promiseMode, ymd: customDate, days: promiseDays, bills: pendingBills, todayYmd })
+      : null
+  const previewButtonLabel = (() => {
+    if (!promisePreview) return 'Mark promise'
+    const n = pendingBills.length
+    const u = promisePreview.uniqueYmds
+    const first = u[0]
+    const last = u[u.length - 1]
+    if (u.length === 1 && first) return `Mark ${n === 1 ? 'promise' : `${n} promises`} → ${formatYmdMonthDay(first)}`
+    return `Mark ${n} promises · ${first ? formatYmdMonthDay(first) : ''} – ${last ? formatYmdMonthDay(last) : ''}`
+  })()
+
+  // Phone-in-hand keys (v2.2044): 1–4 tap the active mode's chips, Enter
+  // marks the promise once it resolves, C can't-reach, → skips. Typing in
+  // any field is left alone (Enter still applies from the date/number
+  // inputs, but never from the note box — notes ride the buttons).
+  useEffect(() => {
+    if (!snapshot || finished || !current || currentDispute) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      const tag = t?.tagName
+      const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+      const inNoteBox = inField && (t as HTMLInputElement).placeholder?.startsWith('✎')
+      if (e.key === 'Enter' && !inNoteBox) {
+        if (promisePreview && !saving) {
+          e.preventDefault()
+          void applyPromise()
+        }
+        return
+      }
+      if (inField) return
+      if (promiseMode !== 'date' && /^[1-4]$/.test(e.key)) {
+        const n = PROMISE_DAY_CHIPS[promiseMode][Number(e.key) - 1]
+        if (n != null) {
+          e.preventDefault()
+          setPromiseDays((prev) => (prev === n ? null : n))
+        }
+        return
+      }
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault()
+        void applyCantReach()
+        return
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        skip()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
+  const promiseModePill = (m: PromiseDateMode): CSSProperties => ({
+    border: 'none',
+    borderLeft: m === 'today' || m === 'billed' ? '1px solid var(--border-strong)' : 'none',
+    background: promiseMode === m ? 'var(--bg-green-tint)' : 'var(--surface)',
+    color: promiseMode === m ? 'var(--text-green-700)' : 'var(--text-muted)',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    padding: '0.3rem 0.8rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  })
 
   const railCustomer = (c: ChaseCustomer, kind: 'due' | 'waiting') => {
     const isDone = doneIds.has(c.customerId)
@@ -637,7 +727,7 @@ export default function PaymentChaseModal({
                         key={b.invoiceId}
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: 'auto 1fr auto',
+                          gridTemplateColumns: 'auto 1fr auto auto',
                           gap: '0.55rem',
                           padding: '0.45rem 0.6rem',
                           fontSize: '0.78rem',
@@ -689,6 +779,33 @@ export default function PaymentChaseModal({
                             </span>
                           ) : null}
                         </span>
+                        {/* Live landing chip: where the pending promise puts THIS
+                            bill. A landing already in the past goes amber — net
+                            terms they've already blown; recording it is honest,
+                            and the bill re-queues after the 7-day grace. */}
+                        {(() => {
+                          const landYmd = promisePreview?.byInvoice.get(b.invoiceId)
+                          if (!landYmd) return <span />
+                          const past = landYmd < todayYmd
+                          return (
+                            <span
+                              title={past ? 'This lands in the past — these terms are already blown; the bill returns to the queue after the grace period' : undefined}
+                              style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                color: past ? 'var(--text-amber-800)' : 'var(--text-green-700)',
+                                background: past ? 'var(--bg-amber-tint)' : 'var(--bg-green-tint)',
+                                borderRadius: 6,
+                                padding: '0.1rem 0.4rem',
+                                whiteSpace: 'nowrap',
+                                alignSelf: 'center',
+                              }}
+                            >
+                              → {formatYmdMonthDay(landYmd)}
+                              {past ? ' · past' : ''}
+                            </span>
+                          )
+                        })()}
                         <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{formatUsdNoCents(b.open)}</span>
                       </label>
                     ))}
@@ -724,46 +841,107 @@ export default function PaymentChaseModal({
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-700)', width: 108, flexShrink: 0 }}>They gave a date</span>
-                      {friday0 ? (
+                    {/* Promise builder (v2.2044): three ways to say a date —
+                        the exact date, N days from today, or N days after
+                        each bill went out (net terms; dates diverge per bill,
+                        previewed live as green landing chips on the bill rows). */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-700)', width: 108, flexShrink: 0 }}>They gave a date</span>
+                        <span
+                          role="group"
+                          aria-label="How they said it"
+                          style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 9999, overflow: 'hidden' }}
+                        >
+                          <button type="button" aria-pressed={promiseMode === 'date'} onClick={() => setPromiseMode('date')} style={promiseModePill('date')}>
+                            📅 A date
+                          </button>
+                          <button type="button" aria-pressed={promiseMode === 'today'} onClick={() => setPromiseMode('today')} style={promiseModePill('today')}>
+                            In N days
+                          </button>
+                          <button type="button" aria-pressed={promiseMode === 'billed'} onClick={() => setPromiseMode('billed')} style={promiseModePill('billed')}>
+                            N days after billing
+                          </button>
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', paddingLeft: 108 + 8 }}>
+                        {promiseMode === 'date' ? (
+                          <>
+                            <input
+                              type="date"
+                              value={customDate}
+                              onChange={(e) => setCustomDate(e.target.value)}
+                              aria-label="The date they named"
+                              style={{ height: 28, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', fontSize: '0.74rem', padding: '0 0.3rem', fontFamily: 'inherit' }}
+                            />
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>the same date lands on every checked bill</span>
+                          </>
+                        ) : (
+                          <>
+                            {PROMISE_DAY_CHIPS[promiseMode].map((n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                aria-pressed={promiseDays === n}
+                                onClick={() => setPromiseDays((prev) => (prev === n ? null : n))}
+                                style={{
+                                  ...chipBtn,
+                                  ...(promiseDays === n
+                                    ? { background: 'var(--bg-green-tint)', borderColor: 'var(--text-green-700)', color: 'var(--text-green-700)' }
+                                    : {}),
+                                }}
+                              >
+                                {promiseMode === 'billed' ? `net ${n}` : `${n}d`}
+                              </button>
+                            ))}
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 9999, padding: '0.1rem 0.55rem 0.1rem 0.55rem', background: 'var(--surface)' }}>
+                              <input
+                                type="number"
+                                min={1}
+                                max={120}
+                                value={promiseDays ?? ''}
+                                placeholder="—"
+                                onChange={(e) => {
+                                  const v = Number(e.target.value)
+                                  setPromiseDays(Number.isFinite(v) && v > 0 ? Math.round(v) : null)
+                                }}
+                                aria-label={promiseMode === 'billed' ? 'Days after each bill went out' : 'Days from today'}
+                                style={{ width: 44, border: 'none', background: 'none', color: 'var(--text)', font: 'inherit', fontWeight: 700, fontSize: '0.78rem', textAlign: 'center', outline: 'none' }}
+                              />
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                {promiseMode === 'billed' ? 'days after each bill went out' : 'days from today'}
+                              </span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', paddingLeft: 108 + 8 }}>
                         <button
                           type="button"
-                          disabled={saving}
-                          onClick={() => void applyPromise(friday0)}
-                          style={{ ...chipBtn, background: 'var(--bg-green-tint)', borderColor: 'var(--text-green-700)', color: 'var(--text-green-700)' }}
+                          disabled={saving || !promisePreview}
+                          onClick={() => void applyPromise()}
+                          style={{
+                            ...chipBtn,
+                            fontWeight: 700,
+                            ...(promisePreview
+                              ? { background: 'var(--text-green-700)', borderColor: 'var(--text-green-700)', color: 'var(--surface)' }
+                              : { background: 'var(--bg-green-tint)', borderColor: 'var(--border-strong)', color: 'var(--text-green-700)', opacity: 0.55 }),
+                          }}
                         >
-                          Fri {formatYmdMonthDay(friday0)}
+                          {previewButtonLabel}
                         </button>
-                      ) : null}
-                      {friday1 ? (
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => void applyPromise(friday1)}
-                          style={{ ...chipBtn, background: 'var(--bg-green-tint)', borderColor: 'var(--text-green-700)', color: 'var(--text-green-700)' }}
-                        >
-                          Fri {formatYmdMonthDay(friday1)}
-                        </button>
-                      ) : null}
-                      <input
-                        type="date"
-                        value={customDate}
-                        onChange={(e) => setCustomDate(e.target.value)}
-                        aria-label="Pick a promised date"
-                        style={{ height: 28, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', fontSize: '0.74rem', padding: '0 0.3rem', fontFamily: 'inherit' }}
-                      />
-                      <button
-                        type="button"
-                        disabled={saving || !customDate}
-                        onClick={() => void applyPromise(customDate)}
-                        style={{ ...chipBtn, opacity: customDate ? 1 : 0.5 }}
-                      >
-                        Use date
-                      </button>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        → applies to the {current.bills.filter((b) => checked[b.invoiceId] && !billState[b.invoiceId]).length} checked
-                      </span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {promisePreview
+                            ? promisePreview.uniqueYmds.length > 1
+                              ? 'each bill lands on its own date — net terms, honestly kept'
+                              : `applies to the ${pendingBills.length} checked`
+                            : pendingBills.length === 0
+                              ? 'check at least one bill'
+                              : promiseMode === 'date'
+                                ? 'pick the date they named'
+                                : 'tap a chip or type the days'}
+                        </span>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-700)', width: 108, flexShrink: 0 }}>They push back</span>
@@ -828,7 +1006,10 @@ export default function PaymentChaseModal({
 
         {snapshot && !finished && current && !currentDispute ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 1.1rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            <span>every outcome logs who called and what happened — the wrap-up shows the session&#8217;s receipts</span>
+            <span>
+              keys: 1&#8211;4 tap a chip · Enter marks the promise · C can&#8217;t reach · &#8594; skip — every outcome logs who
+              called and what happened
+            </span>
             <button type="button" onClick={skip} style={{ ...chipBtn, marginLeft: 'auto' }}>
               Skip →
             </button>
