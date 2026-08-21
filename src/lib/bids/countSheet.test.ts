@@ -45,4 +45,10 @@ describe('findDuplicateFixture', () => {
     expect(findDuplicateFixture(rows, 'WH')).toBeNull()
     expect(findDuplicateFixture(rows, '')).toBeNull()
   })
+
+  it('excludes the row being renamed, but still catches other rows', () => {
+    const rows = [row('a', 'WC', 6, null), row('b', 'Lav', 2, null)]
+    expect(findDuplicateFixture(rows, 'wc', 'a')).toBeNull()
+    expect(findDuplicateFixture(rows, 'lav', 'a')?.id).toBe('b')
+  })
 })
