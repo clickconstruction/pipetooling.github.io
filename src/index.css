@@ -2016,3 +2016,19 @@ body.my-time-boundary-dragging {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* React Flow canvas controls (roadmap Map): the library ships white buttons
+   with no dark variant, so the zoom/fit/lock icons vanished in dark mode —
+   restyle through its own theming variables (plain rules lose to the
+   library's variable-driven declarations), fed from our theme tokens. */
+.react-flow {
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--bg-muted);
+  --xy-controls-button-color: var(--text-700);
+  --xy-controls-button-color-hover: var(--text-strong);
+  --xy-controls-button-border-color: var(--border-strong);
+  --xy-controls-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+}

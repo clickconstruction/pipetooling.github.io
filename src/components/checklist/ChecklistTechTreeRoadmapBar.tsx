@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Database } from '../../types/database'
 
 type RoadmapRow = Database['public']['Tables']['checklist_tech_tree_roadmaps']['Row']
@@ -10,6 +11,8 @@ type Props = {
   onCreateRoadmap: () => void
   canOpenMembers: boolean
   onOpenMembers: () => void
+  /** Extra controls rendered on the same row after Members (Map/Plan toggle, editor actions); wraps on narrow screens. */
+  trailing?: ReactNode
 }
 
 export function ChecklistTechTreeRoadmapBar({
@@ -20,6 +23,7 @@ export function ChecklistTechTreeRoadmapBar({
   onCreateRoadmap,
   canOpenMembers,
   onOpenMembers,
+  trailing,
 }: Props) {
   return (
     <div
@@ -89,6 +93,7 @@ export function ChecklistTechTreeRoadmapBar({
           Members
         </button>
       ) : null}
+      {trailing}
     </div>
   )
 }
