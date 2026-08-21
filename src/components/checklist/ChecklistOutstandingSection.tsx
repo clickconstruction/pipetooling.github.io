@@ -21,6 +21,7 @@ export function ChecklistOutstandingSection({
   activityFor,
   onToggleComplete,
   onPosted,
+  onCompleteForActivity,
   setError,
 }: {
   instances: LedgerInstance[]
@@ -31,6 +32,8 @@ export function ChecklistOutstandingSection({
   activityFor: (inst: LedgerInstance) => { item: ChecklistItemActivityItem; showInstanceDays: boolean }
   onToggleComplete: (inst: LedgerInstance) => void
   onPosted?: (instanceId: string, body: string) => void
+  /** ✓ Complete / ✓ Post & complete in the row's activity panel (v2.2039). */
+  onCompleteForActivity?: (inst: LedgerInstance) => Promise<boolean>
   setError: (s: string | null) => void
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -123,6 +126,7 @@ export function ChecklistOutstandingSection({
                     setError={setError}
                     commentInstanceId={inst.id}
                     onPosted={onPosted}
+                    onComplete={onCompleteForActivity ? () => onCompleteForActivity(inst) : undefined}
                   />
                 </div>
               ) : null}

@@ -37,6 +37,8 @@ type ChecklistInstanceCardProps = {
     showInstanceDays: boolean
     setError: (s: string | null) => void
     onPosted?: (instanceId: string, body: string) => void
+    /** ✓ Complete / ✓ Post & complete in the thread composer (v2.2039). */
+    onComplete?: (inst: { id: string; scheduledDate: string }) => Promise<boolean>
   }
 }
 
@@ -310,6 +312,7 @@ export function ChecklistInstanceCard({
             setError={fullHistory.setError}
             commentInstanceId={instance.id}
             onPosted={fullHistory.onPosted}
+            onComplete={fullHistory.onComplete}
           />
         </div>
       ) : null}
