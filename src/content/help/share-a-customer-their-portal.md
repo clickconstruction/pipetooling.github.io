@@ -12,8 +12,13 @@ Click the **globe icon** next to any customer's name — on the **Customers** pa
 
 - {{button:blue|Copy link}} — paste it into a text or email; the link is the key, no password needed.
 - {{button:outline|Preview as customer}} — opens the page exactly as they see it.
+- A **live preview** right in the modal — a scaled-down view of the actual page this link opens, so you can sanity-check what they'll see before sending. It follows the **As customer / As GC** toggle.
+
+Behind the {{icon:gear}} **Advanced** button:
+
 - {{button:outline|Rotate}} — makes a new link and kills the old one immediately (use if a link leaked or an email went to the wrong person).
-- {{button:outline|Turn off}} — revokes the link with no replacement.
+- {{button:outline|Turn off}} — revokes the link with no replacement. A turned-off customer's globe turns **red** everywhere, and the modal offers {{button:blue|Turn portal back on}} when you're ready (that makes a brand-new link).
+- **Link history** — when each link was created, rotated, or turned off, and by whom.
 
 GCs get a GC-flavored view (bills across all their jobs) — the **As GC** toggle in the modal manages that link separately.
 
