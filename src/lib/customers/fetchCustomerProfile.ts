@@ -28,7 +28,7 @@ export type CustomerProfileData = {
     }
   >
   projects: Array<{ id: string; name: string | null; status: string | null; attention: ProjectAttention | null }>
-  bids: Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null }>
+  bids: Array<import('./customerProfileRails').ProfileBid>
   estimates: Array<{
     id: string
     estimate_number: number
@@ -73,7 +73,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
       .order('created_at', { ascending: false }),
     supabase
       .from('bids')
-      .select('id, bid_number, project_name, outcome')
+      .select('id, bid_number, project_name, outcome, address, bid_value, agreed_value, bid_date_sent, bid_due_date')
       .eq('customer_id', customerId)
       .order('created_at', { ascending: false }),
     supabase

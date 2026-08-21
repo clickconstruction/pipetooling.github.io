@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -12,6 +12,13 @@ import { bidOutcomeDotColor } from '../../lib/bidOutcomeDotColor'
 import { estimateStatusDotColor } from '../../lib/estimateStatusDotColor'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { customerDaysToPay, customerMoneyStats, profileJobRowMoney, sortProfileJobsForList } from '../../lib/customers/customerProfileStats'
+import {
+  bidClock,
+  bidDisplayValue,
+  bidOutcomeSummary,
+  estimateStatusShortLabel,
+  sortProfileBids,
+} from '../../lib/customers/customerProfileRails'
 import { fetchCustomerProfile, type CustomerProfileData } from '../../lib/customers/fetchCustomerProfile'
 import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEventsForJobLedger'
 import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
@@ -22,8 +29,11 @@ import GcHardHatIcon from '../icons/GcHardHatIcon'
  * customer, opened from the Stages row customer icon (and reusable anywhere
  * via CustomerProfileModalContext). Contact band (tel:/mailto:/maps), the
  * money strip (open balance + aging chip, lifetime collected, median
- * days-to-pay), and work rails whose pills open the EXISTING surfaces
- * (Job Detail modal, workflow route, Bid Preview, estimate page).
+ * days-to-pay), and informative work LISTS (v2.2002 — owner: pills of bare
+ * numbers weren't informative): money-first jobs, projects with their current
+ * step, chase-first bids (value + address + due/sent clock), estimates with
+ * dollars. Every row opens the EXISTING surface (Job Detail modal, workflow
+ * route, Bid Preview, estimate page).
  *
  * The money strip renders for every role that can open the modal — today the
  * opener lives on the Stages board, whose viewers are exactly the office set
@@ -43,36 +53,12 @@ const capStyle: CSSProperties = {
   flexShrink: 0,
 }
 
-const pillStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  height: 24,
-  padding: '0 10px',
-  border: '1px solid var(--border-strong)',
-  borderRadius: 9999,
-  background: 'var(--bg-subtle)',
-  color: 'var(--text-link)',
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-  maxWidth: 220,
-}
-
 function Dot({ color }: { color: string }) {
   return <span aria-hidden style={{ width: 8, height: 8, borderRadius: 9999, flexShrink: 0, background: color }} />
 }
 
-function Rail({ cap, children }: { cap: string; children: ReactNode }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-      <span style={capStyle}>{cap}</span>
-      {children}
-    </div>
-  )
-}
-
 const JOBS_LIST_COLLAPSE_COUNT = 4
+const BIDS_LIST_COLLAPSE_COUNT = 3
 
 export default function CustomerProfileModal({ customerId, onClose }: { customerId: string; onClose: () => void }) {
   const navigate = useNavigate()
@@ -84,6 +70,7 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
   const [data, setData] = useState<CustomerProfileData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [jobsExpanded, setJobsExpanded] = useState(false)
+  const [bidsExpanded, setBidsExpanded] = useState(false)
   /** Recent activity across their newest jobs (v2.1985) — best-effort, loads after the profile. */
   const [activity, setActivity] = useState<Array<JobActivityEventRpcRow & { jobLabel: string }> | null>(null)
 
@@ -158,6 +145,7 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
     () => new Map(sortedJobs.map((j) => [j.id, profileJobRowMoney(j, todayYmd)])),
     [sortedJobs, todayYmd],
   )
+  const sortedBids = useMemo(() => (data ? sortProfileBids(data.bids, todayYmd) : []), [data, todayYmd])
   const visibleJobs = jobsExpanded ? sortedJobs : sortedJobs.slice(0, JOBS_LIST_COLLAPSE_COUNT)
   const hiddenJobs = sortedJobs.length - visibleJobs.length
   const hiddenOpenSum = sortedJobs.slice(visibleJobs.length).reduce((s, j) => s + (jobRowMoney.get(j.id)?.openBilled ?? 0), 0)
@@ -358,58 +346,153 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
                   </div>
                 )}
               </div>
-              <Rail cap="Projects">
-                {data.projects.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>None yet.</span>}
-                {data.projects.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      onClose()
-                      navigate(`/workflows/${p.id}`)
-                    }}
-                    title="Open workflow"
-                    style={pillStyle}
-                  >
-                    {p.attention?.current ? <Dot color="#E87600" /> : null}
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {(p.name ?? '').trim() || 'Project'}
-                      {p.attention?.current ? ` · step ${p.attention.current.position}/${p.attention.total}` : ''}
-                    </span>
-                  </button>
-                ))}
-              </Rail>
-              <Rail cap="Bids">
-                {data.bids.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>None yet.</span>}
-                {data.bids.map((b) => (
-                  <button key={b.id} type="button" onClick={() => bidPreview?.openBidPreview(b.id)} title="Open bid preview" style={pillStyle}>
-                    <Dot color={bidOutcomeDotColor(b.outcome)} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {(b.bid_number ?? '').trim() || (b.project_name ?? '').trim() || 'Bid'}
-                    </span>
-                  </button>
-                ))}
-              </Rail>
-              <Rail cap="Estimates">
-                {data.estimates.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>None yet.</span>}
-                {data.estimates.map((est) => (
-                  <button
-                    key={est.id}
-                    type="button"
-                    onClick={() => {
-                      onClose()
-                      navigate(`/estimates/${est.estimate_number}`)
-                    }}
-                    title={`Open estimate #${est.estimate_number} — ${est.status}`}
-                    style={pillStyle}
-                  >
-                    <Dot color={estimateStatusDotColor(est.status)} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {(est.title ?? '').trim() || `#${est.estimate_number}`}
-                    </span>
-                  </button>
-                ))}
-              </Rail>
+              {/* Projects: full names + current step (v2.2002) */}
+              {data.projects.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ ...capStyle, width: 'auto', marginBottom: 2 }}>Projects</div>
+                  {data.projects.map((p) => {
+                    const flag = p.attention?.flags[0]
+                    const flagText = flag
+                      ? flag.kind === 'waiting'
+                        ? `waiting on ${flag.assignee} · ${flag.days}d`
+                        : flag.kind === 'rejected'
+                          ? 'step rejected'
+                          : flag.kind === 'unassigned-current'
+                            ? 'step unassigned'
+                            : 'no schedule'
+                      : null
+                    return (
+                      <div key={p.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px', padding: '5px 2px', borderTop: '1px solid var(--border-job-row)', fontSize: '0.8125rem' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <Dot color={p.attention?.current ? '#E87600' : 'var(--border-400)'} />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose()
+                              navigate(`/workflows/${p.id}`)
+                            }}
+                            title="Open workflow"
+                            style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '16rem' }}
+                          >
+                            {(p.name ?? '').trim() || 'Project'}
+                          </button>
+                        </span>
+                        {p.attention?.current && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            step {p.attention.current.position}/{p.attention.total} · {p.attention.current.name}
+                            {p.attention.current.assignee ? ` · ${p.attention.current.assignee}` : ''}
+                          </span>
+                        )}
+                        {flagText && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>{flagText}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Bids: outcome summary + chase-first two-line rows (v2.2002) */}
+              {data.bids.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                    <span style={capStyle}>Bids</span>
+                    {(() => {
+                      const s = bidOutcomeSummary(data.bids)
+                      return (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {s.total} total · <span style={{ color: 'var(--text-green-600)', fontWeight: 600 }}>{s.won} won</span> ·{' '}
+                          <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>{s.lost} lost</span> ·{' '}
+                          <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{s.undecided} undecided</span>
+                        </span>
+                      )
+                    })()}
+                  </div>
+                  {(bidsExpanded ? sortedBids : sortedBids.slice(0, BIDS_LIST_COLLAPSE_COUNT)).map((b) => {
+                    const clock = bidClock(b, todayYmd)
+                    const value = bidDisplayValue(b)
+                    const clockColor =
+                      clock.tone === 'due' || clock.tone === 'overdue'
+                        ? 'var(--text-amber-800)'
+                        : clock.tone === 'won'
+                          ? 'var(--text-green-600)'
+                          : clock.tone === 'lost'
+                            ? 'var(--text-red-600)'
+                            : 'var(--text-muted)'
+                    return (
+                      <div key={b.id} style={{ padding: '5px 2px', borderTop: '1px solid var(--border-job-row)', fontSize: '0.8125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <Dot color={bidOutcomeDotColor(b.outcome)} />
+                          <button
+                            type="button"
+                            onClick={() => bidPreview?.openBidPreview(b.id)}
+                            title="Open bid preview"
+                            style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: '2px', whiteSpace: 'nowrap' }}
+                          >
+                            {(b.bid_number ?? '').trim() || 'Bid'}
+                          </button>
+                          <span style={{ color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {(b.project_name ?? '').trim()}
+                          </span>
+                          <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontWeight: clock.tone === 'won' ? 600 : 400, color: clock.tone === 'won' ? 'var(--text-green-600)' : 'var(--text-strong)', whiteSpace: 'nowrap' }}>
+                            {value != null ? money(value) : '—'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, paddingLeft: 18, fontSize: '0.7rem', color: 'var(--text-faint)', minWidth: 0 }}>
+                          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(b.address ?? '').trim()}</span>
+                          <span style={{ marginLeft: 'auto', color: clockColor, fontWeight: clock.tone === 'due' || clock.tone === 'overdue' ? 600 : 400, whiteSpace: 'nowrap' }}>
+                            {clock.text}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {!bidsExpanded && sortedBids.length > BIDS_LIST_COLLAPSE_COUNT && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 2px', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span style={{ fontStyle: 'italic' }}>+ {sortedBids.length - BIDS_LIST_COLLAPSE_COUNT} more</span>
+                      <button
+                        type="button"
+                        onClick={() => setBidsExpanded(true)}
+                        style={{ marginLeft: 'auto', padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                      >
+                        show all
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Estimates: number, title, status, dollars (v2.2002) */}
+              {data.estimates.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ ...capStyle, width: 'auto', marginBottom: 2 }}>Estimates</div>
+                  {data.estimates.map((est) => (
+                    <div key={est.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px', padding: '5px 2px', borderTop: '1px solid var(--border-job-row)', fontSize: '0.8125rem' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <Dot color={estimateStatusDotColor(est.status)} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose()
+                            navigate(`/estimates/${est.estimate_number}`)
+                          }}
+                          title={`Open estimate #${est.estimate_number}`}
+                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: '2px', whiteSpace: 'nowrap' }}
+                        >
+                          #{est.estimate_number}
+                        </button>
+                        <span style={{ color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '13rem' }}>
+                          {(est.title ?? '').trim()}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: est.status === 'customer_accepted' ? 'var(--text-green-600)' : est.status === 'declined' ? 'var(--text-red-600)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {estimateStatusShortLabel(est.status)}
+                      </span>
+                      <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {est.total_cents > 0 ? money(est.total_cents / 100) : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* recent activity across their newest jobs (v2.1985) */}
