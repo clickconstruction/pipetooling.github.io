@@ -913,6 +913,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
+  /** `?gcReview=1` deep link (v2.1984): the Dashboard Wednesday nudge opens GC Review directly. */
+  const gcReviewParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (gcReviewParamConsumedRef.current) return
+    if (searchParams.get('gcReview') === '1') {
+      gcReviewParamConsumedRef.current = true
+      setGcReviewModalOpen(true)
+      const p = new URLSearchParams(searchParams)
+      p.delete('gcReview')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)

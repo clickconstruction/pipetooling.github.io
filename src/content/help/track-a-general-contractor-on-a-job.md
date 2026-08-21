@@ -40,6 +40,8 @@ Every week (due Wednesday), the office certifies each GC's group before sending 
 3. When every bill is checked, {{button:outline|Certify}} records the attestation (who, when, exactly what), and {{button:blue|Certify & send…}} goes straight into the Email dialog so the GC gets their statement in the same motion.
 
 The group header then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — and if a bill lands or a payment posts **after** sign-off, it flips to {{chip:yellow|Changed since certified · +$2,700}} with a Re-certify button, so a sent statement never silently drifts from what was reviewed. Certifications reset each week.
+
+**The Dashboard reminds you**: starting Wednesday, office staff see an amber card — "GC review is due today · 3 of 9 GCs certified" — that opens GC Review in one click. It turns green for the rest of Wednesday once every GC is certified and sent, and stays away until the next week's ritual.
 - Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Email…**, **Copy**, and **Print**.
 
 ## Send a statement to a GC

@@ -11,6 +11,7 @@ import {
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import DashboardArBankUnallocatedBanner from '../DashboardArBankUnallocatedBanner'
+import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
 import DashboardTallyStaleBanner from '../DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../DashboardTallyStaleStaffBanner'
 import DashboardLostBidsMissingReasonBanner from '../DashboardLostBidsMissingReasonBanner'
@@ -482,6 +483,10 @@ export function DashboardPinnedQuickRow({
       {/* Job Follow-Up Mode (v2.1720): office roles only; self-gates to nothing when the queue is empty. */}
       {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardJobFollowupsBanner />
+      )}
+      {/* Wednesday GC certification (v2.1984): office roles; self-gates to nothing off-days or when done. */}
+      {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
+        <DashboardGcReviewWeeklyBanner />
       )}
       {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardTallyStaleStaffBanner
