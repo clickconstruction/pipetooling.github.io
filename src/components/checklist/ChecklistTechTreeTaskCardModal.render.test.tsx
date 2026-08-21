@@ -102,12 +102,13 @@ describe('ChecklistTechTreeTaskCardModal', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('add posts to pig pin', []))
   })
 
-  it('editor: inline title edit saves on Enter with assignees preserved', async () => {
+  it('editor: inline title edit saves on submit (Enter) with assignees preserved', async () => {
     const { onSave } = renderModal({ canEditStructure: true })
     fireEvent.click(screen.getByLabelText('Rename task'))
     const input = screen.getByLabelText('Task title') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'add posts and a gate' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
+    // Enter in the input triggers the browser's implicit form submission
+    fireEvent.submit(input.closest('form')!)
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('add posts and a gate', ['u-robert']))
   })
 
