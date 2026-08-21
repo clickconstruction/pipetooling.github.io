@@ -26,6 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history: the content-staleness check (v2.1974) compares each
+          # function dir's last commit date to its deployed timestamp — a
+          # shallow clone would silently skip it (git log finds nothing).
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
