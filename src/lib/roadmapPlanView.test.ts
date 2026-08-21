@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { goalMilestones, planHeaderStats, planNowStages, planUpNextStages, type PlanTask } from './roadmapPlanView'
+import { goalMilestones, planFocusRows, planHeaderStats, planNowStages, planUpNextStages, type PlanTask } from './roadmapPlanView'
 import { computeCompleteGroupIdsWithMilestones, computeUnlockedGroupIds } from './checklistTechTreeGraph'
 
 const t = (id: string, group: string, done: boolean, assignees: string[] = []): PlanTask => ({
@@ -59,6 +59,28 @@ describe('planNowStages', () => {
     const rows = planNowStages({ groups, tasksByGroup, unlockedIds, completeIds, edges })
     expect(rows.some((r) => r.groupId === 'final')).toBe(false)
     expect(rows.some((r) => r.groupId === 'goal')).toBe(false)
+  })
+})
+
+describe('planFocusRows', () => {
+  const nowStages = planNowStages({ groups, tasksByGroup, unlockedIds, completeIds, edges })
+  it('unstaffed lens keeps only open unassigned tasks and drops empty stages', () => {
+    const { rows, hiddenStages, taskCount } = planFocusRows({ nowStages, tasksByGroup, focus: 'unstaffed' })
+    // doing1: 'b' open unassigned; doing2: 'c' is open but assigned -> stage hidden
+    expect(rows.map((r) => r.groupId)).toEqual(['doing1'])
+    expect(rows[0]!.tasks.map((t) => t.id)).toEqual(['b'])
+    expect(hiddenStages).toBe(1)
+    expect(taskCount).toBe(1)
+  })
+  it('assigned lens is the mirror', () => {
+    const { rows, taskCount } = planFocusRows({ nowStages, tasksByGroup, focus: 'assigned' })
+    expect(rows.map((r) => r.groupId)).toEqual(['doing2'])
+    expect(rows[0]!.tasks.map((t) => t.id)).toEqual(['c'])
+    expect(taskCount).toBe(1)
+  })
+  it('done tasks never survive a lens', () => {
+    const { rows } = planFocusRows({ nowStages, tasksByGroup, focus: 'assigned' })
+    expect(rows.flatMap((r) => r.tasks).some((t) => t.completed_at != null)).toBe(false)
   })
 })
 
