@@ -222,3 +222,17 @@ export interface CreateBilledShellInvoiceParams {
   p_job_id: string
   p_billed_on: string
 }
+
+/**
+ * Result of mint_customer_portal_link (portal train PR 1): the RAW portal
+ * token, returned exactly once — only its sha256 is stored. `exists` +
+ * `activeSince` come back instead when an active link exists and
+ * p_rotate=false (the globe modal then offers Rotate).
+ */
+export interface MintCustomerPortalLinkResult {
+  token?: string
+  audience?: 'customer' | 'gc'
+  exists?: boolean
+  activeSince?: string
+  error?: string
+}
