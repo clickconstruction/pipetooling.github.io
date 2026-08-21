@@ -15,6 +15,11 @@ const TODAY = '2026-08-20'
 const speeds: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
   customers: { knight: { medianDays: 35, samples: 12 } },
+  segments: {
+    residential: { medianDays: 14, samples: 96 },
+    commercial: { medianDays: 38, samples: 131 },
+  },
+  customerTypes: { knight: 'commercial' },
 }
 
 function job(over: Partial<JobWithDetails>): JobWithDetails {
@@ -94,6 +99,7 @@ describe('buildBilledPaymentForecast', () => {
     expect(by.following!.sum).toBe(3113)
     expect(f.openTotal).toBe(4013)
     expect(f.rowCount).toBe(3)
+    expect(by.following!.rows.map((r) => r.segment)).toEqual(['commercial', 'commercial'])
   })
 
   it('rows with no reference date land in the unknown bucket; paid-to-zero rows are skipped and counted', () => {

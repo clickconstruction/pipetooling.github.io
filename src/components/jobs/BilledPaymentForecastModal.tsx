@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
-import type { PaySpeedData, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
+import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
@@ -25,6 +25,47 @@ function bucketTileColors(b: ForecastBucket): { bg: string; fg: string; border: 
     return { bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)', border: 'transparent' }
   }
   return { bg: 'var(--surface)', fg: 'var(--text-700)', border: 'var(--border)' }
+}
+
+/** Small Res/Comm tag — the Customers surfaces' color convention (commercial = amber tint). */
+function segmentTag(segment: CustomerSegment | null) {
+  if (!segment) return null
+  const comm = segment === 'commercial'
+  return (
+    <span
+      title={comm ? 'Commercial customer' : 'Residential customer'}
+      style={{
+        fontSize: '0.65rem',
+        fontWeight: 600,
+        padding: '1px 6px',
+        borderRadius: 9999,
+        background: comm ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)',
+        color: comm ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
+        verticalAlign: 'middle',
+      }}
+    >
+      {comm ? 'Comm' : 'Res'}
+    </span>
+  )
+}
+
+/** One "Company ~27d · 240 payments" cell of the pay-speeds strip. */
+function speedCell(label: React.ReactNode, stat: PaySpeedStat | null, title: string) {
+  return (
+    <span title={title} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.35rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+      {label}
+      {stat ? (
+        <>
+          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>~{stat.medianDays}d</strong>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            {stat.samples} {stat.samples === 1 ? 'payment' : 'payments'}
+          </span>
+        </>
+      ) : (
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>no data</span>
+      )}
+    </span>
+  )
 }
 
 function rowDateLabel(r: ForecastRow): { text: string; color: string } {
@@ -105,6 +146,29 @@ export default function BilledPaymentForecastModal({
           })}
         </div>
 
+        {paySpeeds ? (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1.1rem', flexWrap: 'wrap', marginTop: '0.75rem', padding: '0.45rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+              Pay speeds
+            </span>
+            {speedCell(
+              <span style={{ color: 'var(--text-700)' }}>Company</span>,
+              paySpeeds.company,
+              'Median days from bill to payment across every customer, last 12 months',
+            )}
+            {speedCell(
+              segmentTag('residential'),
+              paySpeeds.segments.residential,
+              'Median days from bill to payment across residential customers, last 12 months',
+            )}
+            {speedCell(
+              segmentTag('commercial'),
+              paySpeeds.segments.commercial,
+              'Median days from bill to payment across commercial customers, last 12 months',
+            )}
+          </div>
+        ) : null}
+
         {visibleBuckets
           .filter((b) => b.rows.length > 0)
           .map((b) => (
@@ -139,6 +203,7 @@ export default function BilledPaymentForecastModal({
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.label}
                       {r.customerName ? <span style={{ color: 'var(--text-muted)' }}> · {r.customerName}</span> : null}
+                      {r.segment ? <> {segmentTag(r.segment)}</> : null}
                       {r.model?.source === 'customer' ? (
                         <span style={{ color: 'var(--text-muted)' }}> · pays in ~{r.model.medianDays}d</span>
                       ) : r.model?.source === 'promised' ? (

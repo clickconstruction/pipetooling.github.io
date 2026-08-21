@@ -16,6 +16,8 @@ const data: PaySpeedData = {
     knight: { medianDays: 35, samples: 12 },
     thin: { medianDays: 2, samples: PAY_SPEED_MIN_SAMPLES - 1 },
   },
+  segments: { residential: null, commercial: null },
+  customerTypes: {},
 }
 
 describe('parsePaySpeedsRpc', () => {
@@ -32,7 +34,20 @@ describe('parsePaySpeedsRpc', () => {
     expect(parsed).toEqual({
       company: { medianDays: 27, samples: 240 },
       customers: { a: { medianDays: 35, samples: 12 } },
+      segments: { residential: null, commercial: null },
+      customerTypes: {},
     })
+  })
+
+  it('parses v2 segments and customer types, dropping unknown type values', () => {
+    const parsed = parsePaySpeedsRpc({
+      company: { medianDays: 27, samples: 240 },
+      customers: {},
+      segments: { residential: { medianDays: 14, samples: 96 }, commercial: null },
+      customerTypes: { a: 'commercial', b: 'residential', c: 'municipal' },
+    })
+    expect(parsed?.segments).toEqual({ residential: { medianDays: 14, samples: 96 }, commercial: null })
+    expect(parsed?.customerTypes).toEqual({ a: 'commercial', b: 'residential' })
   })
 
   it('returns null for gate-refused (null) and malformed payloads', () => {
@@ -44,6 +59,8 @@ describe('parsePaySpeedsRpc', () => {
     expect(parsePaySpeedsRpc({ company: { medianDays: -3, samples: 5 } })).toEqual({
       company: { medianDays: 0, samples: 5 },
       customers: {},
+      segments: { residential: null, commercial: null },
+      customerTypes: {},
     })
   })
 })
@@ -108,7 +125,11 @@ describe('billedExpectedPayModel', () => {
   it('unknown customer uses the company median; no company stat → no chip', () => {
     expect(billedExpectedPayModel({ ...row, customerId: 'stranger' }, data, '2026-08-20')!.source).toBe('company')
     expect(
-      billedExpectedPayModel({ ...row, customerId: 'stranger' }, { company: null, customers: {} }, '2026-08-20'),
+      billedExpectedPayModel(
+        { ...row, customerId: 'stranger' },
+        { company: null, customers: {}, segments: { residential: null, commercial: null }, customerTypes: {} },
+        '2026-08-20',
+      ),
     ).toBeNull()
   })
 
