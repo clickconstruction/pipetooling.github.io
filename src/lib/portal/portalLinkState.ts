@@ -35,6 +35,36 @@ export function computePortalOffKeys(
   return [...seen].filter((k) => !hasActive.has(k))
 }
 
+/**
+ * Customers whose MAIN portal is off — powering the red globe since the
+ * merged 'all' audience (custom-links train). When 'all' rows exist they are
+ * authoritative: off iff none is active (turning off just a scoped link never
+ * paints red). Customers with only legacy 'customer'/'gc' rows are off when
+ * every row is revoked — the pre-'all' deliberate-off state, which the modal
+ * must NOT silently revive by minting 'all'.
+ */
+export function computePortalMainOffCustomerIds(
+  rows: Array<Pick<PortalLinkRow, 'customer_id' | 'audience' | 'revoked_at'>>,
+): string[] {
+  const byCustomer = new Map<string, Array<Pick<PortalLinkRow, 'audience' | 'revoked_at'>>>()
+  for (const r of rows) {
+    if (!r.customer_id) continue
+    const list = byCustomer.get(r.customer_id) ?? []
+    list.push(r)
+    byCustomer.set(r.customer_id, list)
+  }
+  const off: string[] = []
+  for (const [customerId, list] of byCustomer) {
+    const allRows = list.filter((r) => r.audience === 'all')
+    const isOff =
+      allRows.length > 0
+        ? allRows.every((r) => r.revoked_at !== null)
+        : list.every((r) => r.revoked_at !== null)
+    if (isOff) off.push(customerId)
+  }
+  return off
+}
+
 export type PortalHistoryEntry = {
   createdAt: string
   revokedAt: string | null
@@ -50,6 +80,10 @@ export type PortalHistoryEntry = {
  * was turned off outright.
  */
 export function buildPortalLinkHistory(rows: PortalLinkRow[]): PortalHistoryEntry[] {
+  return buildHistoryForOneAudience(rows)
+}
+
+function buildHistoryForOneAudience(rows: PortalLinkRow[]): PortalHistoryEntry[] {
   const sorted = [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))
   return sorted.map((row) => {
     let outcome: PortalHistoryEntry['outcome'] = 'active'
@@ -70,4 +104,69 @@ export function buildPortalLinkHistory(rows: PortalLinkRow[]): PortalHistoryEntr
       outcome,
     }
   })
+}
+
+export type PortalSlugEventRow = {
+  event: string
+  slug: string | null
+  created_at: string
+  created_by: string | null
+}
+
+export type PortalTimelineEntry =
+  | {
+      kind: 'link'
+      at: string
+      createdBy: string | null
+      audience: string
+      outcome: PortalHistoryEntry['outcome']
+      revokedAt: string | null
+    }
+  | {
+      kind: 'slug'
+      at: string
+      createdBy: string | null
+      event: 'created' | 'changed' | 'locked'
+      slug: string | null
+    }
+
+/**
+ * The modal's History row: link lifecycles across ALL audiences (rotation
+ * inferred per audience — an 'all' mint never relabels a scoped revoke) merged
+ * with the address (slug) events, newest first.
+ */
+export function buildPortalTimeline(
+  links: PortalLinkRow[],
+  slugEvents: PortalSlugEventRow[],
+): PortalTimelineEntry[] {
+  const entries: PortalTimelineEntry[] = []
+  const byAudience = new Map<string, PortalLinkRow[]>()
+  for (const row of links) {
+    const list = byAudience.get(row.audience) ?? []
+    list.push(row)
+    byAudience.set(row.audience, list)
+  }
+  for (const [audience, rows] of byAudience) {
+    for (const h of buildPortalLinkHistory(rows)) {
+      entries.push({
+        kind: 'link',
+        at: h.createdAt,
+        createdBy: h.createdBy,
+        audience,
+        outcome: h.outcome,
+        revokedAt: h.revokedAt,
+      })
+    }
+  }
+  for (const ev of slugEvents) {
+    if (ev.event !== 'created' && ev.event !== 'changed' && ev.event !== 'locked') continue
+    entries.push({
+      kind: 'slug',
+      at: ev.created_at,
+      createdBy: ev.created_by,
+      event: ev.event,
+      slug: ev.slug,
+    })
+  }
+  return entries.sort((a, b) => b.at.localeCompare(a.at))
 }

@@ -1,17 +1,20 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabase'
-import { computePortalOffKeys, portalOffKey } from '../lib/portal/portalLinkState'
+import { computePortalMainOffCustomerIds } from '../lib/portal/portalLinkState'
 
 /**
- * Module-level cache of which (customer, audience) portal links are TURNED
- * OFF — one small query per session shared by every globe button, so 400 list
- * rows never mean 400 queries. The globe modal updates the cache locally
- * after revoke / re-mint so reds appear without a refetch. Office-only data
- * (RLS): non-office roles never mount a globe, so the query never runs for
- * them.
+ * Module-level cache of which customers' MAIN portal is TURNED OFF — one
+ * small query per session shared by every globe button, so 400 list rows
+ * never mean 400 queries. Since the merged 'all' audience (custom-links
+ * train), red means the merged portal is off: every 'all' row revoked, or —
+ * for customers with only legacy 'customer'/'gc' rows — every row revoked.
+ * Turning off just a scoped "Separate view" link never paints red. The globe
+ * modal updates the cache locally after turn-off / re-mint so reds appear
+ * without a refetch. Office-only data (RLS): non-office roles never mount a
+ * globe, so the query never runs for them.
  */
 
-let offKeys = new Set<string>()
+let offIds = new Set<string>()
 let loadStarted = false
 const subscribers = new Set<() => void>()
 
@@ -27,7 +30,7 @@ function ensureLoaded() {
       .from('customer_portal_links')
       .select('customer_id, audience, revoked_at')
     if (error || !data) return
-    offKeys = new Set(computePortalOffKeys(data))
+    offIds = new Set(computePortalMainOffCustomerIds(data))
     emit()
   })()
 }
@@ -37,22 +40,22 @@ function subscribe(cb: () => void): () => void {
   return () => subscribers.delete(cb)
 }
 
-/** Local update after a modal action (revoke → off, mint → back on). */
-export function setPortalLinkOff(customerId: string, audience: string, off: boolean) {
-  const key = portalOffKey(customerId, audience)
-  if (off === offKeys.has(key)) return
-  const next = new Set(offKeys)
-  if (off) next.add(key)
-  else next.delete(key)
-  offKeys = next
+/**
+ * Local update after a modal action (turn off → red, mint/turn back on →
+ * clear). Only the main portal's state moves the red globe, so callers pass
+ * the customer-level verdict — scoped-link actions should not call this.
+ */
+export function setPortalMainOff(customerId: string, off: boolean) {
+  if (off === offIds.has(customerId)) return
+  const next = new Set(offIds)
+  if (off) next.add(customerId)
+  else next.delete(customerId)
+  offIds = next
   emit()
 }
 
-/** True when ANY audience's link for this customer has been turned off. */
+/** True when this customer's main portal has been turned off. */
 export function usePortalLinkOff(customerId: string): boolean {
   useEffect(ensureLoaded, [])
-  return useSyncExternalStore(
-    subscribe,
-    () => offKeys.has(portalOffKey(customerId, 'customer')) || offKeys.has(portalOffKey(customerId, 'gc')),
-  )
+  return useSyncExternalStore(subscribe, () => offIds.has(customerId))
 }
