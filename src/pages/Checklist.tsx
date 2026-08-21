@@ -21,10 +21,10 @@ import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeT
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { groupEventsByInstance, lastTransitionIsReopen, stripStamp, type ChecklistCardEvent } from '../lib/checklistCardEvents'
-import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../lib/checklistManageActivity'
+import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
-import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageChipLabel, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
+import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStripNowSummary, goalsStripRows, type GoalsStripRow } from '../lib/roadmapBridge'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
@@ -1327,7 +1327,38 @@ type OutstandingInstance = {
   id: string
   checklist_item_id: string
   scheduled_date: string
-  checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null; roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null
+  checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null; created_at?: string | null; created_by_user_id?: string | null; roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null
+}
+
+/** Severity-tinted "Nd" age chip shared by the Review rows (v2.2012). */
+function outstandingAgeChip(scheduledDate: string, todayStr: string) {
+  const days = oldestAgeDays([{ scheduled_date: scheduledDate }], todayStr)
+  if (days <= 0) {
+    return <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({scheduledDate})</span>
+  }
+  const sev = ageSeverity(days)
+  const tone =
+    sev === 'late'
+      ? { background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }
+      : sev === 'warn'
+        ? { background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }
+        : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }
+  return (
+    <span
+      title={scheduledDate}
+      style={{
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        padding: '0.1rem 0.45rem',
+        borderRadius: 7,
+        verticalAlign: 'middle',
+        whiteSpace: 'nowrap',
+        ...tone,
+      }}
+    >
+      {days}d
+    </span>
+  )
 }
 
 function OutstandingByPersonSortableRow({
@@ -1336,24 +1367,34 @@ function OutstandingByPersonSortableRow({
   dragDisabled,
   canManageChecklists,
   isDev,
+  authUserId,
   completingInstanceId,
   deletingInstanceId,
+  expanded,
+  notesCount,
+  onToggleExpanded,
   onMarkComplete,
   onDeleteInstance,
   onOpenFwd,
   setEditItemId,
+  setError,
 }: {
   inst: OutstandingInstance
   userId: string
   dragDisabled: boolean
   canManageChecklists: boolean
   isDev: boolean
+  authUserId: string | null
   completingInstanceId: string | null
   deletingInstanceId: string | null
+  expanded: boolean
+  notesCount: number
+  onToggleExpanded: (instanceId: string) => void
   onMarkComplete: (inst: OutstandingInstance) => void
   onDeleteInstance: (inst: OutstandingInstance) => void
   onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
   setEditItemId: (id: string) => void
+  setError: (s: string | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: inst.id })
   const { onPointerDown: sortablePointerDown, ...restSortableListeners } = (listeners ?? {}) as {
@@ -1361,172 +1402,196 @@ function OutstandingByPersonSortableRow({
   } & Record<string, unknown>
   const style: CSSProperties = {
     marginBottom: '0.25rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.125rem',
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.85 : 1,
     position: 'relative',
     zIndex: isDragging ? 2 : undefined,
   }
+  const title = inst.checklist_items?.title ?? '\u2014'
+  const footerLink = (label: string, onClick: () => void, danger = false) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: 0,
+        border: 'none',
+        background: 'none',
+        cursor: 'pointer',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
+        color: danger ? 'var(--text-red-700)' : 'var(--text-link)',
+      }}
+    >
+      {label}
+    </button>
+  )
   return (
     <li ref={setNodeRef} style={style}>
-      {canManageChecklists && (
-        <button
-          type="button"
-          {...attributes}
-          {...restSortableListeners}
-          disabled={dragDisabled}
-          onPointerDown={(e) => {
-            sortablePointerDown?.(e)
-            e.stopPropagation()
-          }}
-          title="Drag to reorder"
-          aria-label={`Drag to reorder: ${inst.checklist_items?.title ?? 'Task'}`}
-          style={{
-            flexShrink: 0,
-            padding: '0.125rem',
-            background: 'none',
-            border: 'none',
-            cursor: dragDisabled ? 'not-allowed' : 'grab',
-            color: 'var(--text-muted)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            touchAction: 'none',
-            opacity: dragDisabled ? 0.5 : 1,
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
-            <path d="M8 5h2v2H8V5zm3 0h2v2h-2V5zm3 0h2v2h-2V5zM8 9h2v2H8V9zm3 0h2v2h-2V9zm3 0h2v2h-2V9zM8 13h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 17h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z" />
-          </svg>
-        </button>
-      )}
-      {isDev && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
+        {canManageChecklists && (
           <button
             type="button"
-            onClick={(e) => {
+            {...attributes}
+            {...restSortableListeners}
+            disabled={dragDisabled}
+            onPointerDown={(e) => {
+              sortablePointerDown?.(e)
               e.stopPropagation()
-              onMarkComplete(inst)
             }}
-            disabled={completingInstanceId === inst.id}
-            title="Mark complete"
-            aria-label="Mark complete"
-            style={{
-              padding: '0.25rem',
-              background: 'none',
-              border: 'none',
-              cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer',
-              color: '#16a34a',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditItemId(inst.checklist_item_id)
-            }}
-            title="Edit"
-            style={{
-              padding: '0.25rem',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-700)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDeleteInstance(inst)
-            }}
-            disabled={deletingInstanceId === inst.id}
-            title="Delete"
-            style={{
-              padding: '0.25rem',
-              background: 'none',
-              border: 'none',
-              cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer',
-              color: 'var(--text-red-700)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="fwd-btn-desktop"
-            onClick={(e) => {
-              e.stopPropagation()
-              onOpenFwd(inst, userId)
-            }}
-            title="Forward"
-            aria-label="Forward"
+            title="Drag to reorder"
+            aria-label={`Drag to reorder: ${title}`}
             style={{
               flexShrink: 0,
-              padding: '0.25rem',
+              padding: '0.125rem',
+              background: 'none',
               border: 'none',
-              borderRadius: 4,
-              background: 'transparent',
-              color: 'var(--text-blue-500)',
-              cursor: 'pointer',
+              cursor: dragDisabled ? 'not-allowed' : 'grab',
+              color: 'var(--text-muted)',
               display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              touchAction: 'none',
+              opacity: dragDisabled ? 0.5 : 1,
             }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+              <path d="M8 5h2v2H8V5zm3 0h2v2h-2V5zm3 0h2v2h-2V5zM8 9h2v2H8V9zm3 0h2v2h-2V9zm3 0h2v2h-2V9zM8 13h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 17h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z" />
             </svg>
           </button>
-        </span>
-      )}
-      <span style={{ flex: 1 }}>
-        <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
-        {roadmapGoalChip(inst.checklist_items)}{' '}
-        {(() => {
-          const chip = ageChipLabel(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))
-          return chip ? (
+        )}
+        {isDev && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onMarkComplete(inst)
+              }}
+              disabled={completingInstanceId === inst.id}
+              title="Mark complete"
+              aria-label="Mark complete"
+              style={{
+                padding: '0.25rem',
+                background: 'none',
+                border: 'none',
+                cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer',
+                color: '#16a34a',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteInstance(inst)
+              }}
+              disabled={deletingInstanceId === inst.id}
+              title="Delete"
+              aria-label="Delete"
+              style={{
+                padding: '0.25rem',
+                background: 'none',
+                border: 'none',
+                cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer',
+                color: 'var(--text-red-700)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
+              </svg>
+            </button>
+          </span>
+        )}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Hide' : 'Show'} activity for ${title}`}
+          onClick={(e) => {
+            // Links inside the title stay links \u2014 don't toggle on them.
+            if ((e.target as HTMLElement).closest('a')) return
+            onToggleExpanded(inst.id)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onToggleExpanded(inst.id)
+            }
+          }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            padding: '0.3rem 0.35rem',
+            borderRadius: 8,
+            cursor: 'pointer',
+            background: expanded ? 'var(--bg-muted)' : undefined,
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <ChecklistTitleWithLinks title={title} links={inst.checklist_items?.links} />{' '}
+            {roadmapGoalChip(inst.checklist_items)}
+          </span>
+          {notesCount > 0 ? (
             <span
-              title={inst.scheduled_date}
               style={{
                 fontSize: '0.72rem',
                 fontWeight: 600,
                 padding: '0.1rem 0.45rem',
                 borderRadius: 7,
-                background: 'var(--bg-red-100)',
-                border: '1px solid #dc2626',
-                color: 'var(--text-red-700)',
-                verticalAlign: 'middle',
+                background: 'var(--bg-blue-tint)',
+                color: 'var(--text-blue-800)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
-              {chip}
+              {'\uD83D\uDCAC'} {notesCount}
             </span>
-          ) : (
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
-          )
-        })()}
-      </span>
+          ) : null}
+          <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
+        </div>
+      </div>
+      {expanded ? (
+        <div
+          style={{
+            margin: canManageChecklists ? '0.15rem 0 0.5rem 1.9rem' : '0.15rem 0 0.5rem 0.5rem',
+            padding: '0.5rem 0.65rem 0.6rem',
+            background: 'var(--bg-muted)',
+            borderRadius: 10,
+          }}
+        >
+          <ChecklistItemActivity
+            item={{
+              id: inst.checklist_item_id,
+              title,
+              created_at: inst.checklist_items?.created_at ?? null,
+              created_by_user_id: inst.checklist_items?.created_by_user_id ?? null,
+            }}
+            authUserId={authUserId}
+            showInstanceDays={(inst.checklist_items?.repeat_type ?? 'once') !== 'once'}
+            setError={setError}
+            footerActions={
+              isDev ? (
+                <>
+                  {footerLink('Edit', () => setEditItemId(inst.checklist_item_id))}
+                  {footerLink('Forward', () => onOpenFwd(inst, userId))}
+                </>
+              ) : undefined
+            }
+          />
+        </div>
+      ) : null}
     </li>
   )
 }
@@ -1537,13 +1602,18 @@ function OutstandingByPersonSortableList({
   reorderingUserId,
   canManageChecklists,
   isDev,
+  authUserId,
   onDragEnd,
   completingInstanceId,
   deletingInstanceId,
+  expandedInstanceId,
+  notesByInstance,
+  onToggleExpanded,
   onMarkComplete,
   onDeleteInstance,
   onOpenFwd,
   setEditItemId,
+  setError,
 }: {
   userId: string
   instances: OutstandingInstance[]
@@ -1557,6 +1627,11 @@ function OutstandingByPersonSortableList({
   onDeleteInstance: (inst: OutstandingInstance) => void
   onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
   setEditItemId: (id: string) => void
+  authUserId: string | null
+  expandedInstanceId: string | null
+  notesByInstance: Map<string, number>
+  onToggleExpanded: (instanceId: string) => void
+  setError: (s: string | null) => void
 }) {
   const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const dragDisabled = reorderingUserId === userId
@@ -1577,7 +1652,7 @@ function OutstandingByPersonSortableList({
   return (
     <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={instances.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {instances.map((inst) => (
             <OutstandingByPersonSortableRow
               key={inst.id}
@@ -1586,12 +1661,17 @@ function OutstandingByPersonSortableList({
               dragDisabled={dragDisabled}
               canManageChecklists={canManageChecklists}
               isDev={isDev}
+              authUserId={authUserId}
               completingInstanceId={completingInstanceId}
               deletingInstanceId={deletingInstanceId}
+              expanded={expandedInstanceId === inst.id}
+              notesCount={notesByInstance.get(inst.id) ?? 0}
+              onToggleExpanded={onToggleExpanded}
               onMarkComplete={onMarkComplete}
               onDeleteInstance={onDeleteInstance}
               onOpenFwd={onOpenFwd}
               setEditItemId={setEditItemId}
+              setError={setError}
             />
           ))}
         </ul>
@@ -1616,6 +1696,10 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
   const [reorderingUserId, setReorderingUserId] = useState<string | null>(null)
   const [outstandingDeletePending, setOutstandingDeletePending] = useState<OutstandingInstance | null>(null)
+  /** Row expanded to its activity spine (history + notes), v2.2012. */
+  const [expandedInstanceId, setExpandedInstanceId] = useState<string | null>(null)
+  /** Comment-event counts per listed instance — powers the 💬 chips. */
+  const [notesByInstance, setNotesByInstance] = useState<Map<string, number>>(new Map())
   // Team-board chrome (v2.1872): summary tiles + folded inboxes.
   const [reviewCount, setReviewCount] = useState<number | null>(null)
   const [openReqCount, setOpenReqCount] = useState<number | null>(null)
@@ -1930,7 +2014,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees(user_id, users(name, email))')
+      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope, created_at, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees(user_id, users(name, email))')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
@@ -2014,6 +2098,29 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
     rows.sort((a, b) => b.count - a.count)
     setByUser(rows)
     setLoading(false)
+    // 💬 chips: count comment events per listed instance. Non-blocking, and
+    // chunked so a wide board can't overflow the .in() URL (ledger pattern).
+    void (async () => {
+      const ids = instances.map((i) => i.id)
+      const counts = new Map<string, number>()
+      const chunks: string[][] = []
+      for (let i = 0; i < ids.length; i += 150) chunks.push(ids.slice(i, i + 150))
+      const results = await Promise.all(
+        chunks.map((chunk) =>
+          supabase
+            .from('checklist_instance_events')
+            .select('instance_id')
+            .eq('event_type', 'comment')
+            .in('instance_id', chunk),
+        ),
+      )
+      for (const r of results) {
+        for (const row of (r.data ?? []) as Array<{ instance_id: string }>) {
+          counts.set(row.instance_id, (counts.get(row.instance_id) ?? 0) + 1)
+        }
+      }
+      setNotesByInstance(counts)
+    })()
   }
 
   const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
@@ -2154,6 +2261,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
             {byUser.map(({ userId, name, count, instances }) => {
               const todayLocal = new Date().toLocaleDateString('en-CA')
               const oldest = oldestAgeDays(instances, todayLocal)
+              const oldestSeverity = ageSeverity(oldest)
+              const notesTotal = instances.reduce((n, i) => n + (notesByInstance.get(i.id) ?? 0), 0)
               const expanded = expandedUserId === userId
               return (
                 <div key={userId} style={{ border: '1px solid var(--border-strong)', borderRadius: 12, marginBottom: '0.6rem', overflow: 'hidden' }}>
@@ -2195,11 +2304,21 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                         {oldest > 0 ? (
                           <>
                             {' · '}
-                            <span style={{ color: oldest > 14 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                            <span
+                              style={{
+                                color:
+                                  oldestSeverity === 'late'
+                                    ? 'var(--text-red-700)'
+                                    : oldestSeverity === 'warn'
+                                      ? 'var(--text-amber-800)'
+                                      : 'var(--text-muted)',
+                              }}
+                            >
                               oldest {oldest} {oldest === 1 ? 'day' : 'days'}
                             </span>
                           </>
                         ) : null}
+                        {notesTotal > 0 ? <> · 💬 {notesTotal} {notesTotal === 1 ? 'note' : 'notes'}</> : null}
                       </span>
                     </span>
                     <button
@@ -2234,13 +2353,18 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                         reorderingUserId={reorderingUserId}
                         canManageChecklists={canManageChecklists}
                         isDev={isDev}
+                        authUserId={authUserId}
                         onDragEnd={onOutstandingDragEnd(userId, instances)}
                         completingInstanceId={completingInstanceId}
                         deletingInstanceId={deletingInstanceId}
+                        expandedInstanceId={expandedInstanceId}
+                        notesByInstance={notesByInstance}
+                        onToggleExpanded={(instanceId) => setExpandedInstanceId((prev) => (prev === instanceId ? null : instanceId))}
                         onMarkComplete={markComplete}
                         onDeleteInstance={openOutstandingDeleteModal}
                         onOpenFwd={openFwd}
                         setEditItemId={setEditItemId}
+                        setError={setError}
                       />
                       {isDev && (
                         <button
@@ -2461,254 +2585,6 @@ type ChecklistItem = {
   checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
   checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
-/** A long-running repeating task can have years of instances — cap the activity fetch. */
-const MANAGE_ACTIVITY_INSTANCE_CAP = 120
-
-/**
- * Expanded card activity for the Manage tab: the item's full event history
- * across its instances (creation → completed/reopened/signed-off → notes)
- * plus a composer. Notes attach to the instance picked by
- * `commentTargetInstance` (events live on instances, not the template).
- */
-function ManageCardActivity({ item, authUserId, showInstanceDays, setError }: { item: ChecklistItem; authUserId: string | null; showInstanceDays: boolean; setError: (s: string | null) => void }) {
-  const [loading, setLoading] = useState(true)
-  const [instances, setInstances] = useState<ManageInstanceLite[]>([])
-  const [events, setEvents] = useState<ChecklistCardEvent[]>([])
-  const [nameById, setNameById] = useState<Record<string, string>>({})
-  const [draft, setDraft] = useState('')
-  const [posting, setPosting] = useState(false)
-  const [cappedPast, setCappedPast] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      try {
-        // Repeating tasks pre-materialize instances years ahead — cap the
-        // *past* history and take only the near future (comment target for
-        // ahead-scheduled tasks), or the cap fills up with empty future rows.
-        const todayStr = new Date().toLocaleDateString('en-CA')
-        const [pastRes, futureRes] = await Promise.all([
-          supabase
-            .from('checklist_instances')
-            .select('id, scheduled_date, completed_at')
-            .eq('checklist_item_id', item.id)
-            .lte('scheduled_date', todayStr)
-            .order('scheduled_date', { ascending: false })
-            .limit(MANAGE_ACTIVITY_INSTANCE_CAP),
-          supabase
-            .from('checklist_instances')
-            .select('id, scheduled_date, completed_at')
-            .eq('checklist_item_id', item.id)
-            .gt('scheduled_date', todayStr)
-            .order('scheduled_date', { ascending: true })
-            .limit(30),
-        ])
-        const instErr = pastRes.error ?? futureRes.error
-        if (instErr) {
-          setError(instErr.message)
-          return
-        }
-        const pastInsts = (pastRes.data ?? []) as ManageInstanceLite[]
-        const insts = [...pastInsts, ...((futureRes.data ?? []) as ManageInstanceLite[])]
-        setCappedPast(pastInsts.length >= MANAGE_ACTIVITY_INSTANCE_CAP)
-        let evs: ChecklistCardEvent[] = []
-        if (insts.length > 0) {
-          const { data: evData, error: evErr } = await supabase
-            .from('checklist_instance_events')
-            .select('id, instance_id, event_type, actor_user_id, body, created_at')
-            .in('instance_id', insts.map((i) => i.id))
-            .order('created_at', { ascending: true })
-          if (evErr) {
-            setError(evErr.message)
-            return
-          }
-          evs = (evData ?? []) as ChecklistCardEvent[]
-        }
-        const personIds = new Set<string>()
-        if (item.created_by_user_id) personIds.add(item.created_by_user_id)
-        for (const e of evs) if (e.actor_user_id) personIds.add(e.actor_user_id)
-        const names: Record<string, string> = {}
-        if (personIds.size > 0) {
-          const { data } = await supabase.from('users').select('id, name').in('id', [...personIds])
-          for (const r of (data ?? []) as Array<{ id: string; name: string | null }>) {
-            names[r.id] = (r.name ?? '').trim() || 'Someone'
-          }
-        }
-        if (cancelled) return
-        setInstances(insts)
-        setEvents(evs)
-        setNameById(names)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [item.id])
-
-  const name = (id: string | null | undefined): string => {
-    if (!id) return 'Someone'
-    if (id === authUserId) return 'You'
-    return nameById[id] ?? 'Someone'
-  }
-
-  const dayLabel = (d: string): string =>
-    new Date(`${d}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
-
-  const timeline = useMemo(() => buildManageTimeline(item, instances, events), [item, instances, events])
-  const commentTarget = useMemo(
-    () => commentTargetInstance(instances, new Date().toLocaleDateString('en-CA')),
-    [instances],
-  )
-
-  async function postComment() {
-    const body = draft.trim()
-    if (!body || posting || !authUserId || !commentTarget) return
-    setPosting(true)
-    try {
-      const { error: e } = await supabase.from('checklist_instance_events').insert({
-        instance_id: commentTarget.id,
-        event_type: 'comment',
-        actor_user_id: authUserId,
-        body,
-      })
-      if (e) {
-        setError(e.message)
-        return
-      }
-      setDraft('')
-      setEvents((prev) => [
-        ...prev,
-        {
-          id: `local-${Date.now()}`,
-          instance_id: commentTarget.id,
-          event_type: 'comment',
-          actor_user_id: authUserId,
-          body,
-          created_at: new Date().toISOString(),
-        },
-      ])
-    } finally {
-      setPosting(false)
-    }
-  }
-
-  if (loading) {
-    return <p style={{ margin: '0.4rem 0 0.2rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading activity…</p>
-  }
-
-  return (
-    <div>
-      {cappedPast ? (
-        <p style={{ margin: '0.3rem 0 0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-          Showing the most recent {MANAGE_ACTIVITY_INSTANCE_CAP} occurrences.
-        </p>
-      ) : null}
-      {timeline.length === 0 ? (
-        <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No activity recorded yet.</p>
-      ) : (
-        <div
-          style={{
-            borderLeft: '3px solid var(--border-strong)',
-            paddingLeft: '0.65rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.35rem',
-            margin: '0.35rem 0 0.6rem',
-          }}
-        >
-          {timeline.map((entry) => {
-            if (entry.kind === 'created') {
-              return (
-                <div key="created" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {name(entry.actorUserId)} created this task · {stripStamp(entry.at)}
-                </div>
-              )
-            }
-            // "for Aug 19" context only when the event happened on a different
-            // day than the occurrence it belongs to — else it just repeats the stamp.
-            const dayChip =
-              showInstanceDays &&
-              entry.scheduledDate &&
-              new Date(entry.at).toLocaleDateString('en-CA') !== entry.scheduledDate
-                ? ` (for ${dayLabel(entry.scheduledDate)})`
-                : ''
-            if (entry.eventType === 'comment') {
-              return (
-                <div key={entry.id} style={{ fontSize: '0.9375rem', color: 'var(--text-700)', lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span>{' '}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(entry.at)}{dayChip}</span> — {entry.body}
-                </div>
-              )
-            }
-            const label =
-              entry.eventType === 'completed'
-                ? 'completed'
-                : entry.eventType === 'reopened'
-                  ? 'reopened'
-                  : entry.eventType === 'accepted'
-                    ? 'signed off'
-                    : entry.eventType
-            return (
-              <div key={entry.id} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {name(entry.actorUserId)} {label} · {stripStamp(entry.at)}
-                {dayChip}
-                {entry.eventType === 'completed' && entry.body ? <> — “{entry.body}”</> : null}
-              </div>
-            )
-          })}
-        </div>
-      )}
-      {authUserId && commentTarget ? (
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void postComment()
-            }}
-            placeholder="Add a note…"
-            disabled={posting}
-            aria-label={`Add a note to ${item.title}`}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              height: 44,
-              boxSizing: 'border-box',
-              padding: '0 0.7rem',
-              fontSize: '1rem',
-              border: '2px solid var(--text-600)',
-              borderRadius: 10,
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => void postComment()}
-            disabled={posting || !draft.trim()}
-            style={{
-              height: 44,
-              padding: '0 1rem',
-              borderRadius: 10,
-              border: 'none',
-              background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
-              color: 'white',
-              fontSize: '0.9375rem',
-              fontWeight: 600,
-              cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {posting ? '…' : 'Post'}
-          </button>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
@@ -2981,7 +2857,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
         </div>
         {expanded ? (
           <div style={{ padding: '0 0.75rem 0.7rem', background: 'var(--bg-muted)' }}>
-            <ManageCardActivity item={item} authUserId={authUserId} showInstanceDays={isRepeating(item)} setError={setError} />
+            <ChecklistItemActivity item={item} authUserId={authUserId} showInstanceDays={isRepeating(item)} setError={setError} />
           </div>
         ) : null}
       </li>

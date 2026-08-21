@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BOARD_RANGE_LABELS,
   ageChipLabel,
+  ageSeverity,
   initialsFor,
   oldestAgeDays,
 } from './checklistTeamBoard'
@@ -34,6 +35,17 @@ describe('ageChipLabel', () => {
     expect(ageChipLabel('2026-07-30', '2026-08-19')).toBe('20d')
     expect(ageChipLabel('2026-08-19', '2026-08-19')).toBe('')
     expect(ageChipLabel('2026-08-25', '2026-08-19')).toBe('')
+  })
+})
+
+describe('ageSeverity', () => {
+  it('under a week is ok, to a month is warn, past a month is late', () => {
+    expect(ageSeverity(0)).toBe('ok')
+    expect(ageSeverity(6)).toBe('ok')
+    expect(ageSeverity(7)).toBe('warn')
+    expect(ageSeverity(30)).toBe('warn')
+    expect(ageSeverity(31)).toBe('late')
+    expect(ageSeverity(116)).toBe('late')
   })
 })
 
