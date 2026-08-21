@@ -30,6 +30,16 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on: **click any job** in the report to open Edit Job right on top, set the GC (or fix anything else), and the report refreshes itself when you save.
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
+
+## Certify each GC — the Wednesday ritual
+
+Every week (due Wednesday), the office certifies each GC's group before sending statements. An amber strip at the top tracks the week — **"3 of 9 certified · 2 sent"** — and each GC gets a {{button:blue|Certify…}} button:
+
+1. Clicking it opens a **per-bill checklist**: check off each bill as you confirm it belongs to this GC and the amount is right.
+2. Not sure about one? The **▾ chevron** drops down the job's recent activity right in the list, and clicking the **job link** opens Job Detail on top — dig in, close it, and your checkmarks are still there.
+3. When every bill is checked, {{button:outline|Certify}} records the attestation (who, when, exactly what), and {{button:blue|Certify & send…}} goes straight into the Email dialog so the GC gets their statement in the same motion.
+
+The group header then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — and if a bill lands or a payment posts **after** sign-off, it flips to {{chip:yellow|Changed since certified · +$2,700}} with a Re-certify button, so a sent statement never silently drifts from what was reviewed. Certifications reset each week.
 - Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Email…**, **Copy**, and **Print**.
 
 ## Send a statement to a GC

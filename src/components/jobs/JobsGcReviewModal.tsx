@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
@@ -30,6 +30,16 @@ import {
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import {
+  gcGroupCertStatus,
+  gcReviewSentThisWeek,
+  gcReviewWeekProgress,
+  gcReviewWeekStartYmd,
+  latestCertByGc,
+  type GcReviewCertRow,
+} from '../../lib/jobs/gcReviewCertification'
+import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
+import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
@@ -193,6 +203,10 @@ type JobsGcReviewModalProps = {
    * row props, so the rollup refreshes in place with the modal still open.
    */
   onOpenJob?: (jobId: string) => void
+  /** Wednesday certification (v2.1983): office roles that may certify groups. */
+  canCertify: boolean
+  /** Certify checklist job links → Job Detail on top (kept open under it). */
+  onOpenJobDetail?: (jobId: string) => void
 }
 
 /**
@@ -217,6 +231,8 @@ export function JobsGcReviewModal({
   users,
   isDev,
   onOpenJob,
+  canCertify,
+  onOpenJobDetail,
 }: JobsGcReviewModalProps) {
   const [includeCollections, setIncludeCollections] = useState(false)
   const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
@@ -245,6 +261,16 @@ export function JobsGcReviewModal({
   const [shareAllSendTime, setShareAllSendTime] = useState('07:00')
   const [shareAllRepeatWeekly, setShareAllRepeatWeekly] = useState(false)
   const [pendingSends, setPendingSends] = useState<PendingGcStatementSend[]>([])
+  /** Wednesday certification (v2.1983): this week's attestations + the open checklist. */
+  const certWeekStart = gcReviewWeekStartYmd()
+  const [certRows, setCertRows] = useState<GcReviewCertRow[]>([])
+  const [certifyGroup, setCertifyGroup] = useState<GcReviewGroup | null>(null)
+  const refreshCerts = useCallback(() => {
+    listGcReviewCertifications(certWeekStart).then(setCertRows, () => setCertRows([]))
+  }, [certWeekStart])
+  useEffect(() => {
+    if (open) refreshCerts()
+  }, [open, refreshCerts])
   /** Standing copies form (v2.1431, dev-only): teammates + weekdays for recurring whole-report emails. */
   const [standingUserId, setStandingUserId] = useState('')
   const [standingOutsideEmail, setStandingOutsideEmail] = useState('')
@@ -353,6 +379,20 @@ export function JobsGcReviewModal({
     () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections, groupBy: effectiveGroupBy }),
     [billedActiveRows, collectionsRows, includeCollections, effectiveGroupBy],
   )
+  /** Certification is per-GC — the strip/chips hide under the Development grouping. */
+  const certsByGc = latestCertByGc(certRows)
+  const certProgress = gcReviewWeekProgress(rollup.groups, certsByGc, lastSentByGcId, certWeekStart)
+  const authUserName = users.find((u) => u.id === authUser?.id)?.name ?? ''
+  const openEmailDialogForGroup = (g: GcReviewGroup) => {
+    setEmailDialogGroup(g)
+    setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
+    setEmailDialogSubject(
+      gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
+    )
+    setEmailError(null)
+    setEmailWhen('now')
+    setEmailRepeatWeekly(false)
+  }
   if (!open) return null
   const EntityIcon = byDevelopment ? DevelopmentHouseIcon : GcHardHatIcon
   const groupByPillStyle = (active: boolean): React.CSSProperties => ({
@@ -444,6 +484,33 @@ export function JobsGcReviewModal({
             <>Billed Awaiting Payment grouped by each job&rsquo;s GC/Builder, with bill-out dates.</>
           )}
         </p>
+        {!byDevelopment && certProgress.gcs > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.7rem',
+              padding: '0.5rem 0.8rem',
+              marginBottom: '0.75rem',
+              border: '1px solid #f59e0b',
+              borderRadius: 8,
+              background: 'var(--bg-amber-tint)',
+            }}
+          >
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
+              This week · due Wednesday
+            </span>
+            <span aria-hidden style={{ flex: 1, display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
+              <span style={{ width: `${Math.round((certProgress.certified / certProgress.gcs) * 100)}%`, background: 'var(--text-green-600)' }} />
+            </span>
+            <span style={{ fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              <strong>
+                {certProgress.certified} of {certProgress.gcs}
+              </strong>{' '}
+              certified · <strong>{certProgress.sent}</strong> sent
+            </span>
+          </div>
+        )}
         {rollup.groups.length > 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <button
@@ -584,10 +651,66 @@ export function JobsGcReviewModal({
                   {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
                 </span>
                 {!g.isNoGc && g.gcId && lastSentByGcId[g.gcId] ? (
-                  <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    last sent {new Date(lastSentByGcId[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
+                  gcReviewSentThisWeek(lastSentByGcId[g.gcId], certWeekStart) && !byDevelopment ? (
+                    <span
+                      style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}
+                    >
+                      Sent {new Date(lastSentByGcId[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      last sent {new Date(lastSentByGcId[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  )
                 ) : null}
+                {!byDevelopment && !g.isNoGc && g.gcId
+                  ? (() => {
+                      const status = gcGroupCertStatus(g, certsByGc.get(g.gcId))
+                      if (status.state === 'certified') {
+                        return (
+                          <span
+                            title={status.cert.note ? `Note: ${status.cert.note}` : undefined}
+                            style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }}
+                          >
+                            ✓ Certified · {status.cert.certified_by_name || '—'} ·{' '}
+                            {new Date(status.cert.certified_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        )
+                      }
+                      if (status.state === 'changed') {
+                        return (
+                          <>
+                            <span
+                              title={`Certified by ${status.cert.certified_by_name || '—'}, then the group changed`}
+                              style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
+                            >
+                              Changed since certified · {status.delta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(status.delta))}
+                            </span>
+                            {canCertify && (
+                              <button
+                                type="button"
+                                onClick={() => setCertifyGroup(g)}
+                                title={`Re-certify ${g.gcName} — the group changed after sign-off`}
+                                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                Re-certify…
+                              </button>
+                            )}
+                          </>
+                        )
+                      }
+                      return canCertify ? (
+                        <button
+                          type="button"
+                          onClick={() => setCertifyGroup(g)}
+                          title={`Certify ${g.gcName} — review each bill and attest the group is accurate`}
+                          style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Certify…
+                        </button>
+                      ) : null
+                    })()
+                  : null}
                 {!g.isNoGc ? (
                   /* Share dropdown (v2.1423): Email… / Copy / Print for this GC in one menu. */
                   <div style={{ position: 'relative', marginLeft: 'auto', flexShrink: 0 }}>
@@ -636,14 +759,7 @@ export function JobsGcReviewModal({
                             type="button"
                             onClick={() => {
                               setShareMenuGroupKey(null)
-                              setEmailDialogGroup(g)
-                              setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
-                              setEmailDialogSubject(
-                                gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
-                              )
-                              setEmailError(null)
-                              setEmailWhen('now')
-                              setEmailRepeatWeekly(false)
+                              openEmailDialogForGroup(g)
                             }}
                             title={`Email the ${g.gcName} statement from the app`}
                             style={gcShareMenuItemStyle}
@@ -1246,6 +1362,22 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
+      {certifyGroup && authUser?.id && (
+        <GcReviewCertifyModal
+          group={certifyGroup}
+          weekStartYmd={certWeekStart}
+          authUserId={authUser.id}
+          authUserName={authUserName}
+          onClose={() => setCertifyGroup(null)}
+          onCertified={({ andSend }) => {
+            const g = certifyGroup
+            setCertifyGroup(null)
+            refreshCerts()
+            if (andSend && g) openEmailDialogForGroup(g)
+          }}
+          onOpenJobDetail={onOpenJobDetail}
+        />
+      )}
     </div>
   )
 }

@@ -4055,6 +4055,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   collectionsRows={collectionsRows}
                   users={users}
                   isDev={authRole === 'dev'}
+                  canCertify={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+                  onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
                   onOpenJob={(jobId) => {
                     // Edit Job stacks above (z 1010 vs 60); saving refetches, and the
                     // fresh rows re-derive the rollup with GC Review still open.
