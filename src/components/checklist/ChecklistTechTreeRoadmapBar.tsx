@@ -9,6 +9,9 @@ type Props = {
   onSelectRoadmapId: (id: string) => void
   canCreateRoadmap: boolean
   onCreateRoadmap: () => void
+  /** Editors with a roadmap selected can rename it from the picker. */
+  canRenameRoadmap: boolean
+  onRenameRoadmap: () => void
   canOpenMembers: boolean
   onOpenMembers: () => void
   /** Extra controls rendered on the same row after Members (Map/Plan toggle, editor actions); wraps on narrow screens. */
@@ -21,6 +24,8 @@ export function ChecklistTechTreeRoadmapBar({
   onSelectRoadmapId,
   canCreateRoadmap,
   onCreateRoadmap,
+  canRenameRoadmap,
+  onRenameRoadmap,
   canOpenMembers,
   onOpenMembers,
   trailing,
@@ -36,7 +41,9 @@ export function ChecklistTechTreeRoadmapBar({
       }}
     >
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-700)' }}>
-        <span style={{ fontWeight: 600 }}>Roadmap</span>
+        <span className="roadmap-bar-label" style={{ fontWeight: 600 }}>
+          Roadmap
+        </span>
         <select
           value={selectedRoadmapId ?? ''}
           onChange={(e) => {
@@ -44,6 +51,10 @@ export function ChecklistTechTreeRoadmapBar({
             // so the visible value snaps back to the current roadmap
             if (e.target.value === '__new__') {
               onCreateRoadmap()
+              return
+            }
+            if (e.target.value === '__rename__') {
+              onRenameRoadmap()
               return
             }
             onSelectRoadmapId(e.target.value)
@@ -69,12 +80,9 @@ export function ChecklistTechTreeRoadmapBar({
               </option>
             ))
           )}
-          {canCreateRoadmap ? (
-            <>
-              <option disabled>────────</option>
-              <option value="__new__">＋ New roadmap…</option>
-            </>
-          ) : null}
+          {canCreateRoadmap || canRenameRoadmap ? <option disabled>────────</option> : null}
+          {canRenameRoadmap ? <option value="__rename__">✎ Rename roadmap…</option> : null}
+          {canCreateRoadmap ? <option value="__new__">＋ New roadmap…</option> : null}
         </select>
       </label>
       {canOpenMembers ? (

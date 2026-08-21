@@ -2143,6 +2143,29 @@ export function ChecklistTechTreeTab({
     }
   }, [authUserId, canEditTechTree, loadRoadmaps, onRoadmapUrlParamChange, roadmaps, setError, promptDialog])
 
+  const handleRenameRoadmap = useCallback(async () => {
+    if (!canEditTechTree || !effectiveRoadmapId) return
+    const current = roadmaps.find((r) => r.id === effectiveRoadmapId)
+    const title = await promptDialog({
+      message: 'Rename this roadmap',
+      defaultValue: current?.title ?? '',
+      confirmLabel: 'Rename',
+    })
+    if (title === null) return
+    const trimmed = title.trim()
+    if (!trimmed || trimmed === current?.title) return
+    try {
+      setError(null)
+      await withSupabaseRetry(
+        () => supabase.from('checklist_tech_tree_roadmaps').update({ title: trimmed }).eq('id', effectiveRoadmapId),
+        'rename roadmap',
+      )
+      await loadRoadmaps()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not rename roadmap')
+    }
+  }, [canEditTechTree, effectiveRoadmapId, roadmaps, promptDialog, loadRoadmaps, setError])
+
   const fitViewRoadmapSearchMatches = useCallback(() => {
     const ids = roadmapSearch.groupIdsWithAnyMatch
     if (ids.length === 0) return
@@ -2262,6 +2285,8 @@ export function ChecklistTechTreeTab({
         onSelectRoadmapId={onRoadmapUrlParamChange}
         canCreateRoadmap={canEditTechTree}
         onCreateRoadmap={() => void handleCreateRoadmap()}
+        canRenameRoadmap={canEditTechTree && Boolean(effectiveRoadmapId)}
+        onRenameRoadmap={() => void handleRenameRoadmap()}
         canOpenMembers={Boolean(effectiveRoadmapId)}
         onOpenMembers={() => setMembersModalOpen(true)}
         trailing={

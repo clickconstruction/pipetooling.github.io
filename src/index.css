@@ -2081,3 +2081,47 @@ body.my-time-boundary-dragging {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* Checklist tab header (v2.1970): one-row strip that scrolls sideways on
+   phones instead of wrapping, with the page title floating on top at the
+   right (tabs slide underneath a fade). */
+.checklist-tab-bar {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.checklist-tab-strip {
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 9rem; /* room for the last tab to scroll clear of the floating title */
+}
+.checklist-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.checklist-tab-strip > button {
+  flex: none;
+  white-space: nowrap;
+}
+.checklist-tab-title {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  pointer-events: none;
+  padding-left: 44px;
+  background: linear-gradient(to right, transparent, var(--bg-page) 36px);
+}
+
+/* Roadmap toolbar: drop the "Roadmap" label on phones — the picker explains itself */
+@media (max-width: 480px) {
+  .roadmap-bar-label {
+    display: none;
+  }
+}
