@@ -2032,3 +2032,52 @@ body.my-time-boundary-dragging {
 .react-flow__controls-button svg {
   fill: currentColor;
 }
+
+/* Roadmap task card (v2.1949): centered card on desktop, bottom sheet on phones */
+.roadmap-task-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.roadmap-task-card {
+  background: var(--surface);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 560px;
+  max-height: min(92vh, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+.roadmap-task-grabber {
+  display: none;
+}
+@media (max-width: 640px) {
+  .roadmap-task-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .roadmap-task-card {
+    max-width: none;
+    border-radius: 18px 18px 0 0;
+    max-height: 92%;
+  }
+  .roadmap-task-grabber {
+    display: block;
+    flex: none;
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-strong);
+    margin: 8px auto 0;
+  }
+  .roadmap-task-composer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
