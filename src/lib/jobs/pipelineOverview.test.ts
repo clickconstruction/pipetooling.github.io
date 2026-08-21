@@ -66,17 +66,28 @@ describe('buildPipelineMoneyMoves', () => {
     expect(moves[3]!.actionLabel).toBe('Show them')
   })
 
-  it('quiet board → empty queue', () => {
-    const moves = buildPipelineMoneyMoves({
+  it('quiet board → only the standing idle AR card for AR roles; empty for others', () => {
+    const quiet = {
       stats: stats({
         capableToBill: 0,
         billedAging: { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 },
         billedNoDate: 0,
       }),
       arUnallocatedCount: 0,
-      canOpenAr: true,
-    })
-    expect(moves).toEqual([])
+    }
+    const arMoves = buildPipelineMoneyMoves({ ...quiet, canOpenAr: true })
+    expect(arMoves.map((m) => m.key)).toEqual(['allocate-deposits'])
+    expect(arMoves[0]!.idle).toBe(true)
+    expect(arMoves[0]!.claim).toBe('Accounts Receivable')
+    expect(arMoves[0]!.actionLabel).toBe('Open')
+    expect(buildPipelineMoneyMoves({ ...quiet, canOpenAr: false })).toEqual([])
+  })
+
+  it('busy AR card carries the amber badge count and is not idle', () => {
+    const moves = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: true })
+    const ar = moves.find((m) => m.key === 'allocate-deposits')!
+    expect(ar.badgeCount).toBe(2)
+    expect(ar.idle).toBeUndefined()
   })
 
   it('AR move is suppressed for roles that cannot open Accounts Receivable', () => {

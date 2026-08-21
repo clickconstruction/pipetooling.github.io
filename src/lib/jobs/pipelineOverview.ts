@@ -84,6 +84,10 @@ export type PipelineMove = {
   claim: string
   why: string
   actionLabel: string
+  /** Quiet standing card (v2.1977): nothing to act on, but the door stays open (AR's zero-deposit state). */
+  idle?: boolean
+  /** Amber count bubble beside the claim (matches the section-header AR badge). */
+  badgeCount?: number
 }
 
 export function buildPipelineMoneyMoves(input: {
@@ -111,15 +115,31 @@ export function buildPipelineMoneyMoves(input: {
       actionLabel: 'Show 90+',
     })
   }
-  if (canOpenAr && (arUnallocatedCount ?? 0) > 0) {
+  // Accounts Receivable is a STANDING card for AR roles (v2.1977): busy state
+  // is the classic "Allocate N deposits" move with the header badge's amber
+  // count; zero deposits goes quiet but keeps the door open — AR is the
+  // daily payments surface, not just an alarm.
+  if (canOpenAr) {
     const n = arUnallocatedCount ?? 0
-    moves.push({
-      key: 'allocate-deposits',
-      icon: '💵',
-      claim: `Allocate ${n} bank deposit${n === 1 ? '' : 's'}`,
-      why: 'money already received, not yet applied to bills',
-      actionLabel: 'Accounts Receivable',
-    })
+    if (n > 0) {
+      moves.push({
+        key: 'allocate-deposits',
+        icon: '💵',
+        claim: `Allocate ${n} bank deposit${n === 1 ? '' : 's'}`,
+        why: 'money already received, not yet applied to bills',
+        actionLabel: 'Accounts Receivable',
+        badgeCount: n,
+      })
+    } else {
+      moves.push({
+        key: 'allocate-deposits',
+        icon: '💵',
+        claim: 'Accounts Receivable',
+        why: 'every deposit is applied — open to review payments and allocations',
+        actionLabel: 'Open',
+        idle: true,
+      })
+    }
   }
   if (stats.billedNoDate > 0) {
     moves.push({

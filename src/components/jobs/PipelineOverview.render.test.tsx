@@ -45,7 +45,7 @@ describe('PipelineOverview fix-ups strip', () => {
   it('renders a chip per non-zero count and routes clicks by key', () => {
     const onFixup = vi.fn()
     render(<PipelineOverview {...props({ fixupCounts: { noCustomer: 1, noPictures: 3, noEmail: 2 }, onFixup })} />)
-    expect(screen.getByText('Fix-ups')).toBeTruthy()
+    expect(screen.getByText('Fix-ups — missing data blocks billing')).toBeTruthy()
     expect(screen.getByText('No customer pictures · 3')).toBeTruthy()
     fireEvent.click(screen.getByText('No customer · 1'))
     fireEvent.click(screen.getByText('No email · 2'))
@@ -55,7 +55,7 @@ describe('PipelineOverview fix-ups strip', () => {
 
   it('hides the whole strip when every count is zero', () => {
     render(<PipelineOverview {...props()} />)
-    expect(screen.queryByText('Fix-ups')).toBeNull()
+    expect(screen.queryByText(/Fix-ups —/)).toBeNull()
   })
 
   it('strip still renders under an otherwise-empty opportunities queue', () => {
@@ -68,10 +68,11 @@ describe('PipelineOverview fix-ups strip', () => {
             billedAging: { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 },
           },
           fixupCounts: { noCustomer: 0, noPictures: 0, noEmail: 4 },
+          canOpenAr: false,
         })}
       />,
     )
-    expect(screen.getByText(/nothing needs a move right now/)).toBeTruthy()
+    expect(screen.queryByText(/nothing needs a move right now/)).toBeNull()
     expect(screen.getByText('No email · 4')).toBeTruthy()
   })
 })
