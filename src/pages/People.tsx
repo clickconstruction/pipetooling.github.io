@@ -73,6 +73,8 @@ import {
 } from '../lib/payStubPayments'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
+import { PayrollCatchUpModal } from '../components/pay/PayrollCatchUpModal'
+import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
 import {
@@ -1540,13 +1542,14 @@ export default function People() {
 
   async function generatePayStub(
     personNameArg: string,
-    options?: { openPreview?: boolean },
+    options?: { openPreview?: boolean; periodStart?: string; periodEnd?: string },
   ): Promise<boolean> {
     const openPreview = options?.openPreview !== false
     const personName = personNameArg.trim()
     if (!authUser?.id || !personName) return false
-    const start = payStubPeriodStart
-    const end = payStubPeriodEnd
+    // Catch-up rows (v2.2034) generate for their own week; default unchanged.
+    const start = options?.periodStart ?? payStubPeriodStart
+    const end = options?.periodEnd ?? payStubPeriodEnd
     const { data: hoursData } = await supabase
       .from('people_hours')
       .select('work_date, hours')
@@ -2727,6 +2730,95 @@ export default function People() {
     })
   }
 
+  // ── Payroll catch-up (v2.2034): earlier weeks with hours but no report ──
+  const [catchUpModalOpen, setCatchUpModalOpen] = useState(false)
+  const [catchUpWeeksBack, setCatchUpWeeksBack] = useState(8)
+  const [catchUpRows, setCatchUpRows] = useState<UnreportedWeekRow[] | null>(null)
+  const [catchUpLoading, setCatchUpLoading] = useState(false)
+  const [catchUpScanFrom, setCatchUpScanFrom] = useState<string | null>(null)
+  const [catchUpGeneratingKey, setCatchUpGeneratingKey] = useState<string | null>(null)
+  // Stubs via a ref so generating a report doesn't re-run the scan (a fresh
+  // row flips to View/Record payment instead of vanishing mid-session).
+  const catchUpStubsRef = useRef(payStubs)
+  catchUpStubsRef.current = payStubs
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) {
+      setCatchUpModalOpen(false)
+      setCatchUpRows(null)
+      setCatchUpWeeksBack(8)
+      return
+    }
+    const weeks = scanWeeksBefore(payStubPeriodStart, catchUpWeeksBack)
+    if (weeks.length === 0) {
+      setCatchUpRows([])
+      setCatchUpScanFrom(null)
+      return
+    }
+    const scanStart = weeks[weeks.length - 1]!.weekStart
+    const scanEnd = weeks[0]!.weekEnd
+    let cancelled = false
+    setCatchUpLoading(true)
+    void (async () => {
+      try {
+        const salariedNames = Object.keys(payConfig).filter((n) => payConfig[n]?.is_salary)
+        const [{ data: hoursData }, windows] = await Promise.all([
+          supabase
+            .from('people_hours')
+            .select('person_name, work_date, hours')
+            .gte('work_date', scanStart)
+            .lte('work_date', scanEnd),
+          salariedNames.length > 0
+            ? fetchSalariedPayrollWindows(supabase, salariedNames, scanStart, scanEnd)
+            : Promise.resolve({} as Record<string, SalariedPayrollWindow>),
+        ])
+        if (cancelled) return
+        setCatchUpRows(
+          unreportedPayrollWeeks({
+            weeks,
+            peopleNames: showPeopleForHours,
+            hoursRows: (hoursData ?? []) as Array<{ person_name: string; work_date: string; hours: number }>,
+            payConfig,
+            salaryWindows: windows,
+            stubs: catchUpStubsRef.current,
+          }),
+        )
+        setCatchUpScanFrom(scanStart)
+      } finally {
+        if (!cancelled) setCatchUpLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, catchUpWeeksBack])
+
+  /** Rows still lacking a report right now — the entry button's count. */
+  const catchUpUnreportedCount =
+    catchUpRows == null
+      ? null
+      : catchUpRows.filter(
+          (r) =>
+            !payStubs.some(
+              (s) => s.person_name === r.personName && s.period_start <= r.weekEnd && s.period_end >= r.weekStart,
+            ),
+        ).length
+
+  async function generateCatchUpReport(row: UnreportedWeekRow) {
+    setCatchUpGeneratingKey(`${row.personName}:${row.weekStart}`)
+    setError(null)
+    try {
+      await generatePayStub(row.personName, {
+        openPreview: false,
+        periodStart: row.weekStart,
+        periodEnd: row.weekEnd,
+      })
+    } finally {
+      setCatchUpGeneratingKey(null)
+    }
+  }
+
   function getCostForPersonDateTeams(personName: string, workDate: string): number {
     if (!showMaxHoursTeams) return getCostForPersonDate(personName, workDate)
     const cfg = payConfig[personName]
@@ -3659,6 +3751,34 @@ export default function People() {
           showToast={showToast}
           onNavigateToHoursForReviewDate={navigateToHoursForReviewDate}
           onOpenHoursBreakdown={(name) => setDraftPayrollHoursBreakdownPerson(name)}
+          catchUpCount={catchUpUnreportedCount}
+          onOpenCatchUp={() => setCatchUpModalOpen(true)}
+        />
+      )}
+
+      {draftPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (
+        <PayrollCatchUpModal
+          open={catchUpModalOpen}
+          onClose={() => setCatchUpModalOpen(false)}
+          zIndex={Z_PEOPLE_PAY_MODAL + 50}
+          rows={catchUpRows ?? []}
+          loading={catchUpLoading}
+          scannedFrom={catchUpScanFrom}
+          payStubs={payStubs}
+          payStubPaymentsByStubId={payStubPaymentsByStubId}
+          payStubDeductionsByStubId={payStubDeductionsByStubId}
+          payStubAdditionalByStubId={payStubAdditionalByStubId}
+          generatingKey={catchUpGeneratingKey}
+          markingPayStubId={markingPayStubId}
+          onGenerateForWeek={generateCatchUpReport}
+          onViewStub={(stub) => void viewPayStub(stub)}
+          onRecordPayment={openPayStubMarkPaidModal}
+          onOpenWeek={(weekStart, weekEnd) => {
+            setPayStubPeriodStart(weekStart)
+            setPayStubPeriodEnd(weekEnd)
+            setCatchUpModalOpen(false)
+          }}
+          onExtendScan={() => setCatchUpWeeksBack((n) => n + 8)}
         />
       )}
 
