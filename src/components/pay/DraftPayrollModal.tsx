@@ -144,6 +144,9 @@ export type DraftPayrollModalProps = {
   showToast: (message: string, variant: 'success' | 'error' | 'warning' | 'info') => void
   onNavigateToHoursForReviewDate: (workDate: string, personName: string) => void
   onOpenHoursBreakdown: (personName: string) => void
+  /** Catch-up scan (v2.2034): unreported earlier person-weeks. Null = scan not done. */
+  catchUpCount?: number | null
+  onOpenCatchUp?: () => void
 }
 
 export function DraftPayrollModal({
@@ -181,6 +184,8 @@ export function DraftPayrollModal({
   showToast,
   onNavigateToHoursForReviewDate,
   onOpenHoursBreakdown,
+  catchUpCount,
+  onOpenCatchUp,
 }: DraftPayrollModalProps) {
   const [reviewDaysDetail, setReviewDaysDetail] = useState<{
     personName: string
@@ -524,6 +529,27 @@ export function DraftPayrollModal({
                 >
                   Print
                 </button>
+                {onOpenCatchUp && catchUpCount != null ? (
+                  // Always reachable once the scan resolves — a clean first 8
+                  // weeks must not hide the door to "Scan 8 more weeks".
+                  <button
+                    type="button"
+                    onClick={onOpenCatchUp}
+                    title="Earlier weeks with hours but no pay report"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: catchUpCount > 0 ? 600 : 500,
+                      background: catchUpCount > 0 ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                      color: catchUpCount > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
+                      border: catchUpCount > 0 ? '1.5px solid #d97706' : '1px solid var(--border-strong)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {catchUpCount > 0 ? `⏳ Earlier unreported: ${catchUpCount}` : 'Earlier weeks ✓'}
+                  </button>
+                ) : null}
                 <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                   {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with hours and no report yet`}
                 </span>
