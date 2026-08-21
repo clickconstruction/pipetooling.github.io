@@ -6,6 +6,15 @@
  * expansion, and the billing-highlight gate force-opening the Customer row.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
+vi.mock('../../lib/supabase', async () => {
+  const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
+  return { supabase: makeSupabaseStub() }
+})
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { JobFormEditFactRows } from './JobFormEditFactRows'

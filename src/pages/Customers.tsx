@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import CustomerPortalGlobeButton from '../components/customers/CustomerPortalGlobeButton'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
@@ -833,6 +834,11 @@ export default function Customers() {
                   >
                     {c.name}
                   </Link>
+                  <CustomerPortalGlobeButton
+                    customerId={c.id}
+                    customerName={(c.name ?? 'Customer').trim() || 'Customer'}
+                    defaultAudience={isCustomerCommercialDefaultType(c) ? 'gc' : 'customer'}
+                  />
                   <button
                     type="button"
                     aria-label={`Edit ${(c.name ?? 'customer').trim() || 'customer'}`}
