@@ -107,6 +107,19 @@ export default function Checklist() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [role, setRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<ChecklistTab>('today')
+  const tabStripRef = useRef<HTMLDivElement | null>(null)
+
+  // keep the active pill visible in the one-row scrollable strip (v2.1970)
+  useEffect(() => {
+    const strip = tabStripRef.current
+    const el = strip?.querySelector<HTMLElement>('button[data-active="true"]')
+    if (!strip || !el) return
+    const left = el.offsetLeft
+    const right = left + el.offsetWidth
+    if (left < strip.scrollLeft || right > strip.scrollLeft + strip.clientWidth) {
+      strip.scrollTo({ left: Math.max(0, left - 16) })
+    }
+  }, [activeTab])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -214,7 +227,8 @@ export default function Checklist() {
           : {}),
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+      <div className="checklist-tab-bar">
+        <div className="checklist-tab-strip" ref={tabStripRef}>
         <button
           type="button"
           onClick={() => {
@@ -225,6 +239,7 @@ export default function Checklist() {
               return next
             })
           }}
+          data-active={activeTab === 'today'}
           style={tabStyle(activeTab === 'today')}
         >
           Today
@@ -239,6 +254,7 @@ export default function Checklist() {
               return next
             })
           }}
+          data-active={activeTab === 'history'}
           style={tabStyle(activeTab === 'history')}
         >
           History
@@ -255,7 +271,8 @@ export default function Checklist() {
                   return next
                 })
               }}
-              style={tabStyle(activeTab === 'review')}
+              data-active={activeTab === 'review'}
+          style={tabStyle(activeTab === 'review')}
             >
               Review
             </button>
@@ -269,7 +286,8 @@ export default function Checklist() {
                   return next
                 })
               }}
-              style={tabStyle(activeTab === 'manage')}
+              data-active={activeTab === 'manage'}
+          style={tabStyle(activeTab === 'manage')}
             >
               Manage
             </button>
@@ -286,12 +304,14 @@ export default function Checklist() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'roadmap')}
+            data-active={activeTab === 'roadmap'}
+          style={tabStyle(activeTab === 'roadmap')}
           >
             Roadmap
           </button>
         )}
-        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Checklist</h1>
+        </div>
+        <h1 className="checklist-tab-title">Checklist</h1>
       </div>
 
       {activeTab === 'today' && (
