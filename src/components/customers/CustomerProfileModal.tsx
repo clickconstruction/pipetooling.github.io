@@ -11,8 +11,11 @@ import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../
 import { bidOutcomeDotColor } from '../../lib/bidOutcomeDotColor'
 import { estimateStatusDotColor } from '../../lib/estimateStatusDotColor'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import { customerDaysToPay, customerMoneyStats } from '../../lib/customers/customerProfileStats'
+import { customerDaysToPay, customerMoneyStats, profileJobRowMoney, sortProfileJobsForList } from '../../lib/customers/customerProfileStats'
 import { fetchCustomerProfile, type CustomerProfileData } from '../../lib/customers/fetchCustomerProfile'
+import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEventsForJobLedger'
+import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
+import GcHardHatIcon from '../icons/GcHardHatIcon'
 
 /**
  * Customer profile modal (v2.1322): everything the app knows about one
@@ -69,7 +72,7 @@ function Rail({ cap, children }: { cap: string; children: ReactNode }) {
   )
 }
 
-const RAIL_COLLAPSE_COUNT = 6
+const JOBS_LIST_COLLAPSE_COUNT = 4
 
 export default function CustomerProfileModal({ customerId, onClose }: { customerId: string; onClose: () => void }) {
   const navigate = useNavigate()
@@ -81,6 +84,8 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
   const [data, setData] = useState<CustomerProfileData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [jobsExpanded, setJobsExpanded] = useState(false)
+  /** Recent activity across their newest jobs (v2.1985) — best-effort, loads after the profile. */
+  const [activity, setActivity] = useState<Array<JobActivityEventRpcRow & { jobLabel: string }> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -97,6 +102,31 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
       cancelled = true
     }
   }, [customerId])
+
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    // Latest few events across the newest 4 jobs (the per-job RPC applies
+    // role gating server-side; a whole-customer feed would need a new RPC).
+    const recent = data.jobs.slice(0, 4)
+    if (recent.length === 0) {
+      setActivity([])
+      return
+    }
+    void Promise.all(recent.map((j) => fetchJobActivityEventsForJobLedger(j.id))).then((results) => {
+      if (cancelled) return
+      const merged = results.flatMap(({ data: rows }, i) => {
+        const j = recent[i]!
+        const jobLabel = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || (j.job_name ?? '').trim() || 'job'
+        return rows.map((r) => ({ ...r, jobLabel }))
+      })
+      merged.sort((a, b) => (b.occurred_at ?? '').localeCompare(a.occurred_at ?? ''))
+      setActivity(merged.slice(0, 4))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [data])
 
   const todayYmd = denverWorkDateToday()
   const stats = useMemo(() => (data ? customerMoneyStats(data.jobs, todayYmd) : null), [data, todayYmd])
@@ -122,8 +152,15 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
     return null
   }, [stats])
 
-  const visibleJobs = data ? (jobsExpanded ? data.jobs : data.jobs.slice(0, RAIL_COLLAPSE_COUNT)) : []
-  const hiddenJobs = data ? data.jobs.length - visibleJobs.length : 0
+  /** Jobs list (v2.1985): money-first order, per-row money on the openBalance basis. */
+  const sortedJobs = useMemo(() => (data ? sortProfileJobsForList(data.jobs, todayYmd) : []), [data, todayYmd])
+  const jobRowMoney = useMemo(
+    () => new Map(sortedJobs.map((j) => [j.id, profileJobRowMoney(j, todayYmd)])),
+    [sortedJobs, todayYmd],
+  )
+  const visibleJobs = jobsExpanded ? sortedJobs : sortedJobs.slice(0, JOBS_LIST_COLLAPSE_COUNT)
+  const hiddenJobs = sortedJobs.length - visibleJobs.length
+  const hiddenOpenSum = sortedJobs.slice(visibleJobs.length).reduce((s, j) => s + (jobRowMoney.get(j.id)?.openBilled ?? 0), 0)
 
   return (
     <div
@@ -159,6 +196,15 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
                     {data.customer.customer_type === 'commercial' ? 'Commercial' : 'Residential'}
                   </span>
                 ) : null}
+                {data.gcJobCount > 0 ? (
+                  <span
+                    title="This customer is the GC/Builder on jobs"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 20, padding: '0 9px', borderRadius: 9999, fontSize: '0.68rem', fontWeight: 700, background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)' }}
+                  >
+                    <GcHardHatIcon size={10} />
+                    GC on {data.gcJobCount} job{data.gcJobCount === 1 ? '' : 's'}
+                  </span>
+                ) : null}
                 {data.customer.archived_at ? (
                   <span style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 9px', borderRadius: 9999, fontSize: '0.68rem', fontWeight: 700, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>
                     Archived
@@ -173,8 +219,14 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
                   ×
                 </button>
               </div>
-              {sinceLabel ? (
-                <div style={{ marginTop: 3, fontSize: '0.75rem', color: 'var(--text-faint)' }}>Customer since {sinceLabel}</div>
+              {sinceLabel || data.gcLastStatementSentAt ? (
+                <div style={{ marginTop: 3, fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                  {sinceLabel ? `Customer since ${sinceLabel}` : ''}
+                  {sinceLabel && data.gcLastStatementSentAt ? ' · ' : ''}
+                  {data.gcLastStatementSentAt
+                    ? `statement last sent ${new Date(data.gcLastStatementSentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                    : ''}
+                </div>
               ) : null}
             </div>
 
@@ -242,28 +294,70 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
 
             {/* work rails */}
             <div style={{ padding: '14px 20px 6px' }}>
-              <Rail cap="Jobs">
-                {data.jobs.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>None yet.</span>}
-                {visibleJobs.map((j) => (
-                  <button
-                    key={j.id}
-                    type="button"
-                    onClick={() => jobDetail?.openJobDetail({ jobId: j.id })}
-                    title={`Open job detail — ${labelJobsLedgerStatusForDashboard(j.status ?? 'working')}`}
-                    style={pillStyle}
-                  >
-                    <Dot color={jobsLedgerStatusDotColor(j.status ?? 'working')} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || (j.job_name ?? '').trim() || 'Job'}
-                    </span>
-                  </button>
-                ))}
+              {/* Jobs: money-aware list (v2.1985) — rows reconcile with the open balance. */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                  <span style={capStyle}>Jobs</span>
+                  {sortedJobs.length > 0 && (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>click one to open Job Detail on top</span>
+                  )}
+                </div>
+                {sortedJobs.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>None yet.</span>}
+                {visibleJobs.map((j) => {
+                  const m = jobRowMoney.get(j.id)!
+                  const stage = labelJobsLedgerStatusForDashboard(j.status ?? 'working')
+                  // Money-first meta: an open bill describes ITSELF (billed <date> · age),
+                  // whatever stage the job sits in; the status dot still shows the stage.
+                  const meta = m.openBilled > 0.005
+                    ? m.noBillDate
+                      ? 'billed · no date'
+                      : `billed ${m.oldestOpenBillYmd ? new Date(`${m.oldestOpenBillYmd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : ''}${m.ageDays != null ? ` · ${m.ageDays}d` : ''}`
+                    : m.unbilled > 0.005
+                      ? `${stage} · unbilled`
+                      : stage
+                  const metaColor = m.openBilled > 0.005 && m.ageDays != null && m.ageDays >= 90
+                    ? 'var(--text-red-600)'
+                    : m.openBilled > 0.005 && m.noBillDate
+                      ? 'var(--text-amber-800)'
+                      : 'var(--text-muted)'
+                  return (
+                    <div
+                      key={j.id}
+                      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px', padding: '5px 2px', borderTop: '1px solid var(--border-job-row)', fontSize: '0.8125rem' }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <Dot color={jobsLedgerStatusDotColor(j.status ?? 'working')} />
+                        <button
+                          type="button"
+                          onClick={() => jobDetail?.openJobDetail({ jobId: j.id })}
+                          title="Open Job Detail on top"
+                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '15rem' }}
+                        >
+                          {[effectiveJobLedgerNumber(j.hcp_number, j.click_number), (j.job_name ?? '').trim()].filter(Boolean).join(' · ') || 'Job'}
+                        </button>
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: metaColor, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</span>
+                      <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontWeight: m.ageDays != null && m.ageDays >= 90 ? 700 : 400, color: m.openBilled > 0.005 ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {m.openBilled > 0.005 ? money(m.openBilled) : m.unbilled > 0.005 ? money(m.unbilled) : '—'}
+                      </span>
+                    </div>
+                  )
+                })}
                 {hiddenJobs > 0 && (
-                  <button type="button" onClick={() => setJobsExpanded(true)} style={{ ...pillStyle, color: 'var(--text-700)' }}>
-                    +{hiddenJobs} more
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 2px', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <span style={{ fontStyle: 'italic' }}>
+                      + {hiddenJobs} more{hiddenOpenSum > 0.005 ? ` · ${money(hiddenOpenSum)} open` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setJobsExpanded(true)}
+                      style={{ marginLeft: 'auto', padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                    >
+                      show all
+                    </button>
+                  </div>
                 )}
-              </Rail>
+              </div>
               <Rail cap="Projects">
                 {data.projects.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>None yet.</span>}
                 {data.projects.map((p) => (
@@ -318,8 +412,29 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
               </Rail>
             </div>
 
+            {/* recent activity across their newest jobs (v2.1985) */}
+            {activity && activity.length > 0 && (
+              <div style={{ padding: '4px 20px 12px' }}>
+                <div style={{ ...capStyle, width: 'auto', marginBottom: 4 }}>Recent activity</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem', lineHeight: 1.45 }}>
+                  {activity.map((ev) => (
+                    <div key={ev.id} style={{ minWidth: 0 }}>
+                      <span style={{ color: 'var(--text-faint)' }}>
+                        {ev.occurred_at
+                          ? new Date(ev.occurred_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                          : ''}
+                      </span>{' '}
+                      <strong style={{ color: 'var(--text-700)' }}>{ev.actor_name || '—'}</strong>{' '}
+                      <span style={{ color: 'var(--text-faint)' }}>on {ev.jobLabel} |</span>{' '}
+                      <span style={{ color: 'var(--text-muted)' }}>{ev.summary || ev.event_type}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* footer */}
-            <div style={{ display: 'flex', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -342,6 +457,16 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
                 style={{ height: 30, padding: '0 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
               >
                 Their projects
+              </button>
+              {/* Public page (owner-planned, ships last): slot reserved so the layout won't shift. */}
+              <button
+                type="button"
+                disabled
+                title="The customer's public page is coming — planned as the last piece of this modal"
+                style={{ height: 30, padding: '0 0.8rem', border: '1px dashed var(--border-400)', borderRadius: 5, background: 'transparent', color: 'var(--text-faint)', fontSize: '0.78rem', fontWeight: 600, cursor: 'default', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                Public page
+                <span style={{ padding: '1px 6px', fontSize: '0.6rem', fontWeight: 700, borderRadius: 9999, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>soon</span>
               </button>
             </div>
           </>

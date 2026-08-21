@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { customerDaysToPay, customerEstimateOutcomes, customerMoneyStats, type ProfileJob } from './customerProfileStats'
+import { customerDaysToPay, customerEstimateOutcomes, customerMoneyStats, profileJobRowMoney, sortProfileJobsForList, type ProfileJob } from './customerProfileStats'
 
 const TODAY = '2026-08-03'
 
@@ -161,5 +161,78 @@ describe('customerEstimateOutcomes', () => {
   it('returns null when nothing is decided', () => {
     expect(customerEstimateOutcomes([{ status: 'sent' }, { status: 'draft' }])).toBeNull()
     expect(customerEstimateOutcomes([])).toBeNull()
+  })
+})
+
+describe('profileJobRowMoney / sortProfileJobsForList (v2.1985 jobs list)', () => {
+  it('billed invoices: remainder net of linked payments, age from oldest open est date', () => {
+    const m = profileJobRowMoney(
+      job({
+        invoices: [
+          { id: 'i1', status: 'billed', amount: 1000, billed_at: null, estimated_bill_date: '2026-06-20' },
+          { id: 'i2', status: 'billed', amount: 700, billed_at: null, estimated_bill_date: '2026-03-01' },
+        ],
+        payments: [{ invoice_id: 'i1', amount: 400, paid_on: '2026-07-01' }],
+      }),
+      TODAY,
+    )
+    expect(m.openBilled).toBe(600 + 700)
+    expect(m.oldestOpenBillYmd).toBe('2026-03-01')
+    expect(m.ageDays).toBe(155)
+    expect(m.noBillDate).toBe(false)
+    expect(m.unbilled).toBe(0)
+  })
+
+  it('billed shell with no invoices: open remainder, flagged no-bill-date', () => {
+    const m = profileJobRowMoney(job({ revenue: 900, payments_made: 200 }), TODAY)
+    expect(m.openBilled).toBe(700)
+    expect(m.noBillDate).toBe(true)
+    expect(m.ageDays).toBeNull()
+  })
+
+  it('working job with nothing billed shows its unbilled value; paid jobs show nothing', () => {
+    const w = profileJobRowMoney(job({ status: 'working', revenue: 5000, payments_made: 1000 }), TODAY)
+    expect(w.openBilled).toBe(0)
+    expect(w.unbilled).toBe(4000)
+    const p = profileJobRowMoney(job({ status: 'paid', revenue: 5000, payments_made: 5000 }), TODAY)
+    expect(p.openBilled).toBe(0)
+    expect(p.unbilled).toBe(0)
+  })
+
+  it('sums of listed rows reconcile with customerMoneyStats.openBalance', () => {
+    const jobs = [
+      job({
+        id: 'a',
+        invoices: [{ id: 'i1', status: 'billed', amount: 1000, billed_at: null, estimated_bill_date: '2026-06-20' }],
+        payments: [{ invoice_id: 'i1', amount: 400, paid_on: '2026-07-01' }],
+      }),
+      job({ id: 'b', revenue: 900, payments_made: 200 }),
+      job({ id: 'c', status: 'working', revenue: 5000, payments_made: 0 }),
+    ]
+    const total = jobs.reduce((s, j) => s + profileJobRowMoney(j, TODAY).openBilled, 0)
+    expect(total).toBe(customerMoneyStats(jobs, TODAY).openBalance)
+  })
+
+  it('sorts billed-open desc with oldest-age tiebreak, then unbilled desc', () => {
+    const jobs = [
+      job({ id: 'unbilled-small', status: 'working', revenue: 100, payments_made: 0 }),
+      job({ id: 'unbilled-big', status: 'working', revenue: 9000, payments_made: 0 }),
+      job({
+        id: 'open-fresh',
+        invoices: [{ id: 'x1', status: 'billed', amount: 500, billed_at: null, estimated_bill_date: '2026-08-01' }],
+      }),
+      job({
+        id: 'open-old',
+        invoices: [{ id: 'x2', status: 'billed', amount: 500, billed_at: null, estimated_bill_date: '2026-02-01' }],
+      }),
+      job({ id: 'open-big', invoices: [{ id: 'x3', status: 'billed', amount: 2000, billed_at: null, estimated_bill_date: '2026-08-01' }] }),
+    ]
+    expect(sortProfileJobsForList(jobs, TODAY).map((j) => j.id)).toEqual([
+      'open-big',
+      'open-old',
+      'open-fresh',
+      'unbilled-big',
+      'unbilled-small',
+    ])
   })
 })
