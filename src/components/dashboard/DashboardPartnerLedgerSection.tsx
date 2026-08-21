@@ -220,9 +220,9 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         <button
           type="button"
           onClick={() => void toggleFullLedger()}
-          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}
+          style={{ display: 'block', margin: '0 auto', font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}
         >
-          {fullOpen ? '▾ Hide full ledger' : '▸ Full ledger — every posting, all time'}
+          {fullOpen ? '▾ Hide full ledger' : '▸ Full ledger'}
         </button>
         {fullOpen ? (
           fullLoading || fullRows == null ? (
