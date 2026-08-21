@@ -214,7 +214,7 @@ export default function Checklist() {
           : {}),
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
         <button
           type="button"
           onClick={() => {
