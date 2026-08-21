@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
+import { pendingOffsetSignedAmount } from '../../lib/partnerLedger/partnerLedgerJournal'
 import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
 
 /**
@@ -22,6 +23,7 @@ type StubRow = {
   gross_pay: number
   paid_at: string | null
 }
+type PendingOffsetRow = { id: string; type: string; amount: number; occurred_date: string; description: string | null }
 type AckRow = { pay_stub_id: string; party: string; acknowledged_at: string }
 type PaymentRow = { pay_stub_id: string; amount: number }
 
@@ -41,6 +43,8 @@ export function PartnershipStatementsTab({
   const [stubs, setStubs] = useState<StubRow[] | null>(null)
   const [acks, setAcks] = useState<AckRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
+  const [pendingOffsets, setPendingOffsets] = useState<PendingOffsetRow[]>([])
+  const [excluded, setExcluded] = useState<Set<string>>(new Set())
   const [loadFailed, setLoadFailed] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [override, setOverride] = useState(false)
@@ -79,6 +83,14 @@ export function PartnershipStatementsTab({
       setAcks([])
       setPayments([])
     }
+    const pendRes = await supabase
+      .from('person_offsets')
+      .select('id, type, amount, occurred_date, description')
+      .eq('person_id', personId)
+      .is('pay_stub_id', null)
+      .order('occurred_date', { ascending: false })
+    setPendingOffsets(((pendRes.data ?? []) as PendingOffsetRow[]) || [])
+    setExcluded(new Set())
   }, [personId])
 
   useEffect(() => {
@@ -90,10 +102,14 @@ export function PartnershipStatementsTab({
     setGenerating(true)
     setGenError(null)
     setGenMessage(null)
+    // Partial selection passes the kept ids; full selection omits the param so
+    // the call also works against a pre-selection server (fail-soft window).
+    const kept = pendingOffsets.filter((o) => !excluded.has(o.id)).map((o) => o.id)
     const { data, error } = await supabase.rpc('generate_partner_statement', {
       p_partnership_id: partnershipId,
       p_week_start: weekStart,
       p_override: override,
+      ...(excluded.size > 0 ? { p_offset_ids: kept } : {}),
     })
     if (error) {
       setGenError(error.message)
@@ -163,6 +179,52 @@ export function PartnershipStatementsTab({
             </div>
           ) : null}
         </div>
+        {(closePlan.target || closePlan.olderUncovered.length > 0) && pendingOffsets.length > 0 ? (
+          <div style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                Charges to put on this statement
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                attaching {pendingOffsets.length - excluded.size} of {pendingOffsets.length}
+              </span>
+            </div>
+            {pendingOffsets.map((o) => {
+              const amt = pendingOffsetSignedAmount(o)
+              const checked = !excluded.has(o.id)
+              return (
+                <label
+                  key={o.id}
+                  style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.25rem 0', fontSize: '0.8rem', cursor: 'pointer', opacity: checked ? 1 : 0.55 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setExcluded((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(o.id)) next.delete(o.id)
+                        else next.add(o.id)
+                        return next
+                      })
+                    }
+                  />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {o.description || o.type}
+                    <span style={{ color: 'var(--text-muted)' }}> · {o.occurred_date}</span>
+                  </span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650, whiteSpace: 'nowrap', color: amt < 0 ? 'var(--text-red-600)' : '#16a34a' }}>
+                    {amt < 0 ? '−' : '+'}{money(Math.abs(amt))}
+                  </span>
+                </label>
+              )
+            })}
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              Unchecked charges stay pending for a later statement. A statement can’t deduct below zero — anything that
+              doesn’t fit stays pending automatically.
+            </div>
+          </div>
+        ) : null}
         {closePlan.olderUncovered.length > 0 ? (
           <div style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Earlier weeks without a statement — generate if hours were worked:
