@@ -69,6 +69,7 @@ import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
+import { ChecklistRoadmapTimelineView } from './ChecklistRoadmapTimelineView'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import { ChecklistTechTreeOrderStagesModal } from './ChecklistTechTreeOrderStagesModal'
 import { computeStageOrderUpdates, computeTaskOrderUpdates, stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
@@ -1280,14 +1281,15 @@ export function ChecklistTechTreeTab({
   const [reorderMode, setReorderMode] = useState(false)
   // Map = the canvas; Plan = the flat work-front list (v2.1913). Remembered
   // per device — field crews live in Plan, structure edits happen in Map.
-  const [viewMode, setViewMode] = useState<'map' | 'plan'>(() => {
+  const [viewMode, setViewMode] = useState<'map' | 'plan' | 'timeline'>(() => {
     try {
-      return localStorage.getItem('roadmap_view_v1') === 'plan' ? 'plan' : 'map'
+      const stored = localStorage.getItem('roadmap_view_v1')
+      return stored === 'plan' || stored === 'timeline' ? stored : 'map'
     } catch {
       return 'map'
     }
   })
-  const setViewModePersisted = useCallback((mode: 'map' | 'plan') => {
+  const setViewModePersisted = useCallback((mode: 'map' | 'plan' | 'timeline') => {
     setViewMode(mode)
     try {
       localStorage.setItem('roadmap_view_v1', mode)
@@ -2292,7 +2294,7 @@ export function ChecklistTechTreeTab({
         trailing={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
             <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
-              {(['map', 'plan'] as const).map((mode) => (
+              {(['map', 'plan', 'timeline'] as const).map((mode) => (
                 <button
                   key={mode}
                   type="button"
@@ -2308,7 +2310,7 @@ export function ChecklistTechTreeTab({
                     cursor: 'pointer',
                   }}
                 >
-                  {mode === 'map' ? 'Map' : 'Plan'}
+                  {mode === 'map' ? 'Map' : mode === 'plan' ? 'Plan' : 'Timeline'}
                 </button>
               ))}
             </div>
@@ -2330,6 +2332,19 @@ export function ChecklistTechTreeTab({
           </div>
         }
       />
+      {viewMode === 'timeline' ? (
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: '1rem' }}>
+          <ChecklistRoadmapTimelineView
+            groups={groups.map((g) => ({ id: g.id, title: g.title }))}
+            tasks={tasks}
+            edges={graphEdges}
+            unlockedIds={unlockedIds}
+            completeIds={completeGroupIds}
+            users={users}
+            onOpenTask={openEditTask}
+          />
+        </div>
+      ) : null}
       {viewMode === 'plan' ? (
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <ChecklistRoadmapPlanView
