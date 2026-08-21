@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
+  PENDING_CHASE_ACTIONS,
   PENDING_CHASE_DEFAULT_WINDOW_KEY,
   PENDING_CHASE_WINDOWS,
   bidNeedsChase,
   bidSentWithinWindow,
+  buildPendingChaseActionWrites,
   buildPendingChaseRollup,
   groupPendingChaseByBuilder,
   nextPendingChaseBidIndex,
+  type PendingChaseActionKey,
   type PendingChaseBid,
   type PendingChaseWindowKey,
 } from '../../lib/bidPendingChase'
+import { BID_LOSS_CATEGORIES, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import {
   type LedgerPrefixMap,
   formatBidLedgerNumberLabel,
@@ -27,6 +33,9 @@ export type BidsWaitingToHearLensProps = {
   /** Latest submission-entry instant per bid id (parent's `lastContactFromEntries`). */
   lastContactFromEntries: Record<string, string>
   narrowViewport640: boolean
+  authUserId: string | null
+  onError: (message: string | null) => void
+  onReloadBids: () => void
   /** Jump to this bid's builder card on the By-builder lens (existing deep-link plumbing). */
   onOpenBuilderCard: (bid: BidWithBuilder) => void
 }
@@ -90,11 +99,21 @@ export function BidsWaitingToHearLens({
   ledgerPrefixMap,
   lastContactFromEntries,
   narrowViewport640,
+  authUserId,
+  onError,
+  onReloadBids,
   onOpenBuilderCard,
 }: BidsWaitingToHearLensProps) {
   const [windowKey, setWindowKey] = useState<PendingChaseWindowKey>(PENDING_CHASE_DEFAULT_WINDOW_KEY)
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [lostPickerOpen, setLostPickerOpen] = useState(false)
+  const [savingBidId, setSavingBidId] = useState<string | null>(null)
+  // Optimistic layers over props so taps feel instant while the reload catches up.
+  const [localTouches, setLocalTouches] = useState<Record<string, string>>({})
+  const [localResolved, setLocalResolved] = useState<Record<string, 'won' | 'lost'>>({})
+  const [chasedThisSession, setChasedThisSession] = useState(0)
 
   // One instant per mount keeps every memo on the same clock.
   const nowIso = useMemo(() => new Date().toISOString(), [])
@@ -107,12 +126,13 @@ export function BidsWaitingToHearLens({
           !!b.bid_date_sent &&
           b.outcome !== 'won' &&
           b.outcome !== 'lost' &&
-          b.outcome !== 'started_or_complete',
+          b.outcome !== 'started_or_complete' &&
+          !localResolved[b.id],
       )
       .map((b) => {
         const builderName =
           (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
-        const fromBid = b.last_contact ?? null
+        const fromBid = localTouches[b.id] ?? b.last_contact ?? null
         const fromEntries = lastContactFromEntries[b.id] ?? null
         const lastContactIso =
           fromBid && fromEntries ? (fromBid > fromEntries ? fromBid : fromEntries) : fromBid ?? fromEntries
@@ -131,7 +151,7 @@ export function BidsWaitingToHearLens({
           raw: b,
         }
       })
-  }, [bids, lastContactFromEntries, ledgerPrefixMap])
+  }, [bids, lastContactFromEntries, ledgerPrefixMap, localTouches, localResolved])
 
   const lensBids = useMemo(
     () => allPendingLensBids.filter((b) => bidSentWithinWindow(b, windowDays, nowIso)),
@@ -159,9 +179,76 @@ export function BidsWaitingToHearLens({
     )
   }, [selectedBids, selectedBidId, nowIso])
 
+  useEffect(() => {
+    setNoteDraft('')
+    setLostPickerOpen(false)
+  }, [selectedBid?.id])
+
   function selectBuilder(key: string) {
     setSelectedBuilderKey(key)
     setSelectedBidId(null)
+  }
+
+  function runAction(b: LensBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null) {
+    if (!authUserId) {
+      onError('You must be signed in to log a chase.')
+      return
+    }
+    if (savingBidId) return
+    const writes = buildPendingChaseActionWrites({
+      bidId: b.id,
+      userId: authUserId,
+      nowIso: new Date().toISOString(),
+      action,
+      note: noteDraft,
+      lossCategory,
+    })
+    // Optimistic: resolved bids leave the queue, contact-only taps go fresh.
+    if (writes.outcomeUpdate) {
+      setLocalResolved((prev) => ({ ...prev, [b.id]: writes.outcomeUpdate!.outcome }))
+    } else {
+      setLocalTouches((prev) => ({ ...prev, [b.id]: writes.lastContact }))
+    }
+    setChasedThisSession((n) => n + 1)
+    setNoteDraft('')
+    setLostPickerOpen(false)
+    setSavingBidId(b.id)
+    advanceFrom(b.id)
+    void (async () => {
+      try {
+        await withSupabaseRetry(
+          async () => supabase.from('bids_submission_entries').insert(writes.entry),
+          'log chase note',
+        )
+        const bidPatch: Record<string, string | null> = { last_contact: writes.lastContact }
+        if (writes.outcomeUpdate) {
+          bidPatch.outcome = writes.outcomeUpdate.outcome
+          bidPatch.loss_reason = writes.outcomeUpdate.loss_reason
+          bidPatch.loss_category = writes.outcomeUpdate.loss_category
+        }
+        await withSupabaseRetry(
+          async () => supabase.from('bids').update(bidPatch).eq('id', b.id),
+          'save chase outcome',
+        )
+        onError(null)
+        onReloadBids()
+      } catch (err) {
+        onError(err instanceof Error ? `Could not log the chase: ${err.message}` : 'Could not log the chase.')
+        setLocalResolved((prev) => {
+          const next = { ...prev }
+          delete next[b.id]
+          return next
+        })
+        setLocalTouches((prev) => {
+          const next = { ...prev }
+          delete next[b.id]
+          return next
+        })
+        setChasedThisSession((n) => Math.max(0, n - 1))
+      } finally {
+        setSavingBidId(null)
+      }
+    })()
   }
 
   function advanceFrom(bidId: string) {
@@ -255,6 +342,19 @@ export function BidsWaitingToHearLens({
             : 'Every recent sent bid has a fresh touch'}
         </span>
         {windowPills}
+        {chasedThisSession > 0 ? (
+          <span
+            style={{
+              fontSize: '0.8125rem',
+              padding: '0.2rem 0.65rem',
+              borderRadius: 999,
+              background: 'var(--bg-emerald-tint)',
+              color: 'var(--text-emerald-800)',
+            }}
+          >
+            {chasedThisSession} chased this session
+          </span>
+        ) : null}
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
           Sent within the window, newest first · arrows move between bids
         </span>
@@ -398,10 +498,88 @@ export function BidsWaitingToHearLens({
                 </p>
               </div>
 
+              {lostPickerOpen ? (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="Loss reasons">
+                  {BID_LOSS_CATEGORIES.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => runAction(selectedBid, 'lost', c.key)}
+                      disabled={savingBidId != null}
+                      style={{
+                        fontSize: '0.8125rem',
+                        padding: '0.3rem 0.7rem',
+                        borderRadius: 999,
+                        cursor: 'pointer',
+                        background: c.chipBg,
+                        color: c.chipFg,
+                        border: '1.5px solid transparent',
+                        opacity: savingBidId != null ? 0.6 : 1,
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setLostPickerOpen(false)}
+                    style={{
+                      fontSize: '0.8125rem',
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: 999,
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    back
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="Chase outcomes">
+                  {PENDING_CHASE_ACTIONS.map((a) => {
+                    const emphasis = a.key === 'won' ? 'var(--bg-emerald-tint)' : a.key === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)'
+                    const fg = a.key === 'won' ? 'var(--text-emerald-800)' : a.key === 'lost' ? 'var(--text-red-800)' : 'var(--text-700)'
+                    return (
+                      <button
+                        key={a.key}
+                        type="button"
+                        onClick={() => (a.key === 'lost' ? setLostPickerOpen(true) : runAction(selectedBid, a.key))}
+                        disabled={savingBidId != null}
+                        style={{
+                          fontSize: '0.8125rem',
+                          padding: '0.3rem 0.7rem',
+                          borderRadius: 999,
+                          cursor: 'pointer',
+                          background: emphasis,
+                          color: fg,
+                          border: '1px solid var(--border-strong)',
+                          opacity: savingBidId != null ? 0.6 : 1,
+                        }}
+                      >
+                        {a.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ flex: 1, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Ask for the bid tab — did our number land? Log the answer from their builder card.
-                </span>
+                <input
+                  type="text"
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="what they said (optional — saved with the next tap)"
+                  aria-label="Chase note"
+                  style={{
+                    flex: 1,
+                    padding: '0.35rem 0.5rem',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 4,
+                    fontSize: '0.8125rem',
+                  }}
+                />
                 <button
                   type="button"
                   onClick={() => advanceFrom(selectedBid.id)}
