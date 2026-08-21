@@ -60,6 +60,10 @@ Bids that already have a written note — say you typed "gc not awarded" while m
 
 The same six chips now live everywhere a bid gets marked lost — **Edit Bid**, the call-mode Lost flow, and the Bid Board's lost summary — so recording the reason once, anywhere, clears it here too.
 
+And you don't need a modal at all: on a builder card, every unsent or pending bid row has a small {{chip:red|Lost…}} action that opens a two-tap panel right on the row — type what they said (optional), tap the reason, done. Lost rows on the builder card and the By-status Lost table show their reason as a colored chip (tap it to change) or an amber {{chip:yellow|why? →}} when it still needs one.
+
+One more quality-of-life fix: jumping to a builder card from another lens used to leave that jump stuck in the page — every later visit to By builder scrolled way down to it. Jumps are now one-shot: the page scrolls when you ask, and opens at the top of the call queue every time after.
+
 :::example a Friday morning
 Dale from Knight picks up. Six pills. "1, 1, 2" — with "6k over" typed before the 2 — "1, skip, 1". Knight's row goes green and the next builder is already open.
 :::

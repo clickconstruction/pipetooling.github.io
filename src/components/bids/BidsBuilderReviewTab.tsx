@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -18,6 +18,8 @@ import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } f
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getBidStatusLabel } from '../../lib/bids/bidStatusLabel'
+import { BID_LOSS_CATEGORIES, isBidLossCategoryKey } from '../../lib/bidLossCategories'
+import { BidLostQuickPopover } from './BidLostQuickPopover'
 import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { builderBidOutcomeCounts, type BuilderBidOutcomeCounts } from '../../lib/map/builderBidMapFocus'
 import type { useNewCustomerModal } from '../../contexts/NewCustomerModalContext'
@@ -102,6 +104,8 @@ export function BidsBuilderReviewTab({
   const [builderReviewSectionOpen, setBuilderReviewSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [builderReviewCardExpanded, setBuilderReviewCardExpanded] = useState<Record<string, boolean>>({})
   const [builderReviewSearchQuery, setBuilderReviewSearchQuery] = useState('')
+  /** Bid whose quick lost-capture panel is open (v2.2043) — one at a time. */
+  const [quickLostBidId, setQuickLostBidId] = useState<string | null>(null)
   const [builderReviewSortOrder, setBuilderReviewSortOrder] = useState<'oldest-first' | 'newest-first'>('oldest-first')
   const [builderReviewPiaCustomerIds, setBuilderReviewPiaCustomerIds] = useState<Set<string>>(() => new Set())
   // Snooze (v2.1386): future wake dates per customer, from customer_followup_prefs.
@@ -650,8 +654,11 @@ export function BidsBuilderReviewTab({
                             isOpenSection &&
                             staleThresholdDays !== null &&
                             isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, staleThresholdDays)
+                          const lostCategory = key === 'lost' && isBidLossCategoryKey(bid.loss_category) ? bid.loss_category : null
+                          const lostCategoryChip = key === 'lost' ? BID_LOSS_CATEGORIES.find((c) => c.key === lostCategory) ?? null : null
                           return (
-                          <li key={bid.id} style={{ marginBottom: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.125rem 0.35rem', borderRadius: 4, background: stale ? 'var(--bg-red-tint)' : undefined }}>
+                          <Fragment key={bid.id}>
+                          <li style={{ marginBottom: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.125rem 0.35rem', borderRadius: 4, background: stale ? 'var(--bg-red-tint)' : undefined }}>
                             {isOpenSection && (
                               <input
                                 type="checkbox"
@@ -682,6 +689,37 @@ export function BidsBuilderReviewTab({
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
                             </span>
+                            {key === 'lost' ? (
+                              lostCategoryChip ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setQuickLostBidId((prev) => (prev === bid.id ? null : bid.id))}
+                                  title="Change the loss reason"
+                                  style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, padding: '0.08rem 0.5rem', borderRadius: 999, border: 'none', cursor: 'pointer', background: lostCategoryChip.chipBg, color: lostCategoryChip.chipFg, whiteSpace: 'nowrap' }}
+                                >
+                                  {lostCategoryChip.label}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setQuickLostBidId((prev) => (prev === bid.id ? null : bid.id))}
+                                  title="Record why this bid was lost"
+                                  style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', whiteSpace: 'nowrap' }}
+                                >
+                                  why? →
+                                </button>
+                              )
+                            ) : null}
+                            {isOpenSection && (
+                              <button
+                                type="button"
+                                onClick={() => setQuickLostBidId((prev) => (prev === bid.id ? null : bid.id))}
+                                title="Mark this bid lost and record why — without opening Edit Bid"
+                                style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.08rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}
+                              >
+                                Lost…
+                              </button>
+                            )}
                             {isOpenSection && (
                               <span
                                 style={{
@@ -697,6 +735,16 @@ export function BidsBuilderReviewTab({
                               </span>
                             )}
                           </li>
+                          {quickLostBidId === bid.id ? (
+                            <li style={{ listStyle: 'none' }}>
+                              <BidLostQuickPopover
+                                bid={bid}
+                                onSaved={onReloadBids}
+                                onClose={() => setQuickLostBidId(null)}
+                              />
+                            </li>
+                          ) : null}
+                          </Fragment>
                           )
                         })}
                       </ul>
