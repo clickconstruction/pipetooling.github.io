@@ -23,6 +23,6 @@ The Plan lists — **Now**, **Up next**, and **Goals** — follow the same stage
 2. Press {{button:outline|Order stages}} on the right side of the toolbar (it appears once the roadmap has at least two stages).
 3. **Drag any stage row** up or down — the numbers renumber live, and the top row is always #1.
 4. **Tap the ▸ on a stage** to reveal its tasks, then drag those too — the top task is always **N.1**. Tasks stay inside their stage here; to move a task *to another stage*, use the Map's Edit-Tasks drag.
-5. Press {{button:blue|Save order}}. Every number on the Map, the Plan, and the task cards updates at once.
+5. **Every drop saves itself** — watch the "✓ Saved" note in the footer, and every number on the Map, Plan, and Timeline updates as you go. Press {{button:outline|Done}} when you're finished.
 
 Each stage row shows its status at a glance — **✓ done**, **N of M** tasks complete, or a 🔒 for stages still locked behind a prerequisite — so you can order by what matters without leaving the list.
