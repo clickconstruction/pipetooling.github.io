@@ -1,0 +1,3 @@
+# 20260821200000_partner_ledger_offsets.sql (2026-08-21, v2.1978)
+
+Partner Full ledger charges: `partner_ledger_payload` adds a top-level `offsets` array (partner's `person_offsets`: id/type/amount/occurred_date/description) and `person_offset_id` on deduction objects, so the client can render charges at their charge date and skip mirroring statement deductions (v2.1967 convention, now partner-side). Body otherwise verbatim from 20260821180000; both resolvers (`get_my_partner_ledger`, `get_partner_ledger_as`) inherit. Functions only — idempotent, safe in either deploy order (old client ignores the new keys; new client fail-softs to statement-only rows until applied).
