@@ -14,8 +14,8 @@ const payload = {
   customerName: 'Michael Hageman',
   audience: 'customer',
   bills: [
-    { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobAddress: '3827 Sage Ridge Dr', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
-    { jobLabel: 'Service call · Job 655', jobNumber: '655', jobAddress: null, amount: 250, billedOn: '2026-08-18', payUrl: null, checkRef: '655' },
+    { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612' },
+    { jobLabel: 'Service call · Job 655', jobNumber: '655', jobName: 'Service call', jobAddress: null, amount: 250, billedOn: '2026-08-18', payUrl: null, checkRef: '655' },
   ],
   totalDue: 1700,
   requestableJobs: [],
@@ -39,7 +39,13 @@ describe('CustomerPortal render smoke', () => {
     mountAt('/portal?t=abcdef1234567890abcdef')
     await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
     expect(screen.getByText('Account statement')).toBeTruthy()
-    expect(screen.getByText('Water heater replacement · Job 612')).toBeTruthy()
+    // Trade-first job line (v2.2041): TRADE tag + number + street; city on the quiet line.
+    expect(screen.getByText('PLUM')).toBeTruthy()
+    expect(screen.getByText('612')).toBeTruthy()
+    expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
+    expect(screen.getByText('San Antonio, TX 78258')).toBeTruthy()
+    // No-address bill falls back to its bare name; no trade tag renders for it.
+    expect(screen.getByText('Service call')).toBeTruthy()
     const pay = screen.getByText('PAY ONLINE') as HTMLAnchorElement
     expect(pay.href).toBe('https://invoice.stripe.com/x')
     expect(screen.getByText('check · ref 655')).toBeTruthy()
