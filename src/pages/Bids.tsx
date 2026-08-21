@@ -51,6 +51,7 @@ import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocumen
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
+import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
 import { isBidLossCategoryKey, type BidLossCategoryKey } from '../lib/bidLossCategories'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
@@ -185,7 +186,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1108,7 +1109,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1192,7 +1193,7 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
-    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup', 'why-we-lost'].includes(tab)) {
+    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear'].includes(tab)) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -2403,7 +2404,7 @@ export default function Bids() {
         type="button"
         data-tabkey="builder-review"
         onClick={() => selectBidsTab(activeTab === 'submission-followup' ? 'submission-followup' : 'builder-review')}
-        style={tabStyle(activeTab === 'builder-review' || activeTab === 'submission-followup')}
+        style={tabStyle(activeTab === 'builder-review' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear')}
         title="Builder Review and Submission & Followup, merged — flip between lenses inside"
       >
         Followup
@@ -2810,7 +2811,7 @@ export default function Bids() {
       )}
 
       {/* Builder Review Tab */}
-      {(activeTab === 'builder-review' || activeTab === 'submission-followup' || activeTab === 'why-we-lost') && (
+      {(activeTab === 'builder-review' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear') && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)' }}>
             <button
@@ -2859,6 +2860,22 @@ export default function Bids() {
                 Why we lost
               </button>
             )}
+            {myRole !== 'superintendent' && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('waiting-to-hear')}
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'waiting-to-hear' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'waiting-to-hear' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'waiting-to-hear' ? 700 : 400,
+                }}
+              >
+                Waiting to hear
+              </button>
+            )}
           </div>
           {myRole !== 'superintendent' && activeTab !== 'why-we-lost' && lostBidsNeedingReasonCount > 0 ? (
             <button
@@ -2884,7 +2901,9 @@ export default function Bids() {
               ? 'The call queue — every builder, oldest contact first, all trades.'
               : activeTab === 'submission-followup'
                 ? 'The status tables — outcome sections, followup sheets, scripts.'
-                : 'Record and review why bids were lost — built for the Friday GC calls.'}
+                : activeTab === 'why-we-lost'
+                  ? 'Record and review why bids were lost — built for the Friday GC calls.'
+                  : 'Chase recent sent bids for answers and bid tabs — newest first.'}
           </span>
         </div>
       )}
@@ -2895,6 +2914,15 @@ export default function Bids() {
           narrowViewport640={narrowViewport640}
           onError={setError}
           onReloadBids={() => { void loadBids() }}
+          onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
+        />
+      )}
+      {activeTab === 'waiting-to-hear' && (
+        <BidsWaitingToHearLens
+          bids={bids}
+          ledgerPrefixMap={ledgerPrefixMap}
+          lastContactFromEntries={lastContactFromEntries}
+          narrowViewport640={narrowViewport640}
           onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
         />
       )}
