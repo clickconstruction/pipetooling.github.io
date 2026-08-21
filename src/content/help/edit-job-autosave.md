@@ -39,6 +39,8 @@ Undo goes back to when you opened Edit Job — or, if you've created or deleted 
 
 At the bottom of the Edit tab sits a tappable **status strip** — Waiting → Working → Ready to bill → Billed → Paid, with the current stage highlighted. Tap the next (or previous) stage and the job moves, with the change posted to its activity thread exactly like the Pipeline board's buttons. Stages you can't jump to directly are grayed with a tooltip that names the path (Paid always goes through the Record payment window, and sending a Billed job back happens from the board, which first handles its invoices). A **Collections** toggle after the strip flags a Billed job as difficult to collect — with a note — and clears the same way.
 
+Tapping **Billed** on a job whose open money has no bill line pauses first: money without a bill line can't age, be chased, or show in the payment forecast. Pick {{button:blue|Create line & mark Billed}} to do it right in one tap (the line is created dated today), or **Mark Billed only** if you really just want the status flip.
+
 ## New jobs still use a button
 
 Creating a job is different: fill in the New Job form and click {{button:blue|Create Job}}. Auto-save starts once the job exists and you're editing it.

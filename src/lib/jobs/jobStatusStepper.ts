@@ -44,3 +44,17 @@ export function jobStepperMoveDisabledReason(from: JobStepperStatus, to: JobStep
       return from === 'billed' ? null : 'Bill the job first — Paid comes from Billed'
   }
 }
+
+/**
+ * True when flipping to Billed would mint a "no bill line" shell worth
+ * pausing on: open money with no billed invoice line means the balance can't
+ * age, be chased, or be forecast (v2.1931's cohort — this guard stops new
+ * ones at the source).
+ */
+export function billedMoveNeedsShellGuard(input: {
+  to: JobStepperStatus
+  openAmount: number
+  hasBilledLine: boolean
+}): boolean {
+  return input.to === 'billed' && !input.hasBilledLine && input.openAmount > 0
+}
