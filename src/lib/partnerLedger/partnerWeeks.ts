@@ -6,8 +6,10 @@
  * one card per generated statement, each with its lines and an opening/closing
  * chain derived backwards from the authoritative server balance (closing of
  * the newest statement week == the server balance, since only posted stubs and
- * their payouts move it).
+ * their payouts move it). Also home of partnerStubsToJournal — the partner's
+ * "Full ledger" journal built from the same payload.
  */
+import { buildPartnerJournal, type JournalRow } from './partnerLedgerJournal'
 
 export type PartnerSummary = {
   exists: boolean
@@ -64,6 +66,26 @@ export type WeekCard = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0)
+
+/**
+ * The partner's "Full ledger": shape the RPC stub payload into the same dated
+ * journal (with running balance) the office Ledger tab shows — posted rows
+ * only, wage-free by construction since it is all the partner's own money.
+ */
+export function partnerStubsToJournal(stubs: PartnerLedgerStub[]): { rows: JournalRow[]; balance: number } {
+  return buildPartnerJournal({
+    stubs: stubs.map((s) => ({
+      id: s.id,
+      period_start: s.period_start,
+      period_end: s.period_end,
+      hours_total: s.hours_total,
+      gross_pay: s.gross_pay,
+    })),
+    additional: stubs.flatMap((s) => s.additional.map((a) => ({ pay_stub_id: s.id, description: a.description, line_total: a.amount }))),
+    deductions: stubs.flatMap((s) => s.deductions.map((d) => ({ pay_stub_id: s.id, description: d.description, amount: d.amount }))),
+    payments: stubs.flatMap((s) => s.payments.map((p) => ({ pay_stub_id: s.id, amount: p.amount, paid_at: p.paid_at, memo: p.memo }))),
+  })
+}
 
 export function parsePartnerSummary(payload: unknown): PartnerSummary | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null

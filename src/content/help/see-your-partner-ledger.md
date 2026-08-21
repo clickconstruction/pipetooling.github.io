@@ -12,7 +12,7 @@ The card opens on the **current week**: your balance so far, with the hours that
 
 If charges are waiting to go on your next statement (a back-charge, a utility overage), the card shows a **with pending charges** line under the balance — that's what settling up today would actually mean. The charges themselves appear as deductions on the next statement the office closes.
 
-Use the **‹ ›** arrows to step back through past weeks. Each closed week shows:
+Use the **‹ Older / Newer ›** buttons to step through past weeks, or open **Full ledger** at the bottom of the card to see every posting and payout ever, with running balances. Each closed week shows:
 
 1. Labor lines — your hours at the rate they were priced that week (rate changes never reach back into old weeks).
 2. Anything added — profit shares from your jobs, credits.
