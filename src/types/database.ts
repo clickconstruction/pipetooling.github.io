@@ -4029,6 +4029,60 @@ export type Database = {
           },
         ]
       }
+      gc_review_certifications: {
+        Row: {
+          certified_at: string
+          certified_by: string | null
+          certified_by_name: string
+          gc_customer_id: string
+          id: string
+          job_count: number
+          note: string
+          snapshot: Json
+          total: number
+          week_start: string
+        }
+        Insert: {
+          certified_at?: string
+          certified_by?: string | null
+          certified_by_name?: string
+          gc_customer_id: string
+          id?: string
+          job_count: number
+          note?: string
+          snapshot: Json
+          total: number
+          week_start: string
+        }
+        Update: {
+          certified_at?: string
+          certified_by?: string | null
+          certified_by_name?: string
+          gc_customer_id?: string
+          id?: string
+          job_count?: number
+          note?: string
+          snapshot?: Json
+          total?: number
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_review_certifications_certified_by_fkey"
+            columns: ["certified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_review_certifications_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_statement_email_requests: {
         Row: {
           attempts: number
@@ -4921,6 +4975,42 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_promised_pay_dates: {
+        Row: {
+          job_id: string
+          marked_at: string
+          marked_by: string | null
+          promised_date: string
+        }
+        Insert: {
+          job_id: string
+          marked_at?: string
+          marked_by?: string | null
+          promised_date: string
+        }
+        Update: {
+          job_id?: string
+          marked_at?: string
+          marked_by?: string | null
+          promised_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_promised_pay_dates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_promised_pay_dates_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -13687,6 +13777,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_billed_shell_invoice: {
+        Args: { p_billed_on: string; p_job_id: string }
+        Returns: Json
+      }
       create_hazmat_fee_incident: {
         Args: { p_amount: number; p_incident: Json; p_job_id: string }
         Returns: Json
@@ -13865,6 +13959,7 @@ export type Database = {
           manual_involved: boolean
         }[]
       }
+      gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
       generate_agreement_notice: {
         Args: { p_partnership_id: string }
         Returns: Json
@@ -13937,6 +14032,7 @@ export type Database = {
         }[]
       }
       get_billed_aging_costs: { Args: never; Returns: Json }
+      get_billed_customer_pay_speeds: { Args: never; Returns: Json }
       get_billed_report_email_payload: { Args: never; Returns: Json }
       get_collect_payment_certify_payload: {
         Args: { p_job_id: string }
@@ -14089,6 +14185,10 @@ export type Database = {
         Args: { p_partnership_id: string }
         Returns: Json
       }
+      get_partner_job_split_preview: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       get_partner_jobs_as: { Args: { p_partnership_id: string }; Returns: Json }
       get_partner_ledger_as: {
         Args: { p_partnership_id: string; p_weeks?: number }
@@ -14096,10 +14196,6 @@ export type Database = {
       }
       get_partner_summary_as: {
         Args: { p_partnership_id: string }
-        Returns: Json
-      }
-      get_partner_job_split_preview: {
-        Args: { p_job_id: string }
         Returns: Json
       }
       get_parts_ordered_by_price_count:
@@ -14424,6 +14520,7 @@ export type Database = {
           next_scheduled_on: string
         }[]
       }
+      list_job_promised_pay_dates: { Args: never; Returns: Json }
       list_job_schedule_blocks_for_schedule_email: {
         Args: { p_recipient: string; p_work_date: string }
         Returns: {
@@ -15082,6 +15179,26 @@ export type Database = {
         Returns: string
       }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
+      partner_job_costing_payload: {
+        Args: { p_job_id: string; p_partnership_id: string }
+        Returns: Json
+      }
+      partner_jobs_payload: {
+        Args: { p_partnership_id: string }
+        Returns: Json
+      }
+      partner_ledger_payload: {
+        Args: { p_partnership_id: string; p_weeks?: number }
+        Returns: Json
+      }
+      partner_lens_partnership_id: {
+        Args: { p_partnership_id: string }
+        Returns: string
+      }
+      partner_summary_payload: {
+        Args: { p_partnership_id: string }
+        Returns: Json
+      }
       pay_access_clock_week_fence_bypass: { Args: never; Returns: boolean }
       pay_staff_bulk_insert_user_time_off: {
         Args: {
@@ -15435,6 +15552,10 @@ export type Database = {
         Args: { p_job_id: string; p_note?: string; p_pct: number }
         Returns: Json
       }
+      set_job_promised_pay_date: {
+        Args: { p_date: string; p_job_id: string }
+        Returns: Json
+      }
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
@@ -15653,6 +15774,10 @@ export type Database = {
       user_has_team_prospects_access: { Args: never; Returns: boolean }
       user_is_assignee_of_labor_job: {
         Args: { p_labor_job_id: string }
+        Returns: boolean
+      }
+      user_is_assignee_of_tech_tree_task: {
+        Args: { p_task_id: string }
         Returns: boolean
       }
       user_is_bid_estimator_or_account_manager: {
