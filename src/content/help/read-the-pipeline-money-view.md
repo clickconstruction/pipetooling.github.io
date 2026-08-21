@@ -2,7 +2,7 @@
 title: read the Pipeline's new money view
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: pipeline, money story, money moves, aging, capable, collected, old new, billed, 90 days
+keywords: pipeline, money story, money opportunities, money moves, aging, capable, collected, old new, billed, 90 days
 order: 96
 ---
 The **Jobs → Pipeline** tab has two views, switched with the {{chip:gray|Old}} / {{chip:gray|New}} pills at the top. Old is the classic board alone; **New** puts the money story above the same board. Your choice sticks on this device.
@@ -14,7 +14,7 @@ The **Jobs → Pipeline** tab has two views, switched with the {{chip:gray|Old}}
 - **In collections** — the difficult money. Click to jump to Collections.
 - **Collected · last 8 wks** — payments recorded each week, with a trend line. Devs and master technicians only; other roles see three cards.
 
-## Today's money moves
+## Today's Money Opportunities
 
 Below the cards, the system writes your to-do list from the live numbers — each row says what, why, and has a button that jumps to the right spot:
 
