@@ -33,6 +33,8 @@ export function ChecklistTechTreeRoadmapMembersModal({
 }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Names for member ids missing from `users` (archived accounts — the tab's list excludes them). */
+  const [archivedNames, setArchivedNames] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     if (open) setError(null)
@@ -43,6 +45,36 @@ export function ChecklistTechTreeRoadmapMembersModal({
     for (const u of users) m.set(u.id, u.name?.trim() || u.email)
     return m
   }, [users])
+
+  useEffect(() => {
+    if (!open) return
+    const missing = members.map((m) => m.user_id).filter((id) => !nameById.has(id) && !archivedNames.has(id))
+    if (missing.length === 0) return
+    let cancelled = false
+    void withSupabaseRetry(
+      () => supabase.from('users').select('id, name, email').in('id', missing),
+      'load archived roadmap member names',
+    )
+      .then((rows) => {
+        if (cancelled) return
+        setArchivedNames((prev) => {
+          const next = new Map(prev)
+          for (const r of rows as Array<{ id: string; name: string | null; email: string }>) {
+            next.set(r.id, `${r.name?.trim() || r.email} (archived)`)
+          }
+          for (const id of missing) if (!next.has(id)) next.set(id, 'former member')
+          return next
+        })
+      })
+      .catch(() => {
+        // leave the ellipsis fallback; the row is still removable
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, members, nameById, archivedNames])
+
+  const memberLabel = (userId: string) => nameById.get(userId) ?? archivedNames.get(userId) ?? '…'
 
   const refreshMembers = useCallback(async () => {
     if (!roadmapId) return
@@ -189,7 +221,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                 }}
               >
                 <span style={{ flex: '1 1 140px', fontWeight: 500 }}>
-                  {nameById.get(m.user_id) ?? m.user_id}
+                  {memberLabel(m.user_id)}
                   {m.user_id === authUserId ? ' (you)' : ''}
                 </span>
                 {canManage ? (
@@ -197,7 +229,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                     value={m.role}
                     disabled={saving}
                     onChange={(e) => void setRole(m.user_id, e.target.value as 'viewer' | 'editor')}
-                    aria-label={`Role for ${nameById.get(m.user_id) ?? m.user_id}`}
+                    aria-label={`Role for ${memberLabel(m.user_id)}`}
                     style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}
                   >
                     <option value="viewer">Viewer</option>
