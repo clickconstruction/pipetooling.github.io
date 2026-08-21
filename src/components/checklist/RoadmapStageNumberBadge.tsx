@@ -29,3 +29,25 @@ export function RoadmapStageNumberBadge({ n, corner }: { n: number; corner?: boo
   }
   return <span style={style}>{n}</span>
 }
+
+/**
+ * The quiet task-number label (v2.1964) — "4.2" before a task row. A muted
+ * tabular label rather than a chip: stages keep the one strong badge, their
+ * many tasks whisper.
+ */
+export function RoadmapTaskNumber({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        flex: 'none',
+        minWidth: 26,
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        color: 'var(--text-muted)',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {label}
+    </span>
+  )
+}

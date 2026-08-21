@@ -14,6 +14,8 @@ type Props = {
   groupTitle: string
   /** Stage number for the crumb badge (matches Map/Plan badges). */
   stageNumber?: number
+  /** "4.2" — the task's number within its stage (v2.1964). */
+  taskNumberLabel?: string
   /** Bridge row for this task (undefined when not materialized yet). */
   bridge: BridgeState | undefined
   chip: BridgeChip
@@ -54,6 +56,7 @@ export function ChecklistTechTreeTaskCardModal({
   task,
   groupTitle,
   stageNumber,
+  taskNumberLabel,
   bridge,
   chip,
   users,
@@ -257,6 +260,9 @@ export function ChecklistTechTreeTaskCardModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: 'var(--text-slate-500)', fontSize: 13 }}>
             {stageNumber ? <RoadmapStageNumberBadge n={stageNumber} /> : null}
             <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groupTitle || '—'}</span>
+            {taskNumberLabel ? (
+              <span style={{ flex: 'none', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>· task {taskNumberLabel}</span>
+            ) : null}
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             {titleEditing ? (

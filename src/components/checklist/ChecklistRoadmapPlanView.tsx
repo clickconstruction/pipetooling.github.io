@@ -7,8 +7,8 @@ import {
   type PlanTask,
 } from '../../lib/roadmapPlanView'
 import { lockedStageHint } from '../../lib/roadmapBridge'
-import { stageNumbersByGroupId } from '../../lib/roadmapStageNumbers'
-import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
+import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
+import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
 
 type UserRow = { id: string; name: string; email: string }
@@ -73,6 +73,7 @@ export function ChecklistRoadmapPlanView({
 
   // groups arrive in the roadmap's stage order; numbers match the Map badges
   const stageNumbers = useMemo(() => stageNumbersByGroupId(groups), [groups])
+  const taskNumbers = useMemo(() => taskNumbersByTaskId(stageNumbers, tasksByGroup), [stageNumbers, tasksByGroup])
   const numberFor = (groupId: string) => {
     const n = stageNumbers.get(groupId)
     return n ? <RoadmapStageNumberBadge n={n} /> : null
@@ -246,6 +247,7 @@ export function ChecklistRoadmapPlanView({
                       borderTop: '1px solid var(--border)',
                     }}
                   >
+                    {taskNumbers.has(t.id) ? <RoadmapTaskNumber label={taskNumbers.get(t.id)!} /> : null}
                     <button
                       type="button"
                       onClick={() => (assignable ? void assign(t.id) : onOpenTask(t.id))}

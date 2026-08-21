@@ -69,9 +69,9 @@ import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
-import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
+import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import { ChecklistTechTreeOrderStagesModal } from './ChecklistTechTreeOrderStagesModal'
-import { computeStageOrderUpdates, stageNumbersByGroupId } from '../../lib/roadmapStageNumbers'
+import { computeStageOrderUpdates, computeTaskOrderUpdates, stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { ChecklistTechTreeAddGroupModal } from './ChecklistTechTreeAddGroupModal'
 import { ChecklistTechTreeLineUpModal } from './ChecklistTechTreeLineUpModal'
@@ -280,6 +280,8 @@ type GroupNodeData = {
   tasks: Array<{
     id: string
     title: string
+    /** "4.2" — stage number + position (v2.1964). */
+    numberLabel: string
     completedAt: string | null
     assigneeLabel: string
     canAct: boolean
@@ -501,6 +503,11 @@ function TechTreeDndTaskRow({
           <GripVertical size={16} strokeWidth={2} aria-hidden />
         </button>
         <div className="nodrag" style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 0, gap: 4 }}>
+          {task.numberLabel ? (
+            <span style={{ marginTop: 1 }}>
+              <RoadmapTaskNumber label={task.numberLabel} />
+            </span>
+          ) : null}
           <input
             id={cbId}
             type="checkbox"
@@ -763,7 +770,7 @@ function GroupNode({ data }: NodeProps) {
           <TechTreeEmptyGroupDrop groupId={d.groupId} visible={d.tasks.length === 0} />
         </>
       ) : !collapsed ? (
-        <ul style={{ margin: 0, padding: '0 0 0 1.1em', listStyle: 'disc' }}>
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {d.tasks.map((t) => (
               <li
                 key={t.id}
@@ -782,6 +789,11 @@ function GroupNode({ data }: NodeProps) {
                   className="nodrag"
                   style={{ display: 'flex', alignItems: 'flex-start', gap: 4, minWidth: 0 }}
                 >
+                  {t.numberLabel ? (
+                    <span style={{ marginTop: 1 }}>
+                      <RoadmapTaskNumber label={t.numberLabel} />
+                    </span>
+                  ) : null}
                   <input
                     id={`tt-static-cb-${t.id}`}
                     type="checkbox"
@@ -1465,6 +1477,8 @@ export function ChecklistTechTreeTab({
 
   // groups arrive sort_index-ordered from the loader, so this is the stage order
   const stageNumbers = useMemo(() => stageNumbersByGroupId(groups), [groups])
+  // tasks arrive sort_index-ordered too — task #N.M rides on both orders
+  const taskNumbers = useMemo(() => taskNumbersByTaskId(stageNumbers, tasksByGroup), [stageNumbers, tasksByGroup])
 
   // people already staffed somewhere on this roadmap — the task card's "likely names" picker tier
   const roadmapAssigneeIds = useMemo(() => {
@@ -1509,6 +1523,7 @@ export function ChecklistTechTreeTab({
             return {
               id: t.id,
               title: t.title,
+              numberLabel: taskNumbers.get(t.id) ?? '',
               completedAt: t.completed_at,
               assigneeLabel: names.length ? names.join(', ') : '',
               canAct: canActOnTask(t, gu),
@@ -1532,6 +1547,7 @@ export function ChecklistTechTreeTab({
     completeGroupIds,
     titleByGroupId,
     stageNumbers,
+    taskNumbers,
     canEditStructure,
     onToggleTask,
     nameById,
@@ -1970,29 +1986,36 @@ export function ChecklistTechTreeTab({
   )
 
   const saveStageOrder = useCallback(
-    async (orderedIds: string[]): Promise<boolean> => {
+    async (orderedIds: string[], taskOrdersByGroup: ReadonlyMap<string, string[]>): Promise<boolean> => {
       if (!canEditStructure) return false
-      const updates = computeStageOrderUpdates(orderedIds, groups)
-      if (updates.length === 0) return true
+      const stageUpdates = computeStageOrderUpdates(orderedIds, groups)
+      const taskUpdates = computeTaskOrderUpdates(taskOrdersByGroup, tasks)
+      if (stageUpdates.length === 0 && taskUpdates.length === 0) return true
       setError(null)
       try {
-        await Promise.all(
-          updates.map((u) =>
+        await Promise.all([
+          ...stageUpdates.map((u) =>
             withSupabaseRetry(
               () => supabase.from('checklist_tech_tree_groups').update({ sort_index: u.sort_index }).eq('id', u.id),
               'reorder tech tree stage',
             ),
           ),
-        )
+          ...taskUpdates.map((u) =>
+            withSupabaseRetry(
+              () => supabase.from('checklist_tech_tree_group_tasks').update({ sort_index: u.sort_index }).eq('id', u.id),
+              'reorder tech tree stage task',
+            ),
+          ),
+        ])
         await load()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not save the stage order')
+        setError(e instanceof Error ? e.message : 'Could not save the order')
         await load()
         return false
       }
     },
-    [canEditStructure, groups, load, setError],
+    [canEditStructure, groups, tasks, load, setError],
   )
 
   const triggerCanvasResize = useCallback(() => {
@@ -2590,7 +2613,12 @@ export function ChecklistTechTreeTab({
               : tlist.length > 0
                 ? `${done} of ${tlist.length}`
                 : null
-          return { id: g.id, title: g.title, meta }
+          return {
+            id: g.id,
+            title: g.title,
+            meta,
+            tasks: tlist.map((t) => ({ id: t.id, title: t.title, done: t.completed_at != null })),
+          }
         })}
         onSave={saveStageOrder}
         portalContainer={roadmapModalPortalHost ?? undefined}
@@ -2615,6 +2643,7 @@ export function ChecklistTechTreeTab({
         task={editTaskForModal ? { id: editTaskForModal.id, title: editTaskForModal.title, assigneeIds: editTaskForModal.assigneeIds } : null}
         groupTitle={editTaskModalGroup?.title ?? ''}
         stageNumber={editTaskModalGroup ? stageNumbers.get(editTaskModalGroup.id) : undefined}
+        taskNumberLabel={editTaskForModal ? taskNumbers.get(editTaskForModal.id) : undefined}
         bridge={editTaskForModal ? bridgeByTaskId.get(editTaskForModal.id) : undefined}
         chip={editTaskForModal ? bridgeChipFor(editTaskForModal.completed_at, bridgeByTaskId.get(editTaskForModal.id)) : null}
         users={users}
