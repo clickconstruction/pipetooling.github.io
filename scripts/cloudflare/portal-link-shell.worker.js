@@ -1,17 +1,17 @@
-// portal-link-shell — REFERENCE COPY of the Cloudflare Worker deployed on the
+// portal-link-shell -- REFERENCE COPY of the Cloudflare Worker deployed on the
 // clickplumbing.com zone, route my.clickplumbing.com/* (portal custom-links
 // train, v2.2033). The live copy is edited in the Cloudflare dashboard
-// (Workers & Pages → portal-link-shell); keep this file in sync when it
+// (Workers & Pages -> portal-link-shell); keep this file in sync when it
 // changes. It exists so texted portal links unfurl as rich cards:
 //
 //   iMessage/WhatsApp/Slack fetch the URL and read Open Graph tags; this
 //   Worker returns a 200 HTML shell carrying those tags (branded card image
 //   from pipetooling.com/portal-og-card.png, title personalized by
-//   prettifying the slug — no data lookup, nothing the URL doesn't already
+//   prettifying the slug -- no data lookup, nothing the URL doesn't already
 //   say), then instantly bounces humans to pipetooling.com/p/<slug> via
 //   meta-refresh + JS. Preview fetchers don't run JS, people never see it.
 //
-// NOTE: Cloudflare Redirect Rules run BEFORE Workers — the old "portal short
+// NOTE: Cloudflare Redirect Rules run BEFORE Workers -- the old "portal short
 // links" 301 rule had to be deleted when this Worker took over the route.
 // noindex everywhere: customer slugs must not be indexed by search engines.
 
@@ -40,8 +40,8 @@ export default {
 
     const target = TARGET + encodeURIComponent(slug) + url.search;
     const name = SLUG_RE.test(slug) ? prettyName(slug) : null;
-    const title = name ? `${name} · Click Plumbing & Electrical` : 'Click Plumbing & Electrical';
-    const desc = 'See open bills, pay online, or request a visit — no login needed.';
+    const title = name ? `${name} \u00b7 Click Plumbing & Electrical` : 'Click Plumbing & Electrical';
+    const desc = 'See open bills, pay online, or request a visit \u2014 no login needed.';
     const shortUrl = `https://my.clickplumbing.com/${slug}`;
 
     const html = `<!doctype html>
@@ -67,7 +67,7 @@ export default {
 <script>location.replace(${JSON.stringify(target)})</script>
 <style>body{font-family:-apple-system,'Segoe UI',sans-serif;background:#f6f3ec;color:#16283c;display:grid;place-items:center;min-height:100vh;margin:0}a{color:#b0662f}</style>
 </head>
-<body><p>Opening your statement… <a href="${target}">Continue</a></p></body>
+<body><p>Opening your statement\u2026 <a href="${target}">Continue</a></p></body>
 </html>`;
 
     return new Response(html, {
