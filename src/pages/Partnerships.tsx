@@ -451,11 +451,8 @@ export default function Partnerships() {
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+      <div style={{ marginBottom: '0.75rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Partnerships</h1>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          dev only · the deal as data — rates, splits, and toggles every partner surface reads
-        </span>
       </div>
 
       {tableMissing && loaded ? (
@@ -590,12 +587,19 @@ export default function Partnerships() {
                     linked to people record ✓ · created {new Date(selected.created_at).toLocaleDateString()}
                   </div>
                 </div>
+                {lensOn ? (
+                  <span style={{ flex: '1 1 260px', minWidth: 0, fontSize: '0.72rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 8, padding: '0.35rem 0.6rem' }}>
+                    <b>Partner view.</b> Only what {selected.display_name || 'the partner'} can see, through the same
+                    server gates — read-only. If nothing renders below, their account currently sees nothing (deal
+                    paused/ended, or the weekly statement module is off).
+                  </span>
+                ) : null}
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                   {statusChip(draft.status)}
                   <button
                     type="button"
                     onClick={() => setLensOn((v) => !v)}
-                    style={{ ...IMPERSONATION_CHROME_BUTTON_STYLE, font: 'inherit', fontSize: '0.78rem', cursor: 'pointer' }}
+                    style={{ ...IMPERSONATION_CHROME_BUTTON_STYLE, font: 'inherit', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     {lensOn ? '✕ Exit partner view' : `👁 View as ${selected.display_name || 'partner'}`}
                   </button>
@@ -604,11 +608,6 @@ export default function Partnerships() {
 
               {lensOn ? (
                 <div style={{ marginTop: '0.75rem' }}>
-                  <div style={{ background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 8, padding: '0.5rem 0.8rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
-                    <b>Partner view.</b> Only what {selected.display_name || 'the partner'} can see, through the same
-                    server gates — read-only. If nothing renders below, their account currently sees nothing (deal
-                    paused/ended, or the weekly statement module is off).
-                  </div>
                   <DashboardPartnerLedgerSection asPartnershipId={selected.id} />
                   <DashboardPartnerJobsSection asPartnershipId={selected.id} />
                 </div>
