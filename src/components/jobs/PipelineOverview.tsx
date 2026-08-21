@@ -15,7 +15,9 @@ import {
   type PipelineMoveKey,
   type PipelineStoryCard,
 } from '../../lib/jobs/pipelineOverview'
+import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesHeaderStats } from '../../lib/jobs/stagesHeaderStats'
+import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
 
 type SectionKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
 
@@ -39,6 +41,9 @@ type PipelineOverviewProps = {
   fixupCounts: { noCustomer: number; noPictures: number; noEmail: number }
   /** Opens the matching StagesAlertJobListModal (same modals the strip-row buttons open). */
   onFixup: (key: PipelineFixupKey) => void
+  /** Payment chase card (v2.2025): null/undefined hides it (non-office roles, or nothing anywhere). */
+  chase?: PaymentChaseSummary | null
+  onStartChase?: () => void
 }
 
 const cardBase: CSSProperties = {
@@ -135,6 +140,8 @@ export function PipelineOverview({
   onFixDates,
   fixupCounts,
   onFixup,
+  chase,
+  onStartChase,
 }: PipelineOverviewProps) {
   if (!stats) {
     return (
@@ -192,13 +199,13 @@ export function PipelineOverview({
             gap: '0.5rem',
             padding: '0.45rem 0.85rem',
             background: 'var(--bg-subtle)',
-            borderBottom: moves.length > 0 || fixups.length > 0 ? '1px solid var(--border)' : 'none',
+            borderBottom: moves.length > 0 || fixups.length > 0 || chase ? '1px solid var(--border)' : 'none',
           }}
         >
           <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
             Today&#8217;s Money Opportunities:
           </span>
-          {moves.length === 0 && fixups.length === 0 && (
+          {moves.length === 0 && fixups.length === 0 && !chase && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>nothing needs a move right now — the pipeline is clean ✅</span>
           )}
         </div>
@@ -207,7 +214,7 @@ export function PipelineOverview({
             phones — full-width rows left a desert of empty space between
             claim and button on desktop. min(300px, 100%) guards ultra-narrow
             containers from horizontal overflow. */}
-        {(moves.length > 0 || fixups.length > 0) && (
+        {(moves.length > 0 || fixups.length > 0 || chase != null) && (
           <div
             style={{
               display: 'grid',
@@ -277,6 +284,97 @@ export function PipelineOverview({
                 </button>
               </div>
             ))}
+            {/* Payment chase card (v2.2025): who owes us a phone call about
+                money. Office-only (the parent passes null otherwise); hidden
+                when nobody owes a call and nothing is waiting. */}
+            {chase && onStartChase ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.3rem',
+                  minWidth: 0,
+                  padding: '0.55rem 0.7rem',
+                  border: '1px solid var(--border)',
+                  borderLeft: chase.dueCustomers > 0 ? '3px solid var(--text-red-600)' : '1px solid var(--border)',
+                  borderRadius: 8,
+                  background: 'var(--surface)',
+                }}
+              >
+                <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                  <span aria-hidden style={{ fontSize: '0.95rem' }}>📞</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0, color: chase.dueCustomers > 0 ? 'inherit' : 'var(--text-muted)' }}>
+                    {chase.dueCustomers > 0
+                      ? `Ask ${chase.dueCustomers} customer${chase.dueCustomers === 1 ? '' : 's'} when they'll pay — ${formatUsdNoCents(chase.dueDollars)}`
+                      : 'Payment follow-up · everyone asked'}
+                  </span>
+                  {chase.dueCustomers > 0 ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 16,
+                        height: 16,
+                        padding: '0 4px',
+                        borderRadius: 9999,
+                        background: '#f59e0b',
+                        color: '#1c1917',
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {chase.dueCustomers}
+                    </span>
+                  ) : null}
+                </span>
+                <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.68rem', fontWeight: 600 }}>
+                  {chase.askCount > 0 ? (
+                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }}>
+                      Never asked · {chase.askCount}
+                    </span>
+                  ) : null}
+                  {chase.brokenCount > 0 ? (
+                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                      Broken promise · {chase.brokenCount}
+                    </span>
+                  ) : null}
+                  {chase.waitingCount > 0 ? (
+                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)' }}>
+                      Waiting · {chase.waitingCount}
+                    </span>
+                  ) : null}
+                  {chase.disputeCount > 0 ? (
+                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                      Dispute · {chase.disputeCount}
+                    </span>
+                  ) : null}
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
+                  bills past their expected date with no promise — plus broken promises to chase
+                </span>
+                <button
+                  type="button"
+                  onClick={onStartChase}
+                  style={{
+                    alignSelf: 'flex-end',
+                    height: 26,
+                    padding: '0 0.65rem',
+                    border: '1px solid var(--border-400)',
+                    borderRadius: 9999,
+                    background: 'var(--surface)',
+                    color: 'var(--text-blue-700)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Start call mode →
+                </button>
+              </div>
+            ) : null}
             {/* Fix-ups joined the grid as a card (v2.1977; was a footer strip,
                 v2.1961) — amber-edged, chips inside, gone when the data is
                 clean. Each chip keeps its own action, so no card button. */}

@@ -78,6 +78,8 @@ import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
+import PaymentChaseModal from './PaymentChaseModal'
+import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
 import FixBillLinesModal from './FixBillLinesModal'
 import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import BilledByCustomerBreakdownModal from './BilledByCustomerBreakdownModal'
@@ -548,6 +550,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     scopeLoading: cacheScopeLoading,
     fetchScopeIfNeeded: cacheFetchScopeIfNeeded,
     headerStats: cacheHeaderStats,
+    leanBilledRows: cacheLeanBilledRows,
     setJobs: cacheSetJobs,
   } = useJobsListCache()
   // Fetch-on-expand: any open section whose scope isn't merged kicks its fetch
@@ -754,6 +757,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadPromisedPayDates()
   }, [loadPromisedPayDates])
+  // Payment chase loop (v2.2025): the call log behind the follow-up queue.
+  // Office-only (the marking roles); fail-soft like promises/pay-speeds — a
+  // not-yet-deployed RPC just leaves the chase card hidden.
+  const [chaseTouches, setChaseTouches] = useState<ChaseTouch[] | null>(null)
+  const loadChaseTouches = useCallback(async () => {
+    if (!canMarkPromisedPay) return
+    try {
+      const { data } = await supabase.rpc('list_payment_chase_touches' as never)
+      setChaseTouches(parseChaseTouchesRpc(data as unknown))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canMarkPromisedPay])
+  useEffect(() => {
+    void loadChaseTouches()
+  }, [loadChaseTouches])
+  const [chaseModalOpen, setChaseModalOpen] = useState(false)
+  // Call mode reads FULL billed rows (names + send evidence) — fetch the
+  // scope on open, same retry-until-merged shape as the forecast.
+  useEffect(() => {
+    if (!chaseModalOpen) return
+    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
+  }, [chaseModalOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   const [promisedPayModalJob, setPromisedPayModalJob] = useState<{
     jobId: string
     jobLabel: string
@@ -905,6 +931,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
+  /** `?chase=1` deep link (v2.2025): open payment follow-up call mode directly. */
+  const chaseParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (chaseParamConsumedRef.current) return
+    if (searchParams.get('chase') === '1') {
+      chaseParamConsumedRef.current = true
+      setChaseModalOpen(true)
+      const p = new URLSearchParams(searchParams)
+      p.delete('chase')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -1020,6 +1058,32 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ),
     [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
   )
+
+  /**
+   * Payment chase queue (v2.2025). The CARD derives from the lean stats
+   * spine (available on first paint, no names); call mode re-derives from
+   * the full billed rows once the scope merges. Same kernel both times.
+   */
+  const chaseTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+  const chaseSummary = useMemo(() => {
+    // chaseTouches null = the list RPC isn't deployed/readable yet — keep the
+    // card hidden rather than offering call mode whose writes would fail.
+    if (!canMarkPromisedPay || !cacheLeanBilledRows || chaseTouches == null) return null
+    return summarizePaymentChase(
+      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd),
+    )
+  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
+  const chaseBilledMerged = cacheMergedScopes.has(scopeForStagesSection('billed'))
+  const chaseFullQueue = useMemo(() => {
+    if (!chaseModalOpen || !chaseBilledMerged) return null
+    return buildPaymentChaseQueue(
+      stagesBoardLists.billedActiveRows,
+      billedPaySpeeds,
+      promisedPayDates,
+      chaseTouches,
+      chaseTodayYmd,
+    )
+  }, [chaseModalOpen, chaseBilledMerged, stagesBoardLists.billedActiveRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
@@ -2622,6 +2686,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               setStagesSearchQuery('')
               setBilledAgingFilter('no_line')
               focusStagesSection('billed')
+            }}
+            chase={chaseSummary}
+            onStartChase={() => {
+              setStagesSearchQuery('')
+              setChaseModalOpen(true)
             }}
           />
           <div
@@ -4512,6 +4581,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {
             setBilledPaymentForecastOpen(false)
+            applyStagesInvoiceFocus(invoiceId)
+          }}
+        />
+      )}
+      {chaseModalOpen && (
+        <PaymentChaseModal
+          queue={chaseFullQueue}
+          loading={!chaseBilledMerged}
+          paySpeeds={billedPaySpeeds}
+          todayYmd={chaseTodayYmd}
+          authRole={authRole}
+          onClose={() => setChaseModalOpen(false)}
+          onRecorded={() => {
+            void loadChaseTouches()
+            void loadPromisedPayDates()
+          }}
+          onOpenInvoice={(invoiceId) => {
+            setChaseModalOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
         />

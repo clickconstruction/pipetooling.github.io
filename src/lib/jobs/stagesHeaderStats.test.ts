@@ -128,6 +128,7 @@ function stripToLean(jobs: JobWithDetails[]): {
       collections_at: j.collections_at,
       hcp_number: j.hcp_number,
       click_number: j.click_number,
+      customer_id: j.customer_id ?? null,
     })),
     invoiceRows: jobs.flatMap((j) =>
       (j.invoices ?? []).map((i) => ({
