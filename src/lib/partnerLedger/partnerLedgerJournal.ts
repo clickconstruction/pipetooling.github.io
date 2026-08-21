@@ -170,6 +170,44 @@ export type JournalDisplayRow = JournalRow | PendingJournalRow
  * date put posted rows first, pending after — the balance column stays a
  * contiguous posted-only chain to the eye.
  */
+/** A dated annotation memo on the ledger — no amount, no balance impact. */
+export type LedgerNote = { id: string; note_date: string; memo: string; partner_visible: boolean }
+
+export type NoteJournalRow = {
+  date: string
+  label: string
+  detail: null
+  amount: null
+  balance: null
+  kind: 'note'
+  pay_stub_id: null
+  note: LedgerNote
+}
+
+export type LedgerDisplayRow = JournalDisplayRow | NoteJournalRow
+
+/**
+ * Interleave notes into an already-merged display list by note_date, keeping
+ * the list's ascending-date convention. On a date tie the note sorts LAST
+ * ascending — i.e. it renders on top of that date's rows once the component
+ * reverses to newest-first.
+ */
+export function mergeNotesIntoDisplay(rows: JournalDisplayRow[], notes: LedgerNote[]): LedgerDisplayRow[] {
+  const noteRows: NoteJournalRow[] = notes.map((n) => ({
+    date: n.note_date,
+    label: n.memo,
+    detail: null,
+    amount: null,
+    balance: null,
+    kind: 'note',
+    pay_stub_id: null,
+    note: n,
+  }))
+  const merged: LedgerDisplayRow[] = [...rows, ...noteRows]
+  const tier = (r: LedgerDisplayRow) => (r.kind === 'note' ? 1 : 0)
+  return merged.sort((a, b) => a.date.localeCompare(b.date) || tier(a) - tier(b))
+}
+
 export function mergePendingIntoJournal(rows: JournalRow[], pending: JournalPendingOffset[]): JournalDisplayRow[] {
   const pendingRows: PendingJournalRow[] = pending
     .filter((o) => Number.isFinite(o.amount))
