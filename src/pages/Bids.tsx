@@ -3203,6 +3203,7 @@ export default function Bids() {
         )}
         <BidsPricingTab
           bids={bidsTyped}
+          bidVersions={bidVersions}
           selectedBidForPricing={selectedBidForPricing}
           narrowViewport640={narrowViewport640}
           bidPreview={bidPreview}

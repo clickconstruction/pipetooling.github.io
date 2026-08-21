@@ -1389,6 +1389,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     selectedPricingVersionId,
   ])
 
+  // Workbench view/★ split (v2.2013): the Pricing Workbench lets you VIEW a scenario without
+  // changing the bid's saved customer-facing one. Entering the Cover Letter tab re-aligns the
+  // working pricing to the saved scenario, so what the letter shows is always the ★.
+  useEffect(() => {
+    if (activeTab !== 'cover-letter') return
+    const bid = selectedBidForPricing
+    if (!bid) return
+    const saved = bid.selected_price_book_version_id
+    if (!saved || saved === selectedPricingVersionId) return
+    if (!priceBookVersions.some((p) => p.id === saved)) return
+    setSelectedPricingVersionId(saved)
+    void loadPriceBookEntries(saved)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, priceBookVersions])
+
   // Safety net for the resolve-before-templates-loaded race: once the service-type templates
   // arrive, apply the "Default" pricing fallback to an unsplit bid that still has no pricing.
   useEffect(() => {
