@@ -7,6 +7,8 @@ order: 94
 ---
 The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target.
 
+New to it? Click the **?** beside the New pill for a guided tour — it spotlights each part of the Workbench in order, right on your bid.
+
 ## Versions, scenarios, and the star
 
 The structure bar spells out the two levels: a **Version** has its own takeoff and counts (switch at the top of the page), and **price scenarios** inside it are different sell prices over the same counts. Clicking a scenario card just **views** it — the {{chip:green|★ Customer sees this}} scenario is what the Cover Letter, Share, and the bid value use, and it only changes when you press {{button:outline|☆ Make customer-facing…}} and confirm.

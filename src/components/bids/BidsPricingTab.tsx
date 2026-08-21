@@ -4,6 +4,7 @@ import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
+import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -300,6 +301,8 @@ export function BidsPricingTab({
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
   const [wbCopyingPrices, setWbCopyingPrices] = useState(false)
+  /** The spotlight walkthrough (v2.2021): null = closed, else the steps whose anchors exist. */
+  const [wbTourSteps, setWbTourSteps] = useState<SpotlightTourStep[] | null>(null)
   // Iteration 2 — scenarios: revenue per bid-owned Pricing (the cover-letter
   // bundle computation, one per scenario card). Keyed by pricing version id.
   const [wbScenarioRevenue, setWbScenarioRevenue] = useState<Record<string, number>>({})
@@ -1157,6 +1160,39 @@ export function BidsPricingTab({
    */
   const customerFacingPricingId = selectedBidForPricing?.selected_price_book_version_id ?? null
 
+  /** The Workbench walkthrough stops, in the section's own top-to-bottom order. */
+  const WORKBENCH_TOUR_STEPS: SpotlightTourStep[] = [
+    {
+      anchor: 'workbench-scenarios',
+      title: 'Scenarios — same counts, different prices',
+      body: 'Click a card to view it. The ★ starred scenario is what the customer sees — Cover Letter, Share, and the bid value all use it — and nothing changes that except "☆ Make customer-facing…".',
+    },
+    {
+      anchor: 'workbench-summary',
+      title: 'Read the strip',
+      body: 'Revenue, cost, profit, and margin always show the scenario you’re viewing. An amber dashed border means the numbers include an unsaved solver preview.',
+    },
+    {
+      anchor: 'workbench-solver',
+      title: 'Solve to a number',
+      body: 'Drag the blended-margin slider or type a whole-bid target total — rows without Takeoffs costs keep their prices, and their revenue counts toward the target. The note under the box shows exactly where the solve landed.',
+    },
+    {
+      anchor: 'workbench-rows',
+      title: 'Preview, then Apply',
+      body: 'Solver results land as amber previews in the Sale price column — nothing saves until "Apply" up in the strip. 📌 pins a row so the solver holds its price. Discard throws previews away, and so does switching scenarios.',
+    },
+  ]
+
+  function startWorkbenchTour() {
+    const present = spotlightTourStepsPresent(WORKBENCH_TOUR_STEPS)
+    if (present.length === 0) {
+      showToast('Nothing to tour yet — the Workbench needs Counts, an active Pricing, and a cost estimate.', 'info')
+      return
+    }
+    setWbTourSteps(present)
+  }
+
   /** View a scenario without touching what the customer sees. Discards any solver preview. */
   function viewWorkbenchScenario(versionId: string) {
     if (wbPreview && Object.keys(wbPreview).length > 0) {
@@ -1607,9 +1643,28 @@ export function BidsPricingTab({
                 New
               </button>
               {pricingView === 'new' ? (
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Workbench — solver previews, Apply writes. Same data as Old.</span>
+                <>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Workbench — solver previews, Apply writes. Same data as Old.</span>
+                  <button
+                    type="button"
+                    onClick={startWorkbenchTour}
+                    title="How the Workbench works — take the tour"
+                    aria-label="How the Workbench works — take the tour"
+                    style={{ font: 'inherit', flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.68rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  >
+                    ?
+                  </button>
+                </>
               ) : null}
             </div>
+            {wbTourSteps ? (
+              <SpotlightTour
+                steps={wbTourSteps}
+                onClose={() => setWbTourSteps(null)}
+                guideHref="/help?g=price-a-bid-with-the-workbench"
+                guideLabel="Read the full guide: price a bid with the Workbench →"
+              />
+            ) : null}
             {pricingView === 'old' ? (
               <>
             {/* Price book selector (left) + partial-fill (right), styled like the Labor/Takeoffs tabs. */}
@@ -2452,7 +2507,7 @@ export function BidsPricingTab({
                               </div>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+                          <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
                             {scenarios.map((v) => {
                               const viewing = v.id === selectedPricingVersionId
                               const isCustomerFacing = v.id === customerFacingPricingId
@@ -2529,6 +2584,7 @@ export function BidsPricingTab({
                       )
                     })()}
                     <div
+                      data-tour="workbench-summary"
                       style={{
                         position: 'sticky', top: 0, zIndex: 20,
                         display: 'flex', flexWrap: 'wrap', alignItems: 'stretch',
@@ -2579,7 +2635,7 @@ export function BidsPricingTab({
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.3fr) minmax(150px, 1fr) auto auto', gap: '0.8rem', alignItems: 'end', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem', flexWrap: 'wrap' }} className="bid-form-grid-2">
+                    <div data-tour="workbench-solver" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.3fr) minmax(150px, 1fr) auto auto', gap: '0.8rem', alignItems: 'end', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem', flexWrap: 'wrap' }} className="bid-form-grid-2">
                       <div>
                         <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                           Blended margin — whole bid (solver moves the {costed.length} costed row{costed.length !== 1 ? 's' : ''})
@@ -2734,7 +2790,7 @@ export function BidsPricingTab({
                       </button>
                     </div>
 
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                    <div data-tour="workbench-rows" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
                       <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem', minWidth: 760 }}>
                         <thead>
                           <tr>
