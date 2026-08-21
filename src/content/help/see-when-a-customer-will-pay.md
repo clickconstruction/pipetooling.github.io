@@ -20,6 +20,16 @@ Hover any chip and it spells out the math.
 Find the row on Billed Awaiting Payment — the chip says {{chip:blue|Expect pay ~Sep 8 · pays in ~35d}}. Knight Contracting usually pays about 35 days after billing, the bill went out Aug 4, so early September is the honest answer. No one has to ask the office.
 :::
 
+## When the customer names a real date
+
+Statistics stop mattering the moment someone gives you an actual answer. When a GC says "you're on the check run for the 25th," click **mark promised date…** under the row's chip and record it. The chip turns green — {{chip:green|✓ Promised Sep 25 · Malachi}} — showing the date *and who took the call*, so the next person with the question sees both.
+
+- A promise **overrides** the estimate everywhere, including the forecast.
+- If the promised date passes unpaid, the chip flips to {{chip:red|5d past promise · Malachi}} — now you're following up on their word, not a statistic.
+- The same link becomes **edit promised date…** to change or clear it.
+
+Anyone who can see the board sees promises; marking them is for dev, masters, and assistant-type roles.
+
 ## The payment forecast
 
 The {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header rolls every chip up into one view: open dollars bucketed by expected payment date — **Past expected** (your follow-up queue, listed first in red), **This week**, **Next week**, and beyond. It reads two ways:

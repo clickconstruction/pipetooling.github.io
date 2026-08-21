@@ -4,10 +4,12 @@ import type { ExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
  * "Expect pay ~Sep 8 · pays in ~35d" pill for Billed Awaiting Payment rows.
  * Blue = on track for the customer's usual speed; red = past their own norm
  * (the follow-up trigger); muted outline = company-average fallback while the
- * customer has too little payment history to have a norm of their own.
+ * customer has too little payment history to have a norm of their own;
+ * green = a promised date the customer actually named (overrides the estimate).
  */
 export default function BilledExpectedPayChip({ model }: { model: ExpectedPayModel }) {
   const late = model.state === 'late'
+  const promised = !late && model.source === 'promised'
   const fallback = !late && model.source === 'company'
   return (
     <span
@@ -24,8 +26,8 @@ export default function BilledExpectedPayChip({ model }: { model: ExpectedPayMod
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
-        background: late ? 'var(--bg-red-tint)' : fallback ? 'transparent' : 'var(--bg-blue-tint)',
-        color: late ? 'var(--text-red-600)' : fallback ? 'var(--text-muted)' : 'var(--text-blue-800)',
+        background: late ? 'var(--bg-red-tint)' : promised ? 'var(--bg-green-tint)' : fallback ? 'transparent' : 'var(--bg-blue-tint)',
+        color: late ? 'var(--text-red-600)' : promised ? 'var(--text-green-800)' : fallback ? 'var(--text-muted)' : 'var(--text-blue-800)',
         border: fallback ? '1px solid var(--border)' : '1px solid transparent',
       }}
     >

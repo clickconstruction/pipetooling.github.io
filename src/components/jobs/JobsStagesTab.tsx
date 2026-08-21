@@ -41,8 +41,15 @@ import {
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
-import { billedExpectedPayModel, parsePaySpeedsRpc, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import {
+  billedExpectedPayModel,
+  parsePaySpeedsRpc,
+  parsePromisedPayDatesRpc,
+  type PaySpeedData,
+  type PromisedPayDate,
+} from '../../lib/jobs/billedExpectedPay'
 import BilledExpectedPayChip from './BilledExpectedPayChip'
+import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { PipelineOverview } from './PipelineOverview'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
@@ -731,9 +738,33 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       cancelled = true
     }
   }, [canSeeBilledExpectedPay])
+  // Promised pay dates: real dates a customer named, marked by the office —
+  // they override the statistical estimate (chip turns green, forecast
+  // buckets by the promise). Same fail-soft posture as the pay-speed fetch.
+  const canMarkPromisedPay =
+    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const [promisedPayDates, setPromisedPayDates] = useState<Record<string, PromisedPayDate> | null>(null)
+  const loadPromisedPayDates = useCallback(async () => {
+    if (!canSeeBilledExpectedPay) return
+    try {
+      const { data } = await supabase.rpc('list_job_promised_pay_dates' as never)
+      setPromisedPayDates(parsePromisedPayDatesRpc(data as unknown))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canSeeBilledExpectedPay])
+  useEffect(() => {
+    void loadPromisedPayDates()
+  }, [loadPromisedPayDates])
+  const [promisedPayModalJob, setPromisedPayModalJob] = useState<{
+    jobId: string
+    jobLabel: string
+    initialYmd: string | null
+  } | null>(null)
   const billedExpectedPayChipRenderer = useCallback(
     (row: StageRow) => {
-      if (!billedPaySpeeds || row.kind === 'job') return null
+      if (row.kind === 'job') return null
+      const promise = promisedPayDates?.[row.job.id] ?? null
       const model = billedExpectedPayModel(
         {
           billedAtIso: row.inv.billed_at,
@@ -742,10 +773,34 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         },
         billedPaySpeeds,
         calendarYmdInAppTzFromIso(new Date().toISOString()),
+        promise,
       )
-      return model ? <BilledExpectedPayChip model={model} /> : null
+      if (!model && !canMarkPromisedPay) return null
+      const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
+      const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
+      return (
+        <>
+          {model ? <BilledExpectedPayChip model={model} /> : null}
+          {canMarkPromisedPay ? (
+            <button
+              type="button"
+              onClick={() =>
+                setPromisedPayModalJob({
+                  jobId: row.job.id,
+                  jobLabel: label,
+                  initialYmd: promise?.promisedYmd ?? null,
+                })
+              }
+              title="Record the payment date the customer named — it overrides the estimate"
+              style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+            >
+              {promise ? 'edit promised date…' : 'mark promised date…'}
+            </button>
+          ) : null}
+        </>
+      )
     },
-    [billedPaySpeeds],
+    [billedPaySpeeds, promisedPayDates, canMarkPromisedPay],
   )
   const lienToolingSenderFallback = useMemo(() => {
     const job = lienToolingPrefillModal?.job
@@ -4438,12 +4493,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <BilledPaymentForecastModal
           rows={stagesBoardLists.billedActiveRows}
           paySpeeds={billedPaySpeeds}
+          promises={promisedPayDates}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {
             setBilledPaymentForecastOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
+        />
+      )}
+      {promisedPayModalJob && (
+        <SetPromisedPayDateModal
+          jobId={promisedPayModalJob.jobId}
+          jobLabel={promisedPayModalJob.jobLabel}
+          initialYmd={promisedPayModalJob.initialYmd}
+          onClose={() => setPromisedPayModalJob(null)}
+          onSaved={() => void loadPromisedPayDates()}
         />
       )}
       {paidProfitChartOpen && (

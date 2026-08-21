@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-08-14
+last_updated: 2026-08-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -238,6 +238,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - Share with other masters (grants assistant-level access)
 - View people they created and people shared with them (via master_shares)
 - Jobs page — Stages tab: Billed Awaiting Payment section with Total by Name modal; **Combine / Separate** (toolbar **right**, after **Total by Name**) — **[`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx)** (**`RECENT_FEATURES.md`** **v2.516**); RPCs enforce staff + job access
+- Jobs page — Stages tab: **expected-payment chips + Payment forecast** (v2.1924–v2.1925) readable by dev / master / assistant-like / primary (`get_billed_customer_pay_speeds`, `list_job_promised_pay_dates`); **mark promised date** (v2.1926, `set_job_promised_pay_date`) writable by dev / master / assistant-like only — primary reads promises but cannot mark
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 - Jobs page — **Reports tab** — **Recurring Email Reports**: same as dev (schedules, recipients, optional **include costs** in digest emails)
