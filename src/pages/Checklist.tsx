@@ -21,7 +21,8 @@ import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeT
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
-import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { groupEventsByInstance, lastTransitionIsReopen, stripStamp, type ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../lib/checklistManageActivity'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageChipLabel, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
@@ -2460,6 +2461,253 @@ type ChecklistItem = {
   checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
   checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
+/** A long-running repeating task can have years of instances — cap the activity fetch. */
+const MANAGE_ACTIVITY_INSTANCE_CAP = 120
+
+/**
+ * Expanded card activity for the Manage tab: the item's full event history
+ * across its instances (creation → completed/reopened/signed-off → notes)
+ * plus a composer. Notes attach to the instance picked by
+ * `commentTargetInstance` (events live on instances, not the template).
+ */
+function ManageCardActivity({ item, authUserId, showInstanceDays, setError }: { item: ChecklistItem; authUserId: string | null; showInstanceDays: boolean; setError: (s: string | null) => void }) {
+  const [loading, setLoading] = useState(true)
+  const [instances, setInstances] = useState<ManageInstanceLite[]>([])
+  const [events, setEvents] = useState<ChecklistCardEvent[]>([])
+  const [nameById, setNameById] = useState<Record<string, string>>({})
+  const [draft, setDraft] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [cappedPast, setCappedPast] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      try {
+        // Repeating tasks pre-materialize instances years ahead — cap the
+        // *past* history and take only the near future (comment target for
+        // ahead-scheduled tasks), or the cap fills up with empty future rows.
+        const todayStr = new Date().toLocaleDateString('en-CA')
+        const [pastRes, futureRes] = await Promise.all([
+          supabase
+            .from('checklist_instances')
+            .select('id, scheduled_date, completed_at')
+            .eq('checklist_item_id', item.id)
+            .lte('scheduled_date', todayStr)
+            .order('scheduled_date', { ascending: false })
+            .limit(MANAGE_ACTIVITY_INSTANCE_CAP),
+          supabase
+            .from('checklist_instances')
+            .select('id, scheduled_date, completed_at')
+            .eq('checklist_item_id', item.id)
+            .gt('scheduled_date', todayStr)
+            .order('scheduled_date', { ascending: true })
+            .limit(30),
+        ])
+        const instErr = pastRes.error ?? futureRes.error
+        if (instErr) {
+          setError(instErr.message)
+          return
+        }
+        const pastInsts = (pastRes.data ?? []) as ManageInstanceLite[]
+        const insts = [...pastInsts, ...((futureRes.data ?? []) as ManageInstanceLite[])]
+        setCappedPast(pastInsts.length >= MANAGE_ACTIVITY_INSTANCE_CAP)
+        let evs: ChecklistCardEvent[] = []
+        if (insts.length > 0) {
+          const { data: evData, error: evErr } = await supabase
+            .from('checklist_instance_events')
+            .select('id, instance_id, event_type, actor_user_id, body, created_at')
+            .in('instance_id', insts.map((i) => i.id))
+            .order('created_at', { ascending: true })
+          if (evErr) {
+            setError(evErr.message)
+            return
+          }
+          evs = (evData ?? []) as ChecklistCardEvent[]
+        }
+        const personIds = new Set<string>()
+        if (item.created_by_user_id) personIds.add(item.created_by_user_id)
+        for (const e of evs) if (e.actor_user_id) personIds.add(e.actor_user_id)
+        const names: Record<string, string> = {}
+        if (personIds.size > 0) {
+          const { data } = await supabase.from('users').select('id, name').in('id', [...personIds])
+          for (const r of (data ?? []) as Array<{ id: string; name: string | null }>) {
+            names[r.id] = (r.name ?? '').trim() || 'Someone'
+          }
+        }
+        if (cancelled) return
+        setInstances(insts)
+        setEvents(evs)
+        setNameById(names)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [item.id])
+
+  const name = (id: string | null | undefined): string => {
+    if (!id) return 'Someone'
+    if (id === authUserId) return 'You'
+    return nameById[id] ?? 'Someone'
+  }
+
+  const dayLabel = (d: string): string =>
+    new Date(`${d}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
+
+  const timeline = useMemo(() => buildManageTimeline(item, instances, events), [item, instances, events])
+  const commentTarget = useMemo(
+    () => commentTargetInstance(instances, new Date().toLocaleDateString('en-CA')),
+    [instances],
+  )
+
+  async function postComment() {
+    const body = draft.trim()
+    if (!body || posting || !authUserId || !commentTarget) return
+    setPosting(true)
+    try {
+      const { error: e } = await supabase.from('checklist_instance_events').insert({
+        instance_id: commentTarget.id,
+        event_type: 'comment',
+        actor_user_id: authUserId,
+        body,
+      })
+      if (e) {
+        setError(e.message)
+        return
+      }
+      setDraft('')
+      setEvents((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now()}`,
+          instance_id: commentTarget.id,
+          event_type: 'comment',
+          actor_user_id: authUserId,
+          body,
+          created_at: new Date().toISOString(),
+        },
+      ])
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  if (loading) {
+    return <p style={{ margin: '0.4rem 0 0.2rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading activity…</p>
+  }
+
+  return (
+    <div>
+      {cappedPast ? (
+        <p style={{ margin: '0.3rem 0 0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+          Showing the most recent {MANAGE_ACTIVITY_INSTANCE_CAP} occurrences.
+        </p>
+      ) : null}
+      {timeline.length === 0 ? (
+        <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No activity recorded yet.</p>
+      ) : (
+        <div
+          style={{
+            borderLeft: '3px solid var(--border-strong)',
+            paddingLeft: '0.65rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.35rem',
+            margin: '0.35rem 0 0.6rem',
+          }}
+        >
+          {timeline.map((entry) => {
+            if (entry.kind === 'created') {
+              return (
+                <div key="created" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {name(entry.actorUserId)} created this task · {stripStamp(entry.at)}
+                </div>
+              )
+            }
+            // "for Aug 19" context only when the event happened on a different
+            // day than the occurrence it belongs to — else it just repeats the stamp.
+            const dayChip =
+              showInstanceDays &&
+              entry.scheduledDate &&
+              new Date(entry.at).toLocaleDateString('en-CA') !== entry.scheduledDate
+                ? ` (for ${dayLabel(entry.scheduledDate)})`
+                : ''
+            if (entry.eventType === 'comment') {
+              return (
+                <div key={entry.id} style={{ fontSize: '0.9375rem', color: 'var(--text-700)', lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span>{' '}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(entry.at)}{dayChip}</span> — {entry.body}
+                </div>
+              )
+            }
+            const label =
+              entry.eventType === 'completed'
+                ? 'completed'
+                : entry.eventType === 'reopened'
+                  ? 'reopened'
+                  : entry.eventType === 'accepted'
+                    ? 'signed off'
+                    : entry.eventType
+            return (
+              <div key={entry.id} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                {name(entry.actorUserId)} {label} · {stripStamp(entry.at)}
+                {dayChip}
+                {entry.eventType === 'completed' && entry.body ? <> — “{entry.body}”</> : null}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {authUserId && commentTarget ? (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void postComment()
+            }}
+            placeholder="Add a note…"
+            disabled={posting}
+            aria-label={`Add a note to ${item.title}`}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: 44,
+              boxSizing: 'border-box',
+              padding: '0 0.7rem',
+              fontSize: '1rem',
+              border: '2px solid var(--text-600)',
+              borderRadius: 10,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => void postComment()}
+            disabled={posting || !draft.trim()}
+            style={{
+              height: 44,
+              padding: '0 1rem',
+              borderRadius: 10,
+              border: 'none',
+              background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
+              color: 'white',
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {posting ? '…' : 'Post'}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
@@ -2478,6 +2726,8 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   const [oldestOpenByItem, setOldestOpenByItem] = useState<Map<string, string>>(new Map())
   const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
+  /** Card expanded to show its activity spine (history + notes), v2.NNNN. */
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -2604,9 +2854,29 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
       .filter(Boolean)
     const openAge = showOpenAge ? openAgeLabel(oldestOpenByItem.get(item.id), todayLocalStr) : ''
     const menuOpen = openMenuItemId === item.id
+    const expanded = expandedItemId === item.id
+    const toggleExpanded = () => setExpandedItemId(expanded ? null : item.id)
     return (
-      <li key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.75rem', borderBottom: '1px solid var(--border)', position: 'relative' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+      <li key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.75rem', position: 'relative', background: expanded ? 'var(--bg-muted)' : undefined }}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Hide' : 'Show'} activity for ${item.title}`}
+          onClick={(e) => {
+            // Links inside the title stay links — don't toggle on them.
+            if ((e.target as HTMLElement).closest('a')) return
+            toggleExpanded()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              toggleExpanded()
+            }
+          }}
+          style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+        >
           <div style={{ fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
             <ChecklistTitleWithLinks title={item.title} links={item.links} />
           </div>
@@ -2707,6 +2977,12 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
               ) : null}
             </div>
           </>
+        ) : null}
+        </div>
+        {expanded ? (
+          <div style={{ padding: '0 0.75rem 0.7rem', background: 'var(--bg-muted)' }}>
+            <ManageCardActivity item={item} authUserId={authUserId} showInstanceDays={isRepeating(item)} setError={setError} />
+          </div>
         ) : null}
       </li>
     )
