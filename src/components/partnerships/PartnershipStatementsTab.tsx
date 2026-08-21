@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { getDefaultWeekRange, ymdAddDays } from '../../utils/dateUtils'
+import { getDefaultWeekRange } from '../../utils/dateUtils'
+import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
 
 /**
  * Partnerships → Statements tab (PARTNERSHIPS_PLAN.md PR 3): the weekly
@@ -46,7 +47,10 @@ export function PartnershipStatementsTab({
   const [genMessage, setGenMessage] = useState<string | null>(null)
   const [genError, setGenError] = useState<string | null>(null)
 
-  const prevWeekSunday = useMemo(() => ymdAddDays(getDefaultWeekRange().start, -7), [])
+  const closePlan = useMemo(
+    () => planStatementClose((stubs ?? []).map((s) => s.period_start), getDefaultWeekRange().start),
+    [stubs],
+  )
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -82,13 +86,13 @@ export function PartnershipStatementsTab({
     void load()
   }, [load])
 
-  async function generate() {
+  async function generate(weekStart: string) {
     setGenerating(true)
     setGenError(null)
     setGenMessage(null)
     const { data, error } = await supabase.rpc('generate_partner_statement', {
       p_partnership_id: partnershipId,
-      p_week_start: prevWeekSunday,
+      p_week_start: weekStart,
       p_override: override,
     })
     if (error) {
@@ -126,27 +130,57 @@ export function PartnershipStatementsTab({
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', marginTop: '0.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontWeight: 650, fontSize: '0.875rem' }}>Close week of {prevWeekSunday}</div>
+            <div style={{ fontWeight: 650, fontSize: '0.875rem' }}>
+              {closePlan.target ? `Close week of ${closePlan.target}` : <>Week of {closePlan.prevWeek} closed ✓</>}
+            </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Sun–Sat · builds the statement from {personName}’s approved hours at the Deal-tab rates, attaches pending
-              offsets, and stamps your acknowledgment
+              {closePlan.target ? (
+                <>
+                  Sun–Sat · builds the statement from {personName}’s approved hours at the Deal-tab rates, attaches
+                  pending offsets, and stamps your acknowledgment
+                </>
+              ) : (
+                <>next close opens Sunday {closePlan.nextOpensOn}</>
+              )}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} />
-              override guard (logged)
-            </label>
-            <button
-              type="button"
-              onClick={() => void generate()}
-              disabled={generating}
-              style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 650, padding: '0.4rem 0.8rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'var(--surface)', cursor: 'pointer', opacity: generating ? 0.6 : 1 }}
-            >
-              {generating ? 'Generating…' : 'Generate statement'}
-            </button>
-          </div>
+          {closePlan.target || closePlan.olderUncovered.length > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} />
+                override guard (logged)
+              </label>
+              {closePlan.target ? (
+                <button
+                  type="button"
+                  onClick={() => void generate(closePlan.target!)}
+                  disabled={generating}
+                  style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 650, padding: '0.4rem 0.8rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'var(--surface)', cursor: 'pointer', opacity: generating ? 0.6 : 1 }}
+                >
+                  {generating ? 'Generating…' : 'Generate statement'}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+        {closePlan.olderUncovered.length > 0 ? (
+          <div style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Earlier weeks without a statement — generate if hours were worked:
+            <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', marginLeft: '0.4rem', verticalAlign: 'middle' }}>
+              {closePlan.olderUncovered.map((week) => (
+                <button
+                  key={week}
+                  type="button"
+                  onClick={() => void generate(week)}
+                  disabled={generating}
+                  style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 650, padding: '0.15rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', opacity: generating ? 0.6 : 1 }}
+                >
+                  {week}
+                </button>
+              ))}
+            </span>
+          </div>
+        ) : null}
         {genError ? (
           <p style={{ fontSize: '0.8rem', color: 'var(--text-red-600)', margin: '0.5rem 0 0' }}>
             {genError.includes('not allowed') || genError.includes('function') ? (
