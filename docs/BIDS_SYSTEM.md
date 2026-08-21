@@ -5,12 +5,13 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-08-19
+last_updated: 2026-08-21
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
 system_components:
-  - "14 Tabs: Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoffs, Labor, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release"
+  - "Board tab strip: Bid Board, Followup (merged Builder Review + Submission & Followup + Why we lost + Waiting to hear lenses), Unsent/Working (kanban), Bid Costs, Estimators"
+  - "Workflow/document tabs: Counts, Takeoffs, Labor, Pricing, Cover Letter, RFI, Change Order, Lien Release"
   - "3 Book Systems: Takeoff Book, Labor Book, Price Book (Price Book templates are cloned into bid-scoped Pricings)"
   - "Bid Versions: named per-bid variants (takeoff + pricing facets)"
   - "Integration with Materials (PO creation)"
@@ -106,7 +107,7 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 Bids now carry an **optional `project_id`** (FK → `projects`, `ON DELETE SET NULL`) alongside the historical free-text `project_name`. It links a bid to a Project for the Projects-card **Bids pill** ([`Projects.tsx`](../src/pages/Projects.tsx)); it is set via the New/Edit Bid modal's **Project** picker ([`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx), with a one-tap "Suggested" link when `project_name` exactly matches a project) or pre-filled by the `/bids?newBid=true&project=<id>` deep link from a project card's "+ Bid" segment. Nothing else keys off it — `project_name` remains the display/grouping field everywhere.
 
 ### Key Features
-- **Fourteen integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): **Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoffs, Labor, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release**. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Builder Review** / **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these four are part of the linear per-bid workflow below.
+- **Integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): board strip **Bid Board, Followup, Unsent/Working (kanban), Bid Costs, Estimators** plus the workflow/document strip **Counts, Takeoffs, Labor, Pricing, Cover Letter, RFI, Change Order, Lien Release**. **Followup** is one tab with **four lenses** — **By builder** (the old Builder Review, tab key `builder-review`), **By status** (the old Submission & Followup, key `submission-followup`), **Why we lost** (key `why-we-lost`, v2.1797), and **Waiting to hear** (key `waiting-to-hear`, v2.1990) — the lens toggle sits inside the tab; all four keys still deep-link. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these are part of the linear per-bid workflow below.
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
 - **Bid Versions** — named per-bid variants, each owning its own takeoff materials and optional pricing (see [Bid Versions & Pricings](#bid-versions--pricings))
 - **Automatic cost calculations** including driving costs
@@ -137,7 +138,7 @@ The page gate (see the `UserRole` union and the render guard in [`Bids.tsx`](../
 9. **Change Order** - Generate change-order documents (see [Change Order Tab](#change-order-tab))
 10. **Lien Release** - Generate conditional waiver and lien release documents
 
-Outside this linear workflow: **Builder Review** (per-customer review cards), **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot).
+Outside this linear workflow: the **Followup** tab's four lenses — **By builder** (per-customer call-queue cards), **By status** (outcome tables), **Why we lost** (loss-reason call mode), **Waiting to hear** (recent pending-bid chase with per-GC recipient expansion, v2.1990/v2.1992/v2.1995) — plus **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot). Multi-GC sends are recorded in **`bid_gc_recipients`** (v2.1994, Edit Bid "Also sent to" row + version-GC sync) and expand the followup queues per GC.
 
 ---
 
@@ -253,6 +254,8 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
 ---
 
 ## Builder Review Tab
+
+> Since the Followup merge (v2.1796 era) this renders as the **By builder** lens of the **Followup** tab — the standalone strip button is gone, but the tab key and everything below still hold. Sibling lenses: **By status** (see [Submission & Followup Tab](#submission--followup-tab)), **Why we lost** ([`BidsWhyWeLostLens`](../src/components/bids/BidsWhyWeLostLens.tsx), `RECENT_FEATURES.md` v2.1797), and **Waiting to hear** ([`BidsWaitingToHearLens`](../src/components/bids/BidsWaitingToHearLens.tsx), `docs/recent-features/` v2.1990/v2.1992).
 
 URL: **`?tab=builder-review`**. One expandable card per **customer** (GC/Builder) showing that customer's bids across **all trades** (`loadBids(null)`), bucketed by status, with contact persons, notes, and a **PIA** (pain-in-the-…) flag persisted per user in localStorage. Sort/search toolbar; **New Bid** prefilled with the customer; deep links from a bid highlight its customer card. Component: [`src/components/bids/BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx). Customer notes use the same stacked-card pattern as bid notes (see `RECENT_FEATURES.md`, present since the early **v2.51/v2.52** era). Structure/coupling detail: [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md#builder-review--builder-review).
 
@@ -1354,6 +1357,8 @@ When an org setting is blank/missing, the letter builders fall back to the **bui
 
 ## Submission & Followup Tab
 
+> Renders as the **By status** lens of the merged **Followup** tab (see the note atop [Builder Review Tab](#builder-review-tab)); tab key `submission-followup` unchanged.
+
 ### Purpose
 Track bid submissions, follow-up activities, and outcomes. Organize bids by status for efficient pipeline management.
 
@@ -1902,6 +1907,21 @@ bid_pricing_assignments:
   created_at (timestamptz)
   UNIQUE (bid_id, count_row_id)
 ```
+
+### Bid GC Recipients
+
+```sql
+bid_gc_recipients: -- 20260821230000; v2.1994
+  id (uuid, PK)
+  bid_id (uuid, FK → bids ON DELETE CASCADE)
+  customer_id (uuid, FK → customers ON DELETE CASCADE)
+  source (text, CHECK 'manual' | 'version', default 'manual')
+  added_by (uuid, FK → users ON DELETE SET NULL)
+  added_at (timestamptz)
+  UNIQUE (bid_id, customer_id)
+```
+
+Every GC a bid was sent to beyond the bid-level `customer_id` (the primary GC is implied, never duplicated). `manual` rows come from the Edit Bid **Also sent to** row; `version` rows sync from `bid_versions.customer_id` overrides (backfilled at migration time). Feeds the Followup lenses' per-GC queue expansion and the Bid Board **+N GCs** chip (v2.1995). RLS mirrors `bid_payment_schedule_rows`.
 
 ### Team Labor for Bids (people_crew_bids)
 
