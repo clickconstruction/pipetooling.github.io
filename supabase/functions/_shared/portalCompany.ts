@@ -5,7 +5,9 @@
  */
 export const PORTAL_COMPANY = {
   name: 'Click Plumbing and Electrical',
-  cityLine: 'San Antonio, Texas',
+  // The letterhead's right-side line (the wire key stays cityLine; the copy
+  // is a tagline now — owner request, v2.2038).
+  cityLine: 'Your reliable team is just a click away',
   licenseLine: '',
   phone: '',
   email: '',

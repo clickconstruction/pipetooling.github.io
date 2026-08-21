@@ -120,6 +120,32 @@ export function formatPortalDate(ymd: string | null): string | null {
   return `${months[Number(m[2]) - 1] ?? m[2]} ${Number(m[3])}, ${m[1]}`
 }
 
+/**
+ * Age sub-line for the statement's Billed column (v2.2038): "today" /
+ * "yesterday" / "N days ago". `aging` flips at 30 days — the page warms the
+ * line to copper, a quiet nudge on a customer-facing document. Null when the
+ * bill has no date (or a malformed/future one) — no line renders.
+ */
+export function portalDaysSinceBilled(
+  billedYmd: string | null,
+  todayYmd: string,
+): { label: string; aging: boolean } | null {
+  if (!billedYmd) return null
+  const parse = (ymd: string): number | null => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
+    if (!m) return null
+    return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  }
+  const from = parse(billedYmd)
+  const to = parse(todayYmd)
+  if (from == null || to == null) return null
+  const days = Math.round((to - from) / 86_400_000)
+  if (days < 0) return null
+  if (days === 0) return { label: 'today', aging: false }
+  if (days === 1) return { label: 'yesterday', aging: false }
+  return { label: `${days} days ago`, aging: days >= 30 }
+}
+
 /** "$1,700.00" — the portal always shows cents (it is a statement). */
 export function formatPortalUsd(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })

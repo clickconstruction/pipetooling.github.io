@@ -6,6 +6,7 @@ import {
   formatPortalDate,
   formatPortalUsd,
   parsePortalPayload,
+  portalDaysSinceBilled,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
@@ -89,7 +90,7 @@ export default function CustomerPortal() {
               CLICK<span style={{ color: COPPER }}>.</span>
             </div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: MUTED, marginTop: 4 }}>
-              Plumbing &amp; Electrical
+              Plumbing, Electrical, and HVAC
             </div>
           </div>
           {state.kind === 'ready' && (
@@ -140,6 +141,9 @@ export default function CustomerPortal() {
 }
 
 function PortalStatement({ payload, today }: { payload: PortalPayload; today: string }) {
+  // Same local-date basis as the header's date line, for the Billed age sub-lines.
+  const d = new Date()
+  const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   return (
     <>
       {/* Statement head */}
@@ -179,7 +183,21 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
             </div>
             {payload.bills.map((b, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '13px 0', borderBottom: `1px solid ${HAIR}`, fontSize: 13.5 }}>
-                <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{formatPortalDate(b.billedOn) ?? '—'}</span>
+                <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
+                  {formatPortalDate(b.billedOn) ?? '—'}
+                  {(() => {
+                    const age = portalDaysSinceBilled(b.billedOn, todayYmd)
+                    if (!age) return null
+                    return (
+                      <>
+                        <br />
+                        <span style={{ fontSize: 10.5, color: age.aging ? COPPER : FAINT, fontWeight: age.aging ? 600 : 400 }}>
+                          {age.label}
+                        </span>
+                      </>
+                    )
+                  })()}
+                </span>
                 <span style={{ minWidth: 0 }}>
                   <span style={{ fontWeight: 600 }}>{b.jobLabel}</span>
                   {b.asGc && (
