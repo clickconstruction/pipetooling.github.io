@@ -38,18 +38,36 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 /** Offset types that ADD to what the partner is owed. */
 export const POSITIVE_OFFSET_TYPES = new Set(['profit_share', 'employee_credit'])
 
+/** A dated charge (or credit) booked directly at its own date — the
+ * charges-at-date convention: an offset hits the balance when it happened,
+ * not when a statement later lists it. Signed amount (charges −). */
+export type JournalCharge = { date: string; label: string; amount: number }
+
 /**
  * Build the dated journal, oldest first, with a running balance.
  * Ordering inside a stub's period: labor → additions → deductions (booked on
- * period_end), then payments on their own dates.
+ * period_end), then payments on their own dates. `charges` book at their own
+ * date with kind 'deduction' (or 'addition' when positive).
  */
 export function buildPartnerJournal(input: {
   stubs: JournalStub[]
   additional: JournalAdditionalLine[]
   deductions: JournalDeduction[]
   payments: JournalPayment[]
+  charges?: JournalCharge[]
 }): { rows: JournalRow[]; balance: number } {
   const events: Omit<JournalRow, 'balance'>[] = []
+  for (const c of input.charges ?? []) {
+    if (!Number.isFinite(c.amount)) continue
+    events.push({
+      date: c.date,
+      label: c.label,
+      detail: null,
+      amount: round2(c.amount),
+      kind: c.amount >= 0 ? 'addition' : 'deduction',
+      pay_stub_id: null,
+    })
+  }
   const stubsAsc = [...input.stubs].sort((a, b) => a.period_start.localeCompare(b.period_start))
   for (const s of stubsAsc) {
     events.push({
