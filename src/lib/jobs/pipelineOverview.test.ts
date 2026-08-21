@@ -62,7 +62,8 @@ describe('buildPipelineMoneyMoves', () => {
     expect(moves[0]!.claim).toBe('Bill the finished work — $71,969')
     expect(moves[1]!.why).toBe('4 bills waiting 90+ days')
     expect(moves[2]!.claim).toBe('Allocate 2 bank deposits')
-    expect(moves[3]!.claim).toBe('65 bills have no bill date')
+    expect(moves[3]!.claim).toBe('65 billed jobs have no bill line')
+    expect(moves[3]!.actionLabel).toBe('Show them')
   })
 
   it('quiet board → empty queue', () => {
@@ -91,6 +92,6 @@ describe('buildPipelineMoneyMoves', () => {
     })
     expect(moves.find((m) => m.key === 'chase-90')?.why).toBe('1 bill waiting 90+ days')
     expect(moves.find((m) => m.key === 'allocate-deposits')?.claim).toBe('Allocate 1 bank deposit')
-    expect(moves.find((m) => m.key === 'fix-dates')?.claim).toBe('1 bill has no bill date')
+    expect(moves.find((m) => m.key === 'fix-dates')?.claim).toBe('1 billed job has no bill line')
   })
 })

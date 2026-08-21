@@ -22,8 +22,10 @@ Below the cards, the system writes your to-do list from the live numbers — eac
 **Bill the finished work — $102,384** → {{button:outline-blue|Capable list}}
 **Chase the 90+ tail — $44,587** → {{button:outline-blue|Show 90+}} (opens Billed with only those rows)
 **Allocate 1 bank deposit** → {{button:outline-blue|Accounts Receivable}}
-**65 bills have no bill date** → {{button:outline-blue|Open Billed}} — undated bills can't age or be chased
+**65 billed jobs have no bill line** → {{button:outline-blue|Show them}} (opens Billed filtered to just those rows) — money on no bill line can't age, be chased, or be forecast
 :::
+
+The no-bill-line rows are also always reachable from the Billed header's {{chip:gray|No line · 65 · $48k}} chip, next to the 30+/90+ aging chips. Each filtered row wears a {{chip:yellow|No bill line}} tag — the fix is creating the job's bill line ({{button:blue|Bill Customer}} or Edit Job), not just setting a date.
 
 When there's nothing to do, the queue says so — an empty list means the pipeline is clean.
 

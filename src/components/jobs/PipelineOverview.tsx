@@ -25,6 +25,8 @@ type PipelineOverviewProps = {
   onOpenAr: () => void
   onFocusSection: (key: SectionKey) => void
   onChase90: () => void
+  /** "no bill line" money move: filter the Billed section to the shells (v2.1931). */
+  onFixDates: () => void
 }
 
 const cardBase: CSSProperties = {
@@ -118,6 +120,7 @@ export function PipelineOverview({
   onOpenAr,
   onFocusSection,
   onChase90,
+  onFixDates,
 }: PipelineOverviewProps) {
   if (!stats) {
     return (
@@ -144,7 +147,7 @@ export function PipelineOverview({
     'bill-capable': onOpenCapable,
     'chase-90': onChase90,
     'allocate-deposits': onOpenAr,
-    'fix-dates': () => onFocusSection('billed'),
+    'fix-dates': onFixDates,
   }
   return (
     <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

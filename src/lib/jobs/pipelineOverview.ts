@@ -125,9 +125,9 @@ export function buildPipelineMoneyMoves(input: {
     moves.push({
       key: 'fix-dates',
       icon: '🩹',
-      claim: `${stats.billedNoDate} bill${stats.billedNoDate === 1 ? '' : 's'} ha${stats.billedNoDate === 1 ? 's' : 've'} no bill date`,
-      why: "they can't age or be chased — set a date on each",
-      actionLabel: 'Open Billed',
+      claim: `${stats.billedNoDate} billed job${stats.billedNoDate === 1 ? ' has' : 's have'} no bill line`,
+      why: "their money can't age, be chased, or be forecast — each needs its bill line created",
+      actionLabel: 'Show them',
     })
   }
   return moves

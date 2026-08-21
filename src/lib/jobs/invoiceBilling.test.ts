@@ -15,7 +15,9 @@ import {
   stagesJobLevelStripeEmailedHintInvoice,
   sumInvoiceAppliedFromJobPayments,
   billedStageRowAgingBucket,
+  billedStageRowHasNoBillLine,
   buildBilledAgingBuckets,
+  buildBilledNoLineBucket,
 } from './invoiceBilling'
 
 type Inv = ReturnType<typeof inv>
@@ -273,5 +275,25 @@ describe('billedStageRowAgingBucket', () => {
   it('job-shell rows have no reference date and never age', () => {
     const j = job({ id: 'j2', status: 'billed', revenue: 800, payments_made: 0 })
     expect(billedStageRowAgingBucket({ kind: 'job', job: j }, NOW)).toBeNull()
+  })
+})
+
+describe('billedStageRowHasNoBillLine / buildBilledNoLineBucket', () => {
+  it('shell rows always count; invoice rows only when missing both dates', () => {
+    const shell: StageRow = { kind: 'job', job: job({ revenue: 500 }) }
+    const dated: StageRow = { kind: 'invoice', inv: inv({ amount: 100, billed_at: '2026-08-01T00:00:00Z' }), job: job({}) }
+    const estOnly: StageRow = { kind: 'invoice', inv: inv({ amount: 100, estimated_bill_date: '2026-08-01' }), job: job({}) }
+    const undated: StageRow = { kind: 'invoice', inv: inv({ amount: 100 }), job: job({}) }
+    expect(billedStageRowHasNoBillLine(shell)).toBe(true)
+    expect(billedStageRowHasNoBillLine(dated)).toBe(false)
+    expect(billedStageRowHasNoBillLine(estOnly)).toBe(false)
+    expect(billedStageRowHasNoBillLine(undated)).toBe(true)
+  })
+
+  it('bucket sums open dollars over no-line rows, skipping zero-open ones', () => {
+    const shell: StageRow = { kind: 'job', job: job({ revenue: 500, payments_made: 100 }) }
+    const paidShell: StageRow = { kind: 'job', job: job({ id: 'j2', revenue: 500, payments_made: 500 }) }
+    const dated: StageRow = { kind: 'invoice', inv: inv({ amount: 100, billed_at: '2026-08-01T00:00:00Z' }), job: job({ id: 'j3' }) }
+    expect(buildBilledNoLineBucket([shell, paidShell, dated])).toEqual({ count: 1, sum: 400 })
   })
 })

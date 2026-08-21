@@ -155,6 +155,32 @@ export function billedStageRowAgingBucket(row: StageRow, now = new Date()): Bill
  * Pipeline New view's "fix dates" money move; Collections excluded to match
  * the aging chips' cohort.
  */
+/**
+ * Row-level "can never age or be chased" rule: open money on a job-shell row
+ * (a billed job with NO billed invoice line — in practice all of them: the
+ * billed_at trigger keeps invoice rows dated) or on an invoice row missing
+ * both billed_at and an est. bill date. Callers filter out zero-open rows
+ * themselves where that matters.
+ */
+export function billedStageRowHasNoBillLine(r: StageRow): boolean {
+  if (r.kind === 'job') return true
+  return !r.inv.billed_at?.trim() && effectiveInvoiceEstBillDate(r.inv) == null
+}
+
+/** Count + open dollars of the no-bill-line cohort among the board's billed rows (the "No line" chip). */
+export function buildBilledNoLineBucket(rows: StageRow[]): { count: number; sum: number } {
+  let count = 0
+  let sum = 0
+  for (const r of rows) {
+    const open = stageRowBilledRemainingAmount(r)
+    if (open <= 0) continue
+    if (!billedStageRowHasNoBillLine(r)) continue
+    count++
+    sum += open
+  }
+  return { count, sum }
+}
+
 export function countBilledRowsMissingDates(stagesFilteredJobs: JobWithDetails[]): number {
   const st = (j: JobWithDetails) => (j.status ?? 'working') as string
   const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
@@ -162,13 +188,7 @@ export function countBilledRowsMissingDates(stagesFilteredJobs: JobWithDetails[]
   const billedInvoicesList = filtered.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
   )
-  let n = 0
-  for (const r of buildBilledStageRows(billedJobsList, billedInvoicesList)) {
-    if (stageRowBilledRemainingAmount(r) <= 0) continue
-    const dated = r.kind !== 'job' && (Boolean(r.inv.billed_at?.trim()) || effectiveInvoiceEstBillDate(r.inv) != null)
-    if (!dated) n++
-  }
-  return n
+  return buildBilledNoLineBucket(buildBilledStageRows(billedJobsList, billedInvoicesList)).count
 }
 
 export function buildBilledAgingBuckets(stagesFilteredJobs: JobWithDetails[], now = new Date()): BilledAgingBuckets {
