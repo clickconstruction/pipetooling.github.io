@@ -14,7 +14,9 @@ The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}}
 
 ## Edit any line in place
 
-Every value on the sheet is editable — tap a count, fixture name, or plan page, type, and **Enter** saves (**Esc** reverts). Renaming a row to a fixture that's already on the bid is blocked — one fixture name, one row, so the takeoff assignment never forks.
+Every value on the sheet is editable — tap a count, fixture name, or plan page, type, and **Enter** saves (**Esc** reverts). Renaming a row to a fixture that's already on the bid offers to **merge** instead — the counts combine onto the existing row — so one fixture name stays one row and the takeoff assignment never forks.
+
+In List mode, drag the **⣿ handle** at the left of a row to reorder the sheet — same order as the Old view.
 
 :::example Fixing a mis-paged row
 In By plan page, a WC-1 sits under "No plan page". Type `2` in its page cell, Enter — the row hops up into "Plan page 2" and the red bucket shrinks by one.
