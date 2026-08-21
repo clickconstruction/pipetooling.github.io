@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, primary
 keywords: percent done, progress, pct complete, stages slider, job progress, drag slider, unbilled, value created, set percent
 order: 62
 ---
-On the **Jobs → Pipeline** board, each job has a progress percent (the "% done" on its Progress & payment bar) that drives how much value is counted as created-but-unbilled. You can set it with a slider right from the job's activity panel, or type it straight into the **% done** box on the Progress & payment column — the box is available in **every** section (Waiting, Working, Ready to Bill, Billed Awaiting Payment, Collections, and Paid). The **Dashboard** shows the same percent as the **% Complete** column on both the **Not Billed Out** and **Accounts Receivable** cards.
+On the **Jobs → Pipeline** board, each job has a progress percent (the "% done" on its Progress & payment bar) that drives how much value is counted as created-but-unbilled. You can set it with a slider right from the job's activity panel, or type it straight into the **% done** box on the Progress & payment column — the box is available in **every** section (Waiting, Working, Ready to Bill, Billed Awaiting Payment, Collections, and Paid). The box accepts 0–100; typing past the range snaps to the nearest end (110 saves as 100). The **Dashboard** shows the same percent as the **% Complete** column on both the **Not Billed Out** and **Accounts Receivable** cards.
 
 ## Set the progress
 

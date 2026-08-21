@@ -77,10 +77,13 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
                     onPctCommit(null)
                     return
                   }
-                  const n = Math.round(Number(v))
-                  if (!Number.isNaN(n) && n >= 0 && n <= 100) {
-                    onPctCommit(n)
-                  }
+                  const raw = Math.round(Number(v))
+                  if (Number.isNaN(raw)) return
+                  // Out-of-range entries normalize to the nearest bound (110 → 100)
+                  // instead of silently not saving (v2.1928).
+                  const n = Math.min(100, Math.max(0, raw))
+                  if (n !== raw) e.target.value = String(n)
+                  onPctCommit(n)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
