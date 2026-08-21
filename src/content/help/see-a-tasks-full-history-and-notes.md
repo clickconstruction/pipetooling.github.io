@@ -1,11 +1,11 @@
 ---
 title: see a task's full history and notes
 category: Office
-roles: dev, master_technician, assistant, controller
+roles: all
 keywords: checklist manage, review, outstanding, task history, notes, comments, activity, who completed, when, age
 order: 42
 ---
-Every checklist task keeps a running record — who created it, each time it was completed, reopened, or signed off, and every note anyone added. On **Checklist → Manage** and on **Review → Outstanding by person**, that record is one tap away.
+Every checklist task keeps a running record — who created it, each time it was completed, reopened, or signed off, and every note anyone added. On **Checklist → Today**, **Manage**, and **Review → Outstanding by person**, that record is one tap away.
 
 ## Opening a card's activity
 
@@ -25,6 +25,10 @@ Tap the card again to close it. For repeating tasks, an event shows which day it
 Type in the **Add a note…** box at the bottom of the expanded card and tap {{button:blue|Post}}. The note lands on the task's current occurrence, so it also shows up wherever else the task's activity appears — the History ledger and the Review sign-off cards.
 
 Notes are a paper trail, not a chat: they can't be edited or deleted once posted.
+
+## On the Today tab
+
+Tap a task's **title** on your Today list (or a row in the Outstanding section below it) and the same record opens right on the card. Notes you add there attach to the day you're looking at, so "waiting on parts" lands next to the occurrence it explains.
 
 ## On the Review tab
 

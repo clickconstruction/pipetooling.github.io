@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import {
   cardStatus,
   commentCount,
   stripStamp,
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
+import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 
 export type ChecklistInstanceCardInstance = {
   id: string
@@ -25,6 +26,18 @@ type ChecklistInstanceCardProps = {
   onPostComment: (body: string) => Promise<boolean>
   /** Right-side extras (mute, FWD) — parent keeps their behavior. */
   actions?: ReactNode
+  /**
+   * v2.2017: when set, tapping the title toggles the thread, and the open
+   * thread renders the task's FULL history (the shared ChecklistItemActivity
+   * spine, all occurrences) instead of just this instance's events. New notes
+   * still land on THIS occurrence via `commentInstanceId`.
+   */
+  fullHistory?: {
+    item: ChecklistItemActivityItem
+    showInstanceDays: boolean
+    setError: (s: string | null) => void
+    onPosted?: (instanceId: string, body: string) => void
+  }
 }
 
 /**
@@ -46,6 +59,7 @@ export function ChecklistInstanceCard({
   onToggleComplete,
   onPostComment,
   actions,
+  fullHistory,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -195,11 +209,31 @@ export function ChecklistInstanceCard({
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
+            {...(fullHistory
+              ? {
+                  role: 'button' as const,
+                  tabIndex: 0,
+                  'aria-expanded': threadOpen,
+                  'aria-label': `${threadOpen ? 'Hide' : 'Show'} activity for ${fullHistory.item.title}`,
+                  onClick: (e: MouseEvent<HTMLDivElement>) => {
+                    // Links inside the title stay links — don't toggle on them.
+                    if ((e.target as HTMLElement).closest('a')) return
+                    setThreadOpen((o) => !o)
+                  },
+                  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setThreadOpen((o) => !o)
+                    }
+                  },
+                }
+              : {})}
             style={{
               fontWeight: 500,
               fontSize: '1rem',
               lineHeight: 1.35,
               marginTop: 2,
+              ...(fullHistory ? { cursor: 'pointer' } : {}),
               ...(isCompleted ? { color: 'var(--text-muted)', textDecoration: 'line-through' } : {}),
             }}
           >
@@ -267,7 +301,19 @@ export function ChecklistInstanceCard({
           </button>
         )}
       </div>
-      {threadOpen ? (
+      {threadOpen && fullHistory ? (
+        <div style={{ marginTop: '0.65rem' }}>
+          <ChecklistItemActivity
+            item={fullHistory.item}
+            authUserId={currentUserId}
+            showInstanceDays={fullHistory.showInstanceDays}
+            setError={fullHistory.setError}
+            commentInstanceId={instance.id}
+            onPosted={fullHistory.onPosted}
+          />
+        </div>
+      ) : null}
+      {threadOpen && !fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           {events.length > 0 ? (
             <div
