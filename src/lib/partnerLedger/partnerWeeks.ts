@@ -9,7 +9,7 @@
  * their payouts move it). Also home of partnerStubsToJournal — the partner's
  * "Full ledger" journal built from the same payload.
  */
-import { POSITIVE_OFFSET_TYPES, buildPartnerJournal, pendingOffsetSignedAmount, type JournalRow } from './partnerLedgerJournal'
+import { POSITIVE_OFFSET_TYPES, buildPartnerJournal, pendingOffsetSignedAmount, type JournalRow, type LedgerNote } from './partnerLedgerJournal'
 
 export type PartnerSummary = {
   exists: boolean
@@ -113,6 +113,23 @@ export function partnerStubsToJournal(
       amount: pendingOffsetSignedAmount(o),
     })),
   })
+}
+
+/** Partner-visible ledger notes from the payload (date + memo only). */
+export function parsePartnerLedgerNotes(payload: unknown): LedgerNote[] {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return []
+  const o = payload as Record<string, unknown>
+  if (o.exists !== true || !Array.isArray(o.notes)) return []
+  const out: LedgerNote[] = []
+  o.notes.forEach((raw, i) => {
+    if (!raw || typeof raw !== 'object') return
+    const r = raw as Record<string, unknown>
+    const memo = typeof r.memo === 'string' ? r.memo : ''
+    const date = String(r.note_date ?? '')
+    if (!memo || !date) return
+    out.push({ id: `pn-${i}`, note_date: date, memo, partner_visible: true })
+  })
+  return out
 }
 
 export function parsePartnerLedgerOffsets(payload: unknown): PartnerLedgerOffset[] {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartnerJournal, mergePendingIntoJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets } from './partnerLedgerJournal'
+import { buildPartnerJournal, mergeNotesIntoDisplay, mergePendingIntoJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets } from './partnerLedgerJournal'
 
 describe('buildPartnerJournal', () => {
   it('books labor, additions, deductions on period end and payouts on their dates, with a running balance', () => {
@@ -102,6 +102,35 @@ describe('netPosition', () => {
     expect(netPosition(967.6, -1304.88)).toBe(-337.28)
     expect(netPosition(100, 0)).toBe(100)
     expect(netPosition(0.1, 0.2)).toBe(0.3)
+  })
+})
+
+describe('mergeNotesIntoDisplay', () => {
+  const rows = buildPartnerJournal({
+    stubs: [{ id: 's1', period_start: '2026-08-09', period_end: '2026-08-15', hours_total: 12.8, gross_pay: 450.1 }],
+    additional: [],
+    deductions: [],
+    payments: [{ pay_stub_id: 's1', amount: 200, paid_at: '2026-08-13T18:00:00Z', memo: null }],
+  }).rows
+
+  it('interleaves notes by date with null amount/balance; same-date note renders above once reversed', () => {
+    const merged = mergeNotesIntoDisplay(rows, [
+      { id: 'n1', note_date: '2026-08-14', memo: 'Talked about the truck', partner_visible: true },
+      { id: 'n2', note_date: '2026-08-13', memo: 'Same-day note', partner_visible: false },
+    ])
+    expect(merged.map((r) => [r.date, r.kind])).toEqual([
+      ['2026-08-13', 'payout'],
+      ['2026-08-13', 'note'],
+      ['2026-08-14', 'note'],
+      ['2026-08-15', 'labor'],
+    ])
+    const note = merged[2]
+    expect(note?.kind === 'note' && note.amount).toBeNull()
+    expect(note?.kind === 'note' && note.balance).toBeNull()
+  })
+
+  it('empty notes list is a no-op', () => {
+    expect(mergeNotesIntoDisplay(rows, [])).toHaveLength(rows.length)
   })
 })
 

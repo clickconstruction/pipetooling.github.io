@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
-import { netPosition, type JournalRow } from '../../lib/partnerLedger/partnerLedgerJournal'
+import { mergeNotesIntoDisplay, netPosition, type LedgerDisplayRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import {
   buildWeekCards,
+  parsePartnerLedgerNotes,
   parsePartnerLedgerOffsets,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
@@ -34,7 +35,7 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
   const [idx, setIdx] = useState(0)
   const [acking, setAcking] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const [fullRows, setFullRows] = useState<JournalRow[] | null>(null)
+  const [fullRows, setFullRows] = useState<LedgerDisplayRow[] | null>(null)
   const [fullOpen, setFullOpen] = useState(false)
   const [fullLoading, setFullLoading] = useState(false)
 
@@ -86,7 +87,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         : await supabase.rpc('get_my_partner_ledger', { p_weeks: 520 })
       const stubs = res.error ? [] : parsePartnerLedgerStubs(res.data)
       const offsets = res.error ? [] : parsePartnerLedgerOffsets(res.data)
-      setFullRows(partnerStubsToJournal(stubs, offsets).rows)
+      const visibleNotes = res.error ? [] : parsePartnerLedgerNotes(res.data)
+      setFullRows(mergeNotesIntoDisplay(partnerStubsToJournal(stubs, offsets).rows, visibleNotes))
       setFullLoading(false)
     }
   }
@@ -242,21 +244,30 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
                   </tr>
                 </thead>
                 <tbody>
-                  {[...fullRows].reverse().map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
-                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)' }}>
-                        {r.label}
-                        {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
-                      </td>
-                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
-                        {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
-                      </td>
-                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                        {r.balance < 0 ? '−' : ''}{money(r.balance)}
-                      </td>
-                    </tr>
-                  ))}
+                  {[...fullRows].reverse().map((r, i) =>
+                    r.kind === 'note' ? (
+                      <tr key={i} style={{ background: 'var(--bg-muted)' }}>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
+                        <td colSpan={3} style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', fontStyle: 'italic', color: 'var(--text-700)' }}>
+                          {r.label}
+                        </td>
+                      </tr>
+                    ) : r.amount == null || r.balance == null ? null : (
+                      <tr key={i}>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)' }}>
+                          {r.label}
+                          {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
+                        </td>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
+                          {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                        </td>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                          {r.balance < 0 ? '−' : ''}{money(r.balance)}
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
               <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>

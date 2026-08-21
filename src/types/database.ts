@@ -7688,6 +7688,50 @@ export type Database = {
           },
         ]
       }
+      partnership_ledger_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          memo: string
+          note_date: string
+          partner_visible: boolean
+          partnership_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          memo: string
+          note_date: string
+          partner_visible?: boolean
+          partnership_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          memo?: string
+          note_date?: string
+          partner_visible?: boolean
+          partnership_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partnership_ledger_notes_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partnerships: {
         Row: {
           company_first_pct: number
