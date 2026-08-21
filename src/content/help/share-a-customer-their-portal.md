@@ -25,7 +25,7 @@ The {{icon:gear}} button opens one flat list:
 - **History** — every link and address change: what, when, and by whom.
 
 :::example What the customer sees
-A clean account statement: our letterhead, each open bill with the job name and amount — jobs on someone else's property carry a small copper AS GC tag naming the owner — a Pay online button for card-payable bills (check reference otherwise), and the two request forms. At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
+A clean account statement: our letterhead, each open bill with the job name and amount — jobs on someone else's property carry a small copper AS GC tag naming the owner — a Pay online button for card-payable bills (check reference otherwise), and the two request forms. The visit form's "For" picker lists their **properties by address** (never job numbers or our internal job names). At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
 :::
 
 ## When they send a request

@@ -74,6 +74,24 @@ describe('parsePortalPayload', () => {
     expect(parsePortalPayload({ ...good, requestToken: 'abc123' })!.requestToken).toBe('abc123')
   })
 
+  it('parses requestableProperties defensively; absent field means empty list', () => {
+    expect(parsePortalPayload(good)!.requestableProperties).toEqual([])
+    const p = parsePortalPayload({
+      ...good,
+      requestableProperties: [
+        { jobId: 'j1', street: ' 415 Springtown Way ', city: 'San Marcos' },
+        { jobId: 'j2', street: '10 Elm St', city: '   ' },
+        { jobId: 'j3', street: '   ' }, // blank street → dropped
+        { street: 'no id' },
+        'garbage',
+      ],
+    })!
+    expect(p.requestableProperties).toEqual([
+      { jobId: 'j1', street: '415 Springtown Way', city: 'San Marcos' },
+      { jobId: 'j2', street: '10 Elm St', city: null },
+    ])
+  })
+
   it('parses the short-address slug for the footer QR, null when absent or blank', () => {
     expect(parsePortalPayload(good)!.slug).toBeNull()
     expect(parsePortalPayload({ ...good, slug: '   ' })!.slug).toBeNull()
