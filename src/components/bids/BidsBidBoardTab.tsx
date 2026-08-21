@@ -20,6 +20,7 @@ import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentSt
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
 import { isBidLossCategoryKey, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import type { BidGcRecipientsMap } from '../../lib/bids/bidGcRecipients'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
@@ -57,6 +58,8 @@ type BidsBidBoardTabProps = {
   showLostModalLabor: boolean
   onSaveLossReason: (bidId: string, lossReason: string, lossCategory: BidLossCategoryKey | null) => Promise<void>
   workingBoardArchivedBids: BidWithBuilder[]
+  /** bid_id → other GCs the bid went to (renders the +N chip on the GC cell). */
+  recipientsByBidId: BidGcRecipientsMap
 }
 
 const BID_BOARD_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
@@ -130,6 +133,7 @@ export function BidsBidBoardTab({
   showLostModalLabor,
   onSaveLossReason,
   workingBoardArchivedBids,
+  recipientsByBidId,
 }: BidsBidBoardTabProps) {
   // How the viewer's OWN name is boxed on the board (per-account, per-theme —
   // picked via the color wheel on the Health line, v2.1710).
@@ -769,6 +773,21 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
+              {(recipientsByBidId[bid.id]?.length ?? 0) > 0 ? (
+                <span
+                  title={`Also sent to: ${recipientsByBidId[bid.id]!.map((r) => r.name).join(', ')}`}
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    padding: '0.05rem 0.4rem',
+                    borderRadius: 999,
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-700)',
+                  }}
+                >
+                  +{recipientsByBidId[bid.id]!.length} GC{recipientsByBidId[bid.id]!.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
             </div>
           </td>
           {!hideBidColumn ? (
