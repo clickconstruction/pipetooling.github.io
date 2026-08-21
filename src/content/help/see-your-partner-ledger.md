@@ -8,9 +8,9 @@ If you work with the company as a partner, your Dashboard has a **Your ledger** 
 
 ## Reading the card
 
-The card opens on the **current week**: your balance so far, with the hours that have been approved priced at your deal rates. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
+The card opens on the **current week**: one balance — approved hours priced at your deal rates, minus payouts and any charges still waiting to go on a statement. It's what settling up today would actually mean. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
 
-If charges are waiting to go on your next statement (a back-charge, a utility overage), the card shows a **with pending charges** line under the balance — that's what settling up today would actually mean. The charges themselves appear as deductions on the next statement the office closes.
+If charges are waiting for your next statement (a back-charge, a utility overage), they're already counted in the number — open **Full ledger** to see each one at the date it happened; they appear as deductions on the next statement the office closes.
 
 Use the **‹ Older / Newer ›** buttons to step through past weeks, or open **Full ledger** at the bottom of the card to see everything ever — postings, payouts, and any back-charges or damages at the date they happened — with running balances. The office can also leave dated notes on the ledger; ones shared with you appear there as quiet italic lines. Each closed week shows:
 
