@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -40,6 +42,33 @@ type BidsCountsTabProps = {
   onCountSourceLinkSaved?: (bidId: string) => void | Promise<void>
 }
 
+/** Sortable Count Sheet row (List mode): drag-handle cell + the sheet's editable cells. */
+function SheetSortableRow({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <tr
+      ref={setNodeRef}
+      className="count-sheet-row"
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : undefined, position: 'relative', zIndex: isDragging ? 2 : undefined }}
+    >
+      <td style={{ padding: '0.28rem 0 0.28rem 0.4rem', borderBottom: '1px solid var(--border)', width: '1.8rem' }}>
+        <span
+          {...attributes}
+          {...listeners}
+          style={{ cursor: 'grab', display: 'inline-flex', padding: '0.2rem', color: 'var(--text-faint)', touchAction: 'none' }}
+          title="Drag to reorder"
+          aria-label="Drag to reorder"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="currentColor" aria-hidden="true">
+            <path d="M8 6h2v2H8V6zm0 4h2v2H8v-2zm0 4h2v2H8v-2zm4-8h2v2h-2V6zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z" />
+          </svg>
+        </span>
+      </td>
+      {children}
+    </tr>
+  )
+}
+
 export function BidsCountsTab({
   bids,
   selectedBidForCounts,
@@ -59,6 +88,7 @@ export function BidsCountsTab({
   onCountSourceLinkSaved,
 }: BidsCountsTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
 
   const [countsSearchQuery, setCountsSearchQuery] = useState('')
   const [movingCountRow, setMovingCountRow] = useState(false)
@@ -200,9 +230,27 @@ export function BidsCountsTab({
         return false
       }
       if (trimmed === row.fixture) return true
-      if (findDuplicateFixture(countRows, trimmed, row.id)) {
-        showToast(`"${trimmed}" is already on this bid — one fixture name, one row.`, 'error')
-        return false
+      const dupRow = findDuplicateFixture(countRows, trimmed, row.id)
+      if (dupRow) {
+        // One fixture name, one row (a duplicate forks the takeoff assignment) —
+        // offer the same merge quick add gives: counts combine on the existing row.
+        const merge = await confirmDialog({
+          title: `Merge into "${dupRow.fixture}"?`,
+          message: `"${dupRow.fixture}" is already on this bid (${dupRow.count}). Merging adds this row's ${row.count} to it (making ${dupRow.count + row.count}) and removes this row.`,
+          confirmLabel: 'Merge rows',
+        })
+        if (!merge) return false
+        setCountRows((prev) => prev.filter((x) => x.id !== row.id).map((x) => (x.id === dupRow.id ? { ...x, count: x.count + row.count } : x)))
+        const upd = await supabase.from('bids_count_rows').update({ count: dupRow.count + row.count }).eq('id', dupRow.id)
+        const del = upd.error ? null : await supabase.from('bids_count_rows').delete().eq('id', row.id)
+        if (upd.error || del?.error) {
+          showToast(formatErrorMessage(upd.error ?? del?.error, 'Could not merge the rows'), 'error')
+          refreshAfterCountsChange()
+          return false
+        }
+        showToast(`Merged into "${dupRow.fixture}" — now ${dupRow.count + row.count}.`, 'success')
+        refreshAfterCountsChange({ skipCountRows: true })
+        return true
       }
       patch = { fixture: trimmed }
     } else {
@@ -559,7 +607,7 @@ export function BidsCountsTab({
               New
             </button>
             {countsView === 'new' ? (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Count Sheet — same rows as Old; reorder still lives in Old</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Count Sheet — same rows as Old, ready to edit</span>
             ) : null}
           </div>
           {countsView === 'new' ? (() => {
@@ -697,7 +745,7 @@ export function BidsCountsTab({
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)' }}>Showing only rows with no plan page — click the tile again to show all.</span>
                   ) : null}
                   <span style={{ flex: 1 }} />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>tap any value to edit — Enter saves, Esc reverts</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>tap any value to edit — Enter saves, Esc reverts{sheetMode === 'list' ? ' · drag ⣿ to reorder' : ''}</span>
                 </div>
 
                 {qaOpen ? (
@@ -775,9 +823,11 @@ export function BidsCountsTab({
                 ) : null}
 
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                  <DndContext sensors={countRowsSensors} collisionDetection={closestCenter} onDragEnd={handleCountsDragEnd}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem', minWidth: 560 }}>
                     <thead>
                       <tr>
+                        {sheetMode === 'list' ? <th style={{ borderBottom: '1px solid var(--border)', width: '1.8rem' }} aria-label="Reorder"></th> : null}
                         <th style={{ textAlign: 'right', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Count</th>
                         <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Fixture or tie-in</th>
                         {showGroupTag ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Group/Tag</th> : null}
@@ -787,7 +837,13 @@ export function BidsCountsTab({
                     </thead>
                     <tbody>
                       {sheetMode === 'list'
-                        ? visibleRows.map((r) => sheetRow(r))
+                        ? (
+                          <SortableContext items={visibleRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+                            {visibleRows.map((r) => (
+                              <SheetSortableRow key={r.id} id={r.id}>{sheetRowCells(r)}</SheetSortableRow>
+                            ))}
+                          </SortableContext>
+                        )
                         : (
                           <>
                             {buildCountSheetPageGroups(visibleRows).pages.flatMap((g) => [
@@ -814,6 +870,7 @@ export function BidsCountsTab({
                         )}
                     </tbody>
                   </table>
+                  </DndContext>
                 </div>
                 <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
                   <button
