@@ -1,0 +1,5 @@
+# 20260821150000_partner_view_as_rpcs.sql (2026-08-21, v2.1942)
+
+View as Partner lens (owner-approved mockup): refactors the four partner read RPCs into shared inner payload functions (`partner_summary_payload`, `partner_ledger_payload`, `partner_jobs_payload`, `partner_job_costing_payload` — SECURITY DEFINER, revoked from anon/authenticated) plus two resolver layers: the unchanged `get_my_partner_*` wrappers, and new dev-only `get_partner_*_as(p_partnership_id, …)` variants for the `/partnerships` lens. `partner_lens_partnership_id()` mirrors `my_partner_partnership_id()`'s draft/active status gate for a given partnership, so the lens cannot show more (or less) than the partner's own account. Inner bodies are verbatim moves of the 20260820170000/20260820200000 bodies with only the resolver line replaced; `acknowledge_partner_statement` is untouched (lens is read-only).
+
+Functions only — idempotent `CREATE OR REPLACE`, no tables, no RLS changes (read-only sweeps not needed). Client (v2.1942) is fail-soft in either deploy order.

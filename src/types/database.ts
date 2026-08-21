@@ -14080,7 +14080,20 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      get_partner_job_costing_as: {
+        Args: { p_job_id: string; p_partnership_id: string }
+        Returns: Json
+      }
       get_partner_job_review_queue: {
+        Args: { p_partnership_id: string }
+        Returns: Json
+      }
+      get_partner_jobs_as: { Args: { p_partnership_id: string }; Returns: Json }
+      get_partner_ledger_as: {
+        Args: { p_partnership_id: string; p_weeks?: number }
+        Returns: Json
+      }
+      get_partner_summary_as: {
         Args: { p_partnership_id: string }
         Returns: Json
       }

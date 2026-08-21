@@ -31,7 +31,7 @@ type Costing = {
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-export function DashboardPartnerJobsSection() {
+export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnershipId?: string } = {}) {
   const [rows, setRows] = useState<JobRow[] | null>(null)
   const [costingOn, setCostingOn] = useState(false)
   const [openJob, setOpenJob] = useState<string | null>(null)
@@ -39,7 +39,11 @@ export function DashboardPartnerJobsSection() {
   const [costingErr, setCostingErr] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.rpc('get_my_partner_jobs')
+    // Lens mode (asPartnershipId): dev-only *_as RPC, same inner body as the
+    // partner's own call.
+    const { data, error } = asPartnershipId
+      ? await supabase.rpc('get_partner_jobs_as', { p_partnership_id: asPartnershipId })
+      : await supabase.rpc('get_my_partner_jobs')
     if (error || !data || typeof data !== 'object' || (data as Record<string, unknown>).exists !== true) {
       setRows(null)
       return
@@ -60,7 +64,7 @@ export function DashboardPartnerJobsSection() {
             }))
         : [],
     )
-  }, [])
+  }, [asPartnershipId])
 
   useEffect(() => {
     void load()
@@ -77,7 +81,9 @@ export function DashboardPartnerJobsSection() {
     setOpenJob(jobId)
     setCosting(null)
     setCostingErr(null)
-    const { data, error } = await supabase.rpc('get_my_partner_job_costing', { p_job_id: jobId })
+    const { data, error } = asPartnershipId
+      ? await supabase.rpc('get_partner_job_costing_as', { p_partnership_id: asPartnershipId, p_job_id: jobId })
+      : await supabase.rpc('get_my_partner_job_costing', { p_job_id: jobId })
     if (error) {
       setCostingErr(error.message)
       return
