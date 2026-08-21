@@ -9,6 +9,7 @@ import {
   type ForecastRow,
 } from '../../lib/jobs/billedPaymentForecast'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 
 /**
  * "Payment forecast" on the Billed Awaiting Payment header: open dollars
@@ -103,6 +104,9 @@ export default function BilledPaymentForecastModal({
   // Tile click-to-filter (v2.1943): a tile narrows the lists to just its
   // bucket; clicking it again (or Show all) restores every bucket.
   const [bucketFilter, setBucketFilter] = useState<ForecastBucketKey | null>(null)
+  // Pay-speeds drill-down (v2.2022): the strip is now the door.
+  const [paySpeedsOpen, setPaySpeedsOpen] = useState(false)
+  const [paySpeedsHover, setPaySpeedsHover] = useState(false)
   const listedBuckets = visibleBuckets.filter(
     (b) => b.rows.length > 0 && (bucketFilter == null || b.key === bucketFilter),
   )
@@ -181,7 +185,31 @@ export default function BilledPaymentForecastModal({
         </div>
 
         {paySpeeds ? (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1.1rem', flexWrap: 'wrap', marginTop: '0.75rem', padding: '0.45rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+          // One click target (v2.2022): the whole strip opens the per-customer
+          // pay-speeds breakdown, with an explicit affordance at the right.
+          <button
+            type="button"
+            onClick={() => setPaySpeedsOpen(true)}
+            onMouseEnter={() => setPaySpeedsHover(true)}
+            onMouseLeave={() => setPaySpeedsHover(false)}
+            title="Open the pay-speeds breakdown — distribution chart and every customer's speed"
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: '1.1rem',
+              flexWrap: 'wrap',
+              marginTop: '0.75rem',
+              padding: '0.45rem 0.75rem',
+              border: `1px solid ${paySpeedsHover ? 'var(--text-link)' : 'var(--border)'}`,
+              borderRadius: 8,
+              background: 'var(--surface)',
+              width: '100%',
+              font: 'inherit',
+              color: 'inherit',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
             <span style={{ fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
               Pay speeds
             </span>
@@ -200,7 +228,22 @@ export default function BilledPaymentForecastModal({
               paySpeeds.segments.commercial,
               'Median days from bill to payment across commercial customers, last 12 months',
             )}
-          </div>
+            <span
+              style={{
+                marginLeft: 'auto',
+                alignSelf: 'center',
+                color: 'var(--text-link)',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              See the breakdown <span aria-hidden>›</span>
+            </span>
+          </button>
+        ) : null}
+        {paySpeedsOpen ? (
+          <PaySpeedsBreakdownModal rows={rows} paySpeeds={paySpeeds} onClose={() => setPaySpeedsOpen(false)} />
         ) : null}
 
         {filteredTitle ? (
