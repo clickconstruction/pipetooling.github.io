@@ -1,0 +1,7 @@
+# 20260821190000 — gc_review_certifications + gc_review_week_status (v2.1980)
+
+Wednesday GC certification, phase 1. New append-only table `gc_review_certifications`: one row per office attestation that a GC's Billed Awaiting Payment group is accurate for a week (`week_start` = company-calendar Monday). Columns: `gc_customer_id` (cascade), `certified_by` (set null) + `certified_by_name` snapshot, `certified_at`, `job_count`, `total`, `snapshot` jsonb (`{rows: [{key, jobId, remaining}], total, jobCount}` — the client diffs this against the live rollup for "changed since certified"), `note`. RLS: select for dev/master/assistant/controller/primary; insert for the four office roles with `certified_by = auth.uid()`; no update/delete (append-only). Index `(week_start, gc_customer_id, certified_at desc)`.
+
+Also `gc_review_week_status(p_week_start date) → jsonb` (SECURITY DEFINER, `stable`, role-gated inside): `{gcs_outstanding, gcs_certified, gcs_sent}` — outstanding = distinct non-null `gc_customer_id` with a positive billed remainder (billed job shells: `revenue − payments_made`; billed invoices: `amount − linked payments`), collections excluded; certified/sent counted only within that outstanding set; sends compared in `America/Chicago`. Feeds the Dashboard Wednesday nudge.
+
+Applied with `supabase db push` while PR #___ was merging (per CLAUDE.md). CREATE TABLE → ends with both `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()`.
