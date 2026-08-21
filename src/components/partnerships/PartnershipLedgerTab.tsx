@@ -124,12 +124,7 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
                 r.kind === 'pending' ? (
                   <tr key={i}>
                     <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
-                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
-                      {r.label}
-                      <span style={{ marginLeft: '0.45rem', fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-amber-700)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.05rem 0.4rem', whiteSpace: 'nowrap' }}>
-                        pending
-                      </span>
-                    </td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>{r.label}</td>
                     <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap', opacity: 0.85 }}>
                       {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
                     </td>
@@ -156,9 +151,9 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
         </div>
       )}
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Newest first; each row’s balance is the running balance after that posting. Amber <b>pending</b> rows are
-        charges waiting for the next statement — they sit at their date but move no balance until attached. Append-only:
-        reversals are new rows, never edits. The weekly statement is a window over this journal.
+        Newest first; each row’s balance is the running balance after that posting. Rows with a “—” balance are charges
+        waiting for the next statement — they sit at their date but move nothing until attached. Append-only: reversals
+        are new rows, never edits. The weekly statement is a window over this journal.
       </p>
     </div>
   )
