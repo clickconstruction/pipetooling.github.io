@@ -12,6 +12,14 @@ The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}}
 - The strip up top totals **items and units**, counts rows with **no plan page** (red — click the tile to see just those), and how many plan pages the count cites.
 - Flip to **By plan page** and the sheet regroups under each page — "Plan page 26 — 13 items" — with a red **No plan page** bucket at the bottom to clean up before submitting.
 
+## Edit any line in place
+
+Every value on the sheet is editable — tap a count, fixture name, or plan page, type, and **Enter** saves (**Esc** reverts). Renaming a row to a fixture that's already on the bid is blocked — one fixture name, one row, so the takeoff assignment never forks.
+
+:::example Fixing a mis-paged row
+In By plan page, a WC-1 sits under "No plan page". Type `2` in its page cell, Enter — the row hops up into "Plan page 2" and the red bucket shrinks by one.
+:::
+
 ## Add counts heads-down
 
 Quick add starts tucked away — click {{button:outline|+ Quick add}} to open the panel (the count box is focused and ready), and **Hide** to put it away when you're done.

@@ -91,9 +91,12 @@ export function buildCountSheetPageGroups<T extends CountSheetRow>(rows: T[]): {
   }
 }
 
-/** Case-insensitive, trimmed match against existing fixtures — the fork-the-takeoff guard. */
-export function findDuplicateFixture<T extends CountSheetRow>(rows: T[], name: string): T | null {
+/**
+ * Case-insensitive, trimmed match against existing fixtures — the fork-the-takeoff guard.
+ * Pass `excludeId` when checking a RENAME, so the row being edited doesn't match itself.
+ */
+export function findDuplicateFixture<T extends CountSheetRow>(rows: T[], name: string, excludeId?: string): T | null {
   const needle = name.trim().toLowerCase()
   if (!needle) return null
-  return rows.find((r) => r.fixture.trim().toLowerCase() === needle) ?? null
+  return rows.find((r) => r.id !== excludeId && r.fixture.trim().toLowerCase() === needle) ?? null
 }
