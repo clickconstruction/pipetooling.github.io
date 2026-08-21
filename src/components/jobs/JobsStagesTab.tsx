@@ -68,6 +68,7 @@ import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import BilledAgingChartModal from './BilledAgingChartModal'
+import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import PaidProfitChartModal from './PaidProfitChartModal'
 import BilledReportShareModal from './BilledReportShareModal'
 import JobBookModal from './JobBookModal'
@@ -631,6 +632,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!billedAgingChartOpen) return
     void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
   }, [billedAgingChartOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
+  // Same retry-until-merged shape for the payment forecast (expected-pay dates).
+  const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
+  useEffect(() => {
+    if (!billedPaymentForecastOpen) return
+    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
+  }, [billedPaymentForecastOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Same retry-until-merged shape for the paid profit chart (v2.1879).
   const [paidProfitChartOpen, setPaidProfitChartOpen] = useState(false)
   useEffect(() => {
@@ -3492,6 +3499,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       Chart
                     </button>
                   )}
+                  {canSeeBilledExpectedPay && (
+                    <button
+                      type="button"
+                      onClick={() => setBilledPaymentForecastOpen(true)}
+                      title="Open billed dollars bucketed by expected payment date (bill date + customer pay speed)"
+                      aria-label="Payment forecast"
+                      style={billedHeaderActionStyle(false)}
+                    >
+                      <span aria-hidden>{'📅'}</span>
+                      Payment forecast
+                    </button>
+                  )}
                   {(authRole === 'dev' || authRole === 'master_technician') && (
                     <button
                       type="button"
@@ -4411,6 +4430,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onClose={() => setBilledAgingChartOpen(false)}
           onOpenInvoice={(invoiceId) => {
             setBilledAgingChartOpen(false)
+            applyStagesInvoiceFocus(invoiceId)
+          }}
+        />
+      )}
+      {billedPaymentForecastOpen && (
+        <BilledPaymentForecastModal
+          rows={stagesBoardLists.billedActiveRows}
+          paySpeeds={billedPaySpeeds}
+          todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
+          onClose={() => setBilledPaymentForecastOpen(false)}
+          onOpenInvoice={(invoiceId) => {
+            setBilledPaymentForecastOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
         />
