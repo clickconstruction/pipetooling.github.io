@@ -2743,6 +2743,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       capableToBillTotalFormatted: formatCurrencyNoCents(
                         capableToBillTotalFromWorking(stagesBoardLists.working),
                       ),
+                      recentViewOpen: stagesRecentViewOpen,
                     }).map((group) => (
                       <div key={group.section} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem', textAlign: 'center' }}>
@@ -2750,6 +2751,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         </div>
                         {group.items.map((item) => {
                           const onSelect: Record<StagesSectionToolKey, () => void> = {
+                            'recently-added': () => setStagesRecentViewOpen((o) => !o),
                             'weekly-movement': () => setWeeklyMovementModalOpen(true),
                             'weekly-money': () => setWeeklyMoneyModalOpen(true),
                             'capable-to-bill': () => setCapableToBillModalOpen(true),
@@ -2927,8 +2929,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </>
               ) : null}
             </div>
-            {/* "Recently added" view toggle (v2.1809) — swaps the sections for a
-                flat last-100-by-time-added list, any status incl. Paid. */}
+            {/* "Recently added" (v2.1809) lives in the ☰ tools menu since
+                v2.1973; this pill now renders ONLY while the flat view is
+                open, as the prominent way back to the board. */}
+            {stagesRecentViewOpen && (
             <button
               type="button"
               onClick={() => setStagesRecentViewOpen((o) => !o)}
@@ -2955,6 +2959,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <span aria-hidden>🕒</span>
               {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
             </button>
+            )}
             {/* On the New view these three alerts dock at the foot of Today's
                 Money Opportunities instead (v2.1961; the strip stays for Old).
                 The gate now includes the No-email count — previously a lone

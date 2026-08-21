@@ -18,6 +18,7 @@
 import { isAssistantLike } from '../subcontractorLikeRole'
 
 export type StagesSectionToolKey =
+  | 'recently-added'
   | 'weekly-movement'
   | 'weekly-money'
   | 'capable-to-bill'
@@ -52,6 +53,8 @@ export type StagesSectionToolsMenuInput = {
   arBankTxUnallocatedCount: number | null
   /** Preformatted dollars (no cents), e.g. "12,345". */
   capableToBillTotalFormatted: string
+  /** "Recently added" flat view currently open — flips that item's label to the exit (v2.1973). */
+  recentViewOpen: boolean
 }
 
 export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput): StagesSectionToolsGroup[] {
@@ -69,6 +72,17 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   groups.push({
     section: 'Pipeline',
     items: [
+      // Moved off the jump-strip row into the menu (v2.1973); everyone.
+      // While the flat view is open, the strip shows a "Back to board" pill
+      // too, so the exit is never buried in here.
+      {
+        key: 'recently-added',
+        label: input.recentViewOpen ? 'Back to board' : 'Recently added',
+        title: input.recentViewOpen
+          ? 'Back to the pipeline board'
+          : 'Show the last 100 jobs added, any status',
+        disabled: false,
+      },
       {
         key: 'weekly-movement',
         label: 'Weekly movement',
