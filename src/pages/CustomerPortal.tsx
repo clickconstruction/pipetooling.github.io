@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import {
   formatPortalDate,
   formatPortalUsd,
@@ -29,7 +29,9 @@ const COPPER = '#b0662f'
 
 export default function CustomerPortal() {
   const [params] = useSearchParams()
+  const { slug: slugParam } = useParams<{ slug?: string }>()
   const token = params.get('t')?.trim() ?? ''
+  const slug = (slugParam ?? '').trim().toLowerCase()
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
@@ -38,13 +40,14 @@ export default function CustomerPortal() {
 
   useEffect(() => {
     let cancelled = false
-    if (!token) {
+    if (!token && !slug) {
       setState({ kind: 'error', message: 'This link is missing its key. Please use the exact link we sent you.' })
       return
     }
     void (async () => {
       try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?token=${encodeURIComponent(token)}`)
+        const query = token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`
+        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}`)
         const body: unknown = await res.json().catch(() => null)
         if (cancelled) return
         const payload = parsePortalPayload(body)
@@ -66,7 +69,7 @@ export default function CustomerPortal() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, slug])
 
   const today = useMemo(() => {
     const d = new Date()
@@ -117,7 +120,7 @@ export default function CustomerPortal() {
         {state.kind === 'ready' && (
           <>
             <PortalStatement payload={state.payload} today={today} />
-            <PortalRequestForms token={token} payload={state.payload} />
+            <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
             <div style={{ padding: '2rem 0 0', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span style={{ fontSize: 12, color: MUTED }}>
                 Thank you for your business — <i>the Click team</i>
@@ -176,10 +179,33 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
                 <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{formatPortalDate(b.billedOn) ?? '—'}</span>
                 <span style={{ minWidth: 0 }}>
                   <span style={{ fontWeight: 600 }}>{b.jobLabel}</span>
-                  {b.jobAddress && (
+                  {b.asGc && (
+                    <span
+                      style={{
+                        marginLeft: 7,
+                        verticalAlign: 1,
+                        fontSize: 8.5,
+                        fontWeight: 800,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: COPPER,
+                        border: `1px solid ${COPPER}`,
+                        borderRadius: 3,
+                        padding: '1.5px 5px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      As GC
+                    </span>
+                  )}
+                  {(b.jobAddress || (b.asGc && b.ownerName)) && (
                     <>
                       <br />
-                      <span style={{ fontSize: 11.5, color: FAINT }}>{b.jobAddress}</span>
+                      <span style={{ fontSize: 11.5, color: FAINT }}>
+                        {[b.jobAddress, b.asGc && b.ownerName ? `owner: ${b.ownerName}` : null]
+                          .filter(Boolean)
+                          .join(' — ')}
+                      </span>
                     </>
                   )}
                 </span>

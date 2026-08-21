@@ -851,11 +851,13 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
-**Purpose**: Payload for the no-login customer/GC portal page (`/portal?t=<token>`, portal train PR 1, v2.1982): resolves the capability token (sha256 hash lookup in `customer_portal_links`, revoked → 404) and returns only that customer's data — company letterhead block, open billed lines with amounts + Stripe `hosted_invoice_url` pay links (billed jobs without a line fall back to the job-level remainder), total due, and the non-paid jobs a visit request may reference.
+**Purpose**: Payload for the no-login customer/GC portal page (`/portal?t=<token>` and `/p/<slug>`, portal train PR 1 v2.1982; merged view + custom addresses v2.2008): resolves the capability token (raw-token lookup with sha256-hash fallback in `customer_portal_links`, revoked → 404) or a custom address slug (`customer_portal_slugs` → the customer's active `audience='all'` link; no mint-on-demand — a turned-off portal stays off; first public slug resolve sets `locked_at` + a `locked` event) and returns only that company's data — company letterhead block, open billed lines with amounts + Stripe `hosted_invoice_url` pay links (billed jobs without a line fall back to the job-level remainder), total due, and the non-paid jobs a visit request may reference.
 
-**Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>`
+**Audiences**: `all` (default since v2.2008) merges jobs where the company is the customer with jobs where it is the GC (deduped by job id; GC rows carry `asGc: true` + `ownerName` for the statement's AS GC tag); `customer` / `gc` remain the scoped "Separate views". Bill building lives in the shared pure module [`_shared/portalMergedBills.ts`](../supabase/functions/_shared/portalMergedBills.ts), unit-tested from `src/lib/portal/portalMergedBills.test.ts`. The payload also carries `requestToken` (the resolved link's token) so slug-opened pages can submit request forms — slug and token are the same capability.
 
-**Auth**: none (`verify_jwt = false` in `config.toml` — the token IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
+**Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>` or `GET /functions/v1/customer-portal?slug=<address>`
+
+**Auth**: none (`verify_jwt = false` in `config.toml` — the link IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
 
 ### submit-portal-request
 

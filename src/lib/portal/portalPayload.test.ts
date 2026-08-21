@@ -45,8 +45,33 @@ describe('parsePortalPayload', () => {
     expect(p.totalDue).toBe(1750)
   })
 
-  it('unknown audience falls back to customer', () => {
+  it('unknown audience falls back to customer; all passes through', () => {
     expect(parsePortalPayload({ ...good, audience: 'martian' })!.audience).toBe('customer')
+    expect(parsePortalPayload({ ...good, audience: 'all' })!.audience).toBe('all')
+  })
+
+  it('parses asGc/ownerName on merged rows and defaults them safely', () => {
+    const p = parsePortalPayload({
+      ...good,
+      audience: 'all',
+      bills: [
+        { ...good.bills[0], asGc: true, ownerName: 'Bexar Lofts LLC' },
+        { ...good.bills[1] }, // legacy shape: no asGc/ownerName fields
+        { jobLabel: 'Odd', amount: 10, asGc: 'yes', ownerName: '   ' },
+      ],
+    })!
+    expect(p.bills[0]!.asGc).toBe(true)
+    expect(p.bills[0]!.ownerName).toBe('Bexar Lofts LLC')
+    expect(p.bills[1]!.asGc).toBe(false)
+    expect(p.bills[1]!.ownerName).toBeNull()
+    expect(p.bills[2]!.asGc).toBe(false)
+    expect(p.bills[2]!.ownerName).toBeNull()
+  })
+
+  it('parses requestToken for slug-opened pages, null when absent or blank', () => {
+    expect(parsePortalPayload(good)!.requestToken).toBeNull()
+    expect(parsePortalPayload({ ...good, requestToken: '  ' })!.requestToken).toBeNull()
+    expect(parsePortalPayload({ ...good, requestToken: 'abc123' })!.requestToken).toBe('abc123')
   })
 })
 

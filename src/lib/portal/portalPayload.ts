@@ -21,15 +21,21 @@ export type PortalBill = {
   billedOn: string | null
   payUrl: string | null
   checkRef: string
+  /** Merged 'all' view: this row is on someone else's property (they're the GC). */
+  asGc: boolean
+  /** Owner's name for the AS GC tag, when known. */
+  ownerName: string | null
 }
 
 export type PortalPayload = {
   company: PortalCompany
   customerName: string
-  audience: 'customer' | 'gc'
+  audience: 'customer' | 'gc' | 'all'
   bills: PortalBill[]
   totalDue: number
   requestableJobs: Array<{ id: string; label: string }>
+  /** Token for form submits when the page was opened by slug (same capability). */
+  requestToken: string | null
 }
 
 function str(v: unknown, fallback = ''): string {
@@ -59,6 +65,8 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         billedOn: typeof b.billedOn === 'string' && /^\d{4}-\d{2}-\d{2}/.test(b.billedOn) ? b.billedOn.slice(0, 10) : null,
         payUrl: typeof b.payUrl === 'string' && /^https:\/\//.test(b.payUrl) ? b.payUrl : null,
         checkRef: str(b.checkRef),
+        asGc: b.asGc === true,
+        ownerName: typeof b.ownerName === 'string' && b.ownerName.trim() ? b.ownerName : null,
       })
     }
   }
@@ -78,10 +86,11 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       email: str(companyRaw.email),
     },
     customerName: r.customerName,
-    audience: r.audience === 'gc' ? 'gc' : 'customer',
+    audience: r.audience === 'gc' ? 'gc' : r.audience === 'all' ? 'all' : 'customer',
     bills,
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
     requestableJobs,
+    requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
   }
 }
 
