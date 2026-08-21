@@ -24,7 +24,6 @@ type StubRow = {
   paid_at: string | null
 }
 type PendingOffsetRow = { id: string; type: string; amount: number; occurred_date: string; description: string | null }
-type AckRow = { pay_stub_id: string; party: string; acknowledged_at: string }
 type PaymentRow = { pay_stub_id: string; amount: number }
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -41,10 +40,12 @@ export function PartnershipStatementsTab({
   weeklyStatementOn: boolean
 }) {
   const [stubs, setStubs] = useState<StubRow[] | null>(null)
-  const [acks, setAcks] = useState<AckRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [pendingOffsets, setPendingOffsets] = useState<PendingOffsetRow[]>([])
   const [excluded, setExcluded] = useState<Set<string>>(new Set())
+  // Charges book at their occurred date (charges-at-date, v2.1967) — the
+  // attach list is bookkeeping detail, so it starts collapsed.
+  const [chargesOpen, setChargesOpen] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [override, setOverride] = useState(false)
@@ -73,14 +74,9 @@ export function PartnershipStatementsTab({
     setStubs(rows)
     if (rows.length > 0) {
       const ids = rows.map((r) => r.id)
-      const [ackRes, payRes] = await Promise.all([
-        supabase.from('statement_acknowledgments').select('pay_stub_id, party, acknowledged_at').in('pay_stub_id', ids),
-        supabase.from('pay_stub_payments').select('pay_stub_id, amount').in('pay_stub_id', ids),
-      ])
-      setAcks((ackRes.data ?? []) as AckRow[])
+      const payRes = await supabase.from('pay_stub_payments').select('pay_stub_id, amount').in('pay_stub_id', ids)
       setPayments((payRes.data ?? []) as PaymentRow[])
     } else {
-      setAcks([])
       setPayments([])
     }
     const pendRes = await supabase
@@ -138,8 +134,8 @@ export function PartnershipStatementsTab({
     return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>Loading…</p>
   }
 
-  const ackFor = (stubId: string, party: string) => acks.find((a) => a.pay_stub_id === stubId && a.party === party)
   const paidFor = (stubId: string) => payments.filter((p) => p.pay_stub_id === stubId).reduce((s, p) => s + Number(p.amount || 0), 0)
+  const attachingNet = pendingOffsets.filter((o) => !excluded.has(o.id)).reduce((s, o) => s + pendingOffsetSignedAmount(o), 0)
 
   return (
     <div>
@@ -185,10 +181,25 @@ export function PartnershipStatementsTab({
               <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                 Charges to put on this statement
               </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                attaching {pendingOffsets.length - excluded.size} of {pendingOffsets.length}
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  attaching {pendingOffsets.length - excluded.size} of {pendingOffsets.length}
+                  {' · '}
+                  <span style={{ fontWeight: 650, color: attachingNet < 0 ? 'var(--text-red-600)' : '#16a34a' }}>
+                    {attachingNet < 0 ? '−' : '+'}{money(Math.abs(attachingNet))}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setChargesOpen((v) => !v)}
+                  style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 650, border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}
+                >
+                  {chargesOpen ? 'hide ▴' : 'show ▾'}
+                </button>
               </span>
             </div>
+            {chargesOpen ? (
+              <>
             {pendingOffsets.map((o) => {
               const amt = pendingOffsetSignedAmount(o)
               const checked = !excluded.has(o.id)
@@ -223,6 +234,8 @@ export function PartnershipStatementsTab({
               Unchecked charges stay pending for a later statement. A statement can’t deduct below zero — anything that
               doesn’t fit stays pending automatically.
             </div>
+              </>
+            ) : null}
           </div>
         ) : null}
         {closePlan.olderUncovered.length > 0 ? (
@@ -266,8 +279,6 @@ export function PartnershipStatementsTab({
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No statements yet.</p>
       ) : (
         stubs.map((s) => {
-          const co = ackFor(s.id, 'company')
-          const pa = ackFor(s.id, 'partner')
           const paid = paidFor(s.id)
           return (
             <div key={s.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.5rem 0.75rem', padding: '0.55rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
@@ -278,19 +289,13 @@ export function PartnershipStatementsTab({
                   {paid > 0 ? ` · paid ${money(paid)}` : ''}
                 </div>
               </div>
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: co ? '#16a34a' : 'var(--text-muted)' }}>
-                {co ? 'company ✓' : 'company —'}
-              </span>
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: pa ? '#16a34a' : 'var(--text-amber-700)' }}>
-                {pa ? 'partner ✓' : 'awaiting partner'}
-              </span>
             </div>
           )
         })
       )}
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Each closing balance opens the next week — the chain is the ledger (see the Ledger tab). The partner views and
-        acknowledges the same records from their dashboard (ships in the next PR).
+        Each closing balance opens the next week — the chain is the ledger (see the Ledger tab). The partner views the
+        same records from their dashboard.
       </p>
     </div>
   )
