@@ -14,6 +14,7 @@ import {
 } from '../../lib/appSettingsKeys'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import {
+  breakAmountOntoOwnLineForPreview,
   buildCoverLetterHtml,
   buildCoverLetterText,
   buildCombinedCoverLetterDocument,
@@ -956,7 +957,7 @@ export function BidsCoverLetterTab({
                         overflowX: 'auto',
                       }}
                       // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested coverLetter builder
-                      dangerouslySetInnerHTML={{ __html: finalCoverLetterHtml }}
+                      dangerouslySetInnerHTML={{ __html: breakAmountOntoOwnLineForPreview(finalCoverLetterHtml) }}
                     />
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem' }}>
                       <button
