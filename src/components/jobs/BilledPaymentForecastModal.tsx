@@ -163,7 +163,7 @@ export default function BilledPaymentForecastModal({
                   borderRadius: 8,
                   padding: '0.6rem 0.75rem',
                   opacity: empty && !active ? 0.55 : 1,
-                  textAlign: 'left',
+                  textAlign: 'center',
                   cursor: empty && !active ? 'default' : 'pointer',
                 }}
               >
