@@ -26,7 +26,7 @@ import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActi
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
-import { goalsStripNowSummary, goalsStripRows, type GoalsStripRow } from '../lib/roadmapBridge'
+import { goalsStageRows, goalsStripNowSummary, goalsStripRows, lockedStageHint, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
@@ -1751,6 +1751,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [missedWeekCount, setMissedWeekCount] = useState<number | null>(null)
   /** Goals strip (v2.1876): one progress row per roadmap the viewer can read. */
   const [goalRows, setGoalRows] = useState<GoalsStripRow[]>([])
+  /** Per-stage rows behind each goal's segmented bar + ledger (v2.2021). */
+  const [goalStageRows, setGoalStageRows] = useState<Map<string, GoalsStageRow[]>>(new Map())
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null)
+  /** "N more locked stages" fold, reset each time a goal expands. */
+  const [showAllLockedStages, setShowAllLockedStages] = useState(false)
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
@@ -1768,7 +1773,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
     void (async () => {
       const [{ data: rms }, { data: grps }, { data: edgs }] = await Promise.all([
         supabase.from('checklist_tech_tree_roadmaps').select('id, title').order('sort_index'),
-        supabase.from('checklist_tech_tree_groups').select('id, roadmap_id, title'),
+        supabase.from('checklist_tech_tree_groups').select('id, roadmap_id, title, sort_index'),
         supabase.from('checklist_tech_tree_edges').select('from_group_id, to_group_id'),
       ])
       if (cancelled || !rms || rms.length === 0 || !grps || grps.length === 0) return
@@ -1777,19 +1782,21 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
         .select('id, group_id, completed_at, checklist_tech_tree_task_assignees(user_id)')
         .in('group_id', grps.map((g) => g.id))
       if (cancelled) return
-      setGoalRows(
-        goalsStripRows({
-          roadmaps: rms,
-          groups: grps,
-          tasks: (tsks ?? []).map((t) => ({
-            id: t.id,
-            group_id: t.group_id,
-            completed_at: t.completed_at,
-            assigneeCount: ((t as { checklist_tech_tree_task_assignees?: Array<{ user_id: string }> | null }).checklist_tech_tree_task_assignees ?? []).length,
-          })),
-          edges: (edgs ?? []).map((e) => ({ fromGroupId: e.from_group_id, toGroupId: e.to_group_id })),
-        }),
-      )
+      const mappedTasks = (tsks ?? []).map((t) => ({
+        id: t.id,
+        group_id: t.group_id,
+        completed_at: t.completed_at,
+        assigneeCount: ((t as { checklist_tech_tree_task_assignees?: Array<{ user_id: string }> | null }).checklist_tech_tree_task_assignees ?? []).length,
+      }))
+      const mappedEdges = (edgs ?? []).map((e) => ({ fromGroupId: e.from_group_id, toGroupId: e.to_group_id }))
+      setGoalRows(goalsStripRows({ roadmaps: rms, groups: grps, tasks: mappedTasks, edges: mappedEdges }))
+      const stageMap = new Map<string, GoalsStageRow[]>()
+      for (const rm of rms) {
+        const rmGroups = grps.filter((g) => g.roadmap_id === rm.id)
+        if (rmGroups.length === 0) continue
+        stageMap.set(rm.id, goalsStageRows({ groups: rmGroups, tasks: mappedTasks, edges: mappedEdges }))
+      }
+      setGoalStageRows(stageMap)
     })()
     return () => {
       cancelled = true
@@ -2234,28 +2241,145 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
       {goalRows.length > 0 ? (
         <div style={{ marginBottom: '1rem' }}>
           <p style={{ margin: '0 0 0.4rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.03em', color: 'var(--text-muted)' }}>GOALS</p>
-          {goalRows.map((g) => (
-            <div
-              key={g.roadmapId}
-              role={onOpenRoadmap ? 'button' : undefined}
-              tabIndex={onOpenRoadmap ? 0 : undefined}
-              onClick={onOpenRoadmap ? () => onOpenRoadmap(g.roadmapId) : undefined}
-              onKeyDown={onOpenRoadmap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenRoadmap(g.roadmapId) } } : undefined}
-              style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem 0.75rem', marginBottom: '0.5rem', cursor: onOpenRoadmap ? 'pointer' : undefined }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>⛰ {g.title}</span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>stage {Math.min(g.stagesComplete + 1, g.stagesTotal)} of {g.stagesTotal}</span>
+          {goalRows.map((g) => {
+            const stages = goalStageRows.get(g.roadmapId) ?? []
+            const expanded = expandedGoalId === g.roadmapId
+            const lockedCount = stages.filter((s) => s.state === 'locked').length
+            // Fold the locked tail behind "N more" — but never fold a single row.
+            const foldLocked = !showAllLockedStages && lockedCount > 3
+            const hiddenLocked = lockedCount - 2
+            const visibleStages: Array<{ row: GoalsStageRow; index: number }> = []
+            let lockedSeen = 0
+            stages.forEach((row, index) => {
+              if (row.state === 'locked') {
+                lockedSeen += 1
+                if (foldLocked && lockedSeen > 2) return
+              }
+              visibleStages.push({ row, index })
+            })
+            const toggleGoal = () => {
+              setExpandedGoalId((prev) => (prev === g.roadmapId ? null : g.roadmapId))
+              setShowAllLockedStages(false)
+            }
+            return (
+              <div
+                key={g.roadmapId}
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
+                aria-label={`${expanded ? 'Hide' : 'Show'} stages for ${g.title}`}
+                onClick={toggleGoal}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggleGoal()
+                  }
+                }}
+                style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem 0.75rem', marginBottom: '0.5rem', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>⛰ {g.title}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>stage {Math.min(g.stagesComplete + 1, g.stagesTotal)} of {g.stagesTotal}</span>
+                    <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{expanded ? '▾' : '▸'}</span>
+                  </span>
+                </div>
+                {stages.length > 0 ? (
+                  /* Segmented bar (v2.2021): one segment per stage in curated order —
+                     done solid green, current amber-ringed with its own fill, locked muted. */
+                  <div style={{ display: 'flex', gap: 2, height: 8 }}>
+                    {stages.map((s) => (
+                      <span
+                        key={s.groupId}
+                        title={`${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : 'milestone'}`}
+                        style={{
+                          flex: 1,
+                          minWidth: 5,
+                          borderRadius: 3,
+                          position: 'relative',
+                          overflow: 'hidden',
+                          background: s.state === 'complete' ? '#16a34a' : 'var(--bg-muted)',
+                          ...(s.state === 'current' ? { outline: '1.5px solid #d97706', outlineOffset: 1 } : {}),
+                        }}
+                      >
+                        {s.state === 'current' && s.total > 0 && s.done > 0 ? (
+                          <span style={{ position: 'absolute', inset: 0, display: 'block', width: `${Math.round((s.done / s.total) * 100)}%`, background: '#2563eb' }} />
+                        ) : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ height: 8, borderRadius: 4, background: 'var(--bg-muted)', overflow: 'hidden' }}>
+                    <span style={{ display: 'block', width: `${g.pct}%`, height: '100%', background: '#2563eb' }} />
+                  </div>
+                )}
+                <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {g.currentStages.length > 0 ? <>now: {goalsStripNowSummary(g.currentStages)}</> : 'all stages complete 🎉'}
+                  {g.openAssigned > 0 ? <> · {g.openAssigned} assigned task{g.openAssigned === 1 ? '' : 's'} open</> : null}
+                </p>
+                {expanded && stages.length > 0 ? (
+                  <div onClick={(e) => e.stopPropagation()} style={{ borderTop: '1px solid var(--border)', marginTop: '0.55rem', paddingTop: '0.35rem', cursor: 'default' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.1rem 0 0.3rem' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-muted)' }}>STAGES</span>
+                      {onOpenRoadmap ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenRoadmap(g.roadmapId)}
+                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)' }}
+                        >
+                          Open roadmap →
+                        </button>
+                      ) : null}
+                    </div>
+                    {visibleStages.map(({ row: s, index }) => (
+                      <div key={s.groupId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.28rem 0.1rem', fontSize: '0.8125rem' }}>
+                        <span style={{ width: '1.35rem', textAlign: 'right', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, fontSize: '0.72rem' }}>{index + 1}</span>
+                        <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: s.state === 'locked' ? 'var(--text-faint)' : 'var(--text-strong)' }}>{s.title}</span>
+                        {s.state === 'complete' ? (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
+                        ) : s.state === 'current' ? (
+                          <>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>current</span>
+                            {s.openAssigned > 0 ? (
+                              <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>
+                                {s.openAssigned} on {s.openAssigned === 1 ? 'list' : 'lists'}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span
+                            title={lockedStageHint(s.blockedBy, s.openAssigned > 0) ?? undefined}
+                            style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-muted)', color: 'var(--text-faint)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          >
+                            🔒{s.blockedBy[0] ? ` after “${s.blockedBy[0]}”` : ''}
+                          </span>
+                        )}
+                        <span style={{ width: 110, height: 7, borderRadius: 4, background: 'var(--bg-muted)', overflow: 'hidden', flexShrink: 0 }}>
+                          {s.total > 0 ? (
+                            <span style={{ display: 'block', height: '100%', width: `${Math.round((s.done / s.total) * 100)}%`, background: s.state === 'complete' ? '#16a34a' : '#2563eb' }} />
+                          ) : s.state === 'complete' ? (
+                            <span style={{ display: 'block', height: '100%', width: '100%', background: '#16a34a' }} />
+                          ) : null}
+                        </span>
+                        <span style={{ width: 46, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', flexShrink: 0, fontSize: '0.75rem' }}>
+                          {s.total > 0 ? `${s.done}/${s.total}` : '\u2014'}
+                        </span>
+                      </div>
+                    ))}
+                    {foldLocked ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllLockedStages(true)}
+                        style={{ padding: '0.3rem 0 0.1rem 2rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'left' }}
+                      >
+                        ▸ {hiddenLocked} more locked {hiddenLocked === 1 ? 'stage' : 'stages'}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
-              <div style={{ height: 8, borderRadius: 4, background: 'var(--bg-muted)', overflow: 'hidden' }}>
-                <span style={{ display: 'block', width: `${g.pct}%`, height: '100%', background: '#2563eb' }} />
-              </div>
-              <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {g.currentStages.length > 0 ? <>now: {goalsStripNowSummary(g.currentStages)}</> : 'all stages complete 🎉'}
-                {g.openAssigned > 0 ? <> · {g.openAssigned} assigned task{g.openAssigned === 1 ? '' : 's'} open</> : null}
-              </p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : null}
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden' }}>
