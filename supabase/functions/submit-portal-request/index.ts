@@ -66,12 +66,19 @@ serve(async (req) => {
       auth: { persistSession: false },
     })
 
-    const tokenHash = await sha256Hex(token)
-    const { data: link } = await admin
+    let { data: link } = await admin
       .from('customer_portal_links')
       .select('id, customer_id, audience, created_by, revoked_at')
-      .eq('token_hash', tokenHash)
+      .eq('token', token)
       .maybeSingle()
+    if (!link) {
+      const tokenHash = await sha256Hex(token)
+      link = (await admin
+        .from('customer_portal_links')
+        .select('id, customer_id, audience, created_by, revoked_at')
+        .eq('token_hash', tokenHash)
+        .maybeSingle()).data
+    }
     if (!link || link.revoked_at) {
       return jsonResponse({ error: 'This link is no longer active. Please contact our office.' }, 404)
     }

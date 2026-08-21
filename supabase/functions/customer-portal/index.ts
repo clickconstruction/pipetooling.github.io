@@ -64,12 +64,21 @@ serve(async (req) => {
       auth: { persistSession: false },
     })
 
-    const tokenHash = await sha256Hex(raw)
-    const { data: link } = await admin
+    // v2 rows store the raw token; v1 hash-only rows were revoked at the v2
+    // migration, but keep the hash fallback for any in-flight transition.
+    let { data: link } = await admin
       .from('customer_portal_links')
       .select('customer_id, audience, revoked_at')
-      .eq('token_hash', tokenHash)
+      .eq('token', raw)
       .maybeSingle()
+    if (!link) {
+      const tokenHash = await sha256Hex(raw)
+      link = (await admin
+        .from('customer_portal_links')
+        .select('customer_id, audience, revoked_at')
+        .eq('token_hash', tokenHash)
+        .maybeSingle()).data
+    }
     if (!link || link.revoked_at) {
       return jsonResponse({ error: 'This link is no longer active. Please contact our office for a new one.' }, 404)
     }

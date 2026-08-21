@@ -35,6 +35,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -567,6 +568,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
       {/* Icon + name open the customer profile modal (v2.1322); rows with a
           customer NAME but no linked row route to the existing create/link
           flow instead — same affordance, honest destination. */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
       <button
         type="button"
         onClick={(e) => {
@@ -581,6 +583,11 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         <CustomerContactCardIcon size={13} style={{ flexShrink: 0 }} />
         <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn ? <StagesSearchMark text={cn} /> : '—'}</span>
       </button>
+      {/* 🌐 portal link (portal train PR 4) — office-only, renders null otherwise. */}
+      {job.customer_id ? (
+        <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
+      ) : null}
+      </span>
       {gcName || developmentName ? (
         // GC and development share one muted row — they're the same "who/where
         // does this roll up to" fact; wraps on narrow columns. The icons keep
@@ -591,6 +598,9 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
             <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
               <span><StagesSearchMark text={gcName} /></span>
+              {job.gcCustomer?.id ? (
+                <CustomerPortalGlobeButton customerId={job.gcCustomer.id} customerName={gcName} defaultAudience="gc" size={13} />
+              ) : null}
             </span>
           ) : null}
           {developmentName ? (

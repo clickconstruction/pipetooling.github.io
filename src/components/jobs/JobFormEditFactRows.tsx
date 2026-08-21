@@ -14,6 +14,7 @@ import {
 } from '../../lib/jobs/jobFormFactRows'
 import AccountManIcon from '../icons/AccountManIcon'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
+import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import TeamCrewIcon from '../icons/TeamCrewIcon'
 import { JobFormFactRow } from './JobFormFactRow'
@@ -398,6 +399,10 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           customerSummary != null ? (
             <>
               {customerSummary.name}
+              {/* 🌐 portal link (portal train PR 4) — office-only. */}
+              {customerId ? (
+                <CustomerPortalGlobeButton customerId={customerId} customerName={customerSummary.name} size={13} />
+              ) : null}
               {customerSummary.address ? (
                 <span style={{ color: 'var(--text-muted)' }}>{` · ${customerSummary.address}`}</span>
               ) : null}
