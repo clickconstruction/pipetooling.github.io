@@ -26,6 +26,8 @@ export function ChecklistItemActivity({
   showInstanceDays,
   setError,
   footerActions,
+  commentInstanceId,
+  onPosted,
 }: {
   item: ChecklistItemActivityItem
   authUserId: string | null
@@ -34,6 +36,14 @@ export function ChecklistItemActivity({
   setError: (s: string | null) => void
   /** Extra links/buttons rendered under the composer (e.g. Edit · Forward). */
   footerActions?: ReactNode
+  /**
+   * Attach new notes to this specific occurrence instead of the default
+   * `commentTargetInstance` pick — Today's cards keep the conversation on the
+   * occurrence being looked at.
+   */
+  commentInstanceId?: string
+  /** Called after a note lands, so the parent can refresh its 💬 counts. */
+  onPosted?: (instanceId: string, body: string) => void
 }) {
   const [loading, setLoading] = useState(true)
   const [instances, setInstances] = useState<ManageInstanceLite[]>([])
@@ -127,14 +137,15 @@ export function ChecklistItemActivity({
     () => commentTargetInstance(instances, new Date().toLocaleDateString('en-CA')),
     [instances],
   )
+  const postTargetId = commentInstanceId ?? commentTarget?.id ?? null
 
   async function postComment() {
     const body = draft.trim()
-    if (!body || posting || !authUserId || !commentTarget) return
+    if (!body || posting || !authUserId || !postTargetId) return
     setPosting(true)
     try {
       const { error: e } = await supabase.from('checklist_instance_events').insert({
-        instance_id: commentTarget.id,
+        instance_id: postTargetId,
         event_type: 'comment',
         actor_user_id: authUserId,
         body,
@@ -148,13 +159,14 @@ export function ChecklistItemActivity({
         ...prev,
         {
           id: `local-${Date.now()}`,
-          instance_id: commentTarget.id,
+          instance_id: postTargetId,
           event_type: 'comment',
           actor_user_id: authUserId,
           body,
           created_at: new Date().toISOString(),
         },
       ])
+      onPosted?.(postTargetId, body)
     } finally {
       setPosting(false)
     }
@@ -226,7 +238,7 @@ export function ChecklistItemActivity({
           })}
         </div>
       )}
-      {authUserId && commentTarget ? (
+      {authUserId && postTargetId ? (
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <input
             type="text"

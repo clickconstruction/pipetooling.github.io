@@ -117,4 +117,24 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     expect(onToggleComplete).toHaveBeenCalled()
     expect(toggle.style.width).toBe('34px')
   })
+
+  it('fullHistory mode: title is a toggle that opens the shared activity panel', () => {
+    renderCard({
+      fullHistory: {
+        item: { id: 'item-1', title: 'Feed and water chickens', created_at: '2026-08-01T08:00:00Z', created_by_user_id: 'lead-1' },
+        showInstanceDays: false,
+        setError: vi.fn(),
+      },
+    })
+    const titleToggle = screen.getByLabelText('Show activity for Feed and water chickens')
+    fireEvent.click(titleToggle)
+    expect(titleToggle.getAttribute('aria-expanded')).toBe('true')
+    // The shared panel self-loads on expand.
+    expect(screen.getByText('Loading activity…')).toBeTruthy()
+  })
+
+  it('without fullHistory the title stays inert (legacy per-instance thread)', () => {
+    renderCard()
+    expect(screen.queryByLabelText(/activity for/)).toBeNull()
+  })
 })

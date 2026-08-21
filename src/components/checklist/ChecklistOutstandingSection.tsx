@@ -1,56 +1,41 @@
 import { useState, type ReactNode } from 'react'
-import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { overdueAgeLabel, type LedgerInstance } from '../../lib/checklistHistoryLedger'
+import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 
 /**
  * The Outstanding section at the bottom of the Today tab (v2.1864): overdue
  * tasks that still need doing — one-offs and show-until-completed items whose
  * date has passed. Rows are actionable: the same complete toggle as Today's
- * cards, plus tap-to-expand card history with a composer. Renders nothing
- * when the list is empty.
+ * cards, plus tap-to-expand activity. Since v2.2017 the expanded panel is the
+ * shared ChecklistItemActivity spine (full item history, all occurrences);
+ * new notes still land on THIS overdue occurrence via `commentInstanceId`.
+ * Renders nothing when the list is empty.
  */
 export function ChecklistOutstandingSection({
   instances,
   eventsByInstance,
-  nameById,
   currentUserId,
   todayStr,
   titleFor,
+  activityFor,
   onToggleComplete,
-  onPostComment,
+  onPosted,
+  setError,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
-  nameById: Record<string, string>
   currentUserId: string | null
   todayStr: string
   titleFor: (inst: LedgerInstance) => ReactNode
+  activityFor: (inst: LedgerInstance) => { item: ChecklistItemActivityItem; showInstanceDays: boolean }
   onToggleComplete: (inst: LedgerInstance) => void
-  onPostComment: (inst: LedgerInstance, body: string) => Promise<boolean>
+  onPosted?: (instanceId: string, body: string) => void
+  setError: (s: string | null) => void
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
-  const [posting, setPosting] = useState(false)
 
   if (instances.length === 0) return null
-
-  const name = (id: string | null | undefined): string => {
-    if (!id) return 'Someone'
-    if (id === currentUserId) return 'You'
-    return nameById[id] ?? 'Someone'
-  }
-
-  async function post(inst: LedgerInstance) {
-    const body = draft.trim()
-    if (!body || posting) return
-    setPosting(true)
-    try {
-      const ok = await onPostComment(inst, body)
-      if (ok) setDraft('')
-    } finally {
-      setPosting(false)
-    }
-  }
 
   return (
     <section style={{ marginBottom: '2rem' }}>
@@ -84,6 +69,7 @@ export function ChecklistOutstandingSection({
           const events = eventsByInstance.get(inst.id) ?? []
           const notes = events.filter((e) => e.event_type === 'comment').length
           const expanded = expandedId === inst.id
+          const activity = activityFor(inst)
           return (
             <li key={inst.id} style={{ borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
@@ -103,10 +89,7 @@ export function ChecklistOutstandingSection({
                 />
                 <button
                   type="button"
-                  onClick={() => {
-                    setExpandedId(expanded ? null : inst.id)
-                    setDraft('')
-                  }}
+                  onClick={() => setExpandedId(expanded ? null : inst.id)}
                   aria-expanded={expanded}
                   style={{
                     flex: 1,
@@ -133,83 +116,14 @@ export function ChecklistOutstandingSection({
               </div>
               {expanded ? (
                 <div style={{ padding: '0 0.75rem 0.7rem 3.1rem' }}>
-                  {events.length > 0 ? (
-                    <div
-                      style={{
-                        borderLeft: '3px solid var(--border-strong)',
-                        paddingLeft: '0.65rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.35rem',
-                        margin: '0 0 0.6rem',
-                      }}
-                    >
-                      {events.map((e) => {
-                        if (e.event_type === 'comment') {
-                          return (
-                            <div key={e.id} style={{ fontSize: '0.9375rem', color: 'var(--text-700)', lineHeight: 1.45 }}>
-                              <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span>{' '}
-                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(e.created_at)}</span>{' '}
-                              — {e.body}
-                            </div>
-                          )
-                        }
-                        const label =
-                          e.event_type === 'completed'
-                            ? 'completed'
-                            : e.event_type === 'reopened'
-                              ? 'reopened'
-                              : e.event_type === 'accepted'
-                                ? 'signed off'
-                                : e.event_type
-                        return (
-                          <div key={e.id} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                            {name(e.actor_user_id)} {label} · {stripStamp(e.created_at)}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : null}
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input
-                      type="text"
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void post(inst)
-                      }}
-                      placeholder="Add a note…"
-                      disabled={posting}
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        height: 44,
-                        boxSizing: 'border-box',
-                        padding: '0 0.7rem',
-                        fontSize: '1rem',
-                        border: '2px solid var(--text-600)',
-                        borderRadius: 10,
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void post(inst)}
-                      disabled={posting || !draft.trim()}
-                      style={{
-                        height: 44,
-                        padding: '0 1rem',
-                        borderRadius: 10,
-                        border: 'none',
-                        background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
-                        color: 'white',
-                        fontSize: '0.9375rem',
-                        fontWeight: 600,
-                        cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {posting ? '…' : 'Post'}
-                    </button>
-                  </div>
+                  <ChecklistItemActivity
+                    item={activity.item}
+                    authUserId={currentUserId}
+                    showInstanceDays={activity.showInstanceDays}
+                    setError={setError}
+                    commentInstanceId={inst.id}
+                    onPosted={onPosted}
+                  />
                 </div>
               ) : null}
             </li>

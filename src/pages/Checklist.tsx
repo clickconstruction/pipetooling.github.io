@@ -56,6 +56,7 @@ type ChecklistInstance = {
     links?: string[] | null
     notify_on_complete_user_id?: string | null
     notify_creator_on_complete?: boolean
+    created_at?: string | null
     created_by_user_id?: string | null
     show_until_completed?: boolean | null
     repeat_type?: string | null
@@ -412,7 +413,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -427,7 +428,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     // client-side so the reopened check can share the same rows.
     const { data: pastData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, show_until_completed, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .lt('scheduled_date', today)
@@ -503,6 +504,25 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   }
 
   /** Post a comment event; returns true on success (card clears its draft). */
+  /** After the activity panel posts a note, keep the card badges honest. */
+  function appendLocalCardComment(instanceId: string, body: string) {
+    if (!authUserId) return
+    setEventsByInstance((prev) => {
+      const next = new Map(prev)
+      const list = [...(next.get(instanceId) ?? [])]
+      list.push({
+        id: `local-${Date.now()}`,
+        instance_id: instanceId,
+        event_type: 'comment',
+        actor_user_id: authUserId,
+        body,
+        created_at: new Date().toISOString(),
+      })
+      next.set(instanceId, list)
+      return next
+    })
+  }
+
   async function postCardComment(inst: ChecklistInstance, body: string): Promise<boolean> {
     if (!authUserId) return false
     const { error: e } = await supabase.from('checklist_instance_events').insert({
@@ -752,6 +772,17 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                   currentUserId={authUserId}
                   onToggleComplete={() => void toggleComplete(inst)}
                   onPostComment={(body) => postCardComment(inst, body)}
+                  fullHistory={{
+                    item: {
+                      id: inst.checklist_item_id,
+                      title,
+                      created_at: inst.checklist_items?.created_at ?? null,
+                      created_by_user_id: inst.checklist_items?.created_by_user_id ?? null,
+                    },
+                    showInstanceDays: (inst.checklist_items?.repeat_type ?? 'once') !== 'once',
+                    setError,
+                    onPosted: appendLocalCardComment,
+                  }}
                   actions={
                     <>
                       {isNotificationRecipient(inst) && (
@@ -804,7 +835,6 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       <ChecklistOutstandingSection
         instances={outstandingInstances}
         eventsByInstance={eventsByInstance}
-        nameById={eventActorNameById}
         currentUserId={authUserId}
         todayStr={toLocalDateString(new Date())}
         titleFor={(inst) => {
@@ -815,8 +845,21 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
             </>
           )
         }}
+        activityFor={(inst) => {
+          const full = inst as ChecklistInstance
+          return {
+            item: {
+              id: full.checklist_item_id,
+              title: full.checklist_items?.title ?? 'Untitled',
+              created_at: full.checklist_items?.created_at ?? null,
+              created_by_user_id: full.checklist_items?.created_by_user_id ?? null,
+            },
+            showInstanceDays: (full.checklist_items?.repeat_type ?? 'once') !== 'once',
+          }
+        }}
         onToggleComplete={(inst) => void toggleComplete(inst as ChecklistInstance)}
-        onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
+        onPosted={appendLocalCardComment}
+        setError={setError}
       />
 
       <section>
