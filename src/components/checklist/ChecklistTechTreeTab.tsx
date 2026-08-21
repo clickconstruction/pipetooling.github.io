@@ -2219,28 +2219,45 @@ export function ChecklistTechTreeTab({
         onCreateRoadmap={() => void handleCreateRoadmap()}
         canOpenMembers={Boolean(effectiveRoadmapId)}
         onOpenMembers={() => setMembersModalOpen(true)}
+        trailing={
+          <>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['map', 'plan'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewModePersisted(mode)}
+                  aria-pressed={viewMode === mode}
+                  style={{
+                    border: 'none',
+                    padding: '6px 16px',
+                    fontSize: '0.8125rem',
+                    fontWeight: viewMode === mode ? 600 : 400,
+                    background: viewMode === mode ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: viewMode === mode ? 'var(--text-blue-800)' : 'var(--text-700)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {mode === 'map' ? 'Map' : 'Plan'}
+                </button>
+              ))}
+            </div>
+            {viewMode === 'map' && canEditStructure ? (
+              <TechTreeRoadmapToolbarActions
+                sections="editor"
+                canEditTechTree={canEditStructure}
+                groupCount={groups.length}
+                reorderMode={reorderMode}
+                showLineUpInToolbar={!(canEditStructure && treeEdges.length > 0)}
+                onAddGroup={() => setAddGroupModal({ kind: 'toolbar' })}
+                onLineUp={() => setLineUpModalOpen(true)}
+                onOrderStages={() => setOrderStagesModalOpen(true)}
+                onToggleReorder={() => setReorderMode((o) => !o)}
+              />
+            ) : null}
+          </>
+        }
       />
-      <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', alignSelf: 'flex-start' }}>
-        {(['map', 'plan'] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setViewModePersisted(mode)}
-            aria-pressed={viewMode === mode}
-            style={{
-              border: 'none',
-              padding: '6px 16px',
-              fontSize: '0.8125rem',
-              fontWeight: viewMode === mode ? 600 : 400,
-              background: viewMode === mode ? 'var(--bg-blue-tint)' : 'var(--surface)',
-              color: viewMode === mode ? 'var(--text-blue-800)' : 'var(--text-700)',
-              cursor: 'pointer',
-            }}
-          >
-            {mode === 'map' ? 'Map' : 'Plan'}
-          </button>
-        ))}
-      </div>
       {viewMode === 'plan' ? (
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <ChecklistRoadmapPlanView
@@ -2257,32 +2274,6 @@ export function ChecklistTechTreeTab({
           />
         </div>
       ) : null}
-      {viewMode === 'map' && canEditStructure ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              alignItems: 'flex-start',
-              width: '100%',
-            }}
-          >
-            <TechTreeRoadmapToolbarActions
-              sections="editor"
-              canEditTechTree={canEditStructure}
-              groupCount={groups.length}
-              reorderMode={reorderMode}
-              showLineUpInToolbar={!(canEditStructure && treeEdges.length > 0)}
-              onAddGroup={() => setAddGroupModal({ kind: 'toolbar' })}
-              onLineUp={() => setLineUpModalOpen(true)}
-              onOrderStages={() => setOrderStagesModalOpen(true)}
-              onToggleReorder={() => setReorderMode((o) => !o)}
-            />
-          </div>
-        </div>
-      ) : null}
-
       {viewMode === 'map' ? (
       <div
         style={{
