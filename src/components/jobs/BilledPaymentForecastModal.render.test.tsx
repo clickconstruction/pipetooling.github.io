@@ -118,6 +118,20 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(screen.queryByRole('dialog', { name: 'Pay speeds breakdown' })).toBeNull()
   })
 
+  it('shows the still-loading hint while non-paid scopes are fetching', () => {
+    render(
+      <BilledPaymentForecastModal
+        rows={[billedRow()]}
+        loading
+        paySpeeds={speeds}
+        todayYmd="2026-08-20"
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/Loading the whole board/)).toBeTruthy()
+  })
+
   it('hides the strip (but still lists rows) when pay speeds are unavailable', () => {
     render(
       <BilledPaymentForecastModal

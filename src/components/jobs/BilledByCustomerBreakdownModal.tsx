@@ -15,6 +15,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
  */
 export default function BilledByCustomerBreakdownModal({
   rows,
+  loading,
   canSeeCharts,
   onClose,
   onOpenBill,
@@ -23,6 +24,8 @@ export default function BilledByCustomerBreakdownModal({
   onGoToBilled,
 }: {
   rows: StageRow[]
+  /** True while any non-paid scope is still fetching — totals can still grow. */
+  loading?: boolean
   canSeeCharts: boolean
   onClose: () => void
   /** Jump the board to this bill (invoice row when invoiceId set, else the job shell row). */
@@ -66,6 +69,11 @@ export default function BilledByCustomerBreakdownModal({
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Open bills in Billed Awaiting Payment, grouped by customer. Click a customer to see their bills — oldest first.
         </p>
+        {loading ? (
+          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status" aria-busy>
+            Loading the whole board — totals can still grow…
+          </p>
+        ) : null}
         {groups.length === 0 ? (
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No open bills — nothing is waiting on customers.</p>
         ) : (
