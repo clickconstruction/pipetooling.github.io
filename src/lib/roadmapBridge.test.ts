@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockingStageTitles, bridgeChipFor, goalsStripRows, lockedStageHint, stageBadgeFor } from './roadmapBridge'
+import { blockingStageTitles, bridgeChipFor, goalsStripNowSummary, goalsStripRows, lockedStageHint, stageBadgeFor } from './roadmapBridge'
 
 describe('bridgeChipFor', () => {
   it('no bridge -> no chip', () => {
@@ -47,6 +47,18 @@ describe('goalsStripRows', () => {
     expect(goalsStripRows({ roadmaps: [{ id: 'rX', title: 'Empty' }], groups: [], tasks: [], edges: [] })).toEqual([])
     const row = goalsStripRows({ roadmaps, groups, tasks, edges })[0]!
     expect(row.currentStages).not.toContain('Frame walls')
+  })
+})
+
+describe('goalsStripNowSummary', () => {
+  it('short lists pass through untruncated', () => {
+    expect(goalsStripNowSummary([])).toBe('')
+    expect(goalsStripNowSummary(['Pour slab'])).toBe('Pour slab')
+    expect(goalsStripNowSummary(['A', 'B', 'C'])).toBe('A, B, C')
+  })
+  it('folds the tail into +N more past the limit', () => {
+    expect(goalsStripNowSummary(['A', 'B', 'C', 'D'])).toBe('A, B, C … +1 more')
+    expect(goalsStripNowSummary(['A', 'B', 'C', 'D', 'E', 'F'], 2)).toBe('A, B … +4 more')
   })
 })
 

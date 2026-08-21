@@ -25,7 +25,7 @@ import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent 
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageChipLabel, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
-import { goalsStripRows, type GoalsStripRow } from '../lib/roadmapBridge'
+import { goalsStripNowSummary, goalsStripRows, type GoalsStripRow } from '../lib/roadmapBridge'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
@@ -2080,7 +2080,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                 <span style={{ display: 'block', width: `${g.pct}%`, height: '100%', background: '#2563eb' }} />
               </div>
               <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {g.currentStages.length > 0 ? <>now: {g.currentStages.join(', ')}</> : 'all stages complete 🎉'}
+                {g.currentStages.length > 0 ? <>now: {goalsStripNowSummary(g.currentStages)}</> : 'all stages complete 🎉'}
                 {g.openAssigned > 0 ? <> · {g.openAssigned} assigned task{g.openAssigned === 1 ? '' : 's'} open</> : null}
               </p>
             </div>
