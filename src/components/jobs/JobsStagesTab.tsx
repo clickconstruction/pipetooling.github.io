@@ -69,6 +69,7 @@ import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
+import BilledByCustomerBreakdownModal from './BilledByCustomerBreakdownModal'
 import PaidProfitChartModal from './PaidProfitChartModal'
 import BilledReportShareModal from './BilledReportShareModal'
 import JobBookModal from './JobBookModal'
@@ -638,6 +639,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!billedPaymentForecastOpen) return
     void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
   }, [billedPaymentForecastOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
+  // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929); same
+  // retry-until-merged billed-scope shape as the aging chart above.
+  const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
+  useEffect(() => {
+    if (!billedBreakdownOpen) return
+    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
+  }, [billedBreakdownOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Same retry-until-merged shape for the paid profit chart (v2.1879).
   const [paidProfitChartOpen, setPaidProfitChartOpen] = useState(false)
   useEffect(() => {
@@ -2513,7 +2521,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               canSeeCollected={authRole === 'dev' || authRole === 'master_technician'}
               arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
               onOpenCapable={() => setCapableToBillModalOpen(true)}
-              onOpenAgingChart={() => setBilledAgingChartOpen(true)}
+              onOpenBilledBreakdown={() => setBilledBreakdownOpen(true)}
               onOpenProfitChart={() => setPaidProfitChartOpen(true)}
               onOpenAr={() => setBankPaymentsModalOpen(true)}
               onFocusSection={focusStagesSection}
@@ -4423,6 +4431,36 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )}
       {readyToBillNotifySettingsOpen && (
         <PaidInFullEmailSettingsModal variant="ready_to_bill" onClose={() => setReadyToBillNotifySettingsOpen(false)} />
+      )}
+      {billedBreakdownOpen && (
+        <BilledByCustomerBreakdownModal
+          rows={stagesBoardLists.billedActiveRows}
+          canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+          onClose={() => setBilledBreakdownOpen(false)}
+          onOpenBill={(bill) => {
+            setBilledBreakdownOpen(false)
+            if (bill.invoiceId) {
+              applyStagesInvoiceFocus(bill.invoiceId)
+            } else {
+              setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
+              setPendingStagesJobFocusId(bill.jobId)
+              setStagesJobFlashId(bill.jobId)
+            }
+          }}
+          onOpenAgingChart={() => {
+            setBilledBreakdownOpen(false)
+            setBilledAgingChartOpen(true)
+          }}
+          onShow90={() => {
+            setBilledBreakdownOpen(false)
+            setBilledAgingFilter('90')
+            focusStagesSection('billed')
+          }}
+          onGoToBilled={() => {
+            setBilledBreakdownOpen(false)
+            focusStagesSection('billed')
+          }}
+        />
       )}
       {billedAgingChartOpen && (
         <BilledAgingChartModal
