@@ -774,11 +774,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     void loadChaseTouches()
   }, [loadChaseTouches])
   const [chaseModalOpen, setChaseModalOpen] = useState(false)
-  // Call mode reads FULL billed rows (names + send evidence) — fetch the
-  // scope on open, same retry-until-merged shape as the forecast.
+  // Call mode reads FULL rows (names + send evidence) from EVERY non-paid
+  // scope — billed invoices hang on working/waiting jobs too (a part-billed
+  // working job is exactly the bill that falls through cracks), and the
+  // board kernel routes them into the billed section only when their job's
+  // scope is loaded. Same retry-until-merged shape as the forecast.
   useEffect(() => {
     if (!chaseModalOpen) return
-    void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
+    for (const scope of NON_PAID_SCOPES) {
+      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
+    }
   }, [chaseModalOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   const [promisedPayModalJob, setPromisedPayModalJob] = useState<{
     jobId: string
@@ -1073,17 +1078,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd),
     )
   }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
-  const chaseBilledMerged = cacheMergedScopes.has(scopeForStagesSection('billed'))
+  const chaseBilledMerged = NON_PAID_SCOPES.every((s) => cacheMergedScopes.has(s))
   const chaseFullQueue = useMemo(() => {
     if (!chaseModalOpen || !chaseBilledMerged) return null
+    // UNFILTERED billed rows — the queue must match the card (lean spine),
+    // and money must not fall out of the loop because a board group is
+    // cosmetically hidden or a search is live. Same money-never-hides rule
+    // as the story cards (v2.1915).
     return buildPaymentChaseQueue(
-      stagesBoardLists.billedActiveRows,
+      buildJobsStagesBoardLists(jobs, '').billedActiveRows,
       billedPaySpeeds,
       promisedPayDates,
       chaseTouches,
       chaseTodayYmd,
     )
-  }, [chaseModalOpen, chaseBilledMerged, stagesBoardLists.billedActiveRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
+  }, [chaseModalOpen, chaseBilledMerged, jobs, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
