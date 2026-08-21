@@ -181,50 +181,41 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem', alignItems: 'center' }}>
-        {card && !card.open ? (
-          <>
-            <button
-              type="button"
-              onClick={() => printCard(card)}
-              style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}
-            >
-              Print / save PDF
-            </button>
-            {card.partnerAckAt ? (
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a' }}>
-                acknowledged {new Date(card.partnerAckAt).toLocaleDateString()}
-              </span>
-            ) : card.stubId && asPartnershipId ? (
-              <>
+      {/* Statement actions are the partner's own — the lens hides the row
+          entirely (ack status lives on the office Statements tab). */}
+      {asPartnershipId ? null : (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem', alignItems: 'center' }}>
+          {card && !card.open ? (
+            <>
+              <button
+                type="button"
+                onClick={() => printCard(card)}
+                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}
+              >
+                Print / save PDF
+              </button>
+              {card.partnerAckAt ? (
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a' }}>
+                  acknowledged {new Date(card.partnerAckAt).toLocaleDateString()}
+                </span>
+              ) : card.stubId ? (
                 <button
                   type="button"
-                  disabled
-                  style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'var(--bg-muted)', color: 'var(--text-muted)', cursor: 'not-allowed' }}
+                  disabled={acking}
+                  onClick={() => card.stubId && void acknowledge(card.stubId)}
+                  style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'var(--surface)', cursor: 'pointer', opacity: acking ? 0.6 : 1 }}
                 >
                   Acknowledge statement
                 </button>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-amber-700)' }}>
-                  the partner sees this button — only they can press it
-                </span>
-              </>
-            ) : card.stubId ? (
-              <button
-                type="button"
-                disabled={acking}
-                onClick={() => card.stubId && void acknowledge(card.stubId)}
-                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'var(--surface)', cursor: 'pointer', opacity: acking ? 0.6 : 1 }}
-              >
-                Acknowledge statement
-              </button>
-            ) : null}
-          </>
-        ) : latestUnacked ? (
-          <span style={{ fontSize: '0.72rem', fontWeight: 650, color: 'var(--text-amber-700)' }}>
-            Last week’s statement is one ‹ back — it’s waiting on your acknowledgment.
-          </span>
-        ) : null}
-      </div>
+              ) : null}
+            </>
+          ) : latestUnacked ? (
+            <span style={{ fontSize: '0.72rem', fontWeight: 650, color: 'var(--text-amber-700)' }}>
+              Last week’s statement is one ‹ back — it’s waiting on your acknowledgment.
+            </span>
+          ) : null}
+        </div>
+      )}
       <div style={{ marginTop: '0.6rem', paddingTop: '0.55rem', borderTop: '1px solid var(--border)' }}>
         <button
           type="button"
