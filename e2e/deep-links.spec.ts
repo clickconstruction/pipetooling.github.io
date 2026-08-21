@@ -33,10 +33,14 @@ test('?stagesMoney=1 opens the Weekly money movement modal (v2.1443)', async ({ 
   await expect.poll(() => new URL(page.url()).searchParams.get('stagesMoney')).toBeNull()
 })
 
-test('?editLabor= with an unknown HCP opens New Sub Labor seeded with it (v2.835 regression)', async ({ page }) => {
+test('?editLabor= with an unknown HCP opens New Sub Labor, picker unset (v2.835 regression, v2.1616 picker)', async ({ page }) => {
   await page.goto('/jobs?tab=sub_sheet_ledger&editLabor=ZZE2E')
   await expect(page.getByRole('heading', { name: 'New Sub Labor' })).toBeVisible()
-  await expect(page.locator('input[value="ZZE2E"]').first()).toBeVisible()
+  // v2.1616: the New form's Job field is the standard job picker, so an unknown
+  // number no longer renders in a text input (it seeds state that's applied at
+  // save). The structural pin is the unset picker trigger, mirroring the
+  // "unknown number leaves the picker unset" render test.
+  await expect(page.getByRole('button', { name: 'Search job # / name / address / customer' })).toBeVisible()
   await expect.poll(() => new URL(page.url()).searchParams.get('editLabor')).toBeNull()
 })
 
