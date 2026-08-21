@@ -156,6 +156,7 @@ import {
   saveStagesSortMode,
   type StagesBoardSortMode,
 } from '../../lib/jobsStagesSortMode'
+import { stagesJumpStripCount } from '../../lib/jobs/stagesJumpStrip'
 import JobsRecentlyAddedList from './JobsRecentlyAddedList'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
@@ -1027,6 +1028,28 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ),
     [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
   )
+
+  /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
+  const jumpStripCounts = useMemo(() => {
+    const searchActive = stagesSearchQuery.trim() !== ''
+    const resolve = (
+      section: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections',
+      liveCount: number,
+    ) =>
+      stagesJumpStripCount({
+        searchActive,
+        scopeMerged: cacheMergedScopes.has(scopeForStagesSection(section)),
+        statsCount: cacheHeaderStats?.[section]?.count ?? null,
+        liveCount,
+      })
+    return {
+      waiting: resolve('waiting', stagesBoardLists.waiting.length),
+      working: resolve('working', stagesBoardLists.working.length),
+      readyToBill: resolve('readyToBill', stagesBoardLists.readyToBillRows.length),
+      billed: resolve('billed', stagesBoardLists.billedActiveRows.length),
+      collections: resolve('collections', stagesBoardLists.collectionsRows.length),
+    }
+  }, [stagesBoardLists, stagesSearchQuery, cacheMergedScopes, cacheHeaderStats])
 
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
   const nudgeMissingBillingEmail = useCallback(
@@ -2767,7 +2790,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <button
                   type="button"
                   onClick={() => focusStagesSection('waiting')}
-                  aria-label={`Jump to Waiting, ${stagesBoardLists.waiting.length} jobs`}
+                  aria-label={`Jump to Waiting, ${jumpStripCounts.waiting} jobs`}
                   style={{
                     padding: 0,
                     border: 'none',
@@ -2781,7 +2804,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   Waiting
                 </button>
-                <span>({stagesBoardLists.waiting.length})</span>
+                <span>({jumpStripCounts.waiting})</span>
               </span>
               <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                 →
@@ -2790,7 +2813,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <button
                   type="button"
                   onClick={() => focusStagesSection('working')}
-                  aria-label={`Jump to Working, ${stagesBoardLists.working.length} jobs`}
+                  aria-label={`Jump to Working, ${jumpStripCounts.working} jobs`}
                   style={{
                     padding: 0,
                     border: 'none',
@@ -2804,7 +2827,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   Working
                 </button>
-                <span>({stagesBoardLists.working.length})</span>
+                <span>({jumpStripCounts.working})</span>
               </span>
               <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                 →
@@ -2813,7 +2836,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <button
                   type="button"
                   onClick={() => focusStagesSection('readyToBill')}
-                  aria-label={`Jump to Ready to Bill, ${stagesBoardLists.readyToBillRows.length} rows`}
+                  aria-label={`Jump to Ready to Bill, ${jumpStripCounts.readyToBill} rows`}
                   style={{
                     padding: 0,
                     border: 'none',
@@ -2827,7 +2850,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   Ready to Bill
                 </button>
-                <span>({stagesBoardLists.readyToBillRows.length})</span>
+                <span>({jumpStripCounts.readyToBill})</span>
               </span>
               <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                 →
@@ -2836,7 +2859,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <button
                   type="button"
                   onClick={() => focusStagesSection('billed')}
-                  aria-label={`Jump to Billed Awaiting Payment, ${stagesBoardLists.billedActiveRows.length} rows`}
+                  aria-label={`Jump to Billed Awaiting Payment, ${jumpStripCounts.billed} rows`}
                   style={{
                     padding: 0,
                     border: 'none',
@@ -2850,9 +2873,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   Billed Awaiting Payment
                 </button>
-                <span>({stagesBoardLists.billedActiveRows.length})</span>
+                <span>({jumpStripCounts.billed})</span>
               </span>
-              {stagesBoardLists.collectionsRows.length > 0 ? (
+              {jumpStripCounts.collections !== '0' ? (
                 <>
                   <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                     →
@@ -2861,7 +2884,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <button
                       type="button"
                       onClick={() => focusStagesSection('collections')}
-                      aria-label={`Jump to Collections, ${stagesBoardLists.collectionsRows.length} rows`}
+                      aria-label={`Jump to Collections, ${jumpStripCounts.collections} rows`}
                       style={{
                         padding: 0,
                         border: 'none',
@@ -2875,7 +2898,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     >
                       Collections
                     </button>
-                    <span>({stagesBoardLists.collectionsRows.length})</span>
+                    <span>({jumpStripCounts.collections})</span>
                   </span>
                 </>
               ) : null}

@@ -1,6 +1,6 @@
 /**
  * Pipeline "New" view money layers (v2.1910): the money story strip (four
- * clickable answer cards) and the Today's money moves queue, rendered above
+ * clickable answer cards) and the Today's Money Opportunities queue, rendered above
  * the classic jump strip + board. Every figure comes from the lean
  * StagesHeaderStats spine plus the AR unallocated count — no extra fetches.
  * Old view renders none of this; the board below is identical in both views.
@@ -179,7 +179,7 @@ export function PipelineOverview({
           }}
         >
           <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-            Today&#8217;s money moves
+            Today&#8217;s Money Opportunities:
           </span>
           {moves.length === 0 && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>nothing needs a move right now — the pipeline is clean ✅</span>
