@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartnerJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets } from './partnerLedgerJournal'
+import { buildPartnerJournal, mergePendingIntoJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets } from './partnerLedgerJournal'
 
 describe('buildPartnerJournal', () => {
   it('books labor, additions, deductions on period end and payouts on their dates, with a running balance', () => {
@@ -82,5 +82,47 @@ describe('netPosition', () => {
     expect(netPosition(967.6, -1304.88)).toBe(-337.28)
     expect(netPosition(100, 0)).toBe(100)
     expect(netPosition(0.1, 0.2)).toBe(0.3)
+  })
+})
+
+describe('mergePendingIntoJournal', () => {
+  const posted = buildPartnerJournal({
+    stubs: [{ id: 's1', period_start: '2026-08-09', period_end: '2026-08-15', hours_total: 12.8, gross_pay: 450.1 }],
+    additional: [],
+    deductions: [],
+    payments: [{ pay_stub_id: 's1', amount: 200, paid_at: '2026-08-13T18:00:00Z', memo: 'CashApp advance' }],
+  }).rows
+
+  it('interleaves pending charges by occurred_date with null balance', () => {
+    const merged = mergePendingIntoJournal(posted, [
+      { type: 'backcharge', amount: 1238.65, occurred_date: '2026-08-14', description: 'Car repairs' },
+    ])
+    expect(merged.map((r) => [r.date, r.kind])).toEqual([
+      ['2026-08-13', 'payout'],
+      ['2026-08-14', 'pending'],
+      ['2026-08-15', 'labor'],
+    ])
+    const pendingRow = merged[1]
+    expect(pendingRow?.amount).toBe(-1238.65)
+    expect(pendingRow?.balance).toBeNull()
+  })
+
+  it('same-date pending rows land after posted rows; posted balances untouched', () => {
+    const merged = mergePendingIntoJournal(posted, [
+      { type: 'profit_share', amount: 100, occurred_date: '2026-08-13', description: null },
+    ])
+    expect(merged.map((r) => r.kind)).toEqual(['payout', 'pending', 'labor'])
+    expect(merged[1]?.label).toBe('profit_share')
+    expect(merged[1]?.amount).toBe(100)
+    expect(merged[2]?.balance).toBe(250.1)
+  })
+
+  it('empty journal still lists pending rows; non-finite amounts dropped', () => {
+    const merged = mergePendingIntoJournal([], [
+      { type: 'backcharge', amount: 10, occurred_date: '2026-08-01', description: 'a' },
+      { type: 'damage', amount: Number.NaN, occurred_date: '2026-08-02', description: 'b' },
+    ])
+    expect(merged).toHaveLength(1)
+    expect(merged[0]?.kind).toBe('pending')
   })
 })

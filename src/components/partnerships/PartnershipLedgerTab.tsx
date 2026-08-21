@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import {
   buildPartnerJournal,
+  mergePendingIntoJournal,
   netPosition,
-  pendingOffsetSignedAmount,
   summarizePendingOffsets,
   type JournalAdditionalLine,
   type JournalDeduction,
@@ -87,6 +87,7 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
   }
 
   const net = netPosition(balance, pending.net)
+  const displayRows = mergePendingIntoJournal(rows, pendingRows)
 
   return (
     <div>
@@ -104,31 +105,7 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
         )}
       </div>
 
-      {pendingRows.length > 0 ? (
-        <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.8rem', margin: '0 0 0.8rem' }}>
-          <div style={{ fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-amber-700)', marginBottom: '0.35rem' }}>
-            Pending — not yet on a statement
-          </div>
-          {pendingRows.map((o, i) => {
-            const amt = pendingOffsetSignedAmount(o)
-            return (
-              <div key={i} style={{ display: 'flex', gap: '0.6rem', justifyContent: 'space-between', padding: '0.22rem 0', fontSize: '0.8rem', borderBottom: i < pendingRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <span style={{ minWidth: 0 }}>
-                  {o.description || o.type}
-                  <span style={{ color: 'var(--text-muted)' }}> · {o.occurred_date}</span>
-                </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650, whiteSpace: 'nowrap', color: amt < 0 ? 'var(--text-red-600)' : '#16a34a' }}>
-                  {amt < 0 ? '−' : '+'}{money(amt)}
-                </span>
-              </div>
-            )
-          })}
-          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-            These attach to the next generated statement and only then enter the journal below.
-          </div>
-        </div>
-      ) : null}
-      {rows.length === 0 ? (
+      {displayRows.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
           Nothing posted yet — generate the first statement from the Statements tab.
         </p>
@@ -146,29 +123,47 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
             </thead>
             <tbody>
               {/* Balance is computed oldest→newest; display newest-first so the
-                  top row is today and its balance equals the headline. */}
-              {[...rows].reverse().map((r, i) => (
-                <tr key={i}>
-                  <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
-                  <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
-                    {r.label}
-                    {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
-                  </td>
-                  <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
-                    {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
-                  </td>
-                  <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    {r.balance < 0 ? '−' : ''}{money(r.balance)}
-                  </td>
-                </tr>
-              ))}
+                  top row is today and its balance equals the headline. Pending
+                  rows interleave by date but never carry a balance. */}
+              {[...displayRows].reverse().map((r, i) =>
+                r.kind === 'pending' ? (
+                  <tr key={i}>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
+                      {r.label}
+                      <span style={{ marginLeft: '0.45rem', fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-amber-700)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.05rem 0.4rem', whiteSpace: 'nowrap' }}>
+                        pending
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap', opacity: 0.85 }}>
+                      {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                    </td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>—</td>
+                  </tr>
+                ) : (
+                  <tr key={i}>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
+                      {r.label}
+                      {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
+                    </td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
+                      {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                    </td>
+                    <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {r.balance < 0 ? '−' : ''}{money(r.balance)}
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>
       )}
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Newest first; each row’s balance is the running balance after that posting. Append-only: reversals are new
-        rows, never edits. The weekly statement is a window over this journal.
+        Newest first; each row’s balance is the running balance after that posting. Amber <b>pending</b> rows are
+        charges waiting for the next statement — they sit at their date but move no balance until attached. Append-only:
+        reversals are new rows, never edits. The weekly statement is a window over this journal.
       </p>
     </div>
   )
