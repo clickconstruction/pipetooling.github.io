@@ -20,6 +20,7 @@ import {
   type PendingChaseWindowKey,
 } from '../../lib/bidPendingChase'
 import { BID_LOSS_CATEGORIES, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { expandLensBidByRecipients, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
 import {
   type LedgerPrefixMap,
   formatBidLedgerNumberLabel,
@@ -32,6 +33,8 @@ export type BidsWaitingToHearLensProps = {
   ledgerPrefixMap: LedgerPrefixMap
   /** Latest submission-entry instant per bid id (parent's `lastContactFromEntries`). */
   lastContactFromEntries: Record<string, string>
+  /** bid_id → other GCs the bid went to; each gets its own queue entry. */
+  recipientsByBidId: BidGcRecipientsMap
   narrowViewport640: boolean
   authUserId: string | null
   onError: (message: string | null) => void
@@ -98,6 +101,7 @@ export function BidsWaitingToHearLens({
   bids,
   ledgerPrefixMap,
   lastContactFromEntries,
+  recipientsByBidId,
   narrowViewport640,
   authUserId,
   onError,
@@ -158,7 +162,15 @@ export function BidsWaitingToHearLens({
     [allPendingLensBids, windowDays, nowIso],
   )
 
-  const groups = useMemo(() => groupPendingChaseByBuilder(lensBids, nowIso), [lensBids, nowIso])
+  // Per-GC copies: a bid sent to three GCs is three chances at a bid tab.
+  // Contact stamps are per-bid, so a touch under any GC freshens every copy.
+  const expandedLensBids = useMemo<RecipientExpanded<LensBid>[]>(
+    () => lensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
+    [lensBids, recipientsByBidId],
+  )
+
+  const groups = useMemo(() => groupPendingChaseByBuilder(expandedLensBids, nowIso), [expandedLensBids, nowIso])
+  // Rollup stays per-bid — dollars are never double-counted across GC copies.
   const rollup = useMemo(() => buildPendingChaseRollup(lensBids, nowIso), [lensBids, nowIso])
 
   const selectedGroup = useMemo(() => {
@@ -167,8 +179,8 @@ export function BidsWaitingToHearLens({
   }, [groups, selectedBuilderKey])
 
   const selectedBids = useMemo(
-    () => (selectedGroup ? lensBids.filter((b) => b.builderKey === selectedGroup.builderKey) : []),
-    [lensBids, selectedGroup],
+    () => (selectedGroup ? expandedLensBids.filter((b) => b.builderKey === selectedGroup.builderKey) : []),
+    [expandedLensBids, selectedGroup],
   )
   const selectedBid = useMemo(() => {
     if (selectedBids.length === 0) return null
@@ -412,14 +424,17 @@ export function BidsWaitingToHearLens({
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedGroup.builderName}</span>
-                {builderPhoneOf(selectedBid.raw) ? (
-                  <a
-                    href={`tel:${builderPhoneOf(selectedBid.raw)}`}
-                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}
-                  >
-                    {'☎'} {builderPhoneOf(selectedBid.raw)}
-                  </a>
-                ) : null}
+                {(() => {
+                  const phone = selectedBid.viaRecipient ? selectedBid.viaRecipient.phone : builderPhoneOf(selectedBid.raw)
+                  return phone ? (
+                    <a
+                      href={`tel:${phone}`}
+                      style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}
+                    >
+                      {'☎'} {phone}
+                    </a>
+                  ) : null
+                })()}
                 <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {selectedBids.filter((b) => !bidNeedsChase(b, nowIso)).length} of {selectedBids.length} fresh
                 </span>
@@ -496,6 +511,22 @@ export function BidsWaitingToHearLens({
                     ? `Last contact ${shortDate(selectedBid.lastContactIso)} (${daysAgoLabel(Math.max(0, Math.floor((Date.parse(nowIso) - Date.parse(selectedBid.lastContactIso)) / 86_400_000)))})`
                     : 'Never contacted since sending'}
                 </p>
+                {(() => {
+                  const recips = recipientsByBidId[selectedBid.id] ?? []
+                  if (recips.length === 0 && !selectedBid.viaRecipient) return null
+                  const primaryName =
+                    (selectedBid.raw.customers?.name ?? '').trim() || (selectedBid.raw.bids_gc_builders?.name ?? '').trim() || 'No builder'
+                  const others = [
+                    ...(selectedBid.viaRecipient ? [primaryName] : []),
+                    ...recips.filter((r) => r.customerId !== selectedBid.builderKey).map((r) => r.name),
+                  ]
+                  return (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      also sent to: {others.length > 0 ? others.join(', ') : '—'}
+                      <span style={{ fontStyle: 'italic' }}> (a touch under any GC freshens every copy)</span>
+                    </p>
+                  )
+                })()}
               </div>
 
               {lostPickerOpen ? (

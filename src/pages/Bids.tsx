@@ -52,6 +52,7 @@ import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoar
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
+import { fetchBidGcRecipientsMap, type BidGcRecipientsMap } from '../lib/bids/bidGcRecipients'
 import { isBidLossCategoryKey, type BidLossCategoryKey } from '../lib/bidLossCategories'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
@@ -255,6 +256,7 @@ export default function Bids() {
   )
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
+  const [bidGcRecipientsByBidId, setBidGcRecipientsByBidId] = useState<BidGcRecipientsMap>({})
   const [customerContacts, setCustomerContacts] = useState<CustomerContact[]>([])
   const [customerContactPersons, setCustomerContactPersons] = useState<CustomerContactPerson[]>([])
 
@@ -919,6 +921,9 @@ export default function Bids() {
       if (!existing || new Date(at) > new Date(existing)) latestByBid[bidId] = at
     }
     setLastContactFromEntries(latestByBid)
+    // Multi-GC recipients (empty map until the table deploys) — feeds the
+    // Followup lenses and the board's +N chip.
+    setBidGcRecipientsByBidId(await fetchBidGcRecipientsMap())
     return rows
   }
 
@@ -2807,6 +2812,7 @@ export default function Bids() {
           showLostModalLabor={showLostModalLabor}
                 onSaveLossReason={saveLossReasonFromLostSummaryModal}
           workingBoardArchivedBids={workingBoardArchivedBids}
+          recipientsByBidId={bidGcRecipientsByBidId}
         />
       )}
 
@@ -2911,6 +2917,7 @@ export default function Bids() {
         <BidsWhyWeLostLens
           bids={bids}
           ledgerPrefixMap={ledgerPrefixMap}
+          recipientsByBidId={bidGcRecipientsByBidId}
           narrowViewport640={narrowViewport640}
           onError={setError}
           onReloadBids={() => { void loadBids() }}
@@ -2922,6 +2929,7 @@ export default function Bids() {
           bids={bids}
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastContactFromEntries}
+          recipientsByBidId={bidGcRecipientsByBidId}
           narrowViewport640={narrowViewport640}
           authUserId={authUser?.id ?? null}
           onError={setError}

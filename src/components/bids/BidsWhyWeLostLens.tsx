@@ -20,10 +20,13 @@ import {
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { expandLensBidByRecipients, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
   ledgerPrefixMap: LedgerPrefixMap
+  /** bid_id → other GCs the bid went to; each gets its own queue entry. */
+  recipientsByBidId: BidGcRecipientsMap
   narrowViewport640: boolean
   onError: (message: string | null) => void
   onReloadBids: () => void
@@ -82,6 +85,7 @@ function builderPhoneOf(bid: BidWithBuilder): string | null {
 export function BidsWhyWeLostLens({
   bids,
   ledgerPrefixMap,
+  recipientsByBidId,
   narrowViewport640,
   onError,
   onReloadBids,
@@ -118,7 +122,14 @@ export function BidsWhyWeLostLens({
       })
   }, [bids, localSaves, ledgerPrefixMap])
 
-  const groups = useMemo(() => groupLossTriageByBuilder(lensBids), [lensBids])
+  // Per-GC copies: a bid sent to three GCs gets a queue entry under each.
+  // The outcome is per-bid, so recording it under any GC clears every copy.
+  const expandedLensBids = useMemo<RecipientExpanded<LensBid>[]>(
+    () => lensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
+    [lensBids, recipientsByBidId],
+  )
+
+  const groups = useMemo(() => groupLossTriageByBuilder(expandedLensBids), [expandedLensBids])
 
   const pendingCountByBuilderKey = useMemo(() => {
     const map = new Map<string, number>()
@@ -126,9 +137,13 @@ export function BidsWhyWeLostLens({
       if (!b.bid_date_sent || b.outcome === 'won' || b.outcome === 'lost' || b.outcome === 'started_or_complete') continue
       const key = b.customer_id ?? b.gc_builder_id ?? ((b.customers?.name ?? b.bids_gc_builders?.name ?? '').trim() || 'No builder')
       map.set(key, (map.get(key) ?? 0) + 1)
+      for (const r of recipientsByBidId[b.id] ?? []) {
+        if (r.customerId === key) continue
+        map.set(r.customerId, (map.get(r.customerId) ?? 0) + 1)
+      }
     }
     return map
-  }, [bids])
+  }, [bids, recipientsByBidId])
 
   const wonCount = useMemo(
     () => bids.filter((b) => b.outcome === 'won' || b.outcome === 'started_or_complete').length,
@@ -143,8 +158,8 @@ export function BidsWhyWeLostLens({
   }, [groups, selectedBuilderKey])
 
   const selectedBids = useMemo(
-    () => (selectedGroup ? lensBids.filter((b) => b.builderKey === selectedGroup.builderKey) : []),
-    [lensBids, selectedGroup],
+    () => (selectedGroup ? expandedLensBids.filter((b) => b.builderKey === selectedGroup.builderKey) : []),
+    [expandedLensBids, selectedGroup],
   )
   const selectedBid = useMemo(() => {
     if (selectedBids.length === 0) return null
@@ -327,14 +342,17 @@ export function BidsWhyWeLostLens({
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedGroup.builderName}</span>
-              {builderPhoneOf(selectedBid.raw) ? (
-                <a
-                  href={`tel:${builderPhoneOf(selectedBid.raw)}`}
-                  style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}
-                >
-                  {'☎'} {builderPhoneOf(selectedBid.raw)}
-                </a>
-              ) : null}
+              {(() => {
+                const phone = selectedBid.viaRecipient ? selectedBid.viaRecipient.phone : builderPhoneOf(selectedBid.raw)
+                return phone ? (
+                  <a
+                    href={`tel:${phone}`}
+                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}
+                  >
+                    {'☎'} {phone}
+                  </a>
+                ) : null
+              })()}
               <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {selectedBids.length - selectedBids.filter((b) => !isBidLossCategoryKey(b.category)).length} of {selectedBids.length} done
               </span>
@@ -404,6 +422,23 @@ export function BidsWhyWeLostLens({
                 {selectedBid.value > 0 ? `$${formatCurrency(selectedBid.value)}` : 'no bid value'}
                 {selectedBid.estimatorName ? ` · est. ${selectedBid.estimatorName}` : ''}
               </div>
+              {(() => {
+                const recips = recipientsByBidId[selectedBid.id] ?? []
+                if (recips.length === 0 && !selectedBid.viaRecipient) return null
+                const primaryName =
+                  (selectedBid.raw.customers?.name ?? '').trim() || (selectedBid.raw.bids_gc_builders?.name ?? '').trim() || 'No builder'
+                const others = [
+                  ...(selectedBid.viaRecipient ? [primaryName] : []),
+                  ...recips.filter((r) => r.customerId !== selectedBid.builderKey).map((r) => r.name),
+                ]
+                return (
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {selectedBid.viaRecipient ? 'Sent to this GC too — ' : ''}
+                    also sent to: {others.length > 0 ? others.join(', ') : '—'}
+                    <span style={{ fontStyle: 'italic' }}> (one reason clears it for every GC)</span>
+                  </p>
+                )
+              })()}
               {selectedBid.legacyReason && !selectedBid.note ? (
                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   note on file: “{selectedBid.legacyReason}”

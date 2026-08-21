@@ -78,6 +78,10 @@ Log the answer without leaving the card — one tap per bid: **Left message** ·
 
 Below the queue, the **Waiting to hear** rollup keeps you honest: how much sent work is still open, how many bids were **never chased since sending** (count and dollars), and the age of the oldest untouched one.
 
+## One bid, several GCs — every queue knows
+
+A bid recorded as sent to several GCs (the **Also sent to** row in Edit Bid, or Versions pointed at different GCs) shows up under **each** of those GCs in both the Why we lost and Waiting to hear queues — each entry dials that GC's own number, and the card lists everyone else who got it. Outcomes stay per-bid: record the reason (or log a touch) with whichever GC answers and the bid clears in every queue at once. On the **Bid Board**, multi-GC bids wear a {{chip:gray|+2 GCs}} chip next to the GC name — hover it for the full send list.
+
 ## Print a call sheet
 
 - {{button:outline|Call sheet}} on any card prints a one-pager: the builder's people and numbers, their open bids with last-update ages, and ruled space for call notes.
