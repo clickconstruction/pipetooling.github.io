@@ -116,3 +116,18 @@ export function summarizePendingOffsets(pending: JournalPendingOffset[]): {
   }
   return { count: pending.length, net: round2(net) }
 }
+
+/** Signed amount of one pending offset (charges −, credits/shares +). */
+export function pendingOffsetSignedAmount(o: JournalPendingOffset): number {
+  if (!Number.isFinite(o.amount)) return 0
+  return round2(POSITIVE_OFFSET_TYPES.has(o.type) ? o.amount : -o.amount)
+}
+
+/**
+ * The settle-up position: posted journal balance plus offsets that haven't
+ * reached a statement yet. This is the headline number — the journal's
+ * running-balance column stays posted-only.
+ */
+export function netPosition(postedBalance: number, pendingNet: number): number {
+  return round2(postedBalance + pendingNet)
+}

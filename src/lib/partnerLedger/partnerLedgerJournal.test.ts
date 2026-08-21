@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartnerJournal, summarizePendingOffsets } from './partnerLedgerJournal'
+import { buildPartnerJournal, netPosition, pendingOffsetSignedAmount, summarizePendingOffsets } from './partnerLedgerJournal'
 
 describe('buildPartnerJournal', () => {
   it('books labor, additions, deductions on period end and payouts on their dates, with a running balance', () => {
@@ -66,5 +66,21 @@ describe('summarizePendingOffsets', () => {
 
   it('ignores non-finite amounts', () => {
     expect(summarizePendingOffsets([{ type: 'damage', amount: Number.NaN, occurred_date: 'x', description: null }])).toEqual({ count: 1, net: 0 })
+  })
+})
+
+describe('pendingOffsetSignedAmount', () => {
+  it('signs charges negative and credits positive', () => {
+    expect(pendingOffsetSignedAmount({ type: 'backcharge', amount: 49.79, occurred_date: 'x', description: null })).toBe(-49.79)
+    expect(pendingOffsetSignedAmount({ type: 'profit_share', amount: 120, occurred_date: 'x', description: null })).toBe(120)
+    expect(pendingOffsetSignedAmount({ type: 'damage', amount: Number.NaN, occurred_date: 'x', description: null })).toBe(0)
+  })
+})
+
+describe('netPosition', () => {
+  it('adds pending net to the posted balance with cent rounding', () => {
+    expect(netPosition(967.6, -1304.88)).toBe(-337.28)
+    expect(netPosition(100, 0)).toBe(100)
+    expect(netPosition(0.1, 0.2)).toBe(0.3)
   })
 })
