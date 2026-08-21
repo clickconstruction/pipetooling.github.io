@@ -2,7 +2,7 @@
 title: follow up with builders on their bids
 category: Office
 roles: dev, master_technician, assistant, estimator, primary, superintendent
-keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost
+keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids
 order: 69
 ---
 The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has three lenses — one job, three angles:
@@ -10,8 +10,9 @@ The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has th
 - **By builder** — the call queue. One card per builder, sorted so the builder you've ignored longest is on top. This is the lens for phone mornings: call one GC, walk through all their bids at once.
 - **By status** — the outcome tables (Unsent, Not yet won or lost, Won, Started or Complete, Lost) with the per-person followup sheets, {{button:outline|Print}}/{{button:outline|PDF}}, and call scripts.
 - **Why we lost** — record and review loss reasons, one GC call at a time (below).
+- **Waiting to hear** — chase your recently sent bids for answers and bid tabs, newest first (below).
 
-Flip between them with the {{button:blue|By builder}} / {{button:outline|By status}} / {{button:outline|Why we lost}} toggle at the top. The **Stale after N days** box is shared between the first two — set it once and both lenses highlight the same bids in red.
+Flip between them with the {{button:blue|By builder}} / {{button:outline|By status}} / {{button:outline|Why we lost}} / {{button:outline|Waiting to hear}} toggle at the top. The **Stale after N days** box is shared between the first two — set it once and both lenses highlight the same bids in red.
 
 ## Work the queue
 
@@ -62,6 +63,18 @@ Dale from Knight picks up. Six pills. "1, 1, 2" — with "6k over" typed before 
 ## Review why you lose
 
 Below the queue, the **Why we lost** rollup counts every categorized loss by reason — count and dollars — and shows two loss rates: the raw one, and the one **excluding "GC lost the project"** (when your GC doesn't win, you never had a shot — that's not a competitive loss). The gap between those two numbers is how much of your loss rate isn't really yours.
+
+## Chase the bids you just sent
+
+The **Waiting to hear** lens is the other half of the Friday calls: instead of old lost bids, the queue is every **sent bid with no outcome yet** — and the *recent* ones come first, because that's where the feedback is still fresh and a bid tab is still gettable. The **Sent within** pills (30 / 60 / 90 days / All, default 60) keep the queue to the recent past.
+
+The left rail lists builders holding your open bids, most recently sent on top. Pick one and their pending bids become the same **street-name pills** as the Why we lost lens — green means someone touched that bid in the last week, plain means it's waiting on a chase. Each bid card shows the dollars, **when it was sent and how long ago**, the due date, and the line that matters: **"Never contacted since sending"** in amber when nobody has followed up at all. The builder's phone number is tappable, the address opens Google Maps, and **open their builder card →** jumps to the By builder lens for contacts, notes, and a full call session.
+
+:::example the ask on every call
+"Morning — we sent our number on Saginaw two weeks ago. Did it land? Are we in the hunt? Can I get the bid tab when it's out?" Tap through their pills with the arrow keys; {{button:outline|Skip →}} moves on.
+:::
+
+Below the queue, the **Waiting to hear** rollup keeps you honest: how much sent work is still open, how many bids were **never chased since sending** (count and dollars), and the age of the oldest untouched one.
 
 ## Print a call sheet
 
