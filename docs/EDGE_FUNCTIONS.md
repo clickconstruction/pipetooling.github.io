@@ -90,6 +90,7 @@ when_to_read:
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
    - [customer-portal](#customer-portal)
+   - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -855,6 +856,14 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>`
 
 **Auth**: none (`verify_jwt = false` in `config.toml` — the token IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
+
+### submit-portal-request
+
+**Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request`.
+
+**Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid', jobId?, description, availability?, phone?, plansLink?, website }` (`website` is the honeypot).
+
+**Auth**: none (`verify_jwt = false`) — the portal token is the capability.
 
 ### get-estimate-for-customer
 

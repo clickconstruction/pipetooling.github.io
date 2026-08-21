@@ -643,3 +643,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # Public no-login page — the portal token IS the capability (match notify-dispatch-request).
 [functions.customer-portal]
 verify_jwt = false
+
+# Public portal form intake — token-authenticated like customer-portal.
+[functions.submit-portal-request]
+verify_jwt = false
