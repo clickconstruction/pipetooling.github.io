@@ -646,10 +646,6 @@ export function JobsGcReviewModal({
                     {g.gcName}
                   </span>
                 )}
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {g.jobCount} job{g.jobCount === 1 ? '' : 's'} · ${formatCurrency(g.subtotal)} outstanding
-                  {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
-                </span>
                 {!g.isNoGc && g.gcId && lastSentByGcId[g.gcId] ? (
                   gcReviewSentThisWeek(lastSentByGcId[g.gcId], certWeekStart) && !byDevelopment ? (
                     <span
@@ -679,41 +675,50 @@ export function JobsGcReviewModal({
                       }
                       if (status.state === 'changed') {
                         return (
-                          <>
-                            <span
-                              title={`Certified by ${status.cert.certified_by_name || '—'}, then the group changed`}
-                              style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
-                            >
-                              Changed since certified · {status.delta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(status.delta))}
-                            </span>
-                            {canCertify && (
+                          <span
+                            title={`Certified by ${status.cert.certified_by_name || '—'}, then the group changed`}
+                            style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
+                          >
+                            Changed since certified · {status.delta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(status.delta))}
+                          </span>
+                        )
+                      }
+                      return null
+                    })()
+                  : null}
+                {!g.isNoGc ? (
+                  /* Right-side action group: Certify sits with Share (owner call, v2.2047). */
+                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                    {!byDevelopment && g.gcId && canCertify
+                      ? (() => {
+                          const status = gcGroupCertStatus(g, certsByGc.get(g.gcId!))
+                          if (status.state === 'changed') {
+                            return (
                               <button
                                 type="button"
                                 onClick={() => setCertifyGroup(g)}
                                 title={`Re-certify ${g.gcName} — the group changed after sign-off`}
                                 style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
-                                Re-certify…
+                                Re-certify
                               </button>
-                            )}
-                          </>
-                        )
-                      }
-                      return canCertify ? (
-                        <button
-                          type="button"
-                          onClick={() => setCertifyGroup(g)}
-                          title={`Certify ${g.gcName} — review each bill and attest the group is accurate`}
-                          style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          Certify…
-                        </button>
-                      ) : null
-                    })()
-                  : null}
-                {!g.isNoGc ? (
-                  /* Share dropdown (v2.1423): Email… / Copy / Print for this GC in one menu. */
-                  <div style={{ position: 'relative', marginLeft: 'auto', flexShrink: 0 }}>
+                            )
+                          }
+                          if (status.state === 'certified') return null
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setCertifyGroup(g)}
+                              title={`Certify ${g.gcName} — review each bill and attest the group is accurate`}
+                              style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              Certify
+                            </button>
+                          )
+                        })()
+                      : null}
+                  {/* Share dropdown (v2.1423): Email… / Copy / Print for this GC in one menu. */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button
                       type="button"
                       onClick={() => setShareMenuGroupKey((k) => (k === g.key ? null : g.key))}
@@ -792,6 +797,7 @@ export function JobsGcReviewModal({
                       </>
                     ) : null}
                   </div>
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -813,6 +819,12 @@ export function JobsGcReviewModal({
                     <span aria-hidden>🖨</span>
                   </button>
                 )}
+                {/* Stats on their own second line (owner call, v2.2047) — the
+                    GC name stays clean on line 1 with the chips/actions. */}
+                <span style={{ flexBasis: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {g.jobCount} job{g.jobCount === 1 ? '' : 's'} · ${formatCurrency(g.subtotal)} outstanding
+                  {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
+                </span>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
