@@ -35,6 +35,10 @@ A job billed in May that gets its line created today with a May date shows up in
 
 When there's nothing to do, the queue says so — an empty list means the pipeline is clean.
 
+### The Fix-ups strip
+
+When jobs are missing the data billing needs, a slim **Fix-ups** strip appears at the bottom of the card: {{chip:red|No customer · 1}} (a job with no linked customer can't be billed at all), {{chip:red|No customer pictures · 3}}, and {{chip:yellow|No email · 2}} (Stripe and emailed invoices need one). Each chip opens the same fix-it job list as before — and when everything's clean, the strip disappears entirely.
+
 ## The board is still the board
 
 Everything below the cards — the jump strip with the stage counts, and every section from Waiting to Paid in Full — is identical in both views. New only adds the layer on top; nothing about how you work rows changes.

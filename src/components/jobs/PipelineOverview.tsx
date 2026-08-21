@@ -6,7 +6,14 @@
  * Old view renders none of this; the board below is identical in both views.
  */
 import type { CSSProperties } from 'react'
-import { buildPipelineMoneyMoves, buildPipelineMoneyStory, type PipelineMoveKey, type PipelineStoryCard } from '../../lib/jobs/pipelineOverview'
+import {
+  buildPipelineFixups,
+  buildPipelineMoneyMoves,
+  buildPipelineMoneyStory,
+  type PipelineFixupKey,
+  type PipelineMoveKey,
+  type PipelineStoryCard,
+} from '../../lib/jobs/pipelineOverview'
 import type { StagesHeaderStats } from '../../lib/jobs/stagesHeaderStats'
 
 type SectionKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
@@ -27,6 +34,10 @@ type PipelineOverviewProps = {
   onChase90: () => void
   /** "no bill line" money move: filter the Billed section to the shells (v2.1931). */
   onFixDates: () => void
+  /** Fix-ups strip (v2.1961): the strip-row data-gap alert counts, docked at the card's foot on the New view. */
+  fixupCounts: { noCustomer: number; noPictures: number; noEmail: number }
+  /** Opens the matching StagesAlertJobListModal (same modals the strip-row buttons open). */
+  onFixup: (key: PipelineFixupKey) => void
 }
 
 const cardBase: CSSProperties = {
@@ -121,6 +132,8 @@ export function PipelineOverview({
   onFocusSection,
   onChase90,
   onFixDates,
+  fixupCounts,
+  onFixup,
 }: PipelineOverviewProps) {
   if (!stats) {
     return (
@@ -131,6 +144,7 @@ export function PipelineOverview({
   }
   const cards = buildPipelineMoneyStory(stats, { includeCollected: canSeeCollected })
   const moves = buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr })
+  const fixups = buildPipelineFixups(fixupCounts)
   const cardAction: Record<PipelineStoryCard['key'], (() => void) | undefined> = {
     'ready-to-ask': onOpenCapable,
     'waiting-on-customers': onOpenBilledBreakdown,
@@ -175,7 +189,7 @@ export function PipelineOverview({
             gap: '0.5rem',
             padding: '0.45rem 0.85rem',
             background: 'var(--bg-subtle)',
-            borderBottom: moves.length > 0 ? '1px solid var(--border)' : 'none',
+            borderBottom: moves.length > 0 || fixups.length > 0 ? '1px solid var(--border)' : 'none',
           }}
         >
           <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
@@ -223,6 +237,48 @@ export function PipelineOverview({
             </button>
           </div>
         ))}
+        {fixups.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              padding: '0.45rem 0.85rem',
+              background: 'var(--bg-subtle)',
+              borderTop: moves.length > 0 ? '1px solid var(--border)' : 'none',
+            }}
+          >
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+              Fix-ups
+            </span>
+            {fixups.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => onFixup(f.key)}
+                title={f.title}
+                style={{
+                  padding: '0.15rem 0.65rem',
+                  borderRadius: 9999,
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  background: f.tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)',
+                  color: f.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)',
+                  border: `1px solid ${f.tone === 'red' ? '#fecaca' : '#fcd34d'}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+            <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              missing data blocks billing — click to fix
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

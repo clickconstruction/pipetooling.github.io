@@ -132,3 +132,51 @@ export function buildPipelineMoneyMoves(input: {
   }
   return moves
 }
+
+export type PipelineFixupKey = 'no-customer' | 'no-pictures' | 'no-email'
+
+export type PipelineFixup = {
+  key: PipelineFixupKey
+  label: string
+  tone: 'red' | 'amber'
+  title: string
+}
+
+/**
+ * Data-gap chips docked at the foot of Today's Money Opportunities (v2.1961):
+ * the strip-row alert buttons ("No customer" / "No customer pictures" /
+ * "No email"), rebuilt as quiet pills inside the money card on the New view.
+ * Zero-count chips are dropped; an empty list hides the whole strip.
+ */
+export function buildPipelineFixups(counts: {
+  noCustomer: number
+  noPictures: number
+  noEmail: number
+}): PipelineFixup[] {
+  const out: PipelineFixup[] = []
+  if (counts.noCustomer > 0) {
+    out.push({
+      key: 'no-customer',
+      label: `No customer · ${counts.noCustomer}`,
+      tone: 'red',
+      title: 'Jobs missing a linked customer — they cannot be billed at all. Click to list them.',
+    })
+  }
+  if (counts.noPictures > 0) {
+    out.push({
+      key: 'no-pictures',
+      label: `No customer pictures · ${counts.noPictures}`,
+      tone: 'red',
+      title: 'Working jobs missing their Customer Pictures link. Click to list them.',
+    })
+  }
+  if (counts.noEmail > 0) {
+    out.push({
+      key: 'no-email',
+      label: `No email · ${counts.noEmail}`,
+      tone: 'amber',
+      title: 'Ready to Bill jobs with no customer email — Stripe and emailed invoices need one. Click to list them.',
+    })
+  }
+  return out
+}
