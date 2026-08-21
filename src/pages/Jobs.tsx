@@ -157,9 +157,16 @@ export default function Jobs() {
   const loadJobsFromEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const LOAD_JOBS_AFTER_MUTATION_MS = 300
   const LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS = 50
-  const loadJobs = useCallback(() => {
-    return runFetchJobs(customerFilterForFetch)
-  }, [runFetchJobs, customerFilterForFetch])
+  const loadJobs = useCallback(async () => {
+    const rows = await runFetchJobs(customerFilterForFetch)
+    // Direct loadJobs() calls are overwhelmingly post-mutation refetches (Bill
+    // Customer, Mark Paid, Collections flag, send-backs, Edit Job saves) that
+    // don't go through scheduleLoadJobsAfterMutation — force the header stats
+    // past the v2.1917 TTL so section totals move with the rows (v2.1932).
+    // The TTL still dedupes the visibility/scoped-load piggybacks.
+    void refreshHeaderStats(customerFilterForFetch, { force: true })
+    return rows
+  }, [runFetchJobs, refreshHeaderStats, customerFilterForFetch])
   /**
    * Scoped first paint for the Pipeline (v2.1824, plan PR 3): fetch only the
    * sections the device left open (fresh devices: Ready to Bill). Every other
