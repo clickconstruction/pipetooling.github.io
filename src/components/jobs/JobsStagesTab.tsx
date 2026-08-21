@@ -591,9 +591,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [gcReviewModalOpen, refreshGcLastSent])
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
   const [stagesNoCustomerModalOpen, setStagesNoCustomerModalOpen] = useState(false)
-  const [stagesNoCustomerBtnHover, setStagesNoCustomerBtnHover] = useState(false)
   const [stagesNoJobPicturesModalOpen, setStagesNoJobPicturesModalOpen] = useState(false)
-  const [stagesNoJobPicturesBtnHover, setStagesNoJobPicturesBtnHover] = useState(false)
   const [jobBookModalOpen, setJobBookModalOpen] = useState(false)
   const [combineSeparateModalOpen, setCombineSeparateModalOpen] = useState(false)
   // "⋯" tools menu right of the Stages search (v2.1049) — home of every
@@ -667,29 +665,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Billed header aging-chip filter (v2.1311): null = all rows; a bucket key
   // narrows the section list to rows the matching chip counts. 'no_line'
   // (v2.1931) = open rows with no bill line to age by — the shells the
-  // Pipeline New view's "no bill line" money move points at.
+  // Pipeline money card's "no bill line" money move points at.
   const [billedAgingFilter, setBilledAgingFilter] = useState<'30_90' | '90' | 'no_line' | null>(null)
   // "Fix bill lines" one-sitting modal (v2.1933): creates each shell's
   // missing billed line via create_billed_shell_invoice, backdated.
   const [fixBillLinesOpen, setFixBillLinesOpen] = useState(false)
-  // Old/New pills (v2.1910, Counts precedent): Old = the classic board alone;
-  // New = the money story strip + Today's money moves above the same board.
-  // Per-device, default Old.
-  const [pipelineView, setPipelineView] = useState<'old' | 'new'>(() => {
-    try {
-      return window.localStorage.getItem('jobs_pipeline_view_v1') === 'new' ? 'new' : 'old'
-    } catch {
-      return 'old'
-    }
-  })
-  const switchPipelineView = (next: 'old' | 'new') => {
-    setPipelineView(next)
-    try {
-      window.localStorage.setItem('jobs_pipeline_view_v1', next)
-    } catch {
-      /* device just won't remember */
-    }
-  }
   const { count: arBankTxUnallocatedCount } = useArBankUnallocatedCount({
     enabled: active,
     authUserId: authUser?.id,
@@ -1089,7 +1069,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [stagesBoardLists.readyToBillRows],
   )
   const [stagesNoEmailModalOpen, setStagesNoEmailModalOpen] = useState(false)
-  const [stagesNoEmailBtnHover, setStagesNoEmailBtnHover] = useState(false)
 
   const openStagesNoCustomerEditJob = useCallback(
     (jobId: string) => {
@@ -2019,31 +1998,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           {(error || jobsListError) && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={pipelineView === 'old'}
-              onClick={() => switchPipelineView('old')}
-              style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pipelineView === 'old' ? '#2563eb' : 'transparent', color: pipelineView === 'old' ? '#fff' : 'var(--text-muted)' }}
-            >
-              Old
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={pipelineView === 'new'}
-              onClick={() => switchPipelineView('new')}
-              style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pipelineView === 'new' ? '#2563eb' : 'transparent', color: pipelineView === 'new' ? '#fff' : 'var(--text-muted)' }}
-            >
-              New
-            </button>
-            {pipelineView === 'new' ? (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                the money story + today&#8217;s moves, above the same board as Old
-              </span>
-            ) : null}
-          </div>
           <div style={{ marginBottom: '1rem' }}>
             <span
               id="stages-search-supplemental-desc"
@@ -2622,54 +2576,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
             </div>
           </div>
-          {pipelineView === 'new' && (
-            <PipelineOverview
-              stats={cacheHeaderStats}
-              canOpenAr={
-                authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
-              }
-              canSeeCharts={authRole === 'dev' || authRole === 'controller'}
-              canSeeCollected={authRole === 'dev' || authRole === 'master_technician'}
-              arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
-              // Money-move buttons clear a live search first (v2.1960, owner
-              // request) — a leftover query would narrow the very list each
-              // button promises to show.
-              onOpenCapable={() => {
-                setStagesSearchQuery('')
-                setCapableToBillModalOpen(true)
-              }}
-              onOpenBilledBreakdown={() => {
-                setStagesSearchQuery('')
-                setBilledBreakdownOpen(true)
-              }}
-              onOpenProfitChart={() => setPaidProfitChartOpen(true)}
-              onOpenAr={() => {
-                setStagesSearchQuery('')
-                setBankPaymentsModalOpen(true)
-              }}
-              onFocusSection={focusStagesSection}
-              fixupCounts={{
-                noCustomer: stagesJobsWithoutCustomer.length,
-                noPictures: stagesWorkingJobsWithoutPictures.length,
-                noEmail: stagesReadyToBillNoEmailJobs.length,
-              }}
-              onFixup={(key) => {
-                if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
-                else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
-                else setStagesNoEmailModalOpen(true)
-              }}
-              onChase90={() => {
-                setStagesSearchQuery('')
-                setBilledAgingFilter('90')
-                focusStagesSection('billed')
-              }}
-              onFixDates={() => {
-                setStagesSearchQuery('')
-                setBilledAgingFilter('no_line')
-                focusStagesSection('billed')
-              }}
-            />
-          )}
+          {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
+              Old/New pills retired v2.2012 — this is the only view now). */}
+          <PipelineOverview
+            stats={cacheHeaderStats}
+            canOpenAr={
+              authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
+            }
+            canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+            canSeeCollected={authRole === 'dev' || authRole === 'master_technician'}
+            arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
+            // Money-move buttons clear a live search first (v2.1960, owner
+            // request) — a leftover query would narrow the very list each
+            // button promises to show.
+            onOpenCapable={() => {
+              setStagesSearchQuery('')
+              setCapableToBillModalOpen(true)
+            }}
+            onOpenBilledBreakdown={() => {
+              setStagesSearchQuery('')
+              setBilledBreakdownOpen(true)
+            }}
+            onOpenProfitChart={() => setPaidProfitChartOpen(true)}
+            onOpenAr={() => {
+              setStagesSearchQuery('')
+              setBankPaymentsModalOpen(true)
+            }}
+            onFocusSection={focusStagesSection}
+            fixupCounts={{
+              noCustomer: stagesJobsWithoutCustomer.length,
+              noPictures: stagesWorkingJobsWithoutPictures.length,
+              noEmail: stagesReadyToBillNoEmailJobs.length,
+            }}
+            onFixup={(key) => {
+              if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
+              else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
+              else setStagesNoEmailModalOpen(true)
+            }}
+            onChase90={() => {
+              setStagesSearchQuery('')
+              setBilledAgingFilter('90')
+              focusStagesSection('billed')
+            }}
+            onFixDates={() => {
+              setStagesSearchQuery('')
+              setBilledAgingFilter('no_line')
+              focusStagesSection('billed')
+            }}
+          />
           <div
             style={{
               marginBottom: '0.75rem',
@@ -2972,92 +2926,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
             </button>
             )}
-            {/* On the New view these three alerts dock at the foot of Today's
-                Money Opportunities instead (v2.1961; the strip stays for Old).
-                The gate now includes the No-email count — previously a lone
-                No-email alert never rendered (wrapper only checked the first two). */}
-            {pipelineView !== 'new' &&
-            (stagesJobsWithoutCustomer.length > 0 ||
-              stagesWorkingJobsWithoutPictures.length > 0 ||
-              stagesReadyToBillNoEmailJobs.length > 0) ? (
-              <div
-                style={{
-                  marginLeft: 'auto',
-                  minWidth: 0,
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '0.5rem',
-                  alignItems: 'center',
-                }}
-              >
-                {stagesJobsWithoutCustomer.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setStagesNoCustomerModalOpen(true)}
-                    onMouseEnter={() => setStagesNoCustomerBtnHover(true)}
-                    onMouseLeave={() => setStagesNoCustomerBtnHover(false)}
-                    title="List jobs missing a linked customer"
-                    aria-label={`No linked customer: ${stagesJobsWithoutCustomer.length} jobs. Open list.`}
-                    style={{
-                      padding: '0.35rem 0.65rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                      border: `1px solid ${stagesNoCustomerBtnHover ? '#f87171' : '#fecaca'}`,
-                      borderRadius: 4,
-                      background: 'var(--bg-red-tint)',
-                      color: stagesNoCustomerBtnHover ? 'var(--text-red-800)' : 'var(--text-red-700)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    No customer ({stagesJobsWithoutCustomer.length})
-                  </button>
-                ) : null}
-                {stagesWorkingJobsWithoutPictures.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setStagesNoJobPicturesModalOpen(true)}
-                    onMouseEnter={() => setStagesNoJobPicturesBtnHover(true)}
-                    onMouseLeave={() => setStagesNoJobPicturesBtnHover(false)}
-                    title="List working jobs missing Customer Pictures link"
-                    aria-label={`Working jobs with no customer pictures link: ${stagesWorkingJobsWithoutPictures.length} jobs. Open list.`}
-                    style={{
-                      padding: '0.35rem 0.65rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                      border: `1px solid ${stagesNoJobPicturesBtnHover ? '#f87171' : '#fecaca'}`,
-                      borderRadius: 4,
-                      background: 'var(--bg-red-tint)',
-                      color: stagesNoJobPicturesBtnHover ? 'var(--text-red-800)' : 'var(--text-red-700)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    No customer pictures ({stagesWorkingJobsWithoutPictures.length})
-                  </button>
-                ) : null}
-                {stagesReadyToBillNoEmailJobs.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setStagesNoEmailModalOpen(true)}
-                    onMouseEnter={() => setStagesNoEmailBtnHover(true)}
-                    onMouseLeave={() => setStagesNoEmailBtnHover(false)}
-                    title="Ready to Bill jobs with no customer email — Stripe and emailed invoices need one"
-                    aria-label={`Ready to Bill jobs with no customer email: ${stagesReadyToBillNoEmailJobs.length} jobs. Open list.`}
-                    style={{
-                      padding: '0.35rem 0.65rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                      border: `1px solid ${stagesNoEmailBtnHover ? '#d97706' : '#fcd34d'}`,
-                      borderRadius: 4,
-                      background: 'var(--bg-amber-tint)',
-                      color: stagesNoEmailBtnHover ? 'var(--text-amber-800)' : 'var(--text-amber-700)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    No email ({stagesReadyToBillNoEmailJobs.length})
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            {/* The three data-gap alerts (No customer / No pictures / No email)
+                live in the money card's Fix-ups strip (v2.1961) — the toolbar
+                strip they used to dock in here retired with the Old view (v2.2012). */}
           </div>
           <StagesAlertJobListModal
             open={stagesNoEmailModalOpen}

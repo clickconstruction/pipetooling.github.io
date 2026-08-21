@@ -39,7 +39,7 @@ export type StagesHeaderStats = {
   /** "Capable of Being Billed" figure over the Working section. */
   capableToBill: number
   billedAging: BilledAgingBuckets
-  /** Payments by Monday-start week, oldest→newest, last COLLECTED_WEEKS weeks (Pipeline New view). */
+  /** Payments by Monday-start week, oldest→newest, last COLLECTED_WEEKS weeks (Pipeline money card). */
   collectedByWeek: CollectedWeekPoint[]
   /** Billed rows with a positive remainder but no billed_at / est. date (can't age or be chased). */
   billedNoDate: number

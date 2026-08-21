@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render-smoke tests for PipelineOverview — the New view's money story strip
+ * Render-smoke tests for PipelineOverview — the Pipeline's money story strip
  * + Today's Money Opportunities card, focused on the Fix-ups strip (v2.1961).
  */
 import { describe, expect, it, vi } from 'vitest'

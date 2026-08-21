@@ -152,7 +152,7 @@ export function billedStageRowAgingBucket(row: StageRow, now = new Date()): Bill
 /**
  * Billed rows that can never age or be chased: positive remainder but no
  * billed_at and no est. bill date (job-shell rows included). Feeds the
- * Pipeline New view's "fix dates" money move; Collections excluded to match
+ * Pipeline money card's "fix dates" money move; Collections excluded to match
  * the aging chips' cohort.
  */
 /**
