@@ -86,6 +86,66 @@ export function goalsStripRows(args: {
   return rows
 }
 
+export type GoalsStageRow = {
+  groupId: string
+  title: string
+  done: number
+  total: number
+  state: 'complete' | 'current' | 'locked'
+  /** Open (incomplete) assigned tasks in this stage. */
+  openAssigned: number
+  /** Incomplete predecessor titles — why a locked stage is locked. */
+  blockedBy: string[]
+}
+
+/**
+ * Per-stage rows for one roadmap's Goals-strip card (v2.2021: segmented bar
+ * + tap-to-expand stage ledger). Rows come back in `sort_index` order — the
+ * owner's "Order stages" arrangement, not dependency depth — so the bar reads
+ * in curated order and an early-finished stage can be green out of sequence,
+ * matching how the canvas thinks. Completion/unlock reuse the same
+ * milestone-aware graph helpers as the canvas and the sync RPC.
+ */
+export function goalsStageRows(args: {
+  groups: Array<{ id: string; title: string; sort_index: number }>
+  tasks: Array<{ group_id: string; completed_at: string | null; assigneeCount: number }>
+  edges: TechTreeEdge[]
+}): GoalsStageRow[] {
+  const { groups, tasks, edges } = args
+  const groupIds = new Set(groups.map((g) => g.id))
+  const rmEdges = edges.filter((e) => groupIds.has(e.fromGroupId) && groupIds.has(e.toGroupId))
+  const tasksByGroup = new Map<string, Array<{ completed_at: string | null; assigneeCount: number }>>()
+  for (const t of tasks) {
+    if (!groupIds.has(t.group_id)) continue
+    tasksByGroup.set(t.group_id, [...(tasksByGroup.get(t.group_id) ?? []), t])
+  }
+  const completeIds = computeCompleteGroupIdsWithMilestones(groupIds, rmEdges, tasksByGroup)
+  const unlocked = computeUnlockedGroupIds(groupIds, rmEdges, completeIds)
+  const titleByGroupId = new Map(groups.map((g) => [g.id, g.title]))
+  return [...groups]
+    .sort((a, b) => a.sort_index - b.sort_index || a.id.localeCompare(b.id))
+    .map((g) => {
+      const gTasks = tasksByGroup.get(g.id) ?? []
+      const state: GoalsStageRow['state'] = completeIds.has(g.id)
+        ? 'complete'
+        : unlocked.has(g.id)
+          ? 'current'
+          : 'locked'
+      return {
+        groupId: g.id,
+        title: g.title,
+        done: gTasks.filter((t) => t.completed_at != null).length,
+        total: gTasks.length,
+        state,
+        openAssigned: gTasks.filter((t) => t.completed_at == null && t.assigneeCount > 0).length,
+        blockedBy:
+          state === 'locked'
+            ? blockingStageTitles({ groupId: g.id, edges: rmEdges, completeGroupIds: completeIds, titleByGroupId })
+            : [],
+      }
+    })
+}
+
 /**
  * The Goals strip's "now:" list truncated to its first `limit` stage titles,
  * folding the rest into "… +N more" — a goal with a wide work front stays a

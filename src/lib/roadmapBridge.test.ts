@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockingStageTitles, bridgeChipFor, goalsStripNowSummary, goalsStripRows, lockedStageHint, stageBadgeFor } from './roadmapBridge'
+import { blockingStageTitles, bridgeChipFor, goalsStageRows, goalsStripNowSummary, goalsStripRows, lockedStageHint, stageBadgeFor } from './roadmapBridge'
 
 describe('bridgeChipFor', () => {
   it('no bridge -> no chip', () => {
@@ -110,5 +110,65 @@ describe('blockingStageTitles / lockedStageHint', () => {
     expect(lockedStageHint(['A', 'B'], false)).toBe('Unlocks when “A” and “B” are done')
     expect(lockedStageHint(['A', 'B', 'C'], false)).toBe('Unlocks when “A” + 2 more are done')
     expect(lockedStageHint([], false)).toBeNull()
+  })
+})
+
+describe('goalsStageRows', () => {
+  // A (done) → B (partial, current) → C (locked); D is a task-less milestone
+  // after A, so it auto-completes; sort_index deliberately disagrees with the
+  // dependency order to prove rows come back in curated order.
+  const groups = [
+    { id: 'gB', title: 'Pour slab', sort_index: 2 },
+    { id: 'gA', title: 'Clear & grade', sort_index: 1 },
+    { id: 'gC', title: 'Frame walls', sort_index: 4 },
+    { id: 'gD', title: 'Site ready', sort_index: 3 },
+  ]
+  const edges = [
+    { fromGroupId: 'gA', toGroupId: 'gB' },
+    { fromGroupId: 'gB', toGroupId: 'gC' },
+    { fromGroupId: 'gA', toGroupId: 'gD' },
+  ]
+  const tasks = [
+    { group_id: 'gA', completed_at: 'x', assigneeCount: 1 },
+    { group_id: 'gB', completed_at: 'x', assigneeCount: 1 },
+    { group_id: 'gB', completed_at: null, assigneeCount: 1 },
+    { group_id: 'gB', completed_at: null, assigneeCount: 0 },
+    { group_id: 'gC', completed_at: null, assigneeCount: 1 },
+  ]
+
+  it('orders by sort_index and derives complete/current/locked states', () => {
+    const rows = goalsStageRows({ groups, tasks, edges })
+    expect(rows.map((r) => r.groupId)).toEqual(['gA', 'gB', 'gD', 'gC'])
+    expect(rows.map((r) => r.state)).toEqual(['complete', 'current', 'complete', 'locked'])
+  })
+
+  it('counts done/total and open assigned tasks per stage', () => {
+    const rows = goalsStageRows({ groups, tasks, edges })
+    const b = rows.find((r) => r.groupId === 'gB')!
+    expect(b.done).toBe(1)
+    expect(b.total).toBe(3)
+    expect(b.openAssigned).toBe(1)
+  })
+
+  it('locked stages carry their incomplete blockers; others carry none', () => {
+    const rows = goalsStageRows({ groups, tasks, edges })
+    expect(rows.find((r) => r.groupId === 'gC')!.blockedBy).toEqual(['Pour slab'])
+    expect(rows.find((r) => r.groupId === 'gB')!.blockedBy).toEqual([])
+  })
+
+  it('task-less milestone completes once its predecessor is done', () => {
+    const rows = goalsStageRows({ groups, tasks, edges })
+    const d = rows.find((r) => r.groupId === 'gD')!
+    expect(d.state).toBe('complete')
+    expect(d.total).toBe(0)
+  })
+
+  it('ignores tasks and edges outside the given groups', () => {
+    const rows = goalsStageRows({
+      groups,
+      tasks: [...tasks, { group_id: 'other', completed_at: null, assigneeCount: 5 }],
+      edges: [...edges, { fromGroupId: 'other', toGroupId: 'gA' }],
+    })
+    expect(rows.find((r) => r.groupId === 'gA')!.state).toBe('complete')
   })
 })
