@@ -69,6 +69,8 @@ import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
+import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
+import { stageNumbersByGroupId } from '../../lib/roadmapStageNumbers'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { ChecklistTechTreeAddGroupModal } from './ChecklistTechTreeAddGroupModal'
 import { ChecklistTechTreeLineUpModal } from './ChecklistTechTreeLineUpModal'
@@ -264,6 +266,8 @@ function useTechTreeData(
 type GroupNodeData = {
   groupId: string
   title: string
+  /** 1-based position in the roadmap's stage order; matches the Plan view. */
+  stageNumber: number
   locked: boolean
   collapsed: boolean
   taskCount: number
@@ -545,6 +549,7 @@ function GroupNode({ data }: NodeProps) {
         boxShadow: cardSearchOutline,
       }}
     >
+      {d.stageNumber > 0 ? <RoadmapStageNumberBadge n={d.stageNumber} corner /> : null}
       {d.canEditStructure ? (
         <>
           <button
@@ -1457,6 +1462,9 @@ export function ChecklistTechTreeTab({
     [groups],
   )
 
+  // groups arrive sort_index-ordered from the loader, so this is the stage order
+  const stageNumbers = useMemo(() => stageNumbersByGroupId(groups), [groups])
+
   const flowNodes: Node[] = useMemo(() => {
     return layoutNodes.map((n) => {
       const gid = n.data.groupId as string
@@ -1471,6 +1479,7 @@ export function ChecklistTechTreeTab({
         data: {
           groupId: gid,
           title: g?.title ?? 'Group',
+          stageNumber: stageNumbers.get(gid) ?? 0,
           locked: !gu,
           badge: stageBadgeFor(tlist.map((t) => ({ completedAt: t.completed_at }))),
           lockedHint: gu
@@ -1514,6 +1523,7 @@ export function ChecklistTechTreeTab({
     graphEdges,
     completeGroupIds,
     titleByGroupId,
+    stageNumbers,
     canEditStructure,
     onToggleTask,
     nameById,
