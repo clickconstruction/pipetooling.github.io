@@ -3467,6 +3467,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         borderColor: 'var(--border-strong)',
                       }}
                     >
+                      {/* Same money mark as the Pipeline card's allocate-deposits move. */}
+                      <span aria-hidden>{'💵'}</span>
                       Accounts Receivable
                     </button>
                     {typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0 ? (
