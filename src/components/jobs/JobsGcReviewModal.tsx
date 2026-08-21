@@ -187,6 +187,12 @@ type JobsGcReviewModalProps = {
   users: Array<{ id: string; name: string; email: string | null; role: string }>
   /** Standing copies management is dev-only. */
   isDev: boolean
+  /**
+   * Click a job row → open Edit Job ON TOP of this modal (v2.1976; Edit Job's
+   * overlay z outranks this one). The shell's onSaved refetch re-derives the
+   * row props, so the rollup refreshes in place with the modal still open.
+   */
+  onOpenJob?: (jobId: string) => void
 }
 
 /**
@@ -210,6 +216,7 @@ export function JobsGcReviewModal({
   lastSentByGcId,
   users,
   isDev,
+  onOpenJob,
 }: JobsGcReviewModalProps) {
   const [includeCollections, setIncludeCollections] = useState(false)
   const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
@@ -723,8 +730,32 @@ export function JobsGcReviewModal({
                         ) : null}
                       </td>
                       <td style={{ padding: '0.3rem 0.4rem', color: 'var(--text-muted)' }}>
-                        {r.hcp}
-                        {r.jobName ? ` · ${r.jobName}` : ''}
+                        {onOpenJob ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenJob(r.jobId)}
+                            title="Open Edit Job — set the GC/Builder here"
+                            style={{
+                              padding: 0,
+                              border: 'none',
+                              background: 'none',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                              textAlign: 'left',
+                              color: 'var(--text-blue-700)',
+                              textDecoration: 'underline',
+                              textUnderlineOffset: '2px',
+                            }}
+                          >
+                            {r.hcp}
+                            {r.jobName ? ` · ${r.jobName}` : ''}
+                          </button>
+                        ) : (
+                          <>
+                            {r.hcp}
+                            {r.jobName ? ` · ${r.jobName}` : ''}
+                          </>
+                        )}
                         {r.jobAddress ? (
                           <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
                             {r.jobAddress}
