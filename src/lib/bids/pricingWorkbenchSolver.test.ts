@@ -72,6 +72,51 @@ describe('solveWorkbenchPrices', () => {
     expect(solveWorkbenchPrices([], 0, { targetMarginPct: 50 })).toBeNull()
   })
 
+  it('counts priced uncosted rows toward a target total (the typed number is the whole-bid total)', () => {
+    // BP298 regression: a target of 150k landed at ~240k because ~90k of
+    // no-cost-row revenue rode on top of the solve.
+    const withPricedUncosted: WorkbenchSolverRow[] = [
+      ...rows,
+      { id: 'u1', count: 1, rowCost: 0, unitPrice: 3000, locked: false },
+      { id: 'u2', count: 2, rowCost: 0, unitPrice: 500, locked: false }, // 1000
+    ]
+    const s = solveWorkbenchPrices(withPricedUncosted, 1000, { targetTotal: 12000 })!
+    expect(s.prices.has('u1')).toBe(false)
+    expect(s.prices.has('u2')).toBe(false)
+    // whole-bid total (solved rows + 4000 of uncosted revenue) lands on target
+    expect(s.resultingRevenue).toBeGreaterThan(11900)
+    expect(s.resultingRevenue).toBeLessThan(12150)
+  })
+
+  it('mixes locked, priced-uncosted, and free rows without double-counting', () => {
+    const mixed: WorkbenchSolverRow[] = [
+      { ...rows[0]!, unitPrice: 500, locked: true }, // held revenue 5000
+      rows[1]!,
+      rows[2]!,
+      { id: 'u', count: 1, rowCost: 0, unitPrice: 2000, locked: false },
+    ]
+    const s = solveWorkbenchPrices(mixed, 1000, { targetTotal: 15000 })!
+    // free rows cover 15000 - 5000 held - 2000 uncosted = 8000
+    const solvedRev = s.prices.get('b')! * 2 + s.prices.get('c')! * 4
+    expect(solvedRev).toBeGreaterThan(7900)
+    expect(solvedRev).toBeLessThan(8200)
+    expect(s.resultingRevenue).toBeGreaterThan(14900)
+    expect(s.resultingRevenue).toBeLessThan(15200)
+  })
+
+  it('lands the target blended margin when priced uncosted rows exist', () => {
+    const withPricedUncosted: WorkbenchSolverRow[] = [
+      ...rows,
+      { id: 'u', count: 1, rowCost: 0, unitPrice: 2000, locked: false },
+    ]
+    const s = solveWorkbenchPrices(withPricedUncosted, 1000, { targetMarginPct: 50 })!
+    // totalCost = 5000 → target revenue 10000 INCLUDING the 2000 uncosted revenue
+    expect(s.resultingRevenue).toBeGreaterThan(9900)
+    expect(s.resultingRevenue).toBeLessThan(10150)
+    expect(s.resultingMargin!).toBeGreaterThan(0.49)
+    expect(s.resultingMargin!).toBeLessThan(0.52)
+  })
+
   it('floors at 20% of basis when a target total is absurdly low', () => {
     const s = solveWorkbenchPrices(rows, 0, { targetTotal: 1 })!
     expect(s.resultingRevenue).toBeGreaterThan(700) // 20% of 4000 basis, rounding up
