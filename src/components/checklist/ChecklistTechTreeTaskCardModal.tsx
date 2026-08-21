@@ -260,29 +260,53 @@ export function ChecklistTechTreeTaskCardModal({
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             {titleEditing ? (
-              <input
-                autoFocus
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void saveTitle()
-                  if (e.key === 'Escape') setTitleEditing(false)
+              // A real form so the platform's implicit submission handles
+              // Enter (incl. software keyboards' "go"), not a keydown match.
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void saveTitle()
                 }}
-                disabled={titleSaving}
-                aria-label="Task title"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  font: 'inherit',
-                  fontSize: '1.0625rem',
-                  fontWeight: 600,
-                  padding: '4px 8px',
-                  border: '1px solid #2563eb',
-                  borderRadius: 7,
-                  background: 'var(--surface)',
-                  color: 'var(--text-strong)',
-                }}
-              />
+                style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0 }}
+              >
+                <input
+                  autoFocus
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    // explicit Enter path with preventDefault: covers key
+                    // events whose default (implicit submission) doesn't run,
+                    // without ever double-firing alongside the form submit
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void saveTitle()
+                    }
+                    if (e.key === 'Escape') setTitleEditing(false)
+                  }}
+                  disabled={titleSaving}
+                  aria-label="Task title"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    font: 'inherit',
+                    fontSize: '1.0625rem',
+                    fontWeight: 600,
+                    padding: '4px 8px',
+                    border: '1px solid #2563eb',
+                    borderRadius: 7,
+                    background: 'var(--surface)',
+                    color: 'var(--text-strong)',
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={titleSaving || !titleDraft.trim()}
+                  aria-label="Save title"
+                  style={{ ...iconBtnStyle, background: '#2563eb', borderColor: '#2563eb', color: 'white' }}
+                >
+                  {titleSaving ? '…' : '✓'}
+                </button>
+              </form>
             ) : (
               <h2 id="tech-tree-task-card-title" style={{ margin: 0, fontSize: '1.0625rem', lineHeight: 1.35, flex: 1, minWidth: 0, color: 'var(--text-strong)' }}>
                 {task.title}
@@ -291,17 +315,6 @@ export function ChecklistTechTreeTaskCardModal({
             {canEditStructure && !titleEditing ? (
               <button type="button" onClick={startTitleEdit} aria-label="Rename task" title="Rename task" style={iconBtnStyle}>
                 ✎
-              </button>
-            ) : null}
-            {titleEditing ? (
-              <button
-                type="button"
-                onClick={() => void saveTitle()}
-                disabled={titleSaving || !titleDraft.trim()}
-                aria-label="Save title"
-                style={{ ...iconBtnStyle, background: '#2563eb', borderColor: '#2563eb', color: 'white' }}
-              >
-                {titleSaving ? '…' : '✓'}
               </button>
             ) : null}
             <button type="button" onClick={onClose} aria-label="Close" style={iconBtnStyle}>
@@ -515,13 +528,23 @@ export function ChecklistTechTreeTaskCardModal({
 
         {/* composer */}
         {instanceId ? (
-          <div className="roadmap-task-composer" style={{ display: 'flex', gap: 8, padding: '10px 16px 12px', borderTop: '1px solid var(--border)', flex: 'none' }}>
+          <form
+            className="roadmap-task-composer"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void post()
+            }}
+            style={{ display: 'flex', gap: 8, padding: '10px 16px 12px', borderTop: '1px solid var(--border)', flex: 'none' }}
+          >
             <input
               type="text"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') void post()
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void post()
+                }
               }}
               placeholder="Add a note…"
               disabled={posting}
@@ -538,8 +561,7 @@ export function ChecklistTechTreeTaskCardModal({
               }}
             />
             <button
-              type="button"
-              onClick={() => void post()}
+              type="submit"
               disabled={posting || !draft.trim()}
               aria-label="Post"
               style={{
@@ -556,7 +578,7 @@ export function ChecklistTechTreeTaskCardModal({
             >
               {posting ? '…' : '➤'}
             </button>
-          </div>
+          </form>
         ) : null}
       </div>
     </div>,
