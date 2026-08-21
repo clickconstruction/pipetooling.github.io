@@ -2125,3 +2125,16 @@ body.my-time-boundary-dragging {
     display: none;
   }
 }
+
+/* Roadmap Timeline (v2.1979): stage rail shrinks to badges on phones */
+.roadmap-timeline-rail {
+  width: 200px;
+}
+@media (max-width: 640px) {
+  .roadmap-timeline-rail {
+    width: 52px;
+  }
+  .roadmap-timeline-rail-title {
+    display: none;
+  }
+}
