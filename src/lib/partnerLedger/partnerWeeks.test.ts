@@ -3,6 +3,7 @@ import {
   buildWeekCards,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
+  partnerStubsToJournal,
   type PartnerLedgerStub,
   type PartnerSummary,
 } from './partnerWeeks'
@@ -109,5 +110,27 @@ describe('buildWeekCards', () => {
     expect(cards.map((c) => c.stubId)).toEqual([null, 's11', 's10'])
     expect(cards[2]?.closing).toBe(2142.7)
     expect(cards[2]?.opening).toBe(1642.7)
+  })
+})
+
+describe('partnerStubsToJournal', () => {
+  it('builds the dated journal with a running balance from RPC stubs', () => {
+    const { rows, balance } = partnerStubsToJournal([stub()])
+    expect(rows.map((r) => r.kind)).toEqual(['payout', 'labor', 'addition', 'deduction'])
+    // 1755 + 1051.05 − 150 − 1625
+    expect(balance).toBe(1031.05)
+    expect(rows[0]?.date).toBe('2026-08-14')
+    expect(rows[1]?.label).toBe('Labor — 40.5 h (week of 2026-08-09)')
+  })
+
+  it('chains multiple weeks oldest-first; closing equals the summary balance convention', () => {
+    const older = stub({ id: 's10', period_start: '2026-08-02', period_end: '2026-08-08', additional: [], deductions: [], payments: [], gross_pay: 500 })
+    const { rows, balance } = partnerStubsToJournal([stub(), older])
+    expect(rows[0]?.pay_stub_id).toBe('s10')
+    expect(balance).toBe(1531.05)
+  })
+
+  it('handles the empty payload', () => {
+    expect(partnerStubsToJournal([])).toEqual({ rows: [], balance: 0 })
   })
 })

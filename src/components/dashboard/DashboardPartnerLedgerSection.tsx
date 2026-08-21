@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
-import { netPosition } from '../../lib/partnerLedger/partnerLedgerJournal'
+import { netPosition, type JournalRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import {
   buildWeekCards,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
+  partnerStubsToJournal,
   type PartnerSummary,
   type WeekCard,
 } from '../../lib/partnerLedger/partnerWeeks'
@@ -32,6 +33,9 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
   const [idx, setIdx] = useState(0)
   const [acking, setAcking] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [fullRows, setFullRows] = useState<JournalRow[] | null>(null)
+  const [fullOpen, setFullOpen] = useState(false)
+  const [fullLoading, setFullLoading] = useState(false)
 
   const load = useCallback(async () => {
     // Lens mode (asPartnershipId): dev-only *_as RPCs share the exact inner
@@ -68,6 +72,23 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
 
   if (!loaded || !summary || !summary.modules.weekly_statement || cards.length === 0) return null
 
+  async function toggleFullLedger() {
+    if (fullOpen) {
+      setFullOpen(false)
+      return
+    }
+    setFullOpen(true)
+    if (fullRows == null) {
+      setFullLoading(true)
+      const res = asPartnershipId
+        ? await supabase.rpc('get_partner_ledger_as', { p_partnership_id: asPartnershipId, p_weeks: 520 })
+        : await supabase.rpc('get_my_partner_ledger', { p_weeks: 520 })
+      const stubs = res.error ? [] : parsePartnerLedgerStubs(res.data)
+      setFullRows(partnerStubsToJournal(stubs).rows)
+      setFullLoading(false)
+    }
+  }
+
   async function acknowledge(stubId: string) {
     setAcking(true)
     const { error } = await supabase.rpc('acknowledge_partner_statement', { p_pay_stub_id: stubId })
@@ -100,28 +121,26 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
 
   return (
     <DashboardGroupCard title="Your ledger">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.1rem 0 0.4rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', margin: '0.1rem 0 0.4rem', flexWrap: 'wrap' }}>
         <button
           type="button"
-          aria-label="Older week"
           disabled={idx >= cards.length - 1}
           onClick={() => setIdx((i) => Math.min(cards.length - 1, i + 1))}
-          style={{ font: 'inherit', width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 800, cursor: 'pointer', opacity: idx >= cards.length - 1 ? 0.35 : 1 }}
+          style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: idx >= cards.length - 1 ? 'default' : 'pointer', opacity: idx >= cards.length - 1 ? 0.35 : 1 }}
         >
-          ‹
+          ‹ Older
         </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-700)' }}>
+        <span style={{ textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-700)', minWidth: '11rem' }}>
           Week of {card?.weekStart}
           {card?.open ? ' · in progress' : ''}
         </span>
         <button
           type="button"
-          aria-label="Newer week"
           disabled={idx <= 0}
           onClick={() => setIdx((i) => Math.max(0, i - 1))}
-          style={{ font: 'inherit', width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 800, cursor: 'pointer', opacity: idx <= 0 ? 0.35 : 1 }}
+          style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: idx <= 0 ? 'default' : 'pointer', opacity: idx <= 0 ? 0.35 : 1 }}
         >
-          ›
+          Newer ›
         </button>
       </div>
 
@@ -204,11 +223,57 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
           </span>
         ) : null}
       </div>
-      {idx >= cards.length - 1 && cards.length > 1 ? (
-        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
-          Older weeks live in the office ledger — ask if you need further history.
-        </p>
-      ) : null}
+      <div style={{ marginTop: '0.6rem', paddingTop: '0.55rem', borderTop: '1px solid var(--border)' }}>
+        <button
+          type="button"
+          onClick={() => void toggleFullLedger()}
+          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}
+        >
+          {fullOpen ? '▾ Hide full ledger' : '▸ Full ledger — every posting, all time'}
+        </button>
+        {fullOpen ? (
+          fullLoading || fullRows == null ? (
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>Loading…</p>
+          ) : fullRows.length === 0 ? (
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>Nothing posted yet.</p>
+          ) : (
+            <div style={{ overflowX: 'auto', marginTop: '0.4rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                <thead>
+                  <tr>
+                    {['Date', 'Posting', 'Amount', 'Balance'].map((h, i) => (
+                      <th key={h} style={{ textAlign: i >= 2 ? 'right' : 'left', fontSize: '0.64rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.3rem 0.4rem', borderBottom: '2px solid var(--border)' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...fullRows].reverse().map((r, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
+                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)' }}>
+                        {r.label}
+                        {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
+                      </td>
+                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
+                        {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                      </td>
+                      <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {r.balance < 0 ? '−' : ''}{money(r.balance)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
+                Every statement posting and payout, newest first. Charges reach this ledger through your weekly
+                statements.
+              </p>
+            </div>
+          )
+        ) : null}
+      </div>
     </DashboardGroupCard>
   )
 }
