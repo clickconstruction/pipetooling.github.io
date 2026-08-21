@@ -86,6 +86,17 @@ export function goalsStripRows(args: {
   return rows
 }
 
+/**
+ * The Goals strip's "now:" list truncated to its first `limit` stage titles,
+ * folding the rest into "… +N more" — a goal with a wide work front stays a
+ * one-line card instead of wrapping to four.
+ */
+export function goalsStripNowSummary(currentStages: string[], limit = 3): string {
+  const more = currentStages.length - limit
+  const shown = currentStages.slice(0, limit).join(', ')
+  return more > 0 ? `${shown} … +${more} more` : shown
+}
+
 export type StageBadge = { kind: 'done' } | { kind: 'progress'; done: number; total: number } | null
 
 /**
