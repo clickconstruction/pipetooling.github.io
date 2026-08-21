@@ -7,6 +7,8 @@ import {
   type PlanTask,
 } from '../../lib/roadmapPlanView'
 import { lockedStageHint } from '../../lib/roadmapBridge'
+import { stageNumbersByGroupId } from '../../lib/roadmapStageNumbers'
+import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
 import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
 
 type UserRow = { id: string; name: string; email: string }
@@ -68,6 +70,13 @@ export function ChecklistRoadmapPlanView({
     for (const t of tasks) m.set(t.group_id, [...(m.get(t.group_id) ?? []), t])
     return m
   }, [tasks])
+
+  // groups arrive in the roadmap's stage order; numbers match the Map badges
+  const stageNumbers = useMemo(() => stageNumbersByGroupId(groups), [groups])
+  const numberFor = (groupId: string) => {
+    const n = stageNumbers.get(groupId)
+    return n ? <RoadmapStageNumberBadge n={n} /> : null
+  }
 
   const stats = useMemo(() => planHeaderStats(tasks), [tasks])
   const nowStages = useMemo(
@@ -155,6 +164,7 @@ export function ChecklistRoadmapPlanView({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {numberFor(s.groupId)}
               <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{s.title}</span>
               <span
                 style={{
@@ -288,11 +298,12 @@ export function ChecklistRoadmapPlanView({
                 padding: '0.55rem 0.9rem',
                 marginBottom: '0.4rem',
                 display: 'flex',
-                alignItems: 'baseline',
+                alignItems: 'center',
                 gap: 8,
                 flexWrap: 'wrap',
               }}
             >
+              {numberFor(s.groupId)}
               <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>🔒 {s.title}</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {s.total} task{s.total === 1 ? '' : 's'} · {lockedStageHint(s.blockingTitles, false) ?? 'blocked'}
@@ -317,9 +328,12 @@ export function ChecklistRoadmapPlanView({
                   padding: '0.6rem 0.8rem',
                 }}
               >
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: 6 }}>
-                  {g.complete ? '✓ ' : '⛰ '}
-                  {g.title}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, marginBottom: 6 }}>
+                  {numberFor(g.groupId)}
+                  <span style={{ minWidth: 0 }}>
+                    {g.complete ? '✓ ' : '⛰ '}
+                    {g.title}
+                  </span>
                 </div>
                 <div style={{ height: 6, background: 'var(--bg-muted)', borderRadius: 999, overflow: 'hidden' }}>
                   <div
