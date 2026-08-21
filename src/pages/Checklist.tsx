@@ -27,7 +27,7 @@ import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
-import { goalsStageRows, goalsStripNowSummary, goalsStripRows, lockedStageHint, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
+import { goalsStageRows, goalsStripRows, lockedStageHint, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
@@ -2321,23 +2321,40 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                 {stages.length > 0 ? (
                   /* Segmented bar (v2.2021): one segment per stage in curated order —
                      done solid green, current amber-ringed with its own fill, locked muted. */
-                  <div style={{ display: 'flex', gap: 2, height: 8 }}>
-                    {stages.map((s) => (
+                  <div style={{ display: 'flex', gap: 2, height: 13 }}>
+                    {stages.map((s, stageIndex) => (
                       <span
                         key={s.groupId}
-                        title={`${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : 'milestone'}`}
+                        title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : 'milestone'}`}
                         style={{
                           flex: 1,
                           minWidth: 5,
                           borderRadius: 3,
                           position: 'relative',
                           overflow: 'hidden',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           background: s.state === 'complete' ? '#16a34a' : 'var(--bg-muted)',
                           ...(s.state === 'current' ? { outline: '1.5px solid #d97706', outlineOffset: 1 } : {}),
                         }}
                       >
                         {s.state === 'current' && s.total > 0 && s.done > 0 ? (
                           <span style={{ position: 'absolute', inset: 0, display: 'block', width: `${Math.round((s.done / s.total) * 100)}%`, background: '#2563eb' }} />
+                        ) : null}
+                        {stages.length <= 40 ? (
+                          <span
+                            style={{
+                              position: 'relative',
+                              fontSize: '0.58rem',
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              pointerEvents: 'none',
+                              color: s.state === 'complete' ? 'white' : s.state === 'current' ? 'var(--text-700)' : 'var(--text-faint)',
+                            }}
+                          >
+                            {stageIndex + 1}
+                          </span>
                         ) : null}
                       </span>
                     ))}
@@ -2347,10 +2364,6 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                     <span style={{ display: 'block', width: `${g.pct}%`, height: '100%', background: '#2563eb' }} />
                   </div>
                 )}
-                <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {g.currentStages.length > 0 ? <>now: {goalsStripNowSummary(g.currentStages)}</> : 'all stages complete 🎉'}
-                  {g.openAssigned > 0 ? <> · {g.openAssigned} assigned task{g.openAssigned === 1 ? '' : 's'} open</> : null}
-                </p>
                 {expanded && stages.length > 0 ? (
                   <div onClick={(e) => e.stopPropagation()} style={{ borderTop: '1px solid var(--border)', marginTop: '0.55rem', paddingTop: '0.35rem', cursor: 'default' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.1rem 0 0.3rem' }}>
