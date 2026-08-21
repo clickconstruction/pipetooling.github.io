@@ -30,15 +30,26 @@ describe('buildBuilderQuickLogWrites', () => {
 
   it('defaults an empty note to "<method> follow-up" and dedupes bid ids', () => {
     const w = buildBuilderQuickLogWrites({ customerId: 'c1', checkedBidIds: ['b1', 'b1'], method: 'Text', note: '   ', nowIso: NOW, userId: 'u1' })
-    expect(w.customerContact.details).toBe('Text follow-up')
+    expect(w.customerContact?.details).toBe('Text follow-up')
     expect(w.bidEntries).toHaveLength(1)
+  })
+
+  it('bids-only mode: no customer_contacts row, bids still get notes and stamps', () => {
+    const w = buildBuilderQuickLogWrites({ customerId: 'c1', checkedBidIds: ['b1', 'b2'], method: 'Phone', note: 'GC says waiting on landlord', nowIso: NOW, userId: 'u1', includeBuilderLog: false })
+    expect(w.customerContact).toBeNull()
+    expect(w.bidEntries.map((e) => e.bid_id)).toEqual(['b1', 'b2'])
+    expect(w.bidEntries[0]!.notes).toBe('GC says waiting on landlord')
+    expect(w.bidLastContactUpdates).toEqual([
+      { bidId: 'b1', last_contact: NOW },
+      { bidId: 'b2', last_contact: NOW },
+    ])
   })
 
   it('works with zero checked bids — the call still logs against the builder', () => {
     const w = buildBuilderQuickLogWrites({ customerId: 'c1', checkedBidIds: [], method: 'Email', note: 'left VM', nowIso: NOW, userId: 'u1' })
     expect(w.bidEntries).toEqual([])
     expect(w.bidLastContactUpdates).toEqual([])
-    expect(w.customerContact.details).toBe('left VM')
+    expect(w.customerContact?.details).toBe('left VM')
   })
 })
 

@@ -3,6 +3,11 @@
  * builder → one customer_contacts row + a bids_submission_entries row and a
  * bids.last_contact stamp for every bid the caller checked. Pure row-building
  * only; the component performs the writes.
+ *
+ * v2.2051: `includeBuilderLog: false` builds a bids-only log — the checked
+ * bids get their notes and last_contact stamps, but `customerContact` is null
+ * so the builder's relationship log (and the Oldest-first call queue) doesn't
+ * move. For bid-level facts that aren't a conversation with the builder.
  */
 
 export type BuilderQuickLogWrites = {
@@ -12,7 +17,7 @@ export type BuilderQuickLogWrites = {
     details: string
     contact_method: string
     created_by: string
-  }
+  } | null
   bidEntries: Array<{
     bid_id: string
     contact_method: string
@@ -31,18 +36,23 @@ export function buildBuilderQuickLogWrites(args: {
   note: string
   nowIso: string
   userId: string
+  /** false → bids-only: no customer_contacts row (default true). */
+  includeBuilderLog?: boolean
 }): BuilderQuickLogWrites {
   const { customerId, method, nowIso, userId } = args
   const details = args.note.trim() || `${method} follow-up`
   const bidIds = [...new Set(args.checkedBidIds)]
   return {
-    customerContact: {
-      customer_id: customerId,
-      contact_date: nowIso,
-      details,
-      contact_method: method,
-      created_by: userId,
-    },
+    customerContact:
+      args.includeBuilderLog === false
+        ? null
+        : {
+            customer_id: customerId,
+            contact_date: nowIso,
+            details,
+            contact_method: method,
+            created_by: userId,
+          },
     bidEntries: bidIds.map((bid_id) => ({
       bid_id,
       contact_method: method,
