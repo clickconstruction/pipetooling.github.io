@@ -596,36 +596,60 @@ export function stagesSectionKeyForJobStatus(
 }
 
 /**
+ * Open-ask remainder: what the job's RTB drafts + sent bills still ask for,
+ * net of payments applied to each line (same per-invoice remainder basis as
+ * the Billed Awaiting Payment board). Money already asked for is not
+ * "capable of being billed" again.
+ */
+export function jobOpenBillingRemainderDollars(job: Pick<JobWithDetails, 'invoices' | 'payments'>): number {
+  let s = 0
+  for (const inv of job.invoices ?? []) {
+    if (inv.status !== 'ready_to_bill' && inv.status !== 'billed') continue
+    let applied = 0
+    for (const p of job.payments ?? []) {
+      if (p.invoice_id === inv.id) applied += Number(p.amount ?? 0)
+    }
+    s += Math.max(0, Number(inv.amount ?? 0) - applied)
+  }
+  return s
+}
+
+type CapableToBillJob = Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete' | 'invoices' | 'payments'>
+
+/**
  * Capable-of-Being-Billed kernel (map quirk #8 — previously computed inline
  * twice, in the Working section header and the breakdown modal): value created
- * by % complete minus what has already come off the job. `toBill` may be
- * negative; aggregations clamp/filter it.
+ * by % complete minus what has already come off the job — payments received
+ * AND open asks (RTB drafts + billed-unpaid remainders, v2.1927; before that,
+ * billing a job didn't move the number). `toBill` may be negative;
+ * aggregations clamp/filter it.
  */
-export function jobCapableToBillAmounts(
-  j: Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete'>,
-): { toBill: number; valueCreated: number } {
+export function jobCapableToBillAmounts(j: CapableToBillJob): {
+  toBill: number
+  valueCreated: number
+  openBilling: number
+} {
   const totalBill = Number(j.revenue ?? 0)
   const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
   const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
-  const toBill = valueCreated - (totalBill - remaining)
-  return { toBill, valueCreated }
+  const openBilling = jobOpenBillingRemainderDollars(j)
+  const toBill = valueCreated - (totalBill - remaining) - openBilling
+  return { toBill, valueCreated, openBilling }
 }
 
 /** Working section header total: sum of positive to-bill amounts. */
-export function capableToBillTotalFromWorking(
-  working: Array<Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete'>>,
-): number {
+export function capableToBillTotalFromWorking(working: CapableToBillJob[]): number {
   return working.reduce((s, j) => s + Math.max(0, jobCapableToBillAmounts(j).toBill), 0)
 }
 
 /** Breakdown-modal rows: positive to-bill only, sorted by amount descending. */
-export function buildCapableToBillBreakdownRows<
-  T extends Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete'>,
->(working: T[]): Array<{ job: T; toBill: number; valueCreated: number }> {
+export function buildCapableToBillBreakdownRows<T extends CapableToBillJob>(
+  working: T[],
+): Array<{ job: T; toBill: number; valueCreated: number; openBilling: number }> {
   return working
     .map((j) => {
-      const { toBill, valueCreated } = jobCapableToBillAmounts(j)
-      return { job: j, toBill, valueCreated }
+      const { toBill, valueCreated, openBilling } = jobCapableToBillAmounts(j)
+      return { job: j, toBill, valueCreated, openBilling }
     })
     .filter((r) => r.toBill > 0)
     .sort((a, b) => b.toBill - a.toBill)

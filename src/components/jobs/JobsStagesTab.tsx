@@ -4139,7 +4139,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(720px, calc(100vw - 2rem))', maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
                         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Capable of Being Billed — Breakdown</h2>
                         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                          Jobs in Working with billable value. Sorted by amount.
+                          Jobs in Working with value not yet paid, billed, or queued to bill. Sorted by amount.
                         </p>
                         {rows.length === 0 ? (
                           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs with billable amount</p>
@@ -4151,12 +4151,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>%</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Done</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Open bills</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>To Bill</th>
                                 <th style={{ padding: '0.5rem 0.75rem', width: 80 }} />
                               </tr>
                             </thead>
                             <tbody>
-                              {rows.map(({ job, toBill, valueCreated }) => (
+                              {rows.map(({ job, toBill, valueCreated, openBilling }) => (
                                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     <div>{job.job_name || '—'}</div>
@@ -4165,6 +4166,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(Number(job.payments_made ?? 0))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{openBilling > 0 ? formatCurrency(openBilling) : '—'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(toBill)}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     <button
@@ -4189,7 +4191,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             </tbody>
                             <tfoot>
                               <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
-                                <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>Total</td>
+                                <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>Total</td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(capableToBillTotal)}</td>
                                 <td />
                               </tr>
