@@ -14,6 +14,7 @@ import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithD
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
+import type { StageRow } from '../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 const VISIBILITY_REFETCH_MIN_MS = 30_000
@@ -54,6 +55,12 @@ type JobsListCacheContextValue = {
    * stats failures never touch the board (best-effort layer).
    */
   headerStats: StagesHeaderStats | null
+  /**
+   * Lean billed StageRows from the same stats fetch (v2.2025): feed the
+   * Pipeline chase-queue card before the billed scope's full rows load.
+   * Lean rows carry ids/amounts/dates but no names.
+   */
+  leanBilledRows: StageRow[] | null
   refreshHeaderStats: (customerFilter: string | null, options?: { force?: boolean }) => Promise<void>
   /**
    * Scope-aware cache (v2.1823, plan PR 2): which sections' rows the shared
@@ -99,6 +106,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [jobsListDataKey, setJobsListDataKey] = useState<string | null>(null)
   const [mergedScopes, setMergedScopes] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
   const [headerStats, setHeaderStats] = useState<StagesHeaderStats | null>(null)
+  const [leanBilledRows, setLeanBilledRows] = useState<StageRow[] | null>(null)
   const headerStatsInFlightRef = useRef(false)
   const headerStatsLastFetchRef = useRef<{ key: string; at: number } | null>(null)
 
@@ -270,6 +278,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           headerStatsLastFetchRef.current = { key, at: Date.now() }
           setHeaderStats(res.stats)
+          setLeanBilledRows(res.leanBilledRows)
         }
       } finally {
         headerStatsInFlightRef.current = false
@@ -415,6 +424,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     runFetchJobs,
     fetchPaidJobsIfNeeded,
     headerStats,
+    leanBilledRows,
     refreshHeaderStats,
     mergedScopes,
     scopeLoading,

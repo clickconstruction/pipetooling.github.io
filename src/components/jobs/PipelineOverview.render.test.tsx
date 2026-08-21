@@ -76,3 +76,41 @@ describe('PipelineOverview fix-ups strip', () => {
     expect(screen.getByText('No email · 4')).toBeTruthy()
   })
 })
+
+describe('PipelineOverview payment chase card (v2.2025)', () => {
+  it('renders the claim, tier chips, and badge; Start call mode fires onStartChase', () => {
+    const onStartChase = vi.fn()
+    render(
+      <PipelineOverview
+        {...props({
+          chase: { dueCustomers: 4, dueDollars: 36029, askCount: 3, brokenCount: 1, waitingCount: 1, disputeCount: 2 },
+          onStartChase,
+        })}
+      />,
+    )
+    expect(screen.getByText("Ask 4 customers when they'll pay — $36,029")).toBeTruthy()
+    expect(screen.getByText('Never asked · 3')).toBeTruthy()
+    expect(screen.getByText('Broken promise · 1')).toBeTruthy()
+    expect(screen.getByText('Waiting · 1')).toBeTruthy()
+    expect(screen.getByText('Dispute · 2')).toBeTruthy()
+    fireEvent.click(screen.getByText('Start call mode →'))
+    expect(onStartChase).toHaveBeenCalledOnce()
+  })
+
+  it('shows the quiet everyone-asked state at zero due customers', () => {
+    render(
+      <PipelineOverview
+        {...props({
+          chase: { dueCustomers: 0, dueDollars: 0, askCount: 0, brokenCount: 0, waitingCount: 2, disputeCount: 0 },
+          onStartChase: vi.fn(),
+        })}
+      />,
+    )
+    expect(screen.getByText('Payment follow-up · everyone asked')).toBeTruthy()
+  })
+
+  it('hides entirely when the chase prop is absent (non-office roles)', () => {
+    render(<PipelineOverview {...props()} />)
+    expect(screen.queryByText(/Start call mode/)).toBeNull()
+  })
+})

@@ -24,6 +24,7 @@ import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { mondayOfWeekYmd } from './stagesWeeklyMovement'
+import { buildJobsStagesBoardLists, type StageRow } from '../jobsStagesBoard'
 import {
   assembleLeanStatsJobs,
   COLLECTED_WEEKS,
@@ -39,7 +40,7 @@ import {
 } from './stagesHeaderStats'
 
 export type FetchStagesHeaderStatsResult =
-  | { ok: true; stats: StagesHeaderStats }
+  | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[] }
   | { ok: false; error: string }
 
 /**
@@ -107,6 +108,10 @@ export async function fetchStagesHeaderStats(
         paid: { count: paidCount },
         collectedByWeek: collectedByWeekFromPayments(payments, now),
       },
+      // Lean billed rows for the chase-queue card (v2.2025): the same
+      // assembled jobs the stats ran over, shaped by the board kernel. Lean
+      // rows lack names — the call-mode modal re-derives from full rows.
+      leanBilledRows: buildJobsStagesBoardLists(jobs, '').billedActiveRows,
     }
   } catch (e) {
     return { ok: false, error: formatErrorMessage(e, 'Could not load board stats') }
