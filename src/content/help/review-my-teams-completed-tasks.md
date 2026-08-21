@@ -14,7 +14,9 @@ Michael A · done yesterday 4:41 PM · "Mounted and tested"
 
 ## Signing off
 
-Tap a row to expand it — you'll see the card's whole history: every completion, reopen, sign-off, and note, with who and when. If the work is good, tap {{button:outline|Dismiss}}. The card is stamped signed off and leaves the queue; the worker sees "signed off" on their card.
+If the work is good, tap the green {{button:green|✓ Dismiss}} rail on the row's left (the same one-tap pattern as the Dispatch inbox). The card is stamped signed off and leaves the queue; the worker sees "signed off" on their card.
+
+Tap the row itself to expand it first when you want the full story — every completion, reopen, sign-off, and note, with who and when ({{button:outline|Dismiss}} works from there too).
 
 ## Sending it back
 

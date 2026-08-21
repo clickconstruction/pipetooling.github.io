@@ -235,7 +235,37 @@ export function ChecklistReviewInboxSection({
           const events = eventsByInstance.get(row.instanceId) ?? []
           const busy = busyId === row.instanceId
           return (
-            <li key={row.instanceId} style={{ borderBottom: '1px solid var(--border)' }}>
+            <li key={row.instanceId} style={{ borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'stretch' }}>
+              {/* Full-height sign-off rail on the left — same pattern as the
+                  Dispatch inbox's Dismiss rail, for one-tap clearing. */}
+              <button
+                type="button"
+                onClick={() => void dismiss(row)}
+                disabled={busy}
+                title="Sign off and clear from review"
+                style={{
+                  flexShrink: 0,
+                  alignSelf: 'stretch',
+                  width: 88,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  border: 'none',
+                  borderRight: '1px solid var(--border)',
+                  borderRadius: 0,
+                  background: 'var(--bg-green-tint)',
+                  color: 'var(--text-green-800)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>✓</span>
+                {busy ? '…' : 'Dismiss'}
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
               <button
                 type="button"
                 onClick={() => {
@@ -346,6 +376,7 @@ export function ChecklistReviewInboxSection({
                   </div>
                 </div>
               ) : null}
+              </div>
             </li>
           )
         })}
