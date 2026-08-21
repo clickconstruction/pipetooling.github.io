@@ -89,6 +89,7 @@ when_to_read:
    - [dev-login](#dev-login)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
+   - [customer-portal](#customer-portal)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -846,6 +847,14 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Deployment**: [`supabase/functions/send-workflow-notification/DEPLOY.md`](../supabase/functions/send-workflow-notification/DEPLOY.md)
 
 ---
+
+### customer-portal
+
+**Purpose**: Payload for the no-login customer/GC portal page (`/portal?t=<token>`, portal train PR 1, v2.1982): resolves the capability token (sha256 hash lookup in `customer_portal_links`, revoked → 404) and returns only that customer's data — company letterhead block, open billed lines with amounts + Stripe `hosted_invoice_url` pay links (billed jobs without a line fall back to the job-level remainder), total due, and the non-paid jobs a visit request may reference.
+
+**Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>`
+
+**Auth**: none (`verify_jwt = false` in `config.toml` — the token IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
 
 ### get-estimate-for-customer
 

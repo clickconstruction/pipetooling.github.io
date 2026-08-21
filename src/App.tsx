@@ -43,6 +43,7 @@ const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaf
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
+import CustomerPortal from './pages/CustomerPortal'
 import ContractAccept from './pages/ContractAccept'
 import ContractBookPreview from './pages/ContractBookPreview'
 import TaskShortcut from './pages/TaskShortcut'
@@ -206,6 +207,7 @@ function AppContent() {
         <Route path="/contract/accept" element={<ContractAccept />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
+        <Route path="/portal" element={<CustomerPortal />} />
         <Route
           path="/estimate/customer-accept-preview/:id"
           element={
