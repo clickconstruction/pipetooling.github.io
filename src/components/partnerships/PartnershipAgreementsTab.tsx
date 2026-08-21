@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { agreementGating, partitionAgreementDocs } from '../../lib/partnerLedger/agreementGating'
+import { denverCalendarDayKey } from '../../utils/dateUtils'
 
 /**
  * Partnerships → Agreements tab (PARTNERSHIPS_PLAN.md PR 8): the partnership
@@ -86,6 +88,16 @@ export function PartnershipAgreementsTab({
     await load()
   }
 
+  async function setLinked(docId: string, linked: boolean) {
+    setErr(null)
+    const { error } = await supabase
+      .from('person_contract_documents')
+      .update({ partnership_id: linked ? partnershipId : null })
+      .eq('id', docId)
+    if (error) setErr(error.message)
+    await load()
+  }
+
   async function draftNotice() {
     setBusy(true)
     setErr(null)
@@ -112,64 +124,82 @@ export function PartnershipAgreementsTab({
     )
   }
 
-  const today = new Date().toISOString().slice(0, 10)
-  const anySigned = docs.some((d) => d.status === 'signed')
-  const lapsed = docs.some((d) => d.status !== 'signed' && d.sign_by != null && d.sign_by < today)
+  const today = denverCalendarDayKey(Date.now())
+  const { linked, others } = partitionAgreementDocs(docs, partnershipId)
+  const { dealSigned, lapsed } = agreementGating(docs, partnershipId, today)
+
+  const docRow = (d: DocRow, isLinked: boolean) => {
+    const overdue = isLinked && d.status !== 'signed' && d.sign_by != null && d.sign_by < today
+    const daysLeft = d.sign_by != null ? Math.ceil((new Date(d.sign_by).getTime() - Date.now()) / 86400000) : null
+    return (
+      <div key={d.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.4rem 0.75rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+          <b>{d.document_name}</b> <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>v{d.lineage_version}</span>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {d.status === 'signed'
+              ? `signed ${d.signed_at ?? ''}`
+              : d.status === 'sent'
+                ? `sent ${d.sent_at ? new Date(d.sent_at).toLocaleDateString() : ''}${d.dashboard_prompt_after_clock_in ? ' · prompting at clock-in' : ''}`
+                : 'not sent'}
+          </div>
+        </div>
+        {d.status === 'signed' ? (
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: isLinked ? '#16a34a' : 'var(--text-muted)' }}>signed ✓</span>
+        ) : isLinked ? (
+          <>
+            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              sign by
+              <input
+                type="date"
+                value={d.sign_by ?? ''}
+                onChange={(e) => void setSignBy(d.id, e.target.value || null)}
+                style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+              />
+            </label>
+            {d.sign_by != null ? (
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: overdue ? 'var(--text-red-600)' : 'var(--text-amber-700)' }}>
+                {overdue ? `lapsed ${d.sign_by}` : `${daysLeft} day(s) left`}
+              </span>
+            ) : null}
+          </>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void setLinked(d.id, !isLinked)}
+          style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 650, padding: '0.15rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: isLinked ? 'var(--text-muted)' : 'var(--text-link)', cursor: 'pointer' }}
+        >
+          {isLinked ? 'unlink from this deal' : 'link to this deal'}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', margin: '0.25rem 0 0.4rem' }}>
-        <span style={{ fontSize: '0.8rem', fontWeight: 650 }}>Agreement versions</span>
-        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: anySigned ? '#16a34a' : 'var(--text-amber-700)' }}>
-          {anySigned ? 'signed agreement on file' : 'no signed agreement on file'}
+        <span style={{ fontSize: '0.8rem', fontWeight: 650 }}>This deal’s agreement</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: dealSigned ? '#16a34a' : 'var(--text-amber-700)' }}>
+          {dealSigned ? 'deal agreement signed' : 'no signed deal agreement'}
         </span>
       </div>
 
-      {docs.length === 0 ? (
+      {linked.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
-          No agreement documents for {personName} yet — create one under People → Contracts (doc type “agreement”), then
-          manage its sign-by date here.
+          No document is linked to this partnership yet — create {personName}’s partnership agreement under People →
+          Contracts (doc type “agreement”), then link it here. Only linked documents count toward the deal.
         </p>
       ) : (
-        docs.map((d) => {
-          const overdue = d.status !== 'signed' && d.sign_by != null && d.sign_by < today
-          const daysLeft = d.sign_by != null ? Math.ceil((new Date(d.sign_by).getTime() - Date.now()) / 86400000) : null
-          return (
-            <div key={d.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.4rem 0.75rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
-              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <b>{d.document_name}</b> <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>v{d.lineage_version}</span>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  {d.status === 'signed'
-                    ? `signed ${d.signed_at ?? ''}`
-                    : d.status === 'sent'
-                      ? `sent ${d.sent_at ? new Date(d.sent_at).toLocaleDateString() : ''}${d.dashboard_prompt_after_clock_in ? ' · prompting at clock-in' : ''}`
-                      : 'not sent'}
-                </div>
-              </div>
-              {d.status === 'signed' ? (
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a' }}>signed ✓</span>
-              ) : (
-                <>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                    sign by
-                    <input
-                      type="date"
-                      value={d.sign_by ?? ''}
-                      onChange={(e) => void setSignBy(d.id, e.target.value || null)}
-                      style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
-                    />
-                  </label>
-                  {d.sign_by != null ? (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: overdue ? 'var(--text-red-600)' : 'var(--text-amber-700)' }}>
-                      {overdue ? `lapsed ${d.sign_by}` : `${daysLeft} day(s) left`}
-                    </span>
-                  ) : null}
-                </>
-              )}
-            </div>
-          )
-        })
+        linked.map((d) => docRow(d, true))
       )}
+
+      {others.length > 0 ? (
+        <>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.75rem 0 0.1rem' }}>
+            Other paperwork on file — not this deal
+          </div>
+          {others.map((d) => docRow(d, false))}
+        </>
+      ) : null}
 
       <div
         style={{
@@ -188,15 +218,15 @@ export function PartnershipAgreementsTab({
         Unsigned past its sign-by date, the app <i>drafts</i> the written 30-day termination notice (§8a) and logs it
         below for you to review, print, and send yourself — delivery is recorded by hand. Auto-serve is
         {autoNoticeOn ? ' ON in config but has no machinery behind it in this build;' : ' off;'} nothing is ever sent
-        without your explicit act, pending Texas-attorney sign-off on delivery channels. Signing any current version
-        moots the drafts.
+        without your explicit act, pending Texas-attorney sign-off on delivery channels. Signing any version linked to
+        this deal moots the drafts — older paperwork that isn’t linked doesn’t count.
         <div style={{ marginTop: '0.45rem' }}>
           <button
             type="button"
-            disabled={busy || anySigned}
-            title={anySigned ? 'A signed agreement is on file — no notice needed' : undefined}
+            disabled={busy || dealSigned}
+            title={dealSigned ? 'This deal’s agreement is signed — no notice needed' : undefined}
             onClick={() => void draftNotice()}
-            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: anySigned ? 'var(--text-muted)' : 'var(--text-red-600)', cursor: 'pointer', opacity: busy || anySigned ? 0.55 : 1 }}
+            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: dealSigned ? 'var(--text-muted)' : 'var(--text-red-600)', cursor: 'pointer', opacity: busy || dealSigned ? 0.55 : 1 }}
           >
             {busy ? 'Drafting…' : 'Draft §8a notice (opens print view)'}
           </button>
