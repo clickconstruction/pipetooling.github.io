@@ -32,6 +32,8 @@ export type PartnerTimelineRow = {
   amount: number | null
   /** running balance AFTER this posting; null for events/pending */
   balance: number | null
+  /** service type name for job rows — renders as the trade pill (PLUM/ELEC) */
+  trade?: string | null
 }
 
 export type PartnerTimelineFilter = 'all' | 'money' | 'infractions' | 'events'
@@ -40,7 +42,7 @@ export type TimelineEventInputs = {
   pendingCharges: { type: string; amount: number; occurred_date: string; description: string | null }[]
   ncns: { work_date: string; details: string | null }[]
   declines: { declined_at: string | null; decline_reason: string | null; amount: number | null }[]
-  confirmedJobs: { label: string; confirmed_at: string | null }[]
+  confirmedJobs: { label: string; confirmed_at: string | null; service_type_name?: string | null }[]
   statements: { period_start: string; period_end: string; partner_ack_at: string | null; company_ack_at: string | null }[]
 }
 
@@ -129,13 +131,17 @@ export function buildPartnerTimeline(journal: JournalRow[], events: TimelineEven
   }
   for (const j of events.confirmedJobs) {
     if (!j.confirmed_at) continue
+    // With a service type the trade pill replaces "Job #"; without one the
+    // old sentence stands whole.
+    const trade = j.service_type_name?.trim() || null
     rows.push({
       date: j.confirmed_at.slice(0, 10),
       kind: 'job',
-      label: `Job #${j.label} confirmed as partner-majority`,
+      label: trade ? `${j.label} confirmed as partner-majority` : `Job #${j.label} confirmed as partner-majority`,
       sub: 'now visible to the partner',
       amount: null,
       balance: null,
+      trade,
       seq: 0,
     })
   }

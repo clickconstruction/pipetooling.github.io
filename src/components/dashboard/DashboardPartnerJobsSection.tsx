@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { DashboardGroupCard } from './DashboardGroupCard'
 
 /**
@@ -16,6 +17,8 @@ type JobRow = {
   job_name: string | null
   status: string | null
   confirmed_at: string | null
+  /** null until the partner_jobs_payload migration adds it — pill fail-softs */
+  service_type_name: string | null
   profit_share: number | null
 }
 
@@ -60,6 +63,7 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
               job_name: typeof r.job_name === 'string' ? r.job_name : null,
               status: typeof r.status === 'string' ? r.status : null,
               confirmed_at: typeof r.confirmed_at === 'string' ? r.confirmed_at : null,
+              service_type_name: typeof r.service_type_name === 'string' ? r.service_type_name : null,
               profit_share: Number.isFinite(Number(r.profit_share)) && r.profit_share != null ? Number(r.profit_share) : null,
             }))
         : [],
@@ -132,11 +136,14 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
           Jobs appear here once the office confirms you did the majority of the work.
         </p>
       ) : (
-        rows.map((j) => (
+        rows.map((j) => {
+          const pill = buildServiceTypeTradePill(j.service_type_name)
+          return (
           <div key={j.job_id} style={{ borderBottom: '1px solid var(--border)', padding: '0.45rem 0' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.4rem 0.7rem' }}>
               <span style={{ flex: '1 1 200px', minWidth: 0, fontSize: '0.85rem' }}>
-                <b>#{j.label}</b>
+                {pill ? <span style={{ ...pill.style, marginTop: 0, marginRight: '0.4rem', verticalAlign: '1px' }}>{pill.label}</span> : null}
+                <b>{pill ? j.label : `#${j.label}`}</b>
                 {j.job_name && j.job_name !== j.label ? ` — ${j.job_name}` : ''}
                 <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                   {j.status ?? ''}
@@ -208,7 +215,8 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
               </div>
             ) : null}
           </div>
-        ))
+          )
+        })
       )}
     </DashboardGroupCard>
   )

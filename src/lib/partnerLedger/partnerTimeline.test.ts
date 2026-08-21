@@ -45,6 +45,21 @@ describe('buildPartnerTimeline', () => {
     expect(rows.filter((r) => ['ncns', 'decline', 'job', 'stmt'].includes(r.kind)).every((r) => r.amount === null)).toBe(true)
   })
 
+  it('confirmed jobs with a service type carry trade and drop the "Job #" prefix', () => {
+    const rows = buildPartnerTimeline([], {
+      ...events,
+      confirmedJobs: [
+        { label: '781', confirmed_at: '2026-08-14T20:00:00Z', service_type_name: 'Plumbing' },
+        { label: '813', confirmed_at: '2026-08-13T20:00:00Z' },
+      ],
+    })
+    const jobs = rows.filter((r) => r.kind === 'job')
+    expect(jobs[0]?.trade).toBe('Plumbing')
+    expect(jobs[0]?.label).toBe('781 confirmed as partner-majority')
+    expect(jobs[1]?.trade ?? null).toBeNull()
+    expect(jobs[1]?.label).toBe('Job #813 confirmed as partner-majority')
+  })
+
   it('skips declines without a declined_at and statements render ack states', () => {
     const rows = buildPartnerTimeline([], {
       ...events,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import {
   buildPartnerJournal,
   type JournalAdditionalLine,
@@ -113,7 +114,7 @@ export function PartnershipTimelineTab({
       supabase.from('people').select('account_user_id').eq('id', personId).single(),
       supabase
         .from('jobs_ledger')
-        .select('hcp_number, click_number, job_name, partner_confirmed_at')
+        .select('hcp_number, click_number, job_name, partner_confirmed_at, service_types(name)')
         .eq('partner_person_id', personId)
         .not('partner_confirmed_at', 'is', null),
     ])
@@ -142,10 +143,11 @@ export function PartnershipTimelineTab({
       pendingCharges: (pendRes.data ?? []) as TimelineEventInputs['pendingCharges'],
       ncns,
       declines: decRes.error ? [] : ((decRes.data ?? []) as TimelineEventInputs['declines']),
-      confirmedJobs: ((jobsRes.data ?? []) as { hcp_number: string | null; click_number: string | null; job_name: string | null; partner_confirmed_at: string | null }[]).map(
+      confirmedJobs: ((jobsRes.data ?? []) as { hcp_number: string | null; click_number: string | null; job_name: string | null; partner_confirmed_at: string | null; service_types: { name: string } | null }[]).map(
         (j) => ({
           label: j.hcp_number?.trim() || j.click_number?.trim() || j.job_name?.trim() || '—',
           confirmed_at: j.partner_confirmed_at,
+          service_type_name: j.service_types?.name ?? null,
         }),
       ),
       statements: stubs.map((s) => ({
@@ -261,6 +263,7 @@ export function PartnershipTimelineTab({
       ) : (
         visible.map((r, i) => {
           const m = MARK[r.kind]
+          const pill = r.trade ? buildServiceTypeTradePill(r.trade) : null
           return (
             <div key={i} style={{ display: 'flex', gap: '0.6rem', padding: '0.45rem 0', borderBottom: '1px solid var(--border)', alignItems: 'flex-start' }}>
               <span style={{ flex: 'none', width: '4.6rem', fontSize: '0.72rem', color: 'var(--text-muted)', paddingTop: '0.15rem', fontVariantNumeric: 'tabular-nums' }}>{r.date}</span>
@@ -268,6 +271,7 @@ export function PartnershipTimelineTab({
                 {m.text}
               </span>
               <span style={{ flex: 1, minWidth: 0, fontSize: '0.85rem', color: 'var(--text-700)' }}>
+                {pill ? <span style={{ ...pill.style, marginTop: 0, marginRight: '0.4rem', verticalAlign: '1px' }}>{pill.label}</span> : null}
                 {r.label}
                 {r.sub ? <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{r.sub}</span> : null}
               </span>
