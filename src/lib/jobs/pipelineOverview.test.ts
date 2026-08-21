@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPipelineMoneyMoves, buildPipelineMoneyStory } from './pipelineOverview'
+import { buildPipelineFixups, buildPipelineMoneyMoves, buildPipelineMoneyStory } from './pipelineOverview'
 import type { StagesHeaderStats } from './stagesHeaderStats'
 
 const stats = (over: Partial<StagesHeaderStats> = {}): StagesHeaderStats => ({
@@ -93,5 +93,21 @@ describe('buildPipelineMoneyMoves', () => {
     expect(moves.find((m) => m.key === 'chase-90')?.why).toBe('1 bill waiting 90+ days')
     expect(moves.find((m) => m.key === 'allocate-deposits')?.claim).toBe('Allocate 1 bank deposit')
     expect(moves.find((m) => m.key === 'fix-dates')?.claim).toBe('1 billed job has no bill line')
+  })
+})
+
+describe('buildPipelineFixups', () => {
+  it('builds a chip per non-zero count, in strip order, with tones', () => {
+    const fixups = buildPipelineFixups({ noCustomer: 1, noPictures: 3, noEmail: 2 })
+    expect(fixups.map((f) => [f.key, f.label, f.tone])).toEqual([
+      ['no-customer', 'No customer · 1', 'red'],
+      ['no-pictures', 'No customer pictures · 3', 'red'],
+      ['no-email', 'No email · 2', 'amber'],
+    ])
+  })
+
+  it('drops zero counts; all-clean yields an empty list (strip hides)', () => {
+    expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 5 }).map((f) => f.key)).toEqual(['no-email'])
+    expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 0 })).toEqual([])
   })
 })

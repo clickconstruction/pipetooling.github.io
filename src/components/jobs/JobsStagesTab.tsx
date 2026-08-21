@@ -2636,6 +2636,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 setBankPaymentsModalOpen(true)
               }}
               onFocusSection={focusStagesSection}
+              fixupCounts={{
+                noCustomer: stagesJobsWithoutCustomer.length,
+                noPictures: stagesWorkingJobsWithoutPictures.length,
+                noEmail: stagesReadyToBillNoEmailJobs.length,
+              }}
+              onFixup={(key) => {
+                if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
+                else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
+                else setStagesNoEmailModalOpen(true)
+              }}
               onChase90={() => {
                 setStagesSearchQuery('')
                 setBilledAgingFilter('90')
@@ -2945,7 +2955,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <span aria-hidden>🕒</span>
               {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
             </button>
-            {stagesJobsWithoutCustomer.length > 0 || stagesWorkingJobsWithoutPictures.length > 0 ? (
+            {/* On the New view these three alerts dock at the foot of Today's
+                Money Opportunities instead (v2.1961; the strip stays for Old).
+                The gate now includes the No-email count — previously a lone
+                No-email alert never rendered (wrapper only checked the first two). */}
+            {pipelineView !== 'new' &&
+            (stagesJobsWithoutCustomer.length > 0 ||
+              stagesWorkingJobsWithoutPictures.length > 0 ||
+              stagesReadyToBillNoEmailJobs.length > 0) ? (
               <div
                 style={{
                   marginLeft: 'auto',
