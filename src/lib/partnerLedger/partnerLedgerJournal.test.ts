@@ -50,6 +50,26 @@ describe('buildPartnerJournal', () => {
     expect(out.rows).toEqual([])
     expect(out.balance).toBe(0)
   })
+
+  it('books charges at their own date and moves the balance (charges-at-date)', () => {
+    const { rows, balance } = buildPartnerJournal({
+      stubs: [{ id: 's1', period_start: '2026-08-09', period_end: '2026-08-15', hours_total: 10, gross_pay: 500 }],
+      additional: [],
+      deductions: [],
+      payments: [],
+      charges: [
+        { date: '2026-04-13', label: 'Car repairs', amount: -1238.65 },
+        { date: '2026-08-20', label: 'Correction credit', amount: 25 },
+      ],
+    })
+    expect(rows.map((r) => [r.date, r.kind])).toEqual([
+      ['2026-04-13', 'deduction'],
+      ['2026-08-15', 'labor'],
+      ['2026-08-20', 'addition'],
+    ])
+    expect(rows[0]?.balance).toBe(-1238.65)
+    expect(balance).toBe(-713.65)
+  })
 })
 
 describe('summarizePendingOffsets', () => {

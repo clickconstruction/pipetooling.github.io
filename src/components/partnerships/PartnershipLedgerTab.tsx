@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import {
+  POSITIVE_OFFSET_TYPES,
   buildPartnerJournal,
   mergePendingIntoJournal,
   netPosition,
+  pendingOffsetSignedAmount,
   summarizePendingOffsets,
   type JournalAdditionalLine,
   type JournalDeduction,
@@ -45,29 +47,50 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
     const stubs = (stubsRes.data ?? []) as JournalStub[]
     const ids = stubs.map((s) => s.id)
     let additional: JournalAdditionalLine[] = []
-    let deductions: JournalDeduction[] = []
+    let deductions: (JournalDeduction & { person_offset_id: string | null })[] = []
     let payments: JournalPayment[] = []
     if (ids.length > 0) {
       const [aRes, dRes, pRes] = await Promise.all([
         supabase.from('pay_stub_additional_lines').select('pay_stub_id, description, line_total').in('pay_stub_id', ids),
-        supabase.from('pay_stub_deductions').select('pay_stub_id, description, amount').in('pay_stub_id', ids),
+        supabase.from('pay_stub_deductions').select('pay_stub_id, description, amount, person_offset_id').in('pay_stub_id', ids),
         supabase.from('pay_stub_payments').select('pay_stub_id, amount, paid_at, memo').in('pay_stub_id', ids),
       ])
       additional = (aRes.data ?? []) as JournalAdditionalLine[]
-      deductions = (dRes.data ?? []) as JournalDeduction[]
+      deductions = (dRes.data ?? []) as (JournalDeduction & { person_offset_id: string | null })[]
       payments = (pRes.data ?? []) as JournalPayment[]
     }
-    const pendRes = await supabase
+    const offRes = await supabase
       .from('person_offsets')
-      .select('type, amount, occurred_date, description')
+      .select('id, type, amount, occurred_date, description, pay_stub_id')
       .eq('person_id', personId)
-      .is('pay_stub_id', null)
-    const journal = buildPartnerJournal({ stubs, additional, deductions, payments })
+    type OffsetRow = JournalPendingOffset & { id: string; pay_stub_id: string | null }
+    const offsets = ((offRes.data ?? []) as OffsetRow[]) || []
+
+    // Charges-at-date: every charge-type offset books at its occurred_date,
+    // attached to a statement or not. Statement deductions that merely mirror
+    // one of those offsets are excluded so nothing counts twice; deductions
+    // from positive-type offsets (e.g. profit-share reversals) and manual
+    // deductions keep booking on the statement week.
+    const chargeOffsets = offsets.filter((o) => !POSITIVE_OFFSET_TYPES.has(o.type))
+    const chargeOffsetIds = new Set(chargeOffsets.map((o) => o.id))
+    const journal = buildPartnerJournal({
+      stubs,
+      additional,
+      deductions: deductions
+        .filter((d) => d.person_offset_id == null || !chargeOffsetIds.has(d.person_offset_id))
+        .map(({ pay_stub_id, description, amount }) => ({ pay_stub_id, description, amount })),
+      payments,
+      charges: chargeOffsets.map((o) => ({
+        date: o.occurred_date,
+        label: o.description || o.type,
+        amount: pendingOffsetSignedAmount(o),
+      })),
+    })
     setRows(journal.rows)
     setBalance(journal.balance)
-    const pendList = ((pendRes.data ?? []) as JournalPendingOffset[]) || []
-    setPending(summarizePendingOffsets(pendList))
-    setPendingRows([...pendList].sort((a, b) => b.occurred_date.localeCompare(a.occurred_date)))
+    const posPending = offsets.filter((o) => POSITIVE_OFFSET_TYPES.has(o.type) && o.pay_stub_id == null)
+    setPending(summarizePendingOffsets(posPending))
+    setPendingRows([...posPending].sort((a, b) => b.occurred_date.localeCompare(a.occurred_date)))
   }, [personId])
 
   useEffect(() => {
@@ -151,9 +174,8 @@ export function PartnershipLedgerTab({ personId }: { personId: string }) {
         </div>
       )}
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Newest first; each row’s balance is the running balance after that posting. Rows with a “—” balance are charges
-        waiting for the next statement — they sit at their date but move nothing until attached. Append-only: reversals
-        are new rows, never edits. The weekly statement is a window over this journal.
+        Newest first; each row’s balance is the running balance after that posting. Charges count at the date they
+        happened — statements list them later as the paper record. Append-only: reversals are new rows, never edits.
       </p>
     </div>
   )
