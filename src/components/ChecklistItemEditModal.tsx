@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableSelect } from './SearchableSelect'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
+import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
 
 type UserRole =
   | 'dev'
@@ -192,6 +193,20 @@ export function ChecklistItemEditModal({
           }))
         )
       }
+      // v2.2057: make the occurrences follow the edit — before this, changing
+      // days/dates/people updated the template only and every occurrence kept
+      // the old schedule and roster.
+      const regen = await applyEditRegeneration(
+        itemId,
+        {
+          repeat_type: form.repeat_type,
+          repeat_days_of_week: form.repeat_type === 'day_of_week' ? form.repeat_days_of_week : null,
+          start_date: form.start_date,
+          repeat_end_date: form.repeat_end_date || null,
+        },
+        form.assigned_to_user_ids,
+      )
+      if (!regen.ok) throw new Error(regen.error ?? 'Failed to update occurrences')
       window.dispatchEvent(new Event('checklist-item-saved'))
       onSaved()
       onClose()

@@ -1542,7 +1542,7 @@ Skipped events return 200 with `skipped: true` (e.g. not a clock-in/out transiti
 
 ### send-scheduled-reminders
 
-**Purpose**: Send Web Push reminders for incomplete checklist tasks at configured times (CST). Invoked by pg_cron every 15 minutes.
+**Purpose**: Send Web Push reminders for incomplete checklist tasks at configured times (CST). Invoked by pg_cron every 15 minutes. Since v2.2056 the 03:00 CST run also performs the **weekly materialization top-up**: every active `day_of_week` item is stocked with occurrence rows 35 days ahead (mirrors `src/lib/checklistMaterialize.ts` — keep the Deno copy in sync; upserts against the `(checklist_item_id, scheduled_date)` unique index; new instances copy the item's current assignees). Pass `{"materialize": true}` in the body (with the cron secret) to force the top-up outside the 03:00 slot — the response then carries a `materialized` count.
 
 **Endpoint**: `POST /functions/v1/send-scheduled-reminders`
 
