@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
-import { calendarBand, observedPace, paceLabel } from '../../lib/roadmapCalendar'
+import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
+import { bandFraction, calendarBand, observedPace, paceLabel } from '../../lib/roadmapCalendar'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import type { PlanTask } from '../../lib/roadmapPlanView'
@@ -37,11 +37,16 @@ function waveName(index: number, count: number): string {
  * live progress through the current wave. A calendar band up top (v2.2089)
  * lays real months out with a today tick and a 🎯 flag where the remaining
  * work lands at the OBSERVED pace (completions in the last 4 weeks; all-time
- * fallback) — no slider, no stored dates, nothing to configure.
+ * fallback) — no stored dates, nothing to configure. A what-if dial
+ * (v2.2090) drives a dashed ghost flag beside the solid one: ephemeral,
+ * anchored by a "▲ you" tick at the observed pace, never mistaken for truth.
  * Tapping a row unfolds its N.M tasks; tapping a task opens the task card.
  */
 export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds, completeIds, users, onOpenTask }: Props) {
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
+  // What-if dial (v2.2090): ephemeral, never persisted — the solid flag stays the
+  // observed truth; this only drives the dashed ghost. null until touched.
+  const [whatIf, setWhatIf] = useState<number | null>(null)
 
   const tasksByGroup = useMemo(() => {
     const m = new Map<string, PlanTask[]>()
@@ -62,8 +67,21 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   // — the projection's only input. There is no dial: dates come from the real rate.
   const pace = useMemo(() => observedPace(tasks, now), [tasks, now])
   const projection = useMemo(() => paceProjection(rows, pace?.tasksPerWeek ?? 1, now), [rows, pace, now])
-  const band = useMemo(() => calendarBand(pace ? projection : [], now), [pace, projection, now])
+  const whatIfProjection = useMemo(() => (whatIf == null ? null : paceProjection(rows, whatIf, now)), [rows, whatIf, now])
+  // Band months follow the real pace; with no real pace yet, the what-if dial alone stretches them.
+  const band = useMemo(
+    () => calendarBand(pace ? projection : (whatIfProjection ?? []), now),
+    [pace, projection, whatIfProjection, now],
+  )
   const remainingTotal = useMemo(() => rows.reduce((a, r) => a + r.remainingTasks, 0), [rows])
+  /** Dashed ghost flag for the what-if pace (only next to a real solid flag). */
+  const ghost = useMemo(() => {
+    if (!pace || whatIfProjection == null || whatIfProjection.length === 0) return null
+    const finish = whatIfProjection[whatIfProjection.length - 1]!.finish
+    return { left: Math.min(bandFraction(band, finish), 0.985), label: approxDateLabel(finish, now) }
+  }, [pace, whatIfProjection, band, now])
+  const ghostOnly = !pace && whatIfProjection != null
+  const whatIfDefault = pace ? Math.min(Math.max(Math.round(pace.tasksPerWeek), 1), 20) : 5
 
   // wave geometry: width share ∝ remaining tasks, with a floor so empty/done
   // waves stay visible; all fractions of the lane width
@@ -265,9 +283,43 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
               today
             </span>
           </span>
+          {ghost ? (
+            <span style={{ position: 'absolute', top: 0, bottom: 0, left: pct(ghost.left), borderLeft: '2px dashed var(--text-link)' }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: 2,
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  color: 'var(--text-link)',
+                  whiteSpace: 'nowrap',
+                  ...(ghost.left > 0.8 ? { right: 4 } : { left: 4 }),
+                }}
+              >
+                what-if {ghost.label}
+              </span>
+            </span>
+          ) : null}
           {band.goal && band.goal.clamped ? (
             // goal beyond the 12-month horizon: the runway runs off the edge; the date lives in the caption
             <span style={{ position: 'absolute', top: 20, right: 4, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1 }}>⟶</span>
+          ) : band.goal && ghostOnly ? (
+            // no real pace yet: the only flag IS the what-if — draw it dashed so it never reads as truth
+            <span style={{ position: 'absolute', top: 0, bottom: 0, left: pct(band.goal.left), borderLeft: '2px dashed var(--text-link)' }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: 2,
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  color: 'var(--text-link)',
+                  whiteSpace: 'nowrap',
+                  ...(band.goal.left > 0.8 ? { right: 4 } : { left: 4 }),
+                }}
+              >
+                what-if {band.goal.label}
+              </span>
+            </span>
           ) : band.goal ? (
             <span style={{ position: 'absolute', top: 2, left: pct(band.goal.left), transform: 'translateX(-4px)', fontSize: '0.95rem', lineHeight: 1 }}>
               🎯
@@ -314,10 +366,66 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                   </span>
                 </>
               ) : null}
+              {ghost && whatIf != null ? (
+                <>
+                  <span style={{ color: 'var(--border-strong)' }}>·</span>
+                  <span style={{ color: 'var(--text-link)' }}>
+                    what-if <b style={{ fontVariantNumeric: 'tabular-nums' }}>{whatIf}/week</b> ≈ {ghost.label.replace('≈ ', '')}
+                  </span>
+                </>
+              ) : null}
             </>
+          ) : ghostOnly && band.goal && whatIf != null ? (
+            <span style={{ color: 'var(--text-link)' }}>
+              what-if <b style={{ fontVariantNumeric: 'tabular-nums' }}>{whatIf}/week</b> ≈ {band.goal.label.replace('≈ ', '')} — no completions yet, so this
+              is only the dial
+            </span>
           ) : (
             <span>Complete tasks to project a finish date — the calendar uses your real completion pace.</span>
           )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, marginLeft: 'auto' }}>
+            <span>what if</span>
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <input
+                type="range"
+                min={1}
+                max={20}
+                value={whatIf ?? whatIfDefault}
+                onChange={(e) => setWhatIf(Number(e.target.value))}
+                aria-label="What-if pace, tasks per week"
+                style={{ width: 130 }}
+              />
+              {pace ? (
+                <span
+                  title={`your real pace: ${paceLabel(pace.tasksPerWeek)}/week`}
+                  style={{
+                    position: 'absolute',
+                    bottom: -9,
+                    left: `${((Math.min(Math.max(pace.tasksPerWeek, 1), 20) - 1) / 19) * 100}%`,
+                    transform: 'translateX(-50%)',
+                    fontSize: '0.52rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.03em',
+                    color: FRONT,
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  ▲ you
+                </span>
+              ) : null}
+            </span>
+            <b style={{ color: 'var(--text-link)', fontVariantNumeric: 'tabular-nums' }}>{whatIf ?? whatIfDefault}/week</b>
+            {whatIf != null ? (
+              <button
+                type="button"
+                onClick={() => setWhatIf(null)}
+                style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.72rem', padding: 0, textDecoration: 'underline' }}
+              >
+                clear
+              </button>
+            ) : null}
+          </label>
         </div>
       </div>
 
