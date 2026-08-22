@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
+import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
@@ -43,6 +46,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
   onChanged: () => void
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const initialStatus = (job.status ?? 'working') as JobStepperStatus
   const [status, setStatus] = useState<JobStepperStatus>(
     JOB_STEPPER_ORDER.includes(initialStatus) ? initialStatus : 'working',
@@ -52,6 +56,8 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
   const [paidModalOpen, setPaidModalOpen] = useState(false)
   const [collectionsConfirm, setCollectionsConfirm] = useState<null | 'to' | 'from'>(null)
   const [collectionsNote, setCollectionsNote] = useState('')
+  /** RTB → Working needs a reason (v2.2065): null = closed, string = the reason being typed. */
+  const [sendBackReason, setSendBackReason] = useState<string | null>(null)
   /** Shell guard (v2.1935): open dollars that would land on no bill line if the to-Billed flip proceeds. */
   const [shellGuardOpen, setShellGuardOpen] = useState<number | null>(null)
 
@@ -64,6 +70,16 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
 
   async function moveTo(to: JobStepperStatus) {
     if (busy) return
+    if (
+      to === 'working' &&
+      status === 'ready_to_bill' &&
+      (sendBackReason == null || sendBackReasonError(sendBackReason) != null)
+    ) {
+      // Sending a finished job back to the crew needs a reason (v2.2065) —
+      // it lands on their My Schedule card so the send-back isn't a mystery.
+      if (sendBackReason == null) setSendBackReason('')
+      return
+    }
     if (to === 'paid') {
       // Never a raw flip — the Record payment window enforces mark_job_paid's
       // rules (one-click Move to Paid when the balance is already $0).
@@ -108,6 +124,11 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
       }
       setStatus(to)
       if (to !== 'billed') setInCollections(false)
+      if (to === 'working' && status === 'ready_to_bill' && sendBackReason != null) {
+        const noted = await postSendBackReasonNote(job.id, authUser?.id, sendBackReason)
+        if (!noted) showToast('Sent back, but the reason note could not be posted — add it in Job activity.', 'warning')
+      }
+      setSendBackReason(null)
       showToast(`Moved to ${JOB_STEPPER_LABELS[to]}.`, 'success')
       onChanged()
     } catch (e) {
@@ -265,6 +286,44 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
           <button
             type="button"
             onClick={() => setShellGuardOpen(null)}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
+
+      {sendBackReason != null ? (
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+          <input
+            type="text"
+            value={sendBackReason}
+            onChange={(e) => setSendBackReason(e.target.value)}
+            placeholder="Why is it going back? (required — the crew sees this)"
+            maxLength={500}
+            style={{ flex: '1 1 16rem', minWidth: 0, padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+          />
+          <button
+            type="button"
+            disabled={busy || sendBackReasonError(sendBackReason) != null}
+            title={sendBackReasonError(sendBackReason) ?? undefined}
+            onClick={() => void moveTo('working')}
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              background: sendBackReasonError(sendBackReason) == null && !busy ? '#3b82f6' : 'var(--bg-muted)',
+              color: sendBackReasonError(sendBackReason) == null && !busy ? '#fff' : 'var(--text-muted)',
+              border: 'none',
+              borderRadius: 6,
+              cursor: sendBackReasonError(sendBackReason) == null && !busy ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {busy ? '…' : 'Send back to Working'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSendBackReason(null)}
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
           >
             Cancel
