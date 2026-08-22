@@ -6,6 +6,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { ChecklistSkeleton } from './DashboardSkeletons'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
+import VehicleTaskContextModal from '../checklist/VehicleTaskContextModal'
+import { isVehicleTaskTitle, stripVehicleTaskMarker } from '../../lib/vehicleFleet'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import ChecklistItemMuteModal from '../ChecklistItemMuteModal'
 import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -70,6 +73,23 @@ export function DashboardMyInboxCard({
 }) {
   const { showToast } = useToastContext()
   const isDev = role === 'dev'
+  const canOpenVehiclesPage = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
+
+  // "🚗 vehicle" chip on vehicle maintenance tasks (v2.2094) — opens the vitals modal.
+  const vehicleChip = (instanceId: string) => (
+    <button
+      type="button"
+      title="See this vehicle’s vitals"
+      onClick={(e) => {
+        e.stopPropagation()
+        setVehicleCtxInstanceId(instanceId)
+      }}
+      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.5rem', borderRadius: 7, border: 'none', background: 'var(--bg-teal-tint, var(--bg-blue-tint))', color: 'var(--text-teal-700, var(--text-blue-800))', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer' }}
+    >
+      🚗 vehicle
+    </button>
+  )
 
   const checklistToggleInFlightRef = useRef(new Set<string>())
   const [outstandingItems, setOutstandingItems] = useState<ChecklistInstance[]>([])
@@ -607,7 +627,8 @@ export function DashboardMyInboxCard({
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? 'var(--text-muted)' : 'inherit' }}>
-                      <ChecklistTitleWithLinks title={title} links={links} />
+                      <ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />
+                      {isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}
                     </span>
                     {isMobile && inst.completed_at && (
                       <span style={{ display: 'block', marginTop: 2, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -702,7 +723,8 @@ export function DashboardMyInboxCard({
                       aria-label="Mark complete"
                     />
                     <span style={{ flex: 1, fontWeight: 500 }}>
-                      <ChecklistTitleWithLinks title={title} links={links} />
+                      <ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />
+                      {isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                       {' '}({formatTDays(getDaysUntilDue(inst.scheduled_date))})
                     </span>
@@ -1147,6 +1169,13 @@ export function DashboardMyInboxCard({
         onClose={() => setMuteModalItemId(null)}
         onSaved={() => loadTodayChecklist()}
       />
+      {vehicleCtxInstanceId && (
+        <VehicleTaskContextModal
+          instanceId={vehicleCtxInstanceId}
+          canOpenVehiclesPage={canOpenVehiclesPage}
+          onClose={() => setVehicleCtxInstanceId(null)}
+        />
+      )}
     </>
   )
 }

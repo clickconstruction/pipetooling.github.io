@@ -1,0 +1,3 @@
+# 20260822213000 — vehicle_context_for_instance RPC (v2.2094)
+
+`vehicle_context_for_instance(p_instance_id uuid) → jsonb`, SECURITY DEFINER. Powers the 🚗 chip modal on checklist vehicle-maintenance tasks: vehicle identity + oil fields, the task (title/note/due/creator name), current holder (motor-pool aware), latest odometer, last oil change, current insurance period, up to 5 open problems, last 3 service events. Returns NULL unless the caller is assigned to the instance (`checklist_instance_assignees`) or an office vehicle-pool role (`is_dev`/`is_pay_approved_master`/`is_assistant`) — vehicle tables are office-pool + current-holder RLS, and the assignee may be neither. Read-only; EXECUTE granted to `authenticated`, revoked from `anon`. Idempotent (`CREATE OR REPLACE`).

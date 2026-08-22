@@ -3,7 +3,9 @@ import {
   buildVehicleLedger,
   isMotorPoolPossession,
   staleOdometerCallList,
+  isVehicleTaskTitle,
   maintenanceChecklistTitle,
+  stripVehicleTaskMarker,
   maintenanceTaskCounts,
   openMaintenanceTasks,
   type VehicleMaintenanceTask,
@@ -518,6 +520,13 @@ describe('vehicle maintenance tasks', () => {
   })
   it('builds the checklist title with the vehicle link token', () => {
     expect(maintenanceChecklistTitle('2019 Ford F250', 'Change battery')).toBe('2019 Ford F250 — Change battery {{1:vehicle}}')
+  })
+  it('the 🚗 chip detects and strips the marker (v2.2094)', () => {
+    const title = maintenanceChecklistTitle('2019 Ford F250', 'Change battery')
+    expect(isVehicleTaskTitle(title)).toBe(true)
+    expect(isVehicleTaskTitle('Clean office')).toBe(false)
+    expect(stripVehicleTaskMarker(title)).toBe('2019 Ford F250 — Change battery')
+    expect(stripVehicleTaskMarker('no marker here')).toBe('no marker here')
   })
   it('completed tasks land in the ledger as task_done rows', () => {
     const rows = buildVehicleLedger({
