@@ -15,3 +15,17 @@ export function openHtmlPrintWindow(html: string): boolean {
   win.onafterprint = () => win.close()
   return true
 }
+
+/**
+ * Same window.open glue WITHOUT triggering print — for read-only previews
+ * (e.g. GC Review's Email… Preview, v2.2061: see the statement exactly as the
+ * recipient will). Same popup-blocked contract as openHtmlPrintWindow.
+ */
+export function openHtmlPreviewWindow(html: string): boolean {
+  const win = window.open('', '_blank')
+  if (!win) return false
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  return true
+}

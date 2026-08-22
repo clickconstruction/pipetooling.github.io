@@ -3,6 +3,7 @@ import {
   buildGcReviewShareAllEmailHtml,
   buildGcReviewShareAllEmailText,
   buildGcStatementEmailHtml,
+  buildGcStatementEmailPreviewHtml,
   buildGcStatementEmailText,
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
@@ -134,5 +135,22 @@ describe('gcReviewShareAllEmail', () => {
     expect(text).toContain('Knight Contracting · 1 job · $450.00')
     expect(text).toContain('H & I Construction · 1 job · $1,200.00')
     expect(text).toContain('Total owed: $1,650.00')
+  })
+})
+
+describe('buildGcStatementEmailPreviewHtml', () => {
+  it('wraps the exact email body in a standalone document headed by the subject', () => {
+    const g = group()
+    const html = buildGcStatementEmailPreviewHtml(g, 'Open balances — Aug 21, 2026', { dateStr: 'Aug 21, 2026' })
+    expect(html).toContain('<!doctype html>')
+    expect(html).toContain('Preview — what the recipient sees')
+    expect(html).toContain('<strong>Subject:</strong> Open balances — Aug 21, 2026')
+    expect(html).toContain(buildGcStatementEmailHtml(g, { dateStr: 'Aug 21, 2026' }))
+  })
+
+  it('escapes the subject and GC name', () => {
+    const html = buildGcStatementEmailPreviewHtml(group({ gcName: 'A & B <Builders>' }), 'Re: <script>', {})
+    expect(html).not.toContain('<script>')
+    expect(html).toContain('A &amp; B &lt;Builders&gt;')
   })
 })
