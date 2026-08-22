@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
+import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
@@ -301,6 +302,7 @@ export function BidsPricingTab({
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
   const [wbCopyingPrices, setWbCopyingPrices] = useState(false)
+  const [wbFillingBook, setWbFillingBook] = useState(false)
   /** The spotlight walkthrough (v2.2021): null = closed, else the steps whose anchors exist. */
   const [wbTourSteps, setWbTourSteps] = useState<SpotlightTourStep[] | null>(null)
   // Iteration 2 — scenarios: revenue per bid-owned Pricing (the cover-letter
@@ -1297,6 +1299,27 @@ export function BidsPricingTab({
       showToast(`Scenario "${source.name} copy" created — you’re viewing it. Star it when it should be what the customer sees.`, 'success')
     } finally {
       setWbCloning(false)
+    }
+  }
+
+  /** Workbench: assign every exact-name book match in one batch (v2.2060). */
+  async function fillMatchingBookEntries(matches: BookEntryMatch[]) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId || matches.length === 0) return
+    setWbFillingBook(true)
+    try {
+      const { error: err } = await supabase.from('bid_pricing_assignments').insert(
+        matches.map((m) => ({ bid_id: bidId, count_row_id: m.countRowId, price_book_entry_id: m.entryId, price_book_version_id: versionId })),
+      )
+      if (err) {
+        setError(err.message)
+        return
+      }
+      await loadBidPricingAssignments(bidId, versionId)
+      showToast(`Assigned ${matches.length} row${matches.length === 1 ? '' : 's'} from the book.`, 'success')
+    } finally {
+      setWbFillingBook(false)
     }
   }
 
@@ -2792,12 +2815,43 @@ export function BidsPricingTab({
                       </button>
                     </div>
 
+                    {(() => {
+                      const bookMatches = matchCountRowsToBookEntries(
+                        eff.map((r) => ({ id: r.countRow.id, fixture: r.countRow.fixture, hasAssignment: r.assignment != null })),
+                        priceBookEntries.map((e) => ({ id: e.id, name: e.fixture_types?.name ?? null })),
+                      )
+                      const activeBookName =
+                        priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ??
+                        templatePriceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ??
+                        'this pricing'
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Price book</span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>
+                            {activeBookName} · {priceBookEntries.length} entr{priceBookEntries.length === 1 ? 'y' : 'ies'}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={wbFillingBook || bookMatches.length === 0}
+                            onClick={() => void fillMatchingBookEntries(bookMatches)}
+                            title={bookMatches.length === 0 ? 'No unassigned rows exactly match a book entry name' : 'Assign each matching row its book entry — prices fill from the book'}
+                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: bookMatches.length === 0 ? 'not-allowed' : 'pointer', opacity: wbFillingBook || bookMatches.length === 0 ? 0.55 : 1 }}
+                          >
+                            {wbFillingBook ? 'Filling…' : `Fill ${bookMatches.length} matching from book`}
+                          </button>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            exact name matches only — use each row's “assign…” for the rest
+                          </span>
+                        </div>
+                      )
+                    })()}
+
                     <div data-tour="workbench-rows" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
-                      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem', minWidth: 760 }}>
+                      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem', minWidth: 900 }}>
                         <thead>
                           <tr>
-                            {['', 'Fixture or tie-in', 'Count', 'Cost/unit', 'Sale price/unit', 'Revenue', 'Profit', 'Margin'].map((h, i) => (
-                              <th key={h || 'lock'} style={{ textAlign: i >= 2 && i !== 4 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                            {['', 'Fixture or tie-in', 'Count', 'Cost/unit', 'Book entry', 'Sale price/unit', 'Revenue', 'Profit', 'Margin'].map((h, i) => (
+                              <th key={h || 'lock'} style={{ textAlign: i >= 2 && i !== 4 && i !== 5 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -2833,6 +2887,81 @@ export function BidsPricingTab({
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', minWidth: '9rem' }} onClick={(e) => e.stopPropagation()}>
+                                  {r.entry ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border)', color: 'var(--text-blue-700)', borderRadius: 6, padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                      {r.entry.fixture_types?.name ?? 'entry'} · ${formatCurrency(Number(r.entry.total_price) || 0)}
+                                      <button
+                                        type="button"
+                                        onClick={() => void removePricingAssignment(r.countRow.id)}
+                                        title="Unassign this book entry"
+                                        aria-label={`Unassign book entry from ${r.countRow.fixture}`}
+                                        style={{ font: 'inherit', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ) : (
+                                    <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
+                                      {pricingAssignmentDropdownOpen === r.countRow.id ? (
+                                        <input
+                                          type="text"
+                                          autoFocus
+                                          value={pricingAssignmentSearches[r.countRow.id] ?? ''}
+                                          onChange={(e) => setPricingAssignmentSearches((prev) => ({ ...prev, [r.countRow.id]: e.target.value }))}
+                                          placeholder="Search the book…"
+                                          aria-label={`Assign a book entry to ${r.countRow.fixture}`}
+                                          style={{ width: '9rem', font: 'inherit', fontSize: '0.78rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                                        />
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPricingAssignmentSearches((prev) => ({ ...prev, [r.countRow.id]: r.countRow.fixture ?? '' }))
+                                            setPricingAssignmentDropdownOpen(r.countRow.id)
+                                          }}
+                                          title="Assign a price-book entry — the book's price fills the row"
+                                          style={{ font: 'inherit', fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', background: 'none', borderRadius: 6, padding: '0.12rem 0.55rem', cursor: 'pointer' }}
+                                        >
+                                          assign…
+                                        </button>
+                                      )}
+                                      {pricingAssignmentDropdownOpen === r.countRow.id ? (() => {
+                                        const term = (pricingAssignmentSearches[r.countRow.id] ?? '').toLowerCase()
+                                        const options = priceBookEntries
+                                          .filter((e) => (e.fixture_types?.name ?? '').toLowerCase().includes(term))
+                                          .slice(0, 12)
+                                        return (
+                                          <div style={{ position: 'absolute', top: '100%', left: 0, minWidth: '13rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, marginTop: '0.2rem', maxHeight: 220, overflowY: 'auto', zIndex: 30, boxShadow: '0 8px 20px rgba(0,0,0,0.18)' }}>
+                                            {options.length > 0 ? (
+                                              options.map((e) => (
+                                                <button
+                                                  key={e.id}
+                                                  type="button"
+                                                  onClick={() => {
+                                                    void savePricingAssignment(r.countRow.id, e.id)
+                                                    setPricingAssignmentSearches((prev) => {
+                                                      const next = { ...prev }
+                                                      delete next[r.countRow.id]
+                                                      return next
+                                                    })
+                                                    setPricingAssignmentDropdownOpen(null)
+                                                  }}
+                                                  style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', width: '100%', textAlign: 'left', font: 'inherit', fontSize: '0.78rem', padding: '0.35rem 0.55rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                                                >
+                                                  <span>{e.fixture_types?.name ?? ''}</span>
+                                                  <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(Number(e.total_price) || 0)}</span>
+                                                </button>
+                                              ))
+                                            ) : (
+                                              <div style={{ padding: '0.45rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No book entries match — add it in the Old view.</div>
+                                            )}
+                                          </div>
+                                        )
+                                      })() : null}
+                                    </div>
+                                  )}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
                                   <input

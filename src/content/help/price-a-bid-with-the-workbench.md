@@ -15,6 +15,12 @@ The structure bar spells out the two levels: a **Version** has its own takeoff a
 
 A scenario showing {{chip:yellow|No prices yet}} offers a one-click **copy prices from** your priced scenario, or price it with the solver. {{button:outline|+ Duplicate scenario}} clones the one you're viewing (the star stays put).
 
+## Price from the book
+
+The Workbench reads your price book directly. A **Book entry** column on every row shows the assigned entry (name · book price) — the book's price flows straight into the sale column — or an **assign…** search: type, pick, priced. Typing over a book price still works and becomes an override, exactly like the Old view.
+
+Above the table, {{button:blue|Fill N matching from book}} assigns every unassigned row whose name **exactly** matches a book entry, in one click — the button counts the matches before you press it, so "Fill 0 matching" means the remaining rows need the per-row search. The line beside it names the book you're drawing from.
+
 ## Price to a number
 
 1. Your **Revenue, Our cost, Profit, and Margin** stay pinned at the top — they move as you work.
