@@ -7,6 +7,8 @@ import { useMemo } from 'react'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
+import { JobCombineStatusNotice } from './JobCombineStatusNotice'
+import { useJobStatusPctPair } from './useJobStatusPctPair'
 
 type JobFormDeleteMigrateModalsProps = {
   editing: JobWithDetails | null
@@ -110,6 +112,11 @@ export function JobFormDeleteMigrateModals({
   const dryRunDropped = Object.entries(migrateBidDryRun?.dropped ?? {}).filter(([, n]) => Number(n) > 0)
   const dryRunMoved = Object.entries(migrateBidDryRun?.moved ?? {}).filter(([, n]) => Number(n) > 0)
   const prettyCountKey = (k: string) => k.replace(/_/g, ' ')
+  // Source-vs-target status/% conflict notice for the job-target path (v2.2068).
+  const { pair: migrateStatusPair, loading: migrateStatusPairLoading } = useJobStatusPctPair(
+    migrateJobModalOpen && !targetingBid ? (editing?.id ?? null) : null,
+    migrateJobModalOpen && !targetingBid ? migrateTargetJobId : null,
+  )
 
   return (
     <>
@@ -670,6 +677,11 @@ export function JobFormDeleteMigrateModals({
                   </tr>
                 </tbody>
               </table>
+              {migrateTargetJobId ? (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <JobCombineStatusNotice pair={migrateStatusPair} loading={migrateStatusPairLoading} />
+                </div>
+              ) : null}
             </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
