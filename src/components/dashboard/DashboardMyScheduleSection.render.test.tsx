@@ -137,35 +137,32 @@ describe('DashboardMyScheduleSection pictures link', () => {
     expect(screen.getByLabelText('Open customer pictures')).toBeTruthy()
   })
 
-  it('moved-today card: % stack under the button AND the movement bar (v2.1567)', async () => {
+  it('moved-today card: exactly ONE % display — the bar legend (v2.2073)', async () => {
     pctTodayResult = new Map([[JOB_ID, { pct: 62, delta: 13 }]])
     renderSection()
-    // Stack delta line + bar right label both carry the movement.
-    expect(await screen.findAllByText('▲ 13 today')).toHaveLength(2)
-    // Bar footer's combined "62% done" label (the stack splits it across spans).
-    expect(screen.getByText('62% done')).toBeTruthy()
+    // v2.2073 killed the duplicate right-column % stack: the movement reads once.
+    expect(await screen.findAllByText('▲ 13 today')).toHaveLength(1)
+    expect(screen.getByText(/62%/)).toBeTruthy()
     pctTodayResult = new Map()
   })
 
-  it('unmoved card: % stack with "no change today", NO bar (v2.1567)', async () => {
+  it('unmoved card: bar still renders, with "no change today" (v2.2073)', async () => {
     pctTodayResult = new Map([[JOB_ID, { pct: 75, delta: 0 }]])
     renderSection()
     expect(await screen.findByText('no change today')).toBeTruthy()
     expect(screen.queryByText(/▲|▼/)).toBeNull()
-    expect(screen.queryByText('75% done')).toBeNull() // bar absent; stack renders 75% + "done" in separate spans
+    expect(screen.getByText(/75%/)).toBeTruthy()
     pctTodayResult = new Map()
   })
 
-  it('% stack is anchored in the button column, not on the address line (v2.1591)', async () => {
+  it('delta-hidden card (RLS hides notes): pct legend renders alone (v2.2073)', async () => {
     pctTodayResult = new Map([[JOB_ID, { pct: 62, delta: null }]])
     renderSection({ role: 'helpers' })
-    const pct = await screen.findByText('62%')
-    // The stack's IMMEDIATE previous sibling in the column is the Leave Report
-    // button — the whole point of v2.1591 (fixed distance, no address-line ride).
-    const stack = pct.parentElement as HTMLElement
-    const prev = stack.previousElementSibling as HTMLElement | null
-    expect(prev).toBeTruthy()
-    expect(/leave\s*report|report\s*due/i.test(prev?.textContent ?? '')).toBe(true)
+    expect(await screen.findByText(/62%/)).toBeTruthy()
+    expect(screen.queryByText(/today/)).toBeNull()
+    // The action row pairs Leave Report with Update % done on today cards.
+    expect(screen.getByText('Leave Report')).toBeTruthy()
+    expect(screen.getByText('Update % done')).toBeTruthy()
     pctTodayResult = new Map()
   })
 
