@@ -29,6 +29,7 @@ import {
 } from '../../lib/bidLossCategories'
 import {
   type LedgerPrefixMap,
+  bidNumberMatchesQuery,
   formatBidLedgerNumberLabel,
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
@@ -63,11 +64,14 @@ type LensBid = {
   raw: BidWithBuilder
 }
 
+// The one white thing on the panel's gray stage — same treatment as the
+// Waiting to hear card (v2.2083): bg-page on the panel was nearly invisible.
 const cardStyle: CSSProperties = {
-  border: '1px solid var(--border)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 8,
   padding: '0.75rem 0.9rem',
-  background: 'var(--bg-page)',
+  background: 'var(--surface)',
+  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.07)',
 }
 
 function bidLensLabel(bid: BidWithBuilder, prefixMap: LedgerPrefixMap): string {
@@ -105,6 +109,7 @@ export function BidsWhyWeLostLens({
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
+  const [lossSearchQuery, setLossSearchQuery] = useState('')
   const [tabCaptureOpen, setTabCaptureOpen] = useState(false)
   const [savingTabBidId, setSavingTabBidId] = useState<string | null>(null)
   /** "bids by" estimator scope (v2.2053) — '' = all; scopes the WHOLE lens (headline, rail, queue). */
@@ -170,9 +175,25 @@ export function BidsWhyWeLostLens({
 
   // Per-GC copies: a bid sent to three GCs gets a queue entry under each.
   // The outcome is per-bid, so recording it under any GC clears every copy.
+  // Search narrows the queue (rail + bids), never the headline — "N need a
+  // reason" stays a status of the whole queue, not of the query.
+  const searchedLensBids = useMemo(() => {
+    const q = lossSearchQuery.trim().toLowerCase()
+    if (!q) return lensBids
+    return lensBids.filter(
+      (b) =>
+        b.project.toLowerCase().includes(q) ||
+        b.builderName.toLowerCase().includes(q) ||
+        b.label.toLowerCase().includes(q) ||
+        (b.address ?? '').toLowerCase().includes(q) ||
+        (b.estimatorName ?? '').toLowerCase().includes(q) ||
+        bidNumberMatchesQuery(b.raw, lossSearchQuery, ledgerPrefixMap),
+    )
+  }, [lensBids, lossSearchQuery, ledgerPrefixMap])
+
   const expandedLensBids = useMemo<RecipientExpanded<LensBid>[]>(
-    () => lensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
-    [lensBids, recipientsByBidId],
+    () => searchedLensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
+    [searchedLensBids, recipientsByBidId],
   )
 
   const groups = useMemo(() => groupLossTriageByBuilder(expandedLensBids), [expandedLensBids])
@@ -375,6 +396,23 @@ export function BidsWhyWeLostLens({
         >
           {needTotal > 0 ? `${needTotal} lost bid${needTotal === 1 ? ' needs' : 's need'} a reason` : 'Every lost bid has a reason'}
         </span>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          {`of ${rollup.lostCount} lost · $${formatCurrency(rollup.uncategorizedValue)} unexplained`}
+          {rollup.lossRatePct != null ? ` · loss rate ${rollup.lossRatePct}%` : ''}
+          {rollup.lossRateExclGcLostPct != null ? `, excluding GC-lost ${rollup.lossRateExclGcLostPct}%` : ''}
+        </span>
+        <input
+          type="text"
+          value={lossSearchQuery}
+          onChange={(e) => {
+            setLossSearchQuery(e.target.value)
+            setSelectedBuilderKey(null)
+            setSelectedBidId(null)
+          }}
+          placeholder="Search bids (bid #, project name, or GC/Builder)…"
+          aria-label="Search lost bids"
+          style={{ flex: '1 1 13rem', minWidth: '11rem', maxWidth: '20rem', font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+        />
         {clearedToday > 0 ? (
           <span
             style={{
@@ -389,13 +427,19 @@ export function BidsWhyWeLostLens({
           </span>
         ) : null}
         {estimatorFilterSelect}
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          Keys 1–{BID_LOSS_CATEGORIES.length} tap a reason · Enter takes a suggestion · arrows move between bids
-        </span>
       </div>
+      <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        Every lost bid with no reason recorded — biggest dollars first. Tap the reason the GC gives you: keys 1–
+        {BID_LOSS_CATEGORIES.length} work, Enter takes the amber suggestion. Arrow keys move between bids.
+      </p>
       {estimatorFilter && lensBids.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
           No lost bids by {estimatorFilter} in this trade — switch back to All estimators.
+        </p>
+      ) : null}
+      {lossSearchQuery.trim() && searchedLensBids.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+          No lost bids match “{lossSearchQuery.trim()}” — clear the search to see the whole queue.
         </p>
       ) : null}
 
@@ -408,7 +452,11 @@ export function BidsWhyWeLostLens({
           marginBottom: '1rem',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }} aria-label="Builder call queue">
+        {/* Scrolls on its own — the full unexplained backlog can run to dozens of builders. */}
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: 'min(72vh, 42rem)', overflowY: 'auto' }}
+          aria-label="Builder call queue"
+        >
           {groups.map((g) => {
             const active = selectedGroup?.builderKey === g.builderKey
             return (
@@ -434,7 +482,7 @@ export function BidsWhyWeLostLens({
                   )}
                 </span>
                 <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {g.needsCount === 0 ? 'clear' : `$${formatCurrency(g.needsValue)} to explain`}
+                  {g.needsCount === 0 ? 'all explained' : `$${formatCurrency(g.needsValue)} to explain`}
                   {(pendingCountByBuilderKey.get(g.builderKey) ?? 0) > 0
                     ? ` · ${pendingCountByBuilderKey.get(g.builderKey)} pending`
                     : ''}
@@ -459,9 +507,21 @@ export function BidsWhyWeLostLens({
                   </a>
                 ) : null
               })()}
-              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {selectedBids.length - selectedBids.filter((b) => !isBidLossCategoryKey(b.category)).length} of {selectedBids.length} done
-              </span>
+              {(() => {
+                const needs = selectedBids.filter((b) => !isBidLossCategoryKey(b.category)).length
+                return (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: needs > 0 ? 'var(--text-red-800)' : 'var(--text-emerald-800)',
+                    }}
+                  >
+                    {needs > 0 ? `${needs} of ${selectedBids.length} need a reason` : 'all explained'}
+                  </span>
+                )
+              })()}
             </div>
 
             {looksLikeCombinedGcName(selectedGroup.builderName) ? (
@@ -479,7 +539,8 @@ export function BidsWhyWeLostLens({
                 primary GC, and add the others under <strong>Also sent to</strong> — then each real GC gets its own queue entry.
               </p>
             ) : null}
-            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="This builder's lost bids">
+            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.6rem' }} aria-label="This builder's lost bids">
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginRight: '0.15rem' }}>Their lost bids</span>
               {selectedBids.map((b) => {
                 const done = isBidLossCategoryKey(b.category)
                 const current = b.id === selectedBid.id
@@ -609,6 +670,14 @@ export function BidsWhyWeLostLens({
             ) : null}
 
             <div style={{ marginBottom: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Why did we lose it?
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  keys 1–{BID_LOSS_CATEGORIES.length} · Enter takes the amber suggestion
+                </span>
+              </div>
               <BidLossCategoryChips
                 value={isBidLossCategoryKey(selectedBid.category) ? selectedBid.category : null}
                 onSelect={(key) => saveCategory(selectedBid, key)}
