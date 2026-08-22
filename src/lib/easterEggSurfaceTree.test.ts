@@ -46,6 +46,7 @@ describe('eggSurfaceLabel', () => {
     expect(eggSurfaceLabel('p:/dashboard')).toBe('Dashboard')
     expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('why-we-lost'))).toBe('Bids · Followup · Why we lost')
     expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('builder-review'))).toBe('Bids · Followup · By builder')
+    expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('call-queue'))).toBe('Bids · Followup · Call queue')
     expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('working'))).toBe('Bids · Unsent/Working')
     expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('pricing'))).toBe('Bids · Pricing')
   })

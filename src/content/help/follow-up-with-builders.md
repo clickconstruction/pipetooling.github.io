@@ -5,7 +5,21 @@ roles: dev, master_technician, assistant, estimator, primary, superintendent
 keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom
 order: 69
 ---
-The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has three lenses — one job, three angles:
+The **Followup** tab (Bids → Followup) is where bid follow-up lives.
+
+## The Call queue (new)
+
+The newest lens — {{chip:green|new}} **Call queue** — is Followup as one list: every builder worth a call, whoever has waited longest on top. Each card shows the relationship line (won · lost · pending · hit rate · pending $) and a plain **To do / Done** table with the same three rows on every card:
+
+- **Chase** — pending bids nobody's talked to the GC about in over a week
+- **Loss reasons** — lost bids with no reason recorded
+- **Bid tabs** — tabs worth asking for (any lost bid without one, or a pending bid sent three weeks ago)
+
+Bold numbers are work owed; the Done column says what's already collected ("16 of 24 fresh", "8 of 9 recorded"); a — means nothing owed. **Click any row and it drops open in place** — the pending bids with their one-tap chips, the lost bids with the six reason chips, the gettable tabs with the capture panel — so you can collect one thing between meetings without leaving the queue. Filter chips (**To chase** · **Need a reason** · **Tab gettable**) narrow the list to one kind of gap, and {{button:blue|📞 Start call}} jumps to the builder card for a full call session.
+
+Everything below — the four original lenses — still works exactly as before, behind the **Old:** divider:
+
+It has four lenses — one job, four angles:
 
 - **By builder** — the call queue. One card per builder, sorted so the builder you've ignored longest is on top. This is the lens for phone mornings: call one GC, walk through all their bids at once.
 - **By status** — the outcome tables (Unsent, Not yet won or lost, Won, Started or Complete, Lost) with the per-person followup sheets, {{button:outline|Print}}/{{button:outline|PDF}}, and call scripts.
