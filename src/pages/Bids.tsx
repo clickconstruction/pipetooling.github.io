@@ -3114,6 +3114,7 @@ export default function Bids() {
         <>
         {selectedBidForTakeoff && (
           <BidVersionPicker
+            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
             bidId={selectedBidForTakeoff.id}
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}
@@ -3266,6 +3267,7 @@ export default function Bids() {
         <>
         {selectedBidForPricing && (
           <BidVersionPicker
+            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
             bidId={selectedBidForPricing.id}
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}
@@ -3347,6 +3349,7 @@ export default function Bids() {
         <>
         {selectedBidForPricing && (
           <BidVersionPicker
+            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
             bidId={selectedBidForPricing.id}
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}

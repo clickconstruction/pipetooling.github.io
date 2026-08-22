@@ -18,6 +18,8 @@ type BidVersionPickerProps = {
   onSwitch: (versionId: string) => void
   /** Reload the versions list after create/rename/delete. */
   reloadVersions: () => Promise<void>
+  /** "Send… →" jump to the Cover Letter tab, where versions bundle into the submission (v2.2110). */
+  onGoToCoverLetter?: () => void
 }
 
 const chipBase: React.CSSProperties = {
@@ -43,6 +45,7 @@ export function BidVersionPicker({
   isExactMaterials,
   onSwitch,
   reloadVersions,
+  onGoToCoverLetter,
 }: BidVersionPickerProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -242,7 +245,10 @@ export function BidVersionPicker({
   return (
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Version:</span>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+          Bids in this package
+          {!isUnsplit ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — each sends on its own</span> : null}
+        </span>
         {isUnsplit ? (
           <span style={{ ...chipBase, background: 'var(--bg-blue-200)', border: '1px solid #3b82f6', cursor: 'default', fontWeight: 600 }}>
             Current
@@ -265,6 +271,10 @@ export function BidVersionPicker({
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: active ? 600 : 400, padding: 0, textAlign: 'left' }}
                 >
                   {v.name}
+                  {/* Purpose facts (v2.2110): whether this bid version rides in the cover letter, and its GC. */}
+                  <span style={{ display: 'block', fontSize: '0.625rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)', fontWeight: 600 }}>
+                    {v.include_in_submission ? 'in cover letter ✓' : 'not in cover letter'}
+                  </span>
                   {v.customer_id ? (
                     <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-blue-800)', fontWeight: 600 }}>
                       GC: {gcNamesById[v.customer_id] ?? '…'}
@@ -287,12 +297,22 @@ export function BidVersionPicker({
             )
           })
         )}
+        {!isUnsplit ? (
+          <button
+            type="button"
+            onClick={() => onGoToCoverLetter?.()}
+            style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)' }}
+            title="Bundle and send these from the Cover Letter"
+          >
+            Send… →
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={openNewVersion}
-          style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+          style={{ marginLeft: isUnsplit ? 'auto' : 0, padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
         >
-          + New version
+          ＋ Another bid to send…
         </button>
       </div>
       {isExactMaterials && !isUnsplit && (
@@ -303,27 +323,27 @@ export function BidVersionPicker({
 
       {modalOpen && (
         <Overlay onClose={() => !busy && setModalOpen(false)}>
-          <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into versions' : 'New version'}</h3>
+          <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into two sendable bids' : 'Another bid to send'}</h3>
           {isUnsplit && (
             <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
-              Name your current takeoff + pricing, then the new variant. Both become named versions.
+              Name what you have now, then the new one. Each becomes its own bid — own counts, own prices — sendable separately or bundled in one cover letter.
             </p>
           )}
           {isUnsplit && (
             <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name the current setup</span>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name this bid</span>
               <input value={currentName} onChange={(e) => setCurrentName(e.target.value)} placeholder="e.g. To Plans"
                 style={inputStyle} />
             </label>
           )}
           <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-            <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>{isUnsplit ? 'Name the new version' : 'Version name'}</span>
+            <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>{isUnsplit ? 'Name the new bid' : 'Name'}</span>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Value Engineered" autoFocus
               style={inputStyle} />
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
             <input type="checkbox" checked={clonePricing} onChange={(e) => setClonePricing(e.target.checked)} />
-            Also set up pricing (copies the current pricing)
+            Start its prices from this bid&apos;s
           </label>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} disabled={busy} style={btnGhost}>Cancel</button>
