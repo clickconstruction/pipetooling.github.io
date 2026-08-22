@@ -17,8 +17,12 @@ import {
   type JournalPendingOffset,
   type JournalRow,
   type JournalStub,
+  type LedgerDisplayRow,
   type LedgerNote,
 } from '../../lib/partnerLedger/partnerLedgerJournal'
+import { buildPartnerPayReportHtml, type PartnerPayReportDay } from '../../lib/partnerLedger/partnerPayReportHtml'
+import { PayStubViewModal } from '../pay/PayStubViewModal'
+import { PersonOffsetFormModal, type PersonOffsetEditingRow } from '../pay/PersonOffsetFormModal'
 
 /**
  * Partnerships → Ledger tab (PARTNERSHIPS_PLAN.md PR 3): the append-only
@@ -32,12 +36,37 @@ const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFr
 
 type NoteDraft = { note_date: string; memo: string; partner_visible: boolean }
 
-export function PartnershipLedgerTab({ personId, partnershipId }: { personId: string; partnershipId: string }) {
+/** Signed money in the ledger's green/red convention, for detail cards. */
+function AmountText({ amount }: { amount: number }) {
+  return (
+    <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>
+      {amount >= 0 ? '+' : '−'}
+      {money(amount)}
+    </span>
+  )
+}
+
+/** Offset types the drill-in lets a dev edit in place; machine-posted types
+ * (profit_share, utility_overage) get a read-only card instead. */
+const EDITABLE_OFFSET_TYPES = new Set(['backcharge', 'damage', 'employee_credit'])
+
+type LedgerOffsetRow = JournalPendingOffset & { id: string; pay_stub_id: string | null; person_name: string }
+type InfoCard = { title: string; lines: Array<[string, React.ReactNode]>; note: string }
+
+export function PartnershipLedgerTab({ personId, partnershipId, personName }: { personId: string; partnershipId: string; personName: string }) {
   const [rows, setRows] = useState<JournalRow[] | null>(null)
   const [balance, setBalance] = useState(0)
   const [pending, setPending] = useState<{ count: number; net: number }>({ count: 0, net: 0 })
   const [pendingRows, setPendingRows] = useState<JournalPendingOffset[]>([])
   const [failed, setFailed] = useState(false)
+  const [stubsById, setStubsById] = useState<Map<string, JournalStub>>(new Map())
+  const [offsetsById, setOffsetsById] = useState<Map<string, LedgerOffsetRow>>(new Map())
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
+  const [payReport, setPayReport] = useState<{ title: string; html: string } | null>(null)
+  const [payReportBusy, setPayReportBusy] = useState<string | null>(null)
+  const [editOffset, setEditOffset] = useState<PersonOffsetEditingRow | null>(null)
+  const [infoCard, setInfoCard] = useState<InfoCard | null>(null)
+  const [drillError, setDrillError] = useState<string | null>(null)
   const [notes, setNotes] = useState<LedgerNote[]>([])
   const [notesUnavailable, setNotesUnavailable] = useState(false)
   const [editingNote, setEditingNote] = useState<string | 'new' | null>(null)
@@ -61,6 +90,7 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
     }
     setFailed(false)
     const stubs = (stubsRes.data ?? []) as JournalStub[]
+    setStubsById(new Map(stubs.map((s) => [s.id, s])))
     const ids = stubs.map((s) => s.id)
     let additional: JournalAdditionalLine[] = []
     let deductions: (JournalDeduction & { person_offset_id: string | null })[] = []
@@ -77,10 +107,10 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
     }
     const offRes = await supabase
       .from('person_offsets')
-      .select('id, type, amount, occurred_date, description, pay_stub_id')
+      .select('id, type, amount, occurred_date, description, pay_stub_id, person_name')
       .eq('person_id', personId)
-    type OffsetRow = JournalPendingOffset & { id: string; pay_stub_id: string | null }
-    const offsets = ((offRes.data ?? []) as OffsetRow[]) || []
+    const offsets = ((offRes.data ?? []) as LedgerOffsetRow[]) || []
+    setOffsetsById(new Map(offsets.map((o) => [o.id, o])))
 
     // Charges-at-date: every charge-type offset books at its occurred_date,
     // attached to a statement or not. Statement deductions that merely mirror
@@ -100,6 +130,7 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
         date: o.occurred_date,
         label: o.description || o.type,
         amount: pendingOffsetSignedAmount(o),
+        offset_id: o.id,
       })),
     })
     setRows(journal.rows)
@@ -126,6 +157,15 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
     setRows(null)
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!infoCard) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setInfoCard(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [infoCard])
 
   function openComposer(date?: string) {
     setEditingNote('new')
@@ -182,6 +222,152 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
     }
     setNoteBusy(false)
   }
+
+  // ── Row drill-ins ─────────────────────────────────────────────────────────
+  // Labor → the week's pay report; charges → the offset editor (or a read-only
+  // card for machine-posted types); payouts and statement lines → a detail
+  // card. Suppressed while the note composer is open (rows are date targets).
+
+  const statementWeekLabel = (stubId: string | null): string => {
+    const s = stubId ? stubsById.get(stubId) : undefined
+    return s ? `week of ${s.period_start}` : '—'
+  }
+
+  async function openPayReport(stubId: string) {
+    const stub = stubsById.get(stubId)
+    if (!stub || payReportBusy) return
+    setPayReportBusy(stubId)
+    setDrillError(null)
+    const [daysRes, addRes, dedRes, payRes] = await Promise.all([
+      supabase
+        .from('pay_stub_days')
+        .select('work_date, hours_at_time, rate_at_time, paid_amount')
+        .eq('pay_stub_id', stubId)
+        .order('work_date', { ascending: true }),
+      supabase.from('pay_stub_additional_lines').select('description, line_total').eq('pay_stub_id', stubId),
+      supabase.from('pay_stub_deductions').select('description, amount').eq('pay_stub_id', stubId),
+      supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stubId).order('paid_at', { ascending: true }),
+    ])
+    setPayReportBusy(null)
+    if (daysRes.error || addRes.error || dedRes.error || payRes.error) {
+      setDrillError('Couldn’t load that week’s pay report — try again.')
+      return
+    }
+    // The generator writes one day row per rate segment (including empty
+    // zero-hour days); merge same-day same-rate rows and drop the empties so
+    // the report reads one line per worked stretch.
+    const merged = new Map<string, PartnerPayReportDay>()
+    for (const d of (daysRes.data ?? []) as Array<{ work_date: string; hours_at_time: number; rate_at_time: number; paid_amount: number }>) {
+      if (d.hours_at_time === 0 && d.paid_amount === 0) continue
+      const key = `${d.work_date}|${d.rate_at_time}`
+      const prev = merged.get(key)
+      if (prev) {
+        prev.hours = Math.round((prev.hours + d.hours_at_time) * 100) / 100
+        prev.paid = Math.round((prev.paid + d.paid_amount) * 100) / 100
+      } else {
+        merged.set(key, { work_date: d.work_date, hours: d.hours_at_time, rate: d.rate_at_time, paid: d.paid_amount })
+      }
+    }
+    const html = buildPartnerPayReportHtml({
+      personName,
+      periodStart: stub.period_start,
+      periodEnd: stub.period_end,
+      hoursTotal: stub.hours_total,
+      grossPay: stub.gross_pay,
+      days: [...merged.values()],
+      additionalLines: (addRes.data ?? []) as Array<{ description: string; line_total: number }>,
+      deductions: (dedRes.data ?? []) as Array<{ description: string; amount: number }>,
+      payments: (payRes.data ?? []) as Array<{ paid_at: string; amount: number; memo: string | null }>,
+      generatedYmd: denverCalendarDayKey(Date.now()),
+    })
+    setPayReport({ title: `Pay report — ${personName} (${stub.period_start} – ${stub.period_end})`, html })
+  }
+
+  function openOffsetDrillIn(offsetId: string) {
+    const o = offsetsById.get(offsetId)
+    if (!o) return
+    if (EDITABLE_OFFSET_TYPES.has(o.type)) {
+      setEditOffset({
+        id: o.id,
+        person_name: o.person_name,
+        type: o.type,
+        amount: o.amount,
+        description: o.description,
+        occurred_date: o.occurred_date,
+      })
+      return
+    }
+    const signed = pendingOffsetSignedAmount(o)
+    setInfoCard({
+      title: o.type === 'profit_share' ? 'Profit share' : 'Posted charge',
+      lines: [
+        ['Date', o.occurred_date],
+        ['Amount', <AmountText key="a" amount={signed} />],
+        ['Description', o.description || o.type],
+        ['On statement', o.pay_stub_id ? statementWeekLabel(o.pay_stub_id) : 'not yet — still pending'],
+      ],
+      note:
+        o.type === 'profit_share'
+          ? 'Posted by the profit-share engine — reverse or repost it from Job review rather than editing it here.'
+          : 'Posted automatically by statement generation — adjust it with a new offset rather than editing.',
+    })
+  }
+
+  function openDrillIn(r: LedgerDisplayRow) {
+    setDrillError(null)
+    if (r.kind === 'note') return
+    if (r.kind === 'labor' && r.pay_stub_id) {
+      void openPayReport(r.pay_stub_id)
+      return
+    }
+    if (r.kind === 'pending' || ((r.kind === 'addition' || r.kind === 'deduction') && r.offset_id)) {
+      if (r.offset_id) openOffsetDrillIn(r.offset_id)
+      return
+    }
+    if (r.kind === 'payout') {
+      setInfoCard({
+        title: 'Payout',
+        lines: [
+          ['Paid', r.date],
+          ['Amount', <AmountText key="a" amount={r.amount} />],
+          ['Memo', r.detail || '—'],
+          ['On statement', statementWeekLabel(r.pay_stub_id)],
+        ],
+        note: 'Payouts are recorded and corrected from the statement’s Record-payment flow — this card is the quick look.',
+      })
+      return
+    }
+    // Additions / deductions living on a statement (no backing offset).
+    setInfoCard({
+      title: r.kind === 'addition' ? 'Statement line' : 'Statement deduction',
+      lines: [
+        ['Description', r.label],
+        ['Amount', <AmountText key="a" amount={r.amount} />],
+        ['On statement', statementWeekLabel(r.pay_stub_id)],
+      ],
+      note: 'Additions and deductions live on their statement — edit them where the statement was drafted.',
+    })
+  }
+
+  const drillTitle = (r: LedgerDisplayRow): string =>
+    r.kind === 'labor'
+      ? 'click to open the pay report'
+      : r.kind !== 'note' && r.offset_id && EDITABLE_OFFSET_TYPES.has(offsetsById.get(r.offset_id)?.type ?? '')
+        ? 'click to view or edit this charge'
+        : 'click for details'
+
+  // Hover + click affordances for posting/pending rows — only when the note
+  // composer is closed (open composer keeps click-to-place semantics).
+  const drillHandlers = (r: LedgerDisplayRow, key: string) =>
+    noteDraft
+      ? {}
+      : {
+          onClick: () => openDrillIn(r),
+          onMouseEnter: () => setHoverKey(key),
+          onMouseLeave: () => setHoverKey((k) => (k === key ? null : k)),
+          title: drillTitle(r),
+          style: { cursor: 'pointer', background: hoverKey === key ? 'var(--bg-muted)' : undefined },
+        }
 
   if (rows == null) {
     return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>Loading…</p>
@@ -306,6 +492,10 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
         </div>
       ) : null}
 
+      {drillError ? (
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-red-600)', margin: '0 0 0.5rem' }}>{drillError}</p>
+      ) : null}
+
       {displayRows.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
           Nothing posted yet — generate the first statement from the Statements tab.
@@ -393,11 +583,23 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
                     </tr>
                   )
                 }
+                const rowKey = `${r.kind}-${i}`
+                const chevron = !noteDraft ? (
+                  <span
+                    aria-hidden
+                    style={{ float: 'right', marginLeft: '0.5rem', color: 'var(--text-muted)', opacity: hoverKey === rowKey ? 1 : 0 }}
+                  >
+                    {r.kind === 'labor' && payReportBusy != null && payReportBusy === r.pay_stub_id ? '…' : '›'}
+                  </span>
+                ) : null
                 if (r.kind === 'pending') {
                   return (
-                    <tr key={i} {...dropDateHandlers(r.date)} {...pickDateHandlers(r.date)}>
+                    <tr key={i} {...dropDateHandlers(r.date)} {...pickDateHandlers(r.date)} {...drillHandlers(r, rowKey)}>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
-                      <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>{r.label}</td>
+                      <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
+                        {r.label}
+                        {chevron}
+                      </td>
                       <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap', opacity: 0.85 }}>
                         {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
                       </td>
@@ -406,11 +608,12 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
                   )
                 }
                 return (
-                  <tr key={i} {...dropDateHandlers(r.date)} {...pickDateHandlers(r.date)}>
+                  <tr key={i} {...dropDateHandlers(r.date)} {...pickDateHandlers(r.date)} {...drillHandlers(r, rowKey)}>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }}>
                       {r.label}
                       {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
+                      {chevron}
                     </td>
                     <td style={{ ...dropStyle, padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
                       {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
@@ -428,7 +631,63 @@ export function PartnershipLedgerTab({ personId, partnershipId }: { personId: st
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
         Newest first; each row’s balance is the running balance after that posting. Charges count at the date they
         happened — statements list them later as the paper record. Append-only: reversals are new rows, never edits.
+        Click any row to drill in — labor opens that week’s pay report, charges open the editor.
       </p>
+
+      {payReport ? (
+        <PayStubViewModal title={payReport.title} html={payReport.html} zIndex={1200} onClose={() => setPayReport(null)} />
+      ) : null}
+
+      <PersonOffsetFormModal
+        open={editOffset != null}
+        onClose={() => setEditOffset(null)}
+        zIndex={1200}
+        editingOffset={editOffset}
+        personNameOptions={editOffset ? [editOffset.person_name] : []}
+        onSaved={() => {
+          setEditOffset(null)
+          void load()
+        }}
+        onError={setDrillError}
+      />
+
+      {infoCard ? (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setInfoCard(null)
+          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '1rem' }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{ background: 'var(--surface)', borderRadius: 8, width: '100%', maxWidth: 420, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', overflow: 'hidden' }}
+          >
+            <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, flex: 1 }}>{infoCard.title}</h3>
+              <button
+                type="button"
+                onClick={() => setInfoCard(null)}
+                style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
+              {infoCard.lines.map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem', margin: '0.3rem 0' }}>
+                  <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{k}</span>
+                  <span style={{ textAlign: 'right' }}>{v}</span>
+                </div>
+              ))}
+              <p style={{ background: 'var(--bg-muted)', borderRadius: 6, padding: '0.5rem 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.9rem 0 0' }}>
+                {infoCard.note}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

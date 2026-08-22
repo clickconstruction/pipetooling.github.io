@@ -672,7 +672,7 @@ export default function Partnerships() {
               ) : activeTab === 'timeline' ? (
                 <PartnershipTimelineTab personId={selected.person_id} personName={selected.display_name || 'the partner'} />
               ) : activeTab === 'ledger' ? (
-                <PartnershipLedgerTab personId={selected.person_id} partnershipId={selected.id} />
+                <PartnershipLedgerTab personId={selected.person_id} partnershipId={selected.id} personName={selected.display_name || 'the partner'} />
               ) : (
                 <>
               <div style={groupHeadStyle}>Status</div>

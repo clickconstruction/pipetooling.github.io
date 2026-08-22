@@ -70,6 +70,19 @@ describe('buildPartnerJournal', () => {
     expect(rows[0]?.balance).toBe(-1238.65)
     expect(balance).toBe(-713.65)
   })
+
+  it('carries the backing offset id on charge rows and null everywhere else', () => {
+    const { rows } = buildPartnerJournal({
+      stubs: [{ id: 's1', period_start: '2026-08-09', period_end: '2026-08-15', hours_total: 10, gross_pay: 500 }],
+      additional: [],
+      deductions: [],
+      payments: [{ pay_stub_id: 's1', amount: 200, paid_at: '2026-08-16T00:00:00Z', memo: null }],
+      charges: [{ date: '2026-04-13', label: 'Car repairs', amount: -1238.65, offset_id: 'off-1' }],
+    })
+    expect(rows.find((r) => r.label === 'Car repairs')?.offset_id).toBe('off-1')
+    expect(rows.find((r) => r.kind === 'labor')?.offset_id).toBeNull()
+    expect(rows.find((r) => r.kind === 'payout')?.offset_id).toBeNull()
+  })
 })
 
 describe('summarizePendingOffsets', () => {
@@ -184,8 +197,9 @@ describe('mergePendingIntoJournal', () => {
 
   it('interleaves pending charges by occurred_date with null balance', () => {
     const merged = mergePendingIntoJournal(posted, [
-      { type: 'backcharge', amount: 1238.65, occurred_date: '2026-08-14', description: 'Car repairs' },
+      { id: 'off-9', type: 'backcharge', amount: 1238.65, occurred_date: '2026-08-14', description: 'Car repairs' },
     ])
+    expect(merged.find((r) => r.kind === 'pending')?.offset_id).toBe('off-9')
     expect(merged.map((r) => [r.date, r.kind])).toEqual([
       ['2026-08-13', 'payout'],
       ['2026-08-14', 'pending'],
