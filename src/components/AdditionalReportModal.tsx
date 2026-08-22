@@ -254,7 +254,10 @@ export default function AdditionalReportModal({
     // Mirror the report's completion percent into jobs_ledger.pct_complete
     // (best-effort), then offer Ready to bill when a 100% report lands on a
     // Working job.
-    const { jobStatus } = await propagateReportPctToJob(jobId, fv)
+    const { jobStatus, pctError } = await propagateReportPctToJob(jobId, fv)
+    if (pctError) {
+      showToast(`Report saved, but the job's % done could not update: ${pctError}`, 'warning')
+    }
     if (reportSaysJobComplete(fv) && jobStatus === 'working') {
       setReadyToBillJob({ id: jobId, hcpNumber: hcpNumber || '—', jobName: jobName || '—' })
       return

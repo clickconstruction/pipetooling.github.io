@@ -332,7 +332,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     // follow from it), then offer Ready to bill when a 100% report lands on a
     // Working job.
     if (jobLedgerId) {
-      const { jobStatus } = await propagateReportPctToJob(jobLedgerId, fv)
+      const { jobStatus, pctError } = await propagateReportPctToJob(jobLedgerId, fv)
+      if (pctError) {
+        showToast(`Report saved, but the job's % done could not update: ${pctError}`, 'warning')
+      }
       if (reportSaysJobComplete(fv) && jobStatus === 'working') {
         setReadyToBillJob({
           id: jobLedgerId,
