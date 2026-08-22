@@ -1542,7 +1542,7 @@ Skipped events return 200 with `skipped: true` (e.g. not a clock-in/out transiti
 
 ### send-scheduled-reminders
 
-**Purpose**: Send Web Push reminders for incomplete checklist tasks at configured times (CST). Invoked by pg_cron every 15 minutes. Since v2.2056 the 03:00 CST run also performs the **weekly materialization top-up**: every active `day_of_week` item is stocked with occurrence rows 35 days ahead (mirrors `src/lib/checklistMaterialize.ts` — keep the Deno copy in sync; upserts against the `(checklist_item_id, scheduled_date)` unique index; new instances copy the item's current assignees). Pass `{"materialize": true}` in the body (with the cron secret) to force the top-up outside the 03:00 slot — the response then carries a `materialized` count.
+**Purpose**: Send reminders for incomplete checklist tasks at configured times (CST) — Web Push first, **email fallback via Resend** (v2.2096) for users with no push device, so a reminder never silently vanishes. Invoked by pg_cron every 15 minutes. Since v2.2056 the 03:00 CST run also performs the **weekly materialization top-up**: every active `day_of_week` item is stocked with occurrence rows 35 days ahead (mirrors `src/lib/checklistMaterialize.ts` — keep the Deno copy in sync; upserts against the `(checklist_item_id, scheduled_date)` unique index; new instances copy the item's current assignees). Pass `{"materialize": true}` in the body (with the cron secret) to force the top-up outside the 03:00 slot — the response then carries a `materialized` count.
 
 **Endpoint**: `POST /functions/v1/send-scheduled-reminders`
 
@@ -1570,6 +1570,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
   "success": true,
   "message": "Scheduled reminders sent",
   "sent": 3,
+  "email_fallbacks": 1,
   "users_notified": 2
 }
 ```
@@ -1579,14 +1580,18 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 1. Validates CRON_SECRET (header or body)
 2. Gets current time in America/Chicago, rounded to 15-minute boundary
 3. Queries `checklist_items` where `reminder_time` matches current time
-4. For each item, finds incomplete `checklist_instances` per `reminder_scope` (today_only or today_and_overdue)
-5. Groups by assignee, sends one push per user with task summary
-6. Logs to `notification_history` with `template_type: 'scheduled_reminder'`
+4. For each item, builds per-user **buckets** (v2.2096):
+   - **due/overdue** — incomplete `checklist_instances` per `reminder_scope` (today_only or today_and_overdue), to the assignees
+   - **due tomorrow** — items with `remind_day_before`, instances due tomorrow, to the assignees
+   - **escalated** — items with `escalate_after_days`, instances ≥ that many days past due, to the item's `created_by_user_id`
+5. One grouped message per user joining the non-empty buckets; push to every `push_subscriptions` device
+6. **Email fallback** (v2.2096): users with zero push devices (or all pushes failing) get the same body via Resend from `team@noreply.pipetooling.com` (needs `RESEND_API_KEY`; skipped silently without it)
+7. Logs to `notification_history` with `template_type: 'scheduled_reminder'`, `channel: 'push' | 'email'`
 
 **Prerequisites**:
 - pg_cron and pg_net enabled (Supabase Dashboard > Database > Extensions)
 - Vault secrets: `project_url`, `cron_secret` (same value as CRON_SECRET)
-- Dev configures `reminder_time` and `reminder_scope` on checklist items (Checklist > Manage)
+- Anyone who can create checklist tasks configures reminders in the Add/Edit modals (v2.2096; was dev-only)
 
 ---
 

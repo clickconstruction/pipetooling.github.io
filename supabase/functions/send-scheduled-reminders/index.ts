@@ -175,7 +175,7 @@ serve(async (req) => {
 
     const { data: items } = await adminClient
       .from('checklist_items')
-      .select('id, title, reminder_time, reminder_scope')
+      .select('id, title, reminder_time, reminder_scope, remind_day_before, escalate_after_days, created_by_user_id')
       .not('reminder_time', 'is', null)
 
     if (!items || items.length === 0) {
@@ -199,91 +199,157 @@ serve(async (req) => {
       )
     }
 
-    const userToInstances = new Map<string, Array<{ title: string }>>()
+    // v2.2096: three buckets per person — due/overdue (assignees), due
+    // tomorrow (assignees, items with remind_day_before), and escalated
+    // (creator, items with escalate_after_days once an instance is that many
+    // days past due). One grouped message per person, whatever the mix.
+    type Buckets = { due: string[]; tomorrow: string[]; escalated: string[] }
+    const userBuckets = new Map<string, Buckets>()
+    const bucketFor = (userId: string): Buckets => {
+      const b = userBuckets.get(userId) ?? { due: [], tomorrow: [], escalated: [] }
+      userBuckets.set(userId, b)
+      return b
+    }
+    const tomorrowCst = ymdAddDaysStr(todayCst, 1)
 
     for (const item of matchingItems) {
-      const scope = item.reminder_scope as string
-      let query = adminClient
-        .from('checklist_instances')
-        .select('id, checklist_instance_assignees(user_id)')
-        .eq('checklist_item_id', item.id)
-        .is('completed_at', null)
+      const title = (item as { title: string }).title
+      const scope = item.reminder_scope as string | null
+      const dayBefore = (item as { remind_day_before?: boolean | null }).remind_day_before === true
+      const escalateAfter = (item as { escalate_after_days?: number | null }).escalate_after_days ?? null
+      const creatorId = (item as { created_by_user_id?: string | null }).created_by_user_id ?? null
 
-      if (scope === 'today_only') {
-        query = query.eq('scheduled_date', todayCst)
-      } else if (scope === 'today_and_overdue') {
-        query = query.lte('scheduled_date', todayCst)
-      } else {
-        continue
+      if (scope === 'today_only' || scope === 'today_and_overdue') {
+        let query = adminClient
+          .from('checklist_instances')
+          .select('id, checklist_instance_assignees(user_id)')
+          .eq('checklist_item_id', item.id)
+          .is('completed_at', null)
+        query = scope === 'today_only' ? query.eq('scheduled_date', todayCst) : query.lte('scheduled_date', todayCst)
+        const { data: instances } = await query
+        for (const inst of instances ?? []) {
+          const assignees = (inst as { checklist_instance_assignees?: Array<{ user_id: string }> }).checklist_instance_assignees ?? []
+          for (const a of assignees) bucketFor(a.user_id).due.push(title)
+        }
       }
 
-      const { data: instances } = await query
-      if (!instances || instances.length === 0) continue
-
-      const title = (item as { title: string }).title
-      for (const inst of instances) {
-        const assignees = (inst as { checklist_instance_assignees?: Array<{ user_id: string }> }).checklist_instance_assignees ?? []
-        for (const a of assignees) {
-          const list = userToInstances.get(a.user_id) ?? []
-          list.push({ title })
-          userToInstances.set(a.user_id, list)
+      if (dayBefore) {
+        const { data: instances } = await adminClient
+          .from('checklist_instances')
+          .select('id, checklist_instance_assignees(user_id)')
+          .eq('checklist_item_id', item.id)
+          .is('completed_at', null)
+          .eq('scheduled_date', tomorrowCst)
+        for (const inst of instances ?? []) {
+          const assignees = (inst as { checklist_instance_assignees?: Array<{ user_id: string }> }).checklist_instance_assignees ?? []
+          for (const a of assignees) bucketFor(a.user_id).tomorrow.push(title)
         }
+      }
+
+      if (escalateAfter != null && escalateAfter >= 1 && creatorId) {
+        const cutoff = ymdAddDaysStr(todayCst, -escalateAfter)
+        const { data: instances } = await adminClient
+          .from('checklist_instances')
+          .select('id')
+          .eq('checklist_item_id', item.id)
+          .is('completed_at', null)
+          .lte('scheduled_date', cutoff)
+        if ((instances ?? []).length > 0) bucketFor(creatorId).escalated.push(title)
       }
     }
 
     let totalSent = 0
+    let emailFallbacks = 0
+    let usersNotified = 0
     webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
-    for (const [userId, instances] of userToInstances) {
-      const titles = [...new Set(instances.map((i) => i.title))]
-      const n = titles.length
-      const body =
-        n === 1
-          ? `You have 1 outstanding task: ${titles[0]}`
-          : n <= 3
-            ? `You have ${n} outstanding tasks: ${titles.join(', ')}`
-            : `You have ${n} outstanding tasks: ${titles.slice(0, 3).join(', ')} and ${n - 3} more`
+    const listCap = (titles: string[]) =>
+      titles.length <= 3 ? titles.join(', ') : `${titles.slice(0, 3).join(', ')} and ${titles.length - 3} more`
+
+    for (const [userId, buckets] of userBuckets) {
+      const due = [...new Set(buckets.due)]
+      const tomorrow = [...new Set(buckets.tomorrow)]
+      const escalated = [...new Set(buckets.escalated)]
+      const parts: string[] = []
+      if (due.length > 0) parts.push(due.length === 1 ? `You have 1 outstanding task: ${due[0]}` : `You have ${due.length} outstanding tasks: ${listCap(due)}`)
+      if (tomorrow.length > 0) parts.push(`Due tomorrow: ${listCap(tomorrow)}`)
+      if (escalated.length > 0) parts.push(`Still not done by the crew: ${listCap(escalated)}`)
+      if (parts.length === 0) continue
+      const body = parts.join(' · ')
 
       const { data: subscriptions } = await adminClient
         .from('push_subscriptions')
         .select('endpoint, p256dh_key, auth_key')
         .eq('user_id', userId)
 
-      if (!subscriptions || subscriptions.length === 0) continue
-
-      const pushPayload = JSON.stringify({
-        title: 'Task reminder',
-        body,
-        url: '/checklist',
-        tag: 'scheduled-reminder',
-      })
-
       let sentForUser = 0
-      for (const sub of subscriptions) {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-            },
-            pushPayload,
-            { TTL: 86400 }
-          )
-          sentForUser++
-          totalSent++
-        } catch (pushErr) {
-          console.error('Push send error:', sub.endpoint?.substring(0, 50), pushErr)
+      if (subscriptions && subscriptions.length > 0) {
+        const pushPayload = JSON.stringify({
+          title: 'Task reminder',
+          body,
+          url: '/checklist',
+          tag: 'scheduled-reminder',
+        })
+        for (const sub of subscriptions) {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
+              },
+              pushPayload,
+              { TTL: 86400 }
+            )
+            sentForUser++
+            totalSent++
+          } catch (pushErr) {
+            console.error('Push send error:', sub.endpoint?.substring(0, 50), pushErr)
+          }
+        }
+      }
+
+      // v2.2096: no push device (or every push failed) → email so the
+      // reminder never silently vanishes.
+      let channel = 'push'
+      if (sentForUser === 0 && resendApiKey) {
+        const { data: u } = await adminClient.from('users').select('email').eq('id', userId).single()
+        const email = (u as { email?: string | null } | null)?.email
+        if (email) {
+          try {
+            const resp = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                from: 'PipeTooling <team@noreply.pipetooling.com>',
+                to: [email],
+                subject: 'Task reminder',
+                text: `${body}\n\nOpen your checklist: https://pipetooling.com/checklist`,
+              }),
+            })
+            if (resp.ok) {
+              sentForUser++
+              totalSent++
+              emailFallbacks++
+              channel = 'email'
+            } else {
+              console.error('Email fallback failed:', resp.status, await resp.text())
+            }
+          } catch (mailErr) {
+            console.error('Email fallback error:', mailErr)
+          }
         }
       }
 
       if (sentForUser > 0) {
+        usersNotified++
         try {
           await adminClient.from('notification_history').insert({
             recipient_user_id: userId,
             template_type: 'scheduled_reminder',
             title: 'Task reminder',
             body_preview: body.substring(0, 200),
-            channel: 'push',
+            channel,
             checklist_instance_id: null,
           })
         } catch {
@@ -297,7 +363,8 @@ serve(async (req) => {
         success: true,
         message: 'Scheduled reminders sent',
         sent: totalSent,
-        users_notified: userToInstances.size,
+        email_fallbacks: emailFallbacks,
+        users_notified: usersNotified,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

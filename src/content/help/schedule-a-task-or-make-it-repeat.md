@@ -2,7 +2,7 @@
 title: schedule a task for later or make it repeat
 category: Office
 roles: all
-keywords: checklist, schedule, future task, repeat, weekly, day of week, days after completion, when, add task
+keywords: checklist, schedule, future task, repeat, weekly, day of week, days after completion, when, add task, remind, reminder, escalate, day before, phone alert, email
 order: 41
 ---
 When you add a checklist task, the **When** choice is right under the people picker — three plain options, and a green sentence below always tells you exactly what Save will do.
@@ -33,6 +33,20 @@ To see every repeating task in one place, open **Manage** and tap the {{chip:blu
 ## Notifications
 
 **When it's done, notify** is one line: check **Me** to hear when it's completed, and add one more person with the picker. Reminders at a set time of day live under **Advanced**.
+
+## Remind
+
+Below the notify options, the **Remind** row sets a nudge time: {{chip:blue|Morning 7:00}}, {{chip:gray|Midday 12:00}}, {{chip:gray|End of day 4:00}}, or **Custom…** for any time. Pick one and three plain choices unfold:
+
+- **Keep reminding every day until it's done** — on by default. Uncheck it and the reminder fires only on the due date itself.
+- **Also remind the day before it's due** — a heads-up the afternoon before (shows only when the task is due later than today).
+- **Still not done after — days? Remind me too** — after that many overdue days, the daily reminder starts copying *you*, the task's creator.
+
+Reminders arrive as one grouped phone alert per person (never one buzz per task). If someone has no phone alerts set up, the reminder goes to their **email** instead — the modal shows how each assignee will be reached, and a green sentence restates the whole plan.
+
+:::example The sentence tells you
+Reminds Michael A & Bryan every day at 7:00 AM until it's done — and you after 3 days.
+:::
 
 ## Peek at the checklist without losing your draft
 

@@ -10,6 +10,7 @@ import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTexta
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { MATERIALIZE_HORIZON_DAYS, materializeDates } from '../lib/checklistMaterialize'
 import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
+import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { ymdAddDays } from '../utils/dateUtils'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
@@ -75,8 +76,9 @@ export default function ChecklistAddModal({
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
   const [role, setRole] = useState<UserRole | null>(null)
-  const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
-  const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
+  const [customTimeOpen, setCustomTimeOpen] = useState(false)
+  /** user ids among the assignees that have ≥1 push device (null = unknown/not fetched). */
+  const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
   const [linksSectionOpen, setLinksSectionOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -98,7 +100,10 @@ export default function ChecklistAddModal({
     notify_on_complete_user_id: '',
     notify_creator_on_complete: true,
     reminder_time: '',
-    reminder_scope: '' as 'today_only' | 'today_and_overdue' | '',
+    reminder_daily: true,
+    remind_day_before: false,
+    escalate_enabled: false,
+    escalate_days: 3,
   })
   /** The When control (v2.2058): scheduling is first-class, not "Advanced". */
   const [when, setWhen] = useState<'today' | 'date' | 'repeat'>('today')
@@ -124,6 +129,28 @@ export default function ChecklistAddModal({
       role === 'helpers',
     [role],
   )
+
+  // Reachability (v2.2096): which assignees can this reminder actually reach?
+  // push_subscriptions is SELECT-visible to dev/master/assistant-like only.
+  const canSeeReach = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  useEffect(() => {
+    if (!modalContext?.isOpen || !canSeeReach || !form.reminder_time || form.assigned_to_user_ids.length === 0) {
+      setPushEnabledIds(null)
+      return
+    }
+    let cancelled = false
+    void supabase
+      .from('push_subscriptions')
+      .select('user_id')
+      .in('user_id', form.assigned_to_user_ids)
+      .then(({ data }) => {
+        if (cancelled) return
+        setPushEnabledIds(new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [modalContext?.isOpen, canSeeReach, form.reminder_time, form.assigned_to_user_ids])
 
   useEffect(() => {
     if (!modalContext?.isOpen) return
@@ -204,8 +231,12 @@ export default function ChecklistAddModal({
         notify_on_complete_user_id: '',
         notify_creator_on_complete: true,
         reminder_time: '',
-        reminder_scope: '',
+        reminder_daily: true,
+        remind_day_before: false,
+        escalate_enabled: false,
+        escalate_days: 3,
       })
+      setCustomTimeOpen(false)
       setFormError(null)
       setLinksSectionOpen(presetLinks.length > 0)
       setWhen('today')
@@ -307,9 +338,15 @@ export default function ChecklistAddModal({
     }
     setSubmitting(true)
     try {
+      const reminderCols = {
+        remind_day_before:
+          Boolean(form.reminder_time) && form.remind_day_before && dayBeforeApplicable(when, effStartDate, toLocalDateString(new Date())),
+        escalate_after_days: form.reminder_time && form.escalate_enabled ? Math.max(1, form.escalate_days) : null,
+      }
       const { data, error } = await supabase
         .from('checklist_items')
         .insert({
+          ...reminderCols,
           title: trimmedTitle,
           links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
           created_by_user_id: authUser.id,
@@ -322,7 +359,7 @@ export default function ChecklistAddModal({
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
           reminder_time: form.reminder_time || null,
-          reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
+          reminder_scope: form.reminder_time ? scopeFromDaily(form.reminder_daily) : null,
         })
         .select('id')
         .single()
@@ -864,129 +901,166 @@ export default function ChecklistAddModal({
               </div>
             </div>
 
-            {role === 'dev' ? (
-              <button
-                type="button"
-                onClick={() => setAdvancedSectionOpen((o) => !o)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  marginTop: '0.75rem',
-                  padding: '0.25rem 0',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: '1rem',
-                  color: 'var(--text-faint)',
-                }}
-              >
-                {advancedSectionOpen ? '\u25BC' : '\u25B6'} Advanced — reminders
-              </button>
-            ) : null}
-            {advancedSectionOpen && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                {role === 'dev' && (
-                  <>
-                    <label>
-                      <span style={{ display: 'block', marginBottom: '0.25rem' }}>Remind at (CST)</span>
-                      <input
-                        type="time"
-                        value={form.reminder_time}
-                        onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
-                        style={{ padding: '0.5rem' }}
-                      />
-                    </label>
-                    {form.reminder_time && (
-                      <label>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
-                          Reminder scope
-                          <button
-                            type="button"
-                            onClick={() => setReminderScopeModalOpen(true)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: 2,
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--text-muted)',
-                            }}
-                            title="What each option means"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor">
-                              <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z" />
-                            </svg>
-                          </button>
-                        </span>
-                        <select
-                          value={form.reminder_scope}
-                          onChange={(e) => setForm((f) => ({ ...f, reminder_scope: e.target.value as 'today_only' | 'today_and_overdue' | '' }))}
-                          style={{ padding: '0.5rem', minWidth: 180 }}
-                        >
-                          <option value="">— Select —</option>
-                          <option value="today_only">Due date</option>
-                          <option value="today_and_overdue">Due date + daily until done</option>
-                        </select>
-                      </label>
-                    )}
-                  </>
-                )}
+            {/* Remind (v2.2096): open to every task creator — preset chips, plain-words options, reachability. */}
+            <div style={{ marginTop: '1rem' }}>
+              <p style={{ fontWeight: 700, fontSize: '1.05rem', margin: '0 0 0.5rem' }}>Remind</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(() => {
+                  const isPreset = REMINDER_PRESETS.some((p) => p.time === form.reminder_time)
+                  const customVisible = customTimeOpen || (form.reminder_time !== '' && !isPreset)
+                  const chips: Array<{ label: string; active: boolean; onClick: () => void }> = [
+                    {
+                      label: 'No reminder',
+                      active: !form.reminder_time && !customVisible,
+                      onClick: () => {
+                        setForm((f) => ({ ...f, reminder_time: '' }))
+                        setCustomTimeOpen(false)
+                      },
+                    },
+                    ...REMINDER_PRESETS.map((p) => ({
+                      label: p.label,
+                      active: !customVisible && form.reminder_time === p.time,
+                      onClick: () => {
+                        setForm((f) => ({ ...f, reminder_time: p.time }))
+                        setCustomTimeOpen(false)
+                      },
+                    })),
+                    { label: 'Custom…', active: customVisible, onClick: () => setCustomTimeOpen(true) },
+                  ]
+                  return chips.map((c) => (
+                    <button
+                      key={c.label}
+                      type="button"
+                      onClick={c.onClick}
+                      style={{
+                        padding: '0.45rem 0.9rem',
+                        borderRadius: 9,
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        border: c.active ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
+                        background: c.active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        color: c.active ? 'var(--text-blue-800)' : 'var(--text-700)',
+                        fontWeight: c.active ? 600 : 400,
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  ))
+                })()}
               </div>
-            )}
+              {(customTimeOpen || (form.reminder_time !== '' && !REMINDER_PRESETS.some((p) => p.time === form.reminder_time))) && (
+                <label style={{ display: 'block', marginTop: '0.6rem' }}>
+                  <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Remind at (CST)</span>
+                  <input
+                    type="time"
+                    value={form.reminder_time}
+                    onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
+                    style={{ padding: '0.5rem' }}
+                  />
+                </label>
+              )}
+              {form.reminder_time ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.75rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.reminder_daily}
+                      onChange={(e) => setForm((f) => ({ ...f, reminder_daily: e.target.checked }))}
+                    />
+                    Keep reminding every day until it&apos;s done
+                  </label>
+                  {dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, toLocalDateString(new Date())) && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.remind_day_before}
+                        onChange={(e) => setForm((f) => ({ ...f, remind_day_before: e.target.checked }))}
+                      />
+                      Also remind the day before it&apos;s due
+                    </label>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.escalate_enabled}
+                        onChange={(e) => setForm((f) => ({ ...f, escalate_enabled: e.target.checked }))}
+                      />
+                      Still not done after
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={form.escalate_days}
+                      disabled={!form.escalate_enabled}
+                      onChange={(e) => setForm((f) => ({ ...f, escalate_days: Math.min(30, Math.max(1, Number(e.target.value) || 1)) }))}
+                      aria-label="Days overdue before reminding the creator"
+                      style={{ width: 52, padding: '0.25rem 0.35rem' }}
+                    />
+                    <span>days? Remind me too</span>
+                  </div>
+                  {canSeeReach && pushEnabledIds && form.assigned_to_user_ids.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border)', paddingTop: '0.55rem' }}>
+                      {form.assigned_to_user_ids.map((uid) => {
+                        const u = users.find((x) => x.id === uid)
+                        const name = u?.name?.trim() || u?.email || 'Unknown'
+                        const hasPush = pushEnabledIds.has(uid)
+                        return (
+                          <span key={uid}>
+                            <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{name}</b>{' '}
+                            {hasPush ? (
+                              <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{'📱'} phone alert</span>
+                            ) : (
+                              <>
+                                <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{'✉️'} email</span>
+                                <span> {'—'} no phone alerts set up</span>
+                              </>
+                            )}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                  {(() => {
+                    const names = form.assigned_to_user_ids
+                      .map((uid) => {
+                        const u = users.find((x) => x.id === uid)
+                        return u?.name?.trim() || u?.email || ''
+                      })
+                      .filter(Boolean)
+                    const s = reminderSummary(
+                      {
+                        time: form.reminder_time,
+                        dailyUntilDone: form.reminder_daily,
+                        dayBefore:
+                          form.remind_day_before && dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, toLocalDateString(new Date())),
+                        escalateAfterDays: form.escalate_enabled ? form.escalate_days : null,
+                      },
+                      names,
+                    )
+                    return s ? (
+                      <div
+                        role="status"
+                        style={{
+                          padding: '0.5rem 0.7rem',
+                          borderRadius: 9,
+                          background: 'var(--bg-green-100)',
+                          border: '1px solid #16a34a',
+                          color: 'var(--text-green-700)',
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        {s}
+                      </div>
+                    ) : null
+                  })()}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
         {formError && <p style={{ color: 'var(--text-red-700)', marginTop: '0.5rem', fontSize: '0.875rem' }}>{formError}</p>}
-        {reminderScopeModalOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1100,
-            }}
-            onClick={() => setReminderScopeModalOpen(false)}
-          >
-            <div
-              style={{
-                background: 'var(--surface)',
-                padding: '1.5rem',
-                borderRadius: 8,
-                maxWidth: 420,
-                width: '90%',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>What each option means</h4>
-              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-                <strong>Due date</strong> – Remind only when there is an incomplete instance due today.
-              </p>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Example: &quot;Call client&quot; is due Monday. You get a reminder Monday at 9am if it&apos;s not done. You do not get a reminder Tuesday, Wednesday, etc., even if it&apos;s still incomplete.
-              </p>
-              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-                <strong>Due date + daily until done</strong> – Remind when there is an incomplete instance due today or earlier.
-              </p>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Example: &quot;Call client&quot; was due Monday. If it&apos;s still incomplete, you get a reminder every day at 9am (Tuesday, Wednesday, etc.) until it&apos;s completed.
-              </p>
-              <button
-                type="button"
-                onClick={() => setReminderScopeModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        )}
         <div
           style={{
             display: 'flex',
