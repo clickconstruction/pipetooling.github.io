@@ -12,7 +12,6 @@ import { MATERIALIZE_HORIZON_DAYS, materializeDates } from '../lib/checklistMate
 import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
 import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { ymdAddDays } from '../utils/dateUtils'
-import type { Database } from '../types/database'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -339,15 +338,10 @@ export default function ChecklistAddModal({
     }
     setSubmitting(true)
     try {
-      // remind_day_before / escalate_after_days landed in migration
-      // 20260822162303 — insert cast until gen-types reruns after db push.
-      // Keys are only sent when actually used, so plain saves keep working
-      // during the merge→push window before the columns exist.
-      const wantsDayBefore =
-        Boolean(form.reminder_time) && form.remind_day_before && dayBeforeApplicable(when, effStartDate, toLocalDateString(new Date()))
       const reminderCols = {
-        ...(wantsDayBefore ? { remind_day_before: true } : {}),
-        ...(form.reminder_time && form.escalate_enabled ? { escalate_after_days: Math.max(1, form.escalate_days) } : {}),
+        remind_day_before:
+          Boolean(form.reminder_time) && form.remind_day_before && dayBeforeApplicable(when, effStartDate, toLocalDateString(new Date())),
+        escalate_after_days: form.reminder_time && form.escalate_enabled ? Math.max(1, form.escalate_days) : null,
       }
       const { data, error } = await supabase
         .from('checklist_items')
@@ -366,7 +360,7 @@ export default function ChecklistAddModal({
           notify_creator_on_complete: form.notify_creator_on_complete,
           reminder_time: form.reminder_time || null,
           reminder_scope: form.reminder_time ? scopeFromDaily(form.reminder_daily) : null,
-        } as unknown as Database['public']['Tables']['checklist_items']['Insert'])
+        })
         .select('id')
         .single()
       if (error) {

@@ -8,7 +8,6 @@ import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTexta
 import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
 import { REMINDER_PRESETS, dailyFromScope, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
-import type { Database } from '../types/database'
 
 type UserRole =
   | 'dev'
@@ -125,8 +124,6 @@ export function ChecklistItemEditModal({
   const [customTimeOpen, setCustomTimeOpen] = useState(false)
   /** user ids among the assignees that have ≥1 push device (null = unknown/not fetched). */
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
-  /** True when the loaded item already used the v2.2096 columns — then saves always send them (so they can be cleared). */
-  const hadReminderExtrasRef = useRef(false)
   /** Same When grammar as the Add modal (v2.2075); derived from the stored item on open. */
   const [when, setWhen] = useState<'today' | 'date' | 'repeat'>('date')
   const [repeatMode, setRepeatMode] = useState<'weekly' | 'after_done'>('weekly')
@@ -169,9 +166,7 @@ export function ChecklistItemEditModal({
     Promise.all([
       supabase
         .from('checklist_items')
-        // '*' so the load survives the merge→push window before the v2.2096
-        // reminder columns exist (they read as undefined until then).
-        .select('*')
+        .select('id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, remind_day_before, escalate_after_days, created_at, updated_at')
         .eq('id', itemId)
         .single(),
       supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
@@ -186,7 +181,6 @@ export function ChecklistItemEditModal({
         return
       }
       if (item) {
-        hadReminderExtrasRef.current = item.remind_day_before === true || item.escalate_after_days != null
         setForm(populateForm(item, assigneeIds))
         const today = new Date().toLocaleDateString('en-CA')
         if (item.repeat_type === 'day_of_week') {
@@ -230,19 +224,13 @@ export function ChecklistItemEditModal({
     }
     setSaving(true)
     try {
-      // remind_day_before / escalate_after_days landed in migration
-      // 20260822162303 — update cast until gen-types reruns after db push.
-      // Keys are only sent when the item uses (or used) them, so plain saves
-      // keep working during the merge→push window before the columns exist.
-      const wantsDayBefore =
-        Boolean(form.reminder_time) &&
-        form.remind_day_before &&
-        dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, effStartDate, new Date().toLocaleDateString('en-CA'))
-      const wantsEscalate = form.reminder_time && form.escalate_enabled ? Math.max(1, form.escalate_days) : null
-      const reminderCols =
-        wantsDayBefore || wantsEscalate != null || hadReminderExtrasRef.current
-          ? { remind_day_before: wantsDayBefore, escalate_after_days: wantsEscalate }
-          : {}
+      const reminderCols = {
+        remind_day_before:
+          Boolean(form.reminder_time) &&
+          form.remind_day_before &&
+          dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, effStartDate, new Date().toLocaleDateString('en-CA')),
+        escalate_after_days: form.reminder_time && form.escalate_enabled ? Math.max(1, form.escalate_days) : null,
+      }
       const { error } = await supabase
         .from('checklist_items')
         .update({
@@ -260,7 +248,7 @@ export function ChecklistItemEditModal({
           reminder_time: form.reminder_time || null,
           reminder_scope: form.reminder_time ? scopeFromDaily(form.reminder_daily) : null,
           updated_at: new Date().toISOString(),
-        } as unknown as Database['public']['Tables']['checklist_items']['Update'])
+        })
         .eq('id', itemId)
       if (error) throw error
       await supabase.from('checklist_item_assignees').delete().eq('checklist_item_id', itemId)

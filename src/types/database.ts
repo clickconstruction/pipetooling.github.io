@@ -1668,10 +1668,12 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by_user_id: string
+          escalate_after_days: number | null
           id: string
           links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
+          remind_day_before: boolean
           reminder_scope: string | null
           reminder_time: string | null
           repeat_days_after: number | null
@@ -1687,10 +1689,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by_user_id: string
+          escalate_after_days?: number | null
           id?: string
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          remind_day_before?: boolean
           reminder_scope?: string | null
           reminder_time?: string | null
           repeat_days_after?: number | null
@@ -1706,10 +1710,12 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by_user_id?: string
+          escalate_after_days?: number | null
           id?: string
           links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
+          remind_day_before?: boolean
           reminder_scope?: string | null
           reminder_time?: string | null
           repeat_days_after?: number | null
@@ -16218,6 +16224,10 @@ export type Database = {
       validate_pay_stub_payments_vs_net: {
         Args: { p_stub: string }
         Returns: undefined
+      }
+      vehicle_context_for_instance: {
+        Args: { p_instance_id: string }
+        Returns: Json
       }
       void_hazmat_fee_incident: {
         Args: { p_incident_id: string }
