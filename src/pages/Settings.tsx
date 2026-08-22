@@ -50,6 +50,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
+import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
 
 type UserRole =
   | 'dev'
@@ -1310,6 +1311,7 @@ export default function Settings() {
           users={users}
         />
         {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+        {myRole === 'dev' && <EasterEggsSettingsBlock users={users} />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title="People & accounts">
