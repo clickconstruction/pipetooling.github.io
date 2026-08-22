@@ -31,8 +31,13 @@ import {
   JobRowCallButton,
   JobRowMissingPhoneButton,
   JOB_ROW_LINK_ICON_STYLE,
+  JOB_ROW_MOBILE_ICON_BUTTON_STYLE,
   JOB_ROW_PICTURES_ICON_WRAP_STYLE,
+  JOB_ROW_REPORT_CHIP_STYLE,
   JobPlansGlyph,
+  ReportFileGlyph,
+  jobCardMobileActionButtonStyle,
+  jobCardMobileStyle,
   sendToBillingButtonStyle,
   VIEW_REPORTS_BUTTON_STYLE,
 } from './dashboardJobRowShared'
@@ -165,13 +170,29 @@ export function DashboardAssignedJobsSection({
                   No assigned jobs match your search.
                 </p>
               )}
-              {filteredAssignedJobs.map((j, idx) => (
+              {filteredAssignedJobs.map((j, idx) => {
+                const reminderDue = leaveReportReminderForJobRow(j)
+                const rowReportCount = reportCountByJobId?.[j.id] ?? 0
+                const openViewReports = () =>
+                  setViewReportsJob({
+                    id: j.id,
+                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                    jobName: j.job_name ?? '—',
+                    jobAddress: j.job_address ?? '—',
+                  })
+                return (
                 <div
                   key={j.id}
-                  style={{
-                    padding: '0.85rem 0',
-                    borderBottom: idx < filteredAssignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}
+                  style={
+                    isMobile
+                      ? // v2.2067: bordered card on phones (My Schedule idiom) — the
+                        // amber rail carries Report due even before you reach the button.
+                        jobCardMobileStyle(reminderDue)
+                      : {
+                          padding: '0.85rem 0',
+                          borderBottom: idx < filteredAssignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
+                        }
+                  }
                 >
                   {/* v2.997: same compact mobile treatment as Ready to Bill — info full-width, actions on a row below. */}
                   <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', gap: isMobile ? '0.5rem' : '1rem' }}>
@@ -223,6 +244,154 @@ export function DashboardAssignedJobsSection({
                         )
                       })()}
                     </div>
+                    {isMobile ? (
+                      /* v2.2067 mobile card: uniform 42px utility buttons + labeled
+                         report chip on one row, full-width 44px actions on the next,
+                         quiet meta footer. Desktop keeps the flex-wrap row below. */
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                          {phones.get(j.id) ? (
+                            <JobRowCallButton
+                              boxed
+                              phone={phones.get(j.id)!}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                              }}
+                            />
+                          ) : phonesLoaded ? (
+                            <JobRowMissingPhoneButton
+                              boxed
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void submitAddJobPhoneDispatchRequestForJob(authUser?.id, showToast, {
+                                  jobId: j.id,
+                                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number),
+                                  jobName: j.job_name,
+                                  jobAddress: j.job_address,
+                                })
+                              }}
+                            />
+                          ) : null}
+                          {j.google_drive_link?.trim() && (
+                            <a
+                              href={j.google_drive_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
+                              title="Google Drive"
+                              style={JOB_ROW_MOBILE_ICON_BUTTON_STYLE}
+                            >
+                              <DriveLinkGlyph />
+                            </a>
+                          )}
+                          {j.job_pictures_link?.trim() && (
+                            <span style={JOB_ROW_MOBILE_ICON_BUTTON_STYLE}>
+                              <DashboardJobPicturesLinkRow layout="inline" jobPicturesLink={j.job_pictures_link} />
+                            </span>
+                          )}
+                          {j.job_plans_link?.trim() && (
+                            <a
+                              href={j.job_plans_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
+                              title="Job Plans"
+                              style={JOB_ROW_MOBILE_ICON_BUTTON_STYLE}
+                            >
+                              <JobPlansGlyph />
+                            </a>
+                          )}
+                          <span style={{ flex: 1 }} />
+                          {rowReportCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={openViewReports}
+                              aria-label={`View ${rowReportCount} ${rowReportCount === 1 ? 'report' : 'reports'} for this job`}
+                              style={JOB_ROW_REPORT_CHIP_STYLE}
+                            >
+                              <ReportFileGlyph />
+                              {rowReportCount > 99 ? '99+' : rowReportCount} {rowReportCount === 1 ? 'report' : 'reports'}
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
+                          {canLeaveJobFieldReport(role) && (
+                            <DashboardLeaveReportButton
+                              grow
+                              singleLine
+                              showReminder={reminderDue}
+                              onClick={() =>
+                                setLeaveReportJob({
+                                  id: j.id,
+                                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                                  jobName: j.job_name ?? '—',
+                                  jobAddress: j.job_address ?? '—',
+                                })
+                              }
+                            />
+                          )}
+                          {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary' || role === 'superintendent') && (
+                            <button type="button" onClick={openViewReports} style={jobCardMobileActionButtonStyle('ghost')}>
+                              View Reports
+                            </button>
+                          )}
+                          {role !== 'helpers' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' })
+                                setReadyForBillingChecked1(false)
+                                setReadyForBillingChecked2(false)
+                              }}
+                              disabled={jobStatusUpdatingId === j.id}
+                              style={jobCardMobileActionButtonStyle('ghost', jobStatusUpdatingId === j.id)}
+                            >
+                              {jobStatusUpdatingId === j.id ? '…' : 'Send to Billing'}
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ marginTop: '0.6rem', fontSize: '0.8125rem', color: 'var(--text-faint)', lineHeight: 1.35 }}>
+                          {isSubcontractorLikeRole(role) ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.4rem' }}>
+                              {j.created_at && (
+                                <span title="Time since job created">Open {formatOpenAgeShort(j.created_at)}{' ·'}</span>
+                              )}
+                              {(() => {
+                                const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
+                                if (!m.clickable) {
+                                  return (
+                                    <span title={m.title} aria-label={m.aria}>
+                                      {m.textCompact}
+                                    </span>
+                                  )
+                                }
+                                return (
+                                  <button
+                                    type="button"
+                                    className="subcontractorLastActivityTypeBtn"
+                                    title={m.title}
+                                    aria-label={m.aria}
+                                    style={{ lineHeight: 1.35, textAlign: 'left' }}
+                                    onClick={() =>
+                                      setSubcontractorJobActivityModalJob({
+                                        id: j.id,
+                                        hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                                        jobName: j.job_name ?? '—',
+                                      })
+                                    }
+                                  >
+                                    {m.textCompact}
+                                  </button>
+                                )
+                              })()}
+                            </div>
+                          ) : j.created_at ? (
+                            <span title="Time since job created">Open {formatTimeSince(j.created_at)}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {phones.get(j.id) ? (
                         <JobRowCallButton
@@ -431,6 +600,7 @@ export function DashboardAssignedJobsSection({
                         </div>
                       )}
                     </div>
+                    )}
                   </div>
                   {j.in_progress_stage_name && !isSubcontractorLikeRole(role) && (
                     <Link
@@ -453,7 +623,8 @@ export function DashboardAssignedJobsSection({
                     </Link>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </DashboardGroupCard>

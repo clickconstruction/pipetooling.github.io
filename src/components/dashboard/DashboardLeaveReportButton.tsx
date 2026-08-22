@@ -16,11 +16,13 @@ export function DashboardLeaveReportButton(props: {
   reportCount?: number
   /** Tapping the corner badge opens the job's reports list; required for the badge to render. */
   onViewReports?: () => void
+  /** Mobile card form (v2.2067): fill the row (flex 1, 44px tall). Hosts using it show the report count as a separate chip, not the corner badge. */
+  grow?: boolean
 }) {
-  const { showReminder, onClick, buttonTitle, singleLine = false, reportCount = 0, onViewReports } = props
+  const { showReminder, onClick, buttonTitle, singleLine = false, reportCount = 0, onViewReports, grow = false } = props
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <span style={{ position: 'relative', display: 'inline-block' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', ...(grow ? { flex: 1.3, minWidth: 0 } : null) }}>
+      <span style={{ position: 'relative', display: 'inline-block', ...(grow ? { width: '100%' } : null) }}>
         {/* Report-due state (v2.1549): the button itself turns amber and says
             why — no overlay covering the label. Blue "Leave Report" otherwise. */}
         <button
@@ -28,15 +30,16 @@ export function DashboardLeaveReportButton(props: {
           onClick={onClick}
           title={showReminder ? 'Scheduled work ended — leave a job report.' : buttonTitle}
           style={{
-            padding: '0.35rem 0.75rem',
-            fontSize: '0.875rem',
+            padding: grow ? '0.4rem 0.5rem' : '0.35rem 0.75rem',
+            fontSize: grow ? '0.9375rem' : '0.875rem',
             background: showReminder ? '#f2c230' : '#3b82f6',
             color: showReminder ? '#4a3800' : 'white',
-            fontWeight: showReminder ? 600 : undefined,
+            fontWeight: showReminder || grow ? 600 : undefined,
             border: 'none',
-            borderRadius: 4,
+            borderRadius: grow ? 8 : 4,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
+            ...(grow ? { width: '100%', minHeight: 44 } : null),
           }}
         >
           {showReminder
