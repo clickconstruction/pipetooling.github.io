@@ -105,6 +105,13 @@ describe('buildWeekCards', () => {
     ])
   })
 
+  it('skips rate tiers with no hours (no "Labor · 0.0 h × $0" noise)', () => {
+    const s = stub({ day_rates: [{ rate: 50, hours: 22.5, amount: 1125 }, { rate: 0, hours: 0, amount: 0 }] })
+    const cards = buildWeekCards(summary(), [s])
+    const laborLabels = cards[1]?.lines.filter((l) => l.label.startsWith('Labor')).map((l) => l.label) ?? []
+    expect(laborLabels).toEqual(['Labor · 22.5 h × $50'])
+  })
+
   it('orders multiple stub weeks newest-first after the open week', () => {
     const older = stub({ id: 's10', period_start: '2026-08-02', period_end: '2026-08-08', additional: [], deductions: [], payments: [], gross_pay: 500, day_rates: [{ rate: 50, hours: 10, amount: 500 }] })
     const cards = buildWeekCards(summary(), [older, stub()])

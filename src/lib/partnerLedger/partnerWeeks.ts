@@ -271,11 +271,15 @@ export function buildWeekCards(summary: PartnerSummary, stubs: PartnerLedgerStub
   const desc = [...stubs].sort((a, b) => b.period_start.localeCompare(a.period_start))
   let closing = summary.balance
   for (const s of desc) {
-    const lines: WeekCardLine[] = s.day_rates.map((d) => ({
-      label: `Labor · ${d.hours.toFixed(1)} h × $${d.rate}`,
-      amount: round2(d.amount),
-      cls: d.amount > 0 ? 'pos' : 'zero',
-    }))
+    // Rate tiers with no hours ("Labor · 0.0 h × $0 — 0.00") are pure noise on
+    // the statement — skip them.
+    const lines: WeekCardLine[] = s.day_rates
+      .filter((d) => d.hours !== 0 || d.amount !== 0)
+      .map((d) => ({
+        label: `Labor · ${d.hours.toFixed(1)} h × $${d.rate}`,
+        amount: round2(d.amount),
+        cls: d.amount > 0 ? 'pos' : 'zero',
+      }))
     for (const a of s.additional) lines.push({ label: a.description || 'Addition', amount: round2(a.amount), cls: 'pos' })
     for (const d of s.deductions) lines.push({ label: d.description || 'Deduction', amount: round2(-d.amount), cls: 'neg' })
     for (const p of s.payments) lines.push({ label: 'Paid out', sub: p.memo ?? undefined, amount: round2(-p.amount), cls: 'neg' })

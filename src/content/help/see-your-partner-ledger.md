@@ -8,7 +8,7 @@ If you work with the company as a partner, your Dashboard has a **Your ledger** 
 
 ## Reading the card
 
-The card opens on the **current week**: one balance — approved hours priced at your deal rates, minus payouts and any charges still waiting to go on a statement. It's what settling up today would actually mean. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
+The card opens on the **current week**, laid out like the paper statement: **Week opened** at the top, the week's lines in the middle, and a bold total at the bottom where the math finishes. The total says whose money it is in plain words — **Click owes you** or **you owe Click** — and on the current week it reads **So far this week**: approved hours priced at your deal rates, minus payouts and any charges still waiting to go on a statement. It's what settling up today would actually mean. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
 
 If charges are waiting for your next statement (a back-charge, a utility overage), they're already counted in the number — open **Full ledger** to see each one at the date it happened; they appear as deductions on the next statement the office closes.
 
@@ -18,7 +18,7 @@ Use the **‹ Older / Newer ›** buttons to step through past weeks, or open **
 2. Anything added — profit shares from your jobs, credits.
 3. Anything deducted — back-charges, utility overage.
 4. **Paid out** lines — money you were actually paid.
-5. The week's **opening and closing balance** — every closing balance opens the next week, so the chain is the ledger.
+5. **Week opened** at the top and **Week closed** at the bottom — every closing balance opens the next week, so the chain is the ledger.
 
 :::example A typical closed week
 Field labor 22.5 h × $50, estimating 18.0 h × $35, a profit share from a finished job, one back-charge, and Friday's payout — ending at the week's closing balance.
