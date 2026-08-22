@@ -7,6 +7,8 @@ keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage
 
 **People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, whether that reading is getting old, and which insurance plan covers it. The board groups into **Active** (someone is using the vehicle) and **Inactive** (parked in the motor pool, or waiting for a holder). The chips above the board total it up — how many vehicles, how many are in the motor pool, how many are {{chip:yellow|unassigned}}, how many {{chip:yellow|need a reading}}, how many are {{chip:yellow|not on insurance}}, and the fleet's weekly insurance + registration cost.
 
+Two of those chips are buttons. Tap {{chip:yellow|8 need a reading}} for the **odometer catch-up**: every affected vehicle with its VIN tail and holder, a miles box on each row — Enter saves with today's date and jumps to the next box, and rows turn green as you sweep the list. Tap {{chip:yellow|1 maintenance task}} for the **open-task list**: vehicle, task, assignee, and {{button:green|✓ Done}} (or an Assign button when nobody owns it yet) right on the row.
+
 ## Handing a vehicle to someone
 
 Every card has a {{button:outline|Hand off}} button (or {{button:outline|Assign}} when nobody holds it). One dialog does the whole move:

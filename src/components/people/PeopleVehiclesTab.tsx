@@ -47,6 +47,8 @@ import {
 } from '../../lib/vehicleFleet'
 import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { ChecklistItemActivity } from '../checklist/ChecklistItemActivity'
+import { readingCatchUpRows, type ReadingCatchUpRow } from '../../lib/vehicleCatchUp'
+import { VehicleReadingsCatchUpModal, VehicleTasksCatchUpModal } from './VehicleCatchUpModals'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -170,6 +172,13 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   // Task edit + activity spine (v2.2102): same tap-to-expand notes thread as
   // the checklist screens for assigned tasks; Edit covers title + note.
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  // Catch-up modals behind the summary chips (v2.2106). Reading rows snapshot
+  // at open so saved rows stay visible (green) instead of vanishing as they
+  // turn fresh; saves overlay via catchUpSaved.
+  const [readingsCatchUp, setReadingsCatchUp] = useState<ReadingCatchUpRow[] | null>(null)
+  const [catchUpSaved, setCatchUpSaved] = useState<Record<string, number>>({})
+  const [catchUpSavingId, setCatchUpSavingId] = useState<string | null>(null)
+  const [tasksCatchUpOpen, setTasksCatchUpOpen] = useState(false)
   const [editTask, setEditTask] = useState<VehicleMaintenanceTask | null>(null)
   const [editTaskTitle, setEditTaskTitle] = useState('')
   const [editTaskNote, setEditTaskNote] = useState('')
@@ -772,7 +781,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     return resolveChecklistCleanupIds((data as MaintenanceChecklistLinkIds | null) ?? null, t)
   }
 
-  async function completeMaintenanceTask(t: VehicleMaintenanceTask) {
+  async function completeMaintenanceTask(t: VehicleMaintenanceTask, opts?: { skipServiceNudge?: boolean }) {
     const links = await fetchChecklistLinkIds(t)
     const nowIso = new Date().toISOString()
     const { error: err } = await supabase
@@ -795,12 +804,39 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     showToast('Task done.', 'success')
     loadFleet()
     // The skippable "log it as a service?" nudge — prefilled, Cancel to skip.
+    // Suppressed from the catch-up modal, where a second modal would stack.
+    if (opts?.skipServiceNudge) return
     setServiceType('repair')
     setServiceDate(todayYmd())
     setServiceOdometer('')
     setServiceCost('')
     setServiceNote(t.title)
     setServiceFormOpen(true)
+  }
+
+  function openReadingsCatchUp() {
+    setCatchUpSaved({})
+    setReadingsCatchUp(readingCatchUpRows(vehicles, holderByVehicle, latestMap, today))
+  }
+
+  async function saveCatchUpReading(vehicleId: string, raw: string) {
+    const val = parseOdometerInput(raw)
+    if (val == null) {
+      setError('Odometer must be a non-negative number')
+      return
+    }
+    setCatchUpSavingId(vehicleId)
+    const { error: err } = await supabase
+      .from('vehicle_odometer_entries')
+      .insert({ vehicle_id: vehicleId, odometer_value: val, read_date: todayYmd(), created_by: authUser?.id ?? null })
+    setCatchUpSavingId(null)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    setCatchUpSaved((s) => ({ ...s, [vehicleId]: val }))
+    loadFleet()
   }
 
   function openTaskEdit(t: VehicleMaintenanceTask) {
@@ -1233,14 +1269,22 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
           {summary.motorPool > 0 && <span style={chipStyle('plain')}>{summary.motorPool} in motor pool</span>}
           {summary.unassigned > 0 && <span style={chipStyle('amber')}>{summary.unassigned} unassigned</span>}
           {uninsuredCount > 0 && <span style={chipStyle('amber')}>{uninsuredCount} not on insurance</span>}
-          {summary.staleReadings > 0 && <span style={chipStyle('amber')}>{summary.staleReadings} need a reading</span>}
+          {summary.staleReadings > 0 && (
+            <button type="button" onClick={openReadingsCatchUp} title="Open the odometer catch-up list" style={{ ...chipStyle('amber'), font: 'inherit', border: '1px solid var(--border-amber-soft, var(--border-amber-soft))', cursor: 'pointer' }}>
+              {summary.staleReadings} need a reading
+            </button>
+          )}
           {oilCounts.dueSoon > 0 && <span style={chipStyle('amber')}>{oilCounts.dueSoon} oil due soon</span>}
           {oilCounts.overdue > 0 && <span style={chipStyle('red')}>{oilCounts.overdue} oil overdue</span>}
           {(() => {
             const totalOpen = Object.values(openProblemsByVehicle).reduce((s, n) => s + n, 0)
             return totalOpen > 0 ? <span style={chipStyle('red')}>{totalOpen} open problem{totalOpen === 1 ? '' : 's'}</span> : null
           })()}
-          {openTaskTotal > 0 && <span style={chipStyle('amber')}>{openTaskTotal} maintenance task{openTaskTotal === 1 ? '' : 's'}</span>}
+          {openTaskTotal > 0 && (
+            <button type="button" onClick={() => setTasksCatchUpOpen(true)} title="Open the maintenance-task list" style={{ ...chipStyle('amber'), font: 'inherit', border: '1px solid var(--border-amber-soft, var(--border-amber-soft))', cursor: 'pointer' }}>
+              {openTaskTotal} maintenance task{openTaskTotal === 1 ? '' : 's'}
+            </button>
+          )}
           {weeklyTotal > 0 && <span style={chipStyle('plain')}>${formatCurrency(weeklyTotal)}/wk ins+reg</span>}
         </div>
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
@@ -2369,6 +2413,26 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         </div>
       )}
 
+      {readingsCatchUp && (
+        <VehicleReadingsCatchUpModal
+          rows={readingsCatchUp}
+          userNameById={userNameById}
+          savedById={catchUpSaved}
+          savingVehicleId={catchUpSavingId}
+          onSave={(vehicleId, raw) => void saveCatchUpReading(vehicleId, raw)}
+          onClose={() => setReadingsCatchUp(null)}
+        />
+      )}
+      {tasksCatchUpOpen && (
+        <VehicleTasksCatchUpModal
+          tasks={openMaintenanceTasks(maintenanceTasksAll)}
+          vehicleById={new Map(vehicles.map((v) => [v.id, v]))}
+          userNameById={userNameById}
+          onComplete={(t) => void completeMaintenanceTask(t, { skipServiceNudge: true })}
+          onAssign={(t) => openAssignTask(t)}
+          onClose={() => setTasksCatchUpOpen(false)}
+        />
+      )}
       {editTask && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }} onClick={() => { if (!editTaskSaving) setEditTask(null) }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 420, width: '100%' }} onClick={(e) => e.stopPropagation()}>
