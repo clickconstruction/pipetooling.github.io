@@ -2963,7 +2963,9 @@ export default function JobFormModal({
       onSavedRef.current?.()
       closeFormWithoutSaving()
       showToast(
-        'Costs and job total moved to the target job; this job was removed. Open the target job to verify Specific Work and Job Total.',
+        typeof (payload as { note_body?: unknown }).note_body === 'string'
+          ? 'Costs and job total moved to the target job; this job was removed. A "Combined" note was posted to the target\'s activity.'
+          : 'Costs and job total moved to the target job; this job was removed. Open the target job to verify Specific Work and Job Total.',
         'success',
       )
       return true

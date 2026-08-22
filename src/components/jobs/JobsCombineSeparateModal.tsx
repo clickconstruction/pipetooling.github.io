@@ -29,6 +29,8 @@ import {
   type DuplicateAddressJob,
 } from '../../lib/duplicateJobAddressGroups'
 import type { Database } from '../../types/database'
+import { JobCombineStatusNotice } from './JobCombineStatusNotice'
+import { useJobStatusPctPair } from './useJobStatusPctPair'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
 
@@ -493,6 +495,12 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
     [cSourceId, cTargetId, cMigrateBusy, sSplitFollowUpJobId],
   )
 
+  // Status/% of both picked jobs — the conflict notice above the combine confirm.
+  const { pair: combineStatusPair, loading: combineStatusPairLoading } = useJobStatusPctPair(
+    open && activeTab === 'combine' ? cSourceId : null,
+    open && activeTab === 'combine' ? cTargetId : null,
+  )
+
   const sPickCount = sFixturePick.size
   const sMovingAllFixtures = sFixtures.length > 0 && sPickCount >= sFixtures.length
   const separateCanSubmit = useMemo(
@@ -656,8 +664,11 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         showToast(msg, 'error')
         return
       }
+      const notePosted = typeof (payload as { note_body?: unknown }).note_body === 'string'
       showToast(
-        'Costs and job total moved to the target job; the source job was removed. Open the target job to verify Specific Work and Job Total.',
+        notePosted
+          ? 'Costs and job total moved to the target job; the source job was removed. A "Combined" note was posted to the job\'s activity.'
+          : 'Costs and job total moved to the target job; the source job was removed. Open the target job to verify Specific Work and Job Total.',
         'success',
       )
       onAfterSuccess()
@@ -1211,6 +1222,10 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     </details>
                   ) : null}
                 </div>
+
+                {cSourceId && cTargetId ? (
+                  <JobCombineStatusNotice pair={combineStatusPair} loading={combineStatusPairLoading} />
+                ) : null}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                   <button
