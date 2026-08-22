@@ -94,8 +94,10 @@ export function BidsWhyWeLostLens({
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
+  /** "bids by" estimator scope (v2.2053) — '' = all; scopes the WHOLE lens (headline, rail, queue). */
+  const [estimatorFilter, setEstimatorFilter] = useState('')
 
-  const lensBids = useMemo<LensBid[]>(() => {
+  const allLensBids = useMemo<LensBid[]>(() => {
     return bids
       .filter((b) => b.outcome === 'lost')
       .map((b) => {
@@ -118,6 +120,23 @@ export function BidsWhyWeLostLens({
         }
       })
   }, [bids, localSaves, ledgerPrefixMap])
+
+  /** Distinct estimator names across the lost bids, for the "bids by" select. */
+  const estimatorOptions = useMemo(() => {
+    const names = new Set<string>()
+    let hasUnassigned = false
+    for (const b of allLensBids) {
+      if (b.estimatorName) names.add(b.estimatorName)
+      else hasUnassigned = true
+    }
+    const sorted = [...names].sort((a, b) => a.localeCompare(b))
+    return hasUnassigned ? [...sorted, 'No estimator'] : sorted
+  }, [allLensBids])
+
+  const lensBids = useMemo(() => {
+    if (!estimatorFilter) return allLensBids
+    return allLensBids.filter((b) => (b.estimatorName ?? 'No estimator') === estimatorFilter)
+  }, [allLensBids, estimatorFilter])
 
   // Per-GC copies: a bid sent to three GCs gets a queue entry under each.
   // The outcome is per-bid, so recording it under any GC clears every copy.
@@ -255,13 +274,37 @@ export function BidsWhyWeLostLens({
 
   const needTotal = rollup.uncategorizedCount
 
-  if (lensBids.length === 0) {
+  if (allLensBids.length === 0) {
     return (
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
         No lost bids in this trade yet — nothing to explain.
       </p>
     )
   }
+
+  const estimatorFilterSelect =
+    estimatorOptions.length > 1 ? (
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: 'var(--text-700)' }}>
+        bids by
+        <select
+          value={estimatorFilter}
+          onChange={(e) => {
+            setEstimatorFilter(e.target.value)
+            setSelectedBuilderKey(null)
+            setSelectedBidId(null)
+          }}
+          aria-label="Show only bids by estimator"
+          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.18rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: estimatorFilter ? 'var(--text-blue-700)' : 'var(--text-strong)' }}
+        >
+          <option value="">All estimators</option>
+          {estimatorOptions.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : null
 
   const maxLineCount = Math.max(1, ...rollup.lines.map((l) => l.count))
   const pendingForSelected = selectedGroup ? pendingCountByBuilderKey.get(selectedGroup.builderKey) ?? 0 : 0
@@ -279,7 +322,7 @@ export function BidsWhyWeLostLens({
             color: needTotal > 0 ? 'var(--text-red-800)' : 'var(--text-emerald-800)',
           }}
         >
-          {needTotal > 0 ? `${needTotal} lost bid${needTotal === 1 ? '' : 's'} need a reason` : 'Every lost bid has a reason'}
+          {needTotal > 0 ? `${needTotal} lost bid${needTotal === 1 ? ' needs' : 's need'} a reason` : 'Every lost bid has a reason'}
         </span>
         {clearedToday > 0 ? (
           <span
@@ -294,10 +337,16 @@ export function BidsWhyWeLostLens({
             {clearedToday} cleared this session
           </span>
         ) : null}
+        {estimatorFilterSelect}
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
           Keys 1–{BID_LOSS_CATEGORIES.length} tap a reason · Enter takes a suggestion · arrows move between bids
         </span>
       </div>
+      {estimatorFilter && lensBids.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+          No lost bids by {estimatorFilter} in this trade — switch back to All estimators.
+        </p>
+      ) : null}
 
       <div
         style={{
