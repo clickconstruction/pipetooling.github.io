@@ -8,11 +8,11 @@ If you work with the company as a partner, your Dashboard has a **Your ledger** 
 
 ## Reading the card
 
-The card opens on the **current week**, laid out like the paper statement: **Week opened** at the top, the week's lines in the middle, and a bold total at the bottom where the math finishes. The total says whose money it is in plain words — **Click owes you** or **you owe Click** — and on the current week it reads **So far this week**: approved hours priced at your deal rates, minus payouts and any charges still waiting to go on a statement. It's what settling up today would actually mean. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
+The card opens on the **current week**, laid out like the paper statement: **Week opened** at the top, the week's lines in the middle, and a bold total at the bottom where the math finishes. The total says whose money it is in plain words — **Click owes you** or **you owe Click** — and on the current week it reads **So far this week**: approved hours priced at your deal rates, minus payouts and charges. It's what settling up today would actually mean. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
 
-If charges are waiting for your next statement (a back-charge, a utility overage), they're already counted in the number — open **Full ledger** to see each one at the date it happened; they appear as deductions on the next statement the office closes.
+Charges like a back-charge or a utility overage show as a red line **in the week they happened**, whether or not a statement has picked them up yet — so the week they hit is the week you see them.
 
-Use the **‹ Older / Newer ›** buttons to step through past weeks, or open **Full ledger** at the bottom of the card to see everything ever — postings, payouts, and any back-charges or damages at the date they happened — with running balances. The office can also leave dated notes on the ledger; ones shared with you appear there as quiet italic lines. Each closed week shows:
+Use the **‹ Older / Newer ›** buttons to step through past weeks, back to your very first week. Every week opens exactly where the week before it closed, so you can follow the money straight through; **Full ledger** at the bottom of the card is the same history as one long list — postings, payouts, and charges at their dates — with running balances. The office can also leave dated notes on the ledger; ones shared with you appear there as quiet italic lines. Each closed week shows:
 
 1. Labor lines — your hours at the rate they were priced that week (rate changes never reach back into old weeks).
 2. Anything added — profit shares from your jobs, credits.

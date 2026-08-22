@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildWeekCards,
+  buildJournalWeekCards,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
   parsePartnerLedgerOffsets,
   partnerStubsToJournal,
+  weekStartYmd,
   type PartnerLedgerStub,
   type PartnerSummary,
 } from './partnerWeeks'
@@ -77,47 +78,101 @@ describe('parsePartnerLedgerStubs', () => {
   })
 })
 
-describe('buildWeekCards', () => {
-  it('puts the live week first with balance-so-far and pending line', () => {
-    const cards = buildWeekCards(summary(), [stub()])
+describe('weekStartYmd', () => {
+  it('returns the Sunday of the containing week', () => {
+    expect(weekStartYmd('2026-08-22')).toBe('2026-08-16') // Saturday
+    expect(weekStartYmd('2026-08-16')).toBe('2026-08-16') // Sunday stays
+    expect(weekStartYmd('2026-06-26')).toBe('2026-06-21') // Friday
+    expect(weekStartYmd('2026-01-01')).toBe('2025-12-28') // year boundary
+  })
+  it('passes garbage through unchanged', () => {
+    expect(weekStartYmd('')).toBe('')
+    expect(weekStartYmd('nope')).toBe('nope')
+  })
+})
+
+describe('buildJournalWeekCards', () => {
+  it('puts the live week first: opening = journal end, closing adds gross so far', () => {
+    const cards = buildJournalWeekCards(summary(), [stub()])
+    // journal end: 1755 + 1051.05 − 150 − 1625 = 1031.05
     expect(cards[0]?.open).toBe(true)
-    expect(cards[0]?.closing).toBe(3173.75 + 615)
+    expect(cards[0]?.opening).toBe(1031.05)
+    expect(cards[0]?.closing).toBe(1031.05 + 615)
     expect(cards[0]?.lines.some((l) => l.label.includes('pending approval'))).toBe(true)
   })
 
-  it('chains opening/closing backwards from the server balance', () => {
-    const cards = buildWeekCards(summary(), [stub()])
+  it('chains forward from $0 and each closing equals the journal balance at week end', () => {
+    const cards = buildJournalWeekCards(summary(), [stub()])
     const wk = cards[1]
-    expect(wk?.closing).toBe(3173.75)
-    // net = 1755 + 1051.05 − 150 − 1625 = 1031.05 → opening = 2142.70
-    expect(wk?.opening).toBe(2142.7)
+    expect(wk?.opening).toBe(0)
+    expect(wk?.closing).toBe(1031.05)
   })
 
-  it('renders labor per stamped rate plus additions/deductions/payouts', () => {
-    const cards = buildWeekCards(summary(), [stub()])
+  it('renders journal rows in date order; labor expands into stamped rate tiers', () => {
+    const cards = buildJournalWeekCards(summary(), [stub()])
     const labels = cards[1]?.lines.map((l) => l.label) ?? []
+    // payout dated 08-14 books before the 08-15 stub lines — dates rule, not the statement layout
     expect(labels).toEqual([
+      'Paid out',
       'Labor · 22.5 h × $50',
       'Labor · 18.0 h × $35',
       'Profit share — Job 781',
       'Back-charge — return trip',
-      'Paid out',
     ])
   })
 
   it('skips rate tiers with no hours (no "Labor · 0.0 h × $0" noise)', () => {
     const s = stub({ day_rates: [{ rate: 50, hours: 22.5, amount: 1125 }, { rate: 0, hours: 0, amount: 0 }] })
-    const cards = buildWeekCards(summary(), [s])
+    const cards = buildJournalWeekCards(summary(), [s])
     const laborLabels = cards[1]?.lines.filter((l) => l.label.startsWith('Labor')).map((l) => l.label) ?? []
     expect(laborLabels).toEqual(['Labor · 22.5 h × $50'])
   })
 
-  it('orders multiple stub weeks newest-first after the open week', () => {
-    const older = stub({ id: 's10', period_start: '2026-08-02', period_end: '2026-08-08', additional: [], deductions: [], payments: [], gross_pay: 500, day_rates: [{ rate: 50, hours: 10, amount: 500 }] })
-    const cards = buildWeekCards(summary(), [older, stub()])
-    expect(cards.map((c) => c.stubId)).toEqual([null, 's11', 's10'])
-    expect(cards[2]?.closing).toBe(2142.7)
-    expect(cards[2]?.opening).toBe(1642.7)
+  it('books charges in their own week (even with no statement) and payouts in the week they were paid', () => {
+    // The Bryan shape: a stub whose payout landed the NEXT calendar week, and a
+    // back-charge in a week with no statement at all.
+    const s = stub({
+      id: 'sA',
+      period_start: '2026-06-07',
+      period_end: '2026-06-13',
+      gross_pay: 275,
+      day_rates: [{ rate: 50, hours: 5.5, amount: 275 }],
+      additional: [],
+      deductions: [],
+      payments: [{ amount: 275, paid_at: '2026-06-16', memo: null }],
+    })
+    const offsets = [{ id: 'o1', type: 'backcharge', amount: 405.64, occurred_date: '2026-06-26', description: 'AC unit for his RV' }]
+    const cards = buildJournalWeekCards(summary({ current_week: { week_start: '2026-08-16', field_hours: 0, office_hours: 0, farm_hours: 0, gross_so_far: 0, pending_sessions: 0 } }), [s], offsets)
+    expect(cards.map((c) => c.weekStart)).toEqual(['2026-08-16', '2026-06-21', '2026-06-14', '2026-06-07'])
+    // labor week
+    expect(cards[3]).toMatchObject({ opening: 0, closing: 275, stubId: 'sA' })
+    // payout week — the payment books where it was PAID, not on the stub's week
+    expect(cards[2]?.lines.map((l) => l.label)).toEqual(['Paid out'])
+    expect(cards[2]).toMatchObject({ opening: 275, closing: 0, stubId: null })
+    // back-charge week — visible with no statement, chain flows through it
+    expect(cards[1]?.lines).toEqual([{ label: 'AC unit for his RV', sub: undefined, amount: -405.64, cls: 'neg' }])
+    expect(cards[1]).toMatchObject({ opening: 0, closing: -405.64 })
+    // live week opens where the chain left off
+    expect(cards[0]).toMatchObject({ open: true, opening: -405.64, closing: -405.64 })
+  })
+
+  it('journal rows dated inside the live week join the live card', () => {
+    const s = stub({
+      id: 'sB',
+      period_start: '2026-08-09',
+      period_end: '2026-08-15',
+      gross_pay: 450.1,
+      day_rates: [{ rate: 35, hours: 12.9, amount: 450.1 }],
+      additional: [],
+      deductions: [],
+      payments: [{ amount: 200, paid_at: '2026-08-18', memo: 'CashApp advance' }],
+    })
+    const cards = buildJournalWeekCards(summary(), [s])
+    expect(cards[0]?.lines.map((l) => l.label)).toContain('Paid out')
+    // opening = closing of the 08-09 week (450.10); posted live = 250.10; + 615 so far
+    expect(cards[0]?.opening).toBe(450.1)
+    expect(cards[0]?.closing).toBe(250.1 + 615)
+    expect(cards[1]).toMatchObject({ opening: 0, closing: 450.1 })
   })
 })
 

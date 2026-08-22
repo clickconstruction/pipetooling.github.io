@@ -232,70 +232,140 @@ export function parsePartnerLedgerStubs(payload: unknown): PartnerLedgerStub[] {
   return out
 }
 
-function stubNet(s: PartnerLedgerStub): number {
-  const adds = s.additional.reduce((t, a) => t + a.amount, 0)
-  const deds = s.deductions.reduce((t, d) => t + d.amount, 0)
-  const pays = s.payments.reduce((t, p) => t + p.amount, 0)
-  return round2(s.gross_pay + adds - deds - pays)
+const ymdToUtcMs = (ymd: string): number | null => {
+  const [y, m, d] = ymd.split('-').map(Number)
+  if (!y || !m || d == null) return null
+  const ms = Date.UTC(y, m - 1, d)
+  return Number.isNaN(ms) ? null : ms
+}
+const utcMsToYmd = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
+
+/** Sunday (company week start) of the calendar week containing `ymd`. Pure date math — no timezone. */
+export function weekStartYmd(ymd: string): string {
+  const ms = ymdToUtcMs(ymd)
+  if (ms == null) return ymd
+  return utcMsToYmd(ms - new Date(ms).getUTCDay() * 86400000)
 }
 
-/**
- * Cards newest-first: [current open week, newest statement week, …].
- * Closing chain runs backwards from the server balance; the open week's
- * "closing" is balance + this week's gross so far (nothing is posted yet).
- */
-export function buildWeekCards(summary: PartnerSummary, stubs: PartnerLedgerStub[]): WeekCard[] {
-  const cards: WeekCard[] = []
-  const cw = summary.current_week
-  const openLines: WeekCardLine[] = []
-  if (cw.field_hours > 0)
-    openLines.push({ label: `Field labor · ${cw.field_hours.toFixed(1)} h × $${summary.rates.field}`, amount: round2(cw.field_hours * summary.rates.field), cls: 'pos' })
-  if (cw.office_hours > 0)
-    openLines.push({ label: `Estimating · ${cw.office_hours.toFixed(1)} h × $${summary.rates.estimating}`, amount: round2(cw.office_hours * summary.rates.estimating), cls: 'pos' })
-  if (cw.farm_hours > 0)
-    openLines.push({ label: `Farm · ${cw.farm_hours.toFixed(1)} h`, sub: 'no cash — farm food credit', amount: 0, cls: 'zero' })
-  if (cw.pending_sessions > 0)
-    openLines.push({ label: `${cw.pending_sessions} session(s) pending approval`, sub: 'post when the office approves them', amount: null, cls: 'zero' })
-  cards.push({
-    open: true,
-    weekStart: cw.week_start,
-    weekEnd: null,
-    stubId: null,
-    lines: openLines,
-    opening: summary.balance,
-    closing: round2(summary.balance + cw.gross_so_far),
-    partnerAckAt: null,
-    companyAckAt: null,
-  })
-
-  const desc = [...stubs].sort((a, b) => b.period_start.localeCompare(a.period_start))
-  let closing = summary.balance
-  for (const s of desc) {
-    // Rate tiers with no hours ("Labor · 0.0 h × $0 — 0.00") are pure noise on
-    // the statement — skip them.
-    const lines: WeekCardLine[] = s.day_rates
-      .filter((d) => d.hours !== 0 || d.amount !== 0)
-      .map((d) => ({
+/** One journal row → week-card line(s); labor rows expand into the stub's rate tiers. */
+function journalRowToLines(r: JournalRow, stubById: Map<string, PartnerLedgerStub>): WeekCardLine[] {
+  if (r.kind === 'labor' && r.pay_stub_id) {
+    const stub = stubById.get(r.pay_stub_id)
+    // Rate tiers with no hours ("Labor · 0.0 h × $0") are noise — skip them.
+    const tiers = (stub?.day_rates ?? []).filter((d) => d.hours !== 0 || d.amount !== 0)
+    if (tiers.length > 0) {
+      return tiers.map((d) => ({
         label: `Labor · ${d.hours.toFixed(1)} h × $${d.rate}`,
         amount: round2(d.amount),
         cls: d.amount > 0 ? 'pos' : 'zero',
       }))
-    for (const a of s.additional) lines.push({ label: a.description || 'Addition', amount: round2(a.amount), cls: 'pos' })
-    for (const d of s.deductions) lines.push({ label: d.description || 'Deduction', amount: round2(-d.amount), cls: 'neg' })
-    for (const p of s.payments) lines.push({ label: 'Paid out', sub: p.memo ?? undefined, amount: round2(-p.amount), cls: 'neg' })
-    const net = stubNet(s)
-    cards.push({
-      open: false,
-      weekStart: s.period_start,
-      weekEnd: s.period_end,
-      stubId: s.id,
-      lines,
-      opening: round2(closing - net),
-      closing,
-      partnerAckAt: s.partner_ack_at,
-      companyAckAt: s.company_ack_at,
-    })
-    closing = round2(closing - net)
+    }
   }
-  return cards
+  if (r.kind === 'payout') {
+    return [{ label: 'Paid out', sub: r.detail ?? undefined, amount: r.amount, cls: 'neg' }]
+  }
+  return [
+    {
+      label: r.label,
+      sub: r.detail ?? undefined,
+      amount: r.amount,
+      cls: r.amount > 0 ? 'pos' : r.amount < 0 ? 'neg' : 'zero',
+    },
+  ]
+}
+
+/**
+ * Cards newest-first: [current open week, then every calendar week that has
+ * journal activity, back to the start of the partnership].
+ *
+ * v2.2111: the cards are a WEEKLY VIEW OVER THE SAME JOURNAL as Full ledger —
+ * rows (labor, additions, deductions, payouts at their dates, and charge
+ * offsets at their occurred dates) grouped by company week, with the
+ * opening/closing chain run FORWARD from $0 at the start of history. Every
+ * card's closing equals the Full ledger's running balance at that week's end,
+ * so the math flows week to week with no invisible wedge. (The old cards were
+ * built from statement stubs alone and walked backwards from the posted-stubs
+ * balance — back-charges never appeared and openings drifted from reality.)
+ *
+ * The live week appends the so-far hour lines (not yet posted) on top of any
+ * journal rows already dated this week; its closing = posted chain + gross so
+ * far. Credits still waiting for a statement (positive pending offsets) stay
+ * out of the chain, matching Full ledger.
+ */
+export function buildJournalWeekCards(
+  summary: PartnerSummary,
+  stubs: PartnerLedgerStub[],
+  offsets: PartnerLedgerOffset[] = [],
+): WeekCard[] {
+  const { rows } = partnerStubsToJournal(stubs, offsets)
+  const stubById = new Map(stubs.map((s) => [s.id, s]))
+  const stubByWeek = new Map(stubs.map((s) => [weekStartYmd(s.period_start), s]))
+  const liveWs = summary.current_week.week_start
+
+  // Group ascending journal rows by week; rows dated in (or after) the live
+  // week belong to the live card.
+  const weekOrder: string[] = []
+  const byWeek = new Map<string, JournalRow[]>()
+  const liveRows: JournalRow[] = []
+  for (const r of rows) {
+    const ws = weekStartYmd(r.date)
+    if (liveWs && ws >= liveWs) {
+      liveRows.push(r)
+      continue
+    }
+    if (!byWeek.has(ws)) {
+      byWeek.set(ws, [])
+      weekOrder.push(ws)
+    }
+    byWeek.get(ws)!.push(r)
+  }
+
+  const closed: WeekCard[] = []
+  let opening = 0
+  for (const ws of weekOrder) {
+    const wrows = byWeek.get(ws)!
+    const stub = stubByWeek.get(ws) ?? null
+    const closing = wrows[wrows.length - 1]!.balance
+    closed.push({
+      open: false,
+      weekStart: ws,
+      weekEnd: (() => {
+        const ms = ymdToUtcMs(ws)
+        return ms == null ? null : utcMsToYmd(ms + 6 * 86400000)
+      })(),
+      stubId: stub?.id ?? null,
+      lines: wrows.flatMap((r) => journalRowToLines(r, stubById)),
+      opening,
+      closing,
+      partnerAckAt: stub?.partner_ack_at ?? null,
+      companyAckAt: stub?.company_ack_at ?? null,
+    })
+    opening = closing
+  }
+
+  // Live card: posted rows this week + the so-far hour lines.
+  const cw = summary.current_week
+  const liveLines: WeekCardLine[] = liveRows.flatMap((r) => journalRowToLines(r, stubById))
+  if (cw.field_hours > 0)
+    liveLines.push({ label: `Field labor · ${cw.field_hours.toFixed(1)} h × $${summary.rates.field}`, amount: round2(cw.field_hours * summary.rates.field), cls: 'pos' })
+  if (cw.office_hours > 0)
+    liveLines.push({ label: `Estimating · ${cw.office_hours.toFixed(1)} h × $${summary.rates.estimating}`, amount: round2(cw.office_hours * summary.rates.estimating), cls: 'pos' })
+  if (cw.farm_hours > 0)
+    liveLines.push({ label: `Farm · ${cw.farm_hours.toFixed(1)} h`, sub: 'no cash — farm food credit', amount: 0, cls: 'zero' })
+  if (cw.pending_sessions > 0)
+    liveLines.push({ label: `${cw.pending_sessions} session(s) pending approval`, sub: 'post when the office approves them', amount: null, cls: 'zero' })
+  const postedLive = liveRows.length > 0 ? liveRows[liveRows.length - 1]!.balance : opening
+  const live: WeekCard = {
+    open: true,
+    weekStart: liveWs || (weekOrder.length > 0 ? weekOrder[weekOrder.length - 1]! : ''),
+    weekEnd: null,
+    stubId: null,
+    lines: liveLines,
+    opening,
+    closing: round2(postedLive + cw.gross_so_far),
+    partnerAckAt: null,
+    companyAckAt: null,
+  }
+
+  return [live, ...closed.reverse()]
 }
