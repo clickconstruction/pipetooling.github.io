@@ -30,6 +30,9 @@ import { BillingPipelineCard, BillingPipelineStage } from './BillingPipelineCard
 import { BillingPipelineInfoModal } from './BillingPipelineInfoModal'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import BilledPaymentConfirmationModal from '../jobs/BilledPaymentConfirmationModal'
+import SendBackReasonField from '../jobs/SendBackReasonField'
+import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
+import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import type { UserRole } from '../../hooks/useAuth'
 
 function ReadyToBillJobIconToolbar({
@@ -181,6 +184,8 @@ export function DashboardBillingPipelineSection({
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceForDashboard; action: 'delete' | 'revert' } | null>(null)
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
+  /** Required reason for RTB → Working send-backs (v2.2065) — posted as a "Sent back to Working — …" thread note. */
+  const [sendBackReason, setSendBackReason] = useState('')
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
 
@@ -709,12 +714,20 @@ export function DashboardBillingPipelineSection({
                 <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
               </label>
             </div>
+            {sendBackJob.toStatus === 'working' && (
+              <SendBackReasonField
+                value={sendBackReason}
+                onChange={setSendBackReason}
+                disabled={jobStatusUpdatingId === sendBackJob.id}
+              />
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => {
                   setSendBackJob(null)
                   setSendBackChecked(false)
+                  setSendBackReason('')
                 }}
                 style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
@@ -722,9 +735,14 @@ export function DashboardBillingPipelineSection({
               </button>
               <button
                 type="button"
-                disabled={!sendBackChecked || jobStatusUpdatingId === sendBackJob.id}
+                disabled={
+                  !sendBackChecked ||
+                  (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) ||
+                  jobStatusUpdatingId === sendBackJob.id
+                }
                 onClick={async () => {
                   if (!sendBackJob) return
+                  if (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) return
                   if (sendBackJob.toStatus === 'ready_to_bill') {
                     const token = await getAccessTokenForEdgeFunctions()
                     if (!token) {
@@ -743,8 +761,13 @@ export function DashboardBillingPipelineSection({
                   }
                   const ok = await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
                   if (!ok) return
+                  if (sendBackJob.toStatus === 'working') {
+                    const noted = await postSendBackReasonNote(sendBackJob.id, authUserId, sendBackReason)
+                    if (!noted) showToast?.('Sent back, but the reason note could not be posted — add it in Job activity.', 'warning')
+                  }
                   setSendBackJob(null)
                   setSendBackChecked(false)
+                  setSendBackReason('')
                 }}
                 style={{
                   padding: '0.5rem 1rem',

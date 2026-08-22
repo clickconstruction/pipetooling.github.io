@@ -19,6 +19,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
+import SendBackReasonField from './SendBackReasonField'
+import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
+import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
@@ -858,6 +861,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
+  /** Required reason for RTB → Working send-backs (v2.2065) — posted as a "Sent back to Working — …" thread note. */
+  const [sendBackReason, setSendBackReason] = useState('')
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'waiting' | 'ready_to_bill' | 'billed' } | null>(null)
@@ -4875,12 +4880,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
               </label>
             </div>
+            {sendBackJob.toStatus === 'working' && (
+              <SendBackReasonField
+                value={sendBackReason}
+                onChange={setSendBackReason}
+                disabled={stagesStatusUpdatingId === sendBackJob.id}
+              />
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => {
                   setSendBackJob(null)
                   setSendBackChecked(false)
+                  setSendBackReason('')
                 }}
                 style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
@@ -4888,9 +4901,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               </button>
               <button
                 type="button"
-                disabled={!sendBackChecked || stagesStatusUpdatingId === sendBackJob.id}
+                disabled={
+                  !sendBackChecked ||
+                  (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) ||
+                  stagesStatusUpdatingId === sendBackJob.id
+                }
                 onClick={async () => {
                   if (!sendBackJob) return
+                  if (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) return
                   if (sendBackJob.toStatus === 'ready_to_bill') {
                     const token = await getAccessTokenForEdgeFunctions()
                     if (!token) {
@@ -4909,8 +4927,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   }
                   const ok = await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
                   if (!ok) return
+                  if (sendBackJob.toStatus === 'working') {
+                    const noted = await postSendBackReasonNote(sendBackJob.id, authUser?.id, sendBackReason)
+                    if (!noted) showToast('Sent back, but the reason note could not be posted — add it in Job activity.', 'warning')
+                  }
                   setSendBackJob(null)
                   setSendBackChecked(false)
+                  setSendBackReason('')
                 }}
                 style={{
                   padding: '0.5rem 1rem',

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
 import { supabase } from '../../lib/supabase'
 import { computeJobPctToday, type JobPctToday, type PctNoteRow } from '../../lib/jobPctDayDelta'
+import { JOB_SEND_BACK_NOTE_PREFIX, sendBackLineForCard, type SendBackCardLine } from '../../lib/jobs/jobSendBackNote'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { splitScheduleRowLabel, stripAddressZip } from '../../lib/dashboardScheduleCardLines'
 import { scheduleFormatWeekdayShort, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
@@ -125,6 +126,65 @@ function useMyScheduleJobPct(jobIds: string[], todayYmd: string, refreshKey = 0)
   return pctToday
 }
 
+/**
+ * Latest office send-back per scheduled job (v2.2065): when the office moves a
+ * job Ready to bill → Working it now records a "Sent back to Working — <why>"
+ * thread note; this surfaces the newest one on the crew's card while the job
+ * is still Working, so a returned job explains itself instead of looking like
+ * the crew's 100% was ignored. Roles whose RLS hides thread notes (or the
+ * author's user row) just get no line / no name — the layer is additive.
+ */
+function useMyScheduleSendBacks(jobIds: string[], refreshKey = 0): ReadonlyMap<string, SendBackCardLine> {
+  const [byJob, setByJob] = useState<ReadonlyMap<string, SendBackCardLine>>(() => new Map())
+  const idsKey = useMemo(() => [...new Set(jobIds)].sort().join(','), [jobIds])
+  useEffect(() => {
+    const ids = idsKey === '' ? [] : idsKey.split(',')
+    if (ids.length === 0) {
+      setByJob(new Map())
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const [jobsRes, notesRes] = await Promise.all([
+        supabase.from('jobs_ledger').select('id, status').in('id', ids),
+        supabase
+          .from('jobs_ledger_thread_notes')
+          .select('job_id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)')
+          .in('job_id', ids)
+          .like('body', `${JOB_SEND_BACK_NOTE_PREFIX}%`)
+          .order('created_at', { ascending: false }),
+      ])
+      if (cancelled || jobsRes.error || notesRes.error) return
+      const statusById = new Map(
+        ((jobsRes.data ?? []) as { id: string; status: string | null }[]).map((j) => [j.id, j.status]),
+      )
+      const nowIso = new Date().toISOString()
+      const out = new Map<string, SendBackCardLine>()
+      for (const n of (notesRes.data ?? []) as {
+        job_id: string
+        body: string
+        created_at: string
+        author: { name: string | null } | null
+      }[]) {
+        if (out.has(n.job_id)) continue // ordered newest-first — first note per job wins
+        const line = sendBackLineForCard({
+          jobStatus: statusById.get(n.job_id) ?? null,
+          noteBody: n.body,
+          noteCreatedAtIso: n.created_at,
+          byName: n.author?.name ?? null,
+          nowIso,
+        })
+        if (line) out.set(n.job_id, line)
+      }
+      setByJob(out)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [idsKey, refreshKey])
+  return byJob
+}
+
 export function DashboardMyScheduleSection({
   role,
   firstAssistantDispatchPhone,
@@ -171,6 +231,7 @@ export function DashboardMyScheduleSection({
     [subScheduleDayPartition],
   )
   const pctTodayByJobId = useMyScheduleJobPct(scheduleJobIds, subScheduleDayPartition.todayYmd, pctRefreshKey)
+  const sendBackByJobId = useMyScheduleSendBacks(scheduleJobIds, pctRefreshKey)
 
   return (
     <div
@@ -563,6 +624,24 @@ export function DashboardMyScheduleSection({
                                 }}
                               >
                                 {num && addr ? `${num} · ${addr}` : num || addr}
+                              </div>
+                            )
+                          })()}
+                          {/* Office send-back line (v2.2065): why this finished job is back. */}
+                          {(() => {
+                            const sb = blockJobId != null ? sendBackByJobId.get(blockJobId) : undefined
+                            if (!sb) return null
+                            return (
+                              <div
+                                style={{
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  color: 'var(--text-amber-800)',
+                                  marginTop: '0.35rem',
+                                  wordBreak: 'break-word',
+                                }}
+                              >
+                                ↩ Sent back{sb.byName ? ` by ${sb.byName}` : ''} — {sb.reason}
                               </div>
                             )
                           })()}

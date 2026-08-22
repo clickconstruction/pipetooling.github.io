@@ -32,3 +32,13 @@ What got done? (optional) &nbsp; {{button:blue|Save 65%}}
 The new % shows up everywhere immediately: your schedule card (with today's ▲ movement), the office's Jobs Pipeline **% done**, and the job's activity history.
 
 **Saving 100% on a Working job** asks one more question: whether to move the job to **Ready to bill**, the same two checkboxes as the report flow. That tells the office the job is ready to invoice — so only confirm it when the work is truly wrapped.
+
+## When a finished job comes back
+
+Sometimes the office pulls a job you finished back to Working — a bill had to be voided, or something still needs doing before it can be invoiced. When that happens, the job card on your schedule now tells you why:
+
+:::example A returned job explains itself
+↩ **Sent back by Roxi — needs the tunnel footage attached first**
+:::
+
+The office has to write that reason when they send the job back, so a returned job is never a mystery. Handle what the line says, then update the % done (or leave a 100% report) the same as before.
