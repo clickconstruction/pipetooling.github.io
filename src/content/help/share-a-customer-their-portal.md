@@ -13,6 +13,7 @@ Click the **globe icon** next to any customer's name — on the **Customers** pa
 - The address is **editable until it's first shared** — type anything short and recognizable (letters, numbers, dashes). A meter tells you if it's ⚠ easy or ✓ hard to guess; it never blocks you.
 - {{button:blue|Copy link}} — copies the address for a text or email, and **locks** it (printed and texted copies should never go stale). The link is the key, no password needed.
 - {{button:outline|Preview as customer}} — opens the page exactly as they see it, and a **live preview** sits right in the modal.
+- Under the preview, **Jobs on this statement** lists one chip per billed job — click one to jump straight into that job's **Edit Job** window. The dashed box is office chrome: customers never see it on their page.
 
 ## Behind the gear
 

@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -20,6 +21,8 @@ import {
   suggestSlugFromName,
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
+import { formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
+import { buildStatementJobLinks, type StatementJobLink } from '../../lib/portal/portalStatementJobLinks'
 import { setPortalMainOff, usePortalLinkOff } from '../../hooks/usePortalOffStates'
 import type {
   MarkCustomerPortalSlugSharedResult,
@@ -75,6 +78,41 @@ export default function CustomerPortalGlobeButton({
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({})
   const diceBase = useRef<{ base: string; out: string } | null>(null)
   const mainOff = usePortalLinkOff(customerId)
+  const navigate = useNavigate()
+  const [jobLinks, setJobLinks] = useState<StatementJobLink[]>([])
+
+  // Office-only Edit-Job chips under the live preview (v2.2054): the public
+  // payload carries job NUMBERS only (no ids, by design), so match them to
+  // the office's own jobs_ledger rows client-side. Failures just hide the
+  // strip — it is a shortcut, never a load-bearing surface.
+  const activeToken = main.kind === 'active' ? main.token : null
+  useEffect(() => {
+    if (!open || !activeToken) {
+      setJobLinks([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/customer-portal?token=${encodeURIComponent(activeToken)}`,
+        )
+        const payload = parsePortalPayload(await res.json().catch(() => null))
+        if (!res.ok || !payload || payload.bills.length === 0) return
+        const { data: jobRows } = await supabase
+          .from('jobs_ledger')
+          .select('id, hcp_number, click_number')
+          .or(`customer_id.eq.${customerId},gc_customer_id.eq.${customerId}`)
+        if (cancelled || !jobRows) return
+        setJobLinks(buildStatementJobLinks(payload.bills, jobRows))
+      } catch {
+        // Preview strip only — stay silent.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, activeToken, customerId])
 
   const mint = useCallback(
     async (aud: Audience, rotate: boolean): Promise<string | null> => {
@@ -697,6 +735,54 @@ export default function CustomerPortalGlobeButton({
                     />
                   </div>
                 </div>
+
+                {jobLinks.length > 0 && (
+                  <div style={{ marginTop: '0.6rem', border: '1px dashed var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem 0.6rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <span style={{ fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 600 }}>
+                        Jobs on this statement
+                      </span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
+                        only you see this — not on their page
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      {jobLinks.map((l) => (
+                        <button
+                          key={l.jobId}
+                          type="button"
+                          title={`Open Job ${l.jobNumber} in Edit Job`}
+                          onClick={() => {
+                            setOpen(false)
+                            navigate(`/jobs?tab=stages&edit=${encodeURIComponent(l.jobId)}`)
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            borderRadius: 7,
+                            padding: '0.28rem 0.6rem',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            color: 'var(--text-700)',
+                          }}
+                        >
+                          {l.serviceTag && (
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', color: PORTAL_TRADE_COLORS[l.serviceTag as PortalTradeTag] ?? 'var(--text-faint)' }}>
+                              {l.serviceTag.toUpperCase()}
+                            </span>
+                          )}
+                          <span style={{ fontWeight: 700 }}>{l.jobNumber}</span>
+                          <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(l.amount)}</span>
+                          <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>Edit ↗</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : null}
           </div>
