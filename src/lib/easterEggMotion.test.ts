@@ -53,7 +53,7 @@ describe('stepEgg steering', () => {
     s = { ...s, phase: 'play' as const, phaseStartMs: 0, x: 100, y: 100 }
     const wander = run(s, 240, { mouseX: 1300, mouseY: 800 })
     expect(Math.hypot(wander.vx, wander.vy)).toBeLessThanOrEqual(EGG_MOTION.MAX_SPEED + 1)
-    let f = { ...s, x: 700 - EGG_MOTION.SPRITE_W / 2, y: 450 - EGG_MOTION.SPRITE_H / 2 }
+    const f = { ...s, x: 700 - EGG_MOTION.SPRITE_W / 2, y: 450 - EGG_MOTION.SPRITE_H / 2 }
     const flee = run(f, 30, { mouseX: 700 - 10, mouseY: 450 })
     expect(Math.hypot(flee.vx, flee.vy)).toBeLessThanOrEqual(EGG_MOTION.FLEE_SPEED + 1)
   })

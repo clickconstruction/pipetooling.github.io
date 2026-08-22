@@ -2,16 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { eggActiveFor, parseEasterEggsSetting, rollEggAppearance, serializeEasterEggsSetting } from './easterEggsConfig'
 
 const wendi = 'user-wendi'
-const cfg = { key: 'floaty', enabled: true, targetUserIds: [wendi], surfaces: ['followup'] }
+const followupTabs = ['t:/bids:builder-review', 't:/bids:submission-followup']
+const cfg = { key: 'floaty', enabled: true, targetUserIds: [wendi], surfaces: followupTabs }
 
 describe('parseEasterEggsSetting', () => {
   it('round-trips a valid config', () => {
     expect(parseEasterEggsSetting(serializeEasterEggsSetting([cfg]))).toEqual([cfg])
   })
 
+  it('migrates the legacy followup surface to the two tab keys', () => {
+    const text = JSON.stringify({ eggs: [{ ...cfg, surfaces: ['followup'] }] })
+    expect(parseEasterEggsSetting(text)).toEqual([{ ...cfg, surfaces: followupTabs }])
+  })
+
   it('drops unknown egg keys and unknown surfaces, survives garbage', () => {
-    const text = JSON.stringify({ eggs: [{ key: 'ghost', enabled: true }, { ...cfg, surfaces: ['followup', 'mars'] }] })
-    expect(parseEasterEggsSetting(text)).toEqual([{ ...cfg, surfaces: ['followup'] }])
+    const text = JSON.stringify({ eggs: [{ key: 'ghost', enabled: true }, { ...cfg, surfaces: ['p:/dashboard', 'mars'] }] })
+    expect(parseEasterEggsSetting(text)).toEqual([{ ...cfg, surfaces: ['p:/dashboard'] }])
     expect(parseEasterEggsSetting('not json')).toEqual([])
     expect(parseEasterEggsSetting(null)).toEqual([])
     expect(parseEasterEggsSetting('')).toEqual([])
@@ -27,6 +33,13 @@ describe('eggActiveFor', () => {
     expect(eggActiveFor(cfg, 'someone-else', '/bids', 'builder-review')).toBe(false)
     expect(eggActiveFor({ ...cfg, enabled: false }, wendi, '/bids', 'builder-review')).toBe(false)
     expect(eggActiveFor(cfg, null, '/bids', 'builder-review')).toBe(false)
+  })
+
+  it('page surfaces match anywhere on the page', () => {
+    const pageCfg = { ...cfg, surfaces: ['p:/customers'] }
+    expect(eggActiveFor(pageCfg, wendi, '/customers', null)).toBe(true)
+    expect(eggActiveFor(pageCfg, wendi, '/customers/abc-123', null)).toBe(true)
+    expect(eggActiveFor(pageCfg, wendi, '/bids', 'builder-review')).toBe(false)
   })
 })
 

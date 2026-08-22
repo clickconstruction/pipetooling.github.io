@@ -5,14 +5,16 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { APP_SETTINGS_KEY_EASTER_EGGS } from '../../lib/appSettingsKeys'
 import {
   EASTER_EGG_SPRITES,
-  EASTER_EGG_SURFACES,
   parseEasterEggsSetting,
   serializeEasterEggsSetting,
   type EasterEggConfig,
 } from '../../lib/easterEggsConfig'
+import { eggSurfaceLabel, eggSurfaceVisibleForRole } from '../../lib/easterEggSurfaceTree'
+import EasterEggScreenPickerModal, { type EggTargetPerson } from './EasterEggScreenPickerModal'
 import { EASTER_EGG_PREVIEW_EVENT } from '../FloatingEasterEgg'
+import type { UserRole } from '../../hooks/useAuth'
 
-type UserRow = { id: string; name: string | null }
+type UserRow = { id: string; name: string | null; role?: UserRole | null; estimator_prospects_access?: boolean | null }
 
 /**
  * Settings → Easter eggs (dev, v2.2074): one card per sprite — on/off, who
@@ -27,6 +29,7 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [addUserOpenFor, setAddUserOpenFor] = useState<string | null>(null)
+  const [screenPickerFor, setScreenPickerFor] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -86,6 +89,19 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
       </p>
       {Object.entries(EASTER_EGG_SPRITES).map(([key, sprite]) => {
         const cfg = configFor(key)
+        const targets: EggTargetPerson[] = cfg.targetUserIds.map((id) => {
+          const u = users.find((x) => x.id === id)
+          return {
+            name: (u?.name ?? '').trim() || id.slice(0, 8),
+            role: u?.role ?? null,
+            estimatorProspectsAccess: u?.estimator_prospects_access === true,
+          }
+        })
+        const unreachable = cfg.surfaces.flatMap((s) =>
+          targets
+            .filter((t) => !eggSurfaceVisibleForRole(s, t.role, t.estimatorProspectsAccess))
+            .map((t) => ({ surface: eggSurfaceLabel(s), name: t.name })),
+        )
         return (
           <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', maxWidth: '42rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem' }}>
@@ -140,20 +156,20 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
                 </button>
               )}
               <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginLeft: '0.6rem' }}>Where</span>
-              {Object.entries(EASTER_EGG_SURFACES).map(([sKey, surface]) => {
-                const on = cfg.surfaces.includes(sKey)
-                return (
-                  <button
-                    key={sKey}
-                    type="button"
-                    onClick={() => patch(key, { surfaces: on ? cfg.surfaces.filter((s) => s !== sKey) : [...cfg.surfaces, sKey] })}
-                    style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: on ? 600 : 400, padding: '0.12rem 0.55rem', borderRadius: 999, border: `1px solid ${on ? 'var(--border-strong)' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'none', color: on ? 'var(--text-blue-700)' : 'var(--text-muted)', cursor: 'pointer' }}
-                  >
-                    {surface.label}
-                    {on ? ' ×' : ''}
-                  </button>
-                )
-              })}
+              {cfg.surfaces.map((sKey) => (
+                <button
+                  key={sKey}
+                  type="button"
+                  onClick={() => patch(key, { surfaces: cfg.surfaces.filter((s) => s !== sKey) })}
+                  title="Remove"
+                  style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
+                >
+                  {eggSurfaceLabel(sKey)} ×
+                </button>
+              ))}
+              <button type="button" onClick={() => setScreenPickerFor(key)} style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.12rem 0.55rem', borderRadius: 999, border: '1px dashed var(--border-strong)', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                + add screens
+              </button>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent(EASTER_EGG_PREVIEW_EVENT, { detail: { key } }))}
@@ -163,6 +179,27 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
                 Preview here now
               </button>
             </div>
+            {unreachable.length > 0 ? (
+              <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', marginTop: '0.55rem', fontSize: '0.72rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 6, padding: '0.35rem 0.6rem' }}>
+                <span aria-hidden="true">⚠</span>
+                <span>
+                  {unreachable
+                    .slice(0, 3)
+                    .map((u) => `${u.surface} is hidden for ${u.name}`)
+                    .join(' · ')}
+                  {unreachable.length > 3 ? ` · +${unreachable.length - 3} more` : ''} — {sprite.label} would never appear there for them. Harmless to keep.
+                </span>
+              </div>
+            ) : null}
+            {screenPickerFor === key ? (
+              <EasterEggScreenPickerModal
+                eggLabel={sprite.label}
+                selected={cfg.surfaces}
+                targets={targets}
+                onChange={(next) => patch(key, { surfaces: next })}
+                onClose={() => setScreenPickerFor(null)}
+              />
+            ) : null}
           </div>
         )
       })}
