@@ -36,7 +36,7 @@ describe('rollEggAppearance', () => {
     expect(rollEggAppearance('2026-08-21', '2026-08-22', () => 0.99)).toEqual({ appear: true, isDailyDebut: true })
   })
 
-  it('rolls the 1-in-50 dice after the daily debut', () => {
+  it('rolls the 1-in-15 dice after the daily debut', () => {
     expect(rollEggAppearance('2026-08-22', '2026-08-22', () => 0.5)).toEqual({ appear: false, isDailyDebut: false })
     expect(rollEggAppearance('2026-08-22', '2026-08-22', () => 0.001)).toEqual({ appear: true, isDailyDebut: false })
   })

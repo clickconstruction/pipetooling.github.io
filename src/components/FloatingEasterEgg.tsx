@@ -91,7 +91,7 @@ function FloatingEasterEggSprite({ src, onDone }: { src: string; onDone: () => v
 
 /**
  * Mounted once in the Layout: loads the dev-managed `easter_eggs_v1` config,
- * and on each targeted-surface open rolls 1-in-50 for a 7-second visit. The
+ * and on each targeted-surface open rolls 1-in-15 for a 7-second visit. The
  * Settings block's preview event skips the dice (and the surface check) so a
  * dev can watch it anywhere.
  */
@@ -135,7 +135,7 @@ export function EasterEggHost({ userId }: { userId: string | null }) {
 
   // One appearance decision per surface OPEN (entering a targeted surface),
   // not per render: the first open of each company day is a guaranteed visit
-  // (v2.2077), every later open rolls the 1-in-50 dice.
+  // (v2.2077), every later open rolls the 1-in-15 dice.
   useEffect(() => {
     if (reducedMotion || activeEggKey) return
     const tab = new URLSearchParams(location.search).get('tab')
