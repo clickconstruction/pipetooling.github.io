@@ -148,40 +148,55 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         </button>
       </div>
 
-      {/* The live week's one headline number is the settle-up position —
-          posted balance plus charges still waiting for a statement. The
-          posted-only figure never shows on its own (owner call, v2.2009);
-          closed weeks keep their statement's closing balance. */}
-      {(() => {
-        const headline = card ? (card.open ? netPosition(card.closing, summary.pending_offsets.net) : card.closing) : null
-        return (
-          <div style={{ fontSize: '1.6rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>
-            {headline != null ? `${headline < 0 ? '−' : ''}${money(headline)}` : ''}
-          </div>
-        )
-      })()}
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '-0.15rem' }}>
-        {card?.open
-          ? `balance so far · updates as hours approve`
-          : `closing balance · week opened at ${card && card.opening != null ? money(card.opening) : '—'}`}
-      </div>
-
-      <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
-        {card?.lines.length === 0 ? (
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>Nothing posted this week yet.</p>
-        ) : (
-          card?.lines.map((l, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.82rem' }}>
-              <span style={{ color: 'var(--text-700)', minWidth: 0 }}>
-                {l.label}
-                {l.sub ? <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{l.sub}</span> : null}
+      {/* Statement frame (v2.2100): the week opens quietly at the top, the
+          lines do the arithmetic, and the total lands where the math finishes
+          — labeled in plain words ("Click owes you" / "you owe Click")
+          instead of a floating headline the reader has to reconcile. The live
+          week's total is still the settle-up position — posted balance plus
+          charges waiting for a statement (owner call, v2.2009); closed weeks
+          keep their statement's closing balance. */}
+      <div style={{ marginTop: '0.4rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <span>Week opened</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {card && card.opening != null ? `${card.opening < 0 ? '−' : ''}${money(card.opening)}` : '—'}
+          </span>
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          {card?.lines.length === 0 ? (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.5rem 0' }}>Nothing posted this week yet.</p>
+          ) : (
+            card?.lines.map((l, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--text-700)', minWidth: 0 }}>
+                  {l.label}
+                  {l.sub ? <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{l.sub}</span> : null}
+                </span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', color: l.amount == null ? 'var(--text-muted)' : l.cls === 'pos' ? '#16a34a' : l.cls === 'neg' ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
+                  {l.amount == null ? '—' : l.amount === 0 ? '0.00' : signedMoney(l.amount)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+        {(() => {
+          const total = card ? (card.open ? netPosition(card.closing, summary.pending_offsets.net) : card.closing) : null
+          if (total == null) return null
+          const direction = total >= 0 ? 'Click owes you' : 'you owe Click'
+          return (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem', padding: '0.55rem 0 0.1rem', borderTop: '2px solid var(--text-strong)' }}>
+              <span style={{ fontWeight: 800, fontSize: '0.86rem', minWidth: 0 }}>
+                {card?.open ? 'So far this week' : 'Week closed'}
+                <span style={{ display: 'block', fontWeight: 500, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  {card?.open ? `${direction} · updates as hours approve` : direction}
+                </span>
               </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', color: l.amount == null ? 'var(--text-muted)' : l.cls === 'pos' ? '#16a34a' : l.cls === 'neg' ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
-                {l.amount == null ? '—' : l.amount === 0 ? '0.00' : signedMoney(l.amount)}
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {money(total)}
               </span>
             </div>
-          ))
-        )}
+          )
+        })()}
       </div>
 
       {/* Statement actions are the partner's own — the lens hides the row
