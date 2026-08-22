@@ -51,11 +51,14 @@ type LensBid = PendingChaseBid & {
   raw: BidWithBuilder
 }
 
+// The one white thing on the pane's gray stage — the card must read as "the
+// document you're working on" (v2.2083: bg-page on surface was invisible).
 const cardStyle: CSSProperties = {
-  border: '1px solid var(--border)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 8,
   padding: '0.75rem 0.9rem',
-  background: 'var(--bg-page)',
+  background: 'var(--surface)',
+  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.07)',
 }
 
 function bidLensLabel(bid: BidWithBuilder, prefixMap: LedgerPrefixMap): string {
@@ -417,7 +420,7 @@ export function BidsWaitingToHearLens({
           </div>
 
           {selectedGroup && selectedBid ? (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--bg-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedGroup.builderName}</span>
                 {(() => {
@@ -481,7 +484,7 @@ export function BidsWaitingToHearLens({
                         borderRadius: 999,
                         cursor: 'pointer',
                         border: `1px solid ${current ? 'var(--border-stronger, var(--border-strong))' : 'var(--border)'}`,
-                        background: fresh ? 'var(--bg-emerald-tint)' : current ? 'var(--bg-page)' : 'transparent',
+                        background: fresh ? 'var(--bg-emerald-tint)' : 'var(--surface)',
                         color: fresh ? 'var(--text-emerald-800)' : 'var(--text-700)',
                         fontWeight: current ? 600 : 400,
                       }}
