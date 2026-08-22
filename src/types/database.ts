@@ -14003,7 +14003,9 @@ export type Database = {
         Args: { p_service_type_id: string }
         Returns: {
           bid_id: string
+          bid_tab_low: number
           bid_value: number
+          customer_id: string
           est_cost: number
           loss_category: string
           loss_reason: string
