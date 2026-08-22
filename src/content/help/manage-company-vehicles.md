@@ -57,6 +57,8 @@ The math is simple: last oil change's odometer plus the vehicle's interval (5,00
 
 Every open vehicle has a **Maintenance** list — the to-dos that keep it on the road: change a battery, fix a door handle, wiper blades before winter. Type into **Add a task** and press Enter; each open task shows who added it and wears either an assignee chip or {{chip:yellow|Unassigned}}.
 
+{{button:outline|Edit}} on a task changes its title or adds a note — the note shows under the task here and on the assignee's 🚗 vehicle card, and a retitle updates their checklist copy too. Tap an **assigned** task's title to expand the same activity thread the checklist screens have: full history, a note composer, and {{button:green|✓ Complete}}.
+
 {{button:outline|Assign}} picks the person and a due date — and this is where it connects to the rest of the app: assigning creates a **one-time checklist task on their list** ("2019 Ford F250 — Change battery") that shows on their Dashboard My Inbox and Checklist → Today and **stays until completed**. Check "Notify me when it's done" to get pinged on completion.
 
 On their side, the task wears a {{chip:blue|🚗 vehicle}} chip — tapping it opens the vehicle's vitals right there: who holds it, latest odometer, oil status, insurance, open problem reports, and recent service. It works for whoever's assigned, even field crew who can't open the Vehicles page.

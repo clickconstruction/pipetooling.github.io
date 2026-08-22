@@ -44,6 +44,7 @@ import {
   type VehicleMaintenanceTask,
 } from '../../lib/vehicleFleet'
 import { getNextDisplayOrders } from '../../utils/checklistOrder'
+import { ChecklistItemActivity } from '../checklist/ChecklistItemActivity'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -164,6 +165,13 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [takeOffSaving, setTakeOffSaving] = useState(false)
 
   const [maintenanceTasksAll, setMaintenanceTasksAll] = useState<VehicleMaintenanceTask[]>([])
+  // Task edit + activity spine (v2.2102): same tap-to-expand notes thread as
+  // the checklist screens for assigned tasks; Edit covers title + note.
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const [editTask, setEditTask] = useState<VehicleMaintenanceTask | null>(null)
+  const [editTaskTitle, setEditTaskTitle] = useState('')
+  const [editTaskNote, setEditTaskNote] = useState('')
+  const [editTaskSaving, setEditTaskSaving] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [taskSaving, setTaskSaving] = useState(false)
   const [assignTask, setAssignTask] = useState<VehicleMaintenanceTask | null>(null)
@@ -775,6 +783,43 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setServiceCost('')
     setServiceNote(t.title)
     setServiceFormOpen(true)
+  }
+
+  function openTaskEdit(t: VehicleMaintenanceTask) {
+    setEditTask(t)
+    setEditTaskTitle(t.title)
+    setEditTaskNote(t.note ?? '')
+  }
+
+  async function saveTaskEdit() {
+    if (!editTask) return
+    const title = editTaskTitle.trim()
+    if (!title) return
+    setEditTaskSaving(true)
+    try {
+      const { error: upErr } = await supabase
+        .from('vehicle_maintenance_tasks')
+        .update({ title, note: editTaskNote.trim() || null })
+        .eq('id', editTask.id)
+      if (upErr) throw upErr
+      // Keep the assignee's checklist copy reading the same (title format is
+      // "<vehicle> — <task> {{1:vehicle}}").
+      if (editTask.checklist_item_id) {
+        const v = vehicles.find((x) => x.id === editTask.vehicle_id)
+        await supabase
+          .from('checklist_items')
+          .update({ title: maintenanceChecklistTitle(v ? vehicleDisplayName(v) : 'Vehicle', title) })
+          .eq('id', editTask.checklist_item_id)
+      }
+      setEditTask(null)
+      setError(null)
+      showToast('Task updated.', 'success')
+      loadFleet()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update task')
+    } finally {
+      setEditTaskSaving(false)
+    }
   }
 
   async function deleteMaintenanceTask(t: VehicleMaintenanceTask) {
@@ -1411,15 +1456,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                         {open.map((t, i) => {
                           const assigneeName = t.assigned_user_id ? (userNameById.get(t.assigned_user_id) ?? '') : null
+                          const hasThread = !!t.checklist_item_id
+                          const expanded = expandedTaskId === t.id
                           return (
+                            <div key={t.id} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
                             <div
-                              key={t.id}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.6rem',
                                 padding: '0.55rem 0.9rem',
-                                borderTop: i === 0 ? 'none' : '1px solid var(--border)',
                                 fontSize: '0.875rem',
                                 flexWrap: 'wrap',
                               }}
@@ -1431,8 +1477,19 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                 aria-label={`Mark done: ${t.title}`}
                                 style={{ width: 16, height: 16, cursor: 'pointer' }}
                               />
-                              <div style={{ flex: 1, minWidth: 160 }}>
+                              <div
+                                role={hasThread ? 'button' : undefined}
+                                tabIndex={hasThread ? 0 : undefined}
+                                aria-expanded={hasThread ? expanded : undefined}
+                                onClick={hasThread ? () => setExpandedTaskId((prev) => (prev === t.id ? null : t.id)) : undefined}
+                                onKeyDown={hasThread ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedTaskId((prev) => (prev === t.id ? null : t.id)) } } : undefined}
+                                title={hasThread ? (expanded ? 'Hide activity and notes' : 'Show activity and notes') : undefined}
+                                style={{ flex: 1, minWidth: 160, cursor: hasThread ? 'pointer' : undefined, borderRadius: 6, padding: '0.1rem 0.25rem', margin: '-0.1rem -0.25rem', background: expanded ? 'var(--bg-muted)' : undefined }}
+                              >
                                 <div>{t.title}</div>
+                                {t.note ? (
+                                  <div style={{ fontSize: '0.78rem', color: 'var(--text-700)', fontStyle: 'italic' }}>“{t.note}”</div>
+                                ) : null}
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                   {t.source_problem_report_id
                                     ? 'from problem report'
@@ -1448,6 +1505,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                               ) : (
                                 <span style={chipStyle('amber')}>Unassigned</span>
                               )}
+                              <button type="button" style={actionBtn} onClick={() => openTaskEdit(t)}>
+                                Edit
+                              </button>
                               <button type="button" style={actionBtn} onClick={() => openAssignTask(t)}>
                                 {assigneeName ? 'Reassign' : 'Assign'}
                               </button>
@@ -1459,6 +1519,22 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                               >
                                 ×
                               </button>
+                            </div>
+                            {expanded && t.checklist_item_id ? (
+                              <div style={{ margin: '0 0.9rem 0.6rem 2.4rem', padding: '0.5rem 0.65rem 0.6rem', background: 'var(--bg-muted)', borderRadius: 10 }}>
+                                <ChecklistItemActivity
+                                  item={{ id: t.checklist_item_id, title: t.title, created_at: t.created_at, created_by_user_id: t.created_by }}
+                                  authUserId={authUser?.id ?? null}
+                                  showInstanceDays={false}
+                                  setError={setError}
+                                  commentInstanceId={t.checklist_instance_id ?? undefined}
+                                  onComplete={async () => {
+                                    await completeMaintenanceTask(t)
+                                    return true
+                                  }}
+                                />
+                              </div>
+                            ) : null}
                             </div>
                           )
                         })}
@@ -2271,6 +2347,56 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         </div>
       )}
 
+      {editTask && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }} onClick={() => { if (!editTaskSaving) setEditTask(null) }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 420, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: 4 }}>Edit maintenance task</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {(() => {
+                const v = vehicles.find((x) => x.id === editTask.vehicle_id)
+                return v ? vehicleDisplayName(v) : 'Vehicle'
+              })()}
+              {editTask.checklist_item_id ? ' · updates the assignee’s checklist copy too' : ''}
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Task *</label>
+              <input
+                type="text"
+                value={editTaskTitle}
+                onChange={(e) => setEditTaskTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void saveTaskEdit() }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Note</label>
+              <textarea
+                value={editTaskNote}
+                onChange={(e) => setEditTaskNote(e.target.value)}
+                rows={3}
+                placeholder="context for whoever does it — part location, symptoms, gotchas…"
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', font: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
+              />
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                The note shows here and on the assignee’s 🚗 vehicle card.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="button" onClick={() => setEditTask(null)} disabled={editTaskSaving} style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveTaskEdit()}
+                disabled={editTaskSaving || !editTaskTitle.trim()}
+                style={{ padding: '0.5rem 1rem', background: editTaskSaving || !editTaskTitle.trim() ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: editTaskSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+              >
+                {editTaskSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {assignTask && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 300, maxWidth: 380 }}>
