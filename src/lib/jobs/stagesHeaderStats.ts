@@ -116,7 +116,7 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
  * sort comparator dereferences them).
  */
 export const LEAN_STATS_JOB_COLUMNS =
-  'id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number, customer_id'
+  'id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number, customer_id, gc_customer_id'
 export const LEAN_STATS_INVOICE_COLUMNS =
   'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at'
 export const LEAN_STATS_PAYMENT_COLUMNS = 'job_id, invoice_id, amount, paid_on'
@@ -132,6 +132,8 @@ export type LeanStatsJobRow = {
   click_number: string | null
   /** Chase-queue grouping key (v2.2025) — the header math itself never reads it. */
   customer_id: string | null
+  /** Statement-round grouping key (v2.2072) — header math never reads it either. */
+  gc_customer_id: string | null
 }
 export type LeanStatsInvoiceRow = {
   id: string
@@ -183,6 +185,9 @@ export function assembleLeanStatsJobs(
         materials: [],
         fixtures: [],
         team_members: [],
+        // Statement-round grouping (v2.2072): id-only GC stub so the GC Review
+        // rollup can group lean rows; the name backfills once full rows merge.
+        gcCustomer: j.gc_customer_id ? { id: j.gc_customer_id, name: '' } : null,
       }) as unknown as JobWithDetails,
   )
 }

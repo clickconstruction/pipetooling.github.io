@@ -25,6 +25,16 @@ import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
+import { buildGcReviewRollup } from '../../lib/gcReviewRollup'
+import { gcReviewWeekStartYmd, latestCertByGc, type GcReviewCertRow } from '../../lib/jobs/gcReviewCertification'
+import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
+import {
+  buildStatementRound,
+  deriveGcAccountMen,
+  summarizeStatementRound,
+  type RoundMarkRow,
+} from '../../lib/jobs/gcStatementRounds'
+import { listGcStatementRoundMarks, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
 import {
   buildGcStatementEmailHtml,
   buildGcStatementEmailText,
@@ -568,6 +578,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
+  /** Personal statement rounds (v2.2072): open GC Review straight into the round overlay. */
+  const [gcReviewStartRound, setGcReviewStartRound] = useState(false)
   const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
   const [weeklyMoneyModalOpen, setWeeklyMoneyModalOpen] = useState(false)
   /** "Last sent" hints for GC Review's Email… (v2.1416). Best-effort: table may predate the db push. */
@@ -1077,6 +1089,70 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * money surface consumes this, never stagesBoardLists.
    */
   const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+
+  /** Personal statement rounds (v2.2072): data for the two-stage money-opportunity cards. */
+  const isRoundOfficeRole = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const roundWeekStart = gcReviewWeekStartYmd()
+  const [roundCertRows, setRoundCertRows] = useState<GcReviewCertRow[]>([])
+  const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
+  const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
+  // Full rows once the billed scope merges; the lean spine (first paint, id-only
+  // GC stubs) until then — same lean-first pattern as the chase card.
+  const roundBilledRows =
+    unfilteredBoardLists.billedActiveRows.length > 0 ? unfilteredBoardLists.billedActiveRows : (cacheLeanBilledRows ?? [])
+  const roundRollup = useMemo(
+    () => (isRoundOfficeRole ? buildGcReviewRollup(roundBilledRows, [], { groupBy: 'gc' }) : null),
+    [isRoundOfficeRole, roundBilledRows],
+  )
+  useEffect(() => {
+    // Refetches when the modal toggles so the cards reflect round work done inside it.
+    if (!isRoundOfficeRole) return
+    let cancelled = false
+    void listGcReviewCertifications(roundWeekStart).then(
+      (r) => {
+        if (!cancelled) setRoundCertRows(r)
+      },
+      () => {},
+    )
+    void listGcStatementRoundMarks(roundWeekStart).then(
+      (r) => {
+        if (!cancelled) setRoundMarks(r)
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [isRoundOfficeRole, roundWeekStart, gcReviewModalOpen])
+  const roundGcIds = useMemo(
+    () => (roundRollup ? roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])) : []),
+    [roundRollup],
+  )
+  useEffect(() => {
+    if (!isRoundOfficeRole || roundGcIds.length === 0) return
+    let cancelled = false
+    void listGcStatementSenders(roundGcIds).then((m) => {
+      if (!cancelled) setRoundSenders(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isRoundOfficeRole, roundGcIds, gcReviewModalOpen])
+  const gcRoundCards = useMemo(() => {
+    if (!roundRollup) return null
+    const items = buildStatementRound({
+      groups: roundRollup.groups,
+      certsByGc: latestCertByGc(roundCertRows),
+      marks: roundMarks,
+      senders: roundSenders,
+      accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
+    })
+    const s = summarizeStatementRound(items, authUser?.id ?? null)
+    return {
+      held: s.held,
+      ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) },
+    }
+  }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, authUser?.id])
 
   /**
    * Payment chase queue (v2.2025). The CARD derives from the lean stats
@@ -2695,6 +2771,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
               else setStagesNoEmailModalOpen(true)
             }}
+            gcRound={gcRoundCards}
+            onCertifyRound={() => {
+              setGcReviewStartRound(false)
+              setGcReviewModalOpen(true)
+            }}
+            onStartRound={() => {
+              setGcReviewStartRound(true)
+              setGcReviewModalOpen(true)
+            }}
             onChase90={() => {
               setStagesSearchQuery('')
               setBilledAgingFilter('90')
@@ -4024,7 +4109,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 />
                 <JobsGcReviewModal
                   open={gcReviewModalOpen}
-                  onClose={() => setGcReviewModalOpen(false)}
+                  onClose={() => {
+                    setGcReviewModalOpen(false)
+                    setGcReviewStartRound(false)
+                  }}
+                  startInRound={gcReviewStartRound}
                   billedActiveRows={unfilteredBoardLists.billedActiveRows}
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}

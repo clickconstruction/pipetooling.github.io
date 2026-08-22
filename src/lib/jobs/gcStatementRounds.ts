@@ -1,0 +1,150 @@
+/**
+ * Personal statement rounds kernel (v2.2072). Each cert week, every GC over
+ * the outstanding threshold becomes a personal-email to-do for its assigned
+ * sender, released only once the GC is certified. Pure derivation over the
+ * GC Review rollup + certifications + round marks — the app plans and tracks,
+ * a person sends. IO lives in gcStatementRoundMarks.ts; UI in GC Review and
+ * the Stages money-opportunity cards.
+ */
+
+import type { GcReviewGroup } from '../gcReviewRollup'
+import { gcGroupCertStatus, type GcReviewCertRow } from './gcReviewCertification'
+
+/** Outstanding (non-collections) threshold for joining the weekly round. */
+export const GC_ROUND_THRESHOLD = 10000
+
+export type RoundMarkRow = {
+  gc_customer_id: string
+  week_start: string
+  action: 'sent' | 'skipped'
+  acted_by: string | null
+  acted_by_name: string
+  acted_at: string
+}
+
+export type StatementRoundState = 'needs_certify' | 'needs_sender' | 'ready' | 'sent' | 'skipped'
+
+export type StatementRoundItem = {
+  gcId: string
+  gcName: string
+  amount: number
+  jobCount: number
+  /** standing assignment, falling back to the GC's Account Man; null = nobody */
+  senderUserId: string | null
+  state: StatementRoundState
+  mark: RoundMarkRow | null
+  group: GcReviewGroup
+}
+
+/**
+ * Most-common Account Man per GC from the billed rows — the assignment
+ * fallback when no standing sender is set on the customer.
+ */
+export function deriveGcAccountMen(
+  rows: readonly { job: { gc_customer_id?: string | null; account_manager_user_id?: string | null } }[],
+): Map<string, string> {
+  const tallies = new Map<string, Map<string, number>>()
+  for (const r of rows) {
+    const gc = r.job.gc_customer_id
+    const am = r.job.account_manager_user_id
+    if (!gc || !am) continue
+    const t = tallies.get(gc) ?? new Map<string, number>()
+    t.set(am, (t.get(am) ?? 0) + 1)
+    tallies.set(gc, t)
+  }
+  const out = new Map<string, string>()
+  for (const [gc, t] of tallies) {
+    let best: string | null = null
+    let bestN = 0
+    for (const [am, n] of t) {
+      if (n > bestN) {
+        best = am
+        bestN = n
+      }
+    }
+    if (best) out.set(gc, best)
+  }
+  return out
+}
+
+/**
+ * Build the week's round: qualifying GC groups (real GCs only, subtotal ≥
+ * threshold) with their release state. Mark wins over everything (a sent stays
+ * sent even if the group later changes); an uncertified or changed-since
+ * group is held; then a missing sender blocks; else it's ready to send.
+ */
+export function buildStatementRound(input: {
+  groups: readonly GcReviewGroup[]
+  certsByGc: Map<string, GcReviewCertRow>
+  marks: readonly RoundMarkRow[]
+  senders: ReadonlyMap<string, string>
+  accountMen: ReadonlyMap<string, string>
+  threshold?: number
+}): StatementRoundItem[] {
+  const threshold = input.threshold ?? GC_ROUND_THRESHOLD
+  const markByGc = new Map(input.marks.map((m) => [m.gc_customer_id, m]))
+  const items: StatementRoundItem[] = []
+  for (const g of input.groups) {
+    if (g.isNoGc || !g.gcId) continue
+    if (g.subtotal < threshold) continue
+    const senderUserId = input.senders.get(g.gcId) ?? input.accountMen.get(g.gcId) ?? null
+    const mark = markByGc.get(g.gcId) ?? null
+    let state: StatementRoundState
+    if (mark) {
+      state = mark.action
+    } else if (gcGroupCertStatus(g, input.certsByGc.get(g.gcId)).state !== 'certified') {
+      state = 'needs_certify'
+    } else if (!senderUserId) {
+      state = 'needs_sender'
+    } else {
+      state = 'ready'
+    }
+    items.push({ gcId: g.gcId, gcName: g.gcName, amount: g.subtotal, jobCount: g.jobCount, senderUserId, state, mark, group: g })
+  }
+  return items.sort((a, b) => b.amount - a.amount)
+}
+
+export type StatementRoundSummary = {
+  /** GCs waiting on certification (the manager's card) */
+  held: { count: number; total: number }
+  /** the current user's certified, unsent queue (the sender's card) */
+  readyForUser: StatementRoundItem[]
+  /** per-sender sent/assigned counts for the panel header, assigned-only */
+  senderProgress: Map<string, { sent: number; total: number }>
+}
+
+export function summarizeStatementRound(items: readonly StatementRoundItem[], currentUserId: string | null): StatementRoundSummary {
+  let heldCount = 0
+  let heldTotal = 0
+  const readyForUser: StatementRoundItem[] = []
+  const senderProgress = new Map<string, { sent: number; total: number }>()
+  for (const it of items) {
+    if (it.state === 'needs_certify') {
+      heldCount += 1
+      heldTotal += it.amount
+    }
+    if (it.state === 'ready' && currentUserId != null && it.senderUserId === currentUserId) readyForUser.push(it)
+    if (it.senderUserId) {
+      const p = senderProgress.get(it.senderUserId) ?? { sent: 0, total: 0 }
+      p.total += 1
+      if (it.state === 'sent') p.sent += 1
+      senderProgress.set(it.senderUserId, p)
+    }
+  }
+  return { held: { count: heldCount, total: heldTotal }, readyForUser, senderProgress }
+}
+
+/**
+ * Last-sent map with personal round marks merged in: a "Sent it" mark counts
+ * exactly like an app-sent email for the pills, this-week checks, and week
+ * progress. Later timestamp wins.
+ */
+export function mergeMarksIntoLastSent(lastSentByGcId: Record<string, string>, marks: readonly RoundMarkRow[]): Record<string, string> {
+  const out = { ...lastSentByGcId }
+  for (const m of marks) {
+    if (m.action !== 'sent') continue
+    const prev = out[m.gc_customer_id]
+    if (!prev || m.acted_at > prev) out[m.gc_customer_id] = m.acted_at
+  }
+  return out
+}

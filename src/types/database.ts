@@ -2963,6 +2963,7 @@ export type Database = {
           job_pictures_link: string | null
           master_user_id: string
           name: string
+          statement_sender_user_id: string | null
           stripe_customer_id: string | null
           stripe_customer_id_test: string | null
           updated_at: string | null
@@ -2981,6 +2982,7 @@ export type Database = {
           job_pictures_link?: string | null
           master_user_id: string
           name: string
+          statement_sender_user_id?: string | null
           stripe_customer_id?: string | null
           stripe_customer_id_test?: string | null
           updated_at?: string | null
@@ -2999,6 +3001,7 @@ export type Database = {
           job_pictures_link?: string | null
           master_user_id?: string
           name?: string
+          statement_sender_user_id?: string | null
           stripe_customer_id?: string | null
           stripe_customer_id_test?: string | null
           updated_at?: string | null
@@ -3014,6 +3017,13 @@ export type Database = {
           {
             foreignKeyName: "customers_master_user_id_fkey"
             columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_statement_sender_user_id_fkey"
+            columns: ["statement_sender_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -4397,6 +4407,51 @@ export type Database = {
           },
         ]
       }
+      gc_statement_round_marks: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          acted_by_name: string
+          action: string
+          gc_customer_id: string
+          id: string
+          week_start: string
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          acted_by_name?: string
+          action: string
+          gc_customer_id: string
+          id?: string
+          week_start: string
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          acted_by_name?: string
+          action?: string
+          gc_customer_id?: string
+          id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_statement_round_marks_acted_by_fkey"
+            columns: ["acted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_statement_round_marks_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gsa_per_diem_cache: {
         Row: {
           city: string | null
@@ -5112,6 +5167,77 @@ export type Database = {
           {
             foreignKeyName: "job_hazmat_incidents_voided_by_fkey"
             columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_payment_chase_touches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          job_id: string | null
+          note: string | null
+          outcome: string
+          promised_date: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          snooze_days: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          job_id?: string | null
+          note?: string | null
+          outcome: string
+          promised_date?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          snooze_days?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          job_id?: string | null
+          note?: string | null
+          outcome?: string
+          promised_date?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          snooze_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_payment_chase_touches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_chase_touches_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_chase_touches_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_chase_touches_resolved_by_fkey"
+            columns: ["resolved_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -13772,6 +13898,17 @@ export type Database = {
         Args: { p_job_book_entry_id: string; p_job_id: string }
         Returns: Json
       }
+      add_payment_chase_touch: {
+        Args: {
+          p_customer_id: string
+          p_job_id: string
+          p_note: string
+          p_outcome: string
+          p_promised_date: string
+          p_snooze_days: number
+        }
+        Returns: Json
+      }
       apply_agreed_write_down_to_billed_invoice: {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
         Returns: Json
@@ -13853,6 +13990,7 @@ export type Database = {
           bid_id: string
           bid_value: number
           est_cost: number
+          loss_category: string
           loss_reason: string
           outcome: string
           project_name: string
@@ -14950,6 +15088,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_payment_chase_touches: { Args: never; Returns: Json }
       list_people_for_banking_attribution: {
         Args: never
         Returns: {
@@ -15602,6 +15741,10 @@ export type Database = {
       resolve_pay_person_id_from_clock_user: {
         Args: { p_display_name: string; p_user_id: string }
         Returns: string
+      }
+      resolve_payment_chase_dispute: {
+        Args: { p_touch_id: string }
+        Returns: Json
       }
       respond_to_work_order: {
         Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string }

@@ -31,6 +31,21 @@ import {
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import {
+  GC_ROUND_THRESHOLD,
+  buildStatementRound,
+  deriveGcAccountMen,
+  mergeMarksIntoLastSent,
+  summarizeStatementRound,
+  type RoundMarkRow,
+} from '../../lib/jobs/gcStatementRounds'
+import {
+  deleteGcStatementRoundMark,
+  listGcStatementRoundMarks,
+  listGcStatementSenders,
+  setGcStatementSender,
+  upsertGcStatementRoundMark,
+} from '../../lib/gcStatementRoundIo'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
   gcGroupCertStatus,
@@ -209,6 +224,8 @@ type JobsGcReviewModalProps = {
   canCertify: boolean
   /** Certify checklist job links → Job Detail on top (kept open under it). */
   onOpenJobDetail?: (jobId: string) => void
+  /** Open with the personal statement round overlay already up (the Stages "Start round" card, v2.2072). */
+  startInRound?: boolean
 }
 
 /**
@@ -235,6 +252,7 @@ export function JobsGcReviewModal({
   onOpenJob,
   canCertify,
   onOpenJobDetail,
+  startInRound,
 }: JobsGcReviewModalProps) {
   const [includeCollections, setIncludeCollections] = useState(false)
   const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
@@ -273,6 +291,20 @@ export function JobsGcReviewModal({
   useEffect(() => {
     if (open) refreshCerts()
   }, [open, refreshCerts])
+  /** Personal statement rounds (v2.2072): weekly marks + standing senders. */
+  const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
+  const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
+  const [roundOpen, setRoundOpen] = useState(false)
+  const [roundStartTotal, setRoundStartTotal] = useState(0)
+  const [roundBusy, setRoundBusy] = useState(false)
+  const [roundError, setRoundError] = useState<string | null>(null)
+  const [assigningGcId, setAssigningGcId] = useState<string | null>(null)
+  const refreshRoundMarks = useCallback(() => {
+    void listGcStatementRoundMarks(certWeekStart).then(setRoundMarks, () => setRoundMarks([]))
+  }, [certWeekStart])
+  useEffect(() => {
+    if (open) refreshRoundMarks()
+  }, [open, refreshRoundMarks])
   /** Standing copies form (v2.1431, dev-only): teammates + weekdays for recurring whole-report emails. */
   const [standingUserId, setStandingUserId] = useState('')
   const [standingOutsideEmail, setStandingOutsideEmail] = useState('')
@@ -383,8 +415,79 @@ export function JobsGcReviewModal({
   )
   /** Certification is per-GC — the strip/chips hide under the Development grouping. */
   const certsByGc = latestCertByGc(certRows)
-  const certProgress = gcReviewWeekProgress(rollup.groups, certsByGc, lastSentByGcId, certWeekStart)
+  // Personal statement rounds (v2.2072) ride the GC grouping regardless of the
+  // Group-by pill, and personal "Sent it" marks count like app sends.
+  const roundRollup = useMemo(
+    () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections: false, groupBy: 'gc' }),
+    [billedActiveRows, collectionsRows],
+  )
+  const roundGcIds = useMemo(
+    () => roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])),
+    [roundRollup],
+  )
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void listGcStatementSenders(roundGcIds).then((m) => {
+      if (!cancelled) setRoundSenders(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, roundGcIds])
+  const accountMen = useMemo(() => deriveGcAccountMen(billedActiveRows), [billedActiveRows])
+  const mergedLastSent = useMemo(() => mergeMarksIntoLastSent(lastSentByGcId, roundMarks), [lastSentByGcId, roundMarks])
+  const roundItems = useMemo(
+    () => buildStatementRound({ groups: roundRollup.groups, certsByGc: latestCertByGc(certRows), marks: roundMarks, senders: roundSenders, accountMen }),
+    [roundRollup, certRows, roundMarks, roundSenders, accountMen],
+  )
+  const roundSummary = useMemo(() => summarizeStatementRound(roundItems, authUser?.id ?? null), [roundItems, authUser?.id])
+  useEffect(() => {
+    if (open && startInRound) setRoundOpen(true)
+  }, [open, startInRound])
+  const certProgress = gcReviewWeekProgress(rollup.groups, certsByGc, mergedLastSent, certWeekStart)
   const authUserName = users.find((u) => u.id === authUser?.id)?.name ?? ''
+  const userNameById = (id: string | null) => (id ? users.find((u) => u.id === id)?.name || '—' : 'nobody assigned')
+  async function markRound(gcId: string, action: 'sent' | 'skipped') {
+    if (!authUser?.id) return
+    setRoundBusy(true)
+    setRoundError(null)
+    try {
+      await upsertGcStatementRoundMark({
+        week_start: certWeekStart,
+        gc_customer_id: gcId,
+        action,
+        acted_by: authUser.id,
+        acted_by_name: authUserName,
+      })
+      refreshRoundMarks()
+    } catch (e) {
+      setRoundError(e instanceof Error ? e.message : 'Could not save the mark — try again.')
+    }
+    setRoundBusy(false)
+  }
+  async function undoRoundMark(gcId: string) {
+    setRoundBusy(true)
+    setRoundError(null)
+    try {
+      await deleteGcStatementRoundMark(certWeekStart, gcId)
+      refreshRoundMarks()
+    } catch (e) {
+      setRoundError(e instanceof Error ? e.message : 'Could not undo — try again.')
+    }
+    setRoundBusy(false)
+  }
+  async function assignSender(gcId: string, userId: string | null) {
+    setRoundError(null)
+    try {
+      await setGcStatementSender(gcId, userId)
+      const m = await listGcStatementSenders(roundGcIds)
+      setRoundSenders(m)
+    } catch (e) {
+      setRoundError(e instanceof Error ? e.message : 'Could not assign — try again.')
+    }
+    setAssigningGcId(null)
+  }
   const openEmailDialogForGroup = (g: GcReviewGroup) => {
     setEmailDialogGroup(g)
     setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
@@ -575,6 +678,113 @@ export function JobsGcReviewModal({
             Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
           </label>
         </div>
+        {/* Personal statement rounds (v2.2072): GCs ≥ threshold, certify-gated,
+            emailed personally by the assigned sender who then marks Sent it. */}
+        {!byDevelopment && roundItems.length > 0 ? (
+          <div style={{ margin: '0 auto 1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Weekly statement rounds</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                GCs over ${GC_ROUND_THRESHOLD.toLocaleString('en-US')} · a personal email from the assigned sender, released once certified
+              </span>
+              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {[...roundSummary.senderProgress.entries()]
+                  .map(([uid, p]) => `${userNameById(uid)} ${p.sent}/${p.total} sent`)
+                  .join(' · ') || 'nobody assigned yet'}
+              </span>
+              {roundSummary.readyForUser.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoundStartTotal(roundSummary.readyForUser.length)
+                    setRoundOpen(true)
+                  }}
+                  style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Start round ({roundSummary.readyForUser.length})
+                </button>
+              ) : null}
+            </div>
+            {roundItems.map((it) => (
+              <div key={it.gcId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <b>{it.gcName}</b>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {' '}· ${formatCurrency(it.amount)} · {assigningGcId === it.gcId ? '' : userNameById(it.senderUserId)}
+                  </span>
+                  {assigningGcId === it.gcId ? (
+                    <select
+                      autoFocus
+                      defaultValue={it.senderUserId ?? ''}
+                      onChange={(e) => void assignSender(it.gcId, e.target.value || null)}
+                      onBlur={() => setAssigningGcId(null)}
+                      style={{ marginLeft: '0.4rem', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+                    >
+                      <option value="">nobody</option>
+                      {users
+                        .filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                    </select>
+                  ) : canCertify ? (
+                    <button
+                      type="button"
+                      onClick={() => setAssigningGcId(it.gcId)}
+                      title={`Change who sends ${it.gcName} their statement`}
+                      style={{ marginLeft: '0.35rem', font: 'inherit', fontSize: '0.7rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}
+                    >
+                      assign
+                    </button>
+                  ) : null}
+                </span>
+                <span
+                  role={it.mark && canCertify ? 'button' : undefined}
+                  tabIndex={it.mark && canCertify ? 0 : undefined}
+                  title={it.mark && canCertify ? 'click to undo this mark' : undefined}
+                  onClick={it.mark && canCertify && !roundBusy ? () => void undoRoundMark(it.gcId) : undefined}
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    borderRadius: 9999,
+                    border: '1px solid var(--border)',
+                    padding: '0.1rem 0.55rem',
+                    cursor: it.mark && canCertify ? 'pointer' : undefined,
+                    color:
+                      it.state === 'sent'
+                        ? 'var(--text-green-800)'
+                        : it.state === 'ready'
+                          ? 'var(--text-blue-700)'
+                          : it.state === 'needs_sender'
+                            ? 'var(--text-red-600)'
+                            : it.state === 'skipped'
+                              ? 'var(--text-muted)'
+                              : 'var(--text-amber-800)',
+                    background: it.state === 'sent' ? 'var(--bg-green-tint)' : 'transparent',
+                  }}
+                >
+                  {it.state === 'sent'
+                    ? `sent ✓ ${it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''} by ${it.mark?.acted_by_name || '—'}`
+                    : it.state === 'skipped'
+                      ? 'skipped this week'
+                      : it.state === 'ready'
+                        ? `in ${userNameById(it.senderUserId)}’s round`
+                        : it.state === 'needs_sender'
+                          ? 'needs a sender'
+                          : 'certify to release'}
+                </span>
+              </div>
+            ))}
+            <p style={{ margin: '0.4rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+              Never sent uncertified — a group that changes after sign-off drops back to “certify to release”. “Sent it”
+              stamps the last-sent pill and the week’s progress.
+            </p>
+            {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
+          </div>
+        ) : null}
         {pendingSends.length > 0 ? (
           <div style={{ margin: '0 auto 1rem', maxWidth: 480, border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
             <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -648,16 +858,16 @@ export function JobsGcReviewModal({
                     {g.gcName}
                   </span>
                 )}
-                {!g.isNoGc && g.gcId && lastSentByGcId[g.gcId] ? (
-                  gcReviewSentThisWeek(lastSentByGcId[g.gcId], certWeekStart) && !byDevelopment ? (
+                {!g.isNoGc && g.gcId && mergedLastSent[g.gcId] ? (
+                  gcReviewSentThisWeek(mergedLastSent[g.gcId], certWeekStart) && !byDevelopment ? (
                     <span
                       style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}
                     >
-                      Sent {new Date(lastSentByGcId[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      Sent {new Date(mergedLastSent[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   ) : (
                     <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      last sent {new Date(lastSentByGcId[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      last sent {new Date(mergedLastSent[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   )
                 ) : null}
@@ -1078,6 +1288,111 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
+      {roundOpen
+        ? (() => {
+            const current = roundSummary.readyForUser[0] ?? null
+            const remaining = roundSummary.readyForUser.length
+            const cert = current?.gcId ? latestCertByGc(certRows).get(current.gcId) : undefined
+            const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            return (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Personal statement round"
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
+                onClick={() => setRoundOpen(false)}
+              >
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(560px, 92vw)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
+                >
+                  {current ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, flex: 1, minWidth: 0 }}>{current.gcName}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {remaining} to go{roundStartTotal > remaining ? ` · ${roundStartTotal - remaining} sent` : ''}
+                        </span>
+                      </div>
+                      <p style={{ margin: '0.1rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        {current.jobCount} job{current.jobCount === 1 ? '' : 's'} · ${formatCurrency(current.amount)} outstanding
+                        {current.group.oldestAgeDays != null ? ` · oldest ${current.group.oldestAgeDays}d` : ''}
+                        {cert ? ` · ✓ certified by ${cert.certified_by_name || '—'}` : ''}
+                      </p>
+                      <div style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.5rem 0.65rem', fontSize: '0.78rem' }}>
+                        <div>
+                          <b>To:</b> {current.gcId ? emailForGc(current.gcId) || 'no email on file — add one on the customer' : '—'}
+                        </div>
+                        <div style={{ marginTop: '0.2rem', color: 'var(--text-muted)' }}>
+                          <b style={{ color: 'inherit' }}>Last sent:</b>{' '}
+                          {current.gcId && mergedLastSent[current.gcId]
+                            ? new Date(mergedLastSent[current.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                            : 'never'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.7rem', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const subject = gcStatementEmailSubject(current.group, dateStr)
+                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr }))) {
+                              setRoundError('Allow pop-ups to preview the statement.')
+                            }
+                          }}
+                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                        >
+                          Preview statement
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCopyForEmail(current.group, 'gc')}
+                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
+                        >
+                          Copy for email
+                        </button>
+                        <button
+                          type="button"
+                          disabled={roundBusy}
+                          onClick={() => void markRound(current.gcId, 'sent')}
+                          style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', fontSize: '0.78rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundBusy ? 0.6 : 1 }}
+                        >
+                          Sent it ✓
+                        </button>
+                        <button
+                          type="button"
+                          disabled={roundBusy}
+                          onClick={() => void markRound(current.gcId, 'skipped')}
+                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.78rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                        >
+                          Skip
+                        </button>
+                      </div>
+                      <p style={{ margin: '0.55rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                        Copy pastes the statement as a real table into your Gmail — add a personal line on top and send from
+                        your own address. “Sent it” stamps the last-sent pill and the week’s progress.
+                      </p>
+                      {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
+                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Round done 🎉</p>
+                      <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Every certified GC in your round has been sent (or skipped) this week.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setRoundOpen(false)}
+                        style={{ padding: '0.35rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()
+        : null}
       {shareAllOpen ? (
         <div
           role="dialog"
