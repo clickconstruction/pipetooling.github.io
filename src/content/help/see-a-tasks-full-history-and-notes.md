@@ -41,7 +41,7 @@ Tap a task's **title** on your Today list (or a row in the Outstanding section b
 
 ## On the Review tab
 
-Inside a person's card on **Review → Outstanding by person**, tap a task row the same way — the row expands with the task's history, the note box, and (for devs) **Edit** and **Forward** links. The quick actions up front stay lean: complete and delete on the left of the row, everything else inside the panel.
+Inside a person's card on **Review → Outstanding by person**, tap a task row the same way — the row expands with the task's history, the note box, and (for devs) **Edit** and **Forward** links. The quick actions up front stay lean: complete on the left, delete tucked at the row's far right, everything else inside the panel.
 
 Rows also read at a glance now:
 

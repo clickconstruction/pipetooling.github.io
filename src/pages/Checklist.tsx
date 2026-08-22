@@ -17,6 +17,7 @@ import { compactTimeAgo } from '../lib/subcontractorLastActivityCompact'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
+import RoadmapTaskContextModal from '../components/checklist/RoadmapTaskContextModal'
 import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
@@ -74,25 +75,43 @@ type RoadmapTaskEmbed = {
   } | null
 }
 
-/** "⛰ <roadmap title>" chip for roadmap-born items; title falls back to "goal" when RLS hides the tree (field roles). */
-function roadmapGoalChip(item: { roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null | undefined) {
+/**
+ * "⛰ <roadmap title>" chip for roadmap-born items; title falls back to "goal"
+ * when RLS hides the tree (field roles). With `onOpen` it becomes a button
+ * opening the "Where this task fits" modal (v2.2087).
+ */
+function roadmapGoalChip(
+  item: { roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null | undefined,
+  onOpen?: (roadmapGroupTaskId: string) => void,
+) {
   if (!item?.roadmap_group_task_id) return null
   const title = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups?.checklist_tech_tree_roadmaps?.title?.trim()
+  const chipStyle = {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    padding: '0.12rem 0.5rem',
+    borderRadius: 7,
+    background: 'var(--bg-purple-tint, var(--bg-blue-tint))',
+    color: 'var(--text-purple-800, var(--text-blue-800))',
+    whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
+  } as const
+  if (!onOpen) {
+    return <span style={chipStyle}>⛰ {title || 'goal'}</span>
+  }
+  const taskId = item.roadmap_group_task_id
   return (
-    <span
-      style={{
-        fontSize: '0.72rem',
-        fontWeight: 600,
-        padding: '0.12rem 0.5rem',
-        borderRadius: 7,
-        background: 'var(--bg-purple-tint, var(--bg-blue-tint))',
-        color: 'var(--text-purple-800, var(--text-blue-800))',
-        whiteSpace: 'nowrap',
-        verticalAlign: 'middle',
+    <button
+      type="button"
+      title="See where this task fits in the roadmap"
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen(taskId)
       }}
+      style={{ ...chipStyle, font: 'inherit', ...{ fontSize: chipStyle.fontSize, fontWeight: chipStyle.fontWeight }, border: 'none', cursor: 'pointer' }}
     >
       ⛰ {title || 'goal'}
-    </span>
+    </button>
   )
 }
 
@@ -1430,6 +1449,7 @@ function OutstandingByPersonSortableRow({
   onDeleteInstance,
   onOpenFwd,
   onCompleteFromPanel,
+  onOpenRoadmapContext,
   setEditItemId,
   setError,
 }: {
@@ -1448,6 +1468,7 @@ function OutstandingByPersonSortableRow({
   onDeleteInstance: (inst: OutstandingInstance) => void
   onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
   onCompleteFromPanel: (args: { instanceId: string; checklistItemId: string; scheduledDate: string }) => Promise<boolean>
+  onOpenRoadmapContext?: (roadmapGroupTaskId: string) => void
   setEditItemId: (id: string) => void
   setError: (s: string | null) => void
 }) {
@@ -1572,7 +1593,7 @@ function OutstandingByPersonSortableRow({
         >
           <span style={{ flex: 1, minWidth: 0 }}>
             <ChecklistTitleWithLinks title={title} links={inst.checklist_items?.links} />{' '}
-            {roadmapGoalChip(inst.checklist_items)}
+            {roadmapGoalChip(inst.checklist_items, onOpenRoadmapContext)}
           </span>
           {notesCount > 0 ? (
             <span
@@ -1678,6 +1699,7 @@ function OutstandingByPersonSortableList({
   onDeleteInstance,
   onOpenFwd,
   onCompleteFromPanel,
+  onOpenRoadmapContext,
   setEditItemId,
   setError,
 }: {
@@ -1693,6 +1715,7 @@ function OutstandingByPersonSortableList({
   onDeleteInstance: (inst: OutstandingInstance) => void
   onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
   onCompleteFromPanel: (args: { instanceId: string; checklistItemId: string; scheduledDate: string }) => Promise<boolean>
+  onOpenRoadmapContext?: (roadmapGroupTaskId: string) => void
   setEditItemId: (id: string) => void
   authUserId: string | null
   expandedInstanceId: string | null
@@ -1738,6 +1761,7 @@ function OutstandingByPersonSortableList({
               onDeleteInstance={onDeleteInstance}
               onOpenFwd={onOpenFwd}
               onCompleteFromPanel={onCompleteFromPanel}
+              onOpenRoadmapContext={onOpenRoadmapContext}
               setEditItemId={setEditItemId}
               setError={setError}
             />
@@ -1764,6 +1788,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
   const [reorderingUserId, setReorderingUserId] = useState<string | null>(null)
   const [outstandingDeletePending, setOutstandingDeletePending] = useState<OutstandingInstance | null>(null)
+  const [roadmapContextTaskId, setRoadmapContextTaskId] = useState<string | null>(null)
   /** Row expanded to its activity spine (history + notes), v2.2012. */
   const [expandedInstanceId, setExpandedInstanceId] = useState<string | null>(null)
   /** Comment-event counts per listed instance — powers the 💬 chips. */
@@ -2578,6 +2603,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                         onToggleExpanded={(instanceId) => setExpandedInstanceId((prev) => (prev === instanceId ? null : instanceId))}
                         onMarkComplete={markComplete}
                         onDeleteInstance={openOutstandingDeleteModal}
+                        onOpenRoadmapContext={setRoadmapContextTaskId}
                         onOpenFwd={openFwd}
                         onCompleteFromPanel={completePanelInstance}
                         setEditItemId={setEditItemId}
@@ -2611,6 +2637,13 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
           </div>
         )}
       </div>
+      {roadmapContextTaskId && (
+        <RoadmapTaskContextModal
+          roadmapGroupTaskId={roadmapContextTaskId}
+          onClose={() => setRoadmapContextTaskId(null)}
+          onOpenRoadmap={onOpenRoadmap}
+        />
+      )}
       {outstandingDeletePending && (
         <div
           style={{
