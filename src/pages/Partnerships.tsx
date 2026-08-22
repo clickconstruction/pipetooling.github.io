@@ -452,8 +452,26 @@ export default function Partnerships() {
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '1rem' }}>
-      <div style={{ marginBottom: '0.75rem' }}>
+      <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Partnerships</h1>
+        {lensOn && selected ? (
+          <span
+            style={{
+              flex: '1 1 320px',
+              minWidth: 0,
+              fontSize: '0.72rem',
+              color: 'var(--text-amber-800)',
+              background: 'var(--bg-amber-100)',
+              border: '1px solid #f59e0b',
+              borderRadius: 8,
+              padding: '0.35rem 0.6rem',
+            }}
+          >
+            <b>Partner view.</b> Only what {selected.display_name || 'the partner'} can see, through the same
+            server gates — read-only. If nothing renders below, their account currently sees nothing (deal
+            paused/ended, or the weekly statement module is off).
+          </span>
+        ) : null}
       </div>
 
       {tableMissing && loaded ? (
@@ -588,13 +606,6 @@ export default function Partnerships() {
                     linked to people record ✓ · created {new Date(selected.created_at).toLocaleDateString()}
                   </div>
                 </div>
-                {lensOn ? (
-                  <span style={{ flex: '1 1 260px', minWidth: 0, fontSize: '0.72rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 8, padding: '0.35rem 0.6rem' }}>
-                    <b>Partner view.</b> Only what {selected.display_name || 'the partner'} can see, through the same
-                    server gates — read-only. If nothing renders below, their account currently sees nothing (deal
-                    paused/ended, or the weekly statement module is off).
-                  </span>
-                ) : null}
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                   {statusChip(draft.status)}
                   <button
