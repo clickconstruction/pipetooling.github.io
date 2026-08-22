@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   isConfirmedForPartner,
+  isValidThreshold,
+  jobsToAutoConfirm,
   parseReviewQueue,
   shareOfHours,
   sortReviewRows,
@@ -16,6 +18,8 @@ const row = (over: Partial<PartnerJobReviewRow>): PartnerJobReviewRow => ({
   partner_person_id: null,
   confirmed_at: null,
   confirmed_by_name: null,
+  confirmed_auto_pct: null,
+  auto_exempt: false,
   ...over,
 })
 
@@ -72,6 +76,63 @@ describe('parseReviewQueue', () => {
     expect(q.rows[0]?.label).toBe('a')
     expect(q.rows[0]?.partner_hours).toBe(12.5)
     expect(q.rows[0]?.total_hours).toBe(0)
+  })
+})
+
+describe('parseReviewQueue auto fields', () => {
+  it('reads the auto stamp and exemption flag, defaulting when absent', () => {
+    const q = parseReviewQueue({
+      linked: true,
+      partner_person_id: 'p1',
+      rows: [
+        { job_id: 'a', label: '813', partner_hours: 28.2, total_hours: 44.8, confirmed_auto_pct: 60, auto_exempt: false },
+        { job_id: 'b', label: '764', partner_hours: 14.1, total_hours: 16.3, auto_exempt: true },
+        { job_id: 'c', label: '789', partner_hours: 99.3, total_hours: 307.9 },
+      ],
+    })
+    expect(q.rows[0]?.confirmed_auto_pct).toBe(60)
+    expect(q.rows[0]?.auto_exempt).toBe(false)
+    expect(q.rows[1]?.auto_exempt).toBe(true)
+    expect(q.rows[2]?.confirmed_auto_pct).toBeNull()
+    expect(q.rows[2]?.auto_exempt).toBe(false)
+  })
+})
+
+describe('isValidThreshold', () => {
+  it('accepts integers 1-100 only', () => {
+    expect(isValidThreshold(60)).toBe(true)
+    expect(isValidThreshold(1)).toBe(true)
+    expect(isValidThreshold(100)).toBe(true)
+    expect(isValidThreshold(0)).toBe(false)
+    expect(isValidThreshold(101)).toBe(false)
+    expect(isValidThreshold(60.5)).toBe(false)
+    expect(isValidThreshold(null)).toBe(false)
+    expect(isValidThreshold('60')).toBe(false)
+  })
+})
+
+describe('jobsToAutoConfirm', () => {
+  const queue = [
+    row({ job_id: 'qualifies', partner_hours: 28.2, total_hours: 44.8 }), // 63%
+    row({ job_id: 'below', partner_hours: 99.3, total_hours: 307.9 }), // 32%
+    row({ job_id: 'exempt', partner_hours: 14.1, total_hours: 16.3, auto_exempt: true }), // 87% but human-cleared
+    row({ job_id: 'confirmed', partner_hours: 26.5, total_hours: 36.7, partner_person_id: 'p1' }), // 72% already on
+    row({ job_id: 'other-partner', partner_hours: 30, total_hours: 30, partner_person_id: 'p2' }),
+  ]
+
+  it('picks unconfirmed, non-exempt rows at/above the threshold', () => {
+    expect(jobsToAutoConfirm(queue, 60).map((r) => r.job_id)).toEqual(['qualifies'])
+  })
+
+  it('exact threshold qualifies; a lower threshold picks up more jobs', () => {
+    expect(jobsToAutoConfirm(queue, 63).map((r) => r.job_id)).toEqual(['qualifies'])
+    expect(jobsToAutoConfirm(queue, 32).map((r) => r.job_id)).toEqual(['qualifies', 'below'])
+  })
+
+  it('returns nothing when the rule is off or the threshold is junk', () => {
+    expect(jobsToAutoConfirm(queue, null)).toEqual([])
+    expect(jobsToAutoConfirm(queue, 0)).toEqual([])
+    expect(jobsToAutoConfirm(queue, 150)).toEqual([])
   })
 })
 

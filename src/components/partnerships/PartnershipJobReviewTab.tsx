@@ -3,9 +3,11 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
-import type { Json } from '../../types/database'
+import type { Database, Json } from '../../types/database'
 import {
   isConfirmedForPartner,
+  isValidThreshold,
+  jobsToAutoConfirm,
   parseReviewQueue,
   shareOfHours,
   sortReviewRows,
@@ -28,9 +30,19 @@ import {
  * the partner's app shows nothing about it; toggling off hides it again but
  * never touches ledger postings.
  *
+ * Automatic threshold (v2.2107): a partnership may set auto_threshold_pct —
+ * on tab load, any queued job whose share reaches it is confirmed via
+ * set_job_partner_majority(p_auto_pct), stamped "auto ≥ N%" (never as a
+ * person) and logged to the Timeline. A human clear exempts a job from the
+ * rule permanently (server-enforced); a manual confirm clears the exemption.
+ *
  * Fail-soft: if the PR 2 migration isn't pushed yet the RPC is missing — the
- * tab shows a "run db push" note instead of erroring.
+ * tab shows a "run db push" note instead of erroring. If the auto-threshold
+ * migration isn't pushed yet, the column select fails and the control hides.
  */
+
+/** The auto-rule's accent everywhere: purple = "a rule did this, not a person". */
+const AUTO_PURPLE = '#7c3aed'
 
 export function PartnershipJobReviewTab({
   partnershipId,
@@ -57,20 +69,80 @@ export function PartnershipJobReviewTab({
   const [moveBusy, setMoveBusy] = useState(false)
   const [moveError, setMoveError] = useState<string | null>(null)
   const [movedNote, setMovedNote] = useState<string | null>(null)
+  // Automatic threshold (v2.2107). null = rule off; thresholdReady=false hides
+  // the whole control (column not migrated yet, or still loading).
+  const [thresholdReady, setThresholdReady] = useState(false)
+  const [autoThresholdPct, setAutoThresholdPct] = useState<number | null>(null)
+  const [thresholdEditing, setThresholdEditing] = useState(false)
+  const [thresholdDraft, setThresholdDraft] = useState('60')
+  const [thresholdBusy, setThresholdBusy] = useState(false)
+  const [autoAddedNote, setAutoAddedNote] = useState<string | null>(null)
   const jobFormModal = useJobFormModal()
   const { user: authUser } = useAuth()
 
-  const load = useCallback(async () => {
+  const fetchQueue = useCallback(async (): Promise<PartnerJobReviewQueue | null> => {
     const { data, error } = await supabase.rpc('get_partner_job_review_queue', {
       p_partnership_id: partnershipId,
     })
-    if (error) {
+    if (error) return null
+    return parseReviewQueue(data)
+  }, [partnershipId])
+
+  const load = useCallback(async () => {
+    // Threshold first (fail-soft: pre-migration the column select errors and
+    // the control simply doesn't render).
+    let threshold: number | null = null
+    let ready = false
+    const thrRes = await supabase.from('partnerships').select('auto_threshold_pct').eq('id', partnershipId).single()
+    if (!thrRes.error) {
+      ready = true
+      const raw = (thrRes.data as unknown as { auto_threshold_pct: number | null } | null)?.auto_threshold_pct
+      threshold = isValidThreshold(raw) ? raw : null
+    }
+    setThresholdReady(ready)
+    setAutoThresholdPct(threshold)
+
+    let parsed = await fetchQueue()
+    if (parsed == null) {
       setRpcMissing(true)
       setQueue(null)
       return
     }
     setRpcMissing(false)
-    const parsed = parseReviewQueue(data)
+
+    // The rule fires here — the same moment the shares are computed. Adds are
+    // stamped auto (p_auto_pct) and logged once to the Timeline; the queue is
+    // re-fetched so the rows render already-confirmed.
+    if (parsed.linked && parsed.partner_person_id && isValidThreshold(threshold)) {
+      const eligible = jobsToAutoConfirm(parsed.rows, threshold)
+      if (eligible.length > 0) {
+        for (const r of eligible) {
+          await supabase.rpc(
+            'set_job_partner_majority',
+            {
+              p_job_id: r.job_id,
+              p_person_id: parsed.partner_person_id,
+              p_auto_pct: threshold,
+            } as { p_job_id: string; p_person_id?: string },
+          )
+        }
+        await supabase.from('partnership_events').insert({
+          partnership_id: partnershipId,
+          event_type: 'config_changed',
+          patch: {
+            auto_confirmed: {
+              threshold_pct: threshold,
+              jobs: eligible.map((r) => ({ job_id: r.job_id, label: r.label, share_pct: shareOfHours(r.partner_hours, r.total_hours) })),
+            },
+          } as unknown as Json,
+          actor_user_id: authUser?.id ?? null,
+        })
+        setAutoAddedNote(
+          `Auto-added ${eligible.length === 1 ? `job ${eligible[0]?.label}` : `${eligible.length} jobs`} at ≥ ${threshold}% just now.`,
+        )
+        parsed = (await fetchQueue()) ?? parsed
+      }
+    }
     setQueue(parsed)
     // Trade pills (PLUM / ELEC) beside the job number — the queue RPC doesn't
     // carry service types, so resolve them office-side. Fail-soft: no map, no
@@ -96,7 +168,7 @@ export function PartnershipJobReviewTab({
       setAccountUserId((personRes.data as { account_user_id: string | null } | null)?.account_user_id ?? null)
       setStmtWeeks(stubsRes.error ? [] : ((stubsRes.data ?? []) as StatementWeek[]))
     }
-  }, [partnershipId])
+  }, [partnershipId, fetchQueue, authUser?.id])
 
   useEffect(() => {
     setQueue(null)
@@ -114,6 +186,35 @@ export function PartnershipJobReviewTab({
     if (error) setActionError(error.message)
     await load()
     setBusyJobId(null)
+  }
+
+  /** Save (or clear, with null) the automatic threshold; a save reloads, which fires the rule immediately. */
+  async function saveThreshold(next: number | null) {
+    setThresholdBusy(true)
+    setActionError(null)
+    const { error } = await supabase
+      .from('partnerships')
+      .update({
+        auto_threshold_pct: next,
+        updated_at: new Date().toISOString(),
+        updated_by: authUser?.id ?? null,
+      } as Database['public']['Tables']['partnerships']['Update'])
+      .eq('id', partnershipId)
+    if (error) {
+      setActionError(error.message)
+      setThresholdBusy(false)
+      return
+    }
+    await supabase.from('partnership_events').insert({
+      partnership_id: partnershipId,
+      event_type: 'config_changed',
+      patch: { auto_threshold_pct: { from: autoThresholdPct, to: next } } as unknown as Json,
+      actor_user_id: authUser?.id ?? null,
+    })
+    setThresholdEditing(false)
+    setAutoAddedNote(null)
+    await load()
+    setThresholdBusy(false)
   }
 
   async function toggleSessions(jobId: string) {
@@ -318,11 +419,28 @@ export function PartnershipJobReviewTab({
                 </div>
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: 700, color: confirmed ? '#16a34a' : 'var(--text-muted)' }}>
-                {confirmed
-                  ? `confirmed ${r.confirmed_at ? new Date(r.confirmed_at).toLocaleDateString() : ''}${r.confirmed_by_name ? ` by ${r.confirmed_by_name}` : ''} · visible`
-                  : otherPartner
-                    ? 'assigned to another partner'
-                    : 'not visible yet'}
+                {confirmed ? (
+                  r.confirmed_auto_pct != null ? (
+                    <>
+                      {`confirmed ${r.confirmed_at ? new Date(r.confirmed_at).toLocaleDateString() : ''}`}
+                      <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#fff', background: AUTO_PURPLE, borderRadius: 999, padding: '0.08rem 0.45rem', margin: '0 0.3rem', whiteSpace: 'nowrap' }}>
+                        auto ≥ {r.confirmed_auto_pct}%
+                      </span>
+                      · visible
+                    </>
+                  ) : (
+                    `confirmed ${r.confirmed_at ? new Date(r.confirmed_at).toLocaleDateString() : ''}${r.confirmed_by_name ? ` by ${r.confirmed_by_name}` : ''} · visible`
+                  )
+                ) : otherPartner ? (
+                  'assigned to another partner'
+                ) : (
+                  <>
+                    not visible yet
+                    {r.auto_exempt && isValidThreshold(autoThresholdPct) && pct >= autoThresholdPct ? (
+                      <span style={{ fontWeight: 650, color: 'var(--text-amber-700)' }}> · turned off by hand — won’t auto-add</span>
+                    ) : null}
+                  </>
+                )}
               </span>
               <button
                 type="button"
@@ -494,11 +612,136 @@ export function PartnershipJobReviewTab({
         })
       )}
       {actionError ? <p style={{ fontSize: '0.8rem', color: 'var(--text-red-600)', margin: '0.5rem 0 0' }}>{actionError}</p> : null}
-      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        The toggle is the §3 “majority of the work” decision, stamped with who and when. Hours share is a suggestion —
-        there is no automatic threshold. Turning a job off hides it from {partnerName} but never touches postings
-        already on the ledger.
-      </p>
+      {autoAddedNote ? <p style={{ fontSize: '0.75rem', fontWeight: 650, color: AUTO_PURPLE, margin: '0.5rem 0 0' }}>{autoAddedNote}</p> : null}
+
+      {/* Automatic threshold control (v2.2107). Hidden until the migration's
+          column is readable; purple = the rule's accent throughout. */}
+      {thresholdReady ? (
+        <div style={{ marginTop: '0.7rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>Automatic threshold</span>
+            {isValidThreshold(autoThresholdPct) && !thresholdEditing ? (
+              <>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 800, color: '#fff', background: AUTO_PURPLE, borderRadius: 999, padding: '0.22rem 0.7rem' }}>
+                  ≥ {autoThresholdPct}%
+                  {(() => {
+                    const n = rows.filter((r) => isConfirmedForPartner(r, queue.partner_person_id) && r.confirmed_auto_pct != null).length
+                    return n > 0 ? <small style={{ fontWeight: 600, fontSize: '0.68rem', opacity: 0.85 }}>· {n} job{n === 1 ? '' : 's'} auto-added</small> : null
+                  })()}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThresholdDraft(String(autoThresholdPct))
+                    setThresholdEditing(true)
+                  }}
+                  style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, border: 'none', background: 'none', padding: '0.32rem 0.2rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  Change…
+                </button>
+                <button
+                  type="button"
+                  disabled={thresholdBusy}
+                  onClick={() => void saveThreshold(null)}
+                  style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, border: 'none', background: 'none', padding: '0.32rem 0.2rem', color: 'var(--text-muted)', cursor: 'pointer', opacity: thresholdBusy ? 0.55 : 1 }}
+                >
+                  Turn off
+                </button>
+              </>
+            ) : !thresholdEditing ? (
+              <>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>off — jobs are only added by hand</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThresholdDraft('60')
+                    setThresholdEditing(true)
+                  }}
+                  style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: '0.32rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
+                >
+                  Set a threshold…
+                </button>
+              </>
+            ) : null}
+          </div>
+          {thresholdEditing ? (
+            (() => {
+              const draftNum = Number(thresholdDraft)
+              const draftValid = isValidThreshold(draftNum)
+              const wouldAdd = draftValid && queue.partner_person_id ? jobsToAutoConfirm(rows, draftNum) : []
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.55rem', padding: '0.55rem 0.7rem', background: 'var(--bg-blue-tint)', borderRadius: 8 }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>add jobs at</span>
+                  <span style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                    {[50, 60, 75].map((p) => {
+                      const sel = thresholdDraft === String(p)
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setThresholdDraft(String(p))}
+                          style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: 999, border: `1px solid ${sel ? AUTO_PURPLE : 'var(--border-strong)'}`, background: sel ? AUTO_PURPLE : 'var(--surface)', color: sel ? '#fff' : 'var(--text-700)', cursor: 'pointer' }}
+                        >
+                          {p}%
+                        </button>
+                      )
+                    })}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={thresholdDraft}
+                    onChange={(e) => setThresholdDraft(e.target.value)}
+                    aria-label="Automatic threshold percent"
+                    style={{ width: '4.2rem', font: 'inherit', fontSize: '0.9rem', fontWeight: 700, padding: '0.28rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', textAlign: 'right' }}
+                  />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>%</span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>of labor hours</span>
+                  <button
+                    type="button"
+                    disabled={!draftValid || thresholdBusy}
+                    onClick={() => void saveThreshold(draftNum)}
+                    style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: '0.32rem 0.75rem', borderRadius: 6, border: 'none', background: AUTO_PURPLE, color: '#fff', cursor: 'pointer', opacity: !draftValid || thresholdBusy ? 0.55 : 1 }}
+                  >
+                    {thresholdBusy ? 'Saving…' : isValidThreshold(autoThresholdPct) ? 'Save' : 'Turn on'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setThresholdEditing(false)}
+                    style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, border: 'none', background: 'none', padding: '0.32rem 0.2rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <p style={{ flexBasis: '100%', fontSize: '0.72rem', color: 'var(--text-700)', margin: 0 }}>
+                    {draftValid
+                      ? wouldAdd.length > 0
+                        ? (
+                          <>
+                            Right now this would add <b style={{ color: AUTO_PURPLE }}>{wouldAdd.length} job{wouldAdd.length === 1 ? '' : 's'}</b>:{' '}
+                            {wouldAdd.slice(0, 3).map((r) => `${r.label} (${shareOfHours(r.partner_hours, r.total_hours)}%)`).join(', ')}
+                            {wouldAdd.length > 3 ? ` and ${wouldAdd.length - 3} more` : ''}.
+                          </>
+                        )
+                        : 'Right now no queued job reaches this share — the rule waits for hours to grow.'
+                      : 'Enter a whole number from 1 to 100.'}
+                  </p>
+                </div>
+              )
+            })()
+          ) : null}
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.45rem 0 0' }}>
+            {isValidThreshold(autoThresholdPct)
+              ? `When ${partnerName}’s approved share of a job’s labor hours reaches ${autoThresholdPct}%, the job is confirmed and made visible automatically — stamped “auto ≥ ${autoThresholdPct}%” and logged on the Timeline. Turning a job off by hand exempts it; the rule never re-adds it.`
+              : `The toggle is the §3 “majority of the work” decision, stamped with who and when. Turning a job off hides it from ${partnerName} but never touches postings already on the ledger.`}
+          </p>
+        </div>
+      ) : (
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
+          The toggle is the §3 “majority of the work” decision, stamped with who and when. Turning a job off hides it
+          from {partnerName} but never touches postings already on the ledger.
+        </p>
+      )}
     </div>
   )
 }

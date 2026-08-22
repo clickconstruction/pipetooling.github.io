@@ -5619,7 +5619,9 @@ export type Database = {
           last_bill_date: string | null
           last_work_date: string | null
           master_user_id: string
+          partner_auto_exempt_at: string | null
           partner_confirmed_at: string | null
+          partner_confirmed_auto_pct: number | null
           partner_confirmed_by: string | null
           partner_person_id: string | null
           payments_made: number | null
@@ -5658,7 +5660,9 @@ export type Database = {
           last_bill_date?: string | null
           last_work_date?: string | null
           master_user_id: string
+          partner_auto_exempt_at?: string | null
           partner_confirmed_at?: string | null
+          partner_confirmed_auto_pct?: number | null
           partner_confirmed_by?: string | null
           partner_person_id?: string | null
           payments_made?: number | null
@@ -5697,7 +5701,9 @@ export type Database = {
           last_bill_date?: string | null
           last_work_date?: string | null
           master_user_id?: string
+          partner_auto_exempt_at?: string | null
           partner_confirmed_at?: string | null
+          partner_confirmed_auto_pct?: number | null
           partner_confirmed_by?: string | null
           partner_person_id?: string | null
           payments_made?: number | null
@@ -8062,6 +8068,7 @@ export type Database = {
       }
       partnerships: {
         Row: {
+          auto_threshold_pct: number | null
           company_first_pct: number
           company_name: string
           created_at: string
@@ -8082,6 +8089,7 @@ export type Database = {
           utilities_allowance: number
         }
         Insert: {
+          auto_threshold_pct?: number | null
           company_first_pct?: number
           company_name?: string
           created_at?: string
@@ -8102,6 +8110,7 @@ export type Database = {
           utilities_allowance?: number
         }
         Update: {
+          auto_threshold_pct?: number | null
           company_first_pct?: number
           company_name?: string
           created_at?: string
@@ -15952,7 +15961,7 @@ export type Database = {
         Returns: Json
       }
       set_job_partner_majority: {
-        Args: { p_job_id: string; p_person_id?: string }
+        Args: { p_auto_pct?: number; p_job_id: string; p_person_id?: string }
         Returns: undefined
       }
       set_job_pct_from_field: {
