@@ -1,11 +1,20 @@
-import { Fragment, useCallback, useMemo } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { approveClockSessions } from '../lib/approveClockSessions'
+import {
+  formatHoursShort,
+  formatTeamWeekLabel,
+  isLongSession,
+  pendingRollup,
+  personWeekSummaryLine,
+} from '../lib/myTeamApprovals'
 import { supabase } from '../lib/supabase'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { DashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import {
   AssignSessionJobPopover,
+  ClockSessionLocationCell,
   ClockSessionsTable,
   formatClockActivityWorkDayLabel,
   formatClockSessionJobOrBidLabel,
@@ -17,10 +26,6 @@ import DashboardMyTeamPendingBanner from './DashboardMyTeamPendingBanner'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 
-function formatDecimalHours(hours: number): string {
-  return `${hours.toFixed(2)}h`
-}
-
 const teamHoursThStyle = {
   padding: '0.35rem 0.5rem',
   textAlign: 'left' as const,
@@ -29,19 +34,7 @@ const teamHoursThStyle = {
 const teamHoursTdStyle = { padding: '0.35rem 0.5rem' }
 const teamHoursTdNum = { ...teamHoursTdStyle, textAlign: 'right' as const }
 
-const peopleYouLeadThStyle = {
-  padding: '0.35rem 0.5rem',
-  textAlign: 'left' as const,
-  borderBottom: '1px solid var(--border)',
-}
 const peopleYouLeadMutedColor = { color: 'var(--text-muted)' as const }
-const peopleYouLeadThMutedLabel = {
-  ...peopleYouLeadMutedColor,
-  fontWeight: 500 as const,
-}
-const peopleYouLeadTdStyle = { padding: '0.35rem 0.5rem' }
-const peopleYouLeadTdNum = { ...peopleYouLeadTdStyle, textAlign: 'right' as const }
-const peopleYouLeadTdMutedText = peopleYouLeadMutedColor
 
 const JOB_LABEL_DISPLAY_MAX = 35
 
@@ -104,6 +97,10 @@ export default function DashboardMyTeamSection({
   } = myTeam
   const prefixMap = useLedgerPrefixMap()
   const confirmDialog = useConfirmDialog()
+
+  /** v2.2076: the exact Start/End inputs hide behind the week-pager label. */
+  const [datePickersOpen, setDatePickersOpen] = useState(false)
+  const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
 
   const refreshPendingAfterAction = useCallback(async () => {
     const y = window.scrollY
@@ -183,174 +180,434 @@ export default function DashboardMyTeamSection({
       >
         <span aria-hidden>{myTeamExpanded ? '▼' : '▶'}</span>
         <span>My Team</span>
-        {!myTeamExpanded && (
-          <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            {loadingSessions ? ' — …' : ` — ${pendingApprovalCount} pending`}
+        {/* v2.2076: the approval count rides the header in BOTH states — it is
+            the section's reason to exist, amber while sessions wait. */}
+        {!loadingSessions && pendingApprovalCount > 0 ? (
+          <span
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: 'var(--text-amber-800)',
+              background: 'var(--bg-amber-100)',
+              border: '1px solid var(--bg-amber-200)',
+              borderRadius: 999,
+              padding: '0.15rem 0.6rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {pendingApprovalCount} to approve
           </span>
-        )}
+        ) : !myTeamExpanded ? (
+          <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            {loadingSessions ? ' — …' : ' — nothing pending'}
+          </span>
+        ) : null}
       </button>
       {myTeamExpanded && (
         <div id="dashboard-my-team-content">
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-            <label>
-              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-              <input
-                type="date"
-                value={dateStart}
-                onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
-                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-              />
-            </label>
-            <label>
-              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-              <input
-                type="date"
-                value={dateEnd}
-                onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
-                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-              />
-            </label>
+          {/* v2.2076 week pager (mockup A): one row — ‹ label ›. Tapping the
+              label reveals the exact Start/End pickers for odd ranges. */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
             <button
               type="button"
               onClick={() => shiftWeek(-1)}
-              style={{
-                padding: '0.35rem 0.5rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: 'var(--surface)',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
+              aria-label="Last week"
+              style={{ width: 42, height: 38, borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '1.05rem', cursor: 'pointer', flexShrink: 0 }}
             >
-              ← last week
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => setDatePickersOpen((o) => !o)}
+              aria-expanded={datePickersOpen}
+              title="Tap to pick exact dates"
+              style={{ flex: 1, minWidth: 0, textAlign: 'center', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0', background: 'var(--surface)', cursor: 'pointer' }}
+            >
+              {formatTeamWeekLabel(dateStart, dateEnd, todayYmd)}
             </button>
             <button
               type="button"
               onClick={() => shiftWeek(1)}
-              style={{
-                padding: '0.35rem 0.5rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: 'var(--surface)',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
+              aria-label="Next week"
+              style={{ width: 42, height: 38, borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '1.05rem', cursor: 'pointer', flexShrink: 0 }}
             >
-              next week →
+              ›
             </button>
           </div>
+          {datePickersOpen && (
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                <input
+                  type="date"
+                  value={dateStart}
+                  onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
+                  style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                />
+              </label>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
+                  style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                />
+              </label>
+            </div>
+          )}
+          {/* v2.2076 (mockup A): the 7-column roster table clipped off-screen on
+              phones (the Notify toggle never rendered). Each person is now one
+              card — name, a sentence for the week, and a bell for clock in/out
+              notifications. */}
           {rosterFullDetail.length > 0 && (
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table
-                  style={{
-                    width: 'max-content',
-                    maxWidth: '100%',
-                    borderCollapse: 'collapse',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  <thead style={{ background: 'var(--bg-muted)' }}>
-                    <tr>
-                      <th scope="col" style={{ ...peopleYouLeadThStyle, textAlign: 'right' }}>
-                        Total
-                      </th>
-                      <th scope="col" style={peopleYouLeadThStyle}>
-                        Person
-                      </th>
-                      <th
-                        scope="col"
-                        style={{ ...peopleYouLeadThStyle, textAlign: 'right', ...peopleYouLeadThMutedLabel }}
+            <div style={{ marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {loadingHours ? (
+                <p style={{ ...peopleYouLeadMutedColor, fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              ) : (
+                rosterFullDetail.map((m) => {
+                  const h = hoursSummaryByUserId[m.userId] ?? {
+                    active: 0,
+                    pending: 0,
+                    approved: 0,
+                    manual: 0,
+                    total: 0,
+                  }
+                  const notifyOn = notifyByAssignment[m.assignmentId] ?? false
+                  return (
+                    <div
+                      key={m.assignmentId}
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 12,
+                        padding: '0.7rem 0.75rem',
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.6rem',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)' }}>{m.displayName}</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {personWeekSummaryLine(h)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-pressed={notifyOn}
+                        disabled={notifySavingId === m.assignmentId}
+                        onClick={() => void setNotifyPreference(m.assignmentId, !notifyOn)}
+                        aria-label={`Notify me when ${m.displayName} clocks in or out`}
+                        title={notifyOn ? `Notifying you when ${m.displayName} clocks in/out — tap to stop` : `Tap to get notified when ${m.displayName} clocks in/out`}
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: 10,
+                          border: notifyOn ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                          background: 'var(--surface)',
+                          color: notifyOn ? 'var(--text-link)' : 'var(--text-faint)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: notifySavingId === m.assignmentId ? 'wait' : 'pointer',
+                          flexShrink: 0,
+                        }}
                       >
-                        Active
-                      </th>
-                      <th
-                        scope="col"
-                        style={{ ...peopleYouLeadThStyle, textAlign: 'right', ...peopleYouLeadThMutedLabel }}
-                      >
-                        Pending
-                      </th>
-                      <th
-                        scope="col"
-                        style={{ ...peopleYouLeadThStyle, textAlign: 'right', ...peopleYouLeadThMutedLabel }}
-                      >
-                        Approved
-                      </th>
-                      <th
-                        scope="col"
-                        title="People Hours grid for the week, minus hours already counted in Approved (approved clocks are merged into the grid)"
-                        style={{ ...peopleYouLeadThStyle, textAlign: 'right', ...peopleYouLeadThMutedLabel }}
-                      >
-                        Manual
-                      </th>
-                      <th scope="col" style={{ ...peopleYouLeadThStyle, ...peopleYouLeadThMutedLabel }}>Notify in/out</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingHours ? (
-                      <tr>
-                        <td colSpan={7} style={{ ...peopleYouLeadTdStyle, ...peopleYouLeadMutedColor }}>
-                          Loading…
-                        </td>
-                      </tr>
-                    ) : (
-                      rosterFullDetail.map((m) => {
-                        const h = hoursSummaryByUserId[m.userId] ?? {
-                          active: 0,
-                          pending: 0,
-                          approved: 0,
-                          manual: 0,
-                          total: 0,
-                        }
-                        return (
-                          <tr key={m.assignmentId}>
-                            <td style={peopleYouLeadTdNum}>{formatDecimalHours(h.total)}</td>
-                            <td style={peopleYouLeadTdStyle}>{m.displayName}</td>
-                            <td style={{ ...peopleYouLeadTdNum, ...peopleYouLeadTdMutedText }}>
-                              {formatDecimalHours(h.active)}
-                            </td>
-                            <td style={{ ...peopleYouLeadTdNum, ...peopleYouLeadTdMutedText }}>
-                              {formatDecimalHours(h.pending)}
-                            </td>
-                            <td style={{ ...peopleYouLeadTdNum, ...peopleYouLeadTdMutedText }}>
-                              {formatDecimalHours(h.approved)}
-                            </td>
-                            <td style={{ ...peopleYouLeadTdNum, ...peopleYouLeadTdMutedText }}>
-                              {formatDecimalHours(h.manual)}
-                            </td>
-                            <td style={{ ...peopleYouLeadTdStyle, ...peopleYouLeadTdMutedText }}>
-                              <label
-                                style={{
-                                  fontSize: '0.8125rem',
-                                  cursor: notifySavingId === m.assignmentId ? 'wait' : 'pointer',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={notifyByAssignment[m.assignmentId] ?? false}
-                                  disabled={notifySavingId === m.assignmentId}
-                                  onChange={(e) => void setNotifyPreference(m.assignmentId, e.target.checked)}
-                                  aria-label="Notify on clock in and clock out"
-                                  title="On clock in/out"
-                                  style={{ verticalAlign: 'middle' }}
-                                />
-                              </label>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        {/* Icon: Font Awesome Free 6.x — bell (OFL/CC-BY) */}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width={18} height={18} fill="currentColor" aria-hidden focusable={false}>
+                          <path d="M224 0c-17.7 0-32 14.3-32 32v19.2C119 66 64 130.6 64 208v18.8c0 47-17.3 92.4-48.5 127.6l-7.4 8.3c-8.4 9.4-10.4 22.9-5.3 34.4S19.4 416 32 416H416c12.6 0 24-7.4 29.2-18.9s3.1-25-5.3-34.4l-7.4-8.3C401.3 319.2 384 273.8 384 226.8V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7z" />
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })
+              )}
             </div>
           )}
           {loadingSessions ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>Loading…</p>
           ) : (
             <div id="dashboard-my-team-pending">
+              {/* v2.2076 (mockup A): approvals lead the section. Approve all rides
+                  the existing batch RPC; each card states the hours it attests and
+                  flags days past 12h so a 14.5h shift takes a conscious look. */}
+              {(() => {
+                const rollup = pendingRollup(pendingApprovalClockSessions.map(sessionDecimalHours))
+                return (
+                  <div
+                    id="dashboard-my-team-pending-sessions"
+                    style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)', padding: '0.75rem', marginBottom: '1rem' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)' }}>
+                        Pending approval ({rollup.count})
+                      </div>
+                      {rollup.count > 0 && (
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{formatHoursShort(rollup.totalHours)} total</span>
+                      )}
+                    </div>
+                    {rollup.count === 0 ? (
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
+                        No sessions awaiting approval — you're caught up.
+                      </p>
+                    ) : (
+                      <>
+                        {rollup.count > 1 && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (
+                                !(await confirmDialog({
+                                  message: `Approve all ${rollup.count} sessions — ${formatHoursShort(rollup.totalHours)} total?`,
+                                  confirmLabel: 'Approve all',
+                                }))
+                              )
+                                return
+                              const { data, error: rpcErr } = await approveClockSessions(
+                                pendingApprovalClockSessions.map((s) => s.id),
+                              )
+                              if (rpcErr) {
+                                setError(rpcErr.message)
+                                return
+                              }
+                              const rows = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                              const firstErr = rows.find((r) => r.error_message)?.error_message
+                              if (firstErr) {
+                                setError(firstErr)
+                                return
+                              }
+                              await refreshPendingAfterAction()
+                            }}
+                            style={{
+                              width: '100%',
+                              minHeight: 44,
+                              marginTop: '0.6rem',
+                              border: 'none',
+                              borderRadius: 8,
+                              background: '#16a34a',
+                              color: '#fff',
+                              fontSize: '0.9375rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Approve all {rollup.count} · {formatHoursShort(rollup.totalHours)}
+                          </button>
+                        )}
+                        {pendingApprovalClockSessions.map((s) => {
+                          const hrs = sessionDecimalHours(s)
+                          const long = isLongSession(hrs)
+                          const inDate = new Date(s.clocked_in_at)
+                          const outDate = s.clocked_out_at ? new Date(s.clocked_out_at) : null
+                          const times = `${inDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} – ${
+                            outDate ? outDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '—'
+                          }`
+                          const dayLabel = new Date(`${s.work_date}T12:00:00`)
+                            .toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+                            .replace(',', '')
+                          const jobLabel = formatClockSessionJobOrBidLabel(s, prefixMap)
+                          return (
+                            <div key={s.id} style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.75rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)' }}>
+                                  {rosterFullDetail.length > 1 ? `${personDisplayName(s)} · ` : ''}
+                                  {dayLabel} · {formatHoursShort(hrs)}
+                                </span>
+                                {long && (
+                                  <span
+                                    title="Longer than 12 hours — double-check before approving"
+                                    style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-amber-800)' }}
+                                  >
+                                    ⚠ long day
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                <span>{times}</span>
+                                <ClockSessionLocationCell
+                                  clockInLat={s.clock_in_lat}
+                                  clockInLng={s.clock_in_lng}
+                                  clockOutLat={s.clock_out_lat}
+                                  clockOutLng={s.clock_out_lng}
+                                  clockInLocationSource={s.clock_in_location_source}
+                                  clockOutLocationSource={s.clock_out_location_source}
+                                  variant="full"
+                                />
+                              </div>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {jobLabel ? (
+                                  <span title={jobLabel} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                    {truncateJobLabel(jobLabel)}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--text-faint)' }}>No job assigned</span>
+                                )}
+                                <AssignSessionJobPopover
+                                  session={s}
+                                  onSaved={() => void refreshPendingAfterAction()}
+                                  onError={(msg) => setError(msg)}
+                                  dispatchScheduleAssigneeUserId={s.user_id}
+                                  dispatchScheduleWorkDateYmd={s.work_date}
+                                />
+                              </div>
+                              {s.notes?.trim() ? (
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', fontStyle: 'italic', marginTop: 4, overflowWrap: 'anywhere' }}>
+                                  "{s.notes.trim()}"
+                                </div>
+                              ) : null}
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const { data, error: rpcErr } = await approveClockSessions([s.id])
+                                    if (rpcErr) {
+                                      setError(rpcErr.message)
+                                      return
+                                    }
+                                    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                                    const row = result[0]
+                                    if (row?.error_message) {
+                                      setError(row.error_message)
+                                      return
+                                    }
+                                    await refreshPendingAfterAction()
+                                  }}
+                                  style={{
+                                    flex: 1.4,
+                                    minHeight: 44,
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    background: '#16a34a',
+                                    color: '#fff',
+                                    fontSize: '0.9375rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Approve {formatHoursShort(hrs)}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
+                                    try {
+                                      await withSupabaseRetry(
+                                        async () =>
+                                          supabase
+                                            .from('clock_sessions')
+                                            .update({ rejected_at: new Date().toISOString(), rejected_by: authUserId ?? null })
+                                            .eq('id', s.id),
+                                        'reject clock session',
+                                      )
+                                      await refreshPendingAfterAction()
+                                    } catch (e) {
+                                      setError(formatErrorMessage(e))
+                                    }
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    minHeight: 44,
+                                    border: '1px solid #dc2626',
+                                    borderRadius: 8,
+                                    background: 'transparent',
+                                    color: 'var(--text-red-600)',
+                                    fontSize: '0.9375rem',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Reject
+                                </button>
+                                <Link
+                                  to="/people?tab=hours"
+                                  style={{
+                                    flex: 1,
+                                    minHeight: 44,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '1px solid var(--border-strong)',
+                                    borderRadius: 8,
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-link)',
+                                    fontSize: '0.9375rem',
+                                    textDecoration: 'none',
+                                  }}
+                                >
+                                  Edit
+                                </Link>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
+              {activeClockSessions.length > 0 && (
+                <div
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    marginBottom: '1rem',
+                  }}
+                >
+                  <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
+                    On the clock right now ({activeClockSessions.length})
+                  </div>
+                  <ClockSessionsTable
+                    sessions={activeClockSessions}
+                    showActionsColumn
+                    locationVariant="full"
+                    emptyMessage="No active sessions"
+                    renderNotesSecondary={(s) => {
+                      const label = formatClockSessionJobOrBidLabel(s, prefixMap)
+                      return label ? <span title={label}>{label}</span> : null
+                    }}
+                    renderJob={() => (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
+                    )}
+                    renderActions={(s) => {
+                      const personName = s.users?.name?.trim() ?? 'Unknown'
+                      return (
+                        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!(await confirmDialog({ message: `Force clock out ${personName}?`, confirmLabel: 'Force clock out' }))) return
+                              const now = new Date().toISOString()
+                              try {
+                                await withSupabaseRetry(
+                                  async () => supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id),
+                                  'force clock out',
+                                )
+                                await refreshPendingAfterAction()
+                              } catch (e) {
+                                setError(formatErrorMessage(e))
+                              }
+                            }}
+                            style={{
+                              padding: '0.2rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              border: '1px solid #dc2626',
+                              borderRadius: 4,
+                              background: 'var(--bg-red-tint)',
+                              color: 'var(--text-red-600)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Force clock out
+                          </button>
+                        </div>
+                      )
+                    }}
+                  />
+                </div>
+              )}
               <div style={{ marginBottom: '1rem' }}>
                 <button
                   type="button"
@@ -371,7 +628,7 @@ export default function DashboardMyTeamSection({
                   }}
                 >
                   <span aria-hidden>{clockActivityExpanded ? '▼' : '▶'}</span>
-                  Clock activity
+                  All clock activity
                 </button>
                 {clockActivityExpanded && (
                   <>
@@ -672,178 +929,6 @@ export default function DashboardMyTeamSection({
                     )}
                   </>
                 )}
-              </div>
-              <div
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  marginBottom: '1rem',
-                }}
-              >
-                <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
-                  Active clock sessions ({activeClockSessions.length})
-                </div>
-                <ClockSessionsTable
-                  sessions={activeClockSessions}
-                  showActionsColumn
-                  locationVariant="full"
-                  emptyMessage="No active sessions"
-                  renderNotesSecondary={(s) => {
-                    const label = formatClockSessionJobOrBidLabel(s, prefixMap)
-                    return label ? <span title={label}>{label}</span> : null
-                  }}
-                  renderJob={() => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
-                  )}
-                  renderActions={(s) => {
-                    const personName = s.users?.name?.trim() ?? 'Unknown'
-                    return (
-                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!(await confirmDialog({ message: `Force clock out ${personName}?`, confirmLabel: 'Force clock out' }))) return
-                            const now = new Date().toISOString()
-                            try {
-                              await withSupabaseRetry(
-                                async () => supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id),
-                                'force clock out',
-                              )
-                              await refreshPendingAfterAction()
-                            } catch (e) {
-                              setError(formatErrorMessage(e))
-                            }
-                          }}
-                          style={{
-                            padding: '0.2rem 0.5rem',
-                            fontSize: '0.8125rem',
-                            border: '1px solid #dc2626',
-                            borderRadius: 4,
-                            background: 'var(--bg-red-tint)',
-                            color: 'var(--text-red-600)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Force clock out
-                        </button>
-                      </div>
-                    )
-                  }}
-                />
-              </div>
-              <div
-                id="dashboard-my-team-pending-sessions"
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  marginBottom: '1rem',
-                }}
-              >
-                <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
-                  Pending sessions ({pendingApprovalClockSessions.length})
-                </div>
-                <ClockSessionsTable
-                  sessions={pendingApprovalClockSessions}
-                  showActionsColumn
-                  locationVariant="full"
-                  emptyMessage="No sessions awaiting approval"
-                  renderNotesSecondary={(s) => {
-                    const label = formatClockSessionJobOrBidLabel(s, prefixMap)
-                    return label ? <span title={label}>{label}</span> : null
-                  }}
-                  renderJob={(s) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
-                      <span style={{ flexShrink: 0 }}>
-                        <AssignSessionJobPopover
-                          session={s}
-                          onSaved={() => void refreshPendingAfterAction()}
-                          onError={(msg) => setError(msg)}
-                          dispatchScheduleAssigneeUserId={s.user_id}
-                          dispatchScheduleWorkDateYmd={s.work_date}
-                        />
-                      </span>
-                    </div>
-                  )}
-                  renderActions={(s) => (
-                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const { data, error: rpcErr } = await approveClockSessions([s.id])
-                          if (rpcErr) {
-                            setError(rpcErr.message)
-                            return
-                          }
-                          const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                          const row = result[0]
-                          if (row?.error_message) {
-                            setError(row.error_message)
-                            return
-                          }
-                          await refreshPendingAfterAction()
-                        }}
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          fontSize: '0.8125rem',
-                          border: '1px solid #22c55e',
-                          borderRadius: 4,
-                          background: 'var(--bg-green-tint)',
-                          color: '#16a34a',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
-                          try {
-                            await withSupabaseRetry(
-                              async () =>
-                                supabase
-                                  .from('clock_sessions')
-                                  .update({ rejected_at: new Date().toISOString(), rejected_by: authUserId ?? null })
-                                  .eq('id', s.id),
-                              'reject clock session',
-                            )
-                            await refreshPendingAfterAction()
-                          } catch (e) {
-                            setError(formatErrorMessage(e))
-                          }
-                        }}
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          fontSize: '0.8125rem',
-                          border: '1px solid #dc2626',
-                          borderRadius: 4,
-                          background: 'var(--bg-red-tint)',
-                          color: 'var(--text-red-600)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Reject
-                      </button>
-                      <Link
-                        to="/people?tab=hours"
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          fontSize: '0.8125rem',
-                          border: '1px solid var(--border-strong)',
-                          borderRadius: 4,
-                          background: 'var(--surface)',
-                          color: 'var(--text-700)',
-                          cursor: 'pointer',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        Edit
-                      </Link>
-                    </div>
-                  )}
-                />
               </div>
             </div>
           )}
