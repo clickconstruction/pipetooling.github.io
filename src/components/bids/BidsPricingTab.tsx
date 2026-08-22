@@ -312,7 +312,7 @@ export function BidsPricingTab({
   // Iteration 3 — win/loss calibration history (null = loading/unavailable).
   const [wbHistory, setWbHistory] = useState<BidPricingHistoryRow[] | null>(null)
   const [wbCloning, setWbCloning] = useState(false)
-  /** The "Try a variant…" door (v2.2104): one button asking "price experiment or scope change?" */
+  /** The "＋ New price or version…" door (v2.2104, renamed v2.2110): one button asking "price point or sendable bid?" */
   const [wbVariantDoorOpen, setWbVariantDoorOpen] = useState(false)
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
@@ -1170,7 +1170,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-scenarios',
       title: 'Scenarios — same counts, different prices',
-      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "Try a variant…" adds a second scenario (price experiment) or a whole new version (scope change).',
+      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point — or another sendable bid (a version with its own counts).',
     },
     {
       anchor: 'workbench-summary',
@@ -2523,7 +2523,7 @@ export function BidsPricingTab({
                           disabled={wbCloning}
                           style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.85rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: wbCloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
                         >
-                          {wbCloning ? 'Duplicating…' : 'Try a variant…'}
+                          {wbCloning ? 'Duplicating…' : '＋ New price or version…'}
                         </button>
                       )
                       const doorOptStyle: React.CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
@@ -2534,11 +2534,11 @@ export function BidsPricingTab({
                         >
                           <div
                             role="dialog"
-                            aria-label="Try a variant"
+                            aria-label="New price or version"
                             style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 440, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Try a variant</h3>
+                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>New price or version</h3>
                             <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What changed?</p>
                             <button
                               type="button"
@@ -2550,9 +2550,9 @@ export function BidsPricingTab({
                             >
                               <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>💲</span>
                               <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Same job, different price</b>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another price point</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Duplicates this price scenario — counts stay shared, you get a second sheet to experiment on. Star it later if it wins.
+                                  Same counts, different price. Star the winner.
                                 </span>
                               </span>
                             </button>
@@ -2564,11 +2564,11 @@ export function BidsPricingTab({
                                 window.dispatchEvent(new Event('bid-version-picker-open-new'))
                               }}
                             >
-                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📐</span>
+                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📦</span>
                               <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>The plans or scope changed</b>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another bid to send</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  New <b>version</b> with its own takeoff — re-count what changed; current pricing can be cloned onto it.
+                                  A new <b>version</b> — own counts, own GC, its own section in the cover letter.
                                 </span>
                               </span>
                             </button>
@@ -2597,7 +2597,7 @@ export function BidsPricingTab({
                               data-tour="workbench-scenarios"
                               style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.9rem', marginBottom: '0.9rem' }}
                             >
-                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One takeoff · one price scenario</span>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One bid · one price</span>
                               {isCustomerFacing ? (
                                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ customer sees</span>
                               ) : null}
@@ -2633,7 +2633,7 @@ export function BidsPricingTab({
                         <>
                           <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', flexWrap: 'wrap' }}>
                             <div style={{ padding: '0.5rem 0.9rem', borderRight: '1px solid var(--border)', minWidth: '13rem' }}>
-                              <div style={labelStyle}>Version — its own takeoff &amp; counts</div>
+                              <div style={labelStyle}>This bid — {bidVersions.length > 1 ? `one of ${bidVersions.length} in the package, ` : ''}sends on its own</div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
                                 <span style={{ border: '1px solid #3b82f6', background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 5, padding: '0.08rem 0.55rem', fontSize: '0.8rem', fontWeight: 600 }}>
                                   {activeVersionName ?? 'Current'}
@@ -2642,7 +2642,7 @@ export function BidsPricingTab({
                               </div>
                             </div>
                             <div style={{ padding: '0.5rem 0.9rem', flex: 1, minWidth: '18rem' }}>
-                              <div style={labelStyle}>Price scenarios in this version — same counts, different sell prices</div>
+                              <div style={labelStyle}>Its price points — same counts, star the one the customer sees</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                                 The <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★ starred</span> scenario is what the customer sees — Cover Letter, Share, and the bid value all use it.
                               </div>
