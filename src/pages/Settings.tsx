@@ -51,6 +51,8 @@ import SettingsCompanyDocumentsSection from '../components/settings/SettingsComp
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
+import SettingsSearchBar from '../components/settings/SettingsSearchBar'
+import { pollScrollToSettingsAnchor } from '../lib/settingsSearch'
 
 type UserRole =
   | 'dev'
@@ -1107,6 +1109,15 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* v2.2084: type-ahead over the curated settings index — jumps to the
+          owning tab (and section anchor when one exists). */}
+      <SettingsSearchBar
+        groups={settingsJumpGroups}
+        onPick={(entry) => {
+          setActiveSettingsTab(entry.tabId)
+          if (entry.anchorId) pollScrollToSettingsAnchor(entry.anchorId)
+        }}
+      />
       <SettingsTabBar groups={settingsJumpGroups} activeId={activeSettingsTab} onSelect={setActiveSettingsTab} />
 
       <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
