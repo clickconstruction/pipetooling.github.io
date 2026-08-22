@@ -1,4 +1,13 @@
 import { BidLossCategoryChips } from './BidLossCategoryChips'
+import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
+import {
+  EMPTY_BID_TAB_VALUES,
+  bidTabValuesFromRow,
+  buildBidTabPatch,
+  hasAnyBidTabValue,
+  type BidTabRow,
+  type BidTabValues,
+} from '../../lib/bidTabCapture'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
@@ -94,6 +103,8 @@ export function BidsWhyWeLostLens({
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
+  const [tabCaptureOpen, setTabCaptureOpen] = useState(false)
+  const [savingTabBidId, setSavingTabBidId] = useState<string | null>(null)
   /** "bids by" estimator scope (v2.2053) — '' = all; scopes the WHOLE lens (headline, rail, queue). */
   const [estimatorFilter, setEstimatorFilter] = useState('')
 
@@ -184,7 +195,28 @@ export function BidsWhyWeLostLens({
 
   useEffect(() => {
     setNoteDraft('')
+    setTabCaptureOpen(false)
   }, [selectedBid?.id])
+
+  function saveBidTab(b: LensBid, values: BidTabValues) {
+    setSavingTabBidId(b.id)
+    const patch: Record<string, number | null> = { ...buildBidTabPatch(values) }
+    void (async () => {
+      try {
+        await withSupabaseRetry(
+          async () => supabase.from('bids').update(patch).eq('id', b.id),
+          'save bid tab',
+        )
+        onError(null)
+        setTabCaptureOpen(false)
+        onReloadBids()
+      } catch (err) {
+        onError(err instanceof Error ? `Could not save the bid tab: ${err.message}` : 'Could not save the bid tab.')
+      } finally {
+        setSavingTabBidId(null)
+      }
+    })()
+  }
 
   function selectBuilder(key: string) {
     setSelectedBuilderKey(key)
@@ -493,6 +525,27 @@ export function BidsWhyWeLostLens({
                 {selectedBid.estimatorName ? ` · est. ${selectedBid.estimatorName}` : ''}
               </div>
               {(() => {
+                const tabValues = bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)
+                if (tabCaptureOpen) return null
+                if (hasAnyBidTabValue(tabValues)) {
+                  return (
+                    <BidTabRecordedLine values={tabValues} ourValue={selectedBid.value} onEdit={() => setTabCaptureOpen(true)} />
+                  )
+                }
+                return (
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    No bid tab recorded —{' '}
+                    <button
+                      type="button"
+                      onClick={() => setTabCaptureOpen(true)}
+                      style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit' }}
+                    >
+                      record the bid tab {'→'}
+                    </button>
+                  </p>
+                )
+              })()}
+              {(() => {
                 const recips = recipientsByBidId[selectedBid.id] ?? []
                 if (recips.length === 0 && !selectedBid.viaRecipient) return null
                 const primaryName =
@@ -522,6 +575,19 @@ export function BidsWhyWeLostLens({
                 </p>
               ) : null}
             </div>
+
+            {tabCaptureOpen ? (
+              <BidTabCapturePanel
+                key={selectedBid.id}
+                ourValue={selectedBid.value}
+                initial={bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)}
+                saving={savingTabBidId != null}
+                onSave={(values) => saveBidTab(selectedBid, values)}
+                secondaryLabel="Cancel"
+                onSecondary={() => setTabCaptureOpen(false)}
+                onRemove={() => saveBidTab(selectedBid, EMPTY_BID_TAB_VALUES)}
+              />
+            ) : null}
 
             <div style={{ marginBottom: '0.6rem' }}>
               <BidLossCategoryChips

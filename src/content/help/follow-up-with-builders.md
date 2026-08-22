@@ -2,7 +2,7 @@
 title: follow up with builders on their bids
 category: Office
 roles: dev, master_technician, assistant, estimator, primary, superintendent
-keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids
+keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom
 order: 69
 ---
 The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has three lenses — one job, three angles:
@@ -60,6 +60,8 @@ The left rail is a call queue: builders with unexplained lost bids first, bigges
 
 Tap one (or press keys **1–6**) and the bid is recorded and the next unexplained one opens — a builder's whole list clears in the length of the call. Type what they said in the note box first and it saves with the tap ("about 6 grand over the winner"). {{button:outline|Skip →}} moves on without recording; arrow keys move between bids; explained pills turn green.
 
+When the GC shares the actual numbers, keep them: every lost-bid card has a **record the bid tab →** link (or a **BID TAB** line with **edit** once recorded) that opens the same capture as Waiting to hear — **low bid**, **high bid**, *"we were #2 from the bottom, of 6"* — with a live line doing the math on how far over the low we were. "About 6 grand over the winner" in a note is a story; the tab numbers are data you can compare across every loss.
+
 Bids that already have a written note — say you typed "gc not awarded" while marking it lost in Edit Bid — come **pre-suggested**: the matching chip gets an amber ring and **Enter** confirms it, so already-explained bids clear as fast as you can press Enter. (A note that could mean two different reasons suggests nothing — you decide.)
 
 The same six chips now live everywhere a bid gets marked lost — **Edit Bid**, the call-mode Lost flow, and the Bid Board's lost summary — so recording the reason once, anywhere, clears it here too.
@@ -86,7 +88,7 @@ The left rail lists builders holding your open bids, most recently sent on top (
 "Morning — we sent our number on Saginaw two weeks ago. Did it land? Are we in the hunt? Can I get the bid tab when it's out?" Tap through their pills with the arrow keys; {{button:outline|Skip →}} moves on.
 :::
 
-Log the answer without leaving the card — the **What happened?** chips, one tap per bid: **Left message** · **Still pending** · **Bid tab received** · **Rebid / RFQ** · **Won** · **Lost…**. Every tap writes a bid note and stamps **Last Contact** (the pill goes green and the next bid opens), so the Bid Board and By builder queue stay current for free. **Lost…** reveals the same six reason chips as the Why we lost lens — a loss you learn about on the chase call gets its reason recorded on the spot and never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
+Log the answer without leaving the card — the **What happened?** chips, one tap per bid: **Left message** · **Still pending** · **Bid tab received** · **Rebid / RFQ** · **Won** · **Lost…**. **Bid tab received** opens a small capture first — the tab in the words of the call: **low bid**, **high bid**, and *"we were #2 from the bottom, of 6"* (money fields take shorthand like `230k`; every field optional, and {{button:outline|Log without numbers}} is the old one-tap). As you type, a live line does the math — how far over the low we were — and catches numbers that don't add up. Recorded tabs stay on the bid card as one line with a low-to-high strip. Every tap writes a bid note and stamps **Last Contact** (the pill goes green and the next bid opens), so the Bid Board and By builder queue stay current for free. **Lost…** reveals the same six reason chips as the Why we lost lens — a loss you learn about on the chase call gets its reason recorded on the spot and never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
 
 
 ## One bid, several GCs — every queue knows
