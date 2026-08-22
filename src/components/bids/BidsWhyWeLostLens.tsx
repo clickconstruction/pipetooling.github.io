@@ -1,6 +1,7 @@
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
 import {
+  EMPTY_BID_TAB_VALUES,
   bidTabValuesFromRow,
   buildBidTabPatch,
   hasAnyBidTabValue,
@@ -584,6 +585,7 @@ export function BidsWhyWeLostLens({
                 onSave={(values) => saveBidTab(selectedBid, values)}
                 secondaryLabel="Cancel"
                 onSecondary={() => setTabCaptureOpen(false)}
+                onRemove={() => saveBidTab(selectedBid, EMPTY_BID_TAB_VALUES)}
               />
             ) : null}
 

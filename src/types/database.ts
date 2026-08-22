@@ -777,6 +777,10 @@ export type Database = {
           bid_due_time: string | null
           bid_number: string | null
           bid_submission_link: string | null
+          bid_tab_bidder_count: number | null
+          bid_tab_high: number | null
+          bid_tab_low: number | null
+          bid_tab_rank_from_low: number | null
           bid_value: number | null
           count_tooling_link: string | null
           count_tooling_plans_link: string | null
@@ -833,6 +837,10 @@ export type Database = {
           bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
+          bid_tab_bidder_count?: number | null
+          bid_tab_high?: number | null
+          bid_tab_low?: number | null
+          bid_tab_rank_from_low?: number | null
           bid_value?: number | null
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
@@ -889,6 +897,10 @@ export type Database = {
           bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
+          bid_tab_bidder_count?: number | null
+          bid_tab_high?: number | null
+          bid_tab_low?: number | null
+          bid_tab_rank_from_low?: number | null
           bid_value?: number | null
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
@@ -5492,6 +5504,7 @@ export type Database = {
           from_status: string | null
           id: string
           job_id: string
+          source_job_id: string | null
           to_status: string
         }
         Insert: {
@@ -5500,6 +5513,7 @@ export type Database = {
           from_status?: string | null
           id?: string
           job_id: string
+          source_job_id?: string | null
           to_status: string
         }
         Update: {
@@ -5508,6 +5522,7 @@ export type Database = {
           from_status?: string | null
           id?: string
           job_id?: string
+          source_job_id?: string | null
           to_status?: string
         }
         Relationships: [

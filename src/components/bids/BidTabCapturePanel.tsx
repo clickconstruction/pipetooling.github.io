@@ -35,6 +35,8 @@ export type BidTabCapturePanelProps = {
   /** Secondary action — "Log without numbers" in call mode, "Cancel" when editing. */
   secondaryLabel: string
   onSecondary: () => void
+  /** Clears the recorded tab (rendered only while editing an existing one). Quiet data fix — no history note. */
+  onRemove?: () => void
 }
 
 /**
@@ -42,7 +44,7 @@ export type BidTabCapturePanelProps = {
  * Phrased the way a GC reads a tab on the phone; every field optional. Shared
  * by the Waiting to hear "Bid tab received" flow and the Why we lost lens.
  */
-export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondaryLabel, onSecondary }: BidTabCapturePanelProps) {
+export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondaryLabel, onSecondary, onRemove }: BidTabCapturePanelProps) {
   const [lowText, setLowText] = useState(() => moneyFieldText(initial.low))
   const [highText, setHighText] = useState(() => moneyFieldText(initial.high))
   const [rankText, setRankText] = useState(() => moneyFieldText(initial.rankFromLow))
@@ -165,6 +167,27 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
         >
           {secondaryLabel}
         </button>
+        {onRemove && hasAnyBidTabValue(initial) ? (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onRemove}
+            title="Clear the recorded bid tab from this bid"
+            style={{
+              marginLeft: 'auto',
+              padding: '0.35rem 0.7rem',
+              fontSize: '0.75rem',
+              border: 'none',
+              background: 'none',
+              color: 'var(--text-red-800)',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              font: 'inherit',
+            }}
+          >
+            Remove bid tab
+          </button>
+        ) : null}
       </div>
     </div>
   )

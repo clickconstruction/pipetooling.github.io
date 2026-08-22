@@ -18,6 +18,7 @@ import {
 } from '../../lib/bidPendingChase'
 import { BID_LOSS_CATEGORIES, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import {
+  EMPTY_BID_TAB_VALUES,
   bidTabValuesFromRow,
   buildBidTabPatch,
   hasAnyBidTabValue,
@@ -282,6 +283,25 @@ export function BidsWaitingToHearLens({
           return next
         })
         setChasedThisSession((n) => Math.max(0, n - 1))
+      } finally {
+        setSavingBidId(null)
+      }
+    })()
+  }
+
+  /** Quiet data fix — clears the tab columns only; no history note, no contact stamp. */
+  function removeBidTab(b: LensBid) {
+    if (savingBidId) return
+    setSavingBidId(b.id)
+    const patch: Record<string, number | null> = { ...buildBidTabPatch(EMPTY_BID_TAB_VALUES) }
+    void (async () => {
+      try {
+        await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'remove bid tab')
+        onError(null)
+        setTabCaptureOpen(false)
+        onReloadBids()
+      } catch (err) {
+        onError(err instanceof Error ? `Could not remove the bid tab: ${err.message}` : 'Could not remove the bid tab.')
       } finally {
         setSavingBidId(null)
       }
@@ -672,6 +692,7 @@ export function BidsWaitingToHearLens({
                   onSave={(values, noteLine) => runAction(selectedBid, 'bid_tab', null, { values, noteLine })}
                   secondaryLabel="Log without numbers"
                   onSecondary={() => runAction(selectedBid, 'bid_tab')}
+                  onRemove={() => removeBidTab(selectedBid)}
                 />
               ) : null}
 
