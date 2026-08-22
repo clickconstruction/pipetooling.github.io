@@ -9,7 +9,7 @@ Every job card on your Dashboard **My Schedule** shows the job's **% done**. Now
 
 ## Where the button is
 
-Today's job cards have an **Update % done** button at the bottom. It's a quiet outline all day and turns solid blue once your scheduled time on the job ends — but you can tap it any time, so finishing early is fine.
+Today's job cards end with a button row: **Leave Report** on the left and **Update % done** on the right. Update % done is a quiet outline all day and turns solid blue once your scheduled time on the job ends — but you can tap it any time, so finishing early is fine. The card shows one progress bar with today's movement, and if the job has reports already, a small **N reports** chip above the bar opens them.
 
 ## Moving the number
 

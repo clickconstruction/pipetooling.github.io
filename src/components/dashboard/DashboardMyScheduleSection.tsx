@@ -25,7 +25,12 @@ import { DashboardAddJobToMyScheduleModal } from './DashboardAddJobToMyScheduleM
 import { DashboardMyDayEditorModal } from './DashboardMyDayEditorModal'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
-import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
+import {
+  JOB_ROW_MOBILE_ICON_BUTTON_STYLE,
+  JOB_ROW_REPORT_CHIP_STYLE,
+  ReportFileGlyph,
+  jobCardMobileActionButtonStyle,
+} from './dashboardJobRowShared'
 
 export type DashboardMyScheduleSectionProps = {
   role: UserRole | null
@@ -472,141 +477,6 @@ export function DashboardMyScheduleSection({
                                 ) : null}
                               </div>
                             </div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                flexShrink: 0,
-                              }}
-                            >
-                              {(() => {
-                                const phone = blockJobId != null ? (subSchedulePhones.get(blockJobId) ?? '').trim() : ''
-                                if (!phone || blockJobId == null) return null
-                                return (
-                                  <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    // Mis-click guard: open the Call modal (big tel target + call notes) instead of dialing immediately.
-                                    setCallModal({ phone, jobId: blockJobId, jobLabel: rowLabel })
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                    e.stopPropagation()
-                                    }
-                                  }}
-                                  aria-label={`Call customer at ${phone}`}
-                                  title={`Call customer at ${phone}`}
-                                  style={{
-                                    flexShrink: 0,
-                                    background: 'transparent',
-                                    border: 'none',
-                                    padding: '0.2rem',
-                                    cursor: 'pointer',
-                                    color: 'var(--text-link)',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                  }}
-                                  >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 640 640"
-                                    width="2.5em"
-                                    height="2.5em"
-                                    aria-hidden
-                                    focusable={false}
-                                    style={{ display: 'block' }}
-                                  >
-                                    <path
-                                    fill="currentColor"
-                                    d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8 186.3L224.2 89z"
-                                    />
-                                  </svg>
-                                  </button>
-                                )
-                                })()}
-                              {blockJobId != null ? (
-                              <DashboardJobPicturesLinkRow
-                                layout="inline"
-                                size="large"
-                                jobPicturesLink={jobMeta.job_pictures_link}
-                                onMissingClick={() =>
-                                  void submitLinkJobPicturesDispatchRequest({
-                                    jobId: blockJobId,
-                                    hcpNumber: jobMeta.hcp_number,
-                                    jobName: fromAssigned?.job_name ?? rowLabel,
-                                    jobAddress: jobMeta.job_address,
-                                  })
-                                }
-                              />
-                              ) : null}
-                              {(() => {
-                                // v2.1591: the % stack is ANCHORED directly under the
-                                // Leave Report button (owner request) — riding the
-                                // address line put it at a varying distance whenever
-                                // the title wrapped.
-                                const pctInfo = blockJobId != null ? pctTodayByJobId.get(blockJobId) : undefined
-                                const delta = pctInfo?.delta ?? null
-                                const pctStack = pctInfo ? (
-                                  <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.15 }}>
-                                      {pctInfo.pct}%
-                                      <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)' }}> done</span>
-                                    </div>
-                                    {delta != null ? (
-                                      <div
-                                        style={{
-                                          fontSize: '0.6875rem',
-                                          fontWeight: 600,
-                                          color:
-                                            delta > 0
-                                              ? 'var(--text-green-600)'
-                                              : delta < 0
-                                                ? 'var(--text-amber-800)'
-                                                : 'var(--text-faint)',
-                                        }}
-                                      >
-                                        {delta > 0 ? `▲ ${delta} today` : delta < 0 ? `▼ ${-delta} today` : 'no change today'}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                ) : null
-                                const reportButton = canLeaveJobFieldReport(role) && blockJobId != null ? (
-                                  <DashboardLeaveReportButton
-                                    showReminder={reminderDue}
-                                    reportCount={(blockJobId != null ? reportCountByJobId?.[blockJobId] : undefined) ?? 0}
-                                    onViewReports={
-                                      setViewReportsJob
-                                        ? () =>
-                                            setViewReportsJob({
-                                              id: blockJobId,
-                                              hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
-                                              jobName: fromAssigned?.job_name ?? rowLabel,
-                                              jobAddress: jobMeta.job_address ?? '—',
-                                            })
-                                        : undefined
-                                    }
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setLeaveReportJob({
-                                        id: blockJobId,
-                                        hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
-                                        jobName: fromAssigned?.job_name ?? rowLabel,
-                                        jobAddress: jobMeta.job_address ?? '—',
-                                      })
-                                    }}
-                                  />
-                                ) : null
-                                if (!reportButton && !pctStack) return null
-                                return (
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                    {reportButton}
-                                    {pctStack}
-                                  </div>
-                                )
-                              })()}
-                            </div>
                           </div>
                           {/* Full-width job number + zip-less address line (v2.1548);
                               the % done stack moved up under the Leave Report button (v2.1591). */}
@@ -659,75 +529,191 @@ export function DashboardMyScheduleSection({
                               {b.note.trim()}
                             </div>
                           ) : null}
-                          {/* Progress bar (v2.1567) — only on days the job actually
-                              moved: blue = where it started, green = today's gain
-                              (amber tail = a downward correction). */}
+                          {/* Utility row (v2.2073, mockup A): uniform 42px call/pictures
+                              buttons + labeled reports chip. These lived in the title row
+                              and squeezed the job name into a few-characters column. */}
+                          {blockJobId != null ? (() => {
+                            const phone = (subSchedulePhones.get(blockJobId) ?? '').trim()
+                            const cardReportCount = reportCountByJobId?.[blockJobId] ?? 0
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem' }}>
+                                {phone ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      // Mis-click guard: open the Call modal (big tel target + call notes) instead of dialing immediately.
+                                      setCallModal({ phone, jobId: blockJobId, jobLabel: rowLabel })
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                    }}
+                                    aria-label={`Call customer at ${phone}`}
+                                    title={`Call customer at ${phone}`}
+                                    style={{ ...JOB_ROW_MOBILE_ICON_BUTTON_STYLE, color: 'var(--text-link)' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} aria-hidden focusable={false} style={{ display: 'block' }}>
+                                      <path
+                                        fill="currentColor"
+                                        d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8 186.3L224.2 89z"
+                                      />
+                                    </svg>
+                                  </button>
+                                ) : null}
+                                <span
+                                  style={JOB_ROW_MOBILE_ICON_BUTTON_STYLE}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                  }}
+                                >
+                                  <DashboardJobPicturesLinkRow
+                                    layout="inline"
+                                    jobPicturesLink={jobMeta.job_pictures_link}
+                                    onMissingClick={() =>
+                                      void submitLinkJobPicturesDispatchRequest({
+                                        jobId: blockJobId,
+                                        hcpNumber: jobMeta.hcp_number,
+                                        jobName: fromAssigned?.job_name ?? rowLabel,
+                                        jobAddress: jobMeta.job_address,
+                                      })
+                                    }
+                                  />
+                                </span>
+                                <span style={{ flex: 1 }} />
+                                {cardReportCount > 0 && setViewReportsJob ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setViewReportsJob({
+                                        id: blockJobId,
+                                        hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                        jobName: fromAssigned?.job_name ?? rowLabel,
+                                        jobAddress: jobMeta.job_address ?? '—',
+                                      })
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                    }}
+                                    aria-label={`View ${cardReportCount} ${cardReportCount === 1 ? 'report' : 'reports'} for this job`}
+                                    style={
+                                      reminderDue
+                                        ? { ...JOB_ROW_REPORT_CHIP_STYLE, color: 'var(--text-amber-800)', borderColor: '#b8901c' }
+                                        : JOB_ROW_REPORT_CHIP_STYLE
+                                    }
+                                  >
+                                    <ReportFileGlyph />
+                                    {cardReportCount > 99 ? '99+' : cardReportCount} {cardReportCount === 1 ? 'report' : 'reports'}
+                                  </button>
+                                ) : null}
+                              </div>
+                            )
+                          })() : null}
+                          {/* Progress row (v2.2073) — the card's ONE % display (the old
+                              right-column % stack duplicated it). Bar idiom unchanged
+                              (v2.1567): blue = where the day started, green = today's
+                              gain, amber tail = a downward correction. */}
                           {(() => {
                             const pctInfo = blockJobId != null ? pctTodayByJobId.get(blockJobId) : undefined
-                            const delta = pctInfo?.delta ?? null
-                            if (!pctInfo || delta == null || delta === 0) return null
+                            if (!pctInfo) return null
+                            const delta = pctInfo.delta
                             const clamp = (n: number) => Math.max(0, Math.min(100, n))
-                            const baseWidth = clamp(delta > 0 ? pctInfo.pct - delta : pctInfo.pct)
-                            const changeWidth = clamp(Math.abs(delta))
+                            const baseWidth = clamp(delta != null && delta > 0 ? pctInfo.pct - delta : pctInfo.pct)
+                            const changeWidth = delta != null ? clamp(Math.abs(delta)) : 0
                             return (
-                              <div style={{ marginTop: '0.5rem' }}>
-                                <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--bg-muted)' }}>
+                              <div style={{ marginTop: '0.6rem' }}>
+                                <div style={{ display: 'flex', height: 7, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)' }}>
                                   <span style={{ width: `${baseWidth}%`, background: '#3b82f6' }} />
-                                  <span style={{ width: `${changeWidth}%`, background: delta > 0 ? '#16a34a' : '#d97706' }} />
+                                  {delta != null && delta !== 0 ? (
+                                    <span style={{ width: `${changeWidth}%`, background: delta > 0 ? '#16a34a' : '#d97706' }} />
+                                  ) : null}
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', marginTop: 2 }}>
-                                  <span style={{ color: 'var(--text-muted)' }}>{pctInfo.pct}% done</span>
-                                  <span style={{ fontWeight: 600, color: delta > 0 ? 'var(--text-green-600)' : 'var(--text-amber-800)' }}>
-                                    {delta > 0 ? `▲ ${delta} today` : `▼ ${-delta} today`}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '0.75rem', marginTop: 3 }}>
+                                  <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>
+                                    {pctInfo.pct}%<span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> done</span>
                                   </span>
+                                  {delta != null ? (
+                                    <span
+                                      style={{
+                                        fontWeight: 600,
+                                        color:
+                                          delta > 0
+                                            ? 'var(--text-green-600)'
+                                            : delta < 0
+                                              ? 'var(--text-amber-800)'
+                                              : 'var(--text-faint)',
+                                      }}
+                                    >
+                                      {delta > 0 ? `▲ ${delta} today` : delta < 0 ? `▼ ${-delta} today` : 'no change today'}
+                                    </span>
+                                  ) : null}
                                 </div>
                               </div>
                             )
                           })()}
-                          {/* Field % done stepper opener (v2.1806) — subs/helpers,
-                              today's job cards only. Quiet outline all day, solid
-                              blue once the block's end time passes (crews finishing
-                              early can still report early). */}
-                          {which === 'today' && blockJobId != null && isSubcontractorLikeRole(role) ? (() => {
-                            const ended = isScheduleBlockEnded(
-                              b.work_date,
-                              b.time_end,
-                              subScheduleDayPartition.todayYmd,
-                              nowHm,
-                            )
+                          {/* Action row (v2.2073, mockup A): Leave Report + Update % done
+                              share one 44px row. Leave Report is quiet until the block
+                              ends (then amber "Report due", v2.1549); Update % done keeps
+                              its v2.1806 semantics — outline all day, solid blue once the
+                              block's end time passes (finishing early still works). */}
+                          {(() => {
+                            const canReport = canLeaveJobFieldReport(role) && blockJobId != null
+                            const canUpdate = which === 'today' && blockJobId != null && isSubcontractorLikeRole(role)
+                            if (!canReport && !canUpdate) return null
+                            const ended = canUpdate
+                              ? isScheduleBlockEnded(b.work_date, b.time_end, subScheduleDayPartition.todayYmd, nowHm)
+                              : false
                             return (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setFieldPctJob({
-                                    id: blockJobId,
-                                    hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
-                                    jobName: splitScheduleRowLabel(rowLabel).jobName,
-                                    label: rowLabel,
-                                  })
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
-                                }}
-                                style={{
-                                  display: 'block',
-                                  width: '100%',
-                                  marginTop: '0.6rem',
-                                  padding: '0.5rem 0',
-                                  fontSize: '0.875rem',
-                                  fontWeight: 600,
-                                  border: ended ? 'none' : '1px solid #2563eb',
-                                  borderRadius: 8,
-                                  background: ended ? '#2563eb' : 'transparent',
-                                  color: ended ? '#fff' : 'var(--text-link)',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Update % done
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
+                                {canReport ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setLeaveReportJob({
+                                        id: blockJobId!,
+                                        hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                        jobName: fromAssigned?.job_name ?? rowLabel,
+                                        jobAddress: jobMeta.job_address ?? '—',
+                                      })
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                    }}
+                                    title={reminderDue ? 'Scheduled work ended — leave a job report.' : undefined}
+                                    style={jobCardMobileActionButtonStyle(reminderDue ? 'due' : 'ghost')}
+                                  >
+                                    {reminderDue ? 'Report due' : 'Leave Report'}
+                                  </button>
+                                ) : null}
+                                {canUpdate ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setFieldPctJob({
+                                        id: blockJobId!,
+                                        hcpNumber: effectiveJobLedgerNumber(jobMeta.hcp_number, jobMeta.click_number) || '—',
+                                        jobName: splitScheduleRowLabel(rowLabel).jobName,
+                                        label: rowLabel,
+                                      })
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+                                    }}
+                                    style={{
+                                      ...jobCardMobileActionButtonStyle(ended ? 'primary' : 'ghost'),
+                                      flex: 1.3,
+                                      ...(ended ? null : { border: '1px solid #2563eb' }),
+                                    }}
+                                  >
+                                    Update % done
+                                  </button>
+                                ) : null}
+                              </div>
                             )
-                          })() : null}
+                          })()}
                         </li>
                       )
                     })}
