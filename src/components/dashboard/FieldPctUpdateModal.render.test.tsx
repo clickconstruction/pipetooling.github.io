@@ -28,6 +28,11 @@ vi.mock('../../lib/supabase', async () => {
   }
   return { supabase: stub }
 })
+// v2.2078: the modal reads useAuth (stepper saves file a report as the caller).
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
 import FieldPctUpdateModal from './FieldPctUpdateModal'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
