@@ -2757,7 +2757,10 @@ export function BidsPricingTab({
                       for (const h of wbHistory) {
                         if (h.bid_id === currentBidId || h.est_cost <= 0) continue
                         const matchPct = marginPctToMatchTabLow(h.bid_tab_low ?? null, h.est_cost)
-                        if (matchPct != null) tabMarks.push({ label: h.project_name ?? '—', matchPct, customerId: h.customer_id ?? null })
+                        // Same sanity band as the win/loss dots — a barely-filled cost estimate
+                        // would otherwise pin a meaningless mark to the scale's edge.
+                        if (matchPct != null && matchPct > -20 && matchPct < 95)
+                          tabMarks.push({ label: h.project_name ?? '—', matchPct, customerId: h.customer_id ?? null })
                       }
                       if (won.length + lostPrice.length < 3) return null
                       const MIN = 20, MAX = 65
