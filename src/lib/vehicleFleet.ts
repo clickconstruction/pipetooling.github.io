@@ -386,8 +386,21 @@ export function maintenanceTaskCounts(tasks: VehicleMaintenanceTask[]): Map<stri
  * The checklist item title for an assigned maintenance task: vehicle name,
  * task, and a named link token back to the fleet board (links[0]).
  */
+/** Marker the assign flow plants in the checklist title; the 🚗 chip keys off it (v2.2094). */
+export const VEHICLE_TASK_TITLE_MARKER = '{{1:vehicle}}'
+
 export function maintenanceChecklistTitle(vehicleName: string, taskTitle: string): string {
-  return `${vehicleName} — ${taskTitle} {{1:vehicle}}`
+  return `${vehicleName} — ${taskTitle} ${VEHICLE_TASK_TITLE_MARKER}`
+}
+
+/** True when a checklist title came from a vehicle maintenance assignment. */
+export function isVehicleTaskTitle(title: string): boolean {
+  return title.includes(VEHICLE_TASK_TITLE_MARKER)
+}
+
+/** Title with the marker (and its link) removed — the chip replaces them. */
+export function stripVehicleTaskMarker(title: string): string {
+  return title.replace(VEHICLE_TASK_TITLE_MARKER, '').replace(/\s+$/, '')
 }
 
 export const ODOMETER_STALE_DAYS = 7

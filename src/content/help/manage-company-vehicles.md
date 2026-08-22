@@ -59,6 +59,8 @@ Every open vehicle has a **Maintenance** list — the to-dos that keep it on the
 
 {{button:outline|Assign}} picks the person and a due date — and this is where it connects to the rest of the app: assigning creates a **one-time checklist task on their list** ("2019 Ford F250 — Change battery") that shows on their Dashboard My Inbox and Checklist → Today and **stays until completed**. Check "Notify me when it's done" to get pinged on completion.
 
+On their side, the task wears a {{chip:blue|🚗 vehicle}} chip — tapping it opens the vehicle's vitals right there: who holds it, latest odometer, oil status, insurance, open problem reports, and recent service. It works for whoever's assigned, even field crew who can't open the Vehicles page.
+
 Completion syncs both ways: when they check it off their checklist, the vehicle's task marks done by itself; when you check it off here, it clears from their list too — and a prefilled **Log service** form opens so the work can land in the service log with cost and odometer ({{button:outline|Cancel}} to skip; not every task needs a service entry). Done tasks live in the ledger as {{chip:green|Task}} rows.
 
 :::example From problem to fixed

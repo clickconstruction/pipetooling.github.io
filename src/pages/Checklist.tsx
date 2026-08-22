@@ -18,6 +18,8 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 import RoadmapTaskContextModal from '../components/checklist/RoadmapTaskContextModal'
+import VehicleTaskContextModal from '../components/checklist/VehicleTaskContextModal'
+import { isVehicleTaskTitle, stripVehicleTaskMarker } from '../lib/vehicleFleet'
 import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
@@ -112,6 +114,39 @@ function roadmapGoalChip(
       style={{ ...chipStyle, font: 'inherit', ...{ fontSize: chipStyle.fontSize, fontWeight: chipStyle.fontWeight }, border: 'none', cursor: 'pointer' }}
     >
       ⛰ {title || 'goal'}
+    </button>
+  )
+}
+
+/**
+ * "🚗 vehicle" chip on vehicle maintenance tasks (v2.2094) — replaces the old
+ * dead /people link with the vitals modal. Same tap-for-context pattern as
+ * the ⛰ roadmap chip.
+ */
+function vehicleTaskChip(instanceId: string, onOpen: (instanceId: string) => void) {
+  return (
+    <button
+      type="button"
+      title="See this vehicle’s vitals"
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen(instanceId)
+      }}
+      style={{
+        font: 'inherit',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        padding: '0.12rem 0.5rem',
+        borderRadius: 7,
+        border: 'none',
+        background: 'var(--bg-teal-tint, var(--bg-blue-tint))',
+        color: 'var(--text-teal-700, var(--text-blue-800))',
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+        cursor: 'pointer',
+      }}
+    >
+      🚗 vehicle
     </button>
   )
 }
@@ -338,7 +373,7 @@ export default function Checklist() {
       </div>
 
       {activeTab === 'today' && (
-        <ChecklistTodayTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} />
+        <ChecklistTodayTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
@@ -383,7 +418,8 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void }) {
+function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }: { authUserId: string | null; isDev: boolean; canOpenVehiclesPage: boolean; setError: (s: string | null) => void }) {
+  const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
   const [todayInstances, setTodayInstances] = useState<ChecklistInstance[]>([])
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
   const [upcomingExpanded, setUpcomingExpanded] = useState(false)
@@ -787,7 +823,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                 <ChecklistInstanceCard
                   key={inst.id}
                   instance={inst}
-                  title={<><ChecklistTitleWithLinks title={title} links={links} /> {roadmapGoalChip(inst.checklist_items)}</>}
+                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} /> {roadmapGoalChip(inst.checklist_items)}{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}</>}
                   events={eventsByInstance.get(inst.id) ?? []}
                   nameById={eventActorNameById}
                   currentUserId={authUserId}
@@ -865,9 +901,11 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         todayStr={toLocalDateString(new Date())}
         titleFor={(inst) => {
           const item = (inst as ChecklistInstance).checklist_items
+          const rawTitle = item?.title ?? 'Untitled'
           return (
             <>
-              <ChecklistTitleWithLinks title={item?.title ?? 'Untitled'} links={item?.links} /> {roadmapGoalChip(item)}
+              <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} /> {roadmapGoalChip(item)}
+              {isVehicleTaskTitle(rawTitle) ? <> {vehicleTaskChip((inst as ChecklistInstance).id, setVehicleCtxInstanceId)}</> : null}
             </>
           )
         }}
@@ -1077,6 +1115,13 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         onClose={() => setMuteModalItemId(null)}
         onSaved={() => {}}
       />
+      {vehicleCtxInstanceId && (
+        <VehicleTaskContextModal
+          instanceId={vehicleCtxInstanceId}
+          canOpenVehiclesPage={canOpenVehiclesPage}
+          onClose={() => setVehicleCtxInstanceId(null)}
+        />
+      )}
     </div>
   )
 }
