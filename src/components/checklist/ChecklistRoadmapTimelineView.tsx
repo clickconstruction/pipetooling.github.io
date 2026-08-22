@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
+import { paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
+import { calendarBand, observedPace, paceLabel } from '../../lib/roadmapCalendar'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import type { PlanTask } from '../../lib/roadmapPlanView'
@@ -16,7 +17,6 @@ type Props = {
   onOpenTask: (taskId: string) => void
 }
 
-const PACE_KEY = 'roadmap_timeline_pace_v1'
 const FRONT = '#f59e0b'
 const DONE = '#16a34a'
 
@@ -34,15 +34,13 @@ function waveName(index: number, count: number): string {
  * stage bar is one successive slot per task (done green in true position,
  * next up amber-ringed); expanding a stage unfolds a waterfall — one lane
  * per task with its slot bar. Task-less stages render as ◆ milestones; the amber FRONT line marks
- * live progress through the current wave; the pace slider projects ≈dates
- * (remaining ÷ tasks-per-week, wave by wave) without storing a single date.
+ * live progress through the current wave. A calendar band up top (v2.2089)
+ * lays real months out with a today tick and a 🎯 flag where the remaining
+ * work lands at the OBSERVED pace (completions in the last 4 weeks; all-time
+ * fallback) — no slider, no stored dates, nothing to configure.
  * Tapping a row unfolds its N.M tasks; tapping a task opens the task card.
  */
 export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds, completeIds, users, onOpenTask }: Props) {
-  const [pace, setPace] = useState<number>(() => {
-    const raw = typeof localStorage !== 'undefined' ? Number(localStorage.getItem(PACE_KEY)) : NaN
-    return Number.isFinite(raw) && raw >= 1 && raw <= 20 ? raw : 5
-  })
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
 
   const tasksByGroup = useMemo(() => {
@@ -59,8 +57,13 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     () => timelineRows({ groups, tasksByGroup, edges, unlockedIds, completeIds }),
     [groups, tasksByGroup, edges, unlockedIds, completeIds],
   )
-  const projection = useMemo(() => paceProjection(rows, pace, new Date()), [rows, pace])
   const now = useMemo(() => new Date(), [])
+  // Observed pace (last 4 weeks; all-time fallback; null before any completion)
+  // — the projection's only input. There is no dial: dates come from the real rate.
+  const pace = useMemo(() => observedPace(tasks, now), [tasks, now])
+  const projection = useMemo(() => paceProjection(rows, pace?.tasksPerWeek ?? 1, now), [rows, pace, now])
+  const band = useMemo(() => calendarBand(pace ? projection : [], now), [pace, projection, now])
+  const remainingTotal = useMemo(() => rows.reduce((a, r) => a + r.remainingTasks, 0), [rows])
 
   // wave geometry: width share ∝ remaining tasks, with a floor so empty/done
   // waves stay visible; all fractions of the lane width
@@ -96,17 +99,6 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     const doneFrac = current.totalTasks === 0 ? 0 : (current.totalTasks - current.remainingTasks) / current.totalTasks
     return start + width * doneFrac
   }, [projection, geometry])
-
-  const goal = projection[projection.length - 1]
-
-  const setPacePersisted = (v: number) => {
-    setPace(v)
-    try {
-      localStorage.setItem(PACE_KEY, String(v))
-    } catch {
-      // storage unavailable — the slider still works for this session
-    }
-  }
 
   const pct = (f: number) => `${(f * 100).toFixed(2)}%`
 
@@ -232,27 +224,101 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
 
   return (
     <div style={{ border: '1px solid var(--border-strong)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '0.5rem 0.8rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          at{' '}
-          <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
-            {pace} task{pace === 1 ? '' : 's'}/week
-          </b>
-          <input
-            type="range"
-            min={1}
-            max={20}
-            value={pace}
-            onChange={(e) => setPacePersisted(Number(e.target.value))}
-            aria-label="Projection pace, tasks per week"
-            style={{ width: 130 }}
-          />
-        </label>
-        {goal ? (
-          <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--text-strong)' }}>
-            🎯 goal {approxDateLabel(goal.finish, now)}
+      {/* calendar band: real months, today tick, runway, wave dots, 🎯 goal flag */}
+      <div style={{ padding: '0.65rem 0.8rem 0.55rem', borderBottom: '1px solid var(--border)' }}>
+        <div
+          aria-label={band.goal ? `Calendar: projected finish ${band.goal.label}` : 'Calendar'}
+          style={{ position: 'relative', height: 46, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}
+        >
+          {band.months.map((m, i) => (
+            <span
+              key={m.label}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: pct(m.left),
+                width: pct(m.width),
+                borderLeft: i === 0 ? 'none' : '1px solid var(--border)',
+                background: i % 2 === 1 ? 'var(--bg-slate-tint)' : undefined,
+              }}
+            >
+              <span style={{ position: 'absolute', top: 4, left: 6, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {m.label}
+              </span>
+            </span>
+          ))}
+          {band.runway ? (
+            <span
+              style={{ position: 'absolute', top: 26, height: 10, left: pct(band.runway.left), width: pct(band.runway.width), borderRadius: 5, background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', boxSizing: 'border-box' }}
+            />
+          ) : null}
+          {band.markers.map((mk) => (
+            <span key={mk.index} style={{ position: 'absolute', top: 29, left: pct(mk.left), width: 5, height: 5, borderRadius: '50%', background: 'var(--text-link)', transform: 'translateX(-2px)' }}>
+              <span style={{ position: 'absolute', top: -15, left: -4, fontSize: '0.56rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {waveName(mk.index, projection.length)}
+              </span>
+            </span>
+          ))}
+          <span style={{ position: 'absolute', top: 0, bottom: 0, left: pct(band.todayLeft), borderLeft: `2px solid ${FRONT}` }}>
+            <span style={{ position: 'absolute', top: 15, left: 4, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: FRONT, whiteSpace: 'nowrap' }}>
+              today
+            </span>
           </span>
-        ) : null}
+          {band.goal && band.goal.clamped ? (
+            // goal beyond the 12-month horizon: the runway runs off the edge; the date lives in the caption
+            <span style={{ position: 'absolute', top: 20, right: 4, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', lineHeight: 1 }}>⟶</span>
+          ) : band.goal ? (
+            <span style={{ position: 'absolute', top: 2, left: pct(band.goal.left), transform: 'translateX(-4px)', fontSize: '0.95rem', lineHeight: 1 }}>
+              🎯
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 1,
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  color: 'var(--text-strong)',
+                  whiteSpace: 'nowrap',
+                  ...(band.goal.left > 0.82 ? { right: 18 } : { left: 18 }),
+                }}
+              >
+                {band.goal.label}
+              </span>
+            </span>
+          ) : null}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline', marginTop: 7, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          {band.goal && pace ? (
+            <>
+              <span>
+                🎯 goal <b style={{ color: 'var(--text-strong)' }}>{band.goal.label}</b>
+              </span>
+              <span style={{ color: 'var(--border-strong)' }}>·</span>
+              <span>
+                at your {pace.basis === 'recent' ? 'recent' : 'all-time'} pace —{' '}
+                <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{paceLabel(pace.tasksPerWeek)} tasks/week</b>
+                {pace.basis === 'recent' ? ' over the last 4 weeks' : ''}
+              </span>
+              <span style={{ color: 'var(--border-strong)' }}>·</span>
+              <span>
+                <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{remainingTotal}</b> task{remainingTotal === 1 ? '' : 's'} left
+              </span>
+              {band.goal.clamped && remainingTotal > 0 ? (
+                <>
+                  <span style={{ color: 'var(--border-strong)' }}>·</span>
+                  <span>
+                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+                      {paceLabel(remainingTotal / Math.max((band.horizonEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000), 1))}
+                    </b>
+                    /week would finish by {band.months[band.months.length - 1]?.label}
+                  </span>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <span>Complete tasks to project a finish date — the calendar uses your real completion pace.</span>
+          )}
+        </div>
       </div>
 
       <div style={{ overflowX: 'auto' }}>
@@ -260,7 +326,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
           {/* wave header */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
             <div className="roadmap-timeline-rail" style={{ flex: 'none' }} />
-            <div style={{ flex: 1, position: 'relative', height: 40 }}>
+            <div style={{ flex: 1, position: 'relative', height: 26 }}>
               {laneVlines}
               {projection.map((p, i) => (
                 <div
@@ -279,9 +345,6 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 >
                   {waveName(i, projection.length)}
                   {p.remainingTasks > 0 ? ` · ${p.remainingTasks}` : ''}
-                  <span style={{ display: 'block', textTransform: 'none', letterSpacing: 0, fontWeight: 600, color: 'var(--text-violet-700)' }}>
-                    {approxDateLabel(p.finish, now)}
-                  </span>
                 </div>
               ))}
             </div>
@@ -424,7 +487,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
         </div>
       </div>
       <p style={{ margin: 0, padding: '0.45rem 0.8rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-        Sequence, not calendar: columns are dependency waves from the Map's arrows; dates are what-ifs from the pace slider. Each slot ≈ one task, in stage order — green done, amber ring next up · ◆ = milestone stage · the amber line is the work front.
+        Columns are dependency waves from the Map's arrows — sequence, not calendar. The calendar up top projects real dates from your observed pace (remaining ÷ tasks/week, wave by wave). Each slot ≈ one task, in stage order — green done, amber ring next up · ◆ = milestone stage · the amber line is the work front.
       </p>
     </div>
   )
