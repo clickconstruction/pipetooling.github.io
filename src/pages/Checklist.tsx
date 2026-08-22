@@ -2314,7 +2314,6 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>⛰ {g.title}</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>stage {Math.min(g.stagesComplete + 1, g.stagesTotal)} of {g.stagesTotal}</span>
                     <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{expanded ? '▾' : '▸'}</span>
                   </span>
                 </div>
