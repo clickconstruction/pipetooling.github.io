@@ -183,6 +183,10 @@ export interface BidPricingHistoryRow {
   loss_category?: string | null
   bid_value: number
   est_cost: number
+  /** Recorded bid-tab low (since 20260822143810) — feeds the strip's match-the-low markers; optional pre-migration. */
+  bid_tab_low?: number | null
+  /** The bid's GC (since 20260822143810) — lets the tab verdict go GC-specific; optional pre-migration. */
+  customer_id?: string | null
 }
 
 /**

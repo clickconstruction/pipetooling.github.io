@@ -8,6 +8,7 @@ import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../l
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
+import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidTabCapture'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
@@ -2751,6 +2752,16 @@ export function BidsPricingTab({
                       // Structured category first (any surface's tapped reason counts); the
                       // free-text regex stays as the pre-category-era fallback.
                       const lostPrice = usable.filter((h) => h.outcome === 'lost' && ((h.loss_category ?? null) === 'price' || /price/i.test(h.loss_reason ?? '')))
+                      // Recorded bid tabs (v2.2085) → "the margin that would have matched that tab's low".
+                      const tabMarks: { label: string; matchPct: number; customerId: string | null }[] = []
+                      for (const h of wbHistory) {
+                        if (h.bid_id === currentBidId || h.est_cost <= 0) continue
+                        const matchPct = marginPctToMatchTabLow(h.bid_tab_low ?? null, h.est_cost)
+                        // Same sanity band as the win/loss dots — a barely-filled cost estimate
+                        // would otherwise pin a meaningless mark to the scale's edge.
+                        if (matchPct != null && matchPct > -20 && matchPct < 95)
+                          tabMarks.push({ label: h.project_name ?? '—', matchPct, customerId: h.customer_id ?? null })
+                      }
                       if (won.length + lostPrice.length < 3) return null
                       const MIN = 20, MAX = 65
                       const x = (mPct: number) => `${((Math.min(MAX, Math.max(MIN, mPct)) - MIN) / (MAX - MIN)) * 100}%`
@@ -2774,7 +2785,7 @@ export function BidsPricingTab({
                             <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>This number vs your history <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(estimated margins from cost estimates)</span></span>
                             {verdict ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: verdict.color }}>{verdict.text}</span> : null}
                           </div>
-                          <div style={{ position: 'relative', height: 46, marginTop: '0.5rem' }}>
+                          <div style={{ position: 'relative', height: tabMarks.length > 0 ? 56 : 46, marginTop: '0.5rem' }}>
                             <div style={{ position: 'absolute', top: 18, height: 10, borderRadius: 999, left: 0, width: '100%', background: 'var(--bg-muted)' }} />
                             {won.map((h) => (
                               <span key={h.bid_id} title={`Won: ${h.project_name ?? '—'} at ~${Math.round(h.m * 100)}%`} style={{ position: 'absolute', top: 20, width: 7, height: 7, borderRadius: 999, transform: 'translateX(-50%)', background: 'var(--text-green-600)', left: x(h.m * 100) }} />
@@ -2782,8 +2793,17 @@ export function BidsPricingTab({
                             {lostPrice.map((h) => (
                               <span key={h.bid_id} title={`Lost on price: ${h.project_name ?? '—'} at ~${Math.round(h.m * 100)}%`} style={{ position: 'absolute', top: 20, width: 7, height: 7, borderRadius: 999, transform: 'translateX(-50%)', background: 'var(--text-red-700)', left: x(h.m * 100) }} />
                             ))}
+                            {tabMarks.map((t, i) => (
+                              <span
+                                key={`tab-${i}`}
+                                title={`Tab low on ${t.label}: ~${Math.round(t.matchPct)}% would have matched it`}
+                                style={{ position: 'absolute', top: 27, fontSize: '0.72rem', color: 'var(--text-amber-700)', transform: 'translateX(-50%)', left: x(t.matchPct), cursor: 'default' }}
+                              >
+                                {'▽'}
+                              </span>
+                            ))}
                             {[20, 30, 40, 50, 60].map((a) => (
-                              <span key={a} style={{ position: 'absolute', top: 34, fontSize: '0.62rem', color: 'var(--text-muted)', transform: 'translateX(-50%)', left: x(a) }}>{a}%</span>
+                              <span key={a} style={{ position: 'absolute', top: tabMarks.length > 0 ? 44 : 34, fontSize: '0.62rem', color: 'var(--text-muted)', transform: 'translateX(-50%)', left: x(a) }}>{a}%</span>
                             ))}
                             {cur != null ? (
                               <span style={{ position: 'absolute', top: 2, transform: 'translateX(-50%)', textAlign: 'center', left: x(cur * 100), transition: 'left 0.15s' }}>
@@ -2795,7 +2815,26 @@ export function BidsPricingTab({
                           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                             <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: 'var(--text-green-600)', margin: '0 0.25rem 0 0' }} />won bids
                             <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: 'var(--text-red-700)', margin: '0 0.25rem 0 0.7rem' }} />lost on price · ▼ this pricing
+                            {tabMarks.length > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> · {'▽'} margin to match a recorded tab low</span> : null}
                           </div>
+                          {tabMarks.length > 0 && cur != null ? (
+                            <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem', color: 'var(--text-700)' }}>
+                              At {Math.round(cur * 100)}%, this number would have matched or beaten the low on{' '}
+                              <strong>{countTabsMatchedOrBeaten(cur * 100, tabMarks.map((t) => t.matchPct))} of {tabMarks.length}</strong> recorded tab
+                              {tabMarks.length === 1 ? '' : 's'}.
+                              {(() => {
+                                const gcId = selectedBidForPricing?.customer_id ?? null
+                                const gcTabs = gcId ? tabMarks.filter((t) => t.customerId === gcId) : []
+                                if (gcTabs.length < 2) return null
+                                const pcts = gcTabs.map((t) => Math.round(t.matchPct)).sort((a, b) => a - b)
+                                return (
+                                  <span style={{ color: 'var(--text-muted)' }}>
+                                    {' '}This GC's {gcTabs.length} tabs needed {pcts[0]}–{pcts[pcts.length - 1]!}% to match the low.
+                                  </span>
+                                )
+                              })()}
+                            </p>
+                          ) : null}
                         </div>
                       )
                     })()}
