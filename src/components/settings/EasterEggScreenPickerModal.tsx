@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import {
   EGG_BIDS_TABS,
@@ -136,7 +136,34 @@ export default function EasterEggScreenPickerModal({
                     </div>
                     {bidsOpen ? (
                       <div style={{ marginLeft: '1.7rem', display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '0.2rem' }}>
-                        {EGG_BIDS_TABS.map((t) => renderNode(eggSurfaceKeyForBidsTab(t.key), t.label, false))}
+                        {EGG_BIDS_TABS.map((t, i) => {
+                          // A section header spans both columns before its first tab (Followup's four lenses).
+                          const startsSection = t.section != null && EGG_BIDS_TABS[i - 1]?.section !== t.section
+                          const endsSection = t.section == null && EGG_BIDS_TABS[i - 1]?.section != null
+                          return (
+                            <Fragment key={t.key}>
+                              {startsSection ? (
+                                <div
+                                  style={{
+                                    gridColumn: '1 / -1',
+                                    fontSize: '0.66rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    color: 'var(--text-muted)',
+                                    margin: '0.4rem 0 0.1rem',
+                                  }}
+                                >
+                                  {t.section}
+                                </div>
+                              ) : null}
+                              {endsSection ? <div style={{ gridColumn: '1 / -1', height: '0.35rem' }} /> : null}
+                              <div style={t.section ? { paddingLeft: '0.6rem' } : undefined}>
+                                {renderNode(eggSurfaceKeyForBidsTab(t.key), t.label, false)}
+                              </div>
+                            </Fragment>
+                          )
+                        })}
                       </div>
                     ) : null}
                   </div>

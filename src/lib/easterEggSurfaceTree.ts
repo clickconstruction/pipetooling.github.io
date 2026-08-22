@@ -54,11 +54,20 @@ export const EGG_PAGES: EggPage[] = [
   { path: '/duplicates', label: 'Duplicates', group: 'Admin', allowedOverride: devOnly },
 ]
 
-/** Bids tab keys in tab-bar order; `/bids` with no `tab` param shows bid-board. */
-export const EGG_BIDS_TABS: { key: string; label: string }[] = [
+/**
+ * Bids tab keys in the app's own tab-bar order, labeled as the tab bar labels
+ * them — the four Followup lenses carry `section: 'Followup'` so the picker
+ * can group them under their real home ("By builder", not the internal
+ * builder-review). Keys are storage — never rename them; labels are display.
+ * `/bids` with no `tab` param shows bid-board.
+ */
+export const EGG_BIDS_TABS: { key: string; label: string; section?: 'Followup' }[] = [
   { key: 'bid-board', label: 'Bid Board' },
-  { key: 'builder-review', label: 'Builder Review' },
-  { key: 'working', label: 'Working' },
+  { key: 'builder-review', label: 'By builder', section: 'Followup' },
+  { key: 'submission-followup', label: 'By status', section: 'Followup' },
+  { key: 'why-we-lost', label: 'Why we lost', section: 'Followup' },
+  { key: 'waiting-to-hear', label: 'Waiting to hear', section: 'Followup' },
+  { key: 'working', label: 'Unsent/Working' },
   { key: 'bid-costs', label: 'Bid Costs' },
   { key: 'estimators', label: 'Estimators' },
   { key: 'counts', label: 'Counts' },
@@ -66,9 +75,6 @@ export const EGG_BIDS_TABS: { key: string; label: string }[] = [
   { key: 'labor', label: 'Labor' },
   { key: 'pricing', label: 'Pricing' },
   { key: 'cover-letter', label: 'Cover Letter' },
-  { key: 'submission-followup', label: 'Submission Followup' },
-  { key: 'why-we-lost', label: 'Why We Lost' },
-  { key: 'waiting-to-hear', label: 'Waiting to Hear' },
   { key: 'rfi', label: 'RFI' },
   { key: 'change-order', label: 'Change Order' },
   { key: 'lien-release', label: 'Lien Release' },
@@ -131,12 +137,14 @@ export function eggSurfaceMatches(key: string, pathname: string, tab: string | n
   return (pathname === '/bids' || pathname.startsWith('/bids/')) && (tab ?? BIDS_DEFAULT_TAB) === parsed.tab
 }
 
-/** "Bids · Pricing" for tabs, the page label otherwise; raw key as last resort. */
+/** "Bids · Pricing" (or "Bids · Followup · By builder") for tabs, the page label otherwise; raw key as last resort. */
 export function eggSurfaceLabel(key: string): string {
   const parsed = parseSurfaceKey(key)
   if (!parsed) return key
   if (parsed.kind === 'page') return parsed.page.label
-  return `Bids · ${bidsTabByKey.get(parsed.tab)?.label ?? parsed.tab}`
+  const tab = bidsTabByKey.get(parsed.tab)
+  if (!tab) return `Bids · ${parsed.tab}`
+  return `Bids · ${tab.section ? `${tab.section} · ` : ''}${tab.label}`
 }
 
 /**

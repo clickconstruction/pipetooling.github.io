@@ -42,9 +42,12 @@ describe('eggSurfaceMatches', () => {
 })
 
 describe('eggSurfaceLabel', () => {
-  it('labels pages plainly and bids tabs as Bids · Tab', () => {
+  it('labels pages plainly and bids tabs as the tab bar does, with Followup lenses under their home', () => {
     expect(eggSurfaceLabel('p:/dashboard')).toBe('Dashboard')
-    expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('why-we-lost'))).toBe('Bids · Why We Lost')
+    expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('why-we-lost'))).toBe('Bids · Followup · Why we lost')
+    expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('builder-review'))).toBe('Bids · Followup · By builder')
+    expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('working'))).toBe('Bids · Unsent/Working')
+    expect(eggSurfaceLabel(eggSurfaceKeyForBidsTab('pricing'))).toBe('Bids · Pricing')
   })
 })
 
