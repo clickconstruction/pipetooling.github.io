@@ -78,7 +78,7 @@ describe('PipelineOverview fix-ups strip', () => {
 })
 
 describe('PipelineOverview payment chase card (v2.2025)', () => {
-  it('renders the claim, tier chips, and badge; Start call mode fires onStartChase', () => {
+  it('renders the compact claim, tier why-line, and badge; Start call mode fires onStartChase', () => {
     const onStartChase = vi.fn()
     render(
       <PipelineOverview
@@ -88,11 +88,10 @@ describe('PipelineOverview payment chase card (v2.2025)', () => {
         })}
       />,
     )
-    expect(screen.getByText("Ask 4 customers when they'll pay — $36,029")).toBeTruthy()
-    expect(screen.getByText('Never asked · 3')).toBeTruthy()
-    expect(screen.getByText('Broken promise · 1')).toBeTruthy()
-    expect(screen.getByText('Waiting · 1')).toBeTruthy()
-    expect(screen.getByText('Dispute · 2')).toBeTruthy()
+    // Compact anatomy (v2.2059): one-line claim (badge carries the count),
+    // tiers as one plain why line — same shape as every neighbor card.
+    expect(screen.getByText("Ask when they'll pay — $36,029")).toBeTruthy()
+    expect(screen.getByText('3 customers past expected, never asked · 1 broken promise · 1 waiting · 2 disputes')).toBeTruthy()
     fireEvent.click(screen.getByText('Start call mode →'))
     expect(onStartChase).toHaveBeenCalledOnce()
   })
