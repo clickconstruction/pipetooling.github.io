@@ -11,9 +11,11 @@ New to it? Click the **?** beside the New pill for a guided tour — it spotligh
 
 ## Versions, scenarios, and the star
 
-The structure bar spells out the two levels: a **Version** has its own takeoff and counts (switch at the top of the page), and **price scenarios** inside it are different sell prices over the same counts. Clicking a scenario card just **views** it — the {{chip:green|★ Customer sees this}} scenario is what the Cover Letter, Share, and the bid value use, and it only changes when you press {{button:outline|☆ Make customer-facing…}} and confirm.
+Two levels: a **Version** has its own takeoff and counts (switch at the top of the page), and **price scenarios** inside it are different sell prices over the same counts. The rule of thumb: **plans changed → new version; price experiment → new scenario.**
 
-A scenario showing {{chip:yellow|No prices yet}} offers a one-click **copy prices from** your priced scenario, or price it with the solver. {{button:outline|+ Duplicate scenario}} clones the one you're viewing (the star stays put).
+Most bids have one takeoff and one price scenario, so the Workbench shows just one quiet line — your price, the star, and {{button:outline|Try a variant…}}. That button asks what actually changed: *same job, different price* duplicates the scenario; *the plans or scope changed* starts a new version with its own takeoff. Once a second scenario or version exists, the full structure bar and scenario cards appear.
+
+Clicking a scenario card just **views** it — the {{chip:green|★ Customer sees this}} scenario is what the Cover Letter, Share, and the bid value use, and it only changes when you press {{button:outline|☆ Make customer-facing…}} and confirm. A scenario showing {{chip:yellow|No prices yet}} offers a one-click **copy prices from** your priced scenario, or price it with the solver.
 
 ## Price from the book
 
