@@ -8,6 +8,7 @@ import {
   stripVehicleTaskMarker,
   maintenanceTaskCounts,
   openMaintenanceTasks,
+  resolveChecklistCleanupIds,
   type VehicleMaintenanceTask,
   currentInsurancePeriod,
   currentPossession,
@@ -527,6 +528,27 @@ describe('vehicle maintenance tasks', () => {
     expect(isVehicleTaskTitle('Clean office')).toBe(false)
     expect(stripVehicleTaskMarker(title)).toBe('2019 Ford F250 — Change battery')
     expect(stripVehicleTaskMarker('no marker here')).toBe('no marker here')
+  })
+  it('checklist cleanup uses the fresh row over stale local state (v2.2101 orphan fix)', () => {
+    // Assign-then-delete in one page session: local state predates the
+    // assignment (ids null) while the DB row carries them — fresh wins.
+    const stale = task({})
+    expect(resolveChecklistCleanupIds({ checklist_item_id: 'ci9', checklist_instance_id: 'in9' }, stale)).toEqual({
+      checklist_item_id: 'ci9',
+      checklist_instance_id: 'in9',
+    })
+    // Fresh nulls also win — after a reassignment the stale local ids point at
+    // rows that no longer belong to this task; never merge field-by-field.
+    const localWithIds = task({ checklist_item_id: 'old-ci', checklist_instance_id: 'old-in' })
+    expect(resolveChecklistCleanupIds({ checklist_item_id: null, checklist_instance_id: null }, localWithIds)).toEqual({
+      checklist_item_id: null,
+      checklist_instance_id: null,
+    })
+    // Only when the fetch failed does local state stand in.
+    expect(resolveChecklistCleanupIds(null, localWithIds)).toEqual({
+      checklist_item_id: 'old-ci',
+      checklist_instance_id: 'old-in',
+    })
   })
   it('completed tasks land in the ledger as task_done rows', () => {
     const rows = buildVehicleLedger({
