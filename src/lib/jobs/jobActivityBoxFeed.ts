@@ -59,9 +59,11 @@ function entryFromItem(item: JobThreadActivityItem): Omit<JobActivityBoxEntry, '
 }
 
 /**
- * Numbered feed, NEWEST FIRST (the box renders top-down from the latest).
- * Items are re-sorted by time here so numbering never depends on the caller's
- * ordering; ties keep input order.
+ * Numbered feed, OLDEST FIRST — chat order, newest at the bottom (owner
+ * request v2.2062; the box keeps itself scrolled to the newest). Items are
+ * re-sorted by time here so numbering never depends on the caller's
+ * ordering; ties keep input order. Numbers stay stable references:
+ * 1 = the oldest note/report, "check note 3" never shifts.
  */
 export function buildJobActivityBoxFeed(items: JobThreadActivityItem[]): JobActivityBoxEntry[] {
   const entries = items
@@ -69,7 +71,7 @@ export function buildJobActivityBoxFeed(items: JobThreadActivityItem[]): JobActi
     .filter((e): e is Omit<JobActivityBoxEntry, 'number'> => e !== null)
     .map((e, inputIndex) => ({ e, inputIndex, t: Date.parse(e.atIso) }))
     .sort((a, b) => (a.t === b.t || Number.isNaN(a.t) || Number.isNaN(b.t) ? a.inputIndex - b.inputIndex : a.t - b.t))
-  return entries.map(({ e }, i) => ({ ...e, number: i + 1 })).reverse()
+  return entries.map(({ e }, i) => ({ ...e, number: i + 1 }))
 }
 
 export function jobActivityItemTimeIso(item: JobThreadActivityItem): string {

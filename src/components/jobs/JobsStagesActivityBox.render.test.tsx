@@ -2,7 +2,7 @@
 /**
  * Render tests for the wide-screen Pipeline "Job activity" box: teaser from
  * stats before the lazy load, numbered feed (1 = oldest) after, the floating
- * Post pill summoning the composer, and Escape dismissing it. Feed
+ * + Add pill summoning the composer, and Escape dismissing it. Feed
  * shaping/numbering logic lives in src/lib/jobs/jobActivityBoxFeed.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -78,7 +78,7 @@ describe('JobsStagesActivityBox', () => {
     expect(loadActivityForJob).toHaveBeenCalledWith(job.id)
   })
 
-  it('numbered feed after load: 1 = oldest, newest on top; empty state when nothing', () => {
+  it('numbered feed after load: 1 = oldest at top, newest at the bottom (v2.2062); empty state when nothing', () => {
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
@@ -94,11 +94,11 @@ describe('JobsStagesActivityBox', () => {
       />,
     )
     const nums = screen.getAllByLabelText(/^Entry /).map((n) => n.textContent)
-    expect(nums).toEqual(['2', '1'])
+    expect(nums).toEqual(['1', '2'])
     expect(screen.getByText(/newer note/)).toBeTruthy()
   })
 
-  it('Post pill opens the composer; Escape closes it and brings the pill back', () => {
+  it('+ Add pill opens the composer; Escape closes it and brings the pill back', () => {
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
@@ -108,12 +108,12 @@ describe('JobsStagesActivityBox', () => {
       />,
     )
     expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
-    fireEvent.click(screen.getByLabelText("Post a note to this job's activity"))
+    fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
     const input = screen.getByLabelText('Note text')
     expect(input).toBeTruthy()
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByLabelText('Note text')).toBeNull()
-    expect(screen.getByLabelText("Post a note to this job's activity")).toBeTruthy()
+    expect(screen.getByLabelText("Add a note to this job's activity")).toBeTruthy()
   })
 
   it('corner expand button opens the shared full-page modal via ctx', () => {
@@ -143,7 +143,7 @@ describe('JobsStagesActivityBox', () => {
         submitNoteWithBody={submitNoteWithBody}
       />,
     )
-    fireEvent.click(screen.getByLabelText("Post a note to this job's activity"))
+    fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
     const input = screen.getByLabelText('Note text')
     fireEvent.change(input, { target: { value: 'Check arrived' } })
     fireEvent.keyDown(input, { key: 'Enter' })
