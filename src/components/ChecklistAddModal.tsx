@@ -8,6 +8,8 @@ import { SearchableMultiSelect } from './SearchableMultiSelect'
 import { SearchableSelect } from './SearchableSelect'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { materializeDates } from '../lib/checklistMaterialize'
+import { ymdAddDays } from '../utils/dateUtils'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -236,32 +238,27 @@ export default function ChecklistAddModal({
     const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
     if (assigneeIds.length === 0) return
 
-    const instanceDates: string[] = []
-    const start = new Date(item.start_date)
-    const endDate = item.repeat_end_date ? new Date(item.repeat_end_date) : null
-
-    if (item.repeat_type === 'once') {
-      instanceDates.push(item.start_date)
-    } else if (item.repeat_type === 'day_of_week') {
-      const targetDows = item.repeat_days_of_week ?? []
-      const maxWeeks = 104
-      for (const targetDow of targetDows) {
-        const d = new Date(start)
-        while (d.getDay() !== targetDow) d.setDate(d.getDate() + 1)
-        for (let w = 0; w < maxWeeks; w++) {
-          if (endDate && d > endDate) break
-          instanceDates.push(toLocalDateString(d))
-          d.setDate(d.getDate() + 7)
-        }
-      }
-    } else if (item.repeat_type === 'days_after_completion') {
-      instanceDates.push(item.start_date)
-    }
+    // Shared kernel (v2.2055) — string-date math fixes the old UTC-anchor bug
+    // where a weekly item could materialize a day before its chosen start.
+    const instanceDates = materializeDates(
+      {
+        repeat_type: item.repeat_type,
+        repeat_days_of_week: item.repeat_days_of_week,
+        start_date: item.start_date,
+        repeat_end_date: item.repeat_end_date || null,
+      },
+      item.start_date,
+      ymdAddDays(item.start_date, 104 * 7),
+    )
 
     for (const scheduledDate of instanceDates) {
+      // Upsert against the (item, date) unique index — idempotent by construction.
       const { data: inst } = await supabase
         .from('checklist_instances')
-        .insert({ checklist_item_id: itemId, scheduled_date: scheduledDate })
+        .upsert(
+          { checklist_item_id: itemId, scheduled_date: scheduledDate },
+          { onConflict: 'checklist_item_id,scheduled_date', ignoreDuplicates: false },
+        )
         .select('id')
         .single()
       if (inst?.id) {
